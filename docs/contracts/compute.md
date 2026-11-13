@@ -118,6 +118,12 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - `Holdings` gives value, unrealised profit and share of each position; an empty `Mark` is the gap `missing_quote`, never zero. `Risk` never reads `Mark`.
 - Delta is in dollars per one dollar move of the underlying; vega is in dollars per volatility point.
 
+## Option tile figures
+
+`OptionTiles` (method `Tiles(OptionTilesIn) OptionTilesOut`), `OptionTilesIn`, `UsdText`, `OptionTilesOut` and `NewOptionTilesFunc` are declared in `internal/compute/blockapi/api.go`, additive to the interfaces above. Design: `docs/design/home-options-figures.md#Interface`.
+
+- Each total is one exact sum rounded once: `Value` to cents half away from zero, `Dollars` to whole dollars half up. A figure that cannot be formed has a gap reason (`no_data`, `unsupported_currency`), never zero. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -132,6 +138,14 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v10: additions only: `PageFigures` and its types in `internal/compute/blockapi` above.
 - v11: additions only: the package `internal/compute/valuationapi` above (valuation function types and result types).
 - v12: additions only: `HoldingFigures`, `NewHoldingFiguresFunc` and their types in `internal/compute/blockapi` above.
+- v13: additions only: `OptionTiles`, `NewOptionTilesFunc` and their types in `internal/compute/blockapi` above.
+- v14: additions only: the package `internal/compute/optionfigapi` above (`OptionFigures`, `NewOptionFiguresFunc` and their types).
+
+## Option candidate figures
+
+`PutFigureInput`, `PutFigures`, `OptionFigures` (method `Put(PutFigureInput) PutFigures`) and `NewOptionFiguresFunc` are declared in the package `internal/compute/optionfigapi` (declarations only, imports `contracts` only), not in `internal/compute/api.go`. Design: `docs/design/option-candidates-figures.md#Interface`.
+
+- `PutFigures` carries the ITM probability and the excess yield; a figure that cannot be formed has a gap (`missing_input`, `stale_input`) and a sentence, its value fields empty, never zero. Pure: no I/O, no clock.
 
 ## Contract tests
 
@@ -140,3 +154,4 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - `internal/compute/settingsapi/api_test.go` tests `RuleParams` and `SettingsForm` from both sides: a fake of each and a caller that resolves a stored map and parses a posted form.
 - The golden suites per interface (`internal/compute/contracttest`) come with later issues.
 - `internal/compute/valuationapi/api_test.go` tests the seven function types from both sides: a fake of each and a caller that fills every input and reads every output field.
+- `internal/compute/optionfigapi/api_test.go` tests `OptionFigures` from both sides: a fake and a caller that sets every input field and reads every output field.

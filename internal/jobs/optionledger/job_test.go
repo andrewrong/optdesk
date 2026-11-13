@@ -87,6 +87,15 @@ type env struct {
 	log *bytes.Buffer
 }
 
+// testLogOpts drops the wall-clock time from a test log, so no figure check
+// can match digits of the real time.
+var testLogOpts = &slog.HandlerOptions{ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+	if len(groups) == 0 && a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}
+
 func build(t *testing.T, logins []FlexRun, r *fakeReader) (*job, env) {
 	t.Helper()
 	if r == nil {
@@ -94,7 +103,7 @@ func build(t *testing.T, logins []FlexRun, r *fakeReader) (*job, env) {
 	}
 	e := env{w: &fakeWriter{}, r: r, log: &bytes.Buffer{}}
 	cfg := OptionLedgerConfig{Logins: logins, Accounts: map[string]string{"ACCT1": "a"}, HistoryFrom: "2025-12-01"}
-	j, err := newJob(OptionLedgerStores{Ledger: e.w, Read: r}, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(e.log, nil)))
+	j, err := newJob(OptionLedgerStores{Ledger: e.w, Read: r}, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(e.log, testLogOpts)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,5 +351,20 @@ func TestPerAliasReturnedAndTotalLogged(t *testing.T) {
 	}
 	if len(e.w.recs) != len(src.calls) || len(src.calls) == 0 {
 		t.Fatalf("writer calls %d, source calls %d", len(e.w.recs), len(src.calls))
+	}
+}
+
+func TestTestLogHasLevelButNoTime(t *testing.T) {
+	t.Parallel()
+	j, e := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: &fakeSource{rep: report(oneTrade("ACCT1", "7"))}}}, nil)
+	if res := j.Run(context.Background(), "2026-11-10", nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	out := e.log.String()
+	if !strings.Contains(out, "level=") {
+		t.Fatalf("log has no level: %q", out)
+	}
+	if strings.Contains(out, "time=") {
+		t.Fatalf("log holds a time attribute: %q", out)
 	}
 }

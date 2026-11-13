@@ -239,3 +239,36 @@ func TestPositionFieldsContract(t *testing.T) {
 		t.Fatalf("Currency = %q", h.Rows[0].Currency)
 	}
 }
+
+// fakeTiles echoes every input field into a distinct output field.
+type fakeTiles struct{}
+
+func (fakeTiles) Tiles(in blockapi.OptionTilesIn) blockapi.OptionTilesOut {
+	return blockapi.OptionTilesOut{
+		SoldCount:      len(in.Positions),
+		OpenPremium:    blockapi.UsdText{Value: string(in.Day), Dollars: in.Positions[0].PositionID},
+		MaxLossUsd:     blockapi.UsdText{Value: in.Structures[0].ID, Dollars: "9"},
+		OpenPremiumGap: "no_data", MaxLossGap: "unsupported_currency",
+		OpenCount: len(in.Structures), Uncovered: 1, Unnumbered: 2, Unreadable: 3, OtherCurrency: 4,
+	}
+}
+
+func TestOptionTilesContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewOptionTilesFunc = func() blockapi.OptionTiles { return fakeTiles{} }
+	o := mk().Tiles(blockapi.OptionTilesIn{
+		Day:        testDay,
+		Positions:  []compute.LedgerPosition{{PositionID: "a:1:1"}},
+		Structures: []compute.Structure{{ID: "s1"}},
+	})
+	want := blockapi.OptionTilesOut{
+		SoldCount:      1,
+		OpenPremium:    blockapi.UsdText{Value: string(testDay), Dollars: "a:1:1"},
+		MaxLossUsd:     blockapi.UsdText{Value: "s1", Dollars: "9"},
+		OpenPremiumGap: "no_data", MaxLossGap: "unsupported_currency",
+		OpenCount: 1, Uncovered: 1, Unnumbered: 2, Unreadable: 3, OtherCurrency: 4,
+	}
+	if o != want {
+		t.Fatalf("got %+v", o)
+	}
+}

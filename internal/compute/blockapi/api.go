@@ -174,3 +174,37 @@ type HoldingFigures interface {
 
 // NewHoldingFiguresFunc constructs the implementation (internal/compute/pagefig.NewHoldings).
 type NewHoldingFiguresFunc func() HoldingFigures
+
+// OptionTilesIn is the input of the options card: the replayed positions of every stored alias and the structures
+// that Evaluate recognised among their open positions (Structures and Other of every alias). Pure.
+type OptionTilesIn struct {
+	Day        contracts.Day
+	Positions  []compute.LedgerPosition
+	Structures []compute.Structure
+}
+
+// UsdText is one exact sum as text: Value has two decimals (half away from zero), Dollars is whole dollars
+// (half up); both come from the same exact sum. Both are never negative.
+type UsdText struct{ Value, Dollars string }
+
+// OptionTilesOut holds the three figures and the counts the captions name. SoldCount is the sold opening lots
+// of the month of Day. OpenPremiumGap and MaxLossGap are empty or "no_data" or "unsupported_currency"
+// (page-schema reasons); with an empty gap the matching UsdText is the figure. With MaxLossGap "no_data"
+// and Uncovered above 0, MaxLossUsd is still the sum of the other structures (empty when none) and the gap text reads "at least" that sum. Uncovered
+// counts calls recognised without assigned shares; Unnumbered the USD structures with no number that are not such calls;
+// Unreadable the USD structures with a leg whose numbers do not parse; OtherCurrency the structures not
+// in USD; OpenCount the open structures of every currency.
+type OptionTilesOut struct {
+	SoldCount                                                   int
+	OpenPremium, MaxLossUsd                                     UsdText
+	OpenPremiumGap, MaxLossGap                                  string
+	OpenCount, Uncovered, Unnumbered, Unreadable, OtherCurrency int
+}
+
+// OptionTiles evaluates the three figures of the home options card, no I/O, no clock.
+type OptionTiles interface {
+	Tiles(OptionTilesIn) OptionTilesOut
+}
+
+// NewOptionTilesFunc constructs the implementation (internal/compute/pagefig.NewOptionTiles).
+type NewOptionTilesFunc func() OptionTiles

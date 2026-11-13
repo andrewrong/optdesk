@@ -277,45 +277,34 @@ func TestLeakTableCoversCommands(t *testing.T) {
 	}
 }
 
-func TestUnsetOrShortKeyLeavesRouteOut(t *testing.T) {
+func TestOwnerEditNeedsOnlyTheDSNLine(t *testing.T) {
 	t.Parallel()
-	key := strings.Repeat("ab", 16)
-	cases := []struct {
-		name, env, reason string
-	}{
-		{"no key", "OT_PG_DSN_SETTINGS=settings-dsn-sentinel\n", "OT_FORM_KEY"},
-		{"short key", "OT_FORM_KEY=short-key-sentinel\nOT_PG_DSN_SETTINGS=settings-dsn-sentinel\n", "OT_FORM_KEY"},
-		{"no dsn", "OT_FORM_KEY=" + key + "\n", "OT_PG_DSN_SETTINGS"},
-	}
-	for _, c := range cases {
-		a, errb := testApp(t, c.env)
-		a.deps.openOwnerSet = func(context.Context, string) (ownerset.Store, error) {
-			t.Errorf("%s: the store was opened", c.name)
-			return nil, errors.New("unreachable")
-		}
-		a.deps.newSettingsForm = settingsform.New
-		a.deps.newRuleParams = ruleparam.New
-		oe, closeFn, err := newOwnerEdit(t.Context(), a, "127.0.0.1:8080")
-		closeFn()
-		if err != nil || oe != nil {
-			t.Fatalf("%s: %v %v", c.name, oe, err)
-		}
-		out := errb.String()
-		if !strings.Contains(out, c.reason) || strings.Contains(out, "sentinel") || strings.Contains(out, key) {
-			t.Fatalf("%s: log %q", c.name, out)
-		}
-	}
-	a, _ := testApp(t, "OT_FORM_KEY="+key+"\nOT_PG_DSN_SETTINGS=settings-dsn\n")
-	var dsn string
-	a.deps.openOwnerSet = func(_ context.Context, d string) (ownerset.Store, error) {
-		dsn = d
-		return &fakeOwnerStore{}, nil
+	a, errb := testApp(t, "OT_OWNER_TOKEN="+postKey+"\n")
+	a.deps.openOwnerSet = func(context.Context, string) (ownerset.Store, error) {
+		t.Error("the store was opened")
+		return nil, errors.New("unreachable")
 	}
 	a.deps.newSettingsForm = settingsform.New
 	a.deps.newRuleParams = ruleparam.New
-	oe, closeFn, err := newOwnerEdit(t.Context(), a, "127.0.0.1:8080")
+	oe, closeFn, err := newOwnerEdit(t.Context(), a)
 	closeFn()
-	if err != nil || oe == nil || dsn != "settings-dsn" {
-		t.Fatalf("%v %v %q", oe, err, dsn)
+	if err != nil || oe != nil || !strings.Contains(errb.String(), "OT_PG_DSN_SETTINGS") || strings.Contains(errb.String(), postKey) {
+		t.Fatalf("%v %v log %q", oe, err, errb)
+	}
+	// the DSN line alone opens the write side; the token read is whatever the line holds (unset: every post is 403).
+	for name, line := range map[string]string{"token": "OT_OWNER_TOKEN=" + postKey + "\n", "unset": ""} {
+		a, _ := testApp(t, line+"OT_PG_DSN_SETTINGS=settings-dsn\n")
+		var dsn string
+		a.deps.openOwnerSet = func(_ context.Context, d string) (ownerset.Store, error) {
+			dsn = d
+			return &fakeOwnerStore{}, nil
+		}
+		a.deps.newSettingsForm = settingsform.New
+		a.deps.newRuleParams = ruleparam.New
+		oe, closeFn, err := newOwnerEdit(t.Context(), a)
+		closeFn()
+		if err != nil || oe == nil || dsn != "settings-dsn" || (name == "token") != ownerTokenReady(oe) {
+			t.Fatalf("%s: %v %v %q", name, oe, err, dsn)
+		}
 	}
 }

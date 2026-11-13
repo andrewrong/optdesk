@@ -80,7 +80,7 @@ func newMarkRig(t *testing.T, withDSN bool) *markRig {
 func TestPositionMarksWiredInRunOnce(t *testing.T) {
 	t.Parallel()
 	r := newMarkRig(t, true)
-	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if r.built.Load() != 1 || r.markDSN != "mark-dsn" || r.market == nil || r.acct == nil {
@@ -100,7 +100,7 @@ func TestPositionMarksWiredInRunOnce(t *testing.T) {
 func TestMissingPosmarkLineLeavesOtherJobs(t *testing.T) {
 	t.Parallel()
 	r := newMarkRig(t, false)
-	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatalf("run-once failed for all jobs: %v", err)
 	}
 	if slices.Contains(r.ids, "position_marks") || !slices.Contains(r.ids, "account_capture") {

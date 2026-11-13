@@ -14,7 +14,7 @@ import (
 func TestFIRouteOffWithoutOwnerEdit(t *testing.T) {
 	t.Parallel()
 	s := newFISite(t, fiOpts{noEdit: true})
-	rec := serve(s.h, fiRequest(t, append(s.tokenParts(), fiFile("a.xml", fiXML(fiAccount, "1")))))
+	rec := serve(s.h, fiRequest(t, []fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))}))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("%d %.200q", rec.Code, rec.Body)
 	}
@@ -68,8 +68,7 @@ func TestFIGetCarriesFormAndReadsWithPagesLine(t *testing.T) {
 	t.Parallel()
 	s := newFISite(t, fiOpts{})
 	vm := decodeFI(t, s.get(t))
-	tok := s.form.Token(postNow)
-	if vm.Form == nil || vm.Form.PostPath != "/owner-flex-import" || vm.Form.Expires != tok.Expires || vm.Form.MAC != tok.MAC {
+	if vm.Form == nil || vm.Form.PostPath != "/owner-flex-import" || vm.Form.Expires != "0" || vm.Form.MAC != strings.Repeat("0", 64) {
 		t.Fatalf("%+v", vm.Form)
 	}
 	if len(s.st.dsns) != 1 || s.st.dsns[0] != fiPagesDSN {

@@ -15,7 +15,7 @@ import (
 func TestCalendarJobGetsLoaderStore(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
-	if err := runOnce(r.a, nil); err != nil {
+	if err := runWired(r.a, nil); err != nil {
 		t.Fatal(err)
 	}
 	if r.dsn["sd-loader"] != "loader-dsn" || r.dsn["sd"] != "run-dsn" {
@@ -32,7 +32,7 @@ func TestCalendarJobGetsLoaderStore(t *testing.T) {
 func TestCalendarChangeIsLogged(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
-	if err := runOnce(r.a, nil); err != nil {
+	if err := runWired(r.a, nil); err != nil {
 		t.Fatal(err)
 	}
 	if r.observer == nil {
@@ -60,7 +60,7 @@ func TestCalendarUvPathSetting(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := newRig(t, tc.env)
-			if err := runOnce(r.a, nil); err != nil {
+			if err := runWired(r.a, nil); err != nil {
 				t.Fatal(err)
 			}
 			if len(r.argv) == 0 || r.argv[0] != tc.program || !slices.Equal(r.argv[1:], fixed) {
@@ -86,7 +86,7 @@ func testHasProject(dir string) bool {
 func calendarArgv(t *testing.T, env string) ([]string, error) {
 	t.Helper()
 	r := newRig(t, env)
-	err := runOnce(r.a, nil)
+	err := runWired(r.a, nil)
 	return r.argv, err
 }
 
@@ -155,7 +155,7 @@ func TestCalendarProjectMissing(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	r := newRig(t, fullEnv+"OT_CALENDAR_PROJECT="+dir+"\n")
-	err := runOnce(r.a, nil)
+	err := runWired(r.a, nil)
 	if err == nil || !strings.Contains(err.Error(), "OT_CALENDAR_PROJECT") {
 		t.Fatalf("err %v", err)
 	}

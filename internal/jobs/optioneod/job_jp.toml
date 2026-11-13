@@ -4,8 +4,6 @@ id = "option_eod_jp"
 zone = "Asia/Tokyo"
 trading_class = "225"
 ledger_dataset = "obs.option_eod_jp"
-# A run at or after 17:00 JST never writes night-session quotes.
-stop_after = "1700"
 max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
@@ -16,8 +14,8 @@ freeze_after = "1550"
 option_price_increment = "1"
 
 [window]
-rule = "after_close"
-lateness_hours = 2
+rule = "in_session"
+open_after_minutes = 90
 calendar = "XTKS"
 
 [[underlying]]
@@ -31,12 +29,11 @@ calendar_id = "XTKS"
 price_increment = "1"
 lot_size = "1000"
 
-# Slot: 15:50 JST, five minutes after the closing auction of the day session.
+# Slot: 90 minutes after the open of the day session.
 [schedule]
 calendar = "XTKS"
-anchor = "time"
-zone = "Asia/Tokyo"
-offset = "15h50m"
+anchor = "session_open"
+offset = "90m"
 run_bound = "16m"
 restart_sensitive = true
 

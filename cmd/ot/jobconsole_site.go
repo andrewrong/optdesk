@@ -57,7 +57,7 @@ func buildJobConsolePage(ctx context.Context, clk clock.Clock, rd siteReaders, s
 	now := clk.Now().UTC()
 	var form *job_console.Form
 	if rd.edit != nil {
-		tok := rd.edit.form.Token(now)
+		tok := ownerDummyToken()
 		form = &job_console.Form{PostPath: "/" + jobConsolePostRoute, Expires: tok.Expires, MAC: tok.MAC}
 	}
 	return job_console.Build(ctx, rd.jobReq, now, form, selected, jobInfos(jobTable))

@@ -111,7 +111,7 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 		}
 		return recRunner{&day}, nil
 	}
-	if err := runOnce(a, nil); err != nil {
+	if err := runWired(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
 	}
 	ic, ie, ix := slices.Index(ids, jobOptionCandidates), slices.Index(ids, jobOptionEod), slices.Index(ids, jobEarningsRefresh)
@@ -149,7 +149,7 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 		}
 		return recRunner{&day}, nil
 	}
-	if err := runOnce(a, nil); err != nil {
+	if err := runWired(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
 	}
 	if slices.Contains(ids, jobOptionCandidates) || !slices.Contains(ids, jobOptionEod) {

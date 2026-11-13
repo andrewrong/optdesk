@@ -96,9 +96,8 @@ type OptionEodLatest struct {
 
 // OptionEodCatalog lists the underlyings with rows of option_eod.
 type OptionEodCatalog interface {
-	// OptionEodLatest returns one entry per underlying_id with a row of session_day on or after since, ordered by
-	// UnderlyingID. since is a session_day date (YYYY-MM-DD); an empty since means no lower bound. No row gives
-	// an empty list, not an error.
+	// OptionEodLatest returns one entry per underlying_id with a row of session_day on or after since, ordered by UnderlyingID.
+	// since is a session_day date (YYYY-MM-DD); an empty since means no lower bound. No row gives an empty list, not an error.
 	OptionEodLatest(ctx context.Context, since contracts.Day) ([]OptionEodLatest, error)
 }
 
@@ -120,9 +119,8 @@ type OptionTerms struct {
 
 // OptionTermsReader reads the current terms of options by instrument id.
 type OptionTermsReader interface {
-	// OptionTerms returns the version with valid_to IS NULL of each id, ordered by InstrumentID; an id without a
-	// current version is absent from the answer; an empty list gives an empty answer; more than 500 ids is a
-	// Permanent error.
+	// OptionTerms returns the version with valid_to IS NULL of each id, ordered by InstrumentID; an id without a current
+	// version is absent from the answer; an empty list gives an empty answer; more than 500 ids is a Permanent error.
 	OptionTerms(ctx context.Context, instrumentIDs []int64) ([]OptionTerms, error)
 }
 
@@ -291,6 +289,12 @@ type Run struct {
 	LeaseUntil, HeartbeatAt, FinishedAt time.Time
 	ReturnedN, UsableN                  int
 	ErrorCode, ReasonCode               string
+}
+
+// RunCloser is the optional method of the OpsLedger value the scheduler is given (asserted like runner.ConsoleClaimer).
+// CloseRunning closes every running run as done with ReasonCode reason and FinishedAt now; it returns the count.
+type RunCloser interface {
+	CloseRunning(ctx context.Context, now time.Time, reason string) (closed int, err error)
 }
 
 // OpsLedger is the only way the runner touches the ops tables.
@@ -483,8 +487,7 @@ type SentStore interface {
 // OpenSentFunc opens the sent-mark store with the line DSNEnvAlerts (internal/store/alert.Open).
 type OpenSentFunc func(ctx context.Context, dsn string) (SentStore, error)
 
-// ReadingViewReader reads the winner rows of rd.reading_r1 as the role ot_ro_pages (the page process)
-// or ot_w_readings (the notify pass of risk-alerts).
+// ReadingViewReader reads the winner rows of rd.reading_r1 as the role ot_ro_pages (the page process) or ot_w_readings (the notify pass of risk-alerts).
 // This reader needs no grant on a readings table: it reads only the views rd.reading_r1 and rd.reading_parameter_r1.
 // Rows carry the parameters (data_day among them) read from the view rd.reading_parameter_r1, and no inputs.
 // One row per day: the highest version of the day, then in that version its highest-rev ok row, else its highest-rev row.
@@ -501,9 +504,8 @@ type OpenReadingViewFunc func(ctx context.Context, dsn string) (ReadingViewReade
 
 // FactWriter appends the filed facts of obs.fundamental_fact.
 type FactWriter interface {
-	// InsertFacts inserts the rows ON CONFLICT DO NOTHING on the eight-column key
-	// (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end), so a rerun adds 0 rows.
-	// An absent PeriodStart is stored as period_start_key 0001-01-01 and read back as nil.
+	// InsertFacts inserts the rows ON CONFLICT DO NOTHING on the eight-column key (source, subject, doc_id, taxonomy, concept, unit,
+	// period_start_key, period_end), so a rerun adds 0 rows. An absent PeriodStart is stored as period_start_key 0001-01-01 and read back as nil.
 	InsertFacts(ctx context.Context, rows []contracts.FundamentalFact) error
 }
 
@@ -514,9 +516,8 @@ type FactReader interface {
 	FactsFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error)
 }
 
-// FactStore is one store for both sides: the figures job opens it with the line DSNEnvFundamental
-// (role ot_w_fundamental, INSERT on the table and SELECT on the view), the page with DSNEnvPages
-// (role ot_ro_pages, SELECT on the view only; its InsertFacts fails).
+// FactStore is one store for both sides: the figures job opens it with the line DSNEnvFundamental (role ot_w_fundamental,
+// INSERT on the table and SELECT on the view), the page with DSNEnvPages (role ot_ro_pages, SELECT on the view only; its InsertFacts fails).
 type FactStore interface {
 	FactWriter
 	FactReader
@@ -556,8 +557,7 @@ type OpenEarningsDateStoreFunc func(ctx context.Context, dsn string) (EarningsDa
 // Candidate is one row of candidates.option_candidate r1 as plain text and numbers (design
 // docs/design/option-candidates.md): money is decimal text, an optional column is a nil pointer, Gates is the
 // ordered JSON array text of the gate results, Marks the JSON array text of the marks and Fits the JSON object
-// text from alias to fit, no_fit or unknown. The key is (SessionDay, RunID, Kind, InstrumentID, Alias);
-// Alias is empty for puts.
+// text from alias to fit, no_fit or unknown. The key is (SessionDay, RunID, Kind, InstrumentID, Alias); Alias is empty for puts.
 type Candidate struct {
 	SessionDay       contracts.Day
 	RunID            string

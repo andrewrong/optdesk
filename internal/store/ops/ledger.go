@@ -16,6 +16,9 @@ import (
 
 var _ store.OpenLedgerFunc = Open
 
+// Open returns a *ledger, which is a store.RunCloser.
+var _ store.RunCloser = (*ledger)(nil)
+
 const (
 	deleteExpectedSQL = `DELETE FROM ops.capture_expected_key WHERE session_day = $1`
 	insertExpectedSQL = `INSERT INTO ops.capture_expected_key (session_day, plan_hash, dataset_id, subject_key) ` +
@@ -34,8 +37,13 @@ const (
 		`VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ` +
 		`ON CONFLICT (run_id) DO UPDATE SET status = EXCLUDED.status, lease_until = EXCLUDED.lease_until, ` +
 		`heartbeat_at = EXCLUDED.heartbeat_at, finished_at = EXCLUDED.finished_at, returned_n = EXCLUDED.returned_n, ` +
-		`usable_n = EXCLUDED.usable_n, error_code = EXCLUDED.error_code, reason_code = EXCLUDED.reason_code`
-	selectRunsSQL = `SELECT run_id, dataset_id, subject_key, status, lease_until, heartbeat_at, finished_at, ` +
+		`usable_n = EXCLUDED.usable_n, error_code = EXCLUDED.error_code, reason_code = EXCLUDED.reason_code ` +
+		// A closed row changes only by a rewrite that keeps its status and finish (a reason rewrite), never by a write
+		// that reopens it or finishes it later: the old process cannot undo CloseRunning.
+		`WHERE ops.capture_run.status = 'running' OR (EXCLUDED.status = ops.capture_run.status AND ` +
+		`EXCLUDED.finished_at IS NOT DISTINCT FROM ops.capture_run.finished_at)`
+	closeRunningSQL = `UPDATE ops.capture_run SET status = 'done', finished_at = $1, reason_code = $2 WHERE status = 'running'`
+	selectRunsSQL   = `SELECT run_id, dataset_id, subject_key, status, lease_until, heartbeat_at, finished_at, ` +
 		`returned_n, usable_n, error_code, reason_code FROM ops.capture_run WHERE session_day = $1 ORDER BY run_id`
 	setCursorSQL    = `INSERT INTO ops.reconcile_cursor (id, session_day) VALUES (true, $1) ON CONFLICT (id) DO UPDATE SET session_day = EXCLUDED.session_day`
 	selectCursorSQL = `SELECT session_day FROM ops.reconcile_cursor WHERE id`
@@ -65,6 +73,8 @@ type database interface {
 	querier
 	// InTx runs fn in one transaction: committed when fn returns nil, rolled back otherwise.
 	InTx(ctx context.Context, fn func(querier) error) error
+	// ExecRows runs a statement and returns the number of rows it affected.
+	ExecRows(ctx context.Context, sql string, args ...any) (int64, error)
 	Close() error
 }
 
@@ -197,6 +207,16 @@ func (l *ledger) RecordRun(ctx context.Context, r store.Run) error {
 		nullable(r.LeaseUntil), nullable(r.HeartbeatAt), nullable(r.FinishedAt),
 		r.ReturnedN, r.UsableN, r.ErrorCode, r.ReasonCode)
 	return wrap("record run", err)
+}
+
+// CloseRunning closes every running row of ops.capture_run as done with finished_at now and reason_code reason, whatever
+// its lease_until; it returns the count. It touches no other table.
+func (l *ledger) CloseRunning(ctx context.Context, now time.Time, reason string) (int, error) {
+	n, err := l.db.ExecRows(ctx, closeRunningSQL, now, reason)
+	if err != nil {
+		return 0, wrap("close running", err)
+	}
+	return int(n), nil
 }
 
 func (l *ledger) Runs(ctx context.Context, day contracts.Day) ([]store.Run, error) {
@@ -345,6 +365,11 @@ func (q pgQ) Select(ctx context.Context, sql string, args []any, scan func(scann
 func (d pgDB) Exec(ctx context.Context, sql string, args ...any) error {
 	_, err := d.pool.Exec(ctx, sql, args...)
 	return err
+}
+
+func (d pgDB) ExecRows(ctx context.Context, sql string, args ...any) (int64, error) {
+	tag, err := d.pool.Exec(ctx, sql, args...)
+	return tag.RowsAffected(), err
 }
 
 func (d pgDB) Select(ctx context.Context, sql string, args []any, scan func(scanner) error) error {

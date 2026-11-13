@@ -107,7 +107,7 @@ func TestAccountCaptureDryRun(t *testing.T) {
 		}
 		return recRunner{day: new(contracts.Day)}, nil
 	}
-	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if r.built.Load() != 1 || r.cfg.Main != "b" || len(r.cfg.Readers) != 2 || r.cfg.Writer == nil || r.cfg.Clock == nil {
@@ -127,7 +127,7 @@ func TestAccountCaptureDryRun(t *testing.T) {
 
 func assertRefused(t *testing.T, r *acctRig, key string) {
 	t.Helper()
-	err := runOnce(r.a, []string{"--day", "2026-03-04"})
+	err := runWired(r.a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), key) {
 		t.Fatalf("err %v, want one naming %s", err, key)
 	}
@@ -176,7 +176,7 @@ func TestAccountGatewaysKeyReadThroughDeps(t *testing.T) {
 func TestAccountRefusesUnsetSockets(t *testing.T) {
 	t.Parallel()
 	r := newAcctRig(t, gwMainB, "") // gateways file present, OT_ACCOUNT_SOCKETS unset
-	err := runOnce(r.a, []string{"--day", "2026-03-04"})
+	err := runWired(r.a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), "OT_ACCOUNT_SOCKETS") {
 		t.Fatalf("err %v, want a refusal naming OT_ACCOUNT_SOCKETS", err)
 	}
