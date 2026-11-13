@@ -18,9 +18,10 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
-// Design: docs/design/valuation.md#valuation-wire-us (Decision 3).
+// Design: docs/design/valuation.md#valuation-wire-us (Decision 3); docs/design/readings.md#5 readings-approve (Decision 6).
 
 func init() { register("approve-band", approveBand) }
 
@@ -72,11 +73,15 @@ func approveBand(a *app, args []string) error {
 		return fmt.Errorf("open readings store with %s failed", store.DSNEnvReadings)
 	}
 	defer func() { _ = rd.Close() }()
+	up, ok := rd.(readingkey.ReadingUpserter)
+	if !ok {
+		return errors.New("approve-band: the readings store has no UpsertReadings method; nothing written")
+	}
 	rec, err := approvalOf(ctx, a, rd, *symbol, day, clk.Now())
 	if err != nil {
 		return err
 	}
-	if _, err := rd.InsertReadings(ctx, []contracts.ReadingRecord{rec}); err != nil {
+	if _, err := up.UpsertReadings(ctx, []contracts.ReadingRecord{rec}); err != nil {
 		return fmt.Errorf("approve-band: write failed: %w", err)
 	}
 	_, _ = fmt.Fprintf(a.stdout, "approved %s %s %s rev %d\n", rec.Subject, day, *rec.Value, rec.Rev)
