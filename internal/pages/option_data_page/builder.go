@@ -216,11 +216,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
 	setPrice(&vm.Underlying, sessionDay, latest)
 	vm.Chain.SessionDay = &sessionDay
-	rn, err := reasonNotes(ctx, c, contracts.Day(sessionDay))
-	if err != nil {
+	if vm.Notes, err = pageNotes(ctx, c, contracts.Day(sessionDay)); err != nil {
 		return nil, err
 	}
-	vm.Notes = append([]string{}, limit(append(rn, c.Notes...), maxNotes)...)
 	var eodTime time.Time
 	for _, r := range rows {
 		vm.Chain.Rows = append(vm.Chain.Rows, toRow(r))

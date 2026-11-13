@@ -34,3 +34,12 @@ func reasonNotes(ctx context.Context, c Config, day contracts.Day) ([]string, er
 	}
 	return notes, nil
 }
+
+// pageNotes are the reason notes of day followed by Config.Notes, at most maxNotes.
+func pageNotes(ctx context.Context, c Config, day contracts.Day) ([]string, error) {
+	rn, err := reasonNotes(ctx, c, day)
+	if err != nil {
+		return nil, err
+	}
+	return append([]string{}, limit(append(rn, c.Notes...), maxNotes)...), nil
+}
