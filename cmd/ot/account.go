@@ -92,6 +92,9 @@ func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet
 		socketReaders[i] = r
 	}
 	readers := newGatewayResolver(book, socketReaders).Readers()
+	for _, al := range statementAliases(book) {
+		delete(readers, al)
+	}
 	w, err := f.d.openAccount(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)

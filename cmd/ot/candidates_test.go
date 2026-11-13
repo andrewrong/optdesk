@@ -315,3 +315,11 @@ func TestCandidateJobAliasesNilWithoutAccountDSN(t *testing.T) {
 		t.Fatalf("aliases %v accounts %v", st.Aliases, st.Accounts)
 	}
 }
+
+func TestCandidateAliasesLeaveStatementAlias(t *testing.T) {
+	t.Parallel()
+	st, _ := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n", bookText("mine", "mine", "wife", "a")+"statement = [\"a\"]\n")
+	if !slices.Equal(st.Aliases, []string{"mine", "wife"}) {
+		t.Fatalf("aliases %v", st.Aliases)
+	}
+}

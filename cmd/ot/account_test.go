@@ -264,3 +264,22 @@ func TestResolverAliasWithoutSocketIsRefused(t *testing.T) {
 		t.Fatal("an alias with no socket was read")
 	}
 }
+
+func TestStatementAliasGetsNoReader(t *testing.T) {
+	t.Parallel()
+	r := newAcctRig(t, bookText("a", "a", "b", "c")+"statement = [\"c\"]\n", "/s/a.sock,/s/b.sock")
+	if err := runWired(r.a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if r.built.Load() != 1 || len(r.cfg.Readers) != 2 {
+		t.Fatalf("built %d readers %d", r.built.Load(), len(r.cfg.Readers))
+	}
+	if _, ok := r.cfg.Readers["c"]; ok {
+		t.Fatal("the statement alias has a reader")
+	}
+	for _, al := range []string{"a", "b"} {
+		if _, ok := r.cfg.Readers[al]; !ok {
+			t.Fatalf("alias %s has no reader", al)
+		}
+	}
+}

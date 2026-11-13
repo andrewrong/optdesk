@@ -18,6 +18,7 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 
 - Absent only for a deps without `newAccountCapture`.
 - It is not left out but refused: an unset or malformed `OT_ACCOUNT_SOCKETS`, a gateways file with no or several required entries, a main label not in `OT_ACCOUNT_SOCKETS` or an unset `OT_PG_DSN_ACCOUNT` is an error naming the key only, before any socket is dialled or store opened.
+- The readers of the statement aliases of the book (`accounts.Sourced`) are left out: a statement alias gets no reader, no row and no "degraded" line.
 - A gateway that cannot be dialled becomes a failed read of its alias (degraded when it is not main).
 
 ## Notes
