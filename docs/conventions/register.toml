@@ -2231,3 +2231,26 @@ agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
 history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 1, 11 and 12 (issue 1163); parameters of option-trader diagnosis_v1.toml (blob 643178784313), ported in meaning.",
   "2026-11-10 v1: source_hash changed by issue 1207: the diagnosis adds the figures <primary>_usual_low and <primary>_usual_high (the lowest and the highest primary figure; missing_input too_short with fewer than 5 years), Decisions 11 and 14."]
+
+[[figure]]
+id = "market.iv_rv20"
+version = 1
+title_zh = "隐含波动率减已实现波动率（20日）"
+pages = []
+formula = """
+Convention vol_diff_v1: the first figure minus the second, here the implied-volatility index of the underlying divided by 100 (VIXCLS for SPX, VXNCLS for NDX, RVXCLS for RUT) minus the stored market.rv20 of the same day. An annual fraction: 0.032 is 3.2 volatility points; negative when implied is below realised."""
+inputs = """
+The FRED series point and the stored market.rv20 (state ok, data_day equal to the series day) of the newest day on which both exist, no older than 5 calendar days before the as-of day."""
+period_date = "The day of the inputs used (data_day)."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's index implied volatility (market.index_iv, market.iv_ibkr); a variance premium; a match of horizons: the implied side looks 30 calendar days forward, the realised side 20 sessions back; N225, which stays not built; any fill, carry or extrapolation of a missing input."""
+gap_text = """
+An input of the day absent or not ok, or no common day: missing, no_input. The common day more than 5 calendar days before the as-of day: missing, stale_input. A missing input is stored as missing with a reason code (no_input or stale_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).Combine",
+]
+source_hash = "e1aba0e8803f02e5fb91c7e6bbfd652cd4ff42d56225da505406a621c0c9e8d7"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/market-iv-rv20.md Decisions 1, 2, 4, 7 and 11 (entry 1)"
+history = ["2026-11-13 v1: registered by docs/design/market-iv-rv20.md entry 1; no page reads it yet."]
