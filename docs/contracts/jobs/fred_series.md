@@ -15,6 +15,13 @@
   - a writer without `UpsertSeriesPoints` gives a `Retryable` error naming the missing method; nothing is written and `Usable` is 0.
   - a failed `UpsertSeriesPoints` is `Retryable` unless the writer's error is already typed (`asTyped`), in which case its own kind is kept; `Usable` is 0 then.
 
+## Second source
+
+- `NewWithSecondary(src, second, w, clk)` builds the job with a backup source; `New(src, w, clk)` is `NewWithSecondary(src, nil, w, clk)` (no fallback).
+- After the primary fetch (also when it returned no points; not when it failed), the job asserts the writer to `seriesdef.SeriesRegistry` and reads `ActiveSeries`. For each series of the run whose `SecondarySource` is `nyfed` and that has no valued point dated the run day in the primary fetch (a day missing inside a windowed range counts), it fetches the same plan (same `From`, `To`) from the second source, for those series only, and writes the points with `seriesdef.SeriesFiller.FillSeriesPoints` (`writtenBy = "fred_series:" + <day> + ":nyfed"`), never the upsert.
+- No second source, a writer without `SeriesRegistry` or `SeriesFiller`, an unreadable registry, or a series with an empty `secondary_source` means no fallback. A second-source or fill error never changes the `JobResult`: it is logged (slog warning) only.
+- Tests: `internal/jobs/fredseries/secondary_test.go`.
+
 ## Invariants
 
 - The source gets a `FetchPlan` with the series ids of the keys and `From` and `To` equal to the day.

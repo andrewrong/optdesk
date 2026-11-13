@@ -3,6 +3,7 @@ package fredseries
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -16,10 +17,12 @@ import (
 var _ NewFredSeriesFunc = New
 
 type job struct {
-	m   manifest
-	src sources.Source
-	w   store.SeriesWriter
-	clk clock.Clock
+	m      manifest
+	src    sources.Source
+	second sources.Source // nil: no fallback
+	w      store.SeriesWriter
+	clk    clock.Clock
+	log    *slog.Logger
 
 	cal         string
 	open, close time.Duration
@@ -43,12 +46,9 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 	return &typedError{kind: kind, err: err}
 }
 
-// New builds the fred_series job from the embedded job.toml.
+// New builds the fred_series job from the embedded job.toml, without a second source.
 func New(src sources.Source, w store.SeriesWriter, clk clock.Clock) (contracts.Job, error) {
-	if src == nil || w == nil || clk == nil {
-		return nil, errors.New("fredseries: source, writer and clock are required")
-	}
-	return build(manifestBytes, src, w, clk)
+	return NewWithSecondary(src, nil, w, clk)
 }
 
 func build(data []byte, src sources.Source, w store.SeriesWriter, clk clock.Clock) (*job, error) {
@@ -60,7 +60,7 @@ func build(data []byte, src sources.Source, w store.SeriesWriter, clk clock.Cloc
 	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, src: src, w: w, clk: clk, cal: cal, open: open, close: closeOff}, nil
+	return &job{m: m, src: src, w: w, clk: clk, log: slog.Default(), cal: cal, open: open, close: closeOff}, nil
 }
 
 // ID is the job id of the manifest.
@@ -77,10 +77,8 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		}
 	}
 	var points []contracts.SeriesPoint
-	for _, g := range []struct {
-		ids  []string
-		from contracts.Day
-	}{{plain, day}, {windowed, daysBefore(day, j.m.LookbackDays)}} {
+	groups := []fetchGroup{{plain, day}, {windowed, daysBefore(day, j.m.LookbackDays)}}
+	for _, g := range groups {
 		if len(g.ids) == 0 {
 			continue
 		}
@@ -96,6 +94,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			res.Usable++
 		}
 	}
+	defer j.fillGaps(ctx, day, groups, points)
 	if len(points) == 0 {
 		return res
 	}
