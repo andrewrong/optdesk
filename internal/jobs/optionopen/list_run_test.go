@@ -201,6 +201,26 @@ func TestEmptyListChainsIsListchainsFailed(t *testing.T) {
 	require.Equal(t, contracts.Retryable, res.Err.Kind())
 	require.Equal(t, reasonChainsFail, g2.row("BBB").Reason)
 	require.Empty(t, g2.lst.only("list:"))
+	require.Contains(t, strings.Join(g2.logs, "\n"), "list_chains_empty: BBB answered no chains")
+	require.Contains(t, strings.Join(g.logs, "\n"), "list_chains_empty: AAA answered no chains")
+}
+
+func TestListChainsErrorThatDoesNotStopIsLogged(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA", "BBB")
+	g.lst.chains = func(sym string) ([]broker.Chain, error) {
+		if sym == "AAA" {
+			return nil, errors.New("rejected by gateway")
+		}
+		return g.chainsOf(sym), nil
+	}
+	require.Nil(t, g.run(g.job(nil)).Err)
+	require.Equal(t, reasonChainsFail, g.row("AAA").Reason)
+	var hit bool
+	for _, l := range g.logs {
+		hit = hit || (strings.Contains(l, "AAA") && strings.Contains(l, "rejected by gateway"))
+	}
+	require.True(t, hit, g.logs)
 }
 
 func TestOneTimeoutIsOneTimeout(t *testing.T) {
