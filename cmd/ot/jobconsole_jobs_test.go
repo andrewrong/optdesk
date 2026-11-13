@@ -2,6 +2,8 @@ package main
 
 import (
 	"maps"
+	"net/http"
+	"net/url"
 	"slices"
 	"testing"
 	"time"
@@ -19,7 +21,6 @@ var wantTwelve = map[string]string{
 	"quote_snapshot":         "America/New_York",
 	"calendar_refresh":       "America/New_York",
 	"underlying_resolve":     "America/New_York",
-	"fx_refresh":             "America/New_York",
 	"iv_history":             "America/New_York",
 	"bars_refresh":           "America/New_York",
 	"option_list_preopen":    "America/New_York",
@@ -58,7 +59,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesIsExactlyCalendarRefresh(t *testing.T) {
+func TestForceYesIsCalendarRefreshAndFxRefresh(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -66,7 +67,7 @@ func TestForceYesIsExactlyCalendarRefresh(t *testing.T) {
 			yes = append(yes, r.ID)
 		}
 	}
-	if !slices.Equal(yes, []string{"calendar_refresh"}) {
+	if !slices.Equal(yes, []string{"calendar_refresh", "fx_refresh"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
@@ -87,8 +88,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 18 {
-		t.Fatalf("%d force-no jobs, want 18", n)
+	if n != 17 {
+		t.Fatalf("%d force-no jobs, want 17", n)
 	}
 }
 
@@ -110,9 +111,9 @@ func TestZoneOfEachTodayOnlyJobIsTheJobsOwn(t *testing.T) {
 	}
 }
 
-func TestAnyDayIsExactlyTheFour(t *testing.T) {
+func TestAnyDayIsExactlyTheFive(t *testing.T) {
 	t.Parallel()
-	want := []string{"compute_figures", "fred_series", "fundamentals", "option_candidates"}
+	want := []string{"compute_figures", "fred_series", "fundamentals", "fx_refresh", "option_candidates"}
 	if got := idsOfKind(kindAnyDay); !slices.Equal(got, want) {
 		t.Fatalf("any_day %v", got)
 	}
@@ -123,7 +124,7 @@ func TestAnyDayIsExactlyTheFour(t *testing.T) {
 	}
 }
 
-func TestTodayOnlyIsExactlyTheTwelve(t *testing.T) {
+func TestTodayOnlyIsExactlyTheFourteen(t *testing.T) {
 	t.Parallel()
 	want := slices.Sorted(maps.Keys(wantTwelve))
 	if got := idsOfKind(kindTodayOnly); !slices.Equal(got, want) {
@@ -169,5 +170,24 @@ func TestOnlyOptionEodJpIsInTheTokyoZone(t *testing.T) {
 	}
 	if !slices.Equal(tokyo, []string{"option_eod_jp", "option_list_preopen_jp"}) {
 		t.Fatalf("Tokyo jobs %v", tokyo)
+	}
+}
+
+func TestFxRefreshRunValidatesPastDayWithForce(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 13, 15, 0, 0, 0, time.UTC)
+	post := func(job, day, force string) (jobRun, bool) {
+		r := &http.Request{PostForm: url.Values{"job": {job}, "day": {day}, "force": {force}}}
+		return readJobRun(r, now)
+	}
+	run, ok := post("fx_refresh", "2026-11-10", "on")
+	if !ok || !run.force || run.day != "2026-11-10" || run.job.ID != "fx_refresh" {
+		t.Fatalf("past day with force: %+v %v", run, ok)
+	}
+	if _, ok := post("fx_refresh", "2026-11-14", "on"); ok {
+		t.Error("a day after today was accepted")
+	}
+	if _, ok := post("bars_refresh", "2026-11-13", "on"); ok {
+		t.Error("force on a force-no job was accepted")
 	}
 }
