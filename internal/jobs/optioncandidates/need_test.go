@@ -24,6 +24,24 @@ func TestNeedsAreTheTwoRows(t *testing.T) {
 	}
 }
 
+func TestParamsEqualsManifestParams(t *testing.T) {
+	t.Parallel()
+	got, err := Params()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, want, err := parseManifest(manifestBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+	if got.MinDTE != 21 || got.MaxDTE != 45 || got.MaxSpread != "0.10" || got.MaxRateAgeDays != 7 || got.MinReportGapDays != 60 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
 const needBase = `
 version = 1
 id = "x"
