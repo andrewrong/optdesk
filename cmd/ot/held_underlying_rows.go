@@ -51,6 +51,7 @@ type heldRowsJob struct {
 	list      underlying.Reader
 	adder     underlying.HeldAdder
 	account   store.AccountReader
+	aliases   []string
 	clk       clock.Clock
 	log       *slog.Logger
 	datasetID string
@@ -61,7 +62,7 @@ type heldRowsJob struct {
 
 // heldRows wraps inner. datasetID is the dataset of the inner keys, maxNames the cap of names in one run and zone the
 // zone of the schedule, whose today is the only day that plans held names. The index set comes from the bars manifest.
-func heldRows(inner contracts.Job, list underlying.Reader, adder underlying.HeldAdder, account store.AccountReader,
+func heldRows(inner contracts.Job, list underlying.Reader, adder underlying.HeldAdder, account store.AccountReader, aliases []string,
 	clk clock.Clock, log *slog.Logger, datasetID string, maxNames int, zone *time.Location) (contracts.Job, error) {
 	if inner == nil || list == nil || adder == nil || account == nil || clk == nil || log == nil || zone == nil || maxNames <= 0 {
 		return nil, errors.New("held rows: job, list, adder, account reader, clock, log, zone and max names are required")
@@ -74,7 +75,7 @@ func heldRows(inner contracts.Job, list underlying.Reader, adder underlying.Held
 	for _, i := range m.Indexes {
 		idx[strings.ToUpper(i.Symbol)] = true
 	}
-	return &heldRowsJob{inner: inner, list: list, adder: adder, account: account, clk: clk, log: log,
+	return &heldRowsJob{inner: inner, list: list, adder: adder, account: account, aliases: aliases, clk: clk, log: log,
 		datasetID: datasetID, maxNames: maxNames, zone: zone, indexes: idx}, nil
 }
 
@@ -203,11 +204,11 @@ func (h *heldRowsJob) candidates(ctx context.Context) ([]heldPair, error) {
 	return out, nil
 }
 
-// positions is the newest positions of each alias of heldAliases, searched back heldLookbackDays from today.
+// positions is the newest positions of each alias of the held aliases, searched back heldLookbackDays from today.
 func (h *heldRowsJob) positions(ctx context.Context) ([]store.Position, error) {
 	now := h.clk.Now().In(h.zone)
 	var all []store.Position
-	for _, alias := range heldAliases {
+	for _, alias := range h.aliases {
 		for back := 0; back <= heldLookbackDays; back++ {
 			rows, err := h.account.Positions(ctx, alias, now.AddDate(0, 0, -back).Format(time.DateOnly))
 			if err != nil {

@@ -114,17 +114,10 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 	return f.optionCandidates()
 }
 
-// candidateAliases sets f.candAliases from the gateways file named in .env. An unreadable .env or gateways file logs
-// one WARN line, without the path or an account, and leaves the list nil: the job then reads no account.
+// candidateAliases sets f.candAliases from the book of accounts.toml. A book that cannot be loaded logs one WARN
+// line, without the path or an account, and leaves the list nil: the job then reads no account.
 func (a *app) candidateAliases(f *jobFactory) {
-	env, err := a.envFile()
-	if err == nil {
-		f.candAliases, err = accountAliases(env[envIbkrGateways])
-	}
-	if err != nil {
-		f.candAliases = nil
-		a.log.Warn("option_candidates reads no account: gateways file unusable", "component", "ot", "job", jobOptionCandidates)
-	}
+	f.candAliases = a.heldAliasList(jobOptionCandidates)
 }
 
 // candidatesCmd is `ot candidates [--day DAY] [--all]`: it opens the candidate store with OT_PG_DSN_PAGES (role ot_ro_pages, the view rd.option_candidate_r1),

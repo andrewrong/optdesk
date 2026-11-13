@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -232,58 +229,29 @@ func TestNoReaderIsGapPage(t *testing.T) {
 	}
 }
 
-// gatewaysAliasApp is a test app whose .env names a gateways file holding body ("" with no file written, the key
-// pointing at a missing file; "-" with no key at all). It returns the app, the log buffer and the file path.
-func gatewaysAliasApp(t *testing.T, body string) (*app, *bytes.Buffer, string) {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "gateways.toml")
-	env := envIbkrGateways + "=" + path + "\n"
-	switch body {
-	case "-":
-		env = "OT_UNUSED=1\n"
-	case "":
-	default:
-		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	a, errb := testApp(t, env)
-	return a, errb, path
-}
-
 func TestSiteAliasList(t *testing.T) {
 	t.Parallel()
-	good := func(entries ...string) string { return strings.Join(entries, "\n") }
-	req := "[[gateway]]\naccount = \"acct-a\"\nrequired = true\n"
-	other := func(acct string) string { return "[[gateway]]\naccount = \"" + acct + "\"\n" }
-	t.Run("main first then the others sorted", func(t *testing.T) {
+	t.Run("main first then the others in book order", func(t *testing.T) {
 		t.Parallel()
-		a, errb, _ := gatewaysAliasApp(t, good(other("zz"), req, other("bb")))
-		if got := siteAliasList(a); !slices.Equal(got, []string{"acct-a", "bb", "zz"}) || errb.Len() != 0 {
+		a, errb := testApp(t, "")
+		writeBook(t, a, bookText("b", "c", "a", "b"))
+		if got := siteAliasList(a); !slices.Equal(got, []string{"b", "c", "a"}) || errb.Len() != 0 {
 			t.Fatalf("%v %q", got, errb)
 		}
 	})
-	t.Run("repeats and empty dropped", func(t *testing.T) {
-		t.Parallel()
-		a, _, _ := gatewaysAliasApp(t, good(req, other("bb"), other("bb"), other(""), other("acct-a")))
-		if got := siteAliasList(a); !slices.Equal(got, []string{"acct-a", "bb"}) {
-			t.Fatalf("%v", got)
-		}
-	})
-	bad := map[string]string{
-		"missing key":  "-",
-		"missing file": "",
-		"two required": req + req,
-	}
+	bad := map[string]string{"missing file": "", "no main": "a = \"x\"\n"}
 	for name, body := range bad {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			a, errb, path := gatewaysAliasApp(t, body)
+			a, errb := testApp(t, "")
+			if body != "" {
+				writeBook(t, a, body)
+			}
 			got := siteAliasList(a)
 			if !slices.Equal(got, []string{"main"}) {
 				t.Fatalf("%v", got)
 			}
-			if n := strings.Count(errb.String(), "level=WARN"); n != 1 || strings.Contains(errb.String(), path) || strings.Contains(errb.String(), "acct-a") {
+			if n := strings.Count(errb.String(), "level=WARN"); n != 1 || strings.Contains(errb.String(), a.getenv("OT_HOME")) {
 				t.Fatalf("%d warn lines: %q", n, errb)
 			}
 		})

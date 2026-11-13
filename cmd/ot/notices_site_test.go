@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -38,6 +36,7 @@ func newNoticesFixture(t *testing.T, env string) *noticesFixture {
 	t.Helper()
 	f := &noticesFixture{}
 	f.a, _ = testApp(t, env)
+	writeBook(t, f.a, bookText("m", "b", "m"))
 	f.a.deps.newOptionNotices = func() compute.OptionNotices { return demoNoticeRule{} }
 	f.a.deps.noticeParams = func() compute.NoticeParams { return compute.NoticeParams{ExpiryDays: 9} }
 	f.a.deps.optionNoticesPage = func(_ *time.Location, _, _, _, main string, aliases []string, acct store.AccountReader,
@@ -56,16 +55,11 @@ func newNoticesFixture(t *testing.T, env string) *noticesFixture {
 	return f
 }
 
-// noticesEnv writes a gateways file whose main account is "m" and returns the .env body that names it with
-// the sockets m and b (listed in reverse order), the pages line and the lines that must not be read.
+// noticesEnv returns the .env body of the pages line and the lines that must not be read.
 func noticesEnv(t *testing.T) string {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), "gateways.toml")
-	if err := os.WriteFile(p, []byte("[[gateway]]\nname = \"g1\"\naccount = \"m\"\nrequired = true\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	return store.DSNEnvPages + "=pages-dsn\n" + store.DSNEnvAccount + "=account-dsn\n" + store.DSNEnvCandidate + "=candidate-dsn\n" +
-		store.DSNEnvEvents + "=events-dsn\n" + envIbkrGateways + "=" + p + "\n" + envAccountSockets + "=m=/s/m,b=/s/b\n"
+		store.DSNEnvEvents + "=events-dsn\n" + envAccountSockets + "=/s/m,/s/b\n"
 }
 
 var noticesClock = fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
@@ -80,7 +74,7 @@ func TestNoticesRouteServesPage(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"schema":"option_notices_page"`) {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}
-	if f.main != "m" || !reflect.DeepEqual(f.aliases, []string{"b", "m"}) || f.params.ExpiryDays != 9 {
+	if f.main != "m" || !reflect.DeepEqual(f.aliases, []string{"m", "b"}) || f.params.ExpiryDays != 9 {
 		t.Fatalf("main %q aliases %v params %+v", f.main, f.aliases, f.params)
 	}
 	if f.acct != (demoNoticeAccount{}) || f.cands != (demoCandidates{}) || f.earn != nil {

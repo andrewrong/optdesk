@@ -256,12 +256,13 @@ func TestCandidatesReadsThroughPagesDSN(t *testing.T) {
 	}
 }
 
-const gwMineWife = "[[gateway]]\nname = \"g1\"\naccount = \"mine\"\nrequired = true\n[[gateway]]\nname = \"g2\"\naccount = \"wife\"\nrequired = false\n"
-
 // candAliasRun runs candidateJob over a .env body and returns the stores newOptionCandidates received and the log.
-func candAliasRun(t *testing.T, envBody string) (optioncandidates.CandidateStores, string) {
+func candAliasRun(t *testing.T, envBody, book string) (optioncandidates.CandidateStores, string) {
 	t.Helper()
 	a, logs := testApp(t, envBody)
+	if book != "" {
+		writeBook(t, a, book)
+	}
 	var cl atomic.Int32
 	var got optioncandidates.CandidateStores
 	var built bool
@@ -288,30 +289,22 @@ func candAliasRun(t *testing.T, envBody string) (optioncandidates.CandidateStore
 
 func TestCandidateJobGetsAccountAliases(t *testing.T) {
 	t.Parallel()
-	gw := t.TempDir() + "/gateways.toml"
-	if err := writeFile(gw, gwMineWife); err != nil {
-		t.Fatal(err)
-	}
-	st, _ := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\nOT_IBKR_GATEWAYS="+gw+"\n")
+	st, _ := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n", bookText("mine", "mine", "wife"))
 	if !slices.Equal(st.Aliases, []string{"mine", "wife"}) || st.Accounts == nil {
 		t.Fatalf("aliases %v accounts %v", st.Aliases, st.Accounts)
 	}
 }
 
-func TestCandidateJobAliasesNilWithoutGateways(t *testing.T) {
+func TestCandidateJobAliasesNilWithoutBook(t *testing.T) {
 	t.Parallel()
-	bad := t.TempDir() + "/bad.toml"
-	if err := writeFile(bad, "not = [valid"); err != nil {
-		t.Fatal(err)
-	}
-	for name, line := range map[string]string{"unset": "", "invalid": "OT_IBKR_GATEWAYS=" + bad + "\n"} {
+	for name, body := range map[string]string{"missing": "", "invalid": "not = [valid"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			st, logs := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n"+line)
+			st, logs := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n", body)
 			if st.Aliases != nil {
 				t.Fatalf("aliases %v", st.Aliases)
 			}
-			if n := strings.Count(logs, "WARN"); n != 1 || strings.Contains(logs, bad) {
+			if n := strings.Count(logs, "WARN"); n != 1 || strings.Contains(logs, accountsFileName) {
 				t.Fatalf("log %q", logs)
 			}
 		})
@@ -320,11 +313,7 @@ func TestCandidateJobAliasesNilWithoutGateways(t *testing.T) {
 
 func TestCandidateJobAliasesNilWithoutAccountDSN(t *testing.T) {
 	t.Parallel()
-	gw := t.TempDir() + "/gateways.toml"
-	if err := writeFile(gw, gwMineWife); err != nil {
-		t.Fatal(err)
-	}
-	st, _ := candAliasRun(t, candidateEnv+"OT_IBKR_GATEWAYS="+gw+"\n")
+	st, _ := candAliasRun(t, candidateEnv, bookText("mine", "mine", "wife"))
 	if st.Aliases != nil || st.Accounts != nil {
 		t.Fatalf("aliases %v accounts %v", st.Aliases, st.Accounts)
 	}

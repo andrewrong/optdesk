@@ -35,29 +35,20 @@ func (rd siteReaders) aliasList() []string {
 	return rd.aliases
 }
 
-// siteAliasList reads the alias list of the account pages from the gateways file named in .env, the way
-// account_capture takes its aliases: main first (accountAliases), then the other `account` values, non-empty,
-// without repeats, sorted. The demo profile, an unreadable .env, an unset key and a missing or invalid file
-// give ["main"]; the failure logs one WARN line carrying no path and no account value. It is called once at
-// serve start.
+// siteAliasList reads the alias list of the account pages from the book of accounts.toml, main first. The demo
+// profile and a book that cannot be loaded give ["main"]; the failure logs one WARN line carrying no path and no
+// account id. It is called once at serve start.
 func siteAliasList(a *app) []string {
 	fallback := []string{"main"}
 	if a.profile.Name == "demo" {
 		return fallback
 	}
-	warn := func(why string) []string {
-		a.log.Warn("gateways file not usable for the account pages, alias main is used", "component", "ot", "reason", why)
+	book, err := a.accountBook()
+	if err != nil {
+		a.log.Warn("account book not usable for the account pages, alias main is used", "component", "ot")
 		return fallback
 	}
-	env, err := a.envFile()
-	if err != nil {
-		return warn("env file cannot be read")
-	}
-	list, err := accountAliases(env[envIbkrGateways])
-	if err != nil {
-		return warn("gateways file missing or invalid")
-	}
-	return list
+	return bookAliases(book)
 }
 
 // positionsKind selects which of the three pages a request builds.

@@ -36,10 +36,6 @@ var startListed = func(build listedBuild, group string, reader underlying.Reader
 // nameKey is the name_key of a row of the list: market, a colon and the upper-case symbol.
 func nameKey(market, symbol string) string { return market + ":" + strings.ToUpper(symbol) }
 
-// heldAliases are the account aliases whose positions make a name held (the aliases optionopen reads).
-
-var heldAliases = []string{"A", "B"}
-
 func init() {
 	registerJob(jobFamily{
 		id: jobUnderlyingResolve, order: 200,
@@ -85,15 +81,15 @@ func openJobList(ctx context.Context, a *app, cfg runOnceConfig, f *jobFactory, 
 	}
 	extra.addCloser(st)
 	f.list = st
-	f.held = heldKeys(f.d, cfg, func() time.Time { return f.clk.Now() }, extra)
+	f.held = heldKeys(f.d, cfg, a.heldAliasList(jobUnderlyingResolve), func() time.Time { return f.clk.Now() }, extra)
 	return nil
 }
 
-// heldKeys reads the names held in the newest positions of heldAliases (a stock with a quantity other than zero,
+// heldKeys reads the names held in the newest positions of the given aliases (a stock with a quantity other than zero,
 // searched back heldLookbackDays from today), keyed as the rows of the list are: market, a colon and the symbol. A
 // position carries no market here, so each held symbol is keyed under both markets. Without the account line nobody is
 // held. The account store opens on the first read and closes through extra.
-func heldKeys(d deps, cfg runOnceConfig, now func() time.Time, extra *closerSet) func(context.Context) (map[string]bool, error) {
+func heldKeys(d deps, cfg runOnceConfig, aliases []string, now func() time.Time, extra *closerSet) func(context.Context) (map[string]bool, error) {
 	if cfg.accountDSN == "" || d.openAccount == nil {
 		return func(context.Context) (map[string]bool, error) { return map[string]bool{}, nil }
 	}
@@ -106,7 +102,7 @@ func heldKeys(d deps, cfg runOnceConfig, now func() time.Time, extra *closerSet)
 	}}}
 	extra.addCloser(rd)
 	return func(ctx context.Context) (map[string]bool, error) {
-		syms, opts, err := heldSets(ctx, siteReaders{account: rd, aliases: heldAliases}, now())
+		syms, opts, err := heldSets(ctx, siteReaders{account: rd, aliases: aliases}, now())
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +203,7 @@ func wrapHeld(a *app, jc *jobCtx, j contracts.Job, st underlying.Store) (contrac
 		return s, nil
 	}}}
 	jc.extra.addCloser(rd)
-	w, err := heldRows(j, st, adder, rd, jc.f.clk, a.log, underlyingresolve.DatasetID, m.MaxNames, zone)
+	w, err := heldRows(j, st, adder, rd, a.heldAliasList(jobUnderlyingResolve), jc.f.clk, a.log, underlyingresolve.DatasetID, m.MaxNames, zone)
 	if err != nil {
 		return nil, "", fmt.Errorf("build underlying_resolve job failed: %w", err)
 	}
