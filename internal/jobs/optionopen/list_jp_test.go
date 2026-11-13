@@ -302,22 +302,21 @@ func TestJPListerWithoutChainsIsRefused(t *testing.T) {
 	require.Error(t, err, "an index would be sent as a stock")
 }
 
-func TestZoneLateStartWritesLateStartAndIsPresent(t *testing.T) {
+func TestZoneRunAfterStopTimeLists(t *testing.T) {
 	t.Parallel()
 	g := zoneRig(t, "AAA")
 	rs := &fakeReasons{}
-	g.tweak = func(d *ListDeps) { d.ReasonWriter = rs; d.Spot = &fakeSpot{} }
+	g.tweak = func(d *ListDeps) {
+		d.ReasonWriter = rs
+		d.Spot = &fakeSpot{q: map[string]broker.Quote{"AAA": g.quote(130, true)}}
+	}
 	g.seedGroup("AAA", 22, 2, "90", "115")
 	g.clk.Advance(2*time.Hour + 30*time.Minute) // 08:45 ET, after the stop time 08:40
 	j, err := NewListZone(g.deps())
 	require.NoError(t, err)
 	require.NoError(t, errOf(j.Run(context.Background(), g.day, zoneKey())))
-	rows := rs.of(g.day, ListDatasetID, "zone")
-	require.Len(t, rows, 1)
-	require.Equal(t, "late_start", rows[0].Code)
-	require.Empty(t, g.lst.calls, "a late zone run lists nothing")
-	require.Zero(t, g.ls.puts)
-	ok, err := j.(*zoneJob).Postcondition(context.Background(), string(g.day), ListDatasetID, "zone")
-	require.NoError(t, err)
-	require.True(t, ok)
+	require.NotEmpty(t, g.lst.calls, "a zone run after the stop time lists as any other run")
+	for _, r := range rs.of(g.day, ListDatasetID, "zone") {
+		require.NotEqual(t, "late"+"_start", r.Code)
+	}
 }

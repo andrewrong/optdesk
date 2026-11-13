@@ -10,19 +10,21 @@ import (
 // wantTwelve is the test's own list of the today-only jobs with their zones (Decision 6); no zone is read
 // out of a job, because most jobs carry none in Schedule().
 var wantTwelve = map[string]string{
-	"account_capture":     "America/New_York",
-	"position_marks":      "America/New_York",
-	"earnings_refresh":    "America/New_York",
-	"dividend_capture":    "America/New_York",
-	"option_eod":          "America/New_York",
-	"option_eod_jp":       "Asia/Tokyo",
-	"quote_snapshot":      "America/New_York",
-	"calendar_refresh":    "America/New_York",
-	"underlying_resolve":  "America/New_York",
-	"fx_refresh":          "America/New_York",
-	"iv_history":          "America/New_York",
-	"bars_refresh":        "America/New_York",
-	"option_list_preopen": "America/New_York",
+	"account_capture":        "America/New_York",
+	"position_marks":         "America/New_York",
+	"earnings_refresh":       "America/New_York",
+	"dividend_capture":       "America/New_York",
+	"option_eod":             "America/New_York",
+	"option_eod_jp":          "Asia/Tokyo",
+	"quote_snapshot":         "America/New_York",
+	"calendar_refresh":       "America/New_York",
+	"underlying_resolve":     "America/New_York",
+	"fx_refresh":             "America/New_York",
+	"iv_history":             "America/New_York",
+	"bars_refresh":           "America/New_York",
+	"option_list_preopen":    "America/New_York",
+	"option_list_zone":       "America/New_York",
+	"option_list_preopen_jp": "Asia/Tokyo",
 }
 
 func idsOfKind(kind string) []string {
@@ -51,7 +53,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 25 {
+	if !slices.Equal(got, want) || len(got) != 27 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -85,8 +87,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 16 {
-		t.Fatalf("%d force-no jobs, want 16", n)
+	if n != 18 {
+		t.Fatalf("%d force-no jobs, want 18", n)
 	}
 }
 
@@ -165,7 +167,7 @@ func TestOnlyOptionEodJpIsInTheTokyoZone(t *testing.T) {
 			tokyo = append(tokyo, r.ID)
 		}
 	}
-	if !slices.Equal(tokyo, []string{"option_eod_jp"}) {
+	if !slices.Equal(tokyo, []string{"option_eod_jp", "option_list_preopen_jp"}) {
 		t.Fatalf("Tokyo jobs %v", tokyo)
 	}
 }
