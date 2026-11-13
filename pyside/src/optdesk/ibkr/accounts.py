@@ -165,6 +165,7 @@ async def read_account(
         generation=generation,
         values=_value_rows(account, seen) if summary else (),
         positions=_position_rows(account, results[-1]) if positions else (),
+        account=account,
     )
 
 
@@ -250,4 +251,5 @@ async def read_executions(
         generation=generation,
         executions=tuple(rows),
         pending=len(mine) - len(complete),
+        account=account,
     )

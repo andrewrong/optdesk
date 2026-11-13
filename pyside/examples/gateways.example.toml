@@ -1,7 +1,7 @@
 # Template of the gateways file named by OT_IBKR_GATEWAYS.
 # Copy it to the service config directory, keep the copy out of the repository,
-# and fill in your own names, aliases and ports. An alias is a label, never an
-# account id.
+# and fill in your own names and ports. An entry holds no account: the gateway
+# reports the account it manages.
 
 # The gateway that also answers on ibkr.sock (the first entry when left out).
 default = "first"
@@ -9,13 +9,11 @@ default = "first"
 [[gateway]]
 name = "first"
 port = 1                 # replace with the port of your gateway
-account = "alias_one"
 collect = ["market_data"]
 required = true
 
 [[gateway]]
 name = "second"
 port = 2                 # replace with the port of your gateway
-account = "alias_two"
 collect = ["account_summary", "positions"]
 required = false

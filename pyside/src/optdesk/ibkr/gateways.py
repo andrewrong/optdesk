@@ -1,7 +1,7 @@
 """The gateways of the ibkr server: the file that names them, and the single-gateway fallback.
 
-A gateway entry says which IB Gateway to connect to, which account it serves
-(by alias, never by id), which information is collected through it and whether
+A gateway entry says which IB Gateway to connect to,
+which information is collected through it and whether
 its connection decides the health of the service. Every error names the table
 by position and the key, never the value.
 """
@@ -22,8 +22,6 @@ FALLBACK_NAME = "default"
 RESERVED_ID_MESSAGE = "client_id 0 is reserved for the read-only probe"
 
 _NAME = re.compile(r"[a-z][a-z0-9-]{0,15}")
-_ALIAS = re.compile(r"[a-z][a-z0-9_-]{0,31}")
-_ACCOUNT_ID = re.compile(r"[A-Za-z]+\d{5,9}")
 _TOP_KEYS = frozenset({"default", "gateway"})
 _KEYS = frozenset(
     {
@@ -49,7 +47,6 @@ class GatewaySpec:
 
     name: str
     port: int
-    account: str
     collect: tuple[str, ...]
     host: str = "localhost"
     client_id: int = DEFAULT_CLIENT_ID
@@ -90,7 +87,6 @@ def from_env(env: Mapping[str, str]) -> tuple[GatewaySpec, ...]:
             market_data_type=positive_int(
                 env, "OT_IBKR_MARKET_DATA_TYPE", DEFAULT_MARKET_DATA_TYPE
             ),
-            account=FALLBACK_NAME,
             collect=("market_data",),
             required=True,
         ),
@@ -135,9 +131,6 @@ def _entry(table: object, position: int) -> GatewaySpec:
     name = _text(table, "name", where)
     if not _NAME.fullmatch(name):
         raise ConfigError(f"{where}: name must be a slug of 1 to 16 characters")
-    account = _text(table, "account", where)
-    if not _ALIAS.fullmatch(account) or _ACCOUNT_ID.search(account):
-        raise ConfigError(f"{where}: account must be an alias, never an account id")
     host = table.get("host", "localhost")
     if not isinstance(host, str) or not host:
         raise ConfigError(f"{where}: host must be text")
@@ -154,7 +147,6 @@ def _entry(table: object, position: int) -> GatewaySpec:
     return GatewaySpec(
         name=name,
         port=_whole(table, "port", where, None),
-        account=account,
         collect=tuple(collect),
         host=host,
         client_id=_client_id(table, where),
