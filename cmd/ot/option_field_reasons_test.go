@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,6 +89,15 @@ func TestOptionDataPageCarriesReasons(t *testing.T) {
 	}
 	if st.openedDSN != "postgres://pages" {
 		t.Fatalf("reader opened with %q, want the pages line", st.openedDSN)
+	}
+	// The reader's note is in the page newOptionDataPage builds from the same input.
+	d := demoOption{}
+	st.reasons = []runview.Reason{{Code: "field_missing", Subject: "AAPL",
+		Detail: "open_interest missing 200/200 usable quotes: not_received_grace 200"}}
+	page := newOptionDataPage(time.UTC, "b", sitePageInput{UnderlyingID: demoOptionIDs[0], Symbol: "AAPL", Eod: d, Quotes: d, Terms: d, Reasons: r})
+	out, err := page.Build(t.Context(), nil, "2026-11-06", time.Date(2026, 11, 9, 0, 0, 0, 0, time.UTC))
+	if err != nil || !strings.Contains(string(out), "open_interest missing 200/200") {
+		t.Fatalf("note absent: %v", err)
 	}
 	if optionReasonReader(siteReaders{}) != nil {
 		t.Fatal("a site with no run store has a reader")
