@@ -19,6 +19,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
+	"github.com/andrewrong/optdesk/internal/store/hoursnoticepg"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
@@ -107,7 +109,7 @@ func (rd siteReaders) openQuotes() openquote.OptionOpenReader {
 	return nil
 }
 
-// siteReaders are the eight readers the site builds its live pages from.
+// siteReaders are the readers the site builds its live pages from (the eight stores first, then the optional ones).
 type siteReaders struct {
 	series  store.SeriesReader
 	eod     store.OptionEodReader
@@ -121,6 +123,10 @@ type siteReaders struct {
 	// marks is the position mark reader of household_page, opened with the pages line (nil: no opener or a
 	// failed open, the blocks that need a mark stay gaps).
 	marks mark.Reader
+
+	// hours is the reader of the hours notices of the home overview, opened with the pages line (nil: the demo
+	// profile or a failed open; the overview then shows no notice).
+	hours hoursnotice.Reader
 
 	// bars is the daily bar reader of the home Companies card, opened with the pages line (nil: no opener, the demo
 	// profile or a site with no bar line; the day change stays the gap no_reader).
@@ -275,7 +281,8 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	rd := siteReaders{
-		bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
+		hours: openHoursReader(ctx, dsn, track),
+		bars:  bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
@@ -613,6 +620,25 @@ func readSiteNames(ctx context.Context, r store.InstrumentNameReader, id int64, 
 		}
 	}
 	return r.InstrumentNames(ctx, ids)
+}
+
+// openSiteHours opens the hours-notice reader with the pages line; a package variable so that the tests, which have
+// no database, install a fake in an init().
+var openSiteHours = func(ctx context.Context, dsn string) (hoursnotice.Reader, error) {
+	st, err := hoursnoticepg.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return st, nil
+}
+
+// openHoursReader opens the hours-notice reader; a failed open is nil, which leaves the home overview without notices.
+func openHoursReader(ctx context.Context, dsn string, track func(io.Closer, error) bool) hoursnotice.Reader {
+	rd, err := openSiteHours(ctx, dsn)
+	if !track(rd, err) {
+		return nil
+	}
+	return rd
 }
 
 // openMarkReader opens the mark store with the pages line when deps has an opener. A nil opener or a failed

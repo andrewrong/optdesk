@@ -541,7 +541,8 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
-	if len(d) != 4 || d[jobOptionEodIndex] == "" || d[jobOptionEodJP] == "" || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
+	if len(d) != 6 || d["calendar_hours_us"] == "" || d["calendar_hours_jp"] == "" ||
+		d[jobOptionEodIndex] == "" || d[jobOptionEodJP] == "" || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
 		t.Fatalf("disabled %v", d)
 	}
 	if err := r.stop(t, done); err != nil {
@@ -551,7 +552,7 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 
 func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	t.Parallel()
-	r := newSchedRig(t, fullEnv)
+	r := newSchedRig(t, strings.Replace(fullEnv, "master-dsn", hoursMarker, 1))
 	r.a.deps.newCalendar = func(clock.SessionSource) clock.Calendar { return &jpCal{last: jpLastDay} }
 	r.dialErrs = func(n int32) error {
 		if n == 1 {
@@ -561,7 +562,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	}
 	done := r.start()
 	r.waitStarted(t, done)
-	if d := r.sched.disabled; len(d) != 4 {
+	if d := r.sched.disabled; len(d) != 6 {
 		t.Fatalf("disabled after start %v", d)
 	}
 	r.tick()
@@ -571,13 +572,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, allUSJPJobs) {
+	if got := r.lastBuild(); !slices.Equal(got, allWithHours) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, allUSJPJobs) {
+	if !slices.Equal(ran, allWithHours) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -588,7 +589,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 		t.Fatalf("a second tick dialed: %d", r.dials.Load())
 	}
 	_ = r.stop(t, done)
-	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 4 {
+	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 6 {
 		t.Fatalf("re-enabled lines %d: %q", n, r.errb.String())
 	}
 }

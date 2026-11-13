@@ -47,6 +47,8 @@ With `--live-quotes` (off by default; refused, naming `--live-quotes`, with an `
 | `quote_snapshot` | `docs/contracts/ot/jobs/quote_snapshot.md` |
 | `compute_figures` | `docs/contracts/ot/jobs/compute_figures.md` |
 | `calendar_refresh` | `docs/contracts/ot/jobs/calendar_refresh.md` |
+| `calendar_hours_us` | `docs/contracts/ot/jobs/calendar_hours_us.md` |
+| `calendar_hours_jp` | `docs/contracts/ot/jobs/calendar_hours_jp.md` |
 | `earnings_refresh` | `docs/contracts/ot/jobs/earnings_refresh.md` |
 | `account_capture` | `docs/contracts/ot/jobs/account_capture.md` |
 | `option_candidates` | `docs/contracts/ot/jobs/option_candidates.md` |

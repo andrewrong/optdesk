@@ -315,3 +315,70 @@ func TestUpsertFxWrapsErrors(t *testing.T) {
 		}
 	}
 }
+
+var _ bar.PriceBarUpserter = (*Store)(nil)
+
+func TestUpsertBarSQLReplacesOnlyWhenDifferent(t *testing.T) {
+	t.Parallel()
+	sql := upsertPriceBarSQL
+	for _, w := range []string{"ON CONFLICT (instrument_id, basis, session_day) DO UPDATE", "IS DISTINCT FROM", "RETURNING instrument_id", "::numeric", "'ok'"} {
+		if !strings.Contains(sql, w) {
+			t.Errorf("statement lacks %q: %s", w, sql)
+		}
+	}
+	doUpdate := sql[strings.Index(sql, "DO UPDATE"):]
+	for _, w := range []string{"received_at", "instrument_id =", "basis =", "session_day =", "adjust_epoch"} {
+		if strings.Contains(doUpdate, w) {
+			t.Errorf("update part holds %q", w)
+		}
+	}
+	if strings.Contains(sql[:strings.Index(sql, "VALUES")], "adjust_epoch") {
+		t.Error("column list names adjust_epoch")
+	}
+	if strings.Contains(sql, "DELETE") {
+		t.Error("statement deletes")
+	}
+}
+
+func TestUpsertBarEmptyMakesNoCall(t *testing.T) {
+	t.Parallel()
+	f := &fakeDB{}
+	c, err := (&Store{db: f}).UpsertPriceBars(context.Background(), nil, "x")
+	if err != nil || c != (bar.BarWriteCount{}) || len(f.events) != 0 || len(f.calls) != 0 {
+		t.Fatalf("count %+v, err %v, events %v", c, err, f.events)
+	}
+}
+
+func TestUpsertBarCountsWrittenUnchanged(t *testing.T) {
+	t.Parallel()
+	f := &fakeDB{affected: []int64{1, 0, 1}}
+	c, err := (&Store{db: f}).UpsertPriceBars(context.Background(), bars(3), "bars_refresh:2026-11-04")
+	if err != nil || c != (bar.BarWriteCount{Written: 2, Unchanged: 1}) {
+		t.Fatalf("count %+v, err %v", c, err)
+	}
+	if len(f.calls) != 3 || len(f.events) != 2 || f.events[1] != "commit" {
+		t.Errorf("calls %d, events %v", len(f.calls), f.events)
+	}
+	if a := f.calls[0].args; a[0] != int64(7) || a[1] != "2026-11-02" || a[2] != "trades" || a[len(a)-1] != "bars_refresh:2026-11-04" {
+		t.Errorf("args = %v", a)
+	}
+}
+
+func TestUpsertBarWrapsErrors(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		err  error
+		want contracts.ErrorKind
+	}{
+		"constraint": {&pgconn.PgError{Code: "23514"}, contracts.Permanent},
+		"other":      {&pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		"plain":      {errors.New("boom"), contracts.Retryable},
+	} {
+		f := &fakeDB{failAt: 1, failErr: tc.err}
+		_, err := (&Store{db: f}).UpsertPriceBars(context.Background(), bars(1), "x")
+		var te contracts.TypedError
+		if !errors.As(err, &te) || te.Kind() != tc.want {
+			t.Errorf("%s: err = %v", name, err)
+		}
+	}
+}

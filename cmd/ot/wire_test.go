@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"reflect"
 	"regexp"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
@@ -152,5 +155,61 @@ func TestSetupLineEqualsOwnersetConst(t *testing.T) {
 	m := regexp.MustCompile(`dsnEnvSettings\s*=\s*"([^"]+)"`).FindSubmatch(src)
 	if m == nil || string(m[1]) != ownerset.DSNEnvSettings {
 		t.Fatalf("setup literal %q, ownerset %q", m, ownerset.DSNEnvSettings)
+	}
+}
+
+// hoursMarker is the master line for which the test opener of the notice store succeeds; any other value fails.
+const hoursMarker = "hours-ok-dsn"
+
+// fakeHoursStore is the notice store the test opener hands out.
+type fakeHoursStore struct{}
+
+func (fakeHoursStore) Notices(context.Context) ([]hoursnotice.Notice, error) { return nil, nil }
+func (fakeHoursStore) Replace(context.Context, string, []hoursnotice.Notice) error {
+	return nil
+}
+func (fakeHoursStore) Close() error { return nil }
+
+// init is the one write of openHoursNotices, before any test runs: the marker line opens a fake store and every
+// other line fails, so the job lists of the other rigs stay as they are.
+func init() {
+	openHoursNotices = func(_ context.Context, dsn string) (hoursnotice.Store, error) {
+		if dsn != hoursMarker {
+			return nil, errors.New("no notice store in this test")
+		}
+		return fakeHoursStore{}, nil
+	}
+}
+
+func TestHoursFamilyOpenFails(t *testing.T) {
+	t.Parallel()
+	hoursIDs := []string{"calendar_hours_us", "calendar_hours_jp"}
+	r := newRig(t, fullEnv)
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	got := jobIDs(r.jobs)
+	log := r.log.String()
+	for _, id := range hoursIDs {
+		if slices.Contains(got, id) {
+			t.Errorf("job %s built though the open failed: %v", id, got)
+		}
+		if n := strings.Count(log, "job="+id); n != 1 {
+			t.Errorf("%d Warn lines name %s, want 1: %s", n, id, log)
+		}
+	}
+	if strings.Contains(log, "master-dsn") || !strings.Contains(log, "OT_PG_DSN_MASTER") {
+		t.Errorf("the line is named, the DSN is not: %s", log)
+	}
+
+	ok := newRig(t, strings.Replace(fullEnv, "master-dsn", hoursMarker, 1))
+	if err := runWired(ok.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	got = jobIDs(ok.jobs)
+	for _, id := range hoursIDs {
+		if !slices.Contains(got, id) {
+			t.Errorf("job %s missing with the marker line: %v", id, got)
+		}
 	}
 }
