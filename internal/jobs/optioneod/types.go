@@ -1,6 +1,8 @@
 package optioneod
 
 import (
+	"context"
+
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -52,3 +54,13 @@ type OptionEodWindow struct {
 type NewOptionEodWatchWindowFunc func(
 	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, OptionEodWindow, clock.Clock,
 ) (contracts.Job, error)
+
+// IndexCloseReader gives the stored daily closes (basis trades) of a named index from `from` to `to`, oldest
+// first, as decimal text; an unknown or ambiguous name is an error. The index job works without one (nil).
+type IndexCloseReader interface {
+	IndexCloses(ctx context.Context, index string, from, to contracts.Day) ([]string, error)
+}
+
+// NewOptionEodIndexFunc is the constructor of option_eod_index (internal/jobs/optioneod.NewIndex), built from the
+// embedded job_index.toml: the SPX, XSP and RUT monthly chains as call-put pairs, iv and delta NULL. The reader may be nil.
+type NewOptionEodIndexFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, IndexCloseReader, clock.Clock) (contracts.Job, error)

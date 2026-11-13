@@ -31,6 +31,18 @@ type manifest struct {
 		MaxEventAgeSessions int    `toml:"max_event_age_sessions"`
 		MinReportGapDays    int    `toml:"min_report_gap_days"`
 	} `toml:"params"`
+	Need []needRow `toml:"need"`
+}
+
+// needRow is one [[need]] row of job.toml.
+type needRow struct {
+	Strategy string   `toml:"strategy"`
+	Group    string   `toml:"group"`
+	Rights   []string `toml:"rights"`
+	Ref      string   `toml:"ref"`
+	Low      string   `toml:"low"`
+	High     string   `toml:"high"`
+	Expiry   string   `toml:"expiry"`
 }
 
 // slot is the checked [schedule] table as plain values.

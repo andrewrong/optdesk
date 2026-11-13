@@ -21,3 +21,27 @@ div_guard_factor = "1.0"
 max_rate_age_days = 7
 max_event_age_sessions = 2
 min_report_gap_days = 60
+
+# What this strategy needs of the stored option chains (design option-capture-need, Decision 2). The DTE window
+# is the [params] one. Every number below is trial.
+# Short put: the top is the rule strike - bid <= BuyPrice read with a bid up to 5% of the buy price (Decision 6,
+# rule 1 of option-candidates.md); the bottom is the capture's own floor, the rule has none.
+[[need]]
+strategy = "short_put"
+group = "watch:options"
+rights = ["P"]
+ref = "buy_price"
+low = "0.80"
+high = "1.05"
+expiry = "all"
+
+# Covered call: the rule floors the strike at the sale price or cost (Decision 11 of option-candidates.md); the
+# reach from spot is the capture's own band.
+[[need]]
+strategy = "covered_call"
+group = "watch:options"
+rights = ["C"]
+ref = "spot"
+low = "1.00"
+high = "1.05"
+expiry = "all"

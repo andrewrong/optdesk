@@ -90,3 +90,24 @@ func TestImportResultContract(t *testing.T) {
 		t.Fatalf("rows do not add up to the lines: %+v", got)
 	}
 }
+
+func TestNeedFromBothSides(t *testing.T) {
+	t.Parallel()
+	// one side fills every field, the other reads each back
+	declare := func() jobs.Need {
+		return jobs.Need{
+			Strategy: "s", Group: "watch:options", Rights: []string{"P", "C"}, MinDTE: 21, MaxDTE: 45,
+			Ref: "buy_price", Low: "0.80", High: "1.05", Expiry: "monthly", TradingClass: "SPXW",
+		}
+	}
+	n := declare()
+	if n.Strategy != "s" || n.Group != "watch:options" || len(n.Rights) != 2 || n.Rights[0] != "P" || n.Rights[1] != "C" {
+		t.Fatalf("fields lost: %+v", n)
+	}
+	if n.MinDTE != 21 || n.MaxDTE != 45 || n.Ref != "buy_price" || n.Low != "0.80" || n.High != "1.05" {
+		t.Fatalf("fields lost: %+v", n)
+	}
+	if n.Expiry != "monthly" || n.TradingClass != "SPXW" {
+		t.Fatalf("fields lost: %+v", n)
+	}
+}
