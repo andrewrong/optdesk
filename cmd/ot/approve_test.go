@@ -14,14 +14,16 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 // memReadings is a fake reading store: it answers LatestReadings from rows (the newest rev of each day, by name
 // and subject, in the range) and keeps what InsertReadings is given.
 type memReadings struct {
-	mu     sync.Mutex
-	rows   []contracts.ReadingRecord
-	closed bool
+	mu                   sync.Mutex
+	rows                 []contracts.ReadingRecord
+	closed               bool
+	upserts, insertCalls []contracts.ReadingRecord
 }
 
 func (m *memReadings) LatestReadings(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
@@ -52,13 +54,42 @@ func (m *memReadings) LatestReadings(_ context.Context, name, kind, subject stri
 func (m *memReadings) InsertReadings(_ context.Context, rows []contracts.ReadingRecord) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.insertCalls = append(m.insertCalls, rows...)
 	m.rows = append(m.rows, rows...)
 	return len(rows), nil
 }
 
+// UpsertReadings replaces the stored row of the same key (name, version, kind, subject, day) or appends; every
+// batch is kept in upserts.
+func (m *memReadings) UpsertReadings(_ context.Context, rows []contracts.ReadingRecord) (readingkey.WriteCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.upserts = append(m.upserts, rows...)
+	for _, r := range rows {
+		replaced := false
+		for i, o := range m.rows {
+			sameKey := o.Name == r.Name && o.Version == r.Version && o.SubjectKind == r.SubjectKind && o.Subject == r.Subject
+			if sameKey && o.Day.Format(dayLayout) == r.Day.Format(dayLayout) {
+				m.rows[i], replaced = r, true
+				break
+			}
+		}
+		if !replaced {
+			m.rows = append(m.rows, r)
+		}
+	}
+	return readingkey.WriteCount{Written: len(rows)}, nil
+}
+
 func (m *memReadings) Close() error { m.closed = true; return nil }
 
-var _ store.ReadingStore = (*memReadings)(nil)
+var (
+	_ store.ReadingStore         = (*memReadings)(nil)
+	_ readingkey.ReadingUpserter = (*memReadings)(nil)
+)
+
+// insertOnly is a store without UpsertReadings: embedding the interface promotes only its methods.
+type insertOnly struct{ store.ReadingStore }
 
 func bandRow(symbol, day, value string, rev int, state string) contracts.ReadingRecord {
 	d, _ := time.Parse(dayLayout, day)
@@ -100,12 +131,7 @@ func TestApproveBandWritesApproval(t *testing.T) {
 	if err := approveBand(a, []string{"--symbol", "AAA"}); err != nil { // day defaults to today: 2026-11-06 in New York
 		t.Fatal(err)
 	}
-	var got []contracts.ReadingRecord
-	for _, r := range rd.rows {
-		if r.Name == "valuation.band_approval" {
-			got = append(got, r)
-		}
-	}
+	got := rd.upserts
 	if len(got) != 2 || !rd.closed {
 		t.Fatalf("approvals %d, closed %v", len(got), rd.closed)
 	}
@@ -114,8 +140,56 @@ func TestApproveBandWritesApproval(t *testing.T) {
 			t.Errorf("approval %d: %s: %+v", i, msg, r)
 		}
 	}
+	if len(rd.insertCalls) != 0 {
+		t.Errorf("InsertReadings was called %d times", len(rd.insertCalls))
+	}
 	if !strings.Contains(out.String(), "approved AAA 2026-11-06 142.5000 rev 2") {
 		t.Errorf("stdout %q", out)
+	}
+}
+
+func TestApproveBandSecondApprovalReplacesFirst(t *testing.T) {
+	t.Parallel()
+	rd := &memReadings{rows: []contracts.ReadingRecord{bandRow("AAA", "2026-11-05", "142.5000", 1, "ok")}}
+	a := approveApp(t, rd)
+	out := &strings.Builder{}
+	a.stdout = out
+	for i := 0; i < 2; i++ {
+		if err := approveBand(a, []string{"--symbol", "AAA", "--day", "2026-11-06"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(rd.upserts) != 2 || rd.upserts[0].Rev != 1 || rd.upserts[1].Rev != 2 {
+		t.Fatalf("upserts %+v", rd.upserts)
+	}
+	n := 0
+	for _, r := range rd.rows {
+		if r.Name == "valuation.band_approval" {
+			n++
+			if r.Rev != 2 {
+				t.Errorf("stored rev %d, want 2", r.Rev)
+			}
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d approval rows, want 1", n)
+	}
+	if !strings.Contains(out.String(), "approved AAA 2026-11-06 142.5000 rev 1\n") || !strings.Contains(out.String(), "approved AAA 2026-11-06 142.5000 rev 2\n") {
+		t.Errorf("stdout %q", out)
+	}
+}
+
+func TestApproveBandStoreWithoutUpsertWritesNothing(t *testing.T) {
+	t.Parallel()
+	rd := &memReadings{rows: []contracts.ReadingRecord{bandRow("AAA", "2026-11-05", "142.5000", 1, "ok")}}
+	a := approveApp(t, rd)
+	a.deps.openReading = func(context.Context, string) (store.ReadingStore, error) { return insertOnly{rd}, nil }
+	err := approveBand(a, []string{"--symbol", "AAA", "--day", "2026-11-06"})
+	if err == nil || !strings.Contains(err.Error(), "UpsertReadings") {
+		t.Fatalf("err %v", err)
+	}
+	if len(rd.rows) != 1 || len(rd.upserts) != 0 || len(rd.insertCalls) != 0 {
+		t.Errorf("rows %d, upserts %d, inserts %d", len(rd.rows), len(rd.upserts), len(rd.insertCalls))
 	}
 }
 

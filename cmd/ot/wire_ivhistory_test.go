@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 // ivHistoryHistory answers one bar for every query and records the kinds asked.
@@ -46,6 +47,13 @@ func (s *ivHistoryReadings) InsertReadings(_ context.Context, rows []contracts.R
 	defer s.mu.Unlock()
 	s.rows = append(s.rows, rows...)
 	return len(rows), nil
+}
+
+func (s *ivHistoryReadings) UpsertReadings(_ context.Context, rows []contracts.ReadingRecord) (readingkey.WriteCount, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rows = append(s.rows, rows...)
+	return readingkey.WriteCount{Written: len(rows)}, nil
 }
 
 func (s *ivHistoryReadings) Close() error { return nil }
