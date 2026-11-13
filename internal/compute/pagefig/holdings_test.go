@@ -111,7 +111,7 @@ func TestUnsupportedPairStaysGap(t *testing.T) {
 	} {
 		got := NewHoldings().Holdings(in)
 		r := got.Rows[0]
-		if r.Value != g || r.Unrealised != g || r.Share != g || got.TotalValue != g || r.Currency != in.Rows[0].Currency {
+		if r.Value != fv("2.00") || r.Share != g || got.TotalValue != g || got.TotalUnrealised != g || r.Currency != in.Rows[0].Currency {
 			t.Fatalf("%+v", got)
 		}
 	}

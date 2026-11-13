@@ -33,12 +33,10 @@ func holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 			l.Share = share(v, net, netOK)
 			value.Add(value, v)
 			unreal.Add(unreal, u)
-		case r.Currency == "JPY" && in.Currency == "USD":
+		case r.Currency != in.Currency:
+			// no rate, or another pair: the row keeps its own currency and amounts, never summed.
 			l.Value, l.Unrealised = compute.FigureValue{Value: money(v)}, compute.FigureValue{Value: money(u)}
 			l.Share = gap("unsupported_currency")
-			valueGap, unrealGap = firstGap(valueGap, "unsupported_currency"), firstGap(unrealGap, "unsupported_currency")
-		case r.Currency != in.Currency:
-			l.Value, l.Unrealised, l.Share = gap("unsupported_currency"), gap("unsupported_currency"), gap("unsupported_currency")
 			valueGap, unrealGap = firstGap(valueGap, "unsupported_currency"), firstGap(unrealGap, "unsupported_currency")
 		default:
 			l.Value, l.Unrealised = compute.FigureValue{Value: money(v)}, compute.FigureValue{Value: money(u)}
