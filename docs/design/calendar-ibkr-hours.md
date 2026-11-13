@@ -84,7 +84,7 @@ Acceptance:
 ### 5 store-hours-notice (interface)
 
 Module: store. Order: after 1.
-Files: `internal/store/hoursnotice/api.go`, `internal/store/hoursnotice/api_test.go`, `internal/store/hoursnotice/store.go`, `internal/store/hoursnotice/store_test.go`, `migrations/0039_session_hours_notice.sql`, `docs/contracts/store.md`, `docs/design/modules.md` (the store interface cell gains `internal/store/hoursnotice`; owner-only, so the owner merges)
+Files: `internal/store/hoursnotice/api.go`, `internal/store/hoursnotice/api_test.go`, `internal/store/hoursnotice/store.go`, `internal/store/hoursnotice/store_test.go`, `migrations/0039_session_hours_notice.sql`, `docs/contracts/store.md` (the store interface cell of `docs/design/modules.md` names `internal/store/hoursnotice` in this design pull request)
 Design: docs/design/calendar-ibkr-hours.md#decisions (Decisions 6, 7, 9)
 Acceptance:
 1. `internal/store/hoursnotice/api.go` (declarations only; `internal/store/api.go` is not edited, it is at 800 lines) declares `Notice`, `Reader` (rows ordered by market and day) and `Store` (`Replace(ctx, market string, rows []HoursNotice)`: deletes the market's rows and inserts the given ones in one transaction); its test checks the contract with a fake from both sides.
