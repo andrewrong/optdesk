@@ -310,7 +310,9 @@ type jobFactory struct {
 	// candidates, accounts and earnRd are what option_candidates (optioncandidates.New) gets besides the compute stores;
 	// the last two may be nil.
 	candidates store.CandidateWriter
-	accounts   store.AccountReader
+	// shadow is the strategy and the results store beside the candidate store (strategy_wire.go); zero without the line.
+	shadow   shadowStores
+	accounts store.AccountReader
 	// candAliases is the account labels of the gateways file, main first; a nil list reads no account.
 	candAliases []string
 	earnRd      store.EarningsDateReader

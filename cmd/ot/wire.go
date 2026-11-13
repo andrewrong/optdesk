@@ -165,6 +165,7 @@ type deps struct {
 	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 	openCandidate           openCandidateFunc
+	openStrategyResults     openStrategyResultsFunc
 	structuresListPage      func(c structures_page.Config, alias string) pages.Page
 	structureDetailPage     func(c structures_page.Config, alias, structureID string) pages.Page
 	optionResultPage        func(c option_result_page.Config, alias string) pages.Page
@@ -236,7 +237,7 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 func newDeps() deps {
 	d := newBaseDeps()
 	d.ext = newExt()
-	d.openCandidateRW = openCandidateWriter
+	d.openCandidateRW, d.openStrategyResults = openCandidateWriter, openStrategyResults
 	// run-once and the scheduler build option_eod over the watch list; newOptionEod (job.toml, SPY) is what the dry run builds.
 	d.newOptionEodWatch, d.newOptionEod = optioneod.NewWithWatchSymbols, optioneod.NewWithSymbols
 	// option_eod_jp is built over the watch list too: each JP stock entry adds a key (the dry run included).
