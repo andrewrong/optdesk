@@ -116,6 +116,7 @@ func checkPartParams(t *testing.T, r contracts.ReadingRecord, p compute.EasePart
 func TestEaseStoresOkReading(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // stores the points and rv20 of the session day, so the iv_rv20 keys end without Retryable
 	fe := &fakeEase{fig: okFigure()}
 	res := runAll(t, easeJobOn(t, f, fe))
 	if res.Err != nil || res.Returned != res.Usable {

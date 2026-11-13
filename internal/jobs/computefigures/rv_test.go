@@ -101,8 +101,9 @@ func TestRv20StoresHandWorkedValue(t *testing.T) {
 	b.addFor(11, "trades", dayD, alternating(21))
 	b.addFor(11, "adjusted_last", dayD, []float64{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25})
 	f, res := runRv(t, b)
-	if res.Err != nil {
-		t.Fatalf("result %+v", res)
+	// the world has no FRED point of the session day: the three iv_rv20 keys are Retryable (Decision 10)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "market.iv_rv20") {
+		t.Fatalf("result %+v, want the Retryable error of the iv_rv20 keys", res)
 	}
 	// ln(1.01) x sqrt(20/19) x sqrt(252), at 6 places, from the trades rows and not the adjusted_last ones.
 	rec := rvReading(t, f)
@@ -173,6 +174,7 @@ func TestRv20CloseNotAboveZeroIsBadInput(t *testing.T) {
 func TestRv20NoBarReaderFails(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // else the Retryable error of the iv_rv20 keys would hide the Permanent one
 	st := f.rvStores()
 	st.PriceBars = nil
 	res := runAll(t, rvJobOn(t, st, realFigs()))
@@ -182,6 +184,7 @@ func TestRv20NoBarReaderFails(t *testing.T) {
 func TestRv20NoIndexReaderFails(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // else the Retryable error of the iv_rv20 keys would hide the Permanent one
 	st := f.rvStores()
 	st.IndexIDs = nil
 	res := runAll(t, rvJobOn(t, st, realFigs()))
@@ -203,7 +206,12 @@ func TestRv20UnknownIndexFailsRetryable(t *testing.T) {
 func TestRv20AmbiguousIndexFailsPermanent(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // NDX keeps this stub rv20 (its rv20 key fails); the closes below make SPX and RUT ok, so no iv_rv20 key is Retryable
+	b := &fakeBars{}
+	b.addFor(11, "trades", dayD, alternating(21))
+	b.addFor(13, "trades", dayD, alternating(21))
 	st := f.rvStores()
+	st.PriceBars = b
 	st.IndexIDs = &fakeIndexes{rows: append(newIndexes().rows, store.InstrumentName{InstrumentID: 99, Type: "index", Name: "NDX"})}
 	res := runAll(t, rvJobOn(t, st, realFigs()))
 	wantRvFailure(t, f, res, contracts.Permanent, "ambiguous", 1)
@@ -232,7 +240,11 @@ func wantRvFailure(t *testing.T, f *fx, res contracts.JobResult, kind contracts.
 	stored := 0
 	for _, n := range []string{"SPX", "NDX", "RUT"} {
 		rows, _ := f.LatestReadings(context.Background(), rvName, "underlying", n, dayD, dayD)
-		stored += len(rows)
+		for _, r := range rows {
+			if r.Origin == "compute_figures" { // not the stub readings of addIvRv20Inputs
+				stored++
+			}
+		}
 	}
 	if stored != 3-failed {
 		t.Fatalf("%d rv20 readings stored, want %d", stored, 3-failed)

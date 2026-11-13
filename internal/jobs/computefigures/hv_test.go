@@ -90,7 +90,9 @@ func TestHv30StoredForSubject(t *testing.T) {
 	b.addCloses("trades", dayD, alternating(31))
 	j := hvJob(t, f, b, realFigs())
 	res := runAll(t, j)
-	if res.Err != nil || res.Returned != res.Usable {
+	// the world has no FRED point of the session day: the iv_rv20 keys are stored and end Retryable (Decision 10)
+	wantRetryable(t, res, "market.iv_rv20")
+	if res.Returned != res.Usable {
 		t.Fatalf("result %+v", res)
 	}
 	rec := reading(t, f, hvName, "underlying", "SPY")
@@ -157,6 +159,7 @@ func TestHv30StaleIsMissing(t *testing.T) {
 func TestNilPriceBarsSkipsStep(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // else the Retryable error of the iv_rv20 keys would hide the Permanent one
 	j := hvJob(t, f, nil, realFigs())
 	for _, k := range plan(t, j) {
 		if name, _, _, _ := parseKey(k.SubjectKey); name == hvName {
@@ -175,8 +178,11 @@ func TestNilPriceBarsSkipsStep(t *testing.T) {
 		t.Fatalf("result %+v, want the three rv20 keys failed", res)
 	}
 	for _, n := range []string{"SPX", "NDX", "RUT"} {
-		if rows, _ := f.LatestReadings(context.Background(), "market.rv20", "underlying", n, dayD, dayD); len(rows) != 0 {
-			t.Fatalf("stored an rv20 reading of %s without PriceBars", n)
+		rows, _ := f.LatestReadings(context.Background(), "market.rv20", "underlying", n, dayD, dayD)
+		for _, r := range rows {
+			if r.Origin == "compute_figures" { // the stub readings of addIvRv20Inputs have none
+				t.Fatalf("stored an rv20 reading of %s without PriceBars", n)
+			}
 		}
 	}
 }
