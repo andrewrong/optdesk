@@ -3,10 +3,13 @@ package accounts_test
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/accounts"
+	"github.com/andrewrong/optdesk/internal/accounts/toml"
 )
 
 // fakeBook is a Book over a map of id to alias; order lists the aliases as written.
@@ -98,5 +101,46 @@ func TestErrUnknownAccountSentinel(t *testing.T) {
 	}
 	if errors.Is(errors.New(accounts.ErrUnknownAccount.Error()), accounts.ErrUnknownAccount) {
 		t.Fatal("sentinel is identity, not text")
+	}
+}
+
+// fakeSourced is a Book that also declares its statement aliases.
+type fakeSourced struct {
+	fakeBook
+	stmt []string
+}
+
+func (f fakeSourced) Statement() []string { return slices.Clone(f.stmt) }
+
+var _ accounts.Sourced = fakeSourced{}
+
+func TestSourcedFromBothSides(t *testing.T) {
+	t.Parallel()
+	b, _, _ := newBook()
+	var book accounts.Book = fakeSourced{fakeBook: b, stmt: []string{"wife"}}
+	s, ok := book.(accounts.Sourced)
+	if !ok || !slices.Equal(s.Statement(), []string{"wife"}) {
+		t.Fatalf("Sourced = %v, %v", s, ok)
+	}
+	if _, ok := accounts.Book(b).(accounts.Sourced); ok {
+		t.Fatal("a Book without Statement must have no statement alias")
+	}
+	tb, err := toml.Load(filepath.Join(t.TempDir(), "absent.toml"))
+	if err == nil || tb != nil {
+		t.Fatal("want a load error")
+	}
+	p := filepath.Join(t.TempDir(), "accounts.toml")
+	body := "mine = \"" + invented(1) + "\"\nwife = \"" + invented(2) + "\"\nmain = \"mine\"\nstatement = [\"wife\"]\n"
+	if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := toml.Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var src accounts.Sourced
+	src, ok = loaded.(accounts.Sourced)
+	if !ok || !slices.Equal(src.Statement(), []string{"wife"}) {
+		t.Fatalf("toml book Statement = %v, %v", src, ok)
 	}
 }

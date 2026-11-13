@@ -17,5 +17,13 @@ type Book interface {
 	IDs() []string
 }
 
+// Sourced is implemented by a book that declares which accounts have no gateway. Statement returns the
+// aliases whose positions, trades and value come only from the broker statement, in the order the owner wrote
+// them; the main alias is never among them. An alias not listed is gateway-sourced. A caller asks
+// book.(Sourced); a book that does not implement it has no statement alias.
+type Sourced interface {
+	Statement() []string
+}
+
 // ErrUnknownAccount is the typed reason for an id the book does not know. Test it with errors.Is.
 var ErrUnknownAccount = errors.New("accounts: unknown account")

@@ -1,0 +1,11 @@
+# Manifest of the calendar_hours_jp job (docs/design/calendar-ibkr-hours.md, Decision 8).
+version = 1
+id = "calendar_hours_jp"
+
+[schedule]
+calendar = "XTKS"
+anchor = "session_open"
+zone = "Asia/Tokyo"
+offset = "-20m"
+run_bound = "5m"
+restart_sensitive = false
