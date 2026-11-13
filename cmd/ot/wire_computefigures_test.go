@@ -99,7 +99,7 @@ func barRunOnce(t *testing.T, env string) (*rig, *barRec) {
 	t.Helper()
 	r := newRig(t, env)
 	rec := withBarFakes(&r.a.deps)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	return r, rec
@@ -157,7 +157,7 @@ func TestMissingBarDSNDisablesOnlyBars(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	rec := withBarFakes(&r.a.deps)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
@@ -206,7 +206,7 @@ func TestBrokerDownDisablesBarJobs(t *testing.T) {
 			r := newRig(t, fullEnv+barEnv)
 			rec := withBarFakes(&r.a.deps)
 			fail(r, rec)
-			if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+			if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 				t.Fatal(err)
 			}
 			if got := jobIDs(r.jobs); slices.Contains(got, jobBarsRefresh) || slices.Contains(got, jobFxRefresh) {

@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
@@ -67,7 +66,7 @@ func (f *fakePoster) Enqueue(_ context.Context, r jobrequest.Request) (jobreques
 }
 
 // jobConsoleSite is the site over a fake poster at now; withEdit turns the write side on. The buffer is the log.
-func jobConsoleSite(t *testing.T, withEdit bool, now time.Time) (http.Handler, *fakePoster, settingsapi.SettingsForm, *bytes.Buffer) {
+func jobConsoleSite(t *testing.T, withEdit bool, now time.Time) (http.Handler, *fakePoster, *bytes.Buffer) {
 	t.Helper()
 	a, logs := testApp(t, underlyingsEnv)
 	a.deps.newRuleParams = newDeps().newRuleParams
@@ -82,24 +81,24 @@ func jobConsoleSite(t *testing.T, withEdit bool, now time.Time) (http.Handler, *
 			return fp, nil
 		},
 	}}
-	form := newDeps().newSettingsForm([]byte(postKey), ownerTokenTTL, a.deps.newRuleParams())
+	form := newDeps().newSettingsForm(nil, ownerTokenTTL, a.deps.newRuleParams())
 	rd := siteReaders{jobReq: fp}
 	if withEdit {
-		rd.edit = &ownerEdit{form: form, listen: postListen}
+		rd.edit = &ownerEdit{form: form, token: postKey}
 	}
-	return siteHandler(a, fakeClock{now}, "", rd, echoHandler, http.NotFoundHandler()), fp, form, logs
+	return siteHandler(a, fakeClock{now}, "", rd, echoHandler, http.NotFoundHandler()), fp, logs
 }
 
-// jcPost posts the fields with a token made at now.
-func jcPost(t *testing.T, h http.Handler, form settingsapi.SettingsForm, now time.Time, fields url.Values) *httptest.ResponseRecorder {
+// jcPost posts the fields with the owner cookie when cookie is not empty.
+func jcPost(t *testing.T, h http.Handler, cookie string, fields url.Values) *httptest.ResponseRecorder {
 	t.Helper()
-	tok := form.Token(now)
-	fields.Set("expires", tok.Expires)
-	fields.Set("mac", tok.MAC)
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/owner-job-console", strings.NewReader(fields.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.RemoteAddr = "127.0.0.1:5555"
-	r.Host = postListen
+	r.RemoteAddr = postPeer
+	r.Host = postHost
+	if cookie != "" {
+		withOwnerCookie(r, cookie)
+	}
 	return serve(h, r)
 }
 
@@ -113,14 +112,14 @@ func runFields(job, day, force string) url.Values {
 
 func TestPostGuardFirst(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
-	// a token made long ago fails the guard: 403, nothing opened, whatever the fields say.
-	rec := jcPost(t, h, form, postNow.Add(-time.Hour), runFields("fred_series", "2026-11-05", ""))
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	// no cookie fails the guard: 403, nothing opened, whatever the fields say.
+	rec := jcPost(t, h, "", runFields("fred_series", "2026-11-05", ""))
 	if rec.Code != http.StatusForbidden || fp.opened != 0 || len(fp.enqueued) != 0 {
 		t.Fatalf("%d, %d opens, %d enqueues", rec.Code, fp.opened, len(fp.enqueued))
 	}
 	// a field that would be a 422 is still a 403 when the guard fails.
-	rec = jcPost(t, h, form, postNow.Add(-time.Hour), url.Values{"action": {"nonsense"}})
+	rec = jcPost(t, h, "", url.Values{"action": {"nonsense"}})
 	if rec.Code != http.StatusForbidden || fp.opened != 0 {
 		t.Fatalf("%d, %d opens", rec.Code, fp.opened)
 	}
@@ -129,8 +128,8 @@ func TestPostGuardFirst(t *testing.T) {
 	if rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != http.MethodPost {
 		t.Fatalf("GET: %d", rec.Code)
 	}
-	h2, fp2, form2, _ := jobConsoleSite(t, false, postNow)
-	if rec = jcPost(t, h2, form2, postNow, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusNotFound || fp2.opened != 0 {
+	h2, fp2, _ := jobConsoleSite(t, false, postNow)
+	if rec = jcPost(t, h2, postKey, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusNotFound || fp2.opened != 0 {
 		t.Fatalf("no owner edit: %d", rec.Code)
 	}
 }
@@ -138,8 +137,8 @@ func TestPostGuardFirst(t *testing.T) {
 // refused422 posts the fields and wants 422 with no store opened.
 func refused422(t *testing.T, now time.Time, fields url.Values) {
 	t.Helper()
-	h, fp, form, _ := jobConsoleSite(t, true, now)
-	rec := jcPost(t, h, form, now, fields)
+	h, fp, _ := jobConsoleSite(t, true, now)
+	rec := jcPost(t, h, postKey, fields)
 	if rec.Code != http.StatusUnprocessableEntity || fp.opened != 0 || len(fp.enqueued) != 0 {
 		t.Fatalf("%v: %d, %d opens, %d enqueues", fields, rec.Code, fp.opened, len(fp.enqueued))
 	}
@@ -175,10 +174,10 @@ func TestPostBadDay422(t *testing.T) {
 func TestPostFutureDay422(t *testing.T) {
 	t.Parallel()
 	refused422(t, postNow, runFields("fred_series", "2026-11-07", ""))
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
+	h, fp, _ := jobConsoleSite(t, true, postNow)
 	// today and any earlier day, with no floor, are accepted for an any-day job.
 	for _, d := range []string{"2026-11-06", "2026-11-05", "2019-01-02"} {
-		if rec := jcPost(t, h, form, postNow, runFields("fred_series", d, "")); rec.Code != http.StatusSeeOther {
+		if rec := jcPost(t, h, postKey, runFields("fred_series", d, "")); rec.Code != http.StatusSeeOther {
 			t.Fatalf("%s: %d", d, rec.Code)
 		}
 	}
@@ -191,8 +190,8 @@ func TestPostTodayOnlyOtherDay422(t *testing.T) {
 	t.Parallel()
 	refused422(t, postNow, runFields("account_capture", "2026-11-05", ""))
 	refused422(t, postNow, runFields("account_capture", "2026-11-07", ""))
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
-	if rec := jcPost(t, h, form, postNow, runFields("account_capture", "2026-11-06", "")); rec.Code != http.StatusSeeOther || len(fp.enqueued) != 1 {
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	if rec := jcPost(t, h, postKey, runFields("account_capture", "2026-11-06", "")); rec.Code != http.StatusSeeOther || len(fp.enqueued) != 1 {
 		t.Fatalf("today: %d", rec.Code)
 	}
 }
@@ -203,11 +202,11 @@ func TestPostTodayOnlyTokyoZone(t *testing.T) {
 	now := time.Date(2026, 11, 6, 20, 0, 0, 0, time.UTC)
 	refused422(t, now, runFields("option_eod_jp", "2026-11-06", ""))
 	refused422(t, now, runFields("option_eod", "2026-11-07", ""))
-	h, fp, form, _ := jobConsoleSite(t, true, now)
-	if rec := jcPost(t, h, form, now, runFields("option_eod_jp", "2026-11-07", "")); rec.Code != http.StatusSeeOther {
+	h, fp, _ := jobConsoleSite(t, true, now)
+	if rec := jcPost(t, h, postKey, runFields("option_eod_jp", "2026-11-07", "")); rec.Code != http.StatusSeeOther {
 		t.Fatalf("tokyo today: %d", rec.Code)
 	}
-	if rec := jcPost(t, h, form, now, runFields("option_eod", "2026-11-06", "")); rec.Code != http.StatusSeeOther || len(fp.enqueued) != 2 {
+	if rec := jcPost(t, h, postKey, runFields("option_eod", "2026-11-06", "")); rec.Code != http.StatusSeeOther || len(fp.enqueued) != 2 {
 		t.Fatalf("new york today: %d", rec.Code)
 	}
 }
@@ -216,8 +215,8 @@ func TestPostBeforeSlotIsAccepted(t *testing.T) {
 	t.Parallel()
 	// 02:00 UTC: no slot of any job has come; the post knows none and accepts the request.
 	now := time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)
-	h, fp, form, _ := jobConsoleSite(t, true, now)
-	rec := jcPost(t, h, form, now, runFields("quote_snapshot", "2026-11-05", ""))
+	h, fp, _ := jobConsoleSite(t, true, now)
+	rec := jcPost(t, h, postKey, runFields("quote_snapshot", "2026-11-05", ""))
 	if rec.Code != http.StatusSeeOther || len(fp.enqueued) != 1 || fp.enqueued[0].JobID != "quote_snapshot" {
 		t.Fatalf("%d %v", rec.Code, fp.enqueued)
 	}
@@ -225,9 +224,9 @@ func TestPostBeforeSlotIsAccepted(t *testing.T) {
 
 func TestPostSameForceSameRow(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
-	a := jcPost(t, h, form, postNow, runFields("calendar_refresh", "2026-11-06", "on"))
-	b := jcPost(t, h, form, postNow, runFields("calendar_refresh", "2026-11-06", "on"))
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	a := jcPost(t, h, postKey, runFields("calendar_refresh", "2026-11-06", "on"))
+	b := jcPost(t, h, postKey, runFields("calendar_refresh", "2026-11-06", "on"))
 	if a.Code != http.StatusSeeOther || b.Code != http.StatusSeeOther || a.Header().Get("Location") != b.Header().Get("Location") {
 		t.Fatalf("%d %q, %d %q", a.Code, a.Header().Get("Location"), b.Code, b.Header().Get("Location"))
 	}
@@ -238,9 +237,9 @@ func TestPostSameForceSameRow(t *testing.T) {
 
 func TestPostOtherForceOwnRow(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
-	a := jcPost(t, h, form, postNow, runFields("calendar_refresh", "2026-11-06", "on"))
-	b := jcPost(t, h, form, postNow, runFields("calendar_refresh", "2026-11-06", ""))
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	a := jcPost(t, h, postKey, runFields("calendar_refresh", "2026-11-06", "on"))
+	b := jcPost(t, h, postKey, runFields("calendar_refresh", "2026-11-06", ""))
 	if a.Header().Get("Location") == b.Header().Get("Location") || len(fp.open) != 2 {
 		t.Fatalf("%q %q, open %v", a.Header().Get("Location"), b.Header().Get("Location"), fp.open)
 	}
@@ -251,9 +250,9 @@ func TestPostOtherForceOwnRow(t *testing.T) {
 
 func TestPostWithdrawingRefused409(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
+	h, fp, _ := jobConsoleSite(t, true, postNow)
 	fp.outcome = jobrequest.EnqueueWithdrawing
-	rec := jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", ""))
+	rec := jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", ""))
 	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "this request is being withdrawn; press Run again when it shows withdrawn") {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}
@@ -261,25 +260,25 @@ func TestPostWithdrawingRefused409(t *testing.T) {
 
 func TestPostStoreError503(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
+	h, fp, _ := jobConsoleSite(t, true, postNow)
 	fp.enqErr = errors.New("boom")
-	if rec := jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusServiceUnavailable {
+	if rec := jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("enqueue error: %d", rec.Code)
 	}
 	fp.enqErr, fp.outcome = nil, jobrequest.EnqueueBusy
-	if rec := jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusServiceUnavailable {
+	if rec := jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("busy: %d", rec.Code)
 	}
 	fp.openErr = errors.New("no table")
-	if rec := jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusServiceUnavailable {
+	if rec := jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", "")); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("open error: %d", rec.Code)
 	}
 }
 
 func TestPostRedirects303(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
-	rec := jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", ""))
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	rec := jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", ""))
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/job-console?request=101" {
 		t.Fatalf("%d %q", rec.Code, rec.Header().Get("Location"))
 	}
@@ -291,8 +290,8 @@ func TestPostRedirects303(t *testing.T) {
 
 func TestPostWithdraw(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
-	rec := jcPost(t, h, form, postNow, url.Values{"action": {"withdraw"}, "id": {"7"}})
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	rec := jcPost(t, h, postKey, url.Values{"action": {"withdraw"}, "id": {"7"}})
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/job-console?request=7" || len(fp.withdrawn) != 1 || fp.withdrawn[0] != 7 {
 		t.Fatalf("%d %q %v", rec.Code, rec.Header().Get("Location"), fp.withdrawn)
 	}
@@ -303,9 +302,9 @@ func TestPostWithdraw(t *testing.T) {
 
 func TestPostWithdrawUnknownId422(t *testing.T) {
 	t.Parallel()
-	h, fp, form, _ := jobConsoleSite(t, true, postNow)
+	h, fp, _ := jobConsoleSite(t, true, postNow)
 	for _, id := range []string{"999", "abc", "", "-1"} {
-		if rec := jcPost(t, h, form, postNow, url.Values{"action": {"withdraw"}, "id": {id}}); rec.Code != http.StatusUnprocessableEntity {
+		if rec := jcPost(t, h, postKey, url.Values{"action": {"withdraw"}, "id": {id}}); rec.Code != http.StatusUnprocessableEntity {
 			t.Fatalf("id %q: %d", id, rec.Code)
 		}
 	}
@@ -316,12 +315,12 @@ func TestPostWithdrawUnknownId422(t *testing.T) {
 
 func TestPostErrorsCarryNoDSN(t *testing.T) {
 	t.Parallel()
-	h, fp, form, logs := jobConsoleSite(t, true, postNow)
+	h, fp, logs := jobConsoleSite(t, true, postNow)
 	fp.openErr = errors.New("dial " + dsnShaped)
-	recs := []*httptest.ResponseRecorder{jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", ""))}
+	recs := []*httptest.ResponseRecorder{jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", ""))}
 	fp.openErr, fp.enqErr, fp.getErr = nil, errors.New("exec "+dsnShaped), errors.New("read "+dsnShaped)
-	recs = append(recs, jcPost(t, h, form, postNow, runFields("fred_series", "2026-11-05", "")),
-		jcPost(t, h, form, postNow, url.Values{"action": {"withdraw"}, "id": {"7"}}))
+	recs = append(recs, jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", "")),
+		jcPost(t, h, postKey, url.Values{"action": {"withdraw"}, "id": {"7"}}))
 	for i, rec := range recs {
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Fatalf("post %d: %d", i, rec.Code)

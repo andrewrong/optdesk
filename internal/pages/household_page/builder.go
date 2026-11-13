@@ -80,20 +80,21 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
+	h, err := c.readHeld(ctx, alias, snap)
+	if err != nil {
+		return nil, err
+	}
+	mv, err := c.movers(ctx, alias, tag, d, sessions, snap, h)
+	if err != nil {
+		return nil, err
+	}
 	res := c.Figures().Household(blockapi.HouseholdInput{
 		Alias: alias, Whose: tag.Whose, Day: contracts.Day(snap.day),
 		Values: valuesIn(snap.values), MonthStart: valuesIn(snap.monthStart),
 		History: snap.history, Obligations: obligations,
+		UsdJpy: h.usdJpy, Positions: h.positionsIn(), PositionsRead: c.Marks != nil,
 	})
-	positions, err := c.Account.Positions(ctx, alias, snap.day)
-	if err != nil {
-		return nil, fmt.Errorf("household_page: read positions: %w", err)
-	}
-	hb, err := c.holdings(ctx, alias, snap)
-	if err != nil {
-		return nil, err
-	}
-	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, hb, missingFromLedger(positions, ledgerPuts), at))
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, c.holdings(snap, h), mv, missingFromLedger(h.positions, ledgerPuts), at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
@@ -260,9 +261,9 @@ func withLedgerGap(p *pageJSON, missing []string) {
 }
 
 // assemble writes the page from the figures; without hb the mark blocks are the gap missing_quote,
-// movers is the gap no_data and long term the gap not_built. The run is ok when no block has a gap.
+// movers is the block of the two mark days. The run is ok when no block has a gap.
 func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp capture, ledgerAt time.Time,
-	res blockapi.HouseholdResult, hb *holdingBlocks, missing []string, at time.Time) pageJSON {
+	res blockapi.HouseholdResult, hb *holdingBlocks, mv moversPart, missing []string, at time.Time) pageJSON {
 	p := base(c, scopes, alias, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = pageTitle, pageSentence
@@ -286,8 +287,7 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 		p.Concentration = gapBlock(titleConcentration, meaningConcentration, missingQuote())
 		p.Allocation = allocationGap(missingQuote())
 	}
-	p.LongTerm = gapBlock(titleLongTerm, meaningLongTerm, gapJSON{Reason: "not_built", Text: textNotBuilt})
-	p.Movers = moversGap(gapJSON{Reason: "no_data", Text: textNoMovers})
+	p.Movers = mv.block
 
 	captured := at
 	if len(cp.values) > 0 && !cp.values[0].CapturedAt.IsZero() {
@@ -297,6 +297,7 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	if !ledgerAt.IsZero() {
 		p.DataTimes = append(p.DataTimes, sourceTime{Source: "option_ledger", DataTime: ledgerAt.In(c.Zone).Format(timeLayout)})
 	}
+	p.DataTimes = append(p.DataTimes, mv.times...)
 	p.Stale = staleLabel{
 		DataTime: captured.Format(timeLayout), StaleAfter: captured.AddDate(0, 0, staleAfterDays).Format(timeLayout),
 		Text: textStaleLabel + cp.day,
@@ -309,7 +310,7 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 		{titleOverview, p.Overview.Gap}, {titleComposition, p.Composition.Gap}, {titleMovers, p.Movers.Gap},
 		{titleTrend, p.Trend.Gap}, {titleStress, p.Stress.Gap}, {titleIncome, p.Income.Gap},
 		{titleMonthChange, p.MonthChange.Gap}, {titleCashAfter, p.CashAfter.Gap}, {titleObligations, p.Obligations.Gap},
-		{titleConcentration, p.Concentration.Gap}, {titleAllocation, p.Allocation.Gap}, {titleLongTerm, p.LongTerm.Gap},
+		{titleConcentration, p.Concentration.Gap}, {titleAllocation, p.Allocation.Gap},
 	}
 	for _, b := range blocks {
 		if b.gap != nil {
@@ -331,7 +332,7 @@ func allocationGap(g gapJSON) allocationBlock {
 func moversGap(g gapJSON) moversBlock {
 	return moversBlock{
 		Title: titleMovers, Meaning: meaningMovers, Rows: []moneyRow{}, Totals: []moneyCell{},
-		Stocks: []emptyRow{}, Options: []emptyRow{}, Gap: gapOf(g),
+		Stocks: []moverRow{}, Options: []moverRow{}, Gap: gapOf(g),
 	}
 }
 
@@ -364,7 +365,6 @@ func gapPage(c Config, alias string, scopes []accountScope, at time.Time, reason
 	p.CashAfter = gapBlock(titleCashAfter, meaningCashAfter, g)
 	p.Obligations = gapBlock(titleObligations, meaningObligations, g)
 	p.Concentration = gapBlock(titleConcentration, meaningConcentration, g)
-	p.LongTerm = gapBlock(titleLongTerm, meaningLongTerm, g)
 	p.Allocation = allocationGap(g)
 	p.Movers = moversGap(g)
 	p.Trend = trendBlock{Title: titleTrend, Meaning: meaningTrend, Rows: []trendPoint{}, Series: []trendSeries{}, Gap: gapOf(g)}

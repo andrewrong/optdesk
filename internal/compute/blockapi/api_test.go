@@ -5,6 +5,8 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
+	"github.com/andrewrong/optdesk/internal/compute/pagefig"
+	"github.com/andrewrong/optdesk/internal/compute/techstate"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -184,6 +186,27 @@ func (fakeHoldings) Risk(in blockapi.RiskIn) blockapi.RiskResult {
 	return out
 }
 
+// Movers echoes every input field into the output: the first row becomes a stock line, the second an option line.
+func (fakeHoldings) Movers(in blockapi.MoversIn) blockapi.MoversResult {
+	out := blockapi.MoversResult{
+		Total: fv(string(in.Prev) + string(in.Last) + in.UsdJpy),
+		Other: fv(in.NetPrev.Tag + in.NetPrev.Value + in.NetPrev.Currency + in.NetLast.Tag + in.NetLast.Value + in.NetLast.Currency),
+	}
+	for i, r := range in.Rows {
+		l := blockapi.MoverLine{
+			Name: r.Name, SecType: r.SecType, Currency: r.Currency,
+			Note:      r.Right + r.Strike + r.Expiry + r.Quantity + r.Multiplier + r.BasisPrev + r.BasisLast,
+			PricePrev: fv(r.PricePrev), PriceLast: fv(r.PriceLast), Amount: fv(r.Quantity),
+		}
+		if i == 0 {
+			out.Stocks = append(out.Stocks, l)
+		} else {
+			out.Options = append(out.Options, l)
+		}
+	}
+	return out
+}
+
 var newHoldings blockapi.NewHoldingFiguresFunc = func() blockapi.HoldingFigures { return fakeHoldings{} }
 
 func TestHoldingsContract(t *testing.T) {
@@ -237,5 +260,143 @@ func TestPositionFieldsContract(t *testing.T) {
 	}})
 	if h.Rows[0].Currency != "JPY150" {
 		t.Fatalf("Currency = %q", h.Rows[0].Currency)
+	}
+}
+
+// fakeTiles echoes every input field into a distinct output field.
+type fakeTiles struct{}
+
+func (fakeTiles) Tiles(in blockapi.OptionTilesIn) blockapi.OptionTilesOut {
+	return blockapi.OptionTilesOut{
+		SoldCount:      len(in.Positions),
+		OpenPremium:    blockapi.UsdText{Value: string(in.Day), Dollars: in.Positions[0].PositionID},
+		MaxLossUsd:     blockapi.UsdText{Value: in.Structures[0].ID, Dollars: "9"},
+		OpenPremiumGap: "no_data", MaxLossGap: "unsupported_currency",
+		OpenCount: len(in.Structures), Uncovered: 1, Unnumbered: 2, Unreadable: 3, OtherCurrency: 4,
+	}
+}
+
+func TestOptionTilesContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewOptionTilesFunc = func() blockapi.OptionTiles { return fakeTiles{} }
+	o := mk().Tiles(blockapi.OptionTilesIn{
+		Day:        testDay,
+		Positions:  []compute.LedgerPosition{{PositionID: "a:1:1"}},
+		Structures: []compute.Structure{{ID: "s1"}},
+	})
+	want := blockapi.OptionTilesOut{
+		SoldCount:      1,
+		OpenPremium:    blockapi.UsdText{Value: string(testDay), Dollars: "a:1:1"},
+		MaxLossUsd:     blockapi.UsdText{Value: "s1", Dollars: "9"},
+		OpenPremiumGap: "no_data", MaxLossGap: "unsupported_currency",
+		OpenCount: 1, Uncovered: 1, Unnumbered: 2, Unreadable: 3, OtherCurrency: 4,
+	}
+	if o != want {
+		t.Fatalf("got %+v", o)
+	}
+}
+
+// fakeGlobal reads every input field and echoes it into a distinct output field.
+type fakeGlobal struct{}
+
+func (fakeGlobal) Global(in blockapi.GlobalIn) blockapi.GlobalResult {
+	s := in.Sectors[0]
+	return blockapi.GlobalResult{
+		DataDay: in.Benchmark.Days[0],
+		Proxies: []blockapi.MoveLine{{Name: in.Proxies[0].Name, D1: fv(in.Proxies[0].Closes[0]), DataDay: in.Day}},
+		Sectors: []blockapi.SectorLine{{Name: s.Name, Symbol: s.Symbol, D1: fv("1"), D5: fv("5"), D20: compute.FigureValue{Gap: "no_data"}}},
+		Rotation: &blockapi.RotationLine{
+			Leaders5: []string{s.Name}, Laggard: s.Symbol, LaggardD5: in.Benchmark.Closes[0], Leader20: in.Benchmark.Name,
+		},
+	}
+}
+
+func TestGlobalContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewGlobalFiguresFunc = func() blockapi.GlobalFigures { return fakeGlobal{} }
+	var _ blockapi.NewGlobalFiguresFunc = pagefig.NewGlobal
+	r := mk().Global(blockapi.GlobalIn{
+		Day:       "2026-11-13",
+		Proxies:   []blockapi.CloseIn{{Name: "Stocks", Closes: []string{"7"}}},
+		Benchmark: blockapi.CloseIn{Name: "SPY", Closes: []string{"9"}, Days: []contracts.Day{"2026-11-12"}},
+		Sectors:   []blockapi.CloseIn{{Name: "Energy", Symbol: "XLE"}},
+	})
+	if r.DataDay != "2026-11-12" || r.Proxies[0].Name != "Stocks" || r.Proxies[0].D1.Value != "7" || r.Proxies[0].DataDay != "2026-11-13" {
+		t.Fatalf("proxies %+v", r)
+	}
+	s := r.Sectors[0]
+	if s.Name != "Energy" || s.Symbol != "XLE" || s.D1.Value != "1" || s.D5.Value != "5" || s.D20.Gap != "no_data" {
+		t.Fatalf("sector %+v", s)
+	}
+	rot := r.Rotation
+	if rot == nil || rot.Leaders5[0] != "Energy" || rot.Laggard != "XLE" || rot.LaggardD5 != "9" || rot.Leader20 != "SPY" {
+		t.Fatalf("rotation %+v", rot)
+	}
+}
+
+func TestMoversInOutRoundTrip(t *testing.T) {
+	t.Parallel()
+	got := newHoldings().Movers(blockapi.MoversIn{
+		Prev: "2026-11-11", Last: "2026-11-12", UsdJpy: "150",
+		NetPrev: blockapi.ValueIn{Tag: "NetLiquidation", Value: "100", Currency: "USD"},
+		NetLast: blockapi.ValueIn{Tag: "NetLiquidation", Value: "101", Currency: "JPY"},
+		Rows: []blockapi.MoverIn{
+			{
+				Name: "AAA", SecType: "stock", Currency: "USD", Quantity: "100", Multiplier: "1",
+				PricePrev: "1.5", PriceLast: "1.6", BasisPrev: "last", BasisLast: "close",
+			},
+			{
+				Name: "BBB", SecType: "option", Right: "put", Strike: "240", Expiry: "2026-11-20", Currency: "JPY",
+				Quantity: "-2", Multiplier: "100", PricePrev: "3.1", PriceLast: "2.4", BasisPrev: "mid", BasisLast: "mid",
+			},
+		},
+	})
+	if got.Total != fv("2026-11-112026-11-12150") {
+		t.Fatalf("Total = %+v", got.Total)
+	}
+	if got.Other != fv("NetLiquidation100USDNetLiquidation101JPY") {
+		t.Fatalf("Other = %+v", got.Other)
+	}
+	wantS := blockapi.MoverLine{Name: "AAA", SecType: "stock", Currency: "USD", Note: "1001lastclose",
+		PricePrev: fv("1.5"), PriceLast: fv("1.6"), Amount: fv("100")}
+	if len(got.Stocks) != 1 || got.Stocks[0] != wantS {
+		t.Fatalf("Stocks = %+v", got.Stocks)
+	}
+	wantO := blockapi.MoverLine{Name: "BBB", SecType: "option", Currency: "JPY", Note: "put2402026-11-20-2100midmid",
+		PricePrev: fv("3.1"), PriceLast: fv("2.4"), Amount: fv("-2")}
+	if len(got.Options) != 1 || got.Options[0] != wantO {
+		t.Fatalf("Options = %+v", got.Options)
+	}
+}
+
+// TestTechContract fills every field of the tech types through a fake TechFunc and reads each back, and checks
+// that techstate.Classify is a TechFunc.
+func TestTechContract(t *testing.T) {
+	t.Parallel()
+	var fake blockapi.TechFunc = func(in blockapi.TechIn) blockapi.TechResult {
+		p := in.Params
+		return blockapi.TechResult{
+			State: in.NDX.Name, Raw: in.SPX.Name, Rank: p.Short, Reason: compute.Reason(p.Band + p.Hard),
+			DataDay: in.Day, RawDays: p.Fold + p.Long + p.MaxAgeDays,
+			NDX1m: in.NDX.Closes[0], SPX1m: in.SPX.Closes[0], Gap1m: string(in.NDX.Days[0]),
+			NDX3m: in.NDX.Symbol, SPX3m: in.SPX.Symbol, Gap3m: string(in.SPX.Days[0]),
+		}
+	}
+	got := fake(blockapi.TechIn{
+		Day:    "2026-11-13",
+		NDX:    blockapi.CloseIn{Name: "n", Symbol: "NDX", Closes: []string{"1"}, Days: []contracts.Day{"2026-11-12"}},
+		SPX:    blockapi.CloseIn{Name: "s", Symbol: "SPX", Closes: []string{"2"}, Days: []contracts.Day{"2026-11-11"}},
+		Params: blockapi.TechParams{Band: "1.00", Hard: "5.00", Short: 21, Long: 63, Fold: 10, MaxAgeDays: 5},
+	})
+	want := blockapi.TechResult{
+		State: "n", Raw: "s", Rank: 21, Reason: "1.005.00", DataDay: "2026-11-13", RawDays: 78,
+		NDX1m: "1", SPX1m: "2", Gap1m: "2026-11-12", NDX3m: "NDX", SPX3m: "SPX", Gap3m: "2026-11-11",
+	}
+	if got != want {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+	var real blockapi.TechFunc = techstate.Classify
+	if real == nil {
+		t.Fatal("Classify is not a TechFunc")
 	}
 }

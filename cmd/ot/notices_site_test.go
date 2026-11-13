@@ -36,7 +36,7 @@ func newNoticesFixture(t *testing.T, env string) *noticesFixture {
 	t.Helper()
 	f := &noticesFixture{}
 	f.a, _ = testApp(t, env)
-	writeBook(t, f.a, bookText("m", "b", "m"))
+	writeBookText(t, f.a, bookText("m", "b", "m"))
 	f.a.deps.newOptionNotices = func() compute.OptionNotices { return demoNoticeRule{} }
 	f.a.deps.noticeParams = func() compute.NoticeParams { return compute.NoticeParams{ExpiryDays: 9} }
 	f.a.deps.optionNoticesPage = func(_ *time.Location, _, _, _, main string, aliases []string, acct store.AccountReader,

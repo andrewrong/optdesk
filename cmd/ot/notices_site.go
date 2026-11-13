@@ -32,11 +32,11 @@ func noticeAliases(a *app) (string, []string, error) {
 	if a.profile.Name == "demo" {
 		return demoNoticesMain, []string{demoNoticesMain, demoNoticesSecond}, nil
 	}
-	book, err := a.accountBook()
+	book, err := a.loadBook()
 	if err != nil {
 		return "", nil, err
 	}
-	return book.Main(), bookAliases(book), nil
+	return book.Main(), bookAliasList(book), nil
 }
 
 func init() {

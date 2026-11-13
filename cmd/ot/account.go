@@ -73,7 +73,7 @@ func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet
 	if err != nil {
 		return nil, err
 	}
-	book, err := a.accountBook()
+	book, err := a.loadBook()
 	if err != nil {
 		return nil, err
 	}

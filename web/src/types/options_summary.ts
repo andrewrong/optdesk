@@ -1,5 +1,5 @@
 // The options_summary page, schema v4: the payload type is generated (`@/generated/options_summary.v3`), the
-// validator is the placeholder check until the Ajv validators land (docs/design/web-v2-types.md).
+// validator is the placeholder check until the schema validators land (docs/design/web-v2-types.md).
 import type { OptionsSummaryV3 } from '@/generated/options_summary.v4'
 import { placeholderValidate, type Gap, type Result as Checked } from './placeholder.ts'
 

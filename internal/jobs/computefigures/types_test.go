@@ -8,6 +8,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -148,4 +149,31 @@ func TestNewComputeFiguresEaseFuncEaseBeforeClock(t *testing.T) {
 		return nil, nil
 	}
 	_ = f
+}
+
+// TestTechDepsFromBothSides: a caller fills Classify and Params, the reader reads them back.
+func TestTechDepsFromBothSides(t *testing.T) {
+	t.Parallel()
+	d := computefigures.TechDeps{
+		Classify: func(in blockapi.TechIn) blockapi.TechResult {
+			return blockapi.TechResult{State: string(in.Day), Rank: in.Params.Fold}
+		},
+		Params: blockapi.TechParams{Band: "1.00", Hard: "5.00", Short: 21, Long: 63, Fold: 10, MaxAgeDays: 5},
+	}
+	got := d.Classify(blockapi.TechIn{Day: "2026-11-13", Params: d.Params})
+	if got.State != "2026-11-13" || got.Rank != 10 || d.Params.Band != "1.00" || d.Params.Hard != "5.00" ||
+		d.Params.Short != 21 || d.Params.Long != 63 || d.Params.MaxAgeDays != 5 {
+		t.Fatalf("got %+v, params %+v", got, d.Params)
+	}
+}
+
+func TestWithTechStubReturnsTheSameJob(t *testing.T) {
+	t.Parallel()
+	j := computeJob{names: []string{"market.iv30_own"}}
+	deps := computefigures.TechDeps{Classify: func(blockapi.TechIn) blockapi.TechResult { return blockapi.TechResult{} }}
+	got := computefigures.WithTech(j, deps)
+	gj, ok := got.(computeJob)
+	if !ok || len(gj.names) != 1 || gj.names[0] != "market.iv30_own" {
+		t.Fatalf("got %#v", got)
+	}
 }

@@ -204,7 +204,7 @@ func firstReason(rs ...string) string {
 // instrument store of the factory. Eod is the reader of the compute stores (the pages role, which may read
 // rd.option_eod_r1); the writer role of the eod store has no right on schema rd.
 func openStored(jc *jobCtx, stores openquote.Stores, entries []jobs.WatchEntry) optionopen.Stored {
-	s := optionopen.Stored{Watch: entries, Instruments: jc.f.inst, Options: stores, Accounts: jc.f.accounts}
+	s := optionopen.Stored{Watch: entries, Instruments: jc.f.inst, Options: stores, Accounts: jc.f.accounts, HeldAliases: jc.f.bookAliases()}
 	if jc.f.bars != nil {
 		s.Bars = jc.f.bars
 	}

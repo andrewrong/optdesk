@@ -76,7 +76,7 @@ func TestBadGatesJSONKeepsRow(t *testing.T) {
 	bad.Gates = "not json"
 	badMarks := cand("short_put", 8, "blocked")
 	badMarks.Marks = "{"
-	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-09", []store.Candidate{bad, badMarks})
+	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-09", []store.Candidate{bad, badMarks}, nil, rateRead{})
 	if g.Other == nil || len(g.Other.Rows) != 2 {
 		t.Fatalf("rows dropped: %+v", g.Other)
 	}

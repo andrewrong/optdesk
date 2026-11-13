@@ -1,4 +1,5 @@
-// Package blockapi declares the page figures of the household page, the report blocks and the companies blocks.
+// Package blockapi declares the page figures of the household page, the report blocks and the companies blocks,
+// and the tech state (NDX against SPX).
 // Declarations only; the implementation is internal/compute/pagefig.
 package blockapi
 
@@ -166,11 +167,151 @@ type RiskResult struct {
 	DeltaTotal, VegaTotal compute.FigureValue
 }
 
+// MoverIn is one contract held on both days, all numbers decimal text. Quantity is q_prev, signed; Multiplier is
+// 1 for a stock and empty only when the store has none; a price is empty when that day has no mark; BasisPrev and
+// BasisLast are the mark bases of D0 and D1. Right is "put", "call" or "" (a stock).
+type MoverIn struct {
+	Name, SecType, Right, Strike, Expiry, Currency, Quantity, Multiplier string
+	PricePrev, PriceLast, BasisPrev, BasisLast                           string
+}
+
+// MoversIn is the input of household.movers. Prev and Last are D0 and D1. NetPrev and NetLast are the
+// NetLiquidation of each day, in their own Currency; a Value of "" is missing. UsdJpy is the D1 rate, empty
+// without one.
+type MoversIn struct {
+	Prev, Last       contracts.Day
+	UsdJpy           string
+	NetPrev, NetLast ValueIn
+	Rows             []MoverIn
+}
+
+// MoverLine is one line. Amount is USD, 2 places, signed, or a gap; PricePrev and PriceLast are 4 places in
+// Currency, or the gap missing_quote. Note is the position in words.
+type MoverLine struct {
+	Name, SecType, Currency, Note string
+	PricePrev, PriceLast, Amount  compute.FigureValue
+}
+
+// MoversResult holds the two tables, each by absolute amount (a line without an amount last), at most 60 lines
+// each, and the total and Other of Decisions 8 and 15, both in USD.
+type MoversResult struct {
+	Stocks, Options []MoverLine
+	Total, Other    compute.FigureValue
+}
+
 // HoldingFigures evaluates the figures of held positions, no I/O, no clock.
 type HoldingFigures interface {
 	Holdings(HoldingsIn) HoldingsResult
 	Risk(RiskIn) RiskResult
+	Movers(MoversIn) MoversResult
 }
 
 // NewHoldingFiguresFunc constructs the implementation (internal/compute/pagefig.NewHoldings).
 type NewHoldingFiguresFunc func() HoldingFigures
+
+// OptionTilesIn is the input of the options card: the replayed positions of every stored alias and the structures
+// that Evaluate recognised among their open positions (Structures and Other of every alias). Pure.
+type OptionTilesIn struct {
+	Day        contracts.Day
+	Positions  []compute.LedgerPosition
+	Structures []compute.Structure
+}
+
+// UsdText is one exact sum as text: Value has two decimals (half away from zero), Dollars is whole dollars
+// (half up); both come from the same exact sum. Both are never negative.
+type UsdText struct{ Value, Dollars string }
+
+// OptionTilesOut holds the three figures and the counts the captions name. SoldCount is the sold opening lots
+// of the month of Day. OpenPremiumGap and MaxLossGap are empty or "no_data" or "unsupported_currency"
+// (page-schema reasons); with an empty gap the matching UsdText is the figure. With MaxLossGap "no_data"
+// and Uncovered above 0, MaxLossUsd is still the sum of the other structures (empty when none) and the gap text reads "at least" that sum. Uncovered
+// counts calls recognised without assigned shares; Unnumbered the USD structures with no number that are not such calls;
+// Unreadable the USD structures with a leg whose numbers do not parse; OtherCurrency the structures not
+// in USD; OpenCount the open structures of every currency.
+type OptionTilesOut struct {
+	SoldCount                                                   int
+	OpenPremium, MaxLossUsd                                     UsdText
+	OpenPremiumGap, MaxLossGap                                  string
+	OpenCount, Uncovered, Unnumbered, Unreadable, OtherCurrency int
+}
+
+// OptionTiles evaluates the three figures of the home options card, no I/O, no clock.
+type OptionTiles interface {
+	Tiles(OptionTilesIn) OptionTilesOut
+}
+
+// NewOptionTilesFunc constructs the implementation (internal/compute/pagefig.NewOptionTiles).
+type NewOptionTilesFunc func() OptionTiles
+
+// GlobalIn is the input of the global assets block. Day is the page day. Proxies, Sectors and Benchmark are closes
+// newest first with their days (CloseIn), in list order; Name is the label.
+type GlobalIn struct {
+	Day       contracts.Day
+	Proxies   []CloseIn
+	Benchmark CloseIn
+	Sectors   []CloseIn
+}
+
+// SectorLine is the excess over the benchmark in percentage points over 1, 5 and 20 sessions.
+type SectorLine struct {
+	Name, Symbol string
+	D1, D5, D20  compute.FigureValue
+}
+
+// RotationLine is the facts of the rotation sentence: Leaders5 are the names of the first three rows by d5, Laggard
+// and LaggardD5 the last row with a d5 and its decimal text, Leader20 the name with the greatest d20.
+type RotationLine struct {
+	Leaders5           []string
+	Laggard, LaggardD5 string
+	Leader20           string
+}
+
+// GlobalResult: DataDay is the day of SPY's c0 (empty when SPY has no close); Proxies in input order; Sectors sorted
+// by d5 descending, gap rows last; Rotation nil when omitted.
+type GlobalResult struct {
+	DataDay  contracts.Day
+	Proxies  []MoveLine
+	Sectors  []SectorLine
+	Rotation *RotationLine
+}
+
+// GlobalFigures evaluates the global assets block, no I/O, no clock.
+type GlobalFigures interface {
+	Global(GlobalIn) GlobalResult
+}
+
+// NewGlobalFiguresFunc constructs the implementation (internal/compute/pagefig.NewGlobal).
+type NewGlobalFiguresFunc func() GlobalFigures
+
+// TechParams are the trial constants of the tech state: Band and Hard in percentage points as decimal text,
+// Short and Long the session counts of the two windows, Fold the sessions of the two-close fold, MaxAgeDays the
+// age of c0 in calendar days beyond which the reading is stale. techstate.TrialParams is their one source.
+type TechParams struct {
+	Band, Hard        string
+	Short, Long, Fold int
+	MaxAgeDays        int
+}
+
+// TechIn is the input of the tech state. Day is the as-of day. NDX and SPX are closes newest first with their
+// days (CloseIn).
+type TechIn struct {
+	Day      contracts.Day
+	NDX, SPX CloseIn
+	Params   TechParams
+}
+
+// TechResult: State is LEADING, IN LINE, LAGGING or LAGGING HARD, empty when Reason is set; Rank is 1, 0, -1 or -2;
+// Raw is the raw state of c0; Reason is empty or a missing reason of compute (no_input, short_history,
+// stale_input, bad_input); DataDay is the day of c0 (empty when there is none); RawDays is the number of raw days
+// the fold used. The six returns and gaps are decimal text of percent, 2 places, half-even, signed.
+type TechResult struct {
+	State, Raw                               string
+	Rank                                     int
+	Reason                                   compute.Reason
+	DataDay                                  contracts.Day
+	RawDays                                  int
+	NDX1m, SPX1m, Gap1m, NDX3m, SPX3m, Gap3m string
+}
+
+// TechFunc evaluates the tech state, no I/O, no clock (internal/compute/techstate.Classify).
+type TechFunc func(TechIn) TechResult

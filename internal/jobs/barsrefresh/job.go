@@ -19,6 +19,7 @@ const (
 	basisTrades = "trades"
 	dayLayout   = "2006-01-02"
 	indexPrefix = "index:"
+	stockPrefix = "stock:"
 	sourceIbkr  = "ibkr"
 	typeStock   = "stock"
 	typeIndex   = "index"
@@ -107,6 +108,12 @@ func New(
 	for _, ix := range m.Indexes {
 		c := broker.Contract{SecType: ix.SecType, Symbol: ix.Symbol, Exchange: ix.Exchange, Currency: ix.Currency, ConID: ix.ConID}
 		if err := add(indexPrefix+ix.Symbol, target{contract: c, spec: specOf(typeIndex, c)}); err != nil {
+			return nil, err
+		}
+	}
+	for _, s := range m.Stocks {
+		c := broker.Contract{SecType: s.SecType, Symbol: s.Symbol, Exchange: s.Exchange, Currency: s.Currency, ConID: s.ConID}
+		if err := add(stockPrefix+s.Symbol, target{contract: c, spec: specOf(typeStock, c)}); err != nil {
 			return nil, err
 		}
 	}

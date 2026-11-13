@@ -249,11 +249,11 @@ func TestRunWritesRows(t *testing.T) {
 	if len(r.w.calls) != 2 {
 		t.Fatalf("want one write per chunk, got %d", len(r.w.calls))
 	}
-	want := uuid.NewSHA1(uuid.NameSpaceOID, []byte("2026-11-06|obs.option_eod|TEST")).String()
+	want := uuid.NewSHA1(uuid.NameSpaceOID, []byte("2026-11-06|obs.option_eod|TEST|2026-11-06T22:00:00Z")).String()
 	rows := r.w.all()
 	wantIDs := []int{5000950, 5000951, 5001000, 5001001}
 	for i, row := range rows {
-		if row.CaptureID != want || row.SnapshotKind != "eod" || row.InstrumentID != wantIDs[i] || row.UnderlyingID != 6000001 ||
+		if row.CaptureID != want || row.SnapshotKind != "session" || row.InstrumentID != wantIDs[i] || row.UnderlyingID != 6000001 ||
 			row.Generation != 7 || row.SessionDay.Format(time.DateOnly) != "2026-11-06" || row.Currency != "USD" {
 			t.Fatalf("row %d = %+v", i, row)
 		}
@@ -291,7 +291,7 @@ func TestCaptureIDStable(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, "2026-11-06 17:00")
 	first := r.run(testDay, testKey)
-	second := r.run(testDay, testKey)
+	second := r.run(testDay, testKey) // same start instant: the fake clock did not move
 	r.b.chains = append(r.b.chains, broker.Chain{Exchange: "SMART", TradingClass: "OTHER", Multiplier: "100",
 		Expirations: r.b.chains[0].Expirations, Strikes: r.b.chains[0].Strikes})
 	other := r.run(testDay, contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "OTHER"})
@@ -303,13 +303,47 @@ func TestCaptureIDStable(t *testing.T) {
 		t.Fatalf("rows %d", len(rows))
 	}
 	if rows[0].CaptureID != rows[4].CaptureID {
-		t.Fatal("two runs of one key must share the capture id")
+		t.Fatal("two runs of one key with one start must share the capture id")
 	}
 	if rows[8].CaptureID == rows[0].CaptureID {
 		t.Fatal("another underlying must give another capture id")
 	}
-	if captureID("2026-11-09", testKey) == captureID(testDay, testKey) {
+	start := time.Date(2026, 11, 6, 15, 0, 0, 0, time.UTC)
+	if captureID("2026-11-09", testKey, start) == captureID(testDay, testKey, start) {
 		t.Fatal("another day must give another capture id")
+	}
+	if captureID(testDay, testKey, start) != captureID(testDay, testKey, start.Add(0).UTC()) {
+		t.Fatal("one (day, key, start) must give one capture id")
+	}
+	if captureID(testDay, testKey, start) == captureID(testDay, testKey, start.Add(time.Minute)) {
+		t.Fatal("another start must give another capture id")
+	}
+}
+
+func TestTwoRunsTwoCaptures(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, "2026-11-06 11:00")
+	if res := r.run(testDay, testKey); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	r.clk.Advance(30 * time.Minute)
+	if res := r.run(testDay, testKey); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(r.w.calls) != 4 {
+		t.Fatalf("writes %d", len(r.w.calls))
+	}
+	ids := map[string]int{}
+	for _, row := range r.w.all() {
+		ids[row.CaptureID]++
+	}
+	if len(ids) != 2 {
+		t.Fatalf("capture ids %v, want two", ids)
+	}
+	for id, n := range ids {
+		if n != 4 {
+			t.Fatalf("capture %s holds %d rows, want 4", id, n)
+		}
 	}
 }
 
@@ -352,18 +386,41 @@ func TestBudget(t *testing.T) {
 	}
 }
 
-func TestPastDayAndEarlyRunStore(t *testing.T) {
+func TestPastDayRefuses(t *testing.T) {
 	t.Parallel()
-	r := newRig(t, "2026-11-06 17:00")
-	res := r.run("2026-11-05", testKey)
-	if res.Err != nil || res.Returned == 0 || r.b.calls() == 0 || len(r.w.calls) == 0 {
-		t.Fatalf("another day: %+v", res)
+	const wantText = "option_eod: day 2026-11-05 is not the current day; a past option chain cannot be collected"
+	check := func(t *testing.T, r *rig, day contracts.Day, k contracts.ExpectedKey) {
+		t.Helper()
+		res := r.run(day, k)
+		if kindOf(res) != contracts.Permanent || res.Err.Error() != wantText {
+			t.Fatalf("result %+v", res)
+		}
+		if r.b.calls() != 0 || r.b.resolves != 0 || len(r.res.calls) != 0 || len(r.w.calls) != 0 {
+			t.Fatalf("calls %d, resolves %d, writes %d", r.b.calls(), r.b.resolves, len(r.w.calls))
+		}
 	}
-	r = newRig(t, "2026-11-06 16:14")
-	res = r.run(testDay, testKey)
-	if res.Err != nil || res.Returned == 0 || r.b.calls() == 0 || len(r.w.calls) == 0 {
-		t.Fatalf("before freeze_after: %+v", res)
-	}
+	t.Run("US", func(t *testing.T) {
+		t.Parallel()
+		check(t, newRig(t, "2026-11-06 11:00"), "2026-11-05", testKey)
+	})
+	t.Run("US future day", func(t *testing.T) {
+		t.Parallel()
+		r := newRig(t, "2026-11-06 11:00")
+		if res := r.run("2026-11-07", testKey); kindOf(res) != contracts.Permanent || r.b.calls() != 0 {
+			t.Fatalf("result %+v", res)
+		}
+	})
+	t.Run("JP", func(t *testing.T) {
+		t.Parallel()
+		check(t, newJPRig(t, "2026-11-06 10:30"), "2026-11-05", jpKey)
+	})
+	t.Run("current day runs at any time", func(t *testing.T) {
+		t.Parallel()
+		r := newRig(t, "2026-11-06 20:00")
+		if res := r.run(testDay, testKey); res.Err != nil || len(r.w.calls) == 0 {
+			t.Fatalf("result %+v", res)
+		}
+	})
 }
 
 // wantFailure runs the key and wants a result of the kind, no usable row and no write.
@@ -511,7 +568,7 @@ func TestNewRequiresPorts(t *testing.T) {
 	if !ok {
 		t.Fatal("job must carry Window")
 	}
-	if cal, open, closeOff := w.Window(); cal != "XNYS" || open != 0 || closeOff != 5*time.Hour {
+	if cal, open, closeOff := w.Window(); cal != "XNYS" || open != 90*time.Minute || closeOff != 0 {
 		t.Fatal(cal, open, closeOff)
 	}
 }

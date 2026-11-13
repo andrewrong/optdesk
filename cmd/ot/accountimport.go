@@ -44,6 +44,9 @@ func accountImport(a *app, args []string) error {
 	if a.profile.Name == "demo" {
 		return errors.New("account-import needs a real profile; the demo profile opens no store")
 	}
+	if err := a.checkImportMap(o.aliasMap); err != nil {
+		return err
+	}
 	data, err := os.ReadFile(filepath.Join(o.dir, accountFile))
 	if err != nil {
 		return fmt.Errorf("cannot read %s in DIR", accountFile)

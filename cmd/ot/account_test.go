@@ -71,7 +71,7 @@ func newAcctRig(t *testing.T, book, sockets string) *acctRig {
 	r := &acctRig{}
 	a, _ := testApp(t, env)
 	if book != "" {
-		writeBook(t, a, book)
+		writeBookText(t, a, book)
 	}
 	var opened, closed atomic.Int32
 	var day contracts.Day
@@ -109,7 +109,7 @@ func TestAccountCaptureDryRun(t *testing.T) {
 		}
 		return recRunner{day: new(contracts.Day)}, nil
 	}
-	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if r.built.Load() != 1 || r.cfg.Main != "b" || len(r.cfg.Readers) != 2 || r.cfg.Writer == nil || r.cfg.Clock == nil {
@@ -129,7 +129,7 @@ func TestAccountCaptureDryRun(t *testing.T) {
 
 func assertRefused(t *testing.T, r *acctRig, key string) {
 	t.Helper()
-	err := runOnce(r.a, []string{"--day", "2026-03-04"})
+	err := runWired(r.a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), key) {
 		t.Fatalf("err %v, want one naming %s", err, key)
 	}
@@ -140,7 +140,9 @@ func assertRefused(t *testing.T, r *acctRig, key string) {
 
 func TestAccountRefusesMissingOrBadBook(t *testing.T) {
 	t.Parallel()
-	assertRefused(t, newAcctRig(t, "", "/s/a.sock"), accountsFileName)
+	missing := newAcctRig(t, "", "/s/a.sock")
+	removeBook(t, missing.a)
+	assertRefused(t, missing, accountsFileName)
 	assertRefused(t, newAcctRig(t, "a = \"x\"\n", "/s/a.sock"), accountsFileName) // no main, bad id
 }
 
@@ -167,7 +169,7 @@ func TestAccountBookReadThroughDeps(t *testing.T) {
 func TestAccountRefusesUnsetSockets(t *testing.T) {
 	t.Parallel()
 	r := newAcctRig(t, bookMainB, "") // book present, OT_ACCOUNT_SOCKETS unset
-	err := runOnce(r.a, []string{"--day", "2026-03-04"})
+	err := runWired(r.a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), "OT_ACCOUNT_SOCKETS") {
 		t.Fatalf("err %v, want a refusal naming OT_ACCOUNT_SOCKETS", err)
 	}

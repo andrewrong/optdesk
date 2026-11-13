@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -284,6 +285,8 @@ type jobFactory struct {
 	// project is the line OT_CALENDAR_PROJECT; empty means the pyside directory of the working directory.
 	project string
 	log     *slog.Logger
+	// book is the account book of $OT_HOME/accounts.toml (accounts.go); the held lists take their aliases from it.
+	book accounts.Book
 	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
 	loader store.SessionDayStore
 	// events and earn are what earnings_refresh gets: its store and the sources of the markets other than JP;
@@ -392,6 +395,11 @@ func wireJobs(
 	ctx context.Context, a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *closerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
+	book, err := a.loadBook()
+	if err != nil {
+		return err
+	}
+	f.book = book
 	wireHeldCalls(cfg, &f, extra, a.log)
 	if err := openJobList(ctx, a, cfg, &f, extra); err != nil {
 		return err

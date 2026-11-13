@@ -13,7 +13,7 @@ func TestEmbeddedSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 	cal, anchor, zone, offset := j.Schedule()
-	if cal != "XNYS" || anchor != "session_close" || zone != "" || offset != 0 {
+	if cal != "XNYS" || anchor != "session_open" || zone != "" || offset != 90*time.Minute {
 		t.Fatalf("Schedule() = (%q, %q, %q, %v)", cal, anchor, zone, offset)
 	}
 	if got := j.RunBound(); got != 16*time.Minute {

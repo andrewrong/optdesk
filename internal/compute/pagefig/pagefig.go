@@ -29,3 +29,12 @@ func (figures) Moves(in []blockapi.CloseIn) []blockapi.MoveLine { return moves(i
 func (figures) Glance(rows []blockapi.CompanyState) []blockapi.MoneyLine { return glance(rows) }
 
 func (figures) Changes(rows []blockapi.CompanyState) []blockapi.ChangeLine { return changes(rows) }
+
+var _ blockapi.GlobalFigures = global{}
+
+type global struct{}
+
+// NewGlobal returns the figures of the global assets block.
+func NewGlobal() blockapi.GlobalFigures { return global{} }
+
+func (global) Global(in blockapi.GlobalIn) blockapi.GlobalResult { return globalFigures(in) }

@@ -68,7 +68,7 @@ func oneUSRow() underlying.Row {
 func TestWiredFamiliesAreListedJobs(t *testing.T) {
 	t.Parallel()
 	r := wireRig(t, fullEnv, oneUSRow())
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]bool{"option_eod": true, "compute_figures": true, "earnings_refresh": true}
@@ -87,7 +87,7 @@ func TestWiredFamiliesAreListedJobs(t *testing.T) {
 func TestEmptyStoreFailsEveryFamilyPlan(t *testing.T) {
 	t.Parallel()
 	r := wireRig(t, fullEnv)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	checked := 0
@@ -200,7 +200,7 @@ func TestEveryListFamilyIsListed(t *testing.T) {
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	r.a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []string{"bars_refresh", "option_candidates", "dividend_capture", "fundamentals", "iv_history"} {

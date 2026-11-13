@@ -35,20 +35,16 @@ func (rd siteReaders) aliasList() []string {
 	return rd.aliases
 }
 
-// siteAliasList reads the alias list of the account pages from the book of accounts.toml, main first. The demo
-// profile and a book that cannot be loaded give ["main"]; the failure logs one WARN line carrying no path and no
-// account id. It is called once at serve start.
+// siteAliasList is the alias list of the account pages: main first, then the other aliases of the book
+// ($OT_HOME/accounts.toml, accounts.go). The demo profile gives ["main"]. A file that cannot be loaded logs
+// one WARN line and gives ["main"]. It is called once at serve start.
 func siteAliasList(a *app) []string {
-	fallback := []string{"main"}
-	if a.profile.Name == "demo" {
-		return fallback
-	}
-	book, err := a.accountBook()
+	book, err := a.loadBook()
 	if err != nil {
-		a.log.Warn("account book not usable for the account pages, alias main is used", "component", "ot")
-		return fallback
+		a.log.Warn("accounts book not usable for the account pages, alias main is used", "component", "ot", "reason", err.Error())
+		return []string{"main"}
 	}
-	return bookAliases(book)
+	return bookAliasList(book)
 }
 
 // positionsKind selects which of the three pages a request builds.

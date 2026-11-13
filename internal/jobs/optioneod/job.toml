@@ -17,8 +17,8 @@ freeze_after = "1615"
 option_price_increment = "0.01"
 
 [window]
-rule = "after_close"
-lateness_hours = 5
+rule = "in_session"
+open_after_minutes = 90
 calendar = "XNYS"
 
 [[underlying]]
@@ -32,10 +32,10 @@ calendar_id = "XNYS"
 price_increment = "0.01"
 lot_size = "1"
 
-# Proposed slot: at the close; the bound is 8 minutes plus the job's own budget_minutes.
+# Slot: 90 minutes after the open, inside the session; the bound is 8 minutes plus the job's own budget_minutes.
 [schedule]
 calendar = "XNYS"
-anchor = "session_close"
-offset = "0s"
+anchor = "session_open"
+offset = "90m"
 run_bound = "16m"
 restart_sensitive = true

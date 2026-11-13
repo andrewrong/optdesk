@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/compute/settingsform"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
@@ -148,36 +148,49 @@ func (s *fakeOwnerStore) calls() int {
 	return len(s.applied)
 }
 
-const postListen = "127.0.0.1:8080"
+// postHost is a tailnet Host header, not a loopback name; postPeer is a non-loopback peer.
+const (
+	postHost = "x.ts.net:28000"
+	postPeer = "100.64.0.9:5555"
+)
 
-// postKey is a 32-byte test key, built so that no key-shaped literal sits in the source.
-var postKey = strings.Repeat("ab", 16)
+// postKey is the owner token of the tests, made at run time so that no token value sits in the source.
+var postKey = func() string {
+	var b [32]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b[:])
+}()
+
+// withOwnerCookie adds the cookie ot_owner holding token to r.
+func withOwnerCookie(r *http.Request, token string) {
+	r.AddCookie(&http.Cookie{Name: ownerCookie, Value: token})
+}
 
 var postNow = time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
 
 // postSite is the site with the route on, over a fake store and settingsform.New with a test key.
-func postSite(t *testing.T, withRoute bool) (http.Handler, *fakeOwnerStore, settingsapi.SettingsForm) {
+func postSite(t *testing.T, withRoute bool) (http.Handler, *fakeOwnerStore) {
 	t.Helper()
 	a := settingsApp(t)
 	st := &fakeOwnerStore{}
-	form := settingsform.New([]byte(postKey), ownerTokenTTL, a.deps.newRuleParams())
+	form := settingsform.New(nil, ownerTokenTTL, a.deps.newRuleParams())
 	rd := siteReaders{owner: st, catalog: demoOption{}, names: demoOption{}}
 	if withRoute {
-		rd.edit = &ownerEdit{form: form, writer: st, listen: postListen}
+		rd.edit = &ownerEdit{form: form, writer: st, token: postKey}
 	}
-	return siteHandler(a, fakeClock{postNow}, "", rd, echoHandler, http.NotFoundHandler()), st, form
+	return siteHandler(a, fakeClock{postNow}, "", rd, echoHandler, http.NotFoundHandler()), st
 }
 
-// postRequest is a well-formed post: loopback peer, loopback Host, form content type, a fresh token.
-func postRequest(t *testing.T, form settingsapi.SettingsForm, fields url.Values) *http.Request {
+// postRequest is a well-formed post: a tailnet peer and Host, form content type, the owner cookie.
+func postRequest(t *testing.T, fields url.Values) *http.Request {
 	t.Helper()
-	tok := form.Token(postNow)
-	fields.Set("expires", tok.Expires)
-	fields.Set("mac", tok.MAC)
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/owner-settings", strings.NewReader(fields.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.RemoteAddr = "127.0.0.1:5555"
-	r.Host = postListen
+	r.RemoteAddr = postPeer
+	r.Host = postHost
+	withOwnerCookie(r, postKey)
 	return r
 }
 
@@ -189,8 +202,8 @@ func serve(h http.Handler, r *http.Request) *httptest.ResponseRecorder {
 
 func TestPostPreviewWritesNothing(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
-	rec := serve(h, postRequest(t, form, url.Values{"param.min_dte": {"30"}}))
+	h, st := postSite(t, true)
+	rec := serve(h, postRequest(t, url.Values{"param.min_dte": {"30"}}))
 	if rec.Code != 200 || st.calls() != 0 {
 		t.Fatalf("%d, %d applies, %.300q", rec.Code, st.calls(), rec.Body)
 	}
@@ -206,7 +219,7 @@ func TestPostPreviewWritesNothing(t *testing.T) {
 		t.Fatalf("row %+v", r)
 	}
 	// no difference: the page answers nothing_changed and writes nothing.
-	rec = serve(h, postRequest(t, form, url.Values{"param.min_dte": {"21"}}))
+	rec = serve(h, postRequest(t, url.Values{"param.min_dte": {"21"}}))
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "nothing_changed") || st.calls() != 0 {
 		t.Fatalf("%d %.300q", rec.Code, rec.Body)
 	}
@@ -214,8 +227,8 @@ func TestPostPreviewWritesNothing(t *testing.T) {
 
 func TestPostConfirmSavesAndRedirects(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
-	rec := serve(h, postRequest(t, form, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}))
+	h, st := postSite(t, true)
+	rec := serve(h, postRequest(t, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}))
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/settings?saved=1" {
 		t.Fatalf("%d %q", rec.Code, rec.Header().Get("Location"))
 	}
@@ -224,13 +237,14 @@ func TestPostConfirmSavesAndRedirects(t *testing.T) {
 	}
 	// an exclusion of a shown instrument is mapped too.
 	id := strconv.FormatInt(demoOptionIDs[0], 10)
-	rec = serve(h, postRequest(t, form, url.Values{"row": {id}, "excluded": {id}, "confirm": {"1"}}))
+	rec = serve(h, postRequest(t, url.Values{"row": {id}, "excluded": {id}, "confirm": {"1"}}))
 	if rec.Code != http.StatusSeeOther || st.calls() != 2 || len(st.applied[1].Exclusions) != 1 {
 		t.Fatalf("%d %+v", rec.Code, st.applied)
 	}
 	// the page of the redirect carries the notice and the token.
-	rd := siteReaders{owner: st, catalog: demoOption{}, names: demoOption{}, edit: &ownerEdit{form: form, writer: st, listen: postListen}}
 	a := settingsApp(t)
+	oe := &ownerEdit{form: settingsform.New(nil, ownerTokenTTL, a.deps.newRuleParams()), writer: st, token: postKey}
+	rd := siteReaders{owner: st, catalog: demoOption{}, names: demoOption{}, edit: oe}
 	g := siteHandler(a, fakeClock{postNow}, "", rd, echoHandler, http.NotFoundHandler())
 	rec = settingsGet(t, g, http.MethodGet, "/settings?saved=1")
 	var vm struct {
@@ -244,43 +258,48 @@ func TestPostConfirmSavesAndRedirects(t *testing.T) {
 
 func TestPostStoreErrorIs500WithoutValue(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
+	h, st := postSite(t, true)
 	st.err = errors.New("boom 30")
-	rec := serve(h, postRequest(t, form, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}))
+	rec := serve(h, postRequest(t, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}))
 	if rec.Code != 500 || strings.Contains(rec.Body.String(), "30") || strings.Contains(rec.Body.String(), "boom") {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}
 }
 
-func TestPostBadTokenIs403AndWritesNothing(t *testing.T) {
+func TestPostBadCookieIs403AndWritesNothing(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
-	r := postRequest(t, form, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}})
-	body := strings.NewReader(url.Values{"param.min_dte": {"30"}, "confirm": {"1"}, "expires": {"1"}, "mac": {"x"}}.Encode())
-	r.Body = io.NopCloser(body)
-	r.ContentLength = int64(body.Len())
-	rec := serve(h, r)
-	if rec.Code != 403 || st.calls() != 0 || strings.Contains(rec.Body.String(), "schema") {
-		t.Fatalf("%d %q", rec.Code, rec.Body)
+	h, st := postSite(t, true)
+	fields := url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}
+	for name, mutate := range map[string]func(*http.Request){
+		"no cookie":     func(r *http.Request) { r.Header.Del("Cookie") },
+		"wrong cookie":  func(r *http.Request) { r.Header.Del("Cookie"); withOwnerCookie(r, postKey+"x") },
+		"empty cookie":  func(r *http.Request) { r.Header.Del("Cookie"); withOwnerCookie(r, "") },
+		"json body":     func(r *http.Request) { r.Header.Set("Content-Type", "application/json") },
+		"no media type": func(r *http.Request) { r.Header.Del("Content-Type") },
+	} {
+		r := postRequest(t, fields)
+		mutate(r)
+		rec := serve(h, r)
+		if rec.Code != 403 || st.calls() != 0 || strings.Contains(rec.Body.String(), postKey) {
+			t.Errorf("%s: %d %q, %d applies", name, rec.Code, rec.Body, st.calls())
+		}
 	}
-	// an expired token.
-	old := settingsform.New([]byte(postKey), ownerTokenTTL, settingsApp(t).deps.newRuleParams()).Token(postNow.Add(-time.Hour))
-	f := url.Values{"param.min_dte": {"30"}, "confirm": {"1"}, "expires": {old.Expires}, "mac": {old.MAC}}
-	r = httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/owner-settings", strings.NewReader(f.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.RemoteAddr, r.Host = "127.0.0.1:5555", postListen
+	// the token as a form field is not a proof.
+	f := url.Values{"param.min_dte": {"30"}, "confirm": {"1"}, "owner_token": {postKey}}
+	r := postRequest(t, f)
+	r.Header.Del("Cookie")
 	if rec := serve(h, r); rec.Code != 403 || st.calls() != 0 {
-		t.Fatalf("expired: %d", rec.Code)
+		t.Fatalf("field token: %d", rec.Code)
 	}
 }
 
 func TestPostRefusedValueIs422(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
+	h, st := postSite(t, true)
 	for _, f := range []url.Values{
 		{"param.min_dte": {"1"}, "confirm": {"1"}},
 	} {
-		rec := serve(h, postRequest(t, form, f))
+		rec := serve(h, postRequest(t, f))
 		if rec.Code != 422 || !strings.Contains(rec.Body.String(), `"error"`) || st.calls() != 0 {
 			t.Fatalf("%v: %d %.300q", f, rec.Code, rec.Body)
 		}
@@ -289,7 +308,7 @@ func TestPostRefusedValueIs422(t *testing.T) {
 
 func TestPostUnknownKeyIs400(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
+	h, st := postSite(t, true)
 	for _, f := range []url.Values{
 		{"param.nope": {"1"}, "confirm": {"1"}},
 		{"param.nope": {"1"}},
@@ -297,7 +316,7 @@ func TestPostUnknownKeyIs400(t *testing.T) {
 		{"row": {"x"}},
 		{"excluded": {"999"}, "confirm": {"1"}},
 	} {
-		rec := serve(h, postRequest(t, form, f))
+		rec := serve(h, postRequest(t, f))
 		if rec.Code != 400 || st.calls() != 0 {
 			t.Fatalf("%v: %d %.200q, %d applies", f, rec.Code, rec.Body, st.calls())
 		}
@@ -306,8 +325,8 @@ func TestPostUnknownKeyIs400(t *testing.T) {
 
 func TestPostRouteAbsentWithoutFlag(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, false)
-	rec := serve(h, postRequest(t, form, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}))
+	h, st := postSite(t, false)
+	rec := serve(h, postRequest(t, url.Values{"param.min_dte": {"30"}, "confirm": {"1"}}))
 	if rec.Code != 404 || st.calls() != 0 {
 		t.Fatalf("%d", rec.Code)
 	}
@@ -321,7 +340,7 @@ func TestPostRouteAbsentWithoutFlag(t *testing.T) {
 
 func TestPostOtherMethodIs405(t *testing.T) {
 	t.Parallel()
-	h, _, _ := postSite(t, true)
+	h, _ := postSite(t, true)
 	for _, m := range []string{http.MethodGet, http.MethodPut, http.MethodDelete} {
 		rec := settingsGet(t, h, m, "/owner-settings")
 		if rec.Code != 405 || rec.Header().Get("Allow") != "POST" {
@@ -330,41 +349,26 @@ func TestPostOtherMethodIs405(t *testing.T) {
 	}
 }
 
-func TestPostHostNamesAndOrigin(t *testing.T) {
+func TestPostAnyHostOriginAndPeerWithCookie(t *testing.T) {
 	t.Parallel()
-	h, st, form := postSite(t, true)
+	h, st := postSite(t, true)
 	fields := func() url.Values { return url.Values{"param.min_dte": {"30"}, "confirm": {"1"}} }
-	cases := []struct {
-		name   string
-		mutate func(*http.Request)
-		code   int
-	}{
-		{"ipv4", func(r *http.Request) {}, 303},
-		{"localhost", func(r *http.Request) { r.Host = "localhost:8080" }, 303},
-		{"ipv6", func(r *http.Request) { r.Host = "[::1]:8080" }, 303},
-		{"origin ok", func(r *http.Request) { r.Header.Set("Origin", "http://localhost:8080") }, 303},
-		{"foreign host", func(r *http.Request) { r.Host = "example.com:8080" }, 403},
-		{"other port", func(r *http.Request) { r.Host = "127.0.0.1:9090" }, 403},
-		{"foreign origin", func(r *http.Request) { r.Header.Set("Origin", "http://evil.example") }, 403},
-		{"https origin", func(r *http.Request) { r.Header.Set("Origin", "https://localhost:8080") }, 403},
-		{"remote peer", func(r *http.Request) { r.RemoteAddr = "192.0.2.7:1" }, 403},
-		{"json body", func(r *http.Request) { r.Header.Set("Content-Type", "application/json") }, 403},
-	}
-	for _, c := range cases {
+	for name, mutate := range map[string]func(*http.Request){
+		"tailnet host":   func(r *http.Request) {},
+		"foreign host":   func(r *http.Request) { r.Host = "example.com:8080" },
+		"foreign origin": func(r *http.Request) { r.Header.Set("Origin", "http://evil.example") },
+		"loopback":       func(r *http.Request) { r.RemoteAddr, r.Host = "127.0.0.1:5555", "127.0.0.1:8080" },
+	} {
 		before := st.calls()
-		r := postRequest(t, form, fields())
-		c.mutate(r)
-		rec := serve(h, r)
-		if rec.Code != c.code {
-			t.Errorf("%s: %d, want %d", c.name, rec.Code, c.code)
-		}
-		if c.code == 403 && st.calls() != before {
-			t.Errorf("%s: a refused request wrote", c.name)
+		r := postRequest(t, fields())
+		mutate(r)
+		if rec := serve(h, r); rec.Code != 303 || st.calls() != before+1 {
+			t.Errorf("%s: %d", name, rec.Code)
 		}
 	}
 	// a body over 64 KiB is refused.
 	big := url.Values{"pad": {strings.Repeat("a", 70<<10)}}
-	if rec := serve(h, postRequest(t, form, big)); rec.Code != 403 {
+	if rec := serve(h, postRequest(t, big)); rec.Code != 403 {
 		t.Errorf("big body: %d", rec.Code)
 	}
 }

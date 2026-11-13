@@ -80,6 +80,7 @@ func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
 		newClock:      func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} },
 		newBackfiller: fakeNewBackfiller(&fakeBackfiller{}),
 	}
+	writeDefaultBook(t, a) // jobs and pages refuse to start without accounts.toml
 	return a, &errb
 }
 

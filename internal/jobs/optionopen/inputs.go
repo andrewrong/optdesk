@@ -46,6 +46,8 @@ type Stored struct {
 	Eod         store.OptionEodReader
 	// HeldAliases are the owner aliases whose positions are read; unset means no held names.
 	HeldAliases []string
+	// HeldCurrency is the currency of the held stocks taken; empty means USD.
+	HeldCurrency string
 }
 
 // positions returns the newest rows of each alias, searching back from day.
@@ -82,6 +84,10 @@ func (s Stored) stocks(ctx context.Context, day time.Time) ([]stock, []store.Pos
 	}
 	seen := map[string]bool{}
 	var out []stock
+	heldCur := s.HeldCurrency
+	if heldCur == "" {
+		heldCur = "USD"
+	}
 	for _, e := range s.Watch {
 		c := e.Contract
 		if e.Market != "US" || c.SecType != "STK" || seen[c.Symbol] {
@@ -91,7 +97,7 @@ func (s Stored) stocks(ctx context.Context, day time.Time) ([]stock, []store.Pos
 		out = append(out, stock{Symbol: c.Symbol, Exchange: c.Exchange, Currency: c.Currency, ConID: c.ConID})
 	}
 	for _, p := range pos {
-		if p.SecType != "stock" || p.ConID == 0 || seen[p.Symbol] || !nonzero(p.Quantity) {
+		if p.SecType != "stock" || p.Currency != heldCur || p.ConID == 0 || seen[p.Symbol] || !nonzero(p.Quantity) {
 			continue
 		}
 		seen[p.Symbol] = true

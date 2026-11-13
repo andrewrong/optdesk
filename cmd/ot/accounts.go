@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,48 +15,94 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-// accountsFileName is the owner's account book under $OT_HOME (docs/design/account-identity.md, Decision 1).
+// accountsFileName is the file of $OT_HOME that names the owner's accounts (docs/contracts/accounts.md).
 const accountsFileName = "accounts.toml"
 
-// accountBook loads $OT_HOME/accounts.toml. The error of the loader names a line, never an account id.
-func (a *app) accountBook() (accounts.Book, error) {
+// errAccountsBook is the start refusal when accounts.toml cannot be loaded. The text of the load error is
+// kept (it names a line, never an id); the path is not.
+var errAccountsBook = errors.New("accounts.toml cannot be loaded")
+
+// demoBook is the book of the demo profile: one alias, no id. The demo profile reads no file.
+type demoBook struct{}
+
+func (demoBook) Alias(string) (string, bool) { return "", false }
+func (demoBook) Main() string                { return "main" }
+func (demoBook) Aliases() []string           { return []string{"main"} }
+func (demoBook) IDs() []string               { return nil }
+
+// loadBook constructs the book from $OT_HOME/accounts.toml. The demo profile gets demoBook and reads no file;
+// any other profile refuses a missing or invalid file, so nothing collects under an alias before the owner
+// has written it (account-identity Decision 9).
+func (a *app) loadBook() (accounts.Book, error) {
+	if a.profile.Name == "demo" {
+		return demoBook{}, nil
+	}
 	home := a.getenv("OT_HOME")
 	if home == "" {
-		return nil, fmt.Errorf("OT_HOME is not set")
+		return nil, fmt.Errorf("%w: OT_HOME is not set", errAccountsBook)
 	}
 	path := filepath.Join(home, accountsFileName)
 	b, err := accountstoml.Load(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("%s does not exist", accountsFileName)
-	}
 	if err != nil {
-		// The loader names a line and never an id; a path in its text is replaced by the file name.
-		return nil, fmt.Errorf("%s: %s", accountsFileName, strings.ReplaceAll(err.Error(), path, accountsFileName))
+		// the text of a load error names a line; the path of a read error is replaced by the file name
+		return nil, fmt.Errorf("%w: %s", errAccountsBook, strings.ReplaceAll(err.Error(), path, accountsFileName))
 	}
 	return b, nil
 }
 
-// bookAliases returns the aliases of the book, main first, the others in the order the owner wrote them.
-func bookAliases(b accounts.Book) []string {
-	main := b.Main()
-	out := []string{main}
-	for _, al := range b.Aliases() {
-		if al != main {
-			out = append(out, al)
-		}
+// flexAccounts is the account map of the Flex job and of the web import: the account number of each book
+// entry to its alias, the one rule that maps both.
+func flexAccounts(b accounts.Book) map[string]string {
+	ids, aliases := b.IDs(), b.Aliases()
+	m := make(map[string]string, len(ids))
+	for i, id := range ids {
+		m[id] = aliases[i]
 	}
-	return out
+	return m
 }
 
-// heldAliasList is the alias list of the book for a builder that works without it: a book that cannot be loaded
-// logs one WARN line (no path, no id) and gives nil, which means no held names and no account read.
-func (a *app) heldAliasList(job string) []string {
-	b, err := a.accountBook()
+// bookAliasList is the alias list of the account pages: main first, then the other aliases in the order of
+// the book.
+func bookAliasList(b accounts.Book) []string {
+	list := []string{b.Main()}
+	for _, al := range b.Aliases() {
+		if al != b.Main() {
+			list = append(list, al)
+		}
+	}
+	return list
+}
+
+// checkImportMap loads the book and refuses an importer `--map` whose target is not one of its aliases.
+func (a *app) checkImportMap(m map[string]string) error {
+	book, err := a.loadBook()
 	if err != nil {
-		a.log.Warn("account book not usable, no account is read", "component", "ot", "job", job)
+		return err
+	}
+	return checkAliasMap(book, m)
+}
+
+// checkAliasMap refuses a `--map from=to` whose `to` is not an alias of the book.
+func checkAliasMap(b accounts.Book, m map[string]string) error {
+	known := map[string]bool{}
+	for _, al := range b.Aliases() {
+		known[al] = true
+	}
+	for _, to := range m {
+		if !known[to] {
+			return errors.New("--map target is not an alias of accounts.toml")
+		}
+	}
+	return nil
+}
+
+// bookAliases is the alias list of the held lists: every alias of the book in the order of the file. A factory
+// without a book (a test) gives none, which reads no held names.
+func (f *jobFactory) bookAliases() []string {
+	if f.book == nil {
 		return nil
 	}
-	return bookAliases(b)
+	return f.book.Aliases()
 }
 
 // parseAccountSockets parses the comma list of socket paths of OT_ACCOUNT_SOCKETS. The old label=socket form is

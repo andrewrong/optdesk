@@ -81,7 +81,7 @@ func openJobList(ctx context.Context, a *app, cfg runOnceConfig, f *jobFactory, 
 	}
 	extra.addCloser(st)
 	f.list = st
-	f.held = heldKeys(f.d, cfg, a.heldAliasList(jobUnderlyingResolve), func() time.Time { return f.clk.Now() }, extra)
+	f.held = heldKeys(f.d, cfg, f.bookAliases(), func() time.Time { return f.clk.Now() }, extra)
 	return nil
 }
 
@@ -203,7 +203,7 @@ func wrapHeld(a *app, jc *jobCtx, j contracts.Job, st underlying.Store) (contrac
 		return s, nil
 	}}}
 	jc.extra.addCloser(rd)
-	w, err := heldRows(j, st, adder, rd, a.heldAliasList(jobUnderlyingResolve), jc.f.clk, a.log, underlyingresolve.DatasetID, m.MaxNames, zone)
+	w, err := heldRows(j, st, adder, rd, jc.f.bookAliases(), jc.f.clk, a.log, underlyingresolve.DatasetID, m.MaxNames, zone)
 	if err != nil {
 		return nil, "", fmt.Errorf("build underlying_resolve job failed: %w", err)
 	}

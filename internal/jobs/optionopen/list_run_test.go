@@ -27,7 +27,7 @@ func TestRunCallOrderAcrossNamesUnderOneBudgetClock(t *testing.T) {
 	t.Parallel()
 	g := newLRig(t, "AAA", "BBB", "CCC", "DDD")
 	g.acc.calls = map[string]int{}
-	g.acc.pos = []store.Position{{SecType: "stock", Symbol: "CCC", ConID: 102, Quantity: "100"}}
+	g.acc.pos = []store.Position{{SecType: "stock", Currency: "USD", Symbol: "CCC", ConID: 102, Quantity: "100"}}
 	j := g.job(nil)
 	j.d.Watch[1].BuyPrice = "50"
 	for _, s := range g.watch {

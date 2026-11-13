@@ -43,9 +43,10 @@ type viewModel struct {
 }
 
 // Build returns the page.option_candidates_page.v1 JSON for day: the stored rows of each kind
-// from c.Candidates, found by the lookback of Decision 3. Nothing is computed; every number is a
-// stored text. generatedAt is written in c.Zone. A reader error is an error of Build.
-func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
+// from c.Candidates, found by the lookback of Decision 3. The two figures of the short-put rows come
+// from c.Figures, with the cash rate read from the series reader once per group; the rest is stored
+// text. generatedAt is written in c.Zone. A reader error is an error of Build.
+func Build(ctx context.Context, c Config, series store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 	if c.Zone == nil {
 		return nil, errors.New("option_candidates_page: nil zone")
 	}
@@ -74,11 +75,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 		vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
 	} else {
 		for _, s := range groupSpecs {
-			gd, rows, err := readKind(ctx, c.Candidates, s.kind, day)
-			if err != nil {
-				return nil, err
-			}
-			rows, err = withDisplayNames(ctx, c.Names, rows)
+			gd, rows, rate, err := readGroup(ctx, c, series, s.kind, day)
 			if err != nil {
 				return nil, err
 			}
@@ -86,7 +83,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 				vm.Groups = append(vm.Groups, gapGroup(s.kind, mkGap("no_rows", gapNoRows)))
 				continue
 			}
-			g := buildGroup(s, gd, day, rows)
+			g := buildGroup(s, gd, day, rows, c.Figures, rate)
 			vm.Groups = append(vm.Groups, g)
 			if gd > chainDay {
 				chainDay, first = gd, &rows[0]
@@ -110,6 +107,19 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 		}
 	}
 	return json.Marshal(vm)
+}
+
+// readGroup reads the rows of one kind with their display names and the cash rate of the group's day.
+func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind string, day contracts.Day) (contracts.Day, []store.Candidate, rateRead, error) {
+	gd, rows, err := readKind(ctx, c.Candidates, kind, day)
+	if err != nil || len(rows) == 0 {
+		return gd, nil, rateRead{}, err
+	}
+	if rows, err = withDisplayNames(ctx, c.Names, rows); err != nil {
+		return gd, nil, rateRead{}, err
+	}
+	rate, err := readRate(ctx, series, gd)
+	return gd, rows, rate, err
 }
 
 // fillRun writes the fields that exist only when some group has rows.

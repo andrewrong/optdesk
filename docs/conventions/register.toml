@@ -608,47 +608,53 @@ version = 1
 title_zh = "家庭页：谁带动了今天"
 pages = ["household_page.movers"]
 formula = """
-Two tables, 股票 and 期权, each line under its scope (the household or another group) with its \
-account's tag, and one 其他 line in the household scope. A line's 带动 is q_prev x multiplier x \
-(price today - price at the previous snapshot) of a position held in both snapshots, from the \
-broker's portfolio marks of the account snapshots, converted to USD with the ledger rate of today's \
-snapshot, rounded half-even to 2 places; an option is shown by its contract (AAA 11-20 P250, a \
-vertical AAA 11-20 P250/240 价差 ×1). 其他 is the household net liquidation change less the sum of \
-the listed lines: cash, rates, positions opened or closed between the snapshots, deposits. The \
-total is the household scope's lines plus 其他, signed; the lines of another scope are in no total. \
-The previous and current marks are shown to 4 places, half-even. The meaning sentence states the \
-basis: from the previous snapshot day to the data day, brokers' valuation, not close to close."""
+Two days, not the page day: D1 is the newest day on or before the page day that has a mark capture \
+for the account, D0 the newest day before D1 that has one. A line is one contract held at D0 with \
+q_prev not 0 and still held at D1: amount = q_prev x multiplier x (Price(D1) - Price(D0)), q_prev \
+signed, the prices the broker's position marks of the two days (the same basis on both, never \
+none), in the position's currency, converted to USD with the USDJPY rate of D1 and rounded \
+half-even to 2 places. Two tables, stocks and options, each sorted by the absolute amount, at most \
+60 lines. Total = NetLiquidation(D1) - NetLiquidation(D0), each of the capture of its mark day, a \
+JPY value converted to USD at the D1 rate of the lines (divide, half-even to 2 places); it is never \
+the sum of the lines. Other = total - the sum of the lines with an amount, so every effect that is \
+not a line (quantity change, open, close, cash, interest, fees, deposits, the rate change on yen \
+balances) lands in it. Total and Other are two rows under the account's scope. The block names \
+both days."""
 inputs = """
-The household.day_contributions reading, version 2, and its rows (newest ok on or before the data \
-day); the allow-list with groups and the group file for scope and tag; the JPY per USD rate."""
-period_date = "From the snapshot of the previous day with an ok household.net_liquidation (the reading's since) to the snapshot of the data day; the page compares the data day with today's local date and names it when they differ."
+account.position of D0 and D1 (the rows of the capture of each day's marks); account.position_mark \
+of D0 and D1 (Price and Basis); the NetLiquidation of the same two captures from the ledger; the \
+USDJPY rate on or before D1 (read only when a row or a NetLiquidation value is in JPY)."""
+period_date = "From D0 to D1: the previous and the latest mark day of the account, both named in the block; D1 is the newest on or before the page day, and the page names it when it differs from the page day."
 currency = """
-USD: every line converted by the ledger rate of today's snapshot, rounded half-even to the cent, \
-shown signed; ≈USD only when a JPY row exists. Marks are in the position's own currency."""
+USD: every line and the total and Other in USD, half-even to the cent, signed; a JPY value or line \
+is converted at the D1 USDJPY rate. The two prices of a line are shown to 4 places in the \
+position's own currency."""
 excludes = """
-Cash, interest, rate changes, positions opened or closed between the two snapshots, deposits (they \
-are in 其他); the lines of an account outside the allow-list; the daughter's lines in the total."""
+Positions opened after D0 or closed before D1, cash, interest, fees, deposits and withdrawals, the \
+rate change on yen balances (all in Other, never a line); news reasons; household and daughter \
+scopes; the split of an option's move; intraday moves; adjusted prices; sec types other than stock \
+and option."""
 gap_text = """
-No reading: a missing_input gap '没有读到「谁带动了今天」的数据'; nothing to show: a no_data gap \
-'「谁带动了今天」没有可显示的内容'. A mark missing: the price cell is a missing_quote gap '缺上个交易日价格' \
-or '缺现价', never a 0; a line without a rate: no amount and the note '缺汇率，未折算为美元'. A scope with an \
-account without intraday prices: a scope gap '无盘中价格（Flex）'. Never a zero."""
+No D1 or no D0, or no scope for the block: a no_data gap 'The change today needs prices of two \
+trading days: no data yet'. D1 more than 5 calendar days before the page day, or D0 more than 5 \
+before D1: a stale_input gap naming the day. A price missing on D0 or D1, or of another basis: the \
+price cell is a missing_quote gap and the line has no amount (its effect is in Other). An option \
+without a multiplier: no amount and a missing_input gap. A JPY line without a rate: no amount and \
+a missing_input gap naming USDJPY. NetLiquidation missing on D0 or D1: the block gap missing_input \
+and the total and Other rows are absent; a JPY value without a rate: missing_input naming USDJPY; \
+a currency other than USD and JPY: unsupported_currency. The lines stay in each case. Never a \
+zero."""
 implemented_by = [
-  "option_trader.viewmodels.household_page_builder._movers_block",
-  "option_trader.viewmodels.household_page_builder._mover_row",
-  "option_trader.viewmodels.household_page_builder._mover_name",
-  "option_trader.viewmodels.household_page_builder._price_cell",
-  "option_trader.viewmodels.household_page_builder._totals",
-  "option_trader.reports.household_page_publish._movers",
-  "option_trader.reports.household_page_publish._movers_rest",
-  "option_trader.reports.household_page_publish._movers_since",
-  "option_trader.reports.household_page_publish._contributions",
-  "option_trader.readings.contribution.day_contributions",
+  "internal/compute/pagefig.movers",
+  "internal/pages/household_page.moversBlock",
 ]
 source_hash = "pending-recompute"
 agreed_on = "2026-11-03"
 agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+history = [
+  "2026-11-03 v1: registered, part B2; no figure changed.",
+  "2026-11-13 v1: the rule is two mark days, q_prev x multiplier x price change, Other = total - lines, JPY NetLiquidation at the D1 rate (household-movers Decisions 2, 4, 8, 15); long_term removed.",
+]
 
 [[figure]]
 id = "household.stress"
@@ -855,36 +861,6 @@ agreed_in = "carried over from option-trader"
 history = ["2026-11-03 v1: registered, part B2; no figure changed."]
 
 [[figure]]
-id = "household.long_term"
-version = 1
-title_zh = "家庭页：长期账户"
-pages = ["household_page.long_term"]
-formula = """
-The block has the shape of 总览 (rows, a total per currency, a display-only ≈USD) but no figure \
-feeds it yet: the page builder's input for it is not read (None), so the block is always empty \
-with its gap. A row that a later part feeds will be a named amount in its own currency, summed per \
-currency without conversion, as _money_block does for 总览."""
-inputs = """
-Nothing is read for this block today; the publisher sets its input to None."""
-period_date = "None: no figure is shown, so there is no date."
-currency = """
-Not applicable while empty; once fed, each row in its own currency (USD to the cent, JPY to the \
-yen, half-even) with a display-only ≈USD."""
-excludes = """
-Everything: no reading of long-term accounts exists in the page's inputs."""
-gap_text = """
-Always a missing_input gap '没有读到「长期账户」的数据', no row and no total. Never a zero."""
-implemented_by = [
-  "option_trader.viewmodels.household_page_builder._money_block",
-  "option_trader.viewmodels.household_page_builder._empty_gap",
-  "option_trader.reports.household_page_publish._inputs",
-]
-source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered, part B2; no figure changed."]
-
-[[figure]]
 id = "household.accounts"
 version = 1
 title_zh = "家庭页：账户表与范围"
@@ -1053,33 +1029,38 @@ history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: 
 
 [[figure]]
 id = "option.candidates.earnings_date"
-version = 1
+version = 2
 title_zh = "期权页：全部候选的 E 列（财报日）"
 pages = [
   "option_page.markets.candidates.rows.cells.cell",
   "full_scan.sections.table.rows.cells.cell",
 ]
 formula = """
-KNOWN shown as the date; VENDOR as the date marked 估; ESTIMATED shown only when its window is \
-qualified (both bounds), as the window marked 估; UNKNOWN and unqualified estimates stay the gap 缺"""
+The stored NextEarnings shown as mm-dd (the date in full is the sort value), with the state badge \
+kept. A state without a date is a gap: none, absent and listed give no_data with no_earnings; \
+unsupported gives no_data with earnings_unsupported; error gives missing_input with earnings_error; \
+any other state gives unreadable."""
 inputs = """
-The earnings state stored with the scan of each candidate (kind, next date, ADR 0016 window, \
-qualified flag)."""
+The earnings state stored with the scan of each candidate (state and next date)."""
 period_date = "The stored scan's data day; dates are calendar dates, shown as mm-dd."
 currency = "None: a date, not an amount."
 excludes = """
-A confirmed date for a US stock (the US scan never produces KNOWN); the vendor's time of day; any \
-date computed in the browser."""
+The vendor's time of day; an estimated window (left out of the design); any date computed in the \
+browser."""
 gap_text = """
-UNKNOWN, NOT_APPLICABLE, an unqualified ESTIMATED, or a KNOWN state without a next date: a no_data \
-gap, the word 缺."""
+A state without a date: no_data with no_earnings (none, absent, listed); no_data with \
+earnings_unsupported (unsupported); missing_input with earnings_error (error); unreadable (any \
+other state). Never a blank or a dash."""
 implemented_by = [
-  "option_trader.viewmodels.option_page_builder._earnings",
+  "internal/pages/option_candidates_page.earningsCell",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered; before this, the page showed KNOWN only (JP-only), so every US row was 缺"]
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/option-candidates-figures.md"
+history = [
+  "2026-11-03 v1: registered; before this, the page showed KNOWN only (JP-only), so every US row was 缺",
+  "2026-11-13 v2: computed at page build by docs/design/option-candidates-figures.md Decisions 1 to 3 and 7; source_hash is recomputed when the Go code lands",
+]
 
 [[figure]]
 id = "market.spx_close"
@@ -1389,7 +1370,7 @@ history = ["2026-11-03 v1: registered; US read moved from close + 25 minutes to 
 
 [[figure]]
 id = "option.candidates.itm_probability"
-version = 1
+version = 2
 title_zh = "期权页与全部候选：到期在价内概率"
 pages = [
   "option_page.markets.candidates.columns.hint",
@@ -1397,32 +1378,38 @@ pages = [
   "full_scan.sections.table.rows.cells.cell",
 ]
 formula = """
-The stored risk-neutral probability N(-d2) that the put expires in the money, as evaluate_put \
-(candidates/puts.py) stores it in itm_probability, shown as a percent to one place, half up \
-(0.3192 shows 31.9%); the sort key is the fraction in hundredths of a percent (3192). It is an \
-estimate from the model, not an assignment probability: the page never calls it that."""
+The risk-neutral probability N(-d2) that the put expires in the money, computed at page build in \
+internal/compute/optionfig: d2 = (ln(S/K) + (r - sigma^2/2) T) / (sigma sqrt(T)), with S the stored \
+spot, K the stored strike, sigma the stored contract IV (fraction), r = cash rate percent / 100 and \
+T = DTE / 365; N(x) = 0.5 erfc(-x / sqrt 2). The float result is taken exactly (big.Rat.SetFloat64) \
+and rounded once, half up: the text is a percent to one place, the sort key is the value in \
+hundredths of a percent. Synthetic: S 100, K 95, IV 0.30, rate 4.5, DTE 30 gives text 27.5% and key \
+2755. It is not delta and not an assignment probability: the page never calls it that."""
 inputs = """
-The itm_probability of the stored scan row (ShortPutFacts), read through the stored-scan reader; \
-no spot or no cash rate leaves it empty."""
+The stored scan row's spot, strike, contract IV and DTE, and the newest DGS3MO point of the 14 days \
+up to the session day (the cash rate, in percent)."""
 period_date = "The stored scan's data day."
 currency = "None: a probability, not an amount."
 excludes = """
-An assignment probability (delta is not one, GLOSSARY); any figure computed in the browser; a \
-recomputation from spot, strike or volatility."""
+An assignment probability (delta is not one, GLOSSARY); any figure computed in the browser or in the \
+page code (the maths is in compute)."""
 gap_text = """
-A missing value is the word 缺 in its part of the card line and in its table cell, never 0%."""
+missing_input naming the input (spot, strike, IV, DTE or the cash rate); stale_input when the rate \
+is older than 7 days before the session day; never 0%."""
 implemented_by = [
-  "option_trader.viewmodels.option_page_builder._itm_text",
-  "option_trader.viewmodels.option_page_builder._itm",
+  "internal/compute/optionfig.New",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered; Advisor: agrees"]
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/option-candidates-figures.md"
+history = [
+  "2026-11-03 v1: registered; Advisor: agrees",
+  "2026-11-13 v2: computed at page build by docs/design/option-candidates-figures.md Decisions 1 to 3 and 7; source_hash is recomputed when the Go code lands",
+]
 
 [[figure]]
 id = "option.candidates.excess_yield"
-version = 1
+version = 2
 title_zh = "期权页与全部候选：比现金高/低"
 pages = [
   "option_page.markets.cards.premium_line",
@@ -1430,32 +1417,32 @@ pages = [
   "full_scan.sections.table.rows.cells.cell",
 ]
 formula = """
-The stored excess yield of the put, as evaluate_put (candidates/puts.py, line 357) stores it: the \
-annual yield minus the cash rate, rounded to 6 places. It is shown as 高 or 低 with the size as a \
-percent to one place, half up; the stored sign decides (excess >= 0 is 高, so zero reads 高 0.0%); \
-the sort key is the signed value in hundredths of a percent (0.0700 gives 700, -0.0120 gives -120). \
-For a JP put the stored figure is the annual yield minus the higher of the USD cash rate and the \
-JPY borrowing rate: JpShortPut.evaluate (short_put_jp.py, line 81) runs ShortPut().evaluate with \
-item.short_put(item.higher_rate), where higher_rate = max(usd_cash_rate, jpy_borrow_rate). \
-Synthetic: annual 0.09, USD 0.04, JPY 0.015 stores 0.05 and the page shows 高 5.0%. The page shows \
-the stored value and never recomputes it from the rates."""
+The stored annual yield minus rate/100 (the cash rate point, in percent), exact decimal, rounded to \
+6 places half up, computed at page build in internal/compute/optionfig. The text is above (excess \
+>= 0, so zero reads above 0.0%) or below, then the size as a percent to one place, half up; the sort \
+key is the signed value in hundredths of a percent. Synthetic: yield 0.09, rate 4.5 gives above \
+4.5%, key 450; yield 0.03, rate 4 gives below 1.0%, key -100. US puts only: the page has no JP \
+rows, so there is no JP rule."""
 inputs = """
-The excess_yield of the stored scan row (ShortPutFacts), read through the stored-scan reader."""
+The stored scan row's annual yield, and the newest DGS3MO point of the 14 days up to the session day \
+(the cash rate, in percent)."""
 period_date = "The stored scan's data day."
 currency = "None: a share of a year's yield, not an amount."
 excludes = """
-A recomputation from the annual yield and a rate in the page or the browser; a rate comparison of \
-its own; fees and taxes."""
+Fees and taxes; a rate comparison of its own; any computation in the browser."""
 gap_text = """
-A missing value is the word 缺 in its part of the card line and in its table cell, never 0%."""
+missing_input naming the input (no stored annual yield, no cash rate); stale_input when the rate is \
+older than 7 days before the session day; never 0%."""
 implemented_by = [
-  "option_trader.viewmodels.option_page_builder._excess_text",
-  "option_trader.viewmodels.option_page_builder._excess",
+  "internal/compute/optionfig.New",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered; Advisor: agrees"]
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/option-candidates-figures.md"
+history = [
+  "2026-11-03 v1: registered; Advisor: agrees",
+  "2026-11-13 v2: computed at page build by docs/design/option-candidates-figures.md Decisions 1 to 3 and 7; source_hash is recomputed when the Go code lands",
+]
 
 [[figure]]
 id = "structure.close_cost"
@@ -2220,3 +2207,75 @@ agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
 history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 1, 11 and 12 (issue 1163); parameters of option-trader diagnosis_v1.toml (blob 643178784313), ported in meaning.",
   "2026-11-10 v1: source_hash changed by issue 1207: the diagnosis adds the figures <primary>_usual_low and <primary>_usual_high (the lowest and the highest primary figure; missing_input too_short with fewer than 5 years), Decisions 11 and 14."]
+
+[[figure]]
+id = "market.iv_rv20"
+version = 1
+title_zh = "隐含波动率减已实现波动率（20日）"
+pages = []
+formula = """
+Convention vol_diff_v1: the first figure minus the second, here the implied-volatility index of the underlying divided by 100 (VIXCLS for SPX, VXNCLS for NDX, RVXCLS for RUT) minus the stored market.rv20 of the same day. An annual fraction: 0.032 is 3.2 volatility points; negative when implied is below realised."""
+inputs = """
+The FRED series point and the stored market.rv20 (state ok, data_day equal to the series day) of the newest day on which both exist, no older than 5 calendar days before the as-of day."""
+period_date = "The day of the inputs used (data_day)."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's index implied volatility (market.index_iv, market.iv_ibkr); a variance premium; a match of horizons: the implied side looks 30 calendar days forward, the realised side 20 sessions back; N225, which stays not built; any fill, carry or extrapolation of a missing input."""
+gap_text = """
+An input of the day absent or not ok, or no common day: missing, no_input. The common day more than 5 calendar days before the as-of day: missing, stale_input. A missing input is stored as missing with a reason code (no_input or stale_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).Combine",
+]
+source_hash = "e1aba0e8803f02e5fb91c7e6bbfd652cd4ff42d56225da505406a621c0c9e8d7"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/market-iv-rv20.md Decisions 1, 2, 4, 7 and 11 (entry 1)"
+history = ["2026-11-13 v1: registered by docs/design/market-iv-rv20.md entry 1; no page reads it yet."]
+
+[[figure]]
+id = "report.proxy_move"
+version = 1
+title_zh = "报告页：全球资产代理标的日变化与五日变化"
+pages = ["report_page.global_assets"]
+formula = """
+Per listed proxy (SPY, TLT, GLD, DBC, USO), the one-day change is c0 over c1 minus 1 and the five-day change is c0 over c5 minus 1, each times 100, rounded half-even to 2 places, in percent. c0 is the newest stored SPY close on or before the page day; c1 and c5 are the first and fifth stored closes of the same symbol before c0. The tone is the sign of the rounded value."""
+inputs = """
+Stored daily trades bars of a listed proxy (unadjusted closes of obs.price_bar) and of SPY, with their days, read up to the page day."""
+period_date = "The day of SPY's c0 (the data_times of the block)."
+currency = "Percent."
+excludes = """
+Adjusted closes (an ex-dividend day understates the change by the distribution); the S&P 500 row, which stays with report.market_move; any judgement of the move."""
+gap_text = """
+SPY has no stored close: no_data for every cell. SPY's c0 more than three weekdays behind the page day: stale_input for every cell. The symbol has no close or fewer than n+1 closes: no_data. A c0 other than SPY's: missing_input. An unreadable or non-positive close: missing_input. Never a zero."""
+implemented_by = [
+  "internal/compute/pagefig.proxyMove",
+  "internal/compute/pagefig.change",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/report-global-assets.md"
+history = ["2026-11-13 v1: registered by docs/design/report-global-assets.md Decisions 4, 6 and 14 (entry 6)."]
+
+[[figure]]
+id = "report.sector_excess"
+version = 1
+title_zh = "报告页：板块相对SPY的超额涨幅"
+pages = ["report_page.global_assets"]
+formula = """
+Per sector fund, d1, d5 and d20 are change_n(ETF) minus change_n(SPY), n = 1, 5, 20 sessions, each change an unrounded exact ratio (c0 over c_n minus 1, times 100), the difference rounded half-even to 2 places. Rows are sorted by d5 descending, ties in list order, rows whose d5 is a gap last in list order. The rotation facts: the first three rows by d5, the last row with a d5 and its value, and the row with the greatest d20 (a tie by list order); omitted when fewer than 6 rows have a d5 or no row has a d20."""
+inputs = """
+Stored daily trades bars (unadjusted closes) of the 11 sector funds and of SPY, with their days, read up to the page day; d20 needs 21 stored closes."""
+period_date = "The day of SPY's c0 (the data_times of the block)."
+currency = "Percentage points (unit percentage_points), signed."
+excludes = """
+Adjusted closes (a sector excess is off by the difference of the two distributions); any judgement of rotation (no word about defensive sectors or rotation, no classification, no threshold)."""
+gap_text = """
+SPY has no stored close: no_data. SPY's c0 more than three weekdays behind the page day: stale_input. The fund has no close or fewer than n+1 closes: no_data. The fund's c0 other than SPY's, or c_n of the fund and of SPY on different days: missing_input. An unreadable or non-positive close: missing_input. Never a zero."""
+implemented_by = [
+  "internal/compute/pagefig.sectorExcess",
+  "internal/compute/pagefig.ratPercent",
+  "internal/compute/pagefig.rotationOf",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/report-global-assets.md"
+history = ["2026-11-13 v1: registered by docs/design/report-global-assets.md Decisions 5, 8, 9 and 14 (entry 6)."]

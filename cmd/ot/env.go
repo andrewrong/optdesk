@@ -53,32 +53,21 @@ func (a *app) envFile() (map[string]string, error) {
 	return m, nil
 }
 
-// envFormKey names the line of .env that holds the MAC key of the settings form; its value is never printed.
-const envFormKey = "OT_FORM_KEY"
+// reasonNoSettingsDSN is the text logged when the owner routes are left out.
+const reasonNoSettingsDSN = ownerset.DSNEnvSettings + " is not set"
 
-// minFormKeyBytes is the shortest key the settings form accepts.
-const minFormKeyBytes = 32
-
-// reasonNoFormKey and reasonNoSettingsDSN are the texts logged when the route /owner-settings is left out.
-const (
-	reasonNoFormKey     = envFormKey + " is not set or under 32 bytes"
-	reasonNoSettingsDSN = ownerset.DSNEnvSettings + " is not set"
-)
-
-// ownerEditSecrets reads the form key and the settings DSN from the env file only. reason is not empty when the
-// route is to be left out (a line unset, or the key under minFormKeyBytes); it names the line, never a value.
-func (a *app) ownerEditSecrets() (key []byte, dsn, reason string, err error) {
+// ownerEditSecrets reads the owner token (envOwnerToken, possibly empty or short: the posts then answer 403) and
+// the settings DSN from the env file only. reason is not empty when the owner routes are to be left out (the DSN
+// line unset); it names the line, never a value.
+func (a *app) ownerEditSecrets() (token, dsn, reason string, err error) {
 	env, err := a.envFile()
 	if err != nil {
-		return nil, "", "", err
-	}
-	if len(env[envFormKey]) < minFormKeyBytes {
-		return nil, "", reasonNoFormKey, nil
+		return "", "", "", err
 	}
 	if env[ownerset.DSNEnvSettings] == "" {
-		return nil, "", reasonNoSettingsDSN, nil
+		return "", "", reasonNoSettingsDSN, nil
 	}
-	return []byte(env[envFormKey]), env[ownerset.DSNEnvSettings], "", nil
+	return env[envOwnerToken], env[ownerset.DSNEnvSettings], "", nil
 }
 
 // reasonNoBarDSN is the line logged when bars_refresh and fx_refresh (and the HV step of compute_figures) are left out.

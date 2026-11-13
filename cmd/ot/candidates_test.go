@@ -111,7 +111,7 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 		}
 		return recRunner{&day}, nil
 	}
-	if err := runOnce(a, nil); err != nil {
+	if err := runWired(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
 	}
 	ic, ie, ix := slices.Index(ids, jobOptionCandidates), slices.Index(ids, jobOptionEod), slices.Index(ids, jobEarningsRefresh)
@@ -149,7 +149,7 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 		}
 		return recRunner{&day}, nil
 	}
-	if err := runOnce(a, nil); err != nil {
+	if err := runWired(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
 	}
 	if slices.Contains(ids, jobOptionCandidates) || !slices.Contains(ids, jobOptionEod) {
@@ -260,9 +260,6 @@ func TestCandidatesReadsThroughPagesDSN(t *testing.T) {
 func candAliasRun(t *testing.T, envBody, book string) (optioncandidates.CandidateStores, string) {
 	t.Helper()
 	a, logs := testApp(t, envBody)
-	if book != "" {
-		writeBook(t, a, book)
-	}
 	var cl atomic.Int32
 	var got optioncandidates.CandidateStores
 	var built bool
@@ -274,6 +271,14 @@ func candAliasRun(t *testing.T, envBody, book string) (optioncandidates.Candidat
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	f := jobFactory{d: a.deps}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "AAA"}})...)
+	if book != "" {
+		writeBookText(t, a, book)
+		b, err := a.loadBook()
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.book = b
+	}
 	cfg := runOnceConfig{candidateDSN: "cand-dsn"}
 	if strings.Contains(envBody, "OT_PG_DSN_ACCOUNT") {
 		cfg.accountDSN = "acct-dsn"
@@ -297,17 +302,9 @@ func TestCandidateJobGetsAccountAliases(t *testing.T) {
 
 func TestCandidateJobAliasesNilWithoutBook(t *testing.T) {
 	t.Parallel()
-	for name, body := range map[string]string{"missing": "", "invalid": "not = [valid"} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			st, logs := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n", body)
-			if st.Aliases != nil {
-				t.Fatalf("aliases %v", st.Aliases)
-			}
-			if n := strings.Count(logs, "WARN"); n != 1 || strings.Contains(logs, accountsFileName) {
-				t.Fatalf("log %q", logs)
-			}
-		})
+	st, _ := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n", "")
+	if st.Aliases != nil {
+		t.Fatalf("aliases %v", st.Aliases)
 	}
 }
 

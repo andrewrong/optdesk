@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -83,22 +82,22 @@ func underlyingRows() []underlying.Row {
 	}
 }
 
-// underlyingsEnv is the env file of an app whose route may write: a form key and the settings line.
-const underlyingsEnv = "OT_FORM_KEY=" + "abababababababababababababababab" + "\nOT_PG_DSN_SETTINGS=sentinel-dsn\n"
+// underlyingsEnv is the env file of an app whose route may write: the settings line.
+const underlyingsEnv = "OT_PG_DSN_SETTINGS=sentinel-dsn\n"
 
 // underlyingsSite is the site over a fake store; withEdit turns the write side on. The returned buffer is the log.
-func underlyingsSite(t *testing.T, withEdit bool) (http.Handler, *fakeUnderlyingStore, settingsapi.SettingsForm, *bytes.Buffer) {
+func underlyingsSite(t *testing.T, withEdit bool) (http.Handler, *fakeUnderlyingStore, *bytes.Buffer) {
 	t.Helper()
 	a, logs := testApp(t, underlyingsEnv)
 	a.deps.newRuleParams = newDeps().newRuleParams
 	st := &fakeUnderlyingStore{rows: underlyingRows()}
 	a.deps.openUnderlying = func(context.Context, string) (underlying.Store, error) { st.opened++; return st, nil }
-	form := newDeps().newSettingsForm([]byte(postKey), ownerTokenTTL, a.deps.newRuleParams())
+	form := newDeps().newSettingsForm(nil, ownerTokenTTL, a.deps.newRuleParams())
 	rd := siteReaders{underlying: st, account: holdsAAA{}, aliases: []string{"main"}}
 	if withEdit {
-		rd.edit = &ownerEdit{form: form, listen: postListen}
+		rd.edit = &ownerEdit{form: form, token: postKey}
 	}
-	return siteHandler(a, fakeClock{postNow}, "", rd, echoHandler, http.NotFoundHandler()), st, form, logs
+	return siteHandler(a, fakeClock{postNow}, "", rd, echoHandler, http.NotFoundHandler()), st, logs
 }
 
 type underlyingsVM struct {
@@ -123,7 +122,7 @@ func decodeUnderlyings(t *testing.T, rec *httptest.ResponseRecorder) underlyings
 
 func TestUnderlyingsPageReadOnlyHasNullForm(t *testing.T) {
 	t.Parallel()
-	h, _, _, _ := underlyingsSite(t, false)
+	h, _, _ := underlyingsSite(t, false)
 	rec := settingsGet(t, h, http.MethodGet, "/underlyings")
 	if rec.Code != 200 {
 		t.Fatalf("%d %.200q", rec.Code, rec.Body)
@@ -143,11 +142,10 @@ func TestUnderlyingsPageReadOnlyHasNullForm(t *testing.T) {
 
 func TestUnderlyingsPageWithEditCarriesTokenAndSavedLine(t *testing.T) {
 	t.Parallel()
-	h, _, form, _ := underlyingsSite(t, true)
+	h, _, _ := underlyingsSite(t, true)
 	rec := settingsGet(t, h, http.MethodGet, "/underlyings?saved=2")
 	vm := decodeUnderlyings(t, rec)
-	tok := form.Token(postNow)
-	if vm.Form == nil || vm.Form.PostPath != "/owner-underlyings" || vm.Form.Expires != tok.Expires || vm.Form.MAC != tok.MAC {
+	if vm.Form == nil || vm.Form.PostPath != "/owner-underlyings" || vm.Form.Expires != "0" || vm.Form.MAC != strings.Repeat("0", 64) {
 		t.Fatalf("%+v", vm.Form)
 	}
 	if vm.Notice != "Saved 2 row(s)." {

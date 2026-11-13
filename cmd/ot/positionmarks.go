@@ -63,7 +63,7 @@ func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err err
 	if err != nil {
 		return nil, "", "", err
 	}
-	book, err := a.accountBook()
+	book, err := a.loadBook()
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -71,5 +71,5 @@ func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err err
 	if acctDSN == "" {
 		return nil, "", "", fmt.Errorf("%s is not set", store.DSNEnvAccount)
 	}
-	return bookAliases(book), acctDSN, markDSN, nil
+	return bookAliasList(book), acctDSN, markDSN, nil
 }

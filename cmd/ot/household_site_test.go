@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/atombender/go-jsonschema/pkg/types"
 )
@@ -67,10 +68,10 @@ func householdReaders(asked *[]string) siteReaders {
 	}
 }
 
-func TestHouseholdRouteReadsAliasesOfBook(t *testing.T) {
+func TestHouseholdRouteReadsAliasesOfTheBook(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")
-	writeBook(t, a, bookText("a", "a", "b"))
+	writeBook(t, a, "acct-a", "acct-b")
 	var asked []string
 	rd := householdReaders(&asked)
 	rd.aliases = siteAliasList(a)
@@ -80,7 +81,7 @@ func TestHouseholdRouteReadsAliasesOfBook(t *testing.T) {
 		t.Fatalf("%d %v %q", rec.Code, asked, rec.Body)
 	}
 	for _, al := range asked {
-		if al != "a" {
+		if al != "acct-a" {
 			t.Fatalf("asked %v", asked)
 		}
 	}
@@ -188,5 +189,61 @@ func TestOpenMarkReaderFailedOrMissingOpenerIsNil(t *testing.T) {
 	}
 	if cfg := householdConfig(a, siteReaders{}); cfg.Marks != nil {
 		t.Fatal("Marks must stay nil")
+	}
+}
+
+// jpyHeldAccount holds one JPY stock on top of householdAccount.
+type jpyHeldAccount struct{ householdAccount }
+
+func (jpyHeldAccount) Positions(context.Context, string, string) ([]store.Position, error) {
+	return []store.Position{{Symbol: "4063", SecType: "stock", Currency: "JPY", Multiplier: "1", ConID: 7, Quantity: "100", AvgCost: "3000"}}, nil
+}
+
+type jpyMarks struct{}
+
+func (jpyMarks) Marks(context.Context, string, string) ([]mark.PositionMark, error) {
+	return []mark.PositionMark{{ConID: 7, Price: "3474.6", Basis: mark.BasisLast, Currency: "JPY"}}, nil
+}
+
+type householdFx struct{ bar.FxRateReader }
+
+func (householdFx) LatestFxRate(_ context.Context, pair string, _ contracts.Day) (contracts.FxRate, bool, error) {
+	return contracts.FxRate{Pair: pair, Rate: "150", RateDay: types.SerializableDate{Time: time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC)}}, true, nil
+}
+
+func jpyHouseholdBody(t *testing.T, withFx bool) string {
+	t.Helper()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	var asked []string
+	rd := householdReaders(&asked)
+	rd.noticeAccount = jpyHeldAccount{rd.noticeAccount.(householdAccount)}
+	rd.marks = jpyMarks{}
+	if withFx {
+		rd.fx = householdFx{}
+	}
+	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute)
+	if rec.Code != 200 {
+		t.Fatalf("%d %q", rec.Code, rec.Body)
+	}
+	return rec.Body.String()
+}
+
+func TestHouseholdJpyHoldingIsUsdWithStoredRate(t *testing.T) {
+	t.Parallel()
+	body := jpyHouseholdBody(t, true)
+	if !strings.Contains(body, `$2,316.40`) {
+		t.Fatalf("no USD amount: %s", body)
+	}
+	if strings.Contains(body, `"currency":"JPY"`) {
+		t.Fatalf("yen left: %s", body)
+	}
+}
+
+func TestHouseholdJpyHoldingWithoutFxStaysYenWithGap(t *testing.T) {
+	t.Parallel()
+	body := jpyHouseholdBody(t, false)
+	if !strings.Contains(body, `"currency":"JPY"`) || !strings.Contains(body, "no USDJPY rate on or before 2026-11-05") {
+		t.Fatalf("yen or gap missing: %s", body)
 	}
 }
