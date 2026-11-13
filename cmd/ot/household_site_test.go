@@ -247,3 +247,16 @@ func TestHouseholdJpyHoldingWithoutFxStaysYenWithGap(t *testing.T) {
 		t.Fatalf("yen or gap missing: %s", body)
 	}
 }
+
+func TestHouseholdPageConfigGetsStatementAliases(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	writeBookText(t, a, bookText("a", "a", "b")+"statement = [\"b\"]\n")
+	if got := householdConfig(a, siteReaders{}).Statement; len(got) != 1 || got[0] != "b" {
+		t.Fatalf("statement aliases %v, want [b]", got)
+	}
+	writeBookText(t, a, bookText("a", "a", "b"))
+	if got := householdConfig(a, siteReaders{}).Statement; got != nil {
+		t.Fatalf("plain book gave %v", got)
+	}
+}
