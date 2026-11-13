@@ -355,3 +355,45 @@ func TestPinnedVintageSameKeyAcrossFetchDays(t *testing.T) {
 		t.Errorf("pin: %+v", got[0])
 	}
 }
+
+// mapRecorded maps one recorded observation of id (vintage 2026-11-06, observation 2026-11-04).
+func mapRecorded(t *testing.T, id, value string) contracts.SeriesPoint {
+	t.Helper()
+	body := []byte(`{"observations":[{"realtime_start":"2026-11-06","realtime_end":"2026-11-06","date":"2026-11-04","value":"` + value + `"}]}`)
+	got, err := mapObservations(id, body, time.Time{})
+	if err != nil || len(got) != 1 {
+		t.Fatalf("%s: %v %v", id, got, err)
+	}
+	return got[0]
+}
+
+func checkPinned(t *testing.T, p contracts.SeriesPoint, id string, unit contracts.SeriesUnit, ccy string, want float64) {
+	t.Helper()
+	if p.SeriesID != id || p.Unit != unit || p.Currency != ccy || p.Value == nil || *p.Value != want || p.Status != "present" {
+		t.Errorf("%s: %+v", id, p)
+	}
+	obs := day("2026-11-04").Time
+	if !p.RealtimeStart.Equal(obs) || !p.RealtimeEnd.Equal(obs) || p.SourceRevision != "2026-11-04" {
+		t.Errorf("%s: vintage not pinned: %+v", id, p)
+	}
+}
+
+func TestMappingBAMLC0A0CM(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "BAMLC0A0CM", "0.86"), "BAMLC0A0CM", percent, "", 0.86)
+}
+
+func TestMappingBAA10Y(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "BAA10Y", "1.72"), "BAA10Y", percent, "", 1.72)
+}
+
+func TestMappingSOFR(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "SOFR", "4.05"), "SOFR", percent, "", 4.05)
+}
+
+func TestMappingWRESBAL(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "WRESBAL", "2900000"), "WRESBAL", ccyAmount, "USD", 2.9e12)
+}
