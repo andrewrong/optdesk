@@ -64,6 +64,8 @@ func readings(iv, rv, diff map[string]contracts.ReadingRecord) compute.ReadingFu
 	return func(_ context.Context, name, kind, subject string, _, _ contracts.Day) ([]contracts.ReadingRecord, error) {
 		m := iv
 		switch {
+		case name == figTech && kind == techKind:
+			return nil, nil
 		case kind != "underlying":
 			return nil, errors.New("unexpected reading " + name + " " + kind)
 		case name == figRv20:
@@ -227,7 +229,7 @@ func TestNoSeriesIsGap(t *testing.T) {
 			t.Errorf("iv = %v", row["iv"])
 		}
 	}
-	if len(d.Card.Gaps) != 3+3+3+3+1 {
+	if len(d.Card.Gaps) != 3+3+3+3+1+1 {
 		t.Errorf("gaps = %d", len(d.Card.Gaps))
 	}
 }
