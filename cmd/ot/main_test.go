@@ -56,10 +56,6 @@ func fakeNewBackfiller(f *fakeBackfiller) runner.NewBackfillerWithRuleFunc {
 
 // testApp builds an app over a real-profile OT_HOME in a temp dir holding envBody as .env.
 // It returns the app and the log output.
-// testAcctID is the invented account id of the book of testApp; built from pieces so that no id-shaped
-// string is committed.
-const testAcctID = "U" + "000" + "0001"
-
 func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
 	t.Helper()
 	// A short directory: a Unix socket path under the home must stay below 104 bytes, and t.TempDir
@@ -73,10 +69,6 @@ func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
 		if err := writeFile(home+"/.env", envBody); err != nil {
 			t.Fatal(err)
 		}
-	}
-	// The book every real profile needs: alias a keyed to an invented id built at run time.
-	if err := writeFile(home+"/"+accountsFileName, "a = \""+testAcctID+"\"\nmain = \"a\"\n"); err != nil {
-		t.Fatal(err)
 	}
 	env := map[string]string{"OT_HOME": home, "OT_ZONE": "UTC"}
 	var out, errb bytes.Buffer

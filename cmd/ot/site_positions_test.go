@@ -72,7 +72,7 @@ func positionsApp(t *testing.T) (*app, *positionsRec) {
 // positionsAppEnv is positionsApp with the given .env text.
 func positionsAppEnv(t *testing.T, env string) (*app, *positionsRec) {
 	t.Helper()
-	a, _ := testApp(t, env)
+	a, _ := bookApp(t, env)
 	rec := &positionsRec{}
 	a.deps.structuresListPage = func(c structures_page.Config, alias string) pages.Page {
 		return fakeBuild(rec, positionsCall{page: "list", alias: alias, cfg: c},
@@ -214,7 +214,7 @@ func TestStructureIdEscaped(t *testing.T) {
 
 func TestNoReaderIsGapPage(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "")
+	a, _ := bookApp(t, "")
 	d := newDeps()
 	a.deps.structuresListPage, a.deps.structureDetailPage, a.deps.optionResultPage =
 		d.structuresListPage, d.structureDetailPage, d.optionResultPage
@@ -250,34 +250,33 @@ func TestSiteAliasList(t *testing.T) {
 	t.Parallel()
 	t.Run("main first then the others in the order of the book", func(t *testing.T) {
 		t.Parallel()
-		a, _ := testApp(t, "OT_UNUSED=1\n")
+		a, _ := bookApp(t, "OT_UNUSED=1\n")
 		path := filepath.Join(a.getenv("OT_HOME"), accountsFileName)
 		body := "zz = \"" + "U" + "000" + "0003\"\nacct-a = \"" + "U" + "000" + "0001\"\nbb = \"" + "U" + "000" + "0002\"\nmain = \"acct-a\"\n"
 		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		got, err := siteAliasList(a)
-		if err != nil || !slices.Equal(got, []string{"acct-a", "zz", "bb"}) {
-			t.Fatalf("%v %v", got, err)
+		if got := siteAliasList(a); !slices.Equal(got, []string{"acct-a", "zz", "bb"}) {
+			t.Fatalf("%v", got)
 		}
 	})
 	t.Run("demo profile keeps main", func(t *testing.T) {
 		t.Parallel()
-		a, _ := testApp(t, "OT_UNUSED=1\n")
+		a, _ := bookApp(t, "OT_UNUSED=1\n")
 		a.profile.Name = "demo"
-		got, err := siteAliasList(a)
-		if err != nil || !slices.Equal(got, []string{"main"}) {
-			t.Fatalf("%v %v", got, err)
+		if got := siteAliasList(a); !slices.Equal(got, []string{"main"}) {
+			t.Fatalf("%v", got)
 		}
 	})
-	t.Run("a file that cannot be loaded is an error", func(t *testing.T) {
+	t.Run("a file that cannot be loaded gives main and one warning", func(t *testing.T) {
 		t.Parallel()
-		a, _ := testApp(t, "OT_UNUSED=1\n")
+		a, errb := bookApp(t, "OT_UNUSED=1\n")
 		if err := os.Remove(filepath.Join(a.getenv("OT_HOME"), accountsFileName)); err != nil {
 			t.Fatal(err)
 		}
-		if got, err := siteAliasList(a); err == nil || got != nil {
-			t.Fatalf("%v %v", got, err)
+		got := siteAliasList(a)
+		if !slices.Equal(got, []string{"main"}) || strings.Count(errb.String(), "level=WARN") != 1 || strings.Contains(errb.String(), a.getenv("OT_HOME")) {
+			t.Fatalf("%v %q", got, errb)
 		}
 	})
 }

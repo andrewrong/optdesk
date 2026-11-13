@@ -95,6 +95,7 @@ func (tokenSource) Fetch(context.Context, sources.FlexRequest) (sources.FlexRepo
 func newLedgerRig(t *testing.T, env string, real bool) *ledgerRig {
 	t.Helper()
 	l := &ledgerRig{rig: newRig(t, env), st: &ledgerFakeStore{}, file: flexTestFile}
+	writeDefaultBook(t, l.a)
 	d := &l.a.deps
 	d.openOptionLedgerStore = func(_ context.Context, dsn string) (store.OptionLedgerStore, error) {
 		l.opened = append(l.opened, dsn)

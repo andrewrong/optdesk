@@ -17,7 +17,7 @@ import (
 
 func importApp(t *testing.T, res jobs.ImportResult, got *map[string]string) *app {
 	t.Helper()
-	a, _ := testApp(t, ledgerDSNLine)
+	a, _ := bookApp(t, ledgerDSNLine)
 	st := &ledgerFakeStore{}
 	a.deps.openOptionLedgerStore = func(context.Context, string) (store.OptionLedgerStore, error) { return st, nil }
 	a.deps.importOptionTrader = func(_ context.Context, r io.Reader, _ store.OptionLedgerWriter, m map[string]string, _ time.Time) (jobs.ImportResult, error) {
@@ -92,7 +92,7 @@ func TestLedgerOpenErrorWithheld(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			a, _ := testApp(t, ledgerDSNLine)
+			a, _ := bookApp(t, ledgerDSNLine)
 			a.deps.openOptionLedgerStore = func(context.Context, string) (store.OptionLedgerStore, error) {
 				return nil, errors.New("dial led-dsn-secret failed")
 			}

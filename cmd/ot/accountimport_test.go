@@ -82,7 +82,7 @@ func impLine(alias, day, netliq, qty string) string {
 // impRig returns an app wired to a fake store, the directory holding account.jsonl and the standard output.
 func impRig(t *testing.T, input string, st *impStore) (*app, string) {
 	t.Helper()
-	a, _ := testApp(t, impDSN)
+	a, _ := bookApp(t, impDSN)
 	st.t = t
 	if st.caps == nil {
 		st.caps = map[string]store.Capture{}
@@ -292,7 +292,7 @@ func TestAccountImportMapRenames(t *testing.T) {
 
 func TestAccountImportMissingDSN(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_PG_DSN_LOADER=x\n")
+	a, _ := bookApp(t, "OT_PG_DSN_LOADER=x\n")
 	a.deps.openAccount = func(context.Context, string) (store.AccountStore, error) {
 		t.Error("store opened")
 		return nil, errors.New("no")

@@ -91,7 +91,7 @@ func postOwnerFlexImport(a *app, clk clock.Clock, rd siteReaders, newHandler pag
 		page(r.Context(), flexImportResult{})
 		return
 	}
-	run := &flexImportRun{a: a, ctx: r.Context(), dsn: g.env[store.DSNEnvOptionLedger], accounts: flexAccounts(g.book),
+	run := &flexImportRun{a: a, ctx: r.Context(), dsn: g.env[store.DSNEnvOptionLedger], accounts: a.flexAccounts(g.ff, g.env),
 		id: newRequestID(), now: now}
 	defer run.close()
 	files, err := run.readFiles(mr, first)

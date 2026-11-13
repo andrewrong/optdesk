@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
@@ -140,7 +141,11 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 	if err != nil {
 		return nil, err
 	}
-	lc, err := a.flexConfig(ff, env, f)
+	book, err := a.loadBook()
+	if err != nil {
+		return nil, err
+	}
+	lc, err := a.flexConfig(ff, env, book, f)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +163,8 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 }
 
 // flexConfig maps the file to the config of the job. A login whose variable is empty gets a nil Source and a
-// logged reason. The accounts come from the book of the factory (flexAccounts).
-func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactory) (optionledgerjob.OptionLedgerConfig, error) {
+// logged reason. The accounts come from the book (flexAccounts).
+func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, book accounts.Book, f jobFactory) (optionledgerjob.OptionLedgerConfig, error) {
 	var lc optionledgerjob.OptionLedgerConfig
 	for _, l := range ff.Logins {
 		run := optionledgerjob.FlexRun{Name: l.Name, QueryIDs: l.TradeQueries, Required: l.Required}
@@ -177,7 +182,7 @@ func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactor
 		}
 		lc.Logins = append(lc.Logins, run)
 	}
-	lc.Accounts = flexAccounts(f.book)
+	lc.Accounts = flexAccounts(book)
 	return lc, nil
 }
 
@@ -504,4 +509,15 @@ func decimalOf(v *float64) string {
 		return ""
 	}
 	return strconv.FormatFloat(*v, 'f', -1, 64)
+}
+
+// flexAccounts of the web import: the account map of the book, empty (every statement unmapped, nothing stored)
+// when the book cannot be loaded. The job and the import share the rule of flexAccounts.
+func (a *app) flexAccounts(_ sources.FlexFile, _ map[string]string) map[string]string {
+	book, err := a.loadBook()
+	if err != nil {
+		a.log.Warn("flex import has no accounts", "component", "ot", "job", jobOptionLedger, "reason", err.Error())
+		return map[string]string{}
+	}
+	return flexAccounts(book)
 }

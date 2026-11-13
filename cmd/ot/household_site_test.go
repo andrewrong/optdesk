@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -67,17 +69,18 @@ func householdReaders(asked *[]string) siteReaders {
 	}
 }
 
-func TestHouseholdRouteReadsAliasesOfAccountsFile(t *testing.T) {
+func TestHouseholdRouteReadsAliasesOfGatewaysFile(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_UNUSED=1\n")
-	writeBook(t, a, "acct-a", "acct-b")
-	var asked []string
-	rd := householdReaders(&asked)
-	aliases, err := siteAliasList(a)
-	if err != nil {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "gateways.toml")
+	body := "[[gateway]]\naccount = \"acct-a\"\nrequired = true\n\n[[gateway]]\naccount = \"acct-b\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	rd.aliases = aliases
+	a, _ := testApp(t, envIbkrGateways+"="+path+"\n")
+	var asked []string
+	rd := householdReaders(&asked)
+	rd.aliases = siteAliasList(a)
 	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
 	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute)
 	if rec.Code != 200 || len(asked) == 0 {

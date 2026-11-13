@@ -185,21 +185,6 @@ func siteReaderOf[T any](rd siteReaders, key string) (T, bool) {
 	return v, ok
 }
 
-// siteInputs is what serve needs before it opens a store: the pages line of .env and the alias list of the book.
-// A missing line or a book that cannot be loaded refuses the start.
-func siteInputs(a *app) (dsn string, aliases []string, err error) {
-	env, err := a.envFile()
-	if err != nil {
-		return "", nil, err
-	}
-	dsn = env[pagesDSNName]
-	if dsn == "" {
-		return "", nil, fmt.Errorf("%s is missing in .env", pagesDSNName)
-	}
-	aliases, err = siteAliasList(a)
-	return dsn, aliases, err
-}
-
 // openSiteReaders returns the demo readers with the demo profile, else the stores (series, the
 // five option stores, the reading view, the candidate store, and the account and earnings stores) opened once with the one .env line of the
 // pages role (the session-day store included), and a function that closes them. A failed open closes the stores already opened.
@@ -212,9 +197,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 			noticeAccount: demoNoticeAccount{}, optionLedger: demoTrackingLedger{}}
 		return withPositionsRules(a, rd), func() {}, nil
 	}
-	dsn, aliases, err := siteInputs(a)
+	env, err := a.envFile()
 	if err != nil {
 		return siteReaders{}, nil, err
+	}
+	dsn := env[pagesDSNName]
+	if dsn == "" {
+		return siteReaders{}, nil, fmt.Errorf("%s is missing in .env", pagesDSNName)
 	}
 	var closers []func() error
 	closeAll := func() {
@@ -285,7 +274,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	rd := siteReaders{
 		bars: bars, marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
-		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: aliases}
+		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
 	}

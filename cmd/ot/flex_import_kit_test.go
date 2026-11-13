@@ -27,8 +27,8 @@ import (
 // The shared fakes and builders of the tests of the Flex import route. The values are synthetic: the account
 // number, the token and the DSNs only let a test look for them in a body.
 const (
-	fiAccount   = testAcctID
-	fiAlias     = "a"
+	fiAccount   = "ACCT_A"
+	fiAlias     = "main"
 	fiLedgerDSN = "postgres://ledger-sentinel-dsn"
 	fiPagesDSN  = "postgres://pages-sentinel-dsn"
 	fiFlexToken = "flex-token-sentinel"
@@ -209,7 +209,7 @@ func newFISite(t *testing.T, o fiOpts) *fiSite {
 		case o.badFlexFile:
 			return sources.FlexFile{}, fmt.Errorf("%w: entry 1", sources.ErrFlexConfig)
 		}
-		return sources.FlexFile{}, nil
+		return sources.FlexFile{Accounts: []sources.FlexAccount{{Alias: fiAlias, AccountEnv: "OT_FLEX_ACCT_MAIN"}}}, nil
 	}
 	form := d.newSettingsForm([]byte(postKey), ownerTokenTTL, a.deps.newRuleParams())
 	var rd siteReaders

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -13,6 +14,27 @@ import (
 	"github.com/andrewrong/optdesk/internal/accounts"
 )
 
+// testAcctID is the invented account id of the default book; built from pieces so that no id-shaped string is
+// committed.
+const testAcctID = "U" + "000" + "0001"
+
+// writeDefaultBook gives the home of the app a book of one alias, a, keyed to testAcctID.
+func writeDefaultBook(t *testing.T, a *app) {
+	t.Helper()
+	body := "a = \"" + testAcctID + "\"\nmain = \"a\"\n"
+	if err := os.WriteFile(filepath.Join(a.getenv("OT_HOME"), accountsFileName), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// bookApp is testApp with the default book written.
+func bookApp(t *testing.T, env string) (*app, *bytes.Buffer) {
+	t.Helper()
+	a, log := testApp(t, env)
+	writeDefaultBook(t, a)
+	return a, log
+}
+
 // removeBook deletes the accounts.toml of the app's home.
 func removeBook(t *testing.T, a *app) {
 	t.Helper()
@@ -23,7 +45,7 @@ func removeBook(t *testing.T, a *app) {
 
 func TestLoadBookDemoReadsNoFile(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "")
+	a, _ := bookApp(t, "")
 	removeBook(t, a)
 	a.profile.Name = "demo"
 	b, err := a.loadBook()
@@ -34,7 +56,7 @@ func TestLoadBookDemoReadsNoFile(t *testing.T) {
 
 func TestLoadBookRefusesMissingFileWithoutPath(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "")
+	a, _ := bookApp(t, "")
 	removeBook(t, a)
 	_, err := a.loadBook()
 	if !errors.Is(err, errAccountsBook) {
@@ -47,7 +69,7 @@ func TestLoadBookRefusesMissingFileWithoutPath(t *testing.T) {
 
 func TestFlexAccountsAndAliasList(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "")
+	a, _ := bookApp(t, "")
 	writeBook(t, a, "x", "y")
 	// main = x; rewrite so that main is the second alias written
 	path := filepath.Join(a.getenv("OT_HOME"), accountsFileName)
@@ -70,7 +92,7 @@ func TestFlexAccountsAndAliasList(t *testing.T) {
 
 func TestCheckAliasMap(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "")
+	a, _ := bookApp(t, "")
 	b, err := a.loadBook()
 	if err != nil {
 		t.Fatal(err)
@@ -86,54 +108,17 @@ func TestCheckAliasMap(t *testing.T) {
 	}
 }
 
-func TestOpenStoredHoldsAliasesOfBook(t *testing.T) {
+func TestOptionLedgerJobRefusedWithoutBook(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "")
-	writeBook(t, a, "p", "q")
-	b, err := a.loadBook()
-	if err != nil {
-		t.Fatal(err)
+	l := newLedgerRig(t, fullEnv+ledgerDSNLine+"TOK_MAIN=x\nTOK_SECOND=y\n", false)
+	removeBook(t, l.a)
+	err := runOnce(l.a, []string{"--day", "2026-11-04"})
+	if !errors.Is(err, errAccountsBook) {
+		t.Fatalf("option_ledger without accounts.toml gave %v", err)
 	}
-	jc := &jobCtx{f: &jobFactory{book: b}}
-	if got := openStored(jc, nil, nil).HeldAliases; !slices.Equal(got, []string{"p", "q"}) {
-		t.Errorf("HeldAliases %v", got)
+	if len(l.opened) != 0 || l.built {
+		t.Errorf("the job opened a store (%v) or was built (%v)", l.opened, l.built)
 	}
-}
-
-func TestStartRefusedWithoutBook(t *testing.T) {
-	t.Parallel()
-	t.Run("run-once opens no store", func(t *testing.T) {
-		t.Parallel()
-		r := newRig(t, fullEnv)
-		removeBook(t, r.a)
-		err := runOnce(r.a, []string{"--day", "2026-11-04"})
-		if !errors.Is(err, errAccountsBook) {
-			t.Fatalf("run-once without accounts.toml gave %v", err)
-		}
-		if ev := r.ev.list(); len(ev) != 0 {
-			t.Errorf("stores opened before the refusal: %v", ev)
-		}
-	})
-	t.Run("serve readers", func(t *testing.T) {
-		t.Parallel()
-		a, _ := testApp(t, pagesDSNName+"=x\n")
-		removeBook(t, a)
-		_, _, err := openSiteReaders(context.Background(), a)
-		if !errors.Is(err, errAccountsBook) {
-			t.Fatalf("serve without accounts.toml gave %v", err)
-		}
-	})
-	t.Run("demo serves without the file", func(t *testing.T) {
-		t.Parallel()
-		a, _ := testApp(t, "")
-		removeBook(t, a)
-		a.profile.Name = "demo"
-		if _, closeFn, err := openSiteReaders(context.Background(), a); err != nil {
-			t.Fatal(err)
-		} else {
-			closeFn()
-		}
-	})
 }
 
 // TestNoAccountIDLeavesTheWiring is the proof of Decision 8: the ledger wiring and the page wiring run over a
@@ -193,11 +178,8 @@ func TestNoAccountIDLeavesTheWiring(t *testing.T) {
 	})
 	t.Run("page wiring", func(t *testing.T) {
 		t.Parallel()
-		a, errb := testApp(t, "OT_UNUSED=1\n")
-		aliases, err := siteAliasList(a)
-		if err != nil {
-			t.Fatal(err)
-		}
+		a, errb := bookApp(t, "OT_UNUSED=1\n")
+		aliases := siteAliasList(a)
 		var asked []string
 		rd := householdReaders(&asked)
 		rd.aliases = aliases

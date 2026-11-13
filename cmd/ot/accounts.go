@@ -90,11 +90,3 @@ func checkAliasMap(b accounts.Book, m map[string]string) error {
 	}
 	return nil
 }
-
-// heldAliases returns the aliases of the book of the factory: none for a factory built without one.
-func (f jobFactory) heldAliases() []string {
-	if f.book == nil {
-		return nil
-	}
-	return f.book.Aliases()
-}
