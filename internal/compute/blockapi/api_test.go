@@ -161,7 +161,7 @@ var noQuote = compute.FigureValue{Gap: "missing_quote"}
 func (fakeHoldings) Holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 	out := blockapi.HoldingsResult{TotalValue: fv(in.NetLiquidation), TotalUnrealised: fv(in.Currency)}
 	for _, r := range in.Rows {
-		l := blockapi.HoldingLine{Underlying: r.Underlying, SecType: r.SecType}
+		l := blockapi.HoldingLine{Underlying: r.Underlying, SecType: r.SecType, Currency: r.Currency + in.UsdJpy}
 		if r.Mark == "" {
 			l.Value, l.Unrealised, l.Share = noQuote, noQuote, noQuote
 		} else {
@@ -193,8 +193,8 @@ func TestHoldingsContract(t *testing.T) {
 		{Underlying: "BBB", SecType: "OPT", Currency: "USD", Quantity: "1", Multiplier: "100", Cost: "1"},
 	}})
 	want := []blockapi.HoldingLine{
-		{Underlying: "AAA", SecType: "STK", Value: fv("216"), Unrealised: fv("5USD"), Share: fv("1")},
-		{Underlying: "BBB", SecType: "OPT", Value: noQuote, Unrealised: noQuote, Share: noQuote},
+		{Underlying: "AAA", SecType: "STK", Currency: "USD", Value: fv("216"), Unrealised: fv("5USD"), Share: fv("1")},
+		{Underlying: "BBB", SecType: "OPT", Currency: "USD", Value: noQuote, Unrealised: noQuote, Share: noQuote},
 	}
 	if len(h.Rows) != 2 || h.Rows[0] != want[0] || h.Rows[1] != want[1] {
 		t.Fatalf("Rows = %+v", h.Rows)
@@ -221,5 +221,21 @@ func TestRiskContract(t *testing.T) {
 	}
 	if r.DeltaTotal != fv("USD") || r.VegaTotal != fv("0") {
 		t.Fatalf("totals = %+v %+v", r.DeltaTotal, r.VegaTotal)
+	}
+}
+
+func TestPositionFieldsContract(t *testing.T) {
+	t.Parallel()
+	p := blockapi.PositionIn{Underlying: "U", SecType: "option", Currency: "USD", Quantity: "-1", Multiplier: "100", Mark: "2.5"}
+	in := blockapi.HouseholdInput{Positions: []blockapi.PositionIn{p}, PositionsRead: true}
+	if in.Positions[0] != p || !in.PositionsRead || p.Underlying != "U" || p.SecType != "option" || p.Currency != "USD" ||
+		p.Quantity != "-1" || p.Multiplier != "100" || p.Mark != "2.5" {
+		t.Fatalf("%+v", in)
+	}
+	h := newHoldings().Holdings(blockapi.HoldingsIn{Currency: "USD", UsdJpy: "150", Rows: []blockapi.HoldingIn{
+		{Underlying: "A", SecType: "STK", Currency: "JPY", Quantity: "1", Multiplier: "1", Cost: "1", Mark: "1"},
+	}})
+	if h.Rows[0].Currency != "JPY150" {
+		t.Fatalf("Currency = %q", h.Rows[0].Currency)
 	}
 }
