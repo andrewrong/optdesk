@@ -40,6 +40,9 @@ class ResolveResult:
     multiplier: str = ""
     error_code: int = 0
     error_text: str = ""
+    trading_hours: str = ""
+    liquid_hours: str = ""
+    time_zone_id: str = ""
 
 
 @dataclass(frozen=True)

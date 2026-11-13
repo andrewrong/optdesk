@@ -189,6 +189,46 @@ def test_resolve_found_and_not_listed() -> None:
     assert missing.status == pb.RESOLVE_STATUS_NOT_LISTED and missing.error_code == 200
 
 
+def test_resolve_found_copies_hours() -> None:
+    async def run() -> pb.ResolveContractResponse:
+        gateway = FakeGateway(
+            resolved=ResolveResult(
+                True,
+                7,
+                trading_hours="20261116:0930-20261116:1600",
+                liquid_hours="20261116:0930-20261116:1500",
+                time_zone_id="US/Eastern",
+            )
+        )
+        async with serving(gateway) as channel:
+            stub = pb.ContractsServiceStub(channel)
+            return await stub.ResolveContract(
+                pb.ResolveContractRequest(contract=contract())
+            )
+
+    found = asyncio.run(run())
+    assert found.trading_hours == "20261116:0930-20261116:1600"
+    assert found.liquid_hours == "20261116:0930-20261116:1500"
+    assert found.time_zone_id == "US/Eastern"
+
+
+def test_resolve_not_listed_leaves_hours_empty() -> None:
+    async def run() -> pb.ResolveContractResponse:
+        gateway = FakeGateway(resolved=ResolveResult(False, 0, error_code=200))
+        async with serving(gateway) as channel:
+            stub = pb.ContractsServiceStub(channel)
+            return await stub.ResolveContract(
+                pb.ResolveContractRequest(contract=contract())
+            )
+
+    missing = asyncio.run(run())
+    assert (missing.trading_hours, missing.liquid_hours, missing.time_zone_id) == (
+        "",
+        "",
+        "",
+    )
+
+
 def test_resolve_several_is_failed_precondition() -> None:
     async def run() -> grpc.StatusCode:
         gateway = FakeGateway(resolved=spec.AmbiguousResolve("two contracts"))
