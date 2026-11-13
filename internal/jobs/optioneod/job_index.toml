@@ -17,8 +17,7 @@ band_k = 1.8            # trial: half-width of the band is spot x band_k x sigma
 
 [window]
 rule = "in_session"
-open_after_minutes = 90
-calendar = "XNYS"
+open_after_minutes = 90  # trialcalendar = "XNYS"
 
 [[underlying]]
 symbol = "SPX"
@@ -62,7 +61,7 @@ spot_divisor = 1         # trial
 symbol = "XSP"
 trading_class = "XSP"
 strike_multiple = 5      # trial: the probes show steps of 5 and 1 near the money
-max_contracts = 80       # trial
+max_contracts = 80       # trial: the probes show steps of 5 and 1 near the money; the cap is per class and day
 expiry_kind = "third_friday"
 sigma_index = "SPX"
 spot_index = "SPX"
@@ -72,7 +71,7 @@ spot_divisor = 10        # trial: XSP is a tenth of SPX
 symbol = "RUT"
 trading_class = "RUT"
 strike_multiple = 5      # trial: the probes show steps of 5
-max_contracts = 80       # trial
+max_contracts = 80       # trial: the probes show steps of 5 and 1 near the money; the cap is per class and day
 expiry_kind = "listed"
 sigma_index = "RUT"
 spot_index = "RUT"
