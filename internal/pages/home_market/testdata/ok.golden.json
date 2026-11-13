@@ -91,9 +91,10 @@
             "unit": "vol_points"
           },
           "iv_minus_rv20": {
-            "kind": "gap",
-            "reason": "not_built",
-            "text": "not built yet"
+            "kind": "value",
+            "value": 3.2,
+            "text": "+3.2",
+            "unit": "vol_points"
           },
           "source_text": "IBKR implied volatility"
         },
@@ -112,9 +113,10 @@
             "unit": "vol_points"
           },
           "iv_minus_rv20": {
-            "kind": "gap",
-            "reason": "not_built",
-            "text": "not built yet"
+            "kind": "value",
+            "value": 4.1,
+            "text": "+4.1",
+            "unit": "vol_points"
           },
           "source_text": "IBKR implied volatility"
         },
@@ -133,9 +135,10 @@
             "unit": "vol_points"
           },
           "iv_minus_rv20": {
-            "kind": "gap",
-            "reason": "not_built",
-            "text": "not built yet"
+            "kind": "value",
+            "value": -1.4,
+            "text": "-1.4",
+            "unit": "vol_points"
           },
           "source_text": "IBKR implied volatility"
         }
@@ -180,13 +183,7 @@
     "notes": [
       "The chart draws only the stored S\u0026P 500 closes; the 200-day average and range are not built yet."
     ],
-    "gaps": [
-      {
-        "kind": "gap",
-        "reason": "not_built",
-        "text": "Implied minus realised not built yet for SPX, NDX, RUT"
-      }
-    ],
+    "gaps": [],
     "data_times_text": "Data time 11-06"
   }
 }

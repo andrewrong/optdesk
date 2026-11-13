@@ -29,6 +29,7 @@ const (
 
 	figIV         = "market.iv_ibkr"
 	figRv20       = "market.rv20"
+	figIvRv20     = "market.iv_rv20"
 	subjectKind   = "underlying"
 	seriesChart   = "SP500"
 	chartDays     = 30 // newest points of the chart
@@ -260,20 +261,25 @@ func validate(c Config, r store.SeriesReader) error {
 }
 
 // buildRow is the row of one index: the IV and the 20 day realised volatility from their stored
-// readings; the difference is a not built Gap. ok is false when the IV is a Gap; a Gap of the
+// readings; the difference from its stored market.iv_rv20 reading. ok is false when the IV is a Gap; a Gap of the
 // realised volatility does not count.
 func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow, bool, error) {
 	row := indexRow{
 		Name:        name,
 		IV:          mkGap("no_data", name+" "+ivNoRow),
 		RV20:        mkGap("no_data", name+" "+rv20NoRow),
-		IVMinusRV20: mkGap("not_built", notBuiltCell),
+		IVMinusRV20: mkGap("no_data", name+" "+ivRvNoRow),
 	}
 	rv, err := newestReading(ctx, c, figRv20, name, d)
 	if err != nil {
 		return indexRow{}, false, err
 	}
 	row.RV20 = rv20Cell(name, rv)
+	diff, err := newestReading(ctx, c, figIvRv20, name, d)
+	if err != nil {
+		return indexRow{}, false, err
+	}
+	row.IVMinusRV20 = ivRvCell(name, diff, d)
 	best, err := newestReading(ctx, c, figIV, name, d)
 	if err != nil {
 		return indexRow{}, false, err
@@ -401,11 +407,9 @@ func storedPoints(ctx context.Context, r store.SeriesReader, id string, d time.T
 	return out, nil
 }
 
-// collectGaps copies the Gap objects of the blocks in page order. The not-built
-// difference cells give one gap naming every index of the table, not one per index.
+// collectGaps copies the Gap objects of the blocks in page order, one per cell.
 func collectGaps(c card) []gap {
 	out := []gap{}
-	var diffNames []string
 	for _, row := range c.IndexTable.Rows {
 		if g, ok := row.IV.(gap); ok {
 			out = append(out, g)
@@ -413,12 +417,9 @@ func collectGaps(c card) []gap {
 		if g, ok := row.RV20.(gap); ok {
 			out = append(out, g)
 		}
-		if g, ok := row.IVMinusRV20.(gap); ok && g.Reason == "not_built" {
-			diffNames = append(diffNames, row.Name)
+		if g, ok := row.IVMinusRV20.(gap); ok {
+			out = append(out, g)
 		}
-	}
-	if len(diffNames) > 0 {
-		out = append(out, mkGap("not_built", diffNotBuilt+notBuiltFor+strings.Join(diffNames, ", ")))
 	}
 	for _, v := range c.VolIndices {
 		if g, ok := v.Level.(gap); ok {
