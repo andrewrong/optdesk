@@ -19,6 +19,17 @@ type fakeBook struct {
 func (f fakeBook) Alias(id string) (string, bool) { a, ok := f.byID[id]; return a, ok }
 func (f fakeBook) Main() string                   { return f.main }
 func (f fakeBook) Aliases() []string              { return slices.Clone(f.order) }
+func (f fakeBook) IDs() []string {
+	ids := make([]string, 0, len(f.order))
+	for _, a := range f.order {
+		for id, alias := range f.byID {
+			if alias == a {
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids
+}
 
 var _ accounts.Book = fakeBook{}
 
@@ -61,6 +72,15 @@ func TestBookUserSide(t *testing.T) {
 	}
 	if got := b.Aliases(); !slices.Equal(got, []string{"mine", "wife"}) {
 		t.Fatalf("Aliases = %v", got)
+	}
+	ids, aliases := b.IDs(), b.Aliases()
+	if len(ids) != len(aliases) {
+		t.Fatalf("IDs has %d entries, Aliases %d", len(ids), len(aliases))
+	}
+	for i, id := range ids {
+		if got, ok := b.Alias(id); !ok || got != aliases[i] {
+			t.Fatalf("position %d: Alias(id) = %q, %v; want %q", i, got, ok, aliases[i])
+		}
 	}
 	if _, ok := b.Alias(b.Main()); ok {
 		t.Fatal("an alias is not an id")
