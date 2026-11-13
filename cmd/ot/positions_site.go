@@ -32,6 +32,7 @@ func positionsPageConfig(a *app, rd siteReaders) positions_page.Config {
 		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Marks: rd.marks, Figures: pagefig.New, Holdings: pagefig.NewHoldings,
+		Statement: pageStatementAliases(a),
 	}
 }
 

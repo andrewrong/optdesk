@@ -55,7 +55,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 28 {
+	if !slices.Equal(got, want) || len(got) != 29 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -75,7 +75,7 @@ func TestForceYesIsCalendarRefreshAndFxRefresh(t *testing.T) {
 
 func TestEveryForceNoJobHasReason(t *testing.T) {
 	t.Parallel()
-	codes := []string{"moment_mix", "append_only", "revision_rows", "attempt_rows", "epoch_and_caps", "new_run_id", "quota", "not_proved"}
+	codes := []string{"moment_mix", "append_only", "revision_rows", "attempt_rows", "epoch_and_caps", "new_run_id", "quota", "not_proved", "insert_only"}
 	n := 0
 	for _, r := range jobTable {
 		if !r.runnable() || r.Force {
@@ -89,8 +89,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 18 {
-		t.Fatalf("%d force-no jobs, want 18", n)
+	if n != 19 {
+		t.Fatalf("%d force-no jobs, want 19", n)
 	}
 }
 
@@ -114,7 +114,7 @@ func TestZoneOfEachTodayOnlyJobIsTheJobsOwn(t *testing.T) {
 
 func TestAnyDayIsExactlyTheFive(t *testing.T) {
 	t.Parallel()
-	want := []string{"compute_figures", "fred_series", "fundamentals", "fx_refresh", "option_candidates"}
+	want := []string{"compute_figures", "fred_series", "fundamentals", "fx_refresh", "option_candidates", "statement_capture"}
 	if got := idsOfKind(kindAnyDay); !slices.Equal(got, want) {
 		t.Fatalf("any_day %v", got)
 	}

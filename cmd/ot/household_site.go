@@ -32,6 +32,7 @@ func householdConfig(a *app, rd siteReaders) household_page.Config {
 		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Marks: rd.marks, Holdings: pagefig.NewHoldings, Fx: rd.fx,
+		Statement: pageStatementAliases(a),
 	}
 }
 
