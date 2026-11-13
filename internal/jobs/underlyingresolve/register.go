@@ -3,7 +3,6 @@ package underlyingresolve
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -71,7 +70,7 @@ func (j *job) register(ctx context.Context, r underlying.Row, conID int64) error
 	if _, err := j.reg.RegisterStock(ctx, RegistrationOf(r)); err != nil {
 		var te contracts.TypedError
 		if errors.As(err, &te) && te.Kind() == contracts.Permanent {
-			slog.Warn("underlying_resolve: company registration refused", "key", r.Key, "reason", err.Error())
+			j.log.Warn("underlying_resolve: company registration refused", "key", r.Key, "reason", err.Error())
 			return nil
 		}
 		return err

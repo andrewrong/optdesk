@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ type job struct {
 	s   underlying.Settler
 	clk clock.Clock
 	reg stockreg.StockRegistrar // nil: no company data is written
+	log *slog.Logger
 }
 
 type typedError struct {
@@ -51,7 +53,7 @@ func New(b broker.Broker, s underlying.Settler, clk clock.Clock) (contracts.Job,
 	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, b: b, s: s, clk: clk}, nil
+	return &job{m: m, b: b, s: s, clk: clk, log: slog.Default()}, nil
 }
 
 // ID is the job id of the manifest.

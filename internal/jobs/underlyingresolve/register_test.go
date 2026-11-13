@@ -1,8 +1,11 @@
 package underlyingresolve
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -165,9 +168,14 @@ func TestRegistrarPermanentRefusalLeavesResult(t *testing.T) {
 	reg := &fakeRegistrar{err: permanent{}}
 	r := regRig(t, reg, row(1, "AAPL", underlying.StatusPending, time.Hour))
 	r.b.answers["AAPL"] = listed(5)
+	var buf bytes.Buffer
+	r.j.(*job).log = slog.New(slog.NewTextHandler(&buf, nil))
 	res := r.run(t)
 	if res.Err != nil || res.Usable != 1 || res.Returned != 1 || len(reg.got) != 1 {
 		t.Fatalf("result %+v calls %d", res, len(reg.got))
+	}
+	if out := buf.String(); !strings.Contains(out, "two issuers") || !strings.Contains(out, "US:AAPL") {
+		t.Fatalf("log %q lacks the reason or key", out)
 	}
 }
 
