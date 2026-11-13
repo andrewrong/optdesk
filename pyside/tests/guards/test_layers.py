@@ -37,7 +37,7 @@ def _keep_logging_config() -> Iterator[None]:
 
 
 def test_import_contracts_hold() -> None:
-    assert lint_imports(config_filename=str(PYPROJECT)) == 0
+    assert lint_imports(config_filename=str(PYPROJECT), no_cache=True) == 0
 
 
 def test_a_violation_is_reported(tmp_path: Path) -> None:
@@ -58,6 +58,14 @@ def test_a_violation_is_reported(tmp_path: Path) -> None:
     )
     sys.path.insert(0, str(tmp_path))
     try:
-        assert lint_imports(config_filename=str(config)) != 0
+        assert lint_imports(config_filename=str(config), no_cache=True) != 0
     finally:
         sys.path.remove(str(tmp_path))
+
+
+def test_lint_writes_nothing_to_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    lint_imports(config_filename=str(PYPROJECT), no_cache=True)
+    assert list(tmp_path.iterdir()) == []
