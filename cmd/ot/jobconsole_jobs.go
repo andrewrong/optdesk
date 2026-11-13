@@ -43,7 +43,6 @@ const (
 	textRevisionRows   = "a second fetch adds revision rows that no reader prefers over the first"
 	textInsertOnly     = "a stored capture of a statement day is never replaced, so a forced run writes nothing new"
 	textAttemptRows    = "a re-run adds one row under the next attempt, which replaces nothing"
-	textEpochAndCaps   = "a restatement writes a new epoch and the first-pull cap is memory that the scheduler's runs share"
 	textNewRunID       = "changed inputs make a new run id and a second run of rows"
 	textQuota          = "the Alpha Vantage quota is 25 a day"
 	textNotProved      = "nothing read proves that a second run equals the first"
@@ -99,7 +98,7 @@ var jobTable = []jobRow{
 	todayOnly("option_list_preopen", "not_proved", textNotProved),
 	todayOnly("option_list_zone", "not_proved", textNotProved),
 	{ID: "option_list_preopen_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: textNotProved},
-	todayOnly("bars_refresh", "epoch_and_caps", textEpochAndCaps),
+	{ID: "bars_refresh", Kind: kindAnyDay, Force: true},
 	listedOnly("option_open", "no_lower_time_bound", textNoLowerBound, needsLowerBound),
 	listedOnly("option_open_jp", "no_lower_time_bound", textNoLowerBound, needsLowerBound),
 	listedOnly("option_open_plan", "no_day_guard", textNoDayGuard, needsDayGuard),
