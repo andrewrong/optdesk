@@ -23,6 +23,7 @@ from optdesk.ibkr.model import (
     AccountGateway,
     AccountRows,
     AccountValueRow,
+    ExecutionRows,
     Gateway,
     MultipleAccounts,
     PositionRow,
@@ -293,7 +294,7 @@ class Rig:
 
 
 def account_spec(*collect: str) -> GatewaySpec:
-    return GatewaySpec(name="b", port=2, account="alias_two", collect=collect)
+    return GatewaySpec(name="b", port=2, collect=collect)
 
 
 @asynccontextmanager
@@ -363,7 +364,7 @@ def test_two_accounts_refused(capture: Capture) -> None:
     assert "rpc=account" in failed and "status=multiple_accounts" in failed
 
 
-def test_alias_replaces_id() -> None:
+def test_account_reports_gateway_id(capture: Capture) -> None:
     async def run() -> pb.AccountResponse:
         rig = Rig([shape()])
         await rig.gateway.open_session()
@@ -380,15 +381,15 @@ def test_alias_replaces_id() -> None:
             return await pb.AccountServiceStub(channel).Account(pb.AccountRequest())
 
     response = asyncio.run(run())
-    assert response.account == "alias_two" and response.generation == 1
+    assert response.account == shape() and response.generation == 1
     assert [(v.tag, v.value, v.currency) for v in response.values] == [
         ("Cushion", "0.25", "USD")
     ]
     assert [
         (p.contract.symbol, p.quantity, p.avg_cost) for p in response.positions
     ] == [("SPY", "2", "3.5")]
-    wire = response.SerializeToString()
-    assert shape().encode() not in wire and other_shape().encode() not in wire
+    assert other_shape().encode() not in response.SerializeToString()
+    assert shape() not in "\n".join(capture.messages)
 
 
 class FakeAccounts:
@@ -460,7 +461,7 @@ def test_account_log_has_no_values(capture: Capture) -> None:
             assert key in FIELDS
             assert value in transport.WORDS or value.lstrip("-").isdigit()
     joined = "\n".join(capture.messages)
-    for secret in ("NetLiquidation", "98765.4", "SPYZ", "alias_two", "USD"):
+    for secret in ("NetLiquidation", "98765.4", "SPYZ", "USD"):
         assert secret not in joined
     assert any("rpc=account" in m and "count=2" in m for m in lines)
 
@@ -536,3 +537,19 @@ def test_ib_async_position_log_cannot_carry_an_id(capture: Capture) -> None:
 def test_fake_satisfies_the_account_protocol() -> None:
     gateway: AccountGateway = FakeAccounts()
     assert asyncio.run(gateway.account(summary=True, positions=True)).generation == 3
+
+
+def test_executions_report_gateway_id(capture: Capture) -> None:
+    class Executions(FakeAccounts):
+        async def executions(self) -> ExecutionRows:
+            return ExecutionRows(2, account=shape())
+
+    async def run() -> pb.ExecutionsResponse:
+        async with serving(Executions(), "executions") as channel:
+            return await pb.AccountServiceStub(channel).Executions(
+                pb.ExecutionsRequest()
+            )
+
+    response = asyncio.run(run())
+    assert response.account == shape() and response.collected
+    assert shape() not in "\n".join(capture.messages)

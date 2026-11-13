@@ -236,7 +236,7 @@ class FakeAccounts:
 
 @asynccontextmanager
 async def serving(gateway: object, *collect: str) -> AsyncIterator[grpc.aio.Channel]:
-    spec = GatewaySpec(name="b", port=2, account="alias_two", collect=collect)
+    spec = GatewaySpec(name="b", port=2, collect=collect)
     with short_socket_dir() as directory:
         target = f"unix:{directory / 's.sock'}"
         server = build_server(cast(Gateway, gateway), FakeClock(), spec=spec)
@@ -267,9 +267,11 @@ def ask(gateway: FakeAccounts, *collect: str) -> pb.ExecutionsResponse:
 
 
 def test_rpc_answers_complete_rows_and_pending() -> None:
-    gateway = FakeAccounts(ExecutionRows(3, (row("e1"),), pending=2))
+    gateway = FakeAccounts(
+        ExecutionRows(3, (row("e1"),), pending=2, account="DU0000001")
+    )
     response = ask(gateway, "executions")
-    assert response.account == "alias_two" and response.generation == 3
+    assert response.account == "DU0000001" and response.generation == 3
     assert response.collected and response.pending == 2
     (execution,) = response.executions
     assert (execution.exec_id, execution.perm_id, execution.side) == ("e1", 9, "SLD")

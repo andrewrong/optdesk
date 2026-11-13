@@ -129,13 +129,13 @@ def test_empty_collect(tmp_path: Path) -> None:
     fails(tmp_path, entry().replace('["market_data"]', "[]"), "collect")
 
 
-def test_account_shaped_like_an_id(tmp_path: Path) -> None:
+def test_account_key_is_neither_required_nor_rejected(tmp_path: Path) -> None:
     shaped = "abc" + "12345"
-    fails(tmp_path, entry().replace('"alias"', f'"{shaped}"'), "account", shaped)
-
-
-def test_missing_account(tmp_path: Path) -> None:
-    fails(tmp_path, entry().replace('account = "alias"\n', ""), "account")
+    without = entry().replace('account = "alias"\n', "")
+    shaped_text = entry().replace('"alias"', f'"{shaped}"')
+    for text in (without, shaped_text, entry()):
+        specs, _ = load_gateways(write(tmp_path, text))
+        assert specs[0].name == "a"
 
 
 def test_example_file_is_valid() -> None:

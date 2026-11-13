@@ -178,11 +178,15 @@ class PositionRow:
 
 @dataclass(frozen=True)
 class AccountRows:
-    """Rows of one account read in one call; a list that was not asked for is empty."""
+    """Rows of one account read in one call; a list that was not asked for is empty.
+
+    account is the id the gateway reports for that account, answered as it is.
+    """
 
     generation: int
     values: tuple[AccountValueRow, ...] = ()
     positions: tuple[PositionRow, ...] = ()
+    account: str = ""
 
 
 @dataclass(frozen=True)
@@ -218,12 +222,14 @@ class ExecutionRows:
     """The complete executions of one account; pending counts those left out.
 
     A row is complete when its commission report is in. pending is the number of
-    executions whose report had not come within the deadline.
+    executions whose report had not come within the deadline. account is the id
+    the gateway reports for that account, answered as it is.
     """
 
     generation: int
     executions: tuple[ExecutionRow, ...] = ()
     pending: int = 0
+    account: str = ""
 
 
 class MultipleAccounts(Exception):

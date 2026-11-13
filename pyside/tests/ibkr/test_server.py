@@ -208,9 +208,7 @@ def spec(
     required: bool = True,
     collect: tuple[str, ...] = ("market_data",),
 ) -> GatewaySpec:
-    return GatewaySpec(
-        name=name, port=port, account="x", collect=collect, required=required
-    )
+    return GatewaySpec(name=name, port=port, collect=collect, required=required)
 
 
 def make_config(
@@ -429,7 +427,7 @@ def test_account_only_gateway_has_a_socket() -> None:
         target = f"unix:{socket_path(home, 'b')}"
         async with grpc.aio.insecure_channel(target) as channel:
             reply = await pb.AccountServiceStub(channel).Account(pb.AccountRequest())
-            assert reply.account == "x" and reply.generation == 1
+            assert reply.generation == 1
             assert [v.tag for v in reply.values] == ["Cushion"]
             with pytest.raises(grpc.aio.AioRpcError) as raised:
                 async for item in pb.MarketDataServiceStub(channel).Snapshot(
