@@ -39,6 +39,8 @@ const (
 	nameStock        = "Stock"
 	textMissingQuote = "Needs position prices: no data yet"
 	textMonthSteps   = "The trading result needs position prices, so the steps show no data yet; only month start and month end are listed"
+	textNoRate       = "%s: no %s rate on or before %s"
+	textRateDay      = " JPY amounts use the USDJPY rate of %s."
 	textNoReader     = "No reader: no data yet"
 	textUnknown      = "Unknown account"
 	textNoCapture    = "This account has no capture yet"

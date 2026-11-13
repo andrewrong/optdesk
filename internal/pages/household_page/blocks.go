@@ -338,6 +338,9 @@ func waterfallOf(lines []blockapi.MoneyLine) waterfallBlock {
 	return b
 }
 
+// maxGapRunes is the length the page schema allows a gap text.
+const maxGapRunes = 200
+
 // accountsOf is the one row of the accounts block: net liquidation and cash from the summary, the
 // stock and option cells are gaps (they need quotes).
 func accountsOf(alias, label, whose, dataDay string, lines []blockapi.MoneyLine) *accountsBlock {
@@ -349,7 +352,14 @@ func accountsOf(alias, label, whose, dataDay string, lines []blockapi.MoneyLine)
 		if c, ok := cell(l); ok {
 			return accountFigure{Cell: &c}
 		}
-		return accountFigure{Gap: gapText(lineGap(l))}
+		text := gapText(lineGap(l))
+		if l.Note != "" {
+			text += ": " + l.Note
+		}
+		if r := []rune(text); len(r) > maxGapRunes {
+			text = string(r[:maxGapRunes])
+		}
+		return accountFigure{Gap: text}
 	}
 	b.Rows = append(b.Rows, accountRow{
 		Name: label, NetLiquidation: fig(lines[0]), Cash: fig(lines[1]), Stock: fig(lines[2]), Options: fig(lines[3]),
