@@ -41,8 +41,8 @@ func TestManifestDefaults(t *testing.T) {
 		t.Fatalf("defaults wrong: %+v", m)
 	}
 	cal, open, closeOff, err := windowOf(m)
-	if err != nil || cal != "" || open != 0 || closeOff != 5*time.Hour {
-		t.Fatalf("window = %q %v %v %v, want lateness 5h", cal, open, closeOff, err)
+	if err != nil || cal != "" || open != 90*time.Minute || closeOff != 0 {
+		t.Fatalf("window = %q %v %v %v, want open 90m, close 0", cal, open, closeOff, err)
 	}
 	if _, err := build(manifestBytes, nil, nil, nil, nil); err != nil {
 		t.Fatalf("embedded manifest: %v", err)

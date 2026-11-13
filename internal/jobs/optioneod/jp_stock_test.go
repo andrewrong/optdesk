@@ -369,14 +369,15 @@ func TestJPStockRowsMICAndLot(t *testing.T) {
 	}
 }
 
-// The hash of the plan of NewJP for 2026-11-09 as read at the merge base of this change.
+// The hash of the plan of NewJP for 2026-11-09 as pinned by the in-session change: it changed with the window keys
+// (in_session, open_after_minutes) and the dropped stop key.
 func TestJPPlanHashUnchanged(t *testing.T) {
 	t.Parallel()
 	_, hash, err := planFrom(manifestJPBytes, "2026-11-09")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hash != "a92e71255baa167b29a5bf726ea7ffa372f19d0260e391e15abd63b86e46f8d0" {
+	if hash != "6f75cf30543b25f799139be93be186e40f38d2995cbf61b9eaa815248ec75ead" {
 		t.Fatalf("hash %s", hash)
 	}
 	r := newStockRig(t, nil)
