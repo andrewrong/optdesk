@@ -245,3 +245,26 @@ func validate(t *testing.T, b []byte) {
 		t.Errorf("%v\n%s", err, b)
 	}
 }
+
+func TestRunRowSkipsFieldReasonsAsCode(t *testing.T) {
+	t.Parallel()
+	r := run("obs.option_open", "k1", "ok", t0)
+	r.ReasonCode = "own"
+	reasons := []runview.Reason{
+		{Dataset: "obs.option_open", Subject: "k1", Code: "field_missing", Detail: "d1"},
+		{Dataset: "obs.option_open", Subject: "k1", Code: "fields_complete", Detail: "d2"},
+	}
+	got := rowsOf(t, []runview.Row{r}, reasons)[0]
+	if got.ReasonCode == nil || *got.ReasonCode != "own" || got.Detail == nil || *got.Detail != "d1; d2" {
+		t.Fatalf("row = %+v", got)
+	}
+	r.ReasonCode = ""
+	got = rowsOf(t, []runview.Row{r}, reasons)[0]
+	if got.ReasonCode != nil || got.Detail == nil || *got.Detail != "d1; d2" {
+		t.Fatalf("row = %+v", got)
+	}
+	reasons = append(reasons, runview.Reason{Dataset: "obs.option_open", Subject: "k1", Code: "no_chain"})
+	if got = rowsOf(t, []runview.Row{r}, reasons)[0]; got.ReasonCode == nil || *got.ReasonCode != "no_chain" {
+		t.Fatalf("row = %+v", got)
+	}
+}
