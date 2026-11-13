@@ -111,6 +111,10 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Every figure is a `compute.FigureValue`; `blockapi` declares no figure type of its own. Pure: no I/O, no clock.
 
+`TechParams`, `TechIn`, `TechResult` and `TechFunc` (the tech state of NDX against SPX) are declared in `internal/compute/blockapi/api.go`, additive to the interfaces above; the implementation is the pure function `techstate.Classify` in `internal/compute/techstate`, with `techstate.TrialParams` as the one source of the trial constants. Design: `docs/design/market-state-tech.md#Interface`. Tests: `TestTechContract` (`blockapi`) and `techstate_test.go` (`TestTechLaggingBothWindows`, `TestTechLaggingHardOnLongGap`, `TestTechLeadingMirror`, `TestTechInLineInsideBand`, `TestTechBandEdgeIsExact`, `TestTechOneRawDayDoesNotChangeState`, `TestTechTwoRawDaysChangeState`, `TestTechUsesCommonDaysOnly`, `TestTechRankOfEachState`, `TestTechFewerThan64CommonDaysIsShortHistory`, `TestTechStaleAfterMaxAge`, `TestTechBadCloseIsBadInput`, `TestTechNoClosesIsNoInput`, `TestTechRawDaysCountsTheFold`, `TestTechEvidenceTextsRoundHalfEven`).
+
+- The state is decided on exact rationals from the 1-month and 3-month gap of NDX minus SPX; the texts are rounded half-even to 2 places for evidence only. The published state is a two-close fold over the raw states. Band, Hard and Fold are trial. Pure: no I/O, no clock, no float.
+
 ## Holding figures
 
 `HoldingFigures` (methods `Holdings(HoldingsIn) HoldingsResult`, `Risk(RiskIn) RiskResult` and `Movers(MoversIn) MoversResult`), `NewHoldingFiguresFunc` and their types are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which is unchanged. Design: `docs/design/pages-real-data.md#Interface`.
@@ -147,6 +151,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v12: additions only: `HoldingFigures` (later `Movers`), `NewHoldingFiguresFunc` and their types in `internal/compute/blockapi` above.
 - v13: additions only: `OptionTiles`, `NewOptionTilesFunc` and their types in `internal/compute/blockapi` above.
 - v14: additions only: the package `internal/compute/optionfigapi` above (`OptionFigures`, `NewOptionFiguresFunc` and their types).
+- v15: additions only: the tech state types and `TechFunc` in `internal/compute/blockapi` and `internal/compute/techstate` above.
 
 ## Option candidate figures
 

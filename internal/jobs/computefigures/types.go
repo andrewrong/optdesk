@@ -5,6 +5,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
@@ -27,6 +28,13 @@ type ComputeStores struct {
 	// IndexIDs is optional and declared for the rv20 step, which no code uses yet: it maps the index names of
 	// the manifest to instrument ids.
 	IndexIDs IndexIDReader
+}
+
+// TechDeps is what the tech step of the compute_figures job needs. With Classify nil, or PriceBars or IndexIDs
+// of the ComputeStores nil, WithTech returns the job as it is.
+type TechDeps struct {
+	Classify blockapi.TechFunc
+	Params   blockapi.TechParams
 }
 
 // IndexIDReader reads the instruments of type index whose name is in names, ordered by instrument id.

@@ -9,10 +9,16 @@ import (
 	"testing"
 )
 
-// allowedCJK lists the frozen Chinese values a Go file of the guarded trees must hold. Empty today: the
-// frozen values of Left out in docs/design/ui-english.md live in schemas and web types. An entry is added
-// with a comment naming its line in Left out.
-var allowedCJK = []string{}
+// allowedCJK lists the frozen Chinese values a Go file of the guarded trees may hold. They are the four sentences
+// of Decision 9 of docs/design/market-state-tech.md, written in internal/pages/home_market/say.go. The owner's
+// word is 2026-11-13, "3. 中文"; it amends docs/design/ui-english.md decision 1 for these four sentences and
+// for nothing else. A further entry needs its own owner word and its own design entry.
+var allowedCJK = []string{
+	"科技近 1 个月、3 个月都跑赢大盘（试行，不是预测）。",
+	"科技与大盘大体同步（试行，不是预测）。",
+	"科技近 1 个月、3 个月都跑输大盘。科技股的新 put：先等一等，或减量、选更远的行权价（试行，不是预测）。",
+	"科技近 3 个月明显跑输大盘。科技股的新 put：先等一等，或减量、选更远的行权价（试行，不是预测）。",
+}
 
 // guardedTrees are the Go trees the English guard walks, from the repository root.
 var guardedTrees = []string{"internal/pages", "internal/compute/pagefig", "cmd/ot"}
