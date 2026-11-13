@@ -349,7 +349,7 @@ def test_read_reports_the_id_the_gateway_reports() -> None:
     async def run() -> ExecutionRows:
         ib, conn = make([acct()])
         conn.fills = [("e1", acct(), True)]
-        rows = await read(ib, FakeClock())
+        rows: ExecutionRows = await read(ib, FakeClock())
         done(ib)
         return rows
 
