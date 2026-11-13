@@ -5,6 +5,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
+	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -270,5 +271,43 @@ func TestOptionTilesContract(t *testing.T) {
 	}
 	if o != want {
 		t.Fatalf("got %+v", o)
+	}
+}
+
+// fakeGlobal reads every input field and echoes it into a distinct output field.
+type fakeGlobal struct{}
+
+func (fakeGlobal) Global(in blockapi.GlobalIn) blockapi.GlobalResult {
+	s := in.Sectors[0]
+	return blockapi.GlobalResult{
+		DataDay: in.Benchmark.Days[0],
+		Proxies: []blockapi.MoveLine{{Name: in.Proxies[0].Name, D1: fv(in.Proxies[0].Closes[0]), DataDay: in.Day}},
+		Sectors: []blockapi.SectorLine{{Name: s.Name, Symbol: s.Symbol, D1: fv("1"), D5: fv("5"), D20: compute.FigureValue{Gap: "no_data"}}},
+		Rotation: &blockapi.RotationLine{
+			Leaders5: []string{s.Name}, Laggard: s.Symbol, LaggardD5: in.Benchmark.Closes[0], Leader20: in.Benchmark.Name,
+		},
+	}
+}
+
+func TestGlobalContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewGlobalFiguresFunc = func() blockapi.GlobalFigures { return fakeGlobal{} }
+	var _ blockapi.NewGlobalFiguresFunc = pagefig.NewGlobal
+	r := mk().Global(blockapi.GlobalIn{
+		Day:       "2026-11-13",
+		Proxies:   []blockapi.CloseIn{{Name: "Stocks", Closes: []string{"7"}}},
+		Benchmark: blockapi.CloseIn{Name: "SPY", Closes: []string{"9"}, Days: []contracts.Day{"2026-11-12"}},
+		Sectors:   []blockapi.CloseIn{{Name: "Energy", Symbol: "XLE"}},
+	})
+	if r.DataDay != "2026-11-12" || r.Proxies[0].Name != "Stocks" || r.Proxies[0].D1.Value != "7" || r.Proxies[0].DataDay != "2026-11-13" {
+		t.Fatalf("proxies %+v", r)
+	}
+	s := r.Sectors[0]
+	if s.Name != "Energy" || s.Symbol != "XLE" || s.D1.Value != "1" || s.D5.Value != "5" || s.D20.Gap != "no_data" {
+		t.Fatalf("sector %+v", s)
+	}
+	rot := r.Rotation
+	if rot == nil || rot.Leaders5[0] != "Energy" || rot.Laggard != "XLE" || rot.LaggardD5 != "9" || rot.Leader20 != "SPY" {
+		t.Fatalf("rotation %+v", rot)
 	}
 }
