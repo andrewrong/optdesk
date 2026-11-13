@@ -3,6 +3,7 @@ package reading
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/readingkey"
@@ -36,6 +37,15 @@ const (
 		`subject_kind = $3 AND subject = $4 AND day = $5`
 )
 
+// readingKey is the key of a reading; the day is the calendar date, so one date in two zones is one key.
+type readingKey struct {
+	name        string
+	version     int
+	subjectKind string
+	subject     string
+	day         string
+}
+
 var _ readingkey.ReadingUpserter = (*readingStore)(nil)
 
 // UpsertReadings writes each reading by the key (name, version, subject_kind, subject, day) in one transaction: a
@@ -46,12 +56,12 @@ func (s *readingStore) UpsertReadings(ctx context.Context, rows []contracts.Read
 	if len(rows) == 0 {
 		return readingkey.WriteCount{}, nil
 	}
-	seen := make(map[[5]any]bool, len(rows))
+	seen := make(map[readingKey]bool, len(rows))
 	for _, r := range rows {
-		k := [5]any{r.Name, r.Version, r.SubjectKind, r.Subject, r.Day.Time}
+		k := readingKey{r.Name, r.Version, r.SubjectKind, r.Subject, r.Day.Format(time.DateOnly)}
 		if seen[k] {
 			return readingkey.WriteCount{}, permanent(fmt.Errorf("reading: upsert: key (%s, %d, %s, %s, %s) twice in one call",
-				r.Name, r.Version, r.SubjectKind, r.Subject, r.Day.Format("2006-01-02")))
+				r.Name, r.Version, r.SubjectKind, r.Subject, k.day))
 		}
 		seen[k] = true
 	}

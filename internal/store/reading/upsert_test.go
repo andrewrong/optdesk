@@ -5,6 +5,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/readingkey"
@@ -130,3 +133,16 @@ func TestUpsertDatabaseErrorIsRetryableAndCountsNothing(t *testing.T) {
 
 // failTxDB runs the plain fake transaction, which returns 1 for every statement.
 type failTxDB struct{ *fakeDB }
+
+func TestUpsertSameCalendarDayInAnotherZoneIsPermanent(t *testing.T) {
+	t.Parallel()
+	d := &upsertDB{fakeDB: *newFake(), upsertCounts: []int64{1, 1}}
+	a, b := rec(1, "ok"), rec(2, "ok")
+	a.Day = types.SerializableDate{Time: time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)}
+	b.Day = types.SerializableDate{Time: time.Date(2026, 11, 6, 0, 0, 0, 0, time.FixedZone("ET", -5*3600))}
+	_, err := (&readingStore{db: d}).UpsertReadings(context.Background(), []contracts.ReadingRecord{a, b})
+	var te contracts.TypedError
+	if !errors.As(err, &te) || te.Kind() != contracts.Permanent || len(d.calls) != 0 {
+		t.Fatalf("err = %v, %d calls; want Permanent before any statement", err, len(d.calls))
+	}
+}
