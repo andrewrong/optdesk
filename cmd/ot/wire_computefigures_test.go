@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/techstate"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -35,6 +36,35 @@ func TestComputeFiguresJobGetsEase(t *testing.T) {
 	}
 	if got == nil || got != d.computeEase {
 		t.Fatalf("job got ease %v, want the one of newDeps", got)
+	}
+}
+
+func TestTechDepsAreTheTrialOnes(t *testing.T) {
+	t.Parallel()
+	got := techDeps()
+	if got.Classify == nil {
+		t.Fatal("Classify is nil")
+	}
+	if got.Params != techstate.TrialParams() {
+		t.Fatalf("Params %+v, want the trial ones %+v", got.Params, techstate.TrialParams())
+	}
+}
+
+func TestComputeFiguresWithoutIndexReaderIsNotWrapped(t *testing.T) {
+	t.Parallel()
+	d := newDeps()
+	want := namedJob{id: "compute_figures"}
+	d.newComputeFigures = func(
+		_ computefigures.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ compute.Ease, _ clock.Clock,
+	) (contracts.Job, error) {
+		return want, nil
+	}
+	got, err := (jobFactory{d: d}).computeFiguresOf(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != contracts.Job(want) {
+		t.Fatalf("job %#v, want the one the constructor returned", got)
 	}
 }
 

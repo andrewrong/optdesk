@@ -80,15 +80,14 @@ func TestFlexFileLoaderContract(t *testing.T) {
 			return sources.FlexFile{}, fmt.Errorf("login 1: field token_env: %w", sources.ErrFlexConfig)
 		}
 		return sources.FlexFile{
-			Logins:   []sources.FlexLogin{{Name: "main", TokenEnv: "TOK", TradeQueries: []string{"1"}}},
-			Accounts: []sources.FlexAccount{{Alias: "a", AccountEnv: "ACC_A"}},
+			Logins: []sources.FlexLogin{{Name: "main", TokenEnv: "TOK", TradeQueries: []string{"1"}}},
 		}, nil
 	})
 	f, err := load("ok")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f.Logins[0].TokenEnv != "TOK" || f.Logins[0].TradeQueries[0] != "1" || f.Accounts[0].AccountEnv != "ACC_A" {
+	if f.Logins[0].TokenEnv != "TOK" || f.Logins[0].TradeQueries[0] != "1" {
 		t.Fatalf("file: %+v", f)
 	}
 	if _, err := load("missing"); !errors.Is(err, sources.ErrFlexNotConfigured) {
@@ -107,7 +106,6 @@ func TestFlexFileRequiredLoginContract(t *testing.T) {
 				{Name: "main", TokenEnv: "TOK_MAIN", TradeQueries: []string{"1"}, Required: true},
 				{Name: "second", TokenEnv: "TOK_2", TradeQueries: []string{"2"}},
 			},
-			Accounts: []sources.FlexAccount{{Alias: "a", AccountEnv: "ACC_A"}},
 		}, nil
 	})
 	f, err := load("ok")

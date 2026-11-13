@@ -236,7 +236,7 @@ class FakeAccounts:
 
 @asynccontextmanager
 async def serving(gateway: object, *collect: str) -> AsyncIterator[grpc.aio.Channel]:
-    spec = GatewaySpec(name="b", port=2, account="alias_two", collect=collect)
+    spec = GatewaySpec(name="b", port=2, collect=collect)
     with short_socket_dir() as directory:
         target = f"unix:{directory / 's.sock'}"
         server = build_server(cast(Gateway, gateway), FakeClock(), spec=spec)
@@ -267,9 +267,10 @@ def ask(gateway: FakeAccounts, *collect: str) -> pb.ExecutionsResponse:
 
 
 def test_rpc_answers_complete_rows_and_pending() -> None:
-    gateway = FakeAccounts(ExecutionRows(3, (row("e1"),), pending=2))
+    reported = "DU" + "0000001"  # built from pieces: no file carries an id literal
+    gateway = FakeAccounts(ExecutionRows(3, (row("e1"),), pending=2, account=reported))
     response = ask(gateway, "executions")
-    assert response.account == "alias_two" and response.generation == 3
+    assert response.account == reported and response.generation == 3
     assert response.collected and response.pending == 2
     (execution,) = response.executions
     assert (execution.exec_id, execution.perm_id, execution.side) == ("e1", 9, "SLD")
@@ -342,3 +343,20 @@ def test_gateway_executions_over_ib() -> None:
 
     rows = asyncio.run(run())
     assert [e.exec_id for e in rows.executions] == ["e1"]
+
+
+def test_read_reports_the_id_the_gateway_reports() -> None:
+    async def run() -> ExecutionRows:
+        ib, conn = make([acct()])
+        conn.fills = [("e1", acct(), True)]
+        rows: ExecutionRows = await read(ib, FakeClock())
+        done(ib)
+        return rows
+
+    rows = asyncio.run(run())
+    assert rows.account == acct() and len(rows.executions) == 1
+
+
+def test_rpc_not_collected_reports_no_id() -> None:
+    response = ask(FakeAccounts(ExecutionRows(3, account=acct())), "positions")
+    assert not response.collected and response.account == ""

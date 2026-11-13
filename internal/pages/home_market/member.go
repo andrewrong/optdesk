@@ -215,6 +215,10 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		days.add(seriesChart, cpts[0].date)
 	}
 
+	techNote, techGaps, err := techNotes(ctx, c, d, notes)
+	if err != nil {
+		return nil, err
+	}
 	vm := viewModel{
 		Schema:        "market_summary",
 		SchemaVersion: 3,
@@ -232,14 +236,14 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 			IndexTable: table,
 			VolIndices: vols,
 			VolNote:    volNote,
-			Notes:      notes,
+			Notes:      techNote,
 		},
 	}
 	if failed > 0 {
 		vm.RunStatus = "partial"
 	}
 	fillTimes(&vm, days, d, c.Zone)
-	vm.Card.Gaps = collectGaps(vm.Card)
+	vm.Card.Gaps = append(collectGaps(vm.Card), techGaps...)
 	return json.Marshal(vm)
 }
 
@@ -304,8 +308,13 @@ func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow
 // newestReading is the newest stored reading of fig for the index within the last readingDays,
 // nil when there is none.
 func newestReading(ctx context.Context, c Config, fig, name string, d time.Time) (*contracts.ReadingRecord, error) {
+	return newestOf(ctx, c, fig, subjectKind, name, d)
+}
+
+// newestOf is newestReading for a subject kind: the newest day, then the highest revision.
+func newestOf(ctx context.Context, c Config, fig, kind, name string, d time.Time) (*contracts.ReadingRecord, error) {
 	from := contracts.Day(d.AddDate(0, 0, -readingDays).Format(dayLayout))
-	rows, err := c.Readings(ctx, fig, subjectKind, name, from, contracts.Day(d.Format(dayLayout)))
+	rows, err := c.Readings(ctx, fig, kind, name, from, contracts.Day(d.Format(dayLayout)))
 	if err != nil {
 		return nil, fmt.Errorf("home_market: read %s %s: %w", fig, name, err)
 	}

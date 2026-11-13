@@ -666,13 +666,13 @@ class ReferenceServicer(pb.ReferenceServiceServicer):
 
 
 class AccountServicer(pb.AccountServiceServicer):
-    """AccountService: the summary and the positions of the one account of a gateway."""
+    """AccountService: the summary and the positions of the one account of a gateway.
 
-    def __init__(
-        self, shared: _Servicers, alias: str, collect: Collection[str]
-    ) -> None:
+    The account field answers the id the gateway reports, as it is; it is never logged.
+    """
+
+    def __init__(self, shared: _Servicers, collect: Collection[str]) -> None:
         self._shared = shared
-        self._alias = alias
         self._summary = "account_summary" in collect
         self._positions = "positions" in collect
         self._executions = "executions" in collect
@@ -692,7 +692,7 @@ class AccountServicer(pb.AccountServiceServicer):
             lambda r: len(r.values) + len(r.positions),
         )
         return pb.AccountResponse(
-            account=self._alias,
+            account=rows.account,
             generation=rows.generation,
             values_collected=self._summary,
             positions_collected=self._positions,
@@ -710,7 +710,7 @@ class AccountServicer(pb.AccountServiceServicer):
         self, request: pb.ExecutionsRequest, context: Context
     ) -> pb.ExecutionsResponse:
         if not self._executions:
-            return pb.ExecutionsResponse(account=self._alias, collected=False)
+            return pb.ExecutionsResponse(collected=False)
         gateway = cast(ExecutionsGateway, self._shared.gateway)
         rows: ExecutionRows = await self._shared.call(
             "executions",
@@ -719,7 +719,7 @@ class AccountServicer(pb.AccountServiceServicer):
             lambda r: len(r.executions),
         )
         return pb.ExecutionsResponse(
-            account=self._alias,
+            account=rows.account,
             generation=rows.generation,
             collected=True,
             pending=rows.pending,
@@ -772,7 +772,7 @@ def build_server(
 
     Without spec: Session, Contracts, MarketData and Reference. With spec, by its collect
     words: Session always, Contracts, MarketData and Reference with market_data, Account
-    with account_summary or positions (and spec.account as the alias answered).
+    with account_summary or positions (answering the id the gateway reports).
     """
     shared = _Servicers(gateway, clock or SystemClock())
     server = grpc.aio.server()
@@ -786,6 +786,6 @@ def build_server(
         {"account_summary", "positions", "executions"} & set(collect)
     ):
         pb.add_AccountServiceServicer_to_server(
-            AccountServicer(shared, spec.account, collect), server
+            AccountServicer(shared, collect), server
         )
     return server
