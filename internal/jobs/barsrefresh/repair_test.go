@@ -243,3 +243,19 @@ func TestRunWithoutUpserterIsRetryable(t *testing.T) {
 		t.Fatalf("result %+v queries %d resolved %d", res, len(h.queries), b.resolved)
 	}
 }
+
+func TestDailyPullReplacesDifferingVolume(t *testing.T) {
+	t.Parallel()
+	b := mkbar("2026-11-09", "10.0000")
+	vol := "999"
+	b.Volume = &vol
+	h := &fakeHistory{answer: fixed(b)}
+	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-09", "10.0000", 1)}}
+	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if st.rows[0].Volume == nil || *st.rows[0].Volume != "999" {
+		t.Fatalf("volume not replaced: %+v", st.rows[0])
+	}
+}

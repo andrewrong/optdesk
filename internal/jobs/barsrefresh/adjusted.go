@@ -30,7 +30,7 @@ func (r *runState) adjusted(ctx context.Context, id int64, c broker.Contract) co
 	if err != nil {
 		return asTyped(err, contracts.Retryable)
 	}
-	rows, terr := r.rowsOf(bars, true, id, c.Currency)
+	rows, terr := r.rows(bars, true, id, c.Currency)
 	if terr != nil {
 		return terr
 	}

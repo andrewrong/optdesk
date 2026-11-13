@@ -86,6 +86,13 @@ func sameNumber(a, b string) bool {
 	return ok1 && ok2 && x.Cmp(y) == 0
 }
 
+func sameVolume(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return sameNumber(*a, *b)
+}
+
 func (m *memBars) UpsertPriceBars(_ context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -105,7 +112,8 @@ func (m *memBars) UpsertPriceBars(_ context.Context, rows []contracts.PriceBar, 
 			m.rows = append(m.rows, r)
 			n.Written++
 		case sameNumber(m.rows[at].Open, r.Open) && sameNumber(m.rows[at].High, r.High) && sameNumber(m.rows[at].Low, r.Low) &&
-			sameNumber(m.rows[at].Close, r.Close) && m.rows[at].Currency == r.Currency:
+			sameNumber(m.rows[at].Close, r.Close) && sameVolume(m.rows[at].Volume, r.Volume) &&
+			m.rows[at].Currency == r.Currency && m.rows[at].Source == r.Source:
 			n.Unchanged++
 		default:
 			r.AdjustEpoch, r.ReceivedAt = m.rows[at].AdjustEpoch, m.rows[at].ReceivedAt

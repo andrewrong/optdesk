@@ -151,7 +151,7 @@ func (r *runState) collect(
 			return nil, nil, asTyped(err, contracts.Retryable)
 		}
 	}
-	rows, terr := r.rows(bars, id, c.Currency)
+	rows, terr := r.rows(bars, false, id, c.Currency)
 	if terr != nil || !again {
 		return bars, rows, terr
 	}
@@ -212,13 +212,9 @@ func (r *runState) conID(ctx context.Context, key string, t target) (int64, cont
 	return got.Contract.ConID, nil
 }
 
-// rows maps the pulled bars to rows of basis trades. A day that is not a date, or a close that is not
-// a positive decimal, is Permanent.
-func (r *runState) rows(bars []broker.Bar, id int64, currency string) ([]contracts.PriceBar, contracts.TypedError) {
-	return r.rowsOf(bars, false, id, currency)
-}
-
-func (r *runState) rowsOf(bars []broker.Bar, adjusted bool, id int64, currency string) ([]contracts.PriceBar, contracts.TypedError) {
+// rows maps the pulled bars to rows of basis trades, or of adjusted_last when adjusted. A day that is
+// not a date, or a close that is not a positive decimal, is Permanent.
+func (r *runState) rows(bars []broker.Bar, adjusted bool, id int64, currency string) ([]contracts.PriceBar, contracts.TypedError) {
 	now := r.j.clk.Now().UTC()
 	out := make([]contracts.PriceBar, 0, len(bars))
 	for _, b := range bars {

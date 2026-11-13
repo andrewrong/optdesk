@@ -79,7 +79,7 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 		if len(older) == 0 {
 			return false, nil
 		}
-		rows, terr := r.rows(older, id, c.Currency)
+		rows, terr := r.rows(older, false, id, c.Currency)
 		if terr != nil {
 			return false, terr
 		}

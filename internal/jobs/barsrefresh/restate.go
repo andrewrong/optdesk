@@ -104,7 +104,7 @@ func (r *runState) olderThanWindow(
 		if len(older) == 0 {
 			break
 		}
-		rows, terr := r.rows(older, id, c.Currency)
+		rows, terr := r.rows(older, false, id, c.Currency)
 		if terr != nil {
 			return nil, terr
 		}
