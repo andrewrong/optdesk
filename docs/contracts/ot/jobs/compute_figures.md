@@ -17,6 +17,7 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 ## Left out
 
 - Never left out. Without `OT_PG_DSN_BAR` only the HV step is off (log line `HV step left out`).
+- The tech step (`market.tech_state|market|NDX_SPX`) is wired with `computefigures.WithTech` when both readers exist, the bar reader (`OT_PG_DSN_BAR`) and the index-id reader (`OT_PG_DSN_PAGES`); with either missing the step is left out and the job is as before.
 
 ## Notes
 
