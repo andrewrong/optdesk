@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"github.com/jonboulle/clockwork"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -18,17 +18,20 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-const (
-	gwTwoRequired = "[[gateway]]\nname = \"g1\"\naccount = \"a\"\nrequired = true\n[[gateway]]\nname = \"g2\"\naccount = \"b\"\nrequired = true\n"
-	gwMainB       = "[[gateway]]\nname = \"g1\"\naccount = \"a\"\nrequired = false\n[[gateway]]\nname = \"g2\"\naccount = \"b\"\nrequired = true\n"
-	gwNoRequired  = "[[gateway]]\nname = \"g1\"\naccount = \"a\"\nrequired = false\n"
-)
+// bookMainB is an accounts.toml of the aliases a and b whose main is b.
+var bookMainB = bookText("b", "a", "b")
 
-type fakeAcctReader struct{ n *atomic.Int32 }
+// fakeAcctReader answers with the id of the account behind its socket and counts its closes.
+type fakeAcctReader struct {
+	n  *atomic.Int32
+	id string
+}
 
-func (fakeAcctReader) Account(context.Context) (broker.Account, error) { return broker.Account{}, nil }
-func (fakeAcctReader) Executions(context.Context) (broker.Executions, error) {
-	return broker.Executions{}, nil
+func (f fakeAcctReader) Account(context.Context) (broker.Account, error) {
+	return broker.Account{Alias: f.id}, nil
+}
+func (f fakeAcctReader) Executions(context.Context) (broker.Executions, error) {
+	return broker.Executions{Alias: f.id}, nil
 }
 func (f fakeAcctReader) Close() error { f.n.Add(1); return nil }
 
@@ -57,28 +60,27 @@ type acctRig struct {
 	closed, opened atomic.Int32
 }
 
-func newAcctRig(t *testing.T, gateways, sockets string) *acctRig {
+// newAcctRig is run-once over fakes; book is the body of accounts.toml ("" writes none), sockets the plain list of
+// OT_ACCOUNT_SOCKETS ("" sets none). The socket /s/<x>.sock reports the id of the alias x.
+func newAcctRig(t *testing.T, book, sockets string) *acctRig {
 	t.Helper()
 	env := fullEnv + "OT_PG_DSN_ACCOUNT=acct-dsn\n"
-	if gateways != "" {
-		p := filepath.Join(t.TempDir(), "gateways.toml")
-		if err := os.WriteFile(p, []byte(gateways), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		env += "OT_IBKR_GATEWAYS=" + p + "\n"
-	}
 	if sockets != "" {
 		env += "OT_ACCOUNT_SOCKETS=" + sockets + "\n"
 	}
 	r := &acctRig{}
 	a, _ := testApp(t, env)
+	if book != "" {
+		writeBookText(t, a, book)
+	}
 	var opened, closed atomic.Int32
 	var day contracts.Day
 	runOnceFakes(a, &opened, &closed, &day)
 	d := &a.deps
 	d.dialAccount = func(_ context.Context, sock string, _ broker.Options) (broker.AccountReader, error) {
 		r.dialed = append(r.dialed, sock)
-		return fakeAcctReader{n: &r.closed}, nil
+		alias := strings.TrimSuffix(strings.TrimPrefix(sock, "/s/"), ".sock")
+		return fakeAcctReader{n: &r.closed, id: aliasID(alias)}, nil
 	}
 	d.openAccount = func(context.Context, string) (store.AccountStore, error) {
 		r.opened.Add(1)
@@ -95,7 +97,7 @@ func newAcctRig(t *testing.T, gateways, sockets string) *acctRig {
 
 func TestAccountCaptureDryRun(t *testing.T) {
 	t.Parallel()
-	r := newAcctRig(t, gwMainB, "a=/s/a.sock,b=/s/b.sock")
+	r := newAcctRig(t, bookMainB, "/s/a.sock,/s/b.sock")
 	var ids []string
 	r.a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
 	r.a.deps.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
@@ -136,35 +138,26 @@ func assertRefused(t *testing.T, r *acctRig, key string) {
 	}
 }
 
-func TestAccountRefusesNoMain(t *testing.T) {
+func TestAccountRefusesMissingOrBadBook(t *testing.T) {
 	t.Parallel()
-	assertRefused(t, newAcctRig(t, gwNoRequired, "a=/s/a.sock"), "OT_IBKR_GATEWAYS")
-	assertRefused(t, newAcctRig(t, "", "a=/s/a.sock"), "OT_IBKR_GATEWAYS")
+	missing := newAcctRig(t, "", "/s/a.sock")
+	removeBook(t, missing.a)
+	assertRefused(t, missing, accountsFileName)
+	assertRefused(t, newAcctRig(t, "a = \"x\"\n", "/s/a.sock"), accountsFileName) // no main, bad id
 }
 
-func TestAccountRefusesTwoMains(t *testing.T) {
+func TestAccountRefusesLabelForm(t *testing.T) {
 	t.Parallel()
-	assertRefused(t, newAcctRig(t, gwTwoRequired, "a=/s/a.sock,b=/s/b.sock"), "OT_IBKR_GATEWAYS")
+	assertRefused(t, newAcctRig(t, bookMainB, "a=/s/a.sock,b=/s/b.sock"), "OT_ACCOUNT_SOCKETS")
 }
 
-func TestAccountRefusesMainNotInSockets(t *testing.T) {
+func TestAccountBookReadThroughDeps(t *testing.T) {
 	t.Parallel()
-	assertRefused(t, newAcctRig(t, gwMainB, "a=/s/a.sock"), "OT_ACCOUNT_SOCKETS")
-}
-
-func TestAccountGatewaysKeyReadThroughDeps(t *testing.T) {
-	t.Parallel()
-	r := newAcctRig(t, "", "")
-	p := filepath.Join(t.TempDir(), "gw.toml")
-	if err := os.WriteFile(p, []byte(gwMainB), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	r := newAcctRig(t, bookMainB, "")
 	var reads atomic.Int32
 	r.a.deps.readEnv = func(string) (map[string]string, error) {
 		reads.Add(1)
-		return map[string]string{
-			"OT_ACCOUNT_SOCKETS": "a=/s/a.sock,b=/s/b.sock", "OT_IBKR_GATEWAYS": p, "OT_PG_DSN_ACCOUNT": "x",
-		}, nil
+		return map[string]string{"OT_ACCOUNT_SOCKETS": "/s/a.sock,/s/b.sock", "OT_PG_DSN_ACCOUNT": "x"}, nil
 	}
 	var extra closerSet
 	j, err := r.a.accountCapture(context.Background(), jobFactory{d: r.a.deps}, &extra)
@@ -175,9 +168,99 @@ func TestAccountGatewaysKeyReadThroughDeps(t *testing.T) {
 
 func TestAccountRefusesUnsetSockets(t *testing.T) {
 	t.Parallel()
-	r := newAcctRig(t, gwMainB, "") // gateways file present, OT_ACCOUNT_SOCKETS unset
+	r := newAcctRig(t, bookMainB, "") // book present, OT_ACCOUNT_SOCKETS unset
 	err := runWired(r.a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), "OT_ACCOUNT_SOCKETS") {
 		t.Fatalf("err %v, want a refusal naming OT_ACCOUNT_SOCKETS", err)
+	}
+}
+
+// The resolver tests use fake readers: socket 0 reports the id of a, socket 1 the id of b.
+
+func TestResolverMatchGivesReaderOfEachAlias(t *testing.T) {
+	t.Parallel()
+	rs := resolverOf(t, bookMainB, idReader{id: aliasID("a")}, idReader{id: aliasID("b")})
+	if len(rs) != 2 {
+		t.Fatalf("readers %d, want one per alias", len(rs))
+	}
+	// Asked in the reverse order, so that "b" probes socket 0 first, names it a and moves on.
+	for _, al := range []string{"b", "a", "b"} {
+		acc, err := rs[al].Account(context.Background())
+		if err != nil || acc.Alias != al {
+			t.Fatalf("%s: answer alias %q err %v", al, acc.Alias, err)
+		}
+		ex, err := rs[al].Executions(context.Background())
+		if err != nil || ex.Alias != al {
+			t.Fatalf("%s: executions alias %q err %v", al, ex.Alias, err)
+		}
+	}
+}
+
+// countingReader counts the calls of Account.
+type countingReader struct {
+	idReader
+	n *atomic.Int32
+}
+
+func (c countingReader) Account(ctx context.Context) (broker.Account, error) {
+	c.n.Add(1)
+	return c.idReader.Account(ctx)
+}
+
+func TestResolverCachesSocketPerAlias(t *testing.T) {
+	t.Parallel()
+	var n0, n1 atomic.Int32
+	rs := resolverOf(t, bookMainB,
+		countingReader{idReader{id: aliasID("a")}, &n0}, countingReader{idReader{id: aliasID("b")}, &n1})
+	for i := 0; i < 3; i++ {
+		if _, err := rs["b"].Account(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The first call probes socket 0 (names it a) and socket 1; the next two ask socket 1 alone.
+	if n0.Load() != 1 || n1.Load() != 3 {
+		t.Fatalf("socket 0 asked %d times, socket 1 %d times", n0.Load(), n1.Load())
+	}
+}
+
+func TestResolverUnknownIDIsPermanentUnknownAccount(t *testing.T) {
+	t.Parallel()
+	stranger := inventedID(9)
+	rs := resolverOf(t, bookMainB, idReader{id: aliasID("a")}, idReader{id: stranger})
+	if _, err := rs["a"].Account(context.Background()); err != nil {
+		t.Fatalf("a: %v", err)
+	}
+	_, err := rs["b"].Account(context.Background())
+	var te contracts.TypedError
+	if !errors.Is(err, accounts.ErrUnknownAccount) || !errors.As(err, &te) {
+		t.Fatalf("err %v, want the typed unknown account", err)
+	}
+	// The named state is the kind: what a run row stores as its error code and a log record names. It is not
+	// retryable, so the runner never repeats the read.
+	if string(te.Kind()) != "unknown_account" || te.Kind() == contracts.Retryable {
+		t.Fatalf("kind %q, want the named state unknown_account", te.Kind())
+	}
+	if strings.Contains(err.Error(), stranger) || !strings.Contains(err.Error(), "socket 1") {
+		t.Fatalf("text %q must name the socket index and no id", err)
+	}
+}
+
+func TestResolverSocketDownIsFailedReadOfItsAlias(t *testing.T) {
+	t.Parallel()
+	down := errors.New("socket down")
+	rs := resolverOf(t, bookMainB, idReader{id: aliasID("a")}, downReader{err: down})
+	if acc, err := rs["a"].Account(context.Background()); err != nil || acc.Alias != "a" {
+		t.Fatalf("a: %+v %v", acc, err)
+	}
+	if _, err := rs["b"].Account(context.Background()); !errors.Is(err, down) {
+		t.Fatalf("b: err %v, want the dial error", err)
+	}
+}
+
+func TestResolverAliasWithoutSocketIsRefused(t *testing.T) {
+	t.Parallel()
+	rs := resolverOf(t, bookMainB, idReader{id: aliasID("a")})
+	if _, err := rs["b"].Account(context.Background()); err == nil {
+		t.Fatal("an alias with no socket was read")
 	}
 }

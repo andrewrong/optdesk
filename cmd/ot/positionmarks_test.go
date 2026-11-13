@@ -39,7 +39,7 @@ type markRig struct {
 
 func newMarkRig(t *testing.T, withDSN bool) *markRig {
 	t.Helper()
-	r := &markRig{acctRig: newAcctRig(t, gwMainB, "c=/s/c.sock,a=/s/a.sock,b=/s/b.sock")}
+	r := &markRig{acctRig: newAcctRig(t, bookText("b", "a", "b", "c"), "/s/c.sock,/s/a.sock,/s/b.sock")}
 	d := &r.a.deps
 	read := d.readEnv
 	if read == nil {

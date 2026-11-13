@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -16,19 +15,6 @@ import (
 // newPositionMarksFunc is the constructor of the position_marks job (positionmarks.NewPositionMarksFunc), named here
 // so that wire.go need not import the job package.
 type newPositionMarksFunc = positionmarks.NewPositionMarksFunc
-
-// markAliases returns the aliases position_marks marks: the labels of OT_ACCOUNT_SOCKETS, the main one first and
-// the others sorted, the same aliases account_capture captures.
-func markAliases(sockets map[string]string, main string) []string {
-	rest := make([]string, 0, len(sockets))
-	for l := range sockets {
-		if l != main {
-			rest = append(rest, l)
-		}
-	}
-	sort.Strings(rest)
-	return append([]string{main}, rest...)
-}
 
 // positionMarks builds position_marks (Decision 6 of docs/design/position-marks.md): the market-data gateway
 // brk, the aliases of the account job, the account store as reader and the mark store opened with
@@ -77,20 +63,13 @@ func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err err
 	if err != nil {
 		return nil, "", "", err
 	}
-	sockets, err := parseAccountSockets(env[envAccountSockets])
+	book, err := a.loadBook()
 	if err != nil {
 		return nil, "", "", err
-	}
-	main, err := accountMain(env[envIbkrGateways])
-	if err != nil {
-		return nil, "", "", err
-	}
-	if _, ok := sockets[main]; !ok {
-		return nil, "", "", fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
 	}
 	acctDSN, markDSN = env[store.DSNEnvAccount], env[mark.DSNEnvPositionMark]
 	if acctDSN == "" {
 		return nil, "", "", fmt.Errorf("%s is not set", store.DSNEnvAccount)
 	}
-	return markAliases(sockets, main), acctDSN, markDSN, nil
+	return bookAliasList(book), acctDSN, markDSN, nil
 }

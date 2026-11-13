@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -26,37 +25,18 @@ type noticesReaders struct {
 	earn    store.EarningsDateReader
 }
 
-// noticeAliases reads the main alias and the aliases to show as the account job reads them: the main label
-// of the gateways file (accountMain) and the labels of OT_ACCOUNT_SOCKETS in sorted order. No account id leaves
+// noticeAliases reads the main alias and the aliases to show as the account job reads them: the main alias
+// of accounts.toml and the aliases of the book, main first. No account id leaves
 // this function. The demo profile has its own two aliases.
 func noticeAliases(a *app) (string, []string, error) {
 	if a.profile.Name == "demo" {
 		return demoNoticesMain, []string{demoNoticesMain, demoNoticesSecond}, nil
 	}
-	env, err := a.envFile()
+	book, err := a.loadBook()
 	if err != nil {
 		return "", nil, err
 	}
-	if env[envAccountSockets] == "" {
-		return "", nil, fmt.Errorf("%s is not set", envAccountSockets)
-	}
-	sockets, err := parseAccountSockets(env[envAccountSockets])
-	if err != nil {
-		return "", nil, err
-	}
-	main, err := accountMain(env[envIbkrGateways])
-	if err != nil {
-		return "", nil, err
-	}
-	if _, ok := sockets[main]; !ok {
-		return "", nil, fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
-	}
-	labels := make([]string, 0, len(sockets))
-	for l := range sockets {
-		labels = append(labels, l)
-	}
-	slices.Sort(labels)
-	return main, labels, nil
+	return book.Main(), bookAliasList(book), nil
 }
 
 func init() {
