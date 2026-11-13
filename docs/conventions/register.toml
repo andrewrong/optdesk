@@ -608,47 +608,53 @@ version = 1
 title_zh = "家庭页：谁带动了今天"
 pages = ["household_page.movers"]
 formula = """
-Two tables, 股票 and 期权, each line under its scope (the household or another group) with its \
-account's tag, and one 其他 line in the household scope. A line's 带动 is q_prev x multiplier x \
-(price today - price at the previous snapshot) of a position held in both snapshots, from the \
-broker's portfolio marks of the account snapshots, converted to USD with the ledger rate of today's \
-snapshot, rounded half-even to 2 places; an option is shown by its contract (AAA 11-20 P250, a \
-vertical AAA 11-20 P250/240 价差 ×1). 其他 is the household net liquidation change less the sum of \
-the listed lines: cash, rates, positions opened or closed between the snapshots, deposits. The \
-total is the household scope's lines plus 其他, signed; the lines of another scope are in no total. \
-The previous and current marks are shown to 4 places, half-even. The meaning sentence states the \
-basis: from the previous snapshot day to the data day, brokers' valuation, not close to close."""
+Two days, not the page day: D1 is the newest day on or before the page day that has a mark capture \
+for the account, D0 the newest day before D1 that has one. A line is one contract held at D0 with \
+q_prev not 0 and still held at D1: amount = q_prev x multiplier x (Price(D1) - Price(D0)), q_prev \
+signed, the prices the broker's position marks of the two days (the same basis on both, never \
+none), in the position's currency, converted to USD with the USDJPY rate of D1 and rounded \
+half-even to 2 places. Two tables, stocks and options, each sorted by the absolute amount, at most \
+60 lines. Total = NetLiquidation(D1) - NetLiquidation(D0), each of the capture of its mark day, a \
+JPY value converted to USD at the D1 rate of the lines (divide, half-even to 2 places); it is never \
+the sum of the lines. Other = total - the sum of the lines with an amount, so every effect that is \
+not a line (quantity change, open, close, cash, interest, fees, deposits, the rate change on yen \
+balances) lands in it. Total and Other are two rows under the account's scope. The block names \
+both days."""
 inputs = """
-The household.day_contributions reading, version 2, and its rows (newest ok on or before the data \
-day); the allow-list with groups and the group file for scope and tag; the JPY per USD rate."""
-period_date = "From the snapshot of the previous day with an ok household.net_liquidation (the reading's since) to the snapshot of the data day; the page compares the data day with today's local date and names it when they differ."
+account.position of D0 and D1 (the rows of the capture of each day's marks); account.position_mark \
+of D0 and D1 (Price and Basis); the NetLiquidation of the same two captures from the ledger; the \
+USDJPY rate on or before D1 (read only when a row or a NetLiquidation value is in JPY)."""
+period_date = "From D0 to D1: the previous and the latest mark day of the account, both named in the block; D1 is the newest on or before the page day, and the page names it when it differs from the page day."
 currency = """
-USD: every line converted by the ledger rate of today's snapshot, rounded half-even to the cent, \
-shown signed; ≈USD only when a JPY row exists. Marks are in the position's own currency."""
+USD: every line and the total and Other in USD, half-even to the cent, signed; a JPY value or line \
+is converted at the D1 USDJPY rate. The two prices of a line are shown to 4 places in the \
+position's own currency."""
 excludes = """
-Cash, interest, rate changes, positions opened or closed between the two snapshots, deposits (they \
-are in 其他); the lines of an account outside the allow-list; the daughter's lines in the total."""
+Positions opened after D0 or closed before D1, cash, interest, fees, deposits and withdrawals, the \
+rate change on yen balances (all in Other, never a line); news reasons; household and daughter \
+scopes; the split of an option's move; intraday moves; adjusted prices; sec types other than stock \
+and option."""
 gap_text = """
-No reading: a missing_input gap '没有读到「谁带动了今天」的数据'; nothing to show: a no_data gap \
-'「谁带动了今天」没有可显示的内容'. A mark missing: the price cell is a missing_quote gap '缺上个交易日价格' \
-or '缺现价', never a 0; a line without a rate: no amount and the note '缺汇率，未折算为美元'. A scope with an \
-account without intraday prices: a scope gap '无盘中价格（Flex）'. Never a zero."""
+No D1 or no D0, or no scope for the block: a no_data gap 'The change today needs prices of two \
+trading days: no data yet'. D1 more than 5 calendar days before the page day, or D0 more than 5 \
+before D1: a stale_input gap naming the day. A price missing on D0 or D1, or of another basis: the \
+price cell is a missing_quote gap and the line has no amount (its effect is in Other). An option \
+without a multiplier: no amount and a missing_input gap. A JPY line without a rate: no amount and \
+a missing_input gap naming USDJPY. NetLiquidation missing on D0 or D1: the block gap missing_input \
+and the total and Other rows are absent; a JPY value without a rate: missing_input naming USDJPY; \
+a currency other than USD and JPY: unsupported_currency. The lines stay in each case. Never a \
+zero."""
 implemented_by = [
-  "option_trader.viewmodels.household_page_builder._movers_block",
-  "option_trader.viewmodels.household_page_builder._mover_row",
-  "option_trader.viewmodels.household_page_builder._mover_name",
-  "option_trader.viewmodels.household_page_builder._price_cell",
-  "option_trader.viewmodels.household_page_builder._totals",
-  "option_trader.reports.household_page_publish._movers",
-  "option_trader.reports.household_page_publish._movers_rest",
-  "option_trader.reports.household_page_publish._movers_since",
-  "option_trader.reports.household_page_publish._contributions",
-  "option_trader.readings.contribution.day_contributions",
+  "internal/compute/pagefig.movers",
+  "internal/pages/household_page.moversBlock",
 ]
 source_hash = "pending-recompute"
 agreed_on = "2026-11-03"
 agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+history = [
+  "2026-11-03 v1: registered, part B2; no figure changed.",
+  "2026-11-13 v1: the rule is two mark days, q_prev x multiplier x price change, Other = total - lines, JPY NetLiquidation at the D1 rate (household-movers Decisions 2, 4, 8, 15); long_term removed.",
+]
 
 [[figure]]
 id = "household.stress"
@@ -848,36 +854,6 @@ implemented_by = [
   "option_trader.reports.household_page_publish._allocation",
   "option_trader.reports.household_page_publish._allocation_net",
   "option_trader.readings.allocation.household_allocation",
-]
-source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered, part B2; no figure changed."]
-
-[[figure]]
-id = "household.long_term"
-version = 1
-title_zh = "家庭页：长期账户"
-pages = ["household_page.long_term"]
-formula = """
-The block has the shape of 总览 (rows, a total per currency, a display-only ≈USD) but no figure \
-feeds it yet: the page builder's input for it is not read (None), so the block is always empty \
-with its gap. A row that a later part feeds will be a named amount in its own currency, summed per \
-currency without conversion, as _money_block does for 总览."""
-inputs = """
-Nothing is read for this block today; the publisher sets its input to None."""
-period_date = "None: no figure is shown, so there is no date."
-currency = """
-Not applicable while empty; once fed, each row in its own currency (USD to the cent, JPY to the \
-yen, half-even) with a display-only ≈USD."""
-excludes = """
-Everything: no reading of long-term accounts exists in the page's inputs."""
-gap_text = """
-Always a missing_input gap '没有读到「长期账户」的数据', no row and no total. Never a zero."""
-implemented_by = [
-  "option_trader.viewmodels.household_page_builder._money_block",
-  "option_trader.viewmodels.household_page_builder._empty_gap",
-  "option_trader.reports.household_page_publish._inputs",
 ]
 source_hash = "pending-recompute"
 agreed_on = "2026-11-03"
