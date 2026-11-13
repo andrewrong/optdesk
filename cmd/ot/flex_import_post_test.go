@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -22,24 +25,63 @@ func fiGzip(t *testing.T, b []byte) []byte {
 	return buf.Bytes()
 }
 
-func TestFIForgedTokenIs403(t *testing.T) {
+func TestFINoOrWrongCookieIs403(t *testing.T) {
 	t.Parallel()
 	s := newFISite(t, fiOpts{})
-	tok := s.form.Token(postNow)
-	forged := []fiPart{{field: "expires", body: []byte(tok.Expires)}, {field: "mac", body: []byte(strings.Repeat("0", len(tok.MAC)))},
-		fiFile("a.xml", fiXML(fiAccount, "1"))}
-	rec := serve(s.h, fiRequest(t, forged))
-	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "upload refused: the form is not valid or has expired, load the page again") {
+	for name, mutate := range map[string]func(*http.Request){
+		"no cookie":    func(r *http.Request) { r.Header.Del("Cookie") },
+		"wrong cookie": func(r *http.Request) { r.Header.Del("Cookie"); withOwnerCookie(r, postKey+"x") },
+	} {
+		r := fiRequest(t, []fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))})
+		mutate(r)
+		rec := serve(s.h, r)
+		if rec.Code != http.StatusForbidden || len(s.st.dsns) != 0 {
+			t.Fatalf("%s: %d %.200q, dsns %v", name, rec.Code, rec.Body, s.st.dsns)
+		}
+	}
+	fiNothingKept(t, s)
+}
+
+// brokenAfterFirstPart is a multipart body whose stream fails after its first part.
+type brokenAfterFirstPart struct{ head *bytes.Reader }
+
+func (b *brokenAfterFirstPart) Read(p []byte) (int, error) {
+	if n, _ := b.head.Read(p); n > 0 {
+		return n, nil
+	}
+	return 0, errors.New("stream broke")
+}
+
+// TestFINoCookieReadsNoPart posts without the cookie a body that breaks after its first part: the answer is 403,
+// not the broken-upload path, so no part was read.
+func TestFINoCookieReadsNoPart(t *testing.T) {
+	t.Parallel()
+	s := newFISite(t, fiOpts{})
+	var head bytes.Buffer
+	mw := multipart.NewWriter(&head)
+	if _, err := mw.CreateFormFile("files", "a.xml"); err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/"+flexImportPostRoute, &brokenAfterFirstPart{head: bytes.NewReader(head.Bytes())})
+	r.Header.Set("Content-Type", mw.FormDataContentType())
+	r.RemoteAddr, r.Host, r.ContentLength = postPeer, postHost, 1<<20
+	rec := serve(s.h, r)
+	if rec.Code != http.StatusForbidden {
 		t.Fatalf("%d %.200q", rec.Code, rec.Body)
 	}
-	if len(s.st.dsns) != 0 {
-		t.Fatalf("the store was reached: %v", s.st.dsns)
+	fiNothingKept(t, s)
+}
+
+func TestFITailnetPeerAndHostImports(t *testing.T) {
+	t.Parallel()
+	s := newFISite(t, fiOpts{})
+	r := fiRequest(t, []fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))})
+	if r.RemoteAddr != postPeer || r.Host != postHost {
+		t.Fatalf("%q %q", r.RemoteAddr, r.Host)
 	}
-	// a request from another host is refused the same way
-	r := fiRequest(t, append(s.tokenParts(), fiFile("a.xml", fiXML(fiAccount, "1"))))
-	r.Host = "evil.example"
-	if rec := serve(s.h, r); rec.Code != http.StatusForbidden || len(s.st.dsns) != 0 {
-		t.Fatalf("%d, dsns %v", rec.Code, s.st.dsns)
+	vm := decodeFI(t, serve(s.h, r))
+	if len(vm.Files) != 1 || vm.Files[0].Status != "stored" {
+		t.Fatalf("%+v", vm.Files)
 	}
 }
 

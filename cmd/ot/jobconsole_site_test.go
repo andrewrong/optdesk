@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -43,21 +44,21 @@ func decodeJobConsole(t *testing.T, rec *httptest.ResponseRecorder) jobConsoleVM
 
 func TestRouteOffGivesNullForm(t *testing.T) {
 	t.Parallel()
-	h, _, _, _ := jobConsoleSite(t, false, postNow)
+	h, _, _ := jobConsoleSite(t, false, postNow)
 	vm := decodeJobConsole(t, settingsGet(t, h, http.MethodGet, "/job-console"))
 	if vm.Form != nil {
 		t.Fatalf("form %+v", vm.Form)
 	}
-	h, _, _, _ = jobConsoleSite(t, true, postNow)
+	h, _, _ = jobConsoleSite(t, true, postNow)
 	vm = decodeJobConsole(t, settingsGet(t, h, http.MethodGet, "/job-console"))
-	if vm.Form == nil || vm.Form.PostPath != "/owner-job-console" || vm.Form.MAC == "" {
+	if vm.Form == nil || vm.Form.PostPath != "/owner-job-console" || vm.Form.Expires != "0" || vm.Form.MAC != strings.Repeat("0", 64) {
 		t.Fatalf("form %+v", vm.Form)
 	}
 }
 
 func TestSiteBuildsPageFromTable(t *testing.T) {
 	t.Parallel()
-	h, _, _, _ := jobConsoleSite(t, true, postNow)
+	h, _, _ := jobConsoleSite(t, true, postNow)
 	vm := decodeJobConsole(t, settingsGet(t, h, http.MethodGet, "/job-console"))
 	if len(vm.Jobs) != len(jobTable) {
 		t.Fatalf("%d jobs, table has %d", len(vm.Jobs), len(jobTable))
@@ -88,7 +89,7 @@ func TestSiteBuildsPageFromTable(t *testing.T) {
 
 func TestReaderErrorGivesUnavailableGap(t *testing.T) {
 	t.Parallel()
-	h, fp, _, _ := jobConsoleSite(t, false, postNow)
+	h, fp, _ := jobConsoleSite(t, false, postNow)
 	fp.getErr = errors.New("permission denied for table job_request")
 	vm := decodeJobConsole(t, settingsGet(t, h, http.MethodGet, "/job-console"))
 	if len(vm.Gaps) != 1 || vm.Gaps[0].Reason != "job_requests_unavailable" || len(vm.Jobs) != len(jobTable) {

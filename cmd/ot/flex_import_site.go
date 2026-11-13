@@ -100,7 +100,7 @@ func buildFlexImportPage(ctx context.Context, a *app, clk clock.Clock, rd siteRe
 	if gap != nil {
 		return flexpage.Build(flexpage.Input{Gaps: []flexpage.Gap{*gap}})
 	}
-	tok := rd.edit.form.Token(clk.Now().UTC())
+	tok := ownerDummyToken()
 	in := flexpage.Input{
 		Form:  &flexpage.Form{Expires: tok.Expires, MAC: tok.MAC, MaxFiles: flexImportMaxFiles, MaxFileText: flexImportFileText},
 		Files: x.files, Gaps: x.gaps,

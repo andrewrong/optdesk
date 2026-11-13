@@ -94,7 +94,7 @@ func buildUnderlyingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag 
 		}
 	}
 	if rd.edit != nil {
-		tok := rd.edit.form.Token(now)
+		tok := ownerDummyToken()
 		in.Form = &underlyings.Form{Expires: tok.Expires, MAC: tok.MAC}
 	}
 	return underlyings.Build(in)

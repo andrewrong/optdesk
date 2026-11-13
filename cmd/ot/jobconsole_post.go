@@ -36,8 +36,7 @@ func postOwnerJobConsole(a *app, clk clock.Clock, rd siteReaders, w http.Respons
 		return
 	}
 	now := clk.Now().UTC()
-	if !guardOwnerPost(w, r, rd.edit, now) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	if !guardOwnerPost(w, r, rd.edit) {
 		return
 	}
 	var run jobRun
