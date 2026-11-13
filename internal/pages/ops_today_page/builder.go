@@ -125,7 +125,7 @@ func runRow(r runview.Row, reasons []runview.Reason) row {
 		if re.Dataset != r.Dataset || re.Subject != r.Key {
 			continue
 		}
-		if code == "" {
+		if code == "" && re.Code != "field_missing" && re.Code != "fields_complete" {
 			code = re.Code
 		}
 		d := re.Detail
