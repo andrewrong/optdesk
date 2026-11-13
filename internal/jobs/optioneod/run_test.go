@@ -66,6 +66,10 @@ type fakeBroker struct {
 	chainErr    error
 	resolveErr  error
 	optionCalls int
+	full        bool                  // option quotes carry volume and the greeks
+	onChains    func()                // called by ListChains
+	noOI        bool                  // option quotes carry no open_interest
+	missing     []broker.MissingField // Missing of every option quote
 }
 
 func num(v float64) *float64 { return &v }
@@ -90,6 +94,9 @@ func conID(c broker.Contract) int64 {
 }
 
 func (b *fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
+	if b.onChains != nil {
+		b.onChains()
+	}
 	return b.chains, b.chainErr
 }
 
@@ -119,6 +126,14 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 	for i, c := range cs {
 		out[i] = broker.Quote{Contract: c, Status: b.status[c.ConID], Generation: 7, MarketDataType: 1,
 			ReceivedAt: time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC), Bid: num(1), Ask: num(2), Last: num(1.5), UndPrice: num(100)}
+		if b.full {
+			out[i].Volume, out[i].OpenInterest, out[i].ImpliedVol = num(3), num(4), num(0.2)
+			out[i].Delta, out[i].Gamma, out[i].Theta, out[i].Vega = num(0.5), num(0.1), num(-0.1), num(0.2)
+		}
+		if b.noOI {
+			out[i].OpenInterest = nil
+		}
+		out[i].Missing = b.missing
 		if b.noUndPrice {
 			out[i].UndPrice = nil
 		}
