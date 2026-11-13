@@ -289,3 +289,16 @@ type cEarn struct {
 }
 
 func (c cEarn) Close() error { return c.closeCounter.Close() }
+
+func TestNoticeAliasesLeaveStatementAlias(t *testing.T) {
+	t.Parallel()
+	f := newNoticesFixture(t, "")
+	writeBookText(t, f.a, bookText("m", "b", "m", "c")+"statement = [\"c\"]\n")
+	main, aliases, err := noticeAliases(f.a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if main != "m" || !reflect.DeepEqual(aliases, []string{"m", "b"}) {
+		t.Fatalf("main %q aliases %v", main, aliases)
+	}
+}

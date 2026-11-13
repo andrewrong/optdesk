@@ -36,7 +36,7 @@ func noticeAliases(a *app) (string, []string, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	return book.Main(), bookAliasList(book), nil
+	return book.Main(), withoutStatement(book, bookAliasList(book)), nil
 }
 
 func init() {

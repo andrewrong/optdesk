@@ -117,7 +117,7 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 // candidateAliases sets f.candAliases from the book of accounts.toml (f.book, set by the wiring); a factory
 // without a book leaves the list nil: the job then reads no account.
 func (a *app) candidateAliases(f *jobFactory) {
-	f.candAliases = f.bookAliases()
+	f.candAliases = withoutStatement(f.book, f.bookAliases())
 }
 
 // candidatesCmd is `ot candidates [--day DAY] [--all]`: it opens the candidate store with OT_PG_DSN_PAGES (role ot_ro_pages, the view rd.option_candidate_r1),

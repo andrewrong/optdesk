@@ -110,3 +110,16 @@ func TestMissingPosmarkLineLeavesOtherJobs(t *testing.T) {
 		t.Fatal("job built or store opened without its line")
 	}
 }
+
+func TestMarkAliasesLeaveStatementAlias(t *testing.T) {
+	t.Parallel()
+	r := newMarkRig(t, true)
+	writeBookText(t, r.a, bookText("b", "a", "b", "c")+"statement = [\"c\"]\n")
+	al, _, _, err := r.a.markSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"b", "a"}; !slices.Equal(al, want) {
+		t.Fatalf("aliases %v, want %v", al, want)
+	}
+}
