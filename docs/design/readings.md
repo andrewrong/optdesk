@@ -39,7 +39,7 @@ All paths at origin/main 2d62da95.
 
 ## Modules
 
-`docs/design/modules.md`, row `store`: the entry cell gains `internal/store/readingkey` (declarations only, like `internal/store/bar`). Entries touch store (`internal/store/**`, `migrations/**`, `docs/contracts/store.md`; entries 1, 2), jobs (`internal/jobs/**`, `docs/contracts/jobs/**`; entries 3, 4) and ot (`cmd/**`; entries 5, 6). New import edges inside the rule of `modules.md` line 51: `internal/jobs/computefigures`, `internal/jobs/ivhistory` and `cmd/ot` import `internal/store/readingkey`; `internal/store/reading` imports it.
+`docs/design/modules.md`, row `store`: the entry cell gains `internal/store/readingkey` (declarations only, like `internal/store/bar`); this design pull request makes that edit and no entry touches `modules.md`. Entries touch store (`internal/store/**`, `migrations/**`, `docs/contracts/store.md`; entries 1, 2), jobs (`internal/jobs/**`, `docs/contracts/jobs/**`; entries 3, 4) and ot (`cmd/**`; entries 5, 6). New import edges inside the rule of `modules.md` on declarations-only packages: `internal/jobs/computefigures`, `internal/jobs/ivhistory` and `cmd/ot` import `internal/store/readingkey`; `internal/store/reading` imports it.
 
 ## Interface
 
@@ -66,12 +66,12 @@ Build order: every entry compiles and its tests pass against main. BASE is `git 
 ### 1 readings-api (interface)
 
 Module: store. Size: S.
-Order: first (design PR: after the instrument-company design merge, which edits the same modules.md line).
-Files: `internal/store/readingkey/api.go`, `internal/store/readingkey/api_test.go`, `docs/design/modules.md`
+Order: first.
+Files: `internal/store/readingkey/api.go`, `internal/store/readingkey/api_test.go`
 Design: docs/design/readings.md#Interface
 Acceptance:
 1. `api.go` declares `WriteCount` and `ReadingUpserter` as in the Interface section, with docs and no function body, and is the only non-test `.go` file of the package.
-2. `git diff BASE -- docs/design/modules.md` shows one changed line, the `store` row, with `internal/store/readingkey` added to its entry cell and nothing else changed; `git diff --name-only BASE -- internal/store/api.go internal/store/api_test.go` prints nothing.
+2. `git diff --name-only BASE -- internal/store/api.go internal/store/api_test.go` prints nothing. The `store` row edit of `docs/design/modules.md` is made by this design pull request, not by the entry.
 3. `api_test.go` has a new contract test `TestReadingUpserterContract` (`t.Parallel()`): a fake counts a written and a skipped reading and the caller reads both back, an empty list returns zero counts, and a batch with one key twice returns a Permanent error.
 4. `git diff --name-only BASE` lists only paths of the Files line.
 
@@ -105,7 +105,7 @@ Acceptance:
 ### 4 readings-ivhistory
 
 Module: jobs. Size: S.
-Order: after 1; merge after the window ran the migration of entry 2; parallel with 3.
+Order: after 1, 5; merge after the window ran the migration of entry 2.
 Files: `internal/jobs/ivhistory/run.go`, `internal/jobs/ivhistory/job_test.go`, `internal/jobs/ivhistory/run_test.go`, `docs/contracts/jobs/iv_history.md`
 Design: docs/design/readings.md#Issues (Decision 6)
 Acceptance:
