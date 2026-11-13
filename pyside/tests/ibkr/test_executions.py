@@ -343,3 +343,20 @@ def test_gateway_executions_over_ib() -> None:
 
     rows = asyncio.run(run())
     assert [e.exec_id for e in rows.executions] == ["e1"]
+
+
+def test_read_reports_the_id_the_gateway_reports() -> None:
+    async def run() -> ExecutionRows:
+        ib, conn = make([acct()])
+        conn.fills = [("e1", acct(), True)]
+        rows = await read(ib, FakeClock())
+        done(ib)
+        return rows
+
+    rows = asyncio.run(run())
+    assert rows.account == acct() and len(rows.executions) == 1
+
+
+def test_rpc_not_collected_reports_no_id() -> None:
+    response = ask(FakeAccounts(ExecutionRows(3, account=acct())), "positions")
+    assert not response.collected and response.account == ""
