@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -71,6 +72,9 @@ func (f jobFactory) shadowOf(ctx context.Context, dsn string, extra *closerSet) 
 	list, err := buildStrategies(f.d.newCandidateRule())
 	if err != nil {
 		return shadowStores{}, fmt.Errorf("build strategies failed: %w", err)
+	}
+	if len(list) != 1 {
+		return shadowStores{}, errors.New("build strategies failed: the job takes one strategy")
 	}
 	return shadowStores{strategy: list[0], results: res}, nil
 }

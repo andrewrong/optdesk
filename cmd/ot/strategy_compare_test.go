@@ -6,16 +6,53 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/atombender/go-jsonschema/pkg/types"
+
+	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/contracts"
 
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
 )
 
-// init adds ot strategy-compare to the exclusions of the leak table (env_test.go) from this file.
-func init() {
-	leakExcluded["strategy-compare"] = "the leak deps hold no candidate or results opener; " +
-		"its open errors are fixed texts that name the key and TestStrategyCompareOpenErrorWithheld covers them"
+// dayCandidates answers the rows of the day asked for only, as the store does.
+type dayCandidates struct {
+	fakeCandidateRW
+	rows []store.Candidate
 }
+
+func (d *dayCandidates) Candidates(_ context.Context, day contracts.Day, _ string) ([]store.Candidate, error) {
+	var out []store.Candidate
+	for _, r := range d.rows {
+		if r.SessionDay == day {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+// fakeSessionDays holds the XNYS session days 2026-11-05 and 2026-11-06 and the weekend after them.
+type fakeSessionDays struct {
+	store.SessionDayStore
+	asked *atomic.Int32
+}
+
+func (f fakeSessionDays) SessionDays(_ context.Context, cal string, _, _ contracts.Day) ([]contracts.SessionDay, error) {
+	f.asked.Add(1)
+	var out []contracts.SessionDay
+	for _, d := range []struct {
+		day     string
+		session bool
+	}{{"2026-11-05", true}, {"2026-11-06", true}, {"2026-11-07", false}, {"2026-11-08", false}} {
+		t, _ := time.Parse(time.DateOnly, d.day)
+		out = append(out, contracts.SessionDay{CalendarID: cal, SessionDay: types.SerializableDate{Time: t}, IsSession: d.session})
+	}
+	return out, nil
+}
+
+func (fakeSessionDays) Close() error { return nil }
 
 // compareRig is an app whose two readers hold the given rows for 2026-11-05.
 func compareRig(t *testing.T, old []store.Candidate, res *fakeResultStore) (*app, *bytes.Buffer, *atomic.Int32) {
@@ -29,13 +66,19 @@ func compareRig(t *testing.T, old []store.Candidate, res *fakeResultStore) (*app
 		if dsn != "pages-dsn" {
 			t.Errorf("dsn %q", dsn)
 		}
-		return &fakeCandidateRW{closed: &closed, rows: old}, nil
+		return &dayCandidates{fakeCandidateRW: fakeCandidateRW{closed: &closed}, rows: old}, nil
 	}
 	a.deps.openStrategyResults = func(_ context.Context, dsn string) (resultStore, error) {
 		if dsn != "pages-dsn" {
 			t.Errorf("dsn %q", dsn)
 		}
 		return res, nil
+	}
+	a.deps.openSessionDay = func(_ context.Context, dsn string) (store.SessionDayStore, error) {
+		if dsn != "pages-dsn" {
+			t.Errorf("dsn %q", dsn)
+		}
+		return fakeSessionDays{asked: new(atomic.Int32)}, nil
 	}
 	return a, &out, &closed
 }
@@ -98,3 +141,36 @@ func TestStrategyCompareOpenErrorWithheld(t *testing.T) {
 		t.Fatalf("error %v", err)
 	}
 }
+
+func TestStrategyCompareDefaultsToNewestSessionDay(t *testing.T) {
+	t.Parallel()
+	old, _ := oldRowAndResult()
+	old.SessionDay = "2026-11-06" // the newest session day; no result row for it -> a difference
+	a, out, _ := compareRig(t, []store.Candidate{old}, &fakeResultStore{})
+	a.deps.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 8, 15, 0, 0, 0, time.UTC)} } // Sunday
+	if err := strategyCompareCmd(a, nil); err == nil {
+		t.Fatalf("default day skipped the newest session day: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "only in the old rows") {
+		t.Fatalf("output %q", out.String())
+	}
+}
+
+func TestStrategyCompareNoSessionDayIsAnError(t *testing.T) {
+	t.Parallel()
+	a, out, _ := compareRig(t, nil, &fakeResultStore{})
+	a.deps.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 8, 15, 0, 0, 0, time.UTC)} }
+	a.deps.openSessionDay = func(context.Context, string) (store.SessionDayStore, error) {
+		return emptySessionDays{}, nil
+	}
+	if err := strategyCompareCmd(a, nil); err == nil || strings.Contains(out.String(), "equal") {
+		t.Fatalf("error %v output %q", err, out.String())
+	}
+}
+
+type emptySessionDays struct{ store.SessionDayStore }
+
+func (emptySessionDays) SessionDays(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SessionDay, error) {
+	return nil, nil
+}
+func (emptySessionDays) Close() error { return nil }
