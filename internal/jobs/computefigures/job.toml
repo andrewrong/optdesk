@@ -18,6 +18,8 @@ rv120 = "market.rv120"
 vol_forecast = "market.vol_forecast"
 vol_edge = "market.vol_edge"
 vol_forecast_err = "market.vol_forecast_err"
+tech = "market.tech_state"
+tech_indices = ["NDX", "SPX"]
 
 [[market]]
 id = "market.vix_term_ratio"
