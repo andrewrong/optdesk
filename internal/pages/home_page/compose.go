@@ -12,6 +12,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 )
 
 const (
@@ -45,6 +47,11 @@ type Input struct {
 	Macro     []byte
 	Market    []byte
 	Options   []byte
+
+	// HoursNotices holds the days on which IBKR's hours differ from our calendar;
+	// each becomes one gap with card "calendar" in overview.gaps. Nil or empty
+	// gives no such gap.
+	HoursNotices []hoursnotice.Notice
 }
 
 type sourceTime struct {
