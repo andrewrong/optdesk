@@ -87,7 +87,7 @@ Files: `internal/store/stockreg/api.go`, `internal/store/stockreg/api_test.go`, 
 Design: docs/design/instrument-company.md#Interface
 Acceptance:
 1. `api.go` declares `Issuer`, `Registration`, `StockRegistrar` and `StockDirectory` as in the Interface section, with docs and no function body, and is the only non-test `.go` file of the package.
-2. `git diff BASE -- docs/design/modules.md` shows one changed line, the `store` row, with `internal/store/seriesdef` and `internal/store/stockreg` both in its entry cell and nothing else changed (the line carries the edit of `series-registry.md` entry 1 too, `internal/store/seriesdef` before `internal/store/stockreg`, as it reads after that design merges; Order: after the series-registry design merge); `git diff --name-only BASE -- internal/store/api.go internal/store/api_test.go` prints nothing.
+2. `git diff BASE -- docs/design/modules.md` shows one changed line, the `store` row, with `internal/store/seriesdef` and `internal/store/stockreg` both in its entry cell and nothing else changed (the line carries the edit of `series-registry.md` entry 1 too, `internal/store/seriesdef` before `internal/store/stockreg`, as it reads after that design merges; this design merges after the series-registry design); `git diff --name-only BASE -- internal/store/api.go internal/store/api_test.go` prints nothing.
 3. `api_test.go` has new contract tests (`t.Parallel()`): `TestStockRegistrarContract` (a fake returns one id for equal input and the caller reads it back) and `TestStockDirectoryContract` (a lookup that finds, one that does not, and an identifier that is missing).
 4. `git diff --name-only BASE` lists only paths of the Files line.
 
