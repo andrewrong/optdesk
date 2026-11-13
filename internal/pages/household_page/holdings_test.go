@@ -79,6 +79,11 @@ func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 		"2026-11-10": {markOf(1, "250"), markOf(2, "100")},
 		"2026-11-09": {markOf(1, "240"), markOf(2, "105")},
 	}}
+	for _, rows := range marks.byDay {
+		for i := range rows {
+			rows[i].MarkedAt = time.Date(2026, 11, 9, 23, 0, 0, 0, time.UTC)
+		}
+	}
 	c, acc := holdingsConfig(twoStocks(), marks)
 	m, b := build(t, c, "main")
 	validate(t, b)
@@ -128,6 +133,21 @@ func TestHoldingBlocksNilPathStaysMissingQuote(t *testing.T) {
 		}
 		if len(acc.asked) != 1 {
 			t.Fatalf("%s: positions read %d times, want only the build read", name, len(acc.asked))
+		}
+	}
+}
+
+func TestMoversNilPathStaysNoData(t *testing.T) {
+	t.Parallel()
+	for name, mod := range map[string]func(*household_page.Config){
+		"marks":    func(c *household_page.Config) { c.Marks = nil },
+		"holdings": func(c *household_page.Config) { c.Holdings = nil },
+	} {
+		c, _ := holdingsConfig(twoStocks(), &fakeMarks{})
+		mod(&c)
+		m, _ := build(t, c, "main")
+		if g := gapOf(t, m, "movers"); g["reason"] != "no_data" || g["text"] != "The change today needs prices of two trading days: no data yet" {
+			t.Fatalf("%s: movers gap = %v", name, g)
 		}
 	}
 }

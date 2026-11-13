@@ -262,6 +262,9 @@ func TestMarkBlocksAreMissingQuoteGaps(t *testing.T) {
 			t.Fatalf("%s gap = %v", blk, g)
 		}
 	}
+	if g := gapOf(t, m, "movers"); g["text"] != "The change today needs prices of two trading days: no data yet" {
+		t.Fatalf("movers gap = %v", g)
+	}
 	if g := gapOf(t, m, "stress"); g["reason"] != "missing_quote" {
 		t.Fatalf("stress gap = %v", g)
 	}

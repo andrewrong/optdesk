@@ -3,6 +3,7 @@ package household_page_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -377,5 +378,45 @@ func TestMoversPageValidatesSchema(t *testing.T) {
 	validate(t, b)
 	if _, ok := m["long_term"]; ok {
 		t.Fatalf("long_term is emitted: %s", b)
+	}
+}
+
+func TestMoversFxErrorIsBuildError(t *testing.T) {
+	t.Parallel()
+	days := jpyDays()
+	days["2026-11-11"] = dayData{net: "15150000", ccy: "JPY"} // D1 differs from the capture day, so movers reads Fx itself
+	c, _ := moversConfig(days)
+	c.Fx = &fakeFx{err: errors.New("boom")}
+	if _, err := household_page.NewPage(c, "main").Build(context.Background(), nil, "2026-11-11", at); err == nil {
+		t.Fatal("an Fx read failure must be an error of Build")
+	}
+}
+
+func TestMoversOptionMultiplierPassedAsStored(t *testing.T) {
+	t.Parallel()
+	opt := func(mult string) store.Position {
+		p := capStock("AAA", 9, "-2", "c1")
+		p.SecType, p.Right, p.Strike, p.Expiry, p.Multiplier = "option", "put", "240", "2026-11-20", mult
+		return p
+	}
+	days := func(mult string) map[string]dayData {
+		return map[string]dayData{
+			"2026-11-09": {net: "99000.00", pos: []store.Position{opt(mult)}, marks: []mark.PositionMark{capMark(9, "3.10", mark.BasisLast, "c1")}},
+			"2026-11-10": {net: "100000.00", pos: []store.Position{opt(mult)}, marks: []mark.PositionMark{capMark(9, "2.40", mark.BasisLast, "c1")}},
+		}
+	}
+	c, _ := moversConfig(days("100"))
+	m, b := buildOn(t, c, "2026-11-10")
+	validate(t, b)
+	row := moversOf(m)["options"].([]any)[0].(map[string]any)
+	if amountOf(t, row) != 140 || row["note"] != "short 2 put 240 11-20" {
+		t.Fatalf("multiplier 100: row = %v", row)
+	}
+	// an empty multiplier stays empty: the line has no amount, never 1
+	c, _ = moversConfig(days(""))
+	m, b = buildOn(t, c, "2026-11-10")
+	validate(t, b)
+	if row := moversOf(m)["options"].([]any)[0].(map[string]any); row["amount"] != nil {
+		t.Fatalf("empty multiplier gave an amount: %v", row)
 	}
 }
