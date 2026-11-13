@@ -3572,3 +3572,159 @@ func (j *SessionDay) UnmarshalJSON(b []byte) error {
 	*j = SessionDay(plain)
 	return nil
 }
+
+// strategy.result r1: one evaluated result of one strategy in one run, with its
+// legs, checks and facts; insert only, a rerun is a new run_id.
+type StrategyResult struct {
+	// Ordered JSON array text of the check results.
+	Checks string `json:"checks" yaml:"checks" mapstructure:"checks"`
+
+	// Instant the run computed the row, UTC; the newest run of a day is the one with
+	// the latest computed_at.
+	ComputedAt time.Time `json:"computed_at" yaml:"computed_at" mapstructure:"computed_at"`
+
+	// JSON object text of the figures of the result; an absent figure is omitted.
+	Facts string `json:"facts" yaml:"facts" mapstructure:"facts"`
+
+	// Key of the result, unique within a day and strategy.
+	Key string `json:"key" yaml:"key" mapstructure:"key"`
+
+	// JSON array text of the legs of the result.
+	Legs string `json:"legs" yaml:"legs" mapstructure:"legs"`
+
+	// Hash of the parameters the strategy ran with.
+	ParamHash string `json:"param_hash" yaml:"param_hash" mapstructure:"param_hash"`
+
+	// Position of an ok row in the run; null when not ranked.
+	Rank *int `json:"rank" yaml:"rank" mapstructure:"rank"`
+
+	// Position of an ok row within its underlying; null when not ranked.
+	RankInUnderlying *int `json:"rank_in_underlying" yaml:"rank_in_underlying" mapstructure:"rank_in_underlying"`
+
+	// Version of the strategy rule that computed the row.
+	RuleVersion string `json:"rule_version" yaml:"rule_version" mapstructure:"rule_version"`
+
+	// Run id of the runner; a rerun is a new run_id and rows are insert-only.
+	RunID string `json:"run_id" yaml:"run_id" mapstructure:"run_id"`
+
+	// Run day: the session day the rows were computed for.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Version of the owner settings the run used; null when the row was computed
+	// without owner settings.
+	SettingsVersion *int `json:"settings_version" yaml:"settings_version" mapstructure:"settings_version"`
+
+	// Row status: blocked if any check blocked, else unknown if any check is unknown,
+	// else ok.
+	Status StrategyResultStatus `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Id of the strategy that computed the row, for example short_put.
+	Strategy string `json:"strategy" yaml:"strategy" mapstructure:"strategy"`
+
+	// Identifier of the underlying instrument.
+	UnderlyingID int `json:"underlying_id" yaml:"underlying_id" mapstructure:"underlying_id"`
+}
+
+type StrategyResultStatus string
+
+const StrategyResultStatusBlocked StrategyResultStatus = "blocked"
+const StrategyResultStatusOk StrategyResultStatus = "ok"
+const StrategyResultStatusUnknown StrategyResultStatus = "unknown"
+
+var enumValues_StrategyResultStatus = []interface{}{
+	"ok",
+	"blocked",
+	"unknown",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StrategyResultStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_StrategyResultStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_StrategyResultStatus, v)
+	}
+	*j = StrategyResultStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StrategyResult) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["checks"]; raw != nil && !ok {
+		return fmt.Errorf("field checks in StrategyResult: required")
+	}
+	if _, ok := raw["computed_at"]; raw != nil && !ok {
+		return fmt.Errorf("field computed_at in StrategyResult: required")
+	}
+	if _, ok := raw["facts"]; raw != nil && !ok {
+		return fmt.Errorf("field facts in StrategyResult: required")
+	}
+	if _, ok := raw["key"]; raw != nil && !ok {
+		return fmt.Errorf("field key in StrategyResult: required")
+	}
+	if _, ok := raw["legs"]; raw != nil && !ok {
+		return fmt.Errorf("field legs in StrategyResult: required")
+	}
+	if _, ok := raw["param_hash"]; raw != nil && !ok {
+		return fmt.Errorf("field param_hash in StrategyResult: required")
+	}
+	if _, ok := raw["rank"]; raw != nil && !ok {
+		return fmt.Errorf("field rank in StrategyResult: required")
+	}
+	if _, ok := raw["rank_in_underlying"]; raw != nil && !ok {
+		return fmt.Errorf("field rank_in_underlying in StrategyResult: required")
+	}
+	if _, ok := raw["rule_version"]; raw != nil && !ok {
+		return fmt.Errorf("field rule_version in StrategyResult: required")
+	}
+	if _, ok := raw["run_id"]; raw != nil && !ok {
+		return fmt.Errorf("field run_id in StrategyResult: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in StrategyResult: required")
+	}
+	if _, ok := raw["settings_version"]; raw != nil && !ok {
+		return fmt.Errorf("field settings_version in StrategyResult: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in StrategyResult: required")
+	}
+	if _, ok := raw["strategy"]; raw != nil && !ok {
+		return fmt.Errorf("field strategy in StrategyResult: required")
+	}
+	if _, ok := raw["underlying_id"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_id in StrategyResult: required")
+	}
+	type Plain StrategyResult
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Key) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
+	}
+	if len(plain.RuleVersion) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "rule_version", 1)
+	}
+	if len(plain.RunID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "run_id", 1)
+	}
+	if len(plain.Strategy) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "strategy", 1)
+	}
+	*j = StrategyResult(plain)
+	return nil
+}
