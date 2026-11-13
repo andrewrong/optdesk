@@ -151,6 +151,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	op, err := home_options.Build(ctx, home_options.Config{
 		RunID: runID, BuildID: build, Scope: scope, Zone: zone,
 		Ledger: rd.optionLedger, Replay: rd.ledgers, Results: rd.results,
+		Structures: rd.structures, Tiles: pagefig.NewOptionTiles,
 	}, day, now)
 	if err != nil {
 		return nil, err

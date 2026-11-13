@@ -12,6 +12,7 @@ import (
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -275,5 +276,72 @@ func TestHomeCompaniesNoBarsKeepsGap(t *testing.T) {
 	cell := homeDayChangeCell(t, nil)
 	if cell["kind"] != "gap" || cell["reason"] != "no_reader" {
 		t.Fatalf("no bar reader keeps the no_reader gap: %v", cell)
+	}
+}
+
+// homeOptLedger is a reader with one alias and one stored trade row.
+type homeOptLedger struct{ store.OptionLedgerReader }
+
+func (homeOptLedger) StoredAliases(context.Context) ([]string, error) { return []string{"main"}, nil }
+
+func (homeOptLedger) FlexTradeRows(context.Context, string) ([]store.FlexTradeRow, error) {
+	return []store.FlexTradeRow{{Alias: "main", TransactionID: "t1", Revision: 1, Attributes: "{}"}}, nil
+}
+
+// homeOptReplay returns one short put opened in the month of the page day.
+type homeOptReplay struct{}
+
+func (homeOptReplay) Replay(compute.LedgerInput, compute.LedgerParams) compute.LedgerResult {
+	return compute.LedgerResult{RuleVersion: 1, Positions: []compute.LedgerPosition{{
+		PositionID: "main:t1:0", Status: "open", Quantity: "-1", Multiplier: "100", Currency: "USD",
+		OpenedOn: "2026-11-03", OpenPrice: "2.00",
+	}}}
+}
+
+// homeOptStructures recognises that position as a short put with a max loss of 800.
+type homeOptStructures struct{}
+
+func (homeOptStructures) Evaluate(in compute.StructureInput, _ compute.StructureParams) compute.StructureResult {
+	return compute.StructureResult{Structures: []compute.Structure{{
+		ID: in.Alias + ":sp", Alias: in.Alias, Currency: "USD", Kind: "short_put",
+		Legs:    []compute.StructureLeg{{PositionID: "main:t1:0", Quantity: "-1", Multiplier: "100", OpenPrice: "2.00"}},
+		Figures: compute.StructureFigures{MaxLoss: compute.FigureValue{Value: "-800"}},
+	}}}
+}
+
+func TestHomeOptionsTilesShowFigures(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{
+		optionLedger: homeOptLedger{},
+		ledgers:      func() compute.OptionLedger { return homeOptReplay{} },
+		structures:   func() compute.OptionStructures { return homeOptStructures{} },
+		results:      optionresult.New,
+	}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var page struct {
+		Options struct {
+			Card struct {
+				Tiles map[string]struct {
+					Figure map[string]any `json:"figure"`
+				} `json:"tiles"`
+			} `json:"card"`
+		} `json:"options"`
+	}
+	if err := json.Unmarshal(body, &page); err != nil {
+		t.Fatal(err)
+	}
+	tiles := page.Options.Card.Tiles
+	if f := tiles["sold_count_month"].Figure; f["kind"] != "value" || f["value"] != float64(1) || f["unit"] != "structures" {
+		t.Fatalf("sold = %v", f)
+	}
+	if f := tiles["open_premium_usd"].Figure; f["kind"] != "value" || f["text"] != "$200" || f["unit"] != "usd" {
+		t.Fatalf("open premium = %v", f)
+	}
+	if f := tiles["max_loss_usd"].Figure; f["kind"] != "value" || f["text"] != "$800" || f["value"] != float64(800) {
+		t.Fatalf("max loss = %v", f)
 	}
 }
