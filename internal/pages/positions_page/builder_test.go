@@ -606,3 +606,92 @@ func TestMissingMarkPriceGapIsPrintedOnce(t *testing.T) {
 		t.Fatalf("sentence printed %d times", n)
 	}
 }
+
+const statementNote = "From the broker statement of 2026-11-10; this account has no live gateway."
+
+func notesOf(t *testing.T, m map[string]any) []any {
+	t.Helper()
+	n, _ := m["notes"].([]any)
+	return n
+}
+
+func TestStatementAliasGetsNote(t *testing.T) {
+	t.Parallel()
+	c := config(account())
+	c.Statement = []string{"main"}
+	m, b := build(t, c, "main")
+	n := notesOf(t, m)
+	if len(n) != 1 || n[0] != statementNote {
+		t.Fatalf("notes = %v", n)
+	}
+	validate(t, b)
+}
+
+func TestStatementNoteNamesTheDataDay(t *testing.T) {
+	t.Parallel()
+	acc := account()
+	delete(acc.positions, "main|2026-11-10")
+	c := config(acc)
+	c.Statement = []string{"main"}
+	m, _ := build(t, c, "main")
+	n := notesOf(t, m)
+	if len(n) != 1 || n[0] != "From the broker statement of 2026-11-09; this account has no live gateway." {
+		t.Fatalf("notes = %v", n)
+	}
+}
+
+func TestGatewayAliasGetsNoNote(t *testing.T) {
+	t.Parallel()
+	for name, st := range map[string][]string{"nil": nil, "other alias": {"wife"}} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := config(account())
+			c.Statement = st
+			m, _ := build(t, c, "main")
+			if n := notesOf(t, m); len(n) != 0 {
+				t.Fatalf("notes = %v", n)
+			}
+		})
+	}
+}
+
+func TestStatementGapPageHasNoNote(t *testing.T) {
+	t.Parallel()
+	for name, set := range map[string]func(*positions_page.Config){
+		"no reader":  func(c *positions_page.Config) { c.Marks = nil },
+		"no capture": func(c *positions_page.Config) { c.Account = &fakeAccount{} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := config(account())
+			c.Statement = []string{"main", "wife"}
+			set(&c)
+			m, _ := build(t, c, "main")
+			if n := notesOf(t, m); len(n) != 0 {
+				t.Fatalf("notes = %v", n)
+			}
+		})
+	}
+	t.Run("unknown alias", func(t *testing.T) {
+		t.Parallel()
+		c := config(account())
+		c.Statement = []string{"stranger"}
+		m, _ := build(t, c, "stranger")
+		if n := notesOf(t, m); len(n) != 0 {
+			t.Fatalf("notes = %v", n)
+		}
+	})
+}
+
+func TestStatementNoteFitsTheSchema(t *testing.T) {
+	t.Parallel()
+	c := config(account())
+	c.Statement = []string{"main"}
+	m, b := build(t, c, "main")
+	for _, n := range notesOf(t, m) {
+		if l := len([]rune(n.(string))); l < 1 || l > 200 {
+			t.Fatalf("note length %d", l)
+		}
+	}
+	validate(t, b)
+}

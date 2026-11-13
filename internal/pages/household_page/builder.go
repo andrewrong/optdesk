@@ -288,6 +288,9 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 		p.Allocation = allocationGap(missingQuote())
 	}
 	p.Movers = mv.block
+	if slices.Contains(c.Statement, alias) {
+		p.Notes = append(p.Notes, textStatementFrom+cp.day+textStatementNote)
+	}
 
 	captured := at
 	if len(cp.values) > 0 && !cp.values[0].CapturedAt.IsZero() {

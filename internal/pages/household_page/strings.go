@@ -32,6 +32,8 @@ const (
 	meaningAllocation    = "Market value of held stocks at the capture-day price."
 	meaningAccounts      = "Net liquidation, cash, stocks and options of this account."
 
+	textStatementFrom   = "From the broker statement of "
+	textStatementNote   = "; this account has no live gateway."
 	textNoMovers        = "The change today needs prices of two trading days: no data yet"
 	textNotBuilt        = "No holding-period source: no data yet"
 	textMoversStaleLast = "The latest price day %s is more than 5 days before this page day"

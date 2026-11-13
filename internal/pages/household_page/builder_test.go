@@ -613,3 +613,87 @@ func TestTrendRowsUseGroupedMoney(t *testing.T) {
 		}
 	}
 }
+
+const statementNote = "From the broker statement of 2026-11-10; this account has no live gateway."
+
+func notesOf(m map[string]any) []any {
+	n, _ := m["notes"].([]any)
+	return n
+}
+
+func TestStatementAliasGetsNote(t *testing.T) {
+	t.Parallel()
+	c := config(account(), &blockapi.HouseholdInput{})
+	c.Statement = []string{"wife"}
+	m, b := build(t, c, "wife")
+	if n := notesOf(m); len(n) != 1 || n[0] != statementNote {
+		t.Fatalf("notes = %v", n)
+	}
+	validate(t, b)
+}
+
+func TestStatementNoteNamesTheDataDay(t *testing.T) {
+	t.Parallel()
+	acc := account()
+	delete(acc.values["main"], "2026-11-10")
+	c := config(acc, &blockapi.HouseholdInput{})
+	c.Statement = []string{"main"}
+	m, _ := build(t, c, "main")
+	n := notesOf(m)
+	if len(n) != 1 || n[0] != "From the broker statement of 2026-11-09; this account has no live gateway." {
+		t.Fatalf("notes = %v", n)
+	}
+}
+
+func TestGatewayAliasGetsNoNote(t *testing.T) {
+	t.Parallel()
+	for name, st := range map[string][]string{"nil": nil, "other alias": {"wife"}} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := config(account(), &blockapi.HouseholdInput{})
+			c.Statement = st
+			m, _ := build(t, c, "main")
+			if n := notesOf(m); len(n) != 0 {
+				t.Fatalf("notes = %v", n)
+			}
+		})
+	}
+}
+
+func TestStatementGapPageHasNoNote(t *testing.T) {
+	t.Parallel()
+	c := config(account(), &blockapi.HouseholdInput{})
+	c.Statement = []string{"main", "stranger"}
+	for name, alias := range map[string]string{"unknown alias": "stranger"} {
+		m, _ := build(t, c, alias)
+		if n := notesOf(m); len(n) != 0 {
+			t.Fatalf("%s: notes = %v", name, n)
+		}
+	}
+	nr := c
+	nr.Ledger = nil
+	if m, _ := build(t, nr, "main"); len(notesOf(m)) != 0 {
+		t.Fatalf("no reader: notes = %v", m["notes"])
+	}
+	nc := c
+	nc.Account = &fakeAccount{}
+	if m, _ := build(t, nc, "main"); len(notesOf(m)) != 0 {
+		t.Fatalf("no capture: notes = %v", m["notes"])
+	}
+}
+
+func TestStatementNoteFitsTheSchema(t *testing.T) {
+	t.Parallel()
+	c := config(account(), &blockapi.HouseholdInput{})
+	c.Statement = []string{"main"}
+	m, b := build(t, c, "main")
+	if len(notesOf(m)) != 1 {
+		t.Fatalf("notes = %v", m["notes"])
+	}
+	for _, n := range notesOf(m) {
+		if l := len([]rune(n.(string))); l < 1 || l > 200 {
+			t.Fatalf("note length %d", l)
+		}
+	}
+	validate(t, b)
+}
