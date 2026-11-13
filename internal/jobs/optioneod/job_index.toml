@@ -17,7 +17,8 @@ band_k = 1.8            # trial: half-width of the band is spot x band_k x sigma
 
 [window]
 rule = "in_session"
-open_after_minutes = 90  # trialcalendar = "XNYS"
+open_after_minutes = 90  # trial
+calendar = "XNYS"
 
 [[underlying]]
 symbol = "SPX"
