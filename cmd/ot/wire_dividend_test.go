@@ -73,7 +73,7 @@ func newDivRigEnv(t *testing.T, env string) *divRig {
 func TestDividendCaptureRegistered(t *testing.T) {
 	t.Parallel()
 	d := newDivRig(t)
-	if err := runOnce(d.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(d.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	got := jobIDs(d.jobs)
@@ -99,7 +99,7 @@ func TestDividendCaptureRegistered(t *testing.T) {
 	if d.ref == nil {
 		t.Error("no reference client was handed to the job")
 	}
-	if err := backfill(d.a, []string{"--day", "2026-11-04"}); err != nil || !slices.Contains(jobIDs(d.jobs), "dividend_capture") {
+	if err := backfillWired(d.a, []string{"--day", "2026-11-04"}); err != nil || !slices.Contains(jobIDs(d.jobs), "dividend_capture") {
 		t.Fatalf("backfill err %v jobs %v", err, jobIDs(d.jobs))
 	}
 }
@@ -108,7 +108,7 @@ func TestDividendCaptureOffWhenBrokerDown(t *testing.T) {
 	t.Parallel()
 	d := newDivRig(t)
 	d.fail["broker"] = errors.New("down")
-	if err := runOnce(d.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(d.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	got := jobIDs(d.jobs)
