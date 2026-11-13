@@ -29,8 +29,10 @@ type job struct {
 	sym  symbol.Translator   // nil: no translation, the symbol is its own option root
 	acct store.AccountReader // nil: no held short calls are captured
 	w    store.OptionEodWriter
-	clk  clock.Clock
-	loc  *time.Location
+	// closes gives the stored index closes of the index job (spot fallback and sigma); nil: none.
+	closes IndexCloseReader
+	clk    clock.Clock
+	loc    *time.Location
 
 	reasons runview.ReasonWriter // nil: no reasons are written; set by WithReasons
 
@@ -194,6 +196,9 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	if terr != nil {
 		return terr
 	}
+	if _, ok := r.j.m.indexOf(u.Symbol); ok {
+		listed = completePairs(listed)
+	}
 	undID, err := r.j.res.ResolveInstrument(ctx, store.Identifier{Scheme: "ibkr_conid", Value: strconv.FormatInt(u.ConID, 10)}, u.spec(), nil)
 	if err != nil {
 		return asTyped(err, contracts.Permanent)
@@ -239,6 +244,11 @@ func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.
 			}
 		}
 	}
+	if row, ok := r.j.m.indexOf(u.Symbol); ok {
+		if v, ok := r.storedSpot(ctx, row); ok {
+			return v, nil
+		}
+	}
 	return 0, newErr(contracts.Retryable, "no price of %s", u.Symbol)
 }
 
@@ -265,7 +275,11 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 			return nil, terr
 		}
 	} else {
-		c, class, ok := r.j.m.chainOfRoot(chains, u, r.j.root(u.Symbol))
+		cm := r.j.m
+		if row, isIdx := cm.indexOf(u.Symbol); isIdx {
+			cm.TradingClass = row.TradingClass
+		}
+		c, class, ok := cm.chainOfRoot(chains, u, r.j.root(u.Symbol))
 		if !ok {
 			return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
 		}
@@ -275,7 +289,12 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	if stock {
 		sel = sel.forStock()
 	}
-	out := selectContracts(chain, u, string(r.day), price, sel)
+	var out []broker.Contract
+	if row, ok := r.j.m.indexOf(u.Symbol); ok {
+		out = selectIndex(chain, u, row, r.j.m, string(r.day), price, r.sigma(ctx, row))
+	} else {
+		out = selectContracts(chain, u, string(r.day), price, sel)
+	}
 	if r.j.acct != nil {
 		held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
 		if err != nil {
