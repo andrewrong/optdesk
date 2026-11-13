@@ -671,3 +671,36 @@ func TestRowStoresDeltaFourPlaces(t *testing.T) {
 		t.Errorf("gamma = %v, want 0.0123456789", row.Gamma)
 	}
 }
+
+func TestPullLogsEveryRowThatIsNotOkWithItsAbsentFields(t *testing.T) {
+	t.Parallel()
+	b := newFake(100)
+	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+		qs := okQuotes(b.clk, cs)
+		qs[1].Ask, qs[1].ImpliedVol = nil, nil // partial
+		qs[2].MarketDataType = 2               // frozen
+		return qs, nil
+	}
+	var buf bytes.Buffer
+	c := newCore(b)
+	c.Log = slog.New(slog.NewTextHandler(&buf, nil))
+	c.Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put), target(1, 12, ClassPuts, 90, Put), target(1, 13, ClassPuts, 80, Put)})
+	var lines []string
+	for _, l := range strings.Split(buf.String(), "\n") {
+		if strings.Contains(l, "option_open row not ok") {
+			lines = append(lines, l)
+		}
+	}
+	if len(lines) != 2 {
+		t.Fatalf("want 2 lines, got %d: %q", len(lines), buf.String())
+	}
+	if !strings.Contains(lines[0], "status=partial") || !strings.Contains(lines[0], `absent="[ask last iv]"`) || strings.Contains(lines[0], "bid") {
+		t.Errorf("partial line %q", lines[0])
+	}
+	if !strings.Contains(lines[1], "market_data_type=2") || !strings.Contains(lines[1], "status=no_data") {
+		t.Errorf("frozen line %q", lines[1])
+	}
+	if !strings.Contains(lines[0], "strike=90") || !strings.Contains(lines[0], "right=P") || !strings.Contains(lines[0], "symbol=AAA") {
+		t.Errorf("partial line attributes %q", lines[0])
+	}
+}

@@ -411,6 +411,7 @@ func (r *listRun) chainsPhase(ctx context.Context, guard bool) contracts.TypedEr
 			if r.stop = r.callErr(ctx, err); r.stop != "" {
 				return nil
 			}
+			r.log("list_chains_failed: " + n.st.Symbol + " " + err.Error())
 			if terr := r.end(ctx, n, reasonChainsFail); terr != nil {
 				return terr
 			}
@@ -445,6 +446,11 @@ func (r *listRun) chosen(ctx context.Context, n *listName, chains []broker.Chain
 		}
 	}
 	if !answered {
+		if len(chains) == 0 {
+			r.log("list_chains_empty: " + n.st.Symbol + " answered no chains")
+		} else {
+			r.log("list_chains_empty: " + n.st.Symbol + " answered chains with no expiration")
+		}
 		return r.end(ctx, n, reasonChainsFail)
 	}
 	n.expected = []string{}
