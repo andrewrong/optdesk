@@ -60,7 +60,7 @@ type Config struct {
 	Fx bar.FxRateReader
 	// VolLine fills underlying.vol_line (IV of the at-the-money contract, HV30 and IVP missing); false: absent.
 	VolLine bool
-	// Reasons reads the stored reasons of the day; nil: nothing. Nothing reads it yet.
+	// Reasons reads the stored field reasons of the chain's session day for the notes; nil: none.
 	Reasons runview.Reader
 }
 
@@ -216,6 +216,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
 	setPrice(&vm.Underlying, sessionDay, latest)
 	vm.Chain.SessionDay = &sessionDay
+	if vm.Notes, err = pageNotes(ctx, c, contracts.Day(sessionDay)); err != nil {
+		return nil, err
+	}
 	var eodTime time.Time
 	for _, r := range rows {
 		vm.Chain.Rows = append(vm.Chain.Rows, toRow(r))

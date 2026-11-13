@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 
@@ -59,7 +60,8 @@ func TestEarningsSourceContract(t *testing.T) {
 func TestNewJQuantsFuncContract(t *testing.T) {
 	t.Parallel()
 	newSource := sources.NewJQuantsFunc(func(sources.EarningsConfig) (sources.EarningsSource, error) { return fakeEarnings{}, nil })
-	src, err := newSource(sources.EarningsConfig{BaseURL: "http://unused.invalid", APIKey: "k", Symbols: []string{"7203"}})
+	src, err := newSource(sources.EarningsConfig{BaseURL: "http://unused.invalid", APIKey: "k", Symbols: []string{"7203"},
+		Sleep: func(context.Context, time.Duration) error { return nil }})
 	if err != nil {
 		t.Fatal(err)
 	}

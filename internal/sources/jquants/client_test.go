@@ -9,7 +9,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 )
 
@@ -36,13 +38,50 @@ func (f *fakeDoer) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{StatusCode: f.status, Body: io.NopCloser(strings.NewReader(f.body))}, nil
 }
 
-func newSource(t *testing.T, d sources.HTTPDoer, symbols ...string) sources.EarningsSource {
+// sleepRec records the durations asked of Sleep and never waits; err, when set, is returned by every call.
+type sleepRec struct {
+	mu  sync.Mutex
+	got []time.Duration
+	err error
+}
+
+func (r *sleepRec) sleep(_ context.Context, d time.Duration) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.got = append(r.got, d)
+	return r.err
+}
+
+func newSourceRec(t *testing.T, d sources.HTTPDoer, symbols ...string) (sources.EarningsSource, *sleepRec) {
 	t.Helper()
-	s, err := New(sources.EarningsConfig{BaseURL: "http://jq.invalid", APIKey: testKey, Symbols: symbols, Doer: d})
+	rec := &sleepRec{}
+	s, err := New(sources.EarningsConfig{BaseURL: "http://jq.invalid", APIKey: testKey, Symbols: symbols, Doer: d, Sleep: rec.sleep})
 	if err != nil {
 		t.Fatal(err)
 	}
+	return s, rec
+}
+
+func newSource(t *testing.T, d sources.HTTPDoer, symbols ...string) sources.EarningsSource {
+	t.Helper()
+	s, _ := newSourceRec(t, d, symbols...)
 	return s
+}
+
+// seqDoer answers the statuses in order, the last one for every call after; it records each call's code.
+type seqDoer struct {
+	mu       sync.Mutex
+	statuses []int
+	codes    []string
+	body     string
+}
+
+func (f *seqDoer) Do(req *http.Request) (*http.Response, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	st := f.statuses[min(len(f.codes), len(f.statuses)-1)]
+	f.codes = append(f.codes, req.URL.Query().Get("code"))
+	return &http.Response{StatusCode: st, Body: io.NopCloser(strings.NewReader(f.body))}, nil
 }
 
 func testdata(t *testing.T, name string) string {
@@ -190,19 +229,94 @@ func TestJQuantsOneCallPerSymbol(t *testing.T) {
 	}
 }
 
-func TestJQuantsRateLimitedNoRetry(t *testing.T) {
+func kindOf(t *testing.T, err error) contracts.ErrorKind {
+	t.Helper()
+	var te contracts.TypedError
+	if !errors.As(err, &te) {
+		t.Fatalf("not a TypedError: %v", err)
+	}
+	return te.Kind()
+}
+
+func TestJQuantsRateLimitedRetriesOnce(t *testing.T) {
 	t.Parallel()
-	for _, st := range []int{429, 503} {
-		d := &fakeDoer{status: st}
-		_, err := newSource(t, d, "1111", "2222", "3333").Fetch(context.Background())
-		if err == nil {
-			t.Fatal("no error")
-		}
-		if st == 429 && codeOf(t, err) != "rate_limited" {
-			t.Fatalf("code %q", codeOf(t, err))
-		}
-		if d.calls != 1 {
-			t.Fatalf("status %d: calls %d", st, d.calls)
-		}
+	d := &seqDoer{statuses: []int{429, 200}, body: testdata(t, "earnings_date.json")}
+	src, rec := newSourceRec(t, d, "9999")
+	got, err := src.Fetch(context.Background())
+	if err != nil || len(got) != 2 {
+		t.Fatalf("len %d err %v", len(got), err)
+	}
+	if len(d.codes) != 2 || d.codes[0] != "99990" || d.codes[1] != "99990" {
+		t.Fatalf("codes %v", d.codes)
+	}
+	if len(rec.got) != 1 || rec.got[0] != 61*time.Second {
+		t.Fatalf("sleeps %v", rec.got)
+	}
+}
+
+func TestJQuantsRateLimitedTwiceFails(t *testing.T) {
+	t.Parallel()
+	d := &seqDoer{statuses: []int{429}}
+	src, rec := newSourceRec(t, d, "1111", "2222", "3333")
+	_, err := src.Fetch(context.Background())
+	if err == nil || codeOf(t, err) != "rate_limited" || kindOf(t, err) != contracts.Retryable {
+		t.Fatalf("err %v", err)
+	}
+	if len(d.codes) != 2 || d.codes[0] != "11110" || d.codes[1] != "11110" {
+		t.Fatalf("codes %v", d.codes)
+	}
+	if len(rec.got) != 1 || rec.got[0] != 61*time.Second {
+		t.Fatalf("sleeps %v", rec.got)
+	}
+}
+
+func TestJQuantsServerErrorNotRetried(t *testing.T) {
+	t.Parallel()
+	d := &fakeDoer{status: 503}
+	src, rec := newSourceRec(t, d, "1111", "2222", "3333")
+	if _, err := src.Fetch(context.Background()); err == nil || codeOf(t, err) != "http_status" {
+		t.Fatalf("err %v", err)
+	}
+	if d.calls != 1 || len(rec.got) != 0 {
+		t.Fatalf("calls %d sleeps %v", d.calls, rec.got)
+	}
+}
+
+func TestJQuantsPacesCalls(t *testing.T) {
+	t.Parallel()
+	body := testdata(t, "earnings_date_empty.json")
+	src, rec := newSourceRec(t, &fakeDoer{status: 200, body: body}, "1111", "2222", "3333")
+	if _, err := src.Fetch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.got) != 2 || rec.got[0] != 12*time.Second || rec.got[1] != 12*time.Second {
+		t.Fatalf("sleeps %v", rec.got)
+	}
+	one, rec1 := newSourceRec(t, &fakeDoer{status: 200, body: body}, "1111")
+	if _, err := one.Fetch(context.Background()); err != nil || len(rec1.got) != 0 {
+		t.Fatalf("err %v sleeps %v", err, rec1.got)
+	}
+}
+
+func TestJQuantsSleepCancelled(t *testing.T) {
+	t.Parallel()
+	d := &fakeDoer{status: 200, body: testdata(t, "earnings_date_empty.json")}
+	src, rec := newSourceRec(t, d, "1111", "2222", "3333")
+	rec.err = context.Canceled
+	_, err := src.Fetch(context.Background())
+	if err == nil || codeOf(t, err) != "network" || kindOf(t, err) != contracts.Retryable {
+		t.Fatalf("err %v", err)
+	}
+	if d.calls != 1 {
+		t.Fatalf("calls %d", d.calls)
+	}
+}
+
+func TestJQuantsRealSleepCancelled(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := realSleep(ctx, time.Hour); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err %v", err)
 	}
 }
