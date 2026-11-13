@@ -47,7 +47,7 @@ func heldContracts(t *testing.T, acct store.AccountReader) []broker.Contract {
 	b := heldBroker()
 	clk := clockwork.NewFakeClockAt(etTime(t, "2026-11-06 17:00"))
 	watch := []jobs.WatchEntry{watchEntry("US", "TEST", "STK", "100", 1000001)}
-	j, err := NewWithHeld(b, &fakeResolver{}, &fakeWriter{}, watch, acct, clk)
+	j, err := WithHeldAliases(NewWithHeldSymbols, []string{"A", "B"})(b, &fakeResolver{}, &fakeWriter{}, watch, acct, clk, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func heldSymbolsRun(t *testing.T, acct store.AccountReader, tr symbol.Translator
 	b := heldBroker()
 	clk := clockwork.NewFakeClockAt(etTime(t, "2026-11-06 17:00"))
 	watch := []jobs.WatchEntry{watchEntry("US", "TEST", "STK", "100", 1000001)}
-	var ctor NewOptionEodHeldSymbolsFunc = NewWithHeldSymbols
+	ctor := WithHeldAliases(NewWithHeldSymbols, []string{"A", "B"})
 	j, err := ctor(b, &fakeResolver{}, &fakeWriter{}, watch, acct, clk, tr)
 	if err != nil {
 		t.Fatal(err)

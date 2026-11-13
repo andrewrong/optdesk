@@ -34,7 +34,7 @@ func jpPlanRig(t *testing.T, manifest []byte, codes ...string) (*planRig, contra
 	}
 	j, err := newPlanJP(manifest, PlanDeps{
 		Stored: Stored{Watch: append(jpWatch(codes...), watchOf("AAPL")...), Instruments: r.inst, Bars: r.bars, Options: r.opts,
-			Accounts: r.acct, Eod: r.eod},
+			Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod},
 		Marks: r.marks, Plans: r.plans, Clock: r.clk,
 	})
 	if err != nil {
@@ -326,7 +326,7 @@ func TestPlanJPPlansTheIndexOfTheWatchList(t *testing.T) {
 	r.seed(t, 100, putStrikes...)
 	j, err := NewPlanJP(PlanDeps{
 		Stored: Stored{Watch: []jobs.WatchEntry{{Market: "JP", Contract: broker.Contract{SecType: "IND", Symbol: "N225", Exchange: "OSE.JPN",
-			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod},
+			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod},
 		Marks: r.marks, Plans: r.plans, Clock: r.clk,
 	})
 	if err != nil {
