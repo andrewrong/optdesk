@@ -97,7 +97,7 @@ Acceptance:
 4. The no-id test of Decision 8 passes for the account wiring.
 
 ### 7 pyside-reports-account-id
-Order: after 6. Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/src/optdesk/ibkr/accounts.py` (only if needed), `pyside/examples/gateways.example.toml`, `pyside/tests/` (tests that assert `account` of a gateway or no id in a response, found by grep for `_alias` and `account must be an alias`).
+Order: after 6. Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/examples/gateways.example.toml`, `pyside/tests/ibkr/test_accounts.py`, `pyside/tests/ibkr/test_gateways.py`, `pyside/tests/ibkr/test_logfilter.py`, `pyside/src/optdesk/ibkr/accounts.py`, `pyside/src/optdesk/ibkr/model.py`, `pyside/tests/ibkr/test_executions.py`, `pyside/tests/ibkr/test_server.py`, `pyside/tests/contracts/test_contracts_api.py` (the readers put the id on the rows, so `accounts.py` and `model.py` change; `pyside/tests/contracts/test_contracts_api.py` is a path of the contracts module and is in this entry because it constructs `AccountServicer` with an alias).
 Acceptance:
 1. Both servicers answer `str(managedAccounts()[0])` in `account` and no longer read `self._alias`; two managed accounts is still `MultipleAccounts`.
 2. `gateways.py` neither requires nor rejects `account`; no code path uses it.
