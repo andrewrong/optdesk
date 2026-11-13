@@ -10,6 +10,7 @@ const (
 	figVixTerm     = "market.vix_term_ratio"
 	figIVIbkr      = "market.iv_ibkr"
 	figRv20        = "market.rv20"
+	figIvRv20      = "market.iv_rv20"
 
 	kindMarket     = "market"
 	kindUnderlying = "underlying"
