@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/fxrefresh"
+	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
@@ -31,5 +32,37 @@ func TestFxRefreshContract(t *testing.T) {
 	j, err := f(nil, nil, nil, nil, nil)
 	if err != nil || j.ID() != "fx_refresh" {
 		t.Fatalf("got %v, %v", j, err)
+	}
+}
+
+// fakeSource is a non-nil source to tell apart from the zero value.
+type fakeSource struct{ sources.Source }
+
+// recordingJob is a fake job that keeps the source attached to it.
+type recordingJob struct {
+	fakeJob
+	got sources.Source
+}
+
+func TestAttachSecondaryContract(t *testing.T) {
+	t.Parallel()
+	known := &recordingJob{fakeJob: fakeJob{id: "fx_refresh"}}
+	var f fxrefresh.AttachSecondaryFunc = func(j contracts.Job, second sources.Source) bool {
+		r, ok := j.(*recordingJob)
+		if !ok {
+			return false
+		}
+		r.got = second
+		return true
+	}
+	var src sources.Source = fakeSource{}
+	if !f(known, src) {
+		t.Fatal("known job: got false, want true")
+	}
+	if known.got != src {
+		t.Fatalf("source not recorded: %v", known.got)
+	}
+	if f(fakeJob{id: "other"}, src) {
+		t.Fatal("unknown job: got true, want false")
 	}
 }
