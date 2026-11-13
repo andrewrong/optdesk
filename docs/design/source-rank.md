@@ -32,7 +32,7 @@ All paths at origin/main f7d990f5.
 4. The FRED path (the client refuses unknown series). A new unit `jpy_per_usd` is added to the `obs.series_point` r1 unit enum with its generated output (entry 1); `seriesUnits` gets the row `"DEXJPUS": {unit: jpyPerUsd}`, `testdata/series_units.json` gets the recorded FRED metadata of the series and `mapping_test.go` its row (entry 2). The unit tells readers that the value is a rate, not an amount; nothing stores it as a series point here (the fx job converts the point to an `FxRate`).
 5. Override is not offered. The plan allows "a replacement by a lower-ranked source ... by a forced console run that names the source". The console request has no source (`jobrequest.Request` is job, day, force) and `contracts.Job.Run` has no force argument. The refusal holds because the fill source has the insert method only.
 6. Contract and database. The `source` enum of `obs.fx_rate` r1 gains `fred_h10`, generated output with it (entry 1). Migration `0048_fx_rate_source.sql` replaces `fx_rate_source_ck` with `source IN ('ibkr_midpoint', 'fred_h10')` (a closed list, as the existing pattern; every new source costs a migration, Left out); no grant, view or column changes. The Down part restores the old check and refuses (an exception, nothing changed) when a `fred_h10` row exists. Owner-only DDL, one transaction.
-7. Wiring. `fxrefresh.AttachSecondary(j contracts.Job, second sources.Source) bool` attaches the fill source to a job `New` built and reports false for any other job (a test fake), so `NewFxRefreshFunc`, its tests and the `cmd/ot` fakes keep working. A new file `cmd/ot/wire_fxsecond.go` holds the one function the factory uses to build `fx_refresh` with `f.src` attached when it is not nil; without a FRED key there is no fill and `fx_refresh` runs as today. `wire.go` is not edited: the new file registers its builder through the existing `registerJob` pattern of `wire_fred.go` (`jobFamily`).
+7. Wiring. `fxrefresh.AttachSecondary(j contracts.Job, second sources.Source) bool` attaches the fill source to a job `New` built and reports false for any other job (a test fake), so `NewFxRefreshFunc`, its tests and the `cmd/ot` fakes keep working. A new file `cmd/ot/wire_fxsecond.go` holds the one function the factory uses to build `fx_refresh` with `f.src` attached when it is not nil; without a FRED key there is no fill and `fx_refresh` runs as today. `jobFactory.fxRefresh` (`cmd/ot/wire.go:535`) is the only place `fx_refresh` is built (`preflight.go:112` and `wire.go:586` both call it, not `registerJob`), so `wire.go` must change: the body of `fxRefresh` is replaced in place by a call to the new function, a change that adds no line.
 8. Own code behind an interface. The attach function is our glue behind the `contracts.Job` interface; the FRED client is the existing `internal/sources/fred`; no mainstream library knows our key and statuses.
 9. No old value is kept (owner 2026-11-13); this design deletes none.
 
@@ -97,12 +97,12 @@ Acceptance:
 
 Module: ot. Size: S.
 Order: after 4 (it calls `AttachSecondary`).
-Files: `cmd/ot/wire_fxsecond.go`, `cmd/ot/wire_fxsecond_test.go`
+Files: `cmd/ot/wire.go`, `cmd/ot/wire_fxsecond.go`, `cmd/ot/wire_fxsecond_test.go`
 Design: docs/design/source-rank.md#Decisions (7)
-`wire.go` is not edited. Tests of `cmd/ot` that replace `d.newFxRefresh` with a fake keep working because `AttachSecondary` returns false for a fake job; they are not edited.
+`wire.go` stands at 796 lines and gets the in-place body replacement only; the new code is in the new file. Tests of `cmd/ot` that replace `d.newFxRefresh` with a fake keep working because `AttachSecondary` returns false for a fake job; they are not edited.
 Acceptance:
 1. With a FRED key the built `fx_refresh` job has the FRED source attached; without one it is built as before.
-2. `wire.go` is unchanged (`git diff --name-only BASE` lists only the two files above) and the wiring lives in `wire_fxsecond.go`.
+2. `fx_refresh` built by the scheduler path and by the preflight path (`preflight.go:112`) both have the source attached, and `wire.go` stays under the 800-line ceiling (the body of `fxRefresh` is replaced, none is added to).
 3. `wire_fxsecond_test.go` has the new tests `TestFxRefreshGetsFredSourceWithKey` and `TestFxRefreshWithoutKeyHasNoFill` (a fake FRED source counts its calls over one run with a fake broker and store).
 
 ## Checked by CI
@@ -134,4 +134,4 @@ Answers to the six points of the dispatcher's scratchpad (source-rank-adversaria
 3. Simpler way. Adopted: the fill is `InsertFxRates` and the `Interface` section is gone with its marking; the dead `no_value` arm is gone. Reading DEXJPUS from stored series: not adopted, it would make the fx job depend on another job's output (a cascade); the call to FRED is direct (Decision 3).
 4. Lock-in. The closed source check is kept (the existing pattern) and its cost is noted in Left out. `AttachSecondary` stays a small attach function behind `contracts.Job`; the factory does not gain a second construction path (the builder is one function in the new file).
 5. Entry order and false green. Adopted: entry 4 merges after entry 3 ran, and entry 2 lands before entry 4, so the FRED leg is real, not only green on fakes.
-6. Wiring and files. Adopted: `wire.go` is not edited (result-style item in entry 5); the `run_test.go` edit is unconditional; #2272 is stated as merged with what is and is not wired.
+6. Wiring and files. Adopted: `wire.go` cannot stay unedited: the factory method that builds `fx_refresh` lives there (Decision 7); the item is result-style and the file is edited in place only; the `run_test.go` edit is unconditional; #2272 is stated as merged with what is and is not wired.
