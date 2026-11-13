@@ -417,6 +417,18 @@ func TestHeldStockRowEntersTheWatchedStocks(t *testing.T) {
 	}
 }
 
+func TestHeldJPYStockRowIsNotAUSStock(t *testing.T) {
+	t.Parallel()
+	s := Stored{HeldAliases: ownerAliases, Accounts: fakeAccounts{pos: []store.Position{
+		{SecType: "stock", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"},
+		{SecType: "stock", Symbol: "7203", ConID: 79, Exchange: "TSEJ", Currency: "JPY", Quantity: "100"},
+	}}}
+	got, _, err := s.stocks(context.Background(), time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(got) != 1 || got[0].Symbol != "NVDA" {
+		t.Fatalf("stocks %v err %v, want NVDA only", got, err)
+	}
+}
+
 func TestHeldOptionRowIsReadForItsQuoteRef(t *testing.T) {
 	t.Parallel()
 	ref := openquote.OptionRef{Expiry: "2026-12-10", Strike: "60.0", Right: "P", InstrumentID: 999}

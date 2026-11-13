@@ -154,6 +154,7 @@ func (a jpAccounts) Positions(ctx context.Context, alias, day string) ([]store.P
 
 func (r jpRules) stored(s Stored) Stored {
 	s.Watch = r.watch(s.Watch)
+	s.HeldCurrency = "JPY"
 	if s.Accounts != nil {
 		s.Accounts = jpAccounts{s.Accounts, r}
 	}
