@@ -190,7 +190,7 @@ func TestIndexProbeCaseAnswersBrokerDown(t *testing.T) {
 		t.Fatalf("broker down: %v %q", j, r)
 	}
 	up := &prober{log: log, w: wiring{
-		factory: jobFactory{clk: fakeClock{time.Date(2026, 11, 9, 16, 0, 0, 0, time.UTC)}},
+		factory: jobFactory{clk: fakeClock{time.Date(2026, 11, 9, 16, 0, 0, 0, time.UTC)}, inst: conidInst{}, eod: conidEod{}},
 		dial:    func(context.Context) (broker.Broker, error) { return struct{ broker.Broker }{}, nil },
 	}}
 	j, r := up.probe(context.Background(), jobOptionEodIndex)
