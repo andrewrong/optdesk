@@ -80,7 +80,7 @@ func TestFlexFileLoaderContract(t *testing.T) {
 			return sources.FlexFile{}, fmt.Errorf("login 1: field token_env: %w", sources.ErrFlexConfig)
 		}
 		return sources.FlexFile{
-			Logins:   []sources.FlexLogin{{Name: "main", TokenEnv: "TOK", TradeQueries: []string{"1"}}},
+			Logins: []sources.FlexLogin{{Name: "main", TokenEnv: "TOK", TradeQueries: []string{"1"}}},
 		}, nil
 	})
 	f, err := load("ok")
