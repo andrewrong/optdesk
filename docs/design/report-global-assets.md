@@ -101,19 +101,7 @@ Module pages, `internal/pages/report_blocks/common.go` (`Config` gains `Bars bar
 
 ## Issues
 
-Build order: every entry compiles and its tests pass against main. BASE is `git merge-base origin/main HEAD`. Entries 1, 2 and 3 are independent of each other. Where a result needs a test run, it is in `### 6 report-global-assets-register
-
-Module: docs. Size: S.
-Order: after 1.
-Files: `docs/conventions/register.toml`
-Design: docs/design/report-global-assets.md#Issues (Decision 14)
-Acceptance:
-1. `register.toml` has the entries `report.proxy_move` and `report.sector_excess`, each version 1, with all 15 keys of `TestRegisterEntriesComplete` (`id`, `version`, `title_zh`, `pages`, `formula`, `inputs`, `period_date`, `currency`, `excludes`, `gap_text`, `implemented_by`, `source_hash`, `agreed_on`, `agreed_in`, `history`), `pages = ["report_page.global_assets"]`, `source_hash = "pending-recompute"`, `agreed_in = "docs/design/report-global-assets.md"`.
-2. The `implemented_by` names are exactly those of Decision 14, and each is a function defined in `internal/compute/pagefig` (`git grep -n "^func \(proxyMove\|change\|sectorExcess\|ratPercent\|rotationOf\)(" -- internal/compute/pagefig` prints five lines).
-3. The `gap_text` of `report.proxy_move` states the rule of Decision 6 (more than three weekdays behind the page day is `stale_input`, another c0 than SPY's is `missing_input`); the `excludes` of `report.sector_excess` name adjusted closes and any judgement of rotation.
-4. `git diff BASE -- docs/conventions/register.toml` removes no line and adds only the two entries; `git diff --name-only BASE` lists only `docs/conventions/register.toml`; `internal/compute/rules/rules.json` and `docs/design` are not edited.
-
-## Checked by CI`, not in an acceptance list.
+Build order: every entry compiles and its tests pass against main. BASE is `git merge-base origin/main HEAD`. Entries 1, 2 and 3 are independent of each other. Where a result needs a test run, it is in `## Checked by CI`, not in an acceptance list.
 
 ### 1 report-global-assets-api (interface)
 
@@ -181,6 +169,19 @@ Acceptance:
 3. `reportBlocksConfig` sets `Bars`, `StockIDs`, `Global: pagefig.NewGlobal` and `Assets` from `barsrefresh.DefaultManifest().Stocks`; `reportPageOver` sets `report_page.Config.GlobalAssets` to `report_blocks.GlobalAssets(bc)`; the list of symbols exists once: `git grep -n '"XLRE"' -- ':!*_test.go'` prints only `internal/jobs/barsrefresh/job.toml`.
 4. `report_global_test.go` names `TestReportUsCloseGlobalFigures` (every stored close of the page day: numbers), `TestReportUsCloseShowsFridayOnSaturday` (the stored closes one weekday older still give figures and the block names that day), `TestReportUsCloseStaleAfterThreeWeekdays` (`stale_input`, Build returns no error), `TestReportNoStockIDsIsNoReader` (the block is the `no_reader` gap and the other blocks are unchanged) and `TestReportJpAndOpenKeepNotBuilt`; `report_test.go` is edited only where a test counts the opened readers or compares the whole page.
 5. `git diff BASE -- cmd/ot/wire.go cmd/ot/site.go internal/compute/api.go docs/design` is empty; `git diff --name-only BASE` lists only paths of the Files line.
+
+### 6 report-global-assets-register
+
+Module: docs. Size: S.
+Order: after 1.
+Files: `docs/conventions/register.toml`
+Design: docs/design/report-global-assets.md#Issues (Decision 14)
+Acceptance:
+1. `register.toml` has the entries `report.proxy_move` and `report.sector_excess`, each version 1, with all 15 keys of `TestRegisterEntriesComplete` (`id`, `version`, `title_zh`, `pages`, `formula`, `inputs`, `period_date`, `currency`, `excludes`, `gap_text`, `implemented_by`, `source_hash`, `agreed_on`, `agreed_in`, `history`), `pages = ["report_page.global_assets"]`, `source_hash = "pending-recompute"`, `agreed_in = "docs/design/report-global-assets.md"`.
+2. The `implemented_by` names are exactly those of Decision 14, and each is a function defined in `internal/compute/pagefig` (`git grep -n "^func \(proxyMove\|change\|sectorExcess\|ratPercent\|rotationOf\)(" -- internal/compute/pagefig` prints five lines).
+3. The `gap_text` of `report.proxy_move` states the rule of Decision 6 (more than three weekdays behind the page day is `stale_input`, another c0 than SPY's is `missing_input`); the `excludes` of `report.sector_excess` name adjusted closes and any judgement of rotation.
+4. `git diff BASE -- docs/conventions/register.toml` removes no line and adds only the two entries; `git diff --name-only BASE` lists only `docs/conventions/register.toml`; `internal/compute/rules/rules.json` and `docs/design` are not edited.
+
 
 ## Checked by CI
 
