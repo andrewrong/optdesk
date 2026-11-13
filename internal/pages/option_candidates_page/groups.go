@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -25,8 +26,8 @@ type groupSpec struct {
 
 // groupSpecs are the groups in page order with the columns of the main table (Decision 5).
 var groupSpecs = []groupSpec{
-	{kindShortPut, []colDef{colRank, colCompany, colExpiry, colDTE, colStrike, colBid, colYield, colBreakEven,
-		colDelta, colIV, colMarks, colFit, colEarnings}},
+	{kindShortPut, []colDef{colRank, colCompany, colExpiry, colDTE, colStrike, colBid, colYield, colExcess, colBreakEven,
+		colDelta, colIV, colITM, colMarks, colFit, colEarnings}},
 	{kindCoveredCall, []colDef{colRank, colCompany, colAlias, colExpiry, colDTE, colStrike, colBid, colYield,
 		colBreakEven, colDelta, colIV, colExtrinsic, colMarks, colEarnings, colExDate, colExAmount}},
 	{kindHeldCallGuard, []colDef{colCompany, colAlias, colExpiry, colStrike, colExtrinsic, colExDate, colExAmount,
@@ -86,7 +87,7 @@ func readKind(ctx context.Context, r store.CandidateReader, kind string, day con
 
 // buildGroup splits the rows of one group in their stored order: ok rows to the main table, the
 // others to the second table with their reasons. A group day before the build day is stale.
-func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.Candidate) group {
+func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.Candidate, figs optionfigapi.OptionFigures, rate rateRead) group {
 	g := group{Kind: spec.kind, Title: groupTitles[spec.kind], Stale: groupDay < buildDay}
 	d := string(groupDay)
 	g.Day = &d
@@ -105,12 +106,32 @@ func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.C
 		}
 	}
 	if len(main) > 0 {
-		g.Main = buildTable(spec.main, spec.kind, main, g.Stale, false)
+		g.Main = buildTable(bindFigures(spec, groupDay, main, figs, rate), spec.kind, main, g.Stale, false)
 	}
 	if len(other) > 0 {
 		g.Other = buildTable(otherColumns, spec.kind, other, g.Stale, true)
 	}
 	return g
+}
+
+// bindFigures gives the figure columns of a short-put group their cells: one Put per ok row, read by
+// the row's position. The static columns are returned as they are.
+func bindFigures(spec groupSpec, groupDay contracts.Day, main []store.Candidate, figs optionfigapi.OptionFigures, rate rateRead) []colDef {
+	var res []optionfigapi.PutFigures
+	if spec.kind == kindShortPut {
+		res = putFigures(figs, rate, groupDay, main)
+	}
+	defs := make([]colDef, len(spec.main))
+	copy(defs, spec.main)
+	for i, d := range defs {
+		switch d.ID {
+		case itmID:
+			defs[i].cellAt = figureCell(res, itmFigure)
+		case excessID:
+			defs[i].cellAt = figureCell(res, excessFigure)
+		}
+	}
+	return defs
 }
 
 func buildTable(defs []colDef, kind string, rows []store.Candidate, stale, withReasons bool) *table {
@@ -121,7 +142,12 @@ func buildTable(defs []colDef, kind string, rows []store.Candidate, stale, withR
 	for i, c := range rows {
 		r := row{ID: "cand-" + kind + "-" + strconv.Itoa(c.InstrumentID) + "-" + strconv.Itoa(i), Cells: map[string]any{}, Reasons: []reason{}}
 		for j, d := range defs {
-			cell := d.cell(c)
+			var cell any
+			if d.cellAt != nil {
+				cell = d.cellAt(i, c)
+			} else {
+				cell = d.cell(c)
+			}
 			if vc, ok := cell.(valueCell); ok && j == 0 && stale {
 				vc.Badges = append(vc.Badges, staleBadge)
 				cell = vc
