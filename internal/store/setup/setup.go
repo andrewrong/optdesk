@@ -42,9 +42,9 @@ const (
 	roleReadings      = "ot_w_readings"
 	roleAlerts        = "ot_w_alerts" // INSERT and SELECT on alerts.sent only (migrations/0015_alerts.sql)
 
-	roleFundamental = "ot_w_fundamental" // INSERT on obs.fundamental_fact, SELECT on rd.fundamental_fact_r1 (migrations/0017_fundamental_fact.sql)
+	roleFundamental = "ot_w_fundamental" // INSERT on obs.fundamental_fact, SELECT on rd.fundamental_fact_r1 (migrations/0017_fundamental_fact.sql); UPDATE on eight non-key columns and SELECT on fourteen columns of the table (migrations/0046_fundamentals_keys.sql)
 
-	roleEvents = "ot_w_events" // INSERT on obs.earnings_date, SELECT on rd.earnings_date_r1 (migrations/0020_events.sql)
+	roleEvents = "ot_w_events" // INSERT on obs.earnings_date, SELECT on rd.earnings_date_r1 (migrations/0020_events.sql); since migrations/0046_fundamentals_keys.sql also INSERT on obs.earnings_check and obs.dividend_check, UPDATE of non-key columns and SELECT of key and compared columns on the four tables; no DELETE, no TRUNCATE
 
 	roleCandidate = "ot_w_candidate" // INSERT and SELECT on candidates.option_candidate, SELECT on rd.option_candidate_r1 (migrations/0018_candidates.sql)
 
