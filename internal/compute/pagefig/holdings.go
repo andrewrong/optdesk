@@ -19,23 +19,30 @@ func holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 	value, unreal := new(big.Rat), new(big.Rat)
 	var valueGap, unrealGap string
 	for _, r := range in.Rows {
-		l := blockapi.HoldingLine{Underlying: r.Underlying, SecType: r.SecType}
+		l := blockapi.HoldingLine{Underlying: r.Underlying, SecType: r.SecType, Currency: r.Currency}
 		v, u, g := holdingRow(r)
 		switch {
 		case g != "":
 			l.Value, l.Unrealised, l.Share = gap(g), gap(g), gap(g)
 			valueGap, unrealGap = firstGap(valueGap, g), firstGap(unrealGap, g)
-		case r.Currency != in.Currency:
+		case r.Currency == "JPY" && in.Currency == "USD" && rate(in.UsdJpy) != nil:
+			rt := rate(in.UsdJpy)
+			v, u = new(big.Rat).Quo(v, rt), new(big.Rat).Quo(u, rt)
+			l.Currency = "USD"
+			l.Value, l.Unrealised = compute.FigureValue{Value: money(v)}, compute.FigureValue{Value: money(u)}
+			l.Share = share(v, net, netOK)
+			value.Add(value, v)
+			unreal.Add(unreal, u)
+		case r.Currency == "JPY" && in.Currency == "USD":
 			l.Value, l.Unrealised = compute.FigureValue{Value: money(v)}, compute.FigureValue{Value: money(u)}
 			l.Share = gap("unsupported_currency")
 			valueGap, unrealGap = firstGap(valueGap, "unsupported_currency"), firstGap(unrealGap, "unsupported_currency")
+		case r.Currency != in.Currency:
+			l.Value, l.Unrealised, l.Share = gap("unsupported_currency"), gap("unsupported_currency"), gap("unsupported_currency")
+			valueGap, unrealGap = firstGap(valueGap, "unsupported_currency"), firstGap(unrealGap, "unsupported_currency")
 		default:
 			l.Value, l.Unrealised = compute.FigureValue{Value: money(v)}, compute.FigureValue{Value: money(u)}
-			l.Share = gap("no_data")
-			if netOK {
-				pct := new(big.Rat).Quo(new(big.Rat).Mul(v, big.NewRat(100, 1)), net)
-				l.Share = compute.FigureValue{Value: money(pct)}
-			}
+			l.Share = share(v, net, netOK)
 			value.Add(value, v)
 			unreal.Add(unreal, u)
 		}
@@ -44,6 +51,24 @@ func holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 	out.TotalValue = total(value, valueGap)
 	out.TotalUnrealised = total(unreal, unrealGap)
 	return out
+}
+
+// rate reads a USD/JPY rate; nil unless it is a positive number.
+func rate(s string) *big.Rat {
+	r, ok := parse(s)
+	if !ok || r.Sign() <= 0 {
+		return nil
+	}
+	return r
+}
+
+// share is v in percent of net, or the gap no_data without a usable net.
+func share(v, net *big.Rat, netOK bool) compute.FigureValue {
+	if !netOK {
+		return gap("no_data")
+	}
+	pct := new(big.Rat).Quo(new(big.Rat).Mul(v, big.NewRat(100, 1)), net)
+	return compute.FigureValue{Value: money(pct)}
 }
 
 // holdingRow returns value and unrealised of one row, or the gap that stops it: missing_quote for
