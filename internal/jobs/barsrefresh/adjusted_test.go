@@ -94,7 +94,7 @@ func TestAdjustedSkippedWhenFresh(t *testing.T) {
 	}
 }
 
-func TestAdjustedWritesWholeWindowAsNextEpoch(t *testing.T) {
+func TestAdjustedOverwritesWholeWindowByKey(t *testing.T) {
 	t.Parallel()
 	old := func() []contracts.PriceBar {
 		return []contracts.PriceBar{
@@ -115,19 +115,17 @@ func TestAdjustedWritesWholeWindowAsNextEpoch(t *testing.T) {
 			if res := runAdjusted(t, h, st); res.Err != nil {
 				t.Fatal(res.Err)
 			}
-			var adj []contracts.PriceBar
-			for _, r := range st.epoch(2) {
-				if r.Basis == basisAdjusted {
-					adj = append(adj, r)
-				}
-			}
+			adj, _ := st.PriceBars(context.Background(), 101, basisAdjusted, firstDay, runDay)
 			if len(adj) != len(answer) || len(adjustedQueries(h)) != 1 {
-				t.Fatalf("epoch 2 rows %+v queries %+v", adj, h.queries)
+				t.Fatalf("adjusted rows %+v queries %+v", adj, h.queries)
 			}
 			for i, r := range adj {
 				if r.SessionDay.Format(dayLayout) != answer[i].Day || r.Close != answer[i].Close {
 					t.Fatalf("row %d %+v for bar %+v", i, r, answer[i])
 				}
+			}
+			if len(st.rows) != 1+len(answer) {
+				t.Fatalf("a key is stored twice: %+v", st.rows)
 			}
 		})
 	}

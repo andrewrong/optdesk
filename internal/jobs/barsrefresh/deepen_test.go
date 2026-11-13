@@ -86,7 +86,7 @@ func TestDeepenWhenOldestIsNewer(t *testing.T) {
 	for _, r := range got {
 		if r.SessionDay.Format(dayLayout) < dayOf(-400) {
 			older++
-			if r.AdjustEpoch != 3 || r.Basis != "trades" {
+			if r.Basis != "trades" {
 				t.Fatalf("row %+v", r)
 			}
 		}
