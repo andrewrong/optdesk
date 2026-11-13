@@ -104,6 +104,8 @@ func quoteCause(q broker.Quote) string {
 			return "error_" + strconv.Itoa(q.ErrorCode)
 		}
 		return "error"
+	case broker.StatusOK, broker.StatusPartial:
+		return "empty"
 	}
 	return "empty"
 }
