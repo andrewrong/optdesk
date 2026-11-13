@@ -142,10 +142,10 @@ func fromQuote(q *pb.Quote, now clock.Clock) (broker.Quote, error) {
 	return out, nil
 }
 
-// fromAccount converts an account answer; no alias or a negative generation is a Permanent error.
+// fromAccount converts an account answer; no account or a negative generation is a Permanent error.
 func fromAccount(r *pb.AccountResponse) (broker.Account, error) {
 	if r.GetAccount() == "" {
-		return broker.Account{}, permanent("account: answer has no alias")
+		return broker.Account{}, permanent("account: answer has no account")
 	}
 	if r.GetGeneration() < 0 {
 		return broker.Account{}, permanent("account: negative generation")
@@ -168,11 +168,11 @@ func fromAccount(r *pb.AccountResponse) (broker.Account, error) {
 	return out, nil
 }
 
-// fromExecutions converts an executions answer; no alias, a negative generation or a time that is
+// fromExecutions converts an executions answer; no account, a negative generation or a time that is
 // not RFC 3339 is a Permanent error. The time is returned in UTC; decimals stay text.
 func fromExecutions(r *pb.ExecutionsResponse) (broker.Executions, error) {
 	if r.GetAccount() == "" {
-		return broker.Executions{}, permanent("executions: answer has no alias")
+		return broker.Executions{}, permanent("executions: answer has no account")
 	}
 	if r.GetGeneration() < 0 {
 		return broker.Executions{}, permanent("executions: negative generation")
