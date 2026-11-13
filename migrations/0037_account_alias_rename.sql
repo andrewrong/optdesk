@@ -46,7 +46,7 @@ BEGIN
                WHERE n.alias = new_alias AND o.alias = old_alias) THEN
         RAISE EXCEPTION 'rename_account_alias: optionledger.flex_section_row already has a row under alias % with the key of a row under alias %', new_alias, old_alias;
     END IF;
-    IF EXISTS (SELECT 1 FROM optionledger.flex_section_status n JOIN optionledger.flex_section_status o ON o.fetch_id = n.fetch_id
+    IF EXISTS (SELECT 1 FROM optionledger.flex_section_status n JOIN optionledger.flex_section_status o ON o.fetch_id = n.fetch_id AND o.section = n.section
                WHERE n.alias = new_alias AND o.alias = old_alias) THEN
         RAISE EXCEPTION 'rename_account_alias: optionledger.flex_section_status already has a row under alias % with the key of a row under alias %', new_alias, old_alias;
     END IF;
