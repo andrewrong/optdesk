@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/techstate"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -46,7 +47,7 @@ func (f jobFactory) computeFiguresOf(entries []jobs.WatchEntry) (contracts.Job, 
 		return nil, fmt.Errorf("build compute_figures job failed: %w", err)
 	}
 	if f.facts == nil || f.fd.newFigures == nil {
-		return ease, nil
+		return computefigures.WithTech(ease, techDeps()), nil
 	}
 	fn := f.fd.fn
 	val, err := f.fd.newFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps,
@@ -57,7 +58,13 @@ func (f jobFactory) computeFiguresOf(entries []jobs.WatchEntry) (contracts.Job, 
 	if err != nil {
 		return nil, fmt.Errorf("build compute_figures job failed: %w", err)
 	}
-	return withEase(val, ease)
+	return withEase(computefigures.WithTech(val, techDeps()), ease)
+}
+
+// techDeps is the tech step of compute_figures: the trial constants and the classifier. WithTech leaves the job
+// as it is when the compute stores have no price-bar or index reader.
+func techDeps() computefigures.TechDeps {
+	return computefigures.TechDeps{Classify: techstate.Classify, Params: techstate.TrialParams()}
 }
 
 // scheduledJob is what the scheduler asks of compute_figures besides contracts.Job.
