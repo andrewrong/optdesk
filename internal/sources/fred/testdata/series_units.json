@@ -12,5 +12,9 @@
   {"series_id": "WDTGAL", "units": "Millions of U.S. Dollars"},
   {"series_id": "RRPONTSYD", "units": "Billions of U.S. Dollars"},
   {"series_id": "DFF", "units": "Percent"},
-  {"series_id": "BAMLH0A0HYM2", "units": "Percent"}
+  {"series_id": "BAMLH0A0HYM2", "units": "Percent"},
+  {"series_id": "BAMLC0A0CM", "units": "Percent", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"},
+  {"series_id": "BAA10Y", "units": "Percent", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"},
+  {"series_id": "SOFR", "units": "Percent", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"},
+  {"series_id": "WRESBAL", "units": "Millions of U.S. Dollars", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"}
 ]
