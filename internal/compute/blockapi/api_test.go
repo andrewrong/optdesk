@@ -340,8 +340,14 @@ func TestMoversInOutRoundTrip(t *testing.T) {
 		NetPrev: blockapi.ValueIn{Tag: "NetLiquidation", Value: "100", Currency: "USD"},
 		NetLast: blockapi.ValueIn{Tag: "NetLiquidation", Value: "101", Currency: "JPY"},
 		Rows: []blockapi.MoverIn{
-			{Name: "AAA", SecType: "stock", Currency: "USD", Quantity: "100", Multiplier: "1", PricePrev: "1.5", PriceLast: "1.6", BasisPrev: "last", BasisLast: "close"},
-			{Name: "BBB", SecType: "option", Right: "put", Strike: "240", Expiry: "2026-11-20", Currency: "JPY", Quantity: "-2", Multiplier: "100", PricePrev: "3.1", PriceLast: "2.4", BasisPrev: "mid", BasisLast: "mid"},
+			{
+				Name: "AAA", SecType: "stock", Currency: "USD", Quantity: "100", Multiplier: "1",
+				PricePrev: "1.5", PriceLast: "1.6", BasisPrev: "last", BasisLast: "close",
+			},
+			{
+				Name: "BBB", SecType: "option", Right: "put", Strike: "240", Expiry: "2026-11-20", Currency: "JPY",
+				Quantity: "-2", Multiplier: "100", PricePrev: "3.1", PriceLast: "2.4", BasisPrev: "mid", BasisLast: "mid",
+			},
 		},
 	})
 	if got.Total != fv("2026-11-112026-11-12150") {
