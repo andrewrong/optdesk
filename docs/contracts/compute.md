@@ -118,6 +118,12 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - `Holdings` gives value, unrealised profit and share of each position; an empty `Mark` is the gap `missing_quote`, never zero. `Risk` never reads `Mark`.
 - Delta is in dollars per one dollar move of the underlying; vega is in dollars per volatility point.
 
+## Option tile figures
+
+`OptionTiles` (method `Tiles(OptionTilesIn) OptionTilesOut`), `OptionTilesIn`, `UsdText`, `OptionTilesOut` and `NewOptionTilesFunc` are declared in `internal/compute/blockapi/api.go`, additive to the interfaces above. Design: `docs/design/home-options-figures.md#Interface`.
+
+- Each total is one exact sum rounded once: `Value` to cents half away from zero, `Dollars` to whole dollars half up. A figure that cannot be formed has a gap reason (`no_data`, `unsupported_currency`), never zero. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -132,6 +138,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v10: additions only: `PageFigures` and its types in `internal/compute/blockapi` above.
 - v11: additions only: the package `internal/compute/valuationapi` above (valuation function types and result types).
 - v12: additions only: `HoldingFigures`, `NewHoldingFiguresFunc` and their types in `internal/compute/blockapi` above.
+- v13: additions only: `OptionTiles`, `NewOptionTilesFunc` and their types in `internal/compute/blockapi` above.
 
 ## Contract tests
 
