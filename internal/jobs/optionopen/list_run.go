@@ -123,7 +123,7 @@ func (j *listJob) Run(ctx context.Context, day contracts.Day, keys []contracts.E
 	case len(stale) > 0 && j.m.TTLDays > 1:
 		res.Err = newErr(contracts.Retryable, "list_preopen: %d held or priority group(s) are neither fresh nor answered", len(stale))
 	case !listed:
-		res.Err = newErr(contracts.Retryable, "list_preopen: nothing was listed (%s)", r.mainReason())
+		res.Err = newErr(contracts.Retryable, "list_preopen: nothing was listed: %s", r.reasonCounts())
 	case r.noSpot:
 		res.Err = newErr(contracts.Retryable, "list_preopen: a name has no prior close")
 	}
