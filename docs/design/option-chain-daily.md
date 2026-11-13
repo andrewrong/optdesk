@@ -20,7 +20,7 @@ Goal: `option_eod` and `option_eod_jp` take one chain snapshot a day inside the 
 | capture | `map.go:83` writes `SnapshotKind: "eod"`; the column is a free string; each row has its own `MarketDataType` (1 live, 2 frozen, 3 delayed, 4 delayed frozen) ; `captureID` (`map.go:57-60`, called at `run.go:204`) is `uuid.NewSHA1(OID, day|dataset|subject)`, the key is (session_day, capture_id, instrument_id) (`migrations/0006_option_eod.sql:42`) and the insert is `ON CONFLICT DO NOTHING` (`store/snapshot/optioneod.go:28`), so a second run of the same day and subject is dropped silently |
 | store read | `OptionEod` (`store/snapshot/optioneod.go:92`, SQL `selectOptionEodSQL`) returns every capture's rows, ordered by day, instrument, capture_id |
 | readers (non-test) | all through `OptionEodReader.OptionEod`: `computefigures/ivinput.go:58` and `subjects.go:47`, `optioncandidates/calls.go:245`, `input.go:135,151`, `optionopen/inputs.go:195`, `pages/option_data_page/builder.go:188`, `option_boards/load.go:71`, `option_tracking_page/context.go:256`, `structures_page/load.go:145`, `risk_page/load.go:151`, `cmd/ot/optionledger.go:458`, `cmd/ot/companies_inputs.go:149`. `OptionEodLatest` (catalog; `subjects.go:41`, `input.go:78`, `settings_page`, `site.go`, `settings.go`, `companies_inputs.go:61`, `optionledger.go:433`, `context.go:186`) answers newest day per underlying and does not depend on the capture. Each reader keeps its own newest-capture pick (greatest capture_id, generation, or received_at); none reads `snapshot_kind` |
-| text | `obs.option_eod.r1.json` and the generated `docs/contracts/datasets/obs.option_eod.md`: "frozen after the close"; `docs/contracts/store.md:7`; migration `0006` comment (not edited) |
+| text | `obs.option_eod.r1.json` and its generated `docs/contracts/datasets/obs.option_eod.md` and `internal/contracts/gen/records.go` comments: "frozen after the close"; `docs/contracts/store.md:7`; migration `0006` comment (not edited) |
 | ordering | `computefigures` `After()` lists `option_eod`, `option_eod_jp`: an order, not a time; it holds for a morning slot |
 
 ## Decisions
@@ -40,7 +40,7 @@ Goal: `option_eod` and `option_eod_jp` take one chain snapshot a day inside the 
 
 ## Modules
 
-No row is added or changed in `docs/design/modules.md`. Paths belong to store (`internal/store/**`, `docs/contracts/store.md`), contracts (`contracts/**`, `docs/contracts/datasets/**`, `docs/contracts/page-schemas.md`), jobs (`internal/jobs/**`, `docs/contracts/jobs/**`), pages (`internal/pages/**`).
+No row is added or changed in `docs/design/modules.md`. Paths belong to store (`internal/store/**`, `docs/contracts/store.md`), contracts (`contracts/**`, `internal/contracts/**`, `docs/contracts/datasets/**`, `docs/contracts/page-schemas.md`), jobs (`internal/jobs/**`, `docs/contracts/jobs/**`), pages (`internal/pages/**`).
 
 ## Interface
 
@@ -67,10 +67,10 @@ Acceptance:
 
 Module: contracts. Size: S.
 Order: first.
-Files: `contracts/datasets/obs.option_eod.r1.json`, `docs/contracts/datasets/obs.option_eod.md`, `contracts/schemas/page.option_data_page.v1.json`, `web/src/generated/option_data_page.v1.ts`, `docs/contracts/page-schemas.md`
+Files: `contracts/datasets/obs.option_eod.r1.json`, `docs/contracts/datasets/obs.option_eod.md`, `contracts/schemas/page.option_data_page.v1.json`, `internal/contracts/gen/records.go`, `web/src/generated/option_data_page.v1.ts`, `docs/contracts/page-schemas.md`
 Design: docs/design/option-chain-daily.md#interface (Decisions 8, 11)
 Acceptance:
-1. The dataset description and the `snapshot_kind` description (json and generated md) say "in-session daily chain snapshot" and name `session`, `off_session` and `eod` (legacy); `git grep -n "frozen after the close" -- contracts/datasets docs/contracts/datasets` prints nothing (`docs/contracts/store.md` is entry 1's).
+1. The dataset description and the `snapshot_kind` description (json, generated md and the generated comments in `internal/contracts/gen/records.go`) say "in-session daily chain snapshot" and name `session`, `off_session` and `eod` (legacy); `git grep -n "frozen after the close" -- contracts/datasets docs/contracts/datasets` prints nothing (`docs/contracts/store.md` is entry 1's).
 2. The page schema holds `off_session` as a boolean property of `$defs/Underlying` that is not in `required`; no fixture changes in this entry; the generated TypeScript carries the optional field (source and output in this one change).
 3. `git diff BASE -- contracts/fixtures` prints nothing: the `obs.option_eod.r1.json` line of `MANIFEST.synthetic-v1.json` is the row fixture, not the dataset schema, and stays unchanged.
 4. `git diff --name-only BASE` lists only paths of the Files line.
@@ -93,7 +93,7 @@ Acceptance:
 
 ### 4 option-data-page-off-session
 
-Module: pages. Size: S.
+Module: pages and contracts (the fixture paths belong to contracts; they are the builder's output and sit here so that the entry stays one change). Size: S.
 Order: after 2.
 Files: `internal/pages/option_data_page/builder.go`, `internal/pages/option_data_page/builder_test.go`, `internal/pages/option_data_page/page.go`, `contracts/fixtures/page.option_data_page.v1.off-session.json` (new), `contracts/fixtures/page.option_data_page.v1.off-session-input.json` (new), `contracts/fixtures/MANIFEST.synthetic-v1.json`
 Design: docs/design/option-chain-daily.md (Decision 11)
