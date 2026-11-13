@@ -89,7 +89,7 @@ var jobTable = []jobRow{
 	{ID: "quote_snapshot", Kind: kindTodayOnly, Zone: marketZone, ForceReason: "moment_mix", ForceText: textMomentMix, Note: noteQuoteSnapshot},
 	{ID: "calendar_refresh", Kind: kindTodayOnly, Zone: marketZone, Force: true},
 	todayOnly("underlying_resolve", "not_proved", textNotProved),
-	todayOnly("fx_refresh", "not_proved", textNotProved),
+	{ID: "fx_refresh", Kind: kindAnyDay, Force: true},
 	todayOnly("iv_history", "not_proved", textNotProved),
 	todayOnly("option_list_preopen", "not_proved", textNotProved),
 	todayOnly("option_list_zone", "not_proved", textNotProved),
