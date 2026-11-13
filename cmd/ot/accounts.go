@@ -118,6 +118,26 @@ func (g *gatewayResolver) Readers() map[string]broker.AccountReader {
 	return out
 }
 
+// socketOf returns the index of the socket named for alias, or -1.
+func (g *gatewayResolver) socketOf(alias string) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for i, al := range g.owner {
+		if al == alias {
+			return i
+		}
+	}
+	return -1
+}
+
+// isNamed reports whether an answer has named the socket i.
+func (g *gatewayResolver) isNamed(i int) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	_, ok := g.owner[i]
+	return ok
+}
+
 // answer is what one call on a socket returned: the id it reports and the call's own result.
 type answer[T any] struct {
 	id  string
@@ -129,14 +149,7 @@ type answer[T any] struct {
 // A failing socket is a failed read; an id not in the book is unknownAccountError.
 func ask[T any](g *gatewayResolver, alias string, call func(broker.AccountReader) (answer[T], error)) (T, error) {
 	var zero T
-	g.mu.Lock()
-	known := -1
-	for i, al := range g.owner {
-		if al == alias {
-			known = i
-		}
-	}
-	g.mu.Unlock()
+	known := g.socketOf(alias)
 	try := func(i int) (T, bool, error) {
 		ans, err := call(g.sockets[i])
 		if err != nil {
@@ -163,10 +176,7 @@ func ask[T any](g *gatewayResolver, alias string, call func(broker.AccountReader
 	}
 	var firstErr error
 	for i := range g.sockets {
-		g.mu.Lock()
-		_, named := g.owner[i]
-		g.mu.Unlock()
-		if named {
+		if g.isNamed(i) {
 			continue
 		}
 		v, match, err := try(i)
