@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/url"
 	"os"
 	"regexp"
@@ -87,8 +88,7 @@ func newDatabaseBefore0044(t *testing.T) string {
 	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
 		t.Fatal(err)
 	}
-	roles := []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages", "ot_loader", "ot_w_option_eod", "ot_w_quote_snapshot", "ot_w_master",
-		"ot_w_option_open", "ot_w_settings", "ot_w_underlying_resolve"}
+	roles := []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages", "ot_loader", "ot_w_option_eod", "ot_w_quote_snapshot", "ot_w_master"}
 	for _, r := range roles {
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
@@ -100,6 +100,14 @@ func newDatabaseBefore0044(t *testing.T) string {
 		}
 		if _, err := admin.Exec(ctx, verb+" ROLE "+r+" LOGIN PASSWORD '"+rolePassword+"'"); err != nil {
 			t.Fatalf("%s role %s: %v", strings.ToLower(verb), r, err)
+		}
+	}
+	// 0032 and 0033 grant to three roles that the setup tests own (they set the password under their own locks): they
+	// are created here when missing and never altered, so the two packages do not change each other's roles.
+	for _, r := range []string{"ot_w_option_open", "ot_w_settings", "ot_w_underlying_resolve"} {
+		const create = `DO $$ BEGIN CREATE ROLE %s LOGIN; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$`
+		if _, err := admin.Exec(ctx, fmt.Sprintf(create, r)); err != nil {
+			t.Fatalf("create role %s: %v", r, err)
 		}
 	}
 	suffix := make([]byte, 6)
