@@ -59,7 +59,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesIsFourteenJobs(t *testing.T) {
+func TestForceYesAreFredFundamentalsComputeCandidatesBookRiskEarningsDividendOptionEodThreeCalendarFxBarsMacro(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -104,6 +104,9 @@ func TestOptionEodRowsForce(t *testing.T) {
 		r := byID[id]
 		if !r.runnable() || r.Kind != kindTodayOnly || !r.Force {
 			t.Errorf("%s: runnable %v kind %v force %v", id, r.runnable(), r.Kind, r.Force)
+		}
+		if r.ForceReason != "" || r.ForceText != "" {
+			t.Errorf("%s carries a force reason it needs not: %q %q", id, r.ForceReason, r.ForceText)
 		}
 	}
 	q := byID["quote_snapshot"]
