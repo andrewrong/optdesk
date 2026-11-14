@@ -246,6 +246,24 @@ func listedImports(rows []row, pkgs []pkg) map[string][]string {
 	return out
 }
 
+// siblingImpls gives, for each nested implementation component (three path elements), the
+// other nested implementation components of its row.
+func siblingImpls(rows []row, pkgs []pkg) map[string][]string {
+	out := map[string][]string{}
+	for _, r := range rows {
+		var nested []string
+		for _, c := range owned(pkgs, r.name, kindImpl) {
+			if strings.Count(c, "/") == 2 {
+				nested = append(nested, c)
+			}
+		}
+		for _, c := range nested {
+			out[c] = nested
+		}
+	}
+	return out
+}
+
 // derive builds the components from the table and the discovered packages (arch.toml): the
 // root of each row, its sub-packages, and contracts/gen and contracts/genpb. cmd/ot imports
 // the root of each row in its depends cell and every discovered implementation or
@@ -372,8 +390,10 @@ func goDirs(root string) ([]string, error) {
 // deriveTree narrows the derived components to the tree: a component exists when its
 // directory holds Go files, and every package under internal/<row>/ is a component.
 // A sub-package may also import the sub-packages that the entry cell of a row its row
-// depends on lists (listed, by root name).
-func deriveTree(table []component, dirs []string, listed map[string][]string) (comps []component, exclude []string) {
+// depends on lists (listed, by root name). A nested implementation package may also be
+// injected into another of its row (impls, by component name: its sibling implementations): the deep scan of go-arch-lint
+// follows a concrete type handed to a constructor of a sibling.
+func deriveTree(table []component, dirs []string, listed map[string][]string, impls map[string][]string) (comps []component, exclude []string) {
 	have := map[string]bool{}
 	for _, d := range dirs {
 		have[d] = true
@@ -405,6 +425,7 @@ func deriveTree(table []component, dirs []string, listed map[string][]string) (c
 	for i, c := range order {
 		if root, _, ok := strings.Cut(c.name, "/"); ok {
 			order[i].deps = addUnique(slices.Clone(c.deps), listed[root], c.name)
+			order[i].deps = addUnique(order[i].deps, impls[c.name], c.name)
 		}
 	}
 	names := map[string]bool{}
@@ -473,7 +494,7 @@ func generate(modules, root string) (toml, yml []byte, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	comps, exclude := deriveTree(table, dirs, listedImports(rows, pkgs))
+	comps, exclude := deriveTree(table, dirs, listedImports(rows, pkgs), siblingImpls(rows, pkgs))
 	return renderTOML(table), renderYAML(comps, exclude), nil
 }
 
