@@ -161,7 +161,7 @@ Acceptance:
 
 Module: contracts. Size: M.
 Order: first.
-Files: `contracts/schemas/page.companies_page.v2.json`, `web/src/generated/companies_page.v2.ts`, `contracts/fixtures/page.companies_page.v2.pepb.json`, `internal/contracts/companies_page_v2_test.go`
+Files: `contracts/schemas/page.companies_page.v2.json`, `web/src/generated/companies_page.v2.ts`, `contracts/fixtures/page.companies_page.v2.pepb.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/companies_page_v2_test.go`
 Design: docs/design/company-pepb.md#Types
 Contracts: companies_page v2 additive
 Acceptance:
@@ -170,6 +170,7 @@ Acceptance:
 3. `contracts/fixtures/page.companies_page.v2.pepb.json` is new and has a row with a full line (with `at_percentile`), a row with a loss gap and a Japanese row; the three existing v2 fixtures are not in `git diff --name-only BASE`.
 4. `internal/contracts/companies_page_v2_test.go` has a new test `TestCompaniesPageV2PepbFixture` that validates the new fixture, validates the existing `ok` and `gap` fixtures (no `pepb`), and refuses a `pepb` row with a verdict field.
 5. `git diff --name-only BASE -- contracts/schemas/carryover.sha256 internal/contracts/common_test.go` prints nothing.
+6. `contracts/fixtures/MANIFEST.synthetic-v1.json` lists `page.companies_page.v2.pepb.json` with a sha256 entry, and its entries for the existing `companies_page.v2` fixtures are unchanged.
 
 ### 4 company-pepb-page
 
