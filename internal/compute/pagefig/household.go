@@ -210,6 +210,7 @@ func obligations(in blockapi.HouseholdInput) []blockapi.MoneyLine {
 
 // premiumText is the stored premium text as money with two decimals, rounded half away from
 // zero on the exact decimal: USD gets a dollar sign, any other currency its code and a space.
+// The integer part is grouped by thousands and a negative uses the typographic minus U+2212.
 // A zero result carries no sign. Text that is not a decimal is returned unchanged.
 func premiumText(currency, text string) string {
 	r, ok := parse(text)
@@ -225,15 +226,27 @@ func premiumText(currency, text string) string {
 	for len(s) < 3 {
 		s = "0" + s
 	}
-	s = s[:len(s)-2] + "." + s[len(s)-2:]
+	s = groupThousands(s[:len(s)-2]) + "." + s[len(s)-2:]
 	prefix := currency + " "
 	if currency == "USD" {
 		prefix = "$"
 	}
 	if neg {
-		prefix = "-" + prefix
+		prefix = "−" + prefix
 	}
 	return prefix + s
+}
+
+// groupThousands writes a run of digits in groups of three separated by commas.
+func groupThousands(digits string) string {
+	var b strings.Builder
+	for i, c := range digits {
+		if i > 0 && (len(digits)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
 }
 
 // premium sums PremiumIncome per currency, in order of first appearance.
