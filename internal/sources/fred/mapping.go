@@ -48,6 +48,7 @@ const (
 	ccyAmount   = contracts.SeriesUnit("ccy_amount")
 	percent     = contracts.SeriesUnit("percent")
 	indexPoints = contracts.SeriesUnit("index_points")
+	jpyPerUsd   = contracts.SeriesUnit("jpy_per_usd")
 )
 
 // seriesUnits states the unit of each configured series; a series absent here is refused.
@@ -72,6 +73,8 @@ var seriesUnits = map[string]unitRow{
 	"BAA10Y":       {unit: percent, pinVintage: true},
 	"SOFR":         {unit: percent, pinVintage: true},
 	"WRESBAL":      {unit: ccyAmount, currency: "USD", shift: 6, pinVintage: true},
+	// FX rate: JPY per one USD (source-rank Decision 4); the fx job turns the point into an FxRate.
+	"DEXJPUS": {unit: jpyPerUsd},
 }
 
 // shiftDecimalText moves the decimal point of a plain decimal text n places right, on the text,
