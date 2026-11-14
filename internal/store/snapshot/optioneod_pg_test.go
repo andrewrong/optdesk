@@ -82,7 +82,7 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 }
 
 // newDatabase creates a database with a random name, the Timescale extension and the roles, applies 0002, 0003
-// and 0006 there, a master.instrument stub (ids 1..100 and those of the fixture), and 0029 and 0047, and drops the database in t.Cleanup. It returns its name.
+// and 0006 there, a master.instrument stub (ids 1..100 and those of the fixture), and 0029, 0047 and 0049, and drops the database in t.Cleanup. It returns its name.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
@@ -128,7 +128,7 @@ func newDatabase(t *testing.T) string {
 		`INSERT INTO master.instrument VALUES (800001), (900001), (900002), (900003)`); err != nil {
 		t.Fatalf("master stub: %v", err)
 	}
-	for _, f := range []string{"0029_option_open.sql", "0047_option_captures.sql"} {
+	for _, f := range []string{"0029_option_open.sql", "0047_option_captures.sql", "0049_option_day_select.sql"} {
 		applyMigration(t, connURL(t, name, ""), f)
 	}
 	for _, r := range []string{"ot_runner", "ot_ro_pages", "ot_w_option_eod"} {
