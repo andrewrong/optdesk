@@ -23,10 +23,10 @@ const (
 
 	sectorCaption = "Fund change minus SPY change over 21 and 63 sessions ending on the end day shown; " +
 		"a rank counts only funds with both closes; trial windows, not a forecast."
-	barsCaption = "Bars show the 63-session gap to SPY of each fund in the table's order, in points; " +
+	barsCaption = "Bars show the 63-session gap to SPY of each fund in the table's order, in pp; " +
 		"a fund with no figure has no bar."
-	axisX = "63-session gap to SPY, points"
-	axisY = "21-session gap minus a third of the 63-session gap, points"
+	axisX = "63-session gap to SPY, pp"
+	axisY = "21-session gap minus a third of the 63-session gap, pp"
 	// rotationNote names both windows and the tail offsets.
 	rotationNote = "x is the 63-session gap to SPY, y the 21-session gap minus a third of the 63-session gap; " +
 		"tail points are 5, 10, 15 and 20 sessions before end_day; position, not a forecast"
@@ -42,7 +42,7 @@ const (
 	smhLabel  = "Semiconductors"
 	spySymbol = "SPY"
 
-	unitPoints = " points"
+	unitPoints = " pp"
 )
 
 // Texts of a Gap, by reason; the subject is put in front.

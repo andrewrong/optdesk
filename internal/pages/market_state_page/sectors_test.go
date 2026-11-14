@@ -19,7 +19,7 @@ func TestSectorRowsAreNotReordered(t *testing.T) {
 		t.Errorf("order = %v", got)
 	}
 	rows := sectorRows(m)
-	if obj(obj(rows[1])["gap_63"])["text"] != "-3.00 points" || obj(rows[0])["group"] != "sector" || obj(rows[3])["group"] != "industry" {
+	if obj(obj(rows[1])["gap_63"])["text"] != "-3.00 pp" || obj(rows[0])["group"] != "sector" || obj(rows[3])["group"] != "industry" {
 		t.Errorf("rows = %v", rows)
 	}
 	if r := obj(obj(rows[0])["rank_63"]); r["at"].(json.Number) != "1" || r["of"].(json.Number) != "3" {
@@ -145,5 +145,21 @@ func TestBarsUseTheRowGaps(t *testing.T) {
 				t.Errorf("%v: number at %s", row["symbol"], path)
 			}
 		}
+	}
+}
+
+func TestSectorsCaptionsWriteGapsInPP(t *testing.T) {
+	t.Parallel()
+	m := build(t, fullConfig(t, sampleResult()))
+	s := obj(m["sectors"])
+	axes := obj(s["rotation_axes"])
+	if axes["x_caption"] != "63-session gap to SPY, pp" {
+		t.Errorf("x_caption = %v", axes["x_caption"])
+	}
+	if axes["y_caption"] != "21-session gap minus a third of the 63-session gap, pp" {
+		t.Errorf("y_caption = %v", axes["y_caption"])
+	}
+	if c, _ := s["bars_caption"].(string); !strings.Contains(c, "in pp;") || strings.Contains(c, "points") {
+		t.Errorf("bars_caption = %v", s["bars_caption"])
 	}
 }
