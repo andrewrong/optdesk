@@ -447,3 +447,22 @@ func TestOptionEodWritesDayRowAfterCaptureRows(t *testing.T) {
 		t.Fatalf("day row arguments %v", f.execs[2])
 	}
 }
+
+func TestOptionEodUpsertSetsNoKeyColumn(t *testing.T) {
+	t.Parallel()
+	_, rest, ok := strings.Cut(insertOptionEodSQL, "DO UPDATE SET ")
+	if !ok {
+		t.Fatalf("no DO UPDATE SET in %s", insertOptionEodSQL)
+	}
+	sets, _, _ := strings.Cut(rest, " WHERE ")
+	for _, item := range strings.Split(sets, ",") {
+		col, _, _ := strings.Cut(strings.TrimSpace(item), " = ")
+		switch col {
+		case "session_day", "capture_id", "instrument_id":
+			t.Errorf("SET list updates key column %q: %s", col, sets)
+		}
+	}
+	if !strings.Contains(sets, "bid = EXCLUDED.bid") {
+		t.Errorf("SET list not parsed, lacks bid: %s", sets)
+	}
+}
