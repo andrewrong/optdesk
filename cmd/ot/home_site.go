@@ -7,6 +7,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidity"
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
@@ -137,13 +138,16 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	if err != nil {
 		return nil, err
 	}
-	ma, err := home_macro.Build(ctx, home_macro.Config{RunID: runID, BuildID: build, Scope: scope, Zone: zone, Read: read}, day, now)
-	if err != nil {
-		return nil, err
-	}
 	series := rd.series
 	if series == nil {
 		series = noSeries{}
+	}
+	ma, err := home_macro.Build(ctx, home_macro.Config{
+		RunID: runID, BuildID: build, Scope: scope, Zone: zone, Read: read,
+		Series: series, Liquidity: liquidity.Compute, LiquidityParams: liquidity.TrialParams(),
+	}, day, now)
+	if err != nil {
+		return nil, err
 	}
 	mk, err := home_market.Build(ctx, home_market.Config{RunID: runID, BuildID: build, Scope: scope, Zone: zone, Readings: read}, series, day, now)
 	if err != nil {
