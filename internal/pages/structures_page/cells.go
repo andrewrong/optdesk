@@ -88,9 +88,10 @@ func (c cells) money(f compute.FigureValue) any {
 // listMoney is the Usd cell of a list figure: Value is the stored number, Text has two decimals
 // (rounded half to even); a text that is not a number is a gap.
 func (c cells) listMoney(f compute.FigureValue) any {
-	m, ok := c.money(f).(usd)
+	cell := c.money(f)
+	m, ok := cell.(usd)
 	if !ok {
-		return c.money(f)
+		return cell
 	}
 	d, err := decimal.NewFromString(string(m.Value))
 	if err != nil {
