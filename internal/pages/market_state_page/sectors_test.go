@@ -147,3 +147,19 @@ func TestBarsUseTheRowGaps(t *testing.T) {
 		}
 	}
 }
+
+func TestSectorsCaptionsWriteGapsInPP(t *testing.T) {
+	t.Parallel()
+	m := build(t, fullConfig(t, sampleResult()))
+	s := obj(m["sectors"])
+	axes := obj(s["rotation_axes"])
+	if axes["x_caption"] != "63-session gap to SPY, pp" {
+		t.Errorf("x_caption = %v", axes["x_caption"])
+	}
+	if axes["y_caption"] != "21-session gap minus a third of the 63-session gap, pp" {
+		t.Errorf("y_caption = %v", axes["y_caption"])
+	}
+	if c, _ := s["bars_caption"].(string); !strings.Contains(c, "in pp;") || strings.Contains(c, "points") {
+		t.Errorf("bars_caption = %v", s["bars_caption"])
+	}
+}
