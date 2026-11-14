@@ -183,6 +183,15 @@ exchange = "SMART"
 currency = "USD"
 con_id = 0
 
+[[stock]]
+symbol = "SMH"
+label = "Semiconductors"
+group = "industry"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
 [global_assets]
 benchmark = "SPY"
 

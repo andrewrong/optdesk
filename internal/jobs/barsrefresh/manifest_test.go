@@ -154,7 +154,7 @@ func TestManifestLoadsStocks(t *testing.T) {
 		}
 	}
 	want := "SPY:proxy,TLT:proxy,GLD:proxy,DBC:proxy,USO:proxy,XLB:sector,XLC:sector,XLE:sector,XLF:sector,XLI:sector,XLK:sector," +
-		"XLP:sector,XLRE:sector,XLU:sector,XLV:sector,XLY:sector"
+		"XLP:sector,XLRE:sector,XLU:sector,XLV:sector,XLY:sector,SMH:industry"
 	if strings.Join(syms, ",") != want {
 		t.Fatalf("stocks %v", syms)
 	}
@@ -208,5 +208,25 @@ func TestManifestRefusesMissingBenchmark(t *testing.T) {
 	src := strings.Replace(raw(t), "[global_assets]\nbenchmark = \"SPY\"\n", "", 1)
 	if _, err := barsrefresh.LoadManifest([]byte(src)); err == nil || !strings.Contains(err.Error(), "global_assets.benchmark") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestManifestRefusesUnknownGroup(t *testing.T) {
+	t.Parallel()
+	full := raw(t)
+	at := strings.Index(full, "[[stock]]")
+	end := at + strings.Index(full[at:], "con_id = 0")
+	head := full[at:end]
+	if !strings.Contains(head, `group = "proxy"`) {
+		t.Fatalf("first stock %q", head)
+	}
+	other := strings.Replace(full, head, strings.Replace(head, `group = "proxy"`, `group = "other"`, 1), 1)
+	_, err := barsrefresh.LoadManifest([]byte(other))
+	if err == nil || !strings.Contains(err.Error(), "stock.group") || !strings.Contains(err.Error(), "industry") {
+		t.Fatalf("other: got %v", err)
+	}
+	ind := strings.Replace(full, head, strings.Replace(head, `group = "proxy"`, `group = "industry"`, 1), 1)
+	if _, err := barsrefresh.LoadManifest([]byte(ind)); err != nil {
+		t.Fatalf("industry: %v", err)
 	}
 }
