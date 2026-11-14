@@ -2,7 +2,6 @@ package option_candidates_page
 
 import (
 	"encoding/json"
-	"errors"
 	"regexp"
 	"strings"
 	"time"
@@ -16,33 +15,96 @@ const (
 )
 
 var (
-	yieldPattern  = regexp.MustCompile(`^(-?)([0-9]+)\.([0-9]+)$`)
 	numberPattern = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
 	idPattern     = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 )
 
-var errBadYield = errors.New("option_candidates_page: bad yield text")
+// roundDigits writes the stored decimal text, its point moved shift places right, with exactly places
+// decimals, rounded half away from zero on the digits; ok is false for text that is not a plain decimal.
+func roundDigits(text string, shift, places int) (string, bool) {
+	if !numberPattern.MatchString(text) {
+		return "", false
+	}
+	neg := strings.HasPrefix(text, "-")
+	whole, frac, _ := strings.Cut(strings.TrimPrefix(text, "-"), ".")
+	if len(frac) < shift {
+		frac += strings.Repeat("0", shift-len(frac))
+	}
+	whole, frac = whole+frac[:shift], frac[shift:]
+	up := len(frac) > places && frac[places] >= '5'
+	if len(frac) < places {
+		frac += strings.Repeat("0", places-len(frac))
+	}
+	digits := []byte(whole + frac[:places])
+	if up {
+		i := len(digits) - 1
+		for ; i >= 0 && digits[i] == '9'; i-- {
+			digits[i] = '0'
+		}
+		if i < 0 {
+			digits = append([]byte{'1'}, digits...)
+		} else {
+			digits[i]++
+		}
+	}
+	if len(digits) <= places {
+		digits = append([]byte(strings.Repeat("0", places+1-len(digits))), digits...)
+	}
+	cut := len(digits) - places
+	out := string(digits[:cut])
+	if places > 0 {
+		out += "." + string(digits[cut:])
+	}
+	out = strings.TrimLeft(out[:cut], "0") + out[cut:]
+	if out == "" || out[0] == '.' {
+		out = "0" + out
+	}
+	if neg && strings.Trim(out, "0.") != "" {
+		out = "-" + out
+	}
+	return out, true
+}
 
-// shiftPoint writes the stored decimal text "0.123456" as "12.3456%": the decimal point moves two
-// places in the text, the digits are kept and nothing is rounded.
-func shiftPoint(text string) (string, error) {
-	m := yieldPattern.FindStringSubmatch(text)
-	if m == nil {
-		return "", errBadYield
+// fixedText is the stored decimal text with exactly places decimals, rounded half away from zero on
+// the text (no float); text that is not a plain decimal gives ok false.
+func fixedText(text string, places int) (string, bool) { return roundDigits(text, 0, places) }
+
+// percentText writes the stored fraction "0.118212" as "11.8%".
+func percentText(text string) (string, bool) {
+	p, ok := roundDigits(text, 2, 1)
+	if !ok {
+		return "", false
 	}
-	sign, whole, frac := m[1], m[2], m[3]
-	if len(frac) < 2 {
-		frac += strings.Repeat("0", 2-len(frac))
+	return p + "%", true
+}
+
+// minusText writes a leading ASCII hyphen as the typographic minus U+2212.
+func minusText(s string) string {
+	if strings.HasPrefix(s, "-") {
+		return "\u2212" + s[1:]
 	}
-	whole = strings.TrimLeft(whole+frac[:2], "0")
-	if whole == "" {
-		whole = "0"
+	return s
+}
+
+// moneyText writes the stored decimal text as "$1,105.75".
+func moneyText(text string) (string, bool) {
+	f, ok := fixedText(text, 2)
+	if !ok {
+		return "", false
 	}
-	out := whole
-	if rest := frac[2:]; rest != "" {
-		out += "." + rest
+	sign := ""
+	if strings.HasPrefix(f, "-") {
+		sign, f = "-", f[1:]
 	}
-	return sign + out + "%", nil
+	whole, frac, _ := strings.Cut(f, ".")
+	var b strings.Builder
+	for i, c := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	return sign + "$" + b.String() + "." + frac, true
 }
 
 // numberLiteral is the stored decimal text as a JSON number, when the text is one.
