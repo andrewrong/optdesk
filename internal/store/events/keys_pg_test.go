@@ -33,6 +33,8 @@ var keysRoles = []string{
 
 // migrationLockKey is the advisory lock, on the admin database, that every test-side application of a migration
 // file holds while it runs: the migrations write the roles, which every database of the server shares.
+// Lock order: key 54 (role passwords), where a test takes it, is taken before 8008; 8008 is held only while a
+// migration runs and nothing requests 54 or any other key while it is held, so the two cannot form a cycle.
 const migrationLockKey = 8008
 
 // lockMigrations takes migrationLockKey on a connection of its own and returns the function that releases it.

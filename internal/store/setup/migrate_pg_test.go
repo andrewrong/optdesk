@@ -23,6 +23,8 @@ const migrationsDir = "../../../migrations"
 
 // migrationLockKey is the advisory lock, on the admin database, that every test-side application of migration
 // files holds while it runs: the migrations write the roles, which every database of the server shares.
+// Lock order: key 54 (role passwords), where a test takes it, is taken before 8008; 8008 is held only while a
+// migration runs and nothing requests 54 or any other key while it is held, so the two cannot form a cycle.
 const migrationLockKey = 8008
 
 // migrateLocked is migrateWith with gooseUp, run while holding migrationLockKey on a connection of its own.
@@ -43,7 +45,7 @@ func migrateLocked(
 		t.Fatalf("migration lock: %v", err)
 	}
 	defer func() { _, _ = c.Exec(ctx, `SELECT pg_advisory_unlock($1)`, migrationLockKey) }()
-	return migrateLocked(ctx, t, open, fsys, log)
+	return migrateWith(ctx, open, gooseUp, fsys, log)
 }
 
 // ensureOwnerRoles creates the roles of `roles` when missing, under an advisory lock because roles are shared
