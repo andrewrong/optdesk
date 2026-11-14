@@ -398,6 +398,36 @@ func TestMappingWRESBAL(t *testing.T) {
 	checkPinned(t, mapRecorded(t, "WRESBAL", "2900000"), "WRESBAL", ccyAmount, "USD", 2.9e12)
 }
 
+func TestMappingIORB(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "IORB", "4.40"), "IORB", percent, "", 4.4)
+}
+
+func TestMappingSOFR99(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "SOFR99", "4.12"), "SOFR99", percent, "", 4.12)
+}
+
+func TestMappingNFCI(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "NFCI", "-0.52"), "NFCI", indexPoints, "", -0.52)
+}
+
+func TestMappingSTLFSI4(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "STLFSI4", "-0.85"), "STLFSI4", indexPoints, "", -0.85)
+}
+
+func TestMappingTLAACBW027SBOG(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "TLAACBW027SBOG", "1250.5"), "TLAACBW027SBOG", ccyAmount, "USD", 1.2505e12)
+}
+
+func TestMappingWLCFLPCL(t *testing.T) {
+	t.Parallel()
+	checkPinned(t, mapRecorded(t, "WLCFLPCL", "5200"), "WLCFLPCL", ccyAmount, "USD", 5.2e9)
+}
+
 func TestMapDEXJPUSValueAndMissing(t *testing.T) {
 	t.Parallel()
 	pub := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)

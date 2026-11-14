@@ -301,3 +301,34 @@ func TestBuildSentenceDropsEaseWhenFilled(t *testing.T) {
 		t.Errorf("sentence without a reading %v", m["sentence"])
 	}
 }
+
+func TestBuildV2SchemaVersion(t *testing.T) {
+	t.Parallel()
+	c := cfg("DGS10")
+	c.Liquidity = fixedFunc(fullResult())
+	b, err := Build(t.Context(), fakeReader{}, c, "2026-11-05", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateV2(t, b); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["schema_version"] != float64(2) || m["schema"] != "macro_page" {
+		t.Fatalf("schema %v version %v", m["schema"], m["schema_version"])
+	}
+	c.Liquidity = nil
+	b, err = Build(t.Context(), fakeReader{}, c, "2026-11-05", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateBytes(t, b); err != nil {
+		t.Fatalf("v1 schema: %v", err)
+	}
+	if strings.Contains(string(b), `"liquidity`) {
+		t.Fatalf("v1 carries a liquidity field: %s", b)
+	}
+}

@@ -1,7 +1,8 @@
 // Package home_macro builds the macro member of the home page: a page.macro_summary.v2
 // document read from the stored macro.ease reading. It computes nothing beyond rounding the
 // stored value and the week change, reads no clock and makes no request. The events have no
-// stored source, so they are empty and named as a not_built gap.
+// stored source, so they are empty and named as a not_built gap. With a Liquidity function the
+// card's say is the dated reserves fact of that function's result (reservesSay) instead of the Ease.
 package home_macro
 
 import (
@@ -11,11 +12,14 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const (
@@ -57,6 +61,12 @@ type Config struct {
 	Scope   string
 	Zone    *time.Location
 	Read    compute.ReadingFunc
+	// Series, Liquidity and LiquidityParams are optional. Only with Liquidity set, say is the dated reserves
+	// fact built from the figures Liquidity returns over the WRESBAL series read through Series (a nil Series
+	// is a gap); with Liquidity nil, say is the Ease sentence as before. An error of Series is an error of Build.
+	Series          store.SeriesReader
+	Liquidity       liquidityapi.Func
+	LiquidityParams liquidityapi.Params
 }
 
 type gap struct {
@@ -176,6 +186,16 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			base, baseText = cur.dataDay, "Data day "+cur.dataDay.Format("01-02")
 			s.DataTimes = append(s.DataTimes, sourceTime{Source: "macro_ease", DataTime: midnight(base, c.Zone)})
 			s.Card.DataTimesText = "Ease data day " + base.Format("01-02") + ". " + noteDates
+		}
+	}
+	if c.Liquidity != nil {
+		say, err := reservesSay(ctx, c, d)
+		if err != nil {
+			return nil, err
+		}
+		s.Card.Say = say
+		if say == sayNoReserves {
+			s.Card.Gaps = append(s.Card.Gaps, gap{Reason: "no_data", Text: textNoReserves})
 		}
 	}
 	if s.Card.Ease == nil {
@@ -329,4 +349,90 @@ func easeFor(ctx context.Context, read compute.ReadingFunc, day time.Time) (*eas
 	b.AriaText = "Ease " + whole + ", " + word + ", " + weekText +
 		"; fixed scale 0 to 100, neutral band " + bandLow + " to " + bandHigh + "."
 	return b, cur, nil
+}
+
+// Design: docs/design/liquidity-view.md, Decision 4.
+
+const (
+	reservesID       = "WRESBAL"
+	reservesLookback = 60 // days read before day: the 4-week change needs 28
+	sayNoReserves    = "Reserves: no data yet."
+	textNoReserves   = "Reserves: no data yet"
+	sayReserves      = "Reserves %s, 4 weeks %s (%s)."
+)
+
+// reservesSay is "Reserves $3.0tn, 4 weeks −$40bn (2026-11-11)." from the Reserves and Reserves4w figures of
+// c.Liquidity over the WRESBAL series alone; sayNoReserves with no Series or a figure with a Reason.
+func reservesSay(ctx context.Context, c Config, d time.Time) (string, error) {
+	if c.Series == nil {
+		return sayNoReserves, nil
+	}
+	day := contracts.Day(d.Format(dayLayout))
+	from := contracts.Day(d.AddDate(0, 0, -reservesLookback).Format(dayLayout))
+	rows, err := c.Series.SeriesPoints(ctx, reservesID, from, day)
+	if err != nil {
+		return "", fmt.Errorf("home_macro: read %s: %w", reservesID, err)
+	}
+	res := c.Liquidity(liquidityapi.Input{Day: day, WRESBAL: seriesOf(rows, d), Params: c.LiquidityParams})
+	if res.Reserves.Reason != "" || res.Reserves4w.Reason != "" {
+		return sayNoReserves, nil
+	}
+	level, ok1 := new(big.Rat).SetString(res.Reserves.Value)
+	delta, ok2 := new(big.Rat).SetString(res.Reserves4w.Value)
+	if !ok1 || !ok2 || res.Reserves.Day == "" {
+		return sayNoReserves, nil
+	}
+	return fmt.Sprintf(sayReserves, level2text(level), bnSigned(delta), res.Reserves.Day), nil
+}
+
+var (
+	oneTn = big.NewRat(1_000_000_000_000, 1)
+	oneBn = big.NewRat(1_000_000_000, 1)
+)
+
+// level2text is whole USD as $x.xtn from one trillion, else $xbn.
+func level2text(v *big.Rat) string {
+	if v.Cmp(oneTn) >= 0 {
+		return "$" + roundHalfUp(new(big.Rat).Quo(v, oneTn), 1) + "tn"
+	}
+	return "$" + roundHalfUp(new(big.Rat).Quo(v, oneBn), 0) + "bn"
+}
+
+// bnSigned is a change in billions, signed with the minus sign: −$40bn, +$48bn, $0bn.
+func bnSigned(v *big.Rat) string {
+	n := roundHalfUp(new(big.Rat).Quo(v, oneBn), 0)
+	switch signedText(n) {
+	case n:
+		return "$" + n + "bn"
+	case "+" + n:
+		return "+$" + n + "bn"
+	}
+	return minus + "$" + n[1:] + "bn"
+}
+
+// seriesOf keeps, per observation date, the row of the greatest RealtimeStart not after d, drops rows with no
+// value or a status other than present, and returns the days ascending; nil when none is left.
+func seriesOf(rows []contracts.SeriesPoint, d time.Time) compute.Series {
+	kept := map[string]contracts.SeriesPoint{}
+	for _, p := range rows {
+		if p.RealtimeStart.After(d) || (p.Status != "" && p.Status != "present") {
+			continue
+		}
+		k := p.ObservationDate.Format(dayLayout)
+		if cur, ok := kept[k]; !ok || p.RealtimeStart.After(cur.RealtimeStart.Time) {
+			kept[k] = p
+		}
+	}
+	days := make([]string, 0, len(kept))
+	for k, p := range kept {
+		if p.Value != nil {
+			days = append(days, k)
+		}
+	}
+	slices.Sort(days)
+	var out compute.Series
+	for _, k := range days {
+		out = append(out, compute.Point{Day: contracts.Day(k), Value: *kept[k].Value})
+	}
+	return out
 }

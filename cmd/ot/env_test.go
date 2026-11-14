@@ -244,6 +244,7 @@ var leakExcluded = map[string]string{
 	"approve-band":     "needs a band in the readings store, which a static row cannot give; its open error is withheld and TestApproveBandWithholdsDSN covers it",
 	"account-import":   "needs an input file in DIR, which a static row cannot give; its open error is withheld and TestAccountImportOpenErrorWithheld covers it",
 	"strategy-compare": "the leak deps hold no results opener; its open errors are fixed texts and TestStrategyCompareOpenErrorWithheld covers them",
+	"strategy-replay":  "the command opens no database in the leak deps; its open errors are fixed texts and TestStrategyReplayOpenErrorWithheld covers them",
 	"underlying":       "needs a watch.toml in a temp dir, which a static row cannot give; open error withheld, TestUnderlyingImportOpenErrorWithheld covers",
 }
 
