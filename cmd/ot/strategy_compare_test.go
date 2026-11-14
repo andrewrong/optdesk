@@ -62,7 +62,7 @@ func compareRig(t *testing.T, old []store.Candidate, res *fakeResultStore) (*app
 	a.stdout = &out
 	var closed atomic.Int32
 	res.closed = &closed
-	a.deps.openCandidate = func(_ context.Context, dsn string) (candidateStore, error) {
+	a.deps.openOldCandidate = func(_ context.Context, dsn string) (candidateStore, error) {
 		if dsn != "pages-dsn" {
 			t.Errorf("dsn %q", dsn)
 		}
