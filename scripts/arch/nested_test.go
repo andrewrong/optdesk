@@ -153,3 +153,47 @@ func depsOfYAML(yml, name string) []string {
 	}
 	return out
 }
+
+// A nested package only adds: every component of the tree without it keeps its whole
+// import list, and ot gains the nested component and nothing else.
+func TestTreeNestedPackageKeepsEveryExistingAllowance(t *testing.T) {
+	t.Parallel()
+	base := map[string]string{
+		"internal/x/api.go":      "package x\n",
+		"internal/x/shared/s.go": "package shared\n",
+		"internal/x/m/m.go":      "package m\n",
+		"internal/v/api.go":      "package v\n",
+		"cmd/ot/main.go":         "package main\n\nfunc main() {}\n",
+	}
+	build := func(nested bool) []byte {
+		dir := t.TempDir()
+		for p, src := range base {
+			write(t, filepath.Join(dir, p), src)
+		}
+		if nested {
+			write(t, filepath.Join(dir, "internal/x/y/z/z.go"), "package z\n")
+		}
+		_, yml, err := generate(nestedModules, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return yml
+	}
+	before, after := string(build(false)), string(build(true))
+	for _, c := range componentsOfYAML(before) {
+		old, now := depsOfYAML(before, c.name), depsOfYAML(after, c.name)
+		for _, d := range old {
+			if !slices.Contains(now, d) {
+				t.Errorf("%s lost the allowance %s", c.name, d)
+			}
+		}
+		for _, d := range now {
+			if !slices.Contains(old, d) && !(c.name == "ot" && d == "x/y/z") {
+				t.Errorf("%s gained the allowance %s", c.name, d)
+			}
+		}
+	}
+	if !slices.Contains(depsOfYAML(after, "ot"), "x/y/z") {
+		t.Error("ot does not import x/y/z")
+	}
+}
