@@ -12,7 +12,7 @@ obs.series_point r1: one observation of a series as known from realtime_start.
 | realtime_end | string (date) | no | Last date this value was the published one. |
 | value | number | yes | The observation; null when the source has no value (nullable numeric). |
 | status | string | no | Status of the observation, for example present or no_value. |
-| unit | enum(percent, ratio, ccy_amount, count, index_points) | no | Unit of a series value. |
+| unit | enum(percent, ratio, ccy_amount, count, index_points, jpy_per_usd) | no | Unit of a series value. |
 | currency | string | no | Currency code; not empty when unit is ccy_amount, empty otherwise. |
 | published_at | string (date-time) | no | Instant the source published the value. |
 | source | string | no | Source name, for example fred. |

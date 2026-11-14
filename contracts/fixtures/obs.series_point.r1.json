@@ -2,5 +2,6 @@
 {"series_id":"DGS10","observation_date":"2026-11-02","realtime_start":"2026-11-03","realtime_end":"9999-12-31","value":4.1,"status":"present","unit":"percent","currency":"","published_at":"2026-11-03T21:15:00Z","source":"fred","source_revision":"r1"},
 {"series_id":"DGS10","observation_date":"2026-11-03","realtime_start":"2026-11-04","realtime_end":"9999-12-31","value":null,"status":"no_value","unit":"percent","currency":"","published_at":"2026-11-04T21:15:00Z","source":"fred","source_revision":"r1"},
 {"series_id":"DGS10","observation_date":"2026-11-04","realtime_start":"2026-11-05","realtime_end":"9999-12-31","value":4.2,"status":"present","unit":"percent","currency":"","published_at":"2026-11-05T21:15:00Z","source":"fred","source_revision":"r1"},
-{"series_id":"VIXCLS","observation_date":"2026-11-04","realtime_start":"2026-11-05","realtime_end":"9999-12-31","value":18.2,"status":"present","unit":"index_points","currency":"","published_at":"2026-11-05T21:15:00Z","source":"fred","source_revision":"r1"}
+{"series_id":"VIXCLS","observation_date":"2026-11-04","realtime_start":"2026-11-05","realtime_end":"9999-12-31","value":18.2,"status":"present","unit":"index_points","currency":"","published_at":"2026-11-05T21:15:00Z","source":"fred","source_revision":"r1"},
+{"series_id":"DEXJPUS","observation_date":"2026-11-05","realtime_start":"2026-11-06","realtime_end":"9999-12-31","value":153.41,"status":"present","unit":"jpy_per_usd","currency":"","published_at":"2026-11-06T21:15:00Z","source":"fred","source_revision":"r1"}
 ]

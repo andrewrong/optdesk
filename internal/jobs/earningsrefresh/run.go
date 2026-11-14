@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
@@ -21,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -59,6 +61,9 @@ type job struct {
 	loc      *time.Location
 	tr       symbol.Translator
 	log      *slog.Logger
+	// memo holds, per day, what the first Run of this instance did: one Plan makes one Fetch per source.
+	mu   sync.Mutex
+	memo map[contracts.Day]outcome
 }
 
 type typedError struct {
@@ -137,7 +142,8 @@ func NewWithSymbols(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, loc: loc, tr: tr, log: slog.Default()}, nil
+	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, loc: loc, tr: tr,
+		log: slog.Default(), memo: map[contracts.Day]outcome{}}, nil
 }
 
 // ID is the job id of the manifest.
@@ -152,7 +158,7 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 // RunBound is the longest time one run may take.
 func (j *job) RunBound() time.Duration { return j.runBound }
 
-// RestartSensitive is false: a rerun of the day reads the rows and makes no call.
+// RestartSensitive is false: a later Run of one instance and day returns the first result and makes no call.
 func (j *job) RestartSensitive() bool { return false }
 
 // Plan returns one key per watch entry and the hash of the plan.
@@ -196,41 +202,16 @@ func (j *job) Postcondition(ctx context.Context, day, datasetID, subjectKey stri
 	return len(rows) > 0, nil
 }
 
-// readDay reads the rows of day: the stored answer of each entry, the markets that have a vendor answer and the
-// highest attempt of each issuer whose latest row is an error. An error row is not an answer: it is left out of
-// have and vendorRow, so the next run fetches again and writes the next attempt.
-func (j *job) readDay(ctx context.Context, day contracts.Day) (
-	have map[string]contracts.EarningsDate, vendorRow map[string]bool, lastErrorAttempt map[string]int, err error,
-) {
-	have, vendorRow, lastErrorAttempt = map[string]contracts.EarningsDate{}, map[string]bool{}, map[string]int{}
-	for _, e := range j.entries {
-		rows, err := j.r.EarningsDates(ctx, e.Issuer, day, day)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		if len(rows) == 0 {
-			continue
-		}
-		row := rows[0]
-		for _, x := range rows {
-			if x.Attempt > row.Attempt {
-				row = x
-			}
-		}
-		if row.Status == "error" {
-			lastErrorAttempt[e.Issuer] = row.Attempt
-			continue
-		}
-		have[e.Issuer] = row
-		if row.Source != "owner" && row.Source != "none" {
-			vendorRow[e.Market] = true
-		}
-	}
-	return have, vendorRow, lastErrorAttempt, nil
+// outcome is what the first Run of an instance and day did: its result and the market that failed to fetch.
+type outcome struct {
+	res    contracts.JobResult
+	failed map[string]string
 }
 
-// Run writes the rows of day that are missing. It makes at most one Fetch per source and none for a market
-// that already has a vendor row of the day; an error row is not one, so it is fetched again with the next attempt.
+// Run writes the rows of day by key: it makes at most one Fetch per source and upserts all rows of the run in one
+// call, so a rerun replaces what the source now says. A day before the clock's date in the manifest zone is a
+// replay. The first Run of an instance and day does the work and every later Run of the same instance and day
+// returns that result, a failure included, without a fetch. A new instance fetches again.
 //
 // With one key that names a watch entry, only a failure of that entry's market is an error; otherwise any failed
 // market is.
@@ -241,58 +222,24 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		j.logFailure("bad_day", te)
 		return contracts.JobResult{Err: te}
 	}
-	// Development mode: the vendors answer for today, so a past day runs with the clock's date in the manifest zone.
-	day = contracts.Day(j.clk.Now().In(j.loc).Format(dayLayout))
-	observed, _ = date(string(day))
-	have, vendorRow, lastErrorAttempt, err := j.readDay(ctx, day)
-	if err != nil {
-		j.logFailure("read_day", err)
-		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	o, ok := j.memo[day]
+	if !ok {
+		o = j.fetchAndWrite(ctx, day, observed)
+		j.memo[day] = o
 	}
-	now := j.clk.Now().UTC()
-	base := func(e jobs.WatchEntry) contracts.EarningsDate {
-		return contracts.EarningsDate{
-			Attempt: lastErrorAttempt[e.Issuer] + 1, Issuer: e.Issuer, Market: vendor[e.Market].Market, ObservedOn: *observed,
-			ReceivedAt: now, Symbol: e.Contract.Symbol,
-		}
-	}
-	var rows []contracts.EarningsDate
-	pending := map[string][]jobs.WatchEntry{}
-	for _, e := range j.entries {
-		if _, ok := have[e.Issuer]; ok {
-			continue
-		}
-		row := base(e)
-		switch {
-		case e.ReportDateOverride != "":
-			d, err := date(e.ReportDateOverride)
-			if err != nil {
-				te := &typedError{contracts.Permanent, "earningsrefresh: bad report_date_override of " + e.Issuer}
-				j.logFailure("override_date", te)
-				return contracts.JobResult{Err: te}
-			}
-			row.Status, row.Source, row.ReportDate = "listed", "owner", d
-			rows = append(rows, row)
-		case j.srcs[e.Market] == nil:
-			row.Status, row.Source = "unsupported", "none"
-			rows = append(rows, row)
-		case !vendorRow[e.Market]:
-			pending[e.Market] = append(pending[e.Market], e)
-		}
-	}
-	fetched, fetchFailed := j.fetchPending(ctx, day, pending, base)
-	rows = append(rows, fetched...)
-	res := j.write(ctx, rows)
+	res := o.res
 	if res.Err != nil {
 		return res
 	}
-	if counted := j.countedFailures(keys, fetchFailed); len(counted) > 0 {
+	if counted := j.countedFailures(keys, o.failed); len(counted) > 0 {
 		var texts, markets, codes []string
 		for _, m := range counted {
 			lm := strings.ToLower(m)
-			texts = append(texts, lm+": "+fetchFailed[m])
+			texts = append(texts, lm+": "+o.failed[m])
 			markets = append(markets, lm)
-			codes = append(codes, fetchFailed[m])
+			codes = append(codes, o.failed[m])
 		}
 		te := &typedError{contracts.Permanent, "earningsrefresh: " + strings.Join(texts, "; ")}
 		j.log.Warn("run failed", "step", "source_failed", "kind", string(te.kind),
@@ -300,6 +247,47 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		res.Err = te
 	}
 	return res
+}
+
+func (j *job) fetchAndWrite(ctx context.Context, day contracts.Day, observed *types.SerializableDate) outcome {
+	up, ok := j.w.(fundkey.EarningsUpserter)
+	if !ok {
+		te := &typedError{contracts.Retryable, "earningsrefresh: the earnings store has no UpsertEarnings"}
+		j.logFailure("no_upsert", te)
+		return outcome{res: contracts.JobResult{Err: te}}
+	}
+	now := j.clk.Now().UTC()
+	replay := string(day) < now.In(j.loc).Format(dayLayout)
+	base := func(e jobs.WatchEntry) contracts.EarningsDate {
+		return contracts.EarningsDate{
+			Attempt: 1, Issuer: e.Issuer, Market: vendor[e.Market].Market, ObservedOn: *observed,
+			ReceivedAt: now, Symbol: e.Contract.Symbol,
+		}
+	}
+	var rows []contracts.EarningsDate
+	pending := map[string][]jobs.WatchEntry{}
+	for _, e := range j.entries {
+		row := base(e)
+		switch {
+		case e.ReportDateOverride != "":
+			d, err := date(e.ReportDateOverride)
+			if err != nil {
+				te := &typedError{contracts.Permanent, "earningsrefresh: bad report_date_override of " + e.Issuer}
+				j.logFailure("override_date", te)
+				return outcome{res: contracts.JobResult{Err: te}}
+			}
+			row.Status, row.Source, row.ReportDate = "listed", "owner", d
+			rows = append(rows, row)
+		case j.srcs[e.Market] == nil:
+			row.Status, row.Source = "unsupported", "none"
+			rows = append(rows, row)
+		default:
+			pending[e.Market] = append(pending[e.Market], e)
+		}
+	}
+	fetched, failed := j.fetchPending(ctx, day, pending, base)
+	rows = append(rows, fetched...)
+	return outcome{res: j.write(ctx, up, replay, "earnings_refresh:"+string(day), rows), failed: failed}
 }
 
 // countedFailures returns the failed markets (US, then JP) that fail this run: the market of the one watch entry
@@ -354,15 +342,21 @@ func (j *job) fetchPending(
 	return rows, failed
 }
 
-// write inserts the rows; a writer error is Retryable unless already typed.
-func (j *job) write(ctx context.Context, rows []contracts.EarningsDate) contracts.JobResult {
-	res := contracts.JobResult{}
+// write upserts all rows in one call; a store error is Retryable unless already typed.
+func (j *job) write(ctx context.Context, up fundkey.EarningsUpserter, replay bool, writtenBy string, rows []contracts.EarningsDate) contracts.JobResult {
+	if len(rows) == 0 {
+		return contracts.JobResult{}
+	}
+	put := up.UpsertEarnings
+	if replay {
+		put = up.ReplayEarnings
+	}
+	if _, err := put(ctx, rows, writtenBy); err != nil {
+		j.logFailure("write", err)
+		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
+	}
+	res := contracts.JobResult{Returned: len(rows)}
 	for _, row := range rows {
-		if err := j.w.InsertEarningsDate(ctx, row); err != nil {
-			j.logFailure("write", err)
-			return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
-		}
-		res.Returned++
 		if row.Status != "error" {
 			res.Usable++
 		}

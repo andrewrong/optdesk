@@ -147,7 +147,7 @@ Acceptance:
 
 Module: pages. Size: M.
 Order: after 1.
-Files: `docs/contracts/pages.md`, `internal/pages/report_blocks/common.go`, `internal/pages/report_blocks/global_assets.go`, `internal/pages/report_blocks/strings.go`, `internal/pages/report_blocks/global_assets_test.go`, `internal/pages/report_page/builder.go`, `internal/pages/report_page/blocks.go`, `internal/pages/report_page/builder_test.go`
+Files: `docs/contracts/pages.md`, `internal/pages/report_blocks/common.go`, `internal/pages/report_blocks/global_assets.go`, `internal/pages/report_blocks/strings.go`, `internal/pages/report_blocks/global_assets_test.go`, `internal/pages/report_page/builder.go`, `internal/pages/report_page/builder_test.go`
 Design: docs/design/report-global-assets.md#Interface and Decisions 1, 6 to 10
 Acceptance:
 1. `GlobalAssets(c)` returns the block of the schema: key `global_assets`, the texts of Decision 8 (title, sub, say, `data_times` from `GlobalResult.DataDay`, `chart_aria`) as constants of `strings.go`, `proxies` in the order of the assets of group `proxy`, `sector` with the heading and the five columns of Decision 8 and one row per asset of group `sector` in the order compute gives (`sector` and `etf` cells with tone `none`, no value, no unit), `rotation` only when `GlobalResult.Rotation` is set, title `Sector leaders`, detail built as in Decision 9. `docs/contracts/pages.md` no longer says `global_assets` is always `not_built`: it states the `GlobalAssets` func, the Config fields, and that only the US close report builds it.

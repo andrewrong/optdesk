@@ -3,6 +3,7 @@
 version = 1
 id = "option_eod_index"
 zone = "America/New_York"
+slot = "1100"
 ledger_dataset = "obs.option_eod_index"
 min_dte = 0             # trial
 max_dte = 60            # trial

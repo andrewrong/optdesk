@@ -119,6 +119,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if string(day) != now.In(j.loc).Format(time.DateOnly) {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "option_eod: day %s is not the current day; a past option chain cannot be collected", day)}
 	}
+	if j.m.Slot == "" {
+		return contracts.JobResult{Err: newErr(contracts.Permanent, "option_eod: manifest has no slot")}
+	}
 	dayTime, err := time.Parse(time.DateOnly, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
@@ -203,7 +206,7 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	if err != nil {
 		return asTyped(err, contracts.Permanent)
 	}
-	capture := captureID(r.day, k, r.start)
+	capture := captureID(r.day, k, r.j.m.Slot)
 	var tl tally
 	var chunkErr contracts.TypedError
 	for i := 0; i < len(listed); i += r.j.m.Chunk {

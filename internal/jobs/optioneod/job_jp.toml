@@ -2,6 +2,7 @@
 version = 1
 id = "option_eod_jp"
 zone = "Asia/Tokyo"
+slot = "1030"
 trading_class = "225"
 ledger_dataset = "obs.option_eod_jp"
 max_expiries = 3

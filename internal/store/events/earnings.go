@@ -1,5 +1,5 @@
 // Package events holds the earnings store: OpenEarningsDate (store.OpenEarningsDateStoreFunc) over the table
-// obs.earnings_date (insert) and the view rd.earnings_date_r1 (every read).
+// obs.earnings_date (upsert) and the view rd.earnings_date_r1 (every read).
 package events
 
 import (
@@ -21,16 +21,8 @@ import (
 
 var _ store.OpenEarningsDateStoreFunc = OpenEarningsDate
 
-// No conflict target: naming one needs SELECT on the table, which no role holds; the primary key is the only
-// unique index, so DO NOTHING acts on (observed_on, issuer, attempt).
 // Dates travel as text and are cast in SQL, so no driver date range matters.
 const (
-	insertEarningsSQL = `INSERT INTO obs.earnings_date
- (observed_on, issuer, attempt, symbol, market, status, report_date, fiscal_period_end, time_of_day,
-  estimate, error_code, source, received_at)
-VALUES ($1::text::date, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $12, $13)
-ON CONFLICT DO NOTHING`
-
 	selectEarningsSQL = `SELECT observed_on, issuer, attempt, symbol, market, status, report_date, fiscal_period_end,
  time_of_day, estimate, error_code, source, received_at
 FROM rd.earnings_date_r1 WHERE issuer = $1 AND observed_on >= $2::text::date AND observed_on <= $3::text::date
@@ -44,11 +36,10 @@ type scanner interface {
 
 // database is the seam under the store: the one place pgx is touched, replaced by a fake in unit tests.
 type database interface {
-	// Exec runs one statement.
-	Exec(ctx context.Context, sql string, args ...any) error
 	// Select runs a query and calls scan once per row, in the order the database returns them.
 	Select(ctx context.Context, sql string, args []any, scan func(scanner) error) error
 	Close() error
+	upsertDB
 }
 
 type earningsStore struct{ db database }
@@ -71,25 +62,16 @@ func OpenEarningsDate(ctx context.Context, dsn string) (store.EarningsDateStore,
 // Close releases the connections.
 func (s *earningsStore) Close() error { return s.db.Close() }
 
-// InsertEarningsDate inserts the row; a row whose key exists stays as it is and is no error. A constraint
-// violation (SQLSTATE class 23: not null, foreign key, check) is a Permanent error, since the database repeats
-// it on every attempt; every other error of the insert is Retryable.
+// InsertEarningsDate is the upsert of one row with an empty writtenBy: a row whose key exists is replaced when it
+// differs (docs/design/fundamentals-keys.md Decision 10). Attempt is not stored. A constraint violation (SQLSTATE class
+// 23: not null, foreign key, check) is a Permanent error, since the database repeats it on every attempt; every other
+// error of the write is Retryable.
 func (s *earningsStore) InsertEarningsDate(ctx context.Context, r contracts.EarningsDate) error {
 	if r.Issuer == "" || r.Attempt < 1 {
 		return permanent(fmt.Errorf("events: a row needs an issuer and an attempt from 1"))
 	}
-	err := s.db.Exec(ctx, insertEarningsSQL,
-		r.ObservedOn.Format(time.DateOnly), r.Issuer, r.Attempt, r.Symbol, string(r.Market), string(r.Status),
-		dayText(r.ReportDate), dayText(r.FiscalPeriodEnd), r.TimeOfDay, r.Estimate, r.ErrorCode, string(r.Source),
-		r.ReceivedAt.UTC())
-	if err != nil {
-		wrapped := fmt.Errorf("events: insert: %w", err)
-		if isConstraintViolation(err) {
-			return permanent(wrapped)
-		}
-		return retryable(wrapped)
-	}
-	return nil
+	_, err := s.UpsertEarnings(ctx, []contracts.EarningsDate{r}, "")
+	return err
 }
 
 func dayText(d *types.SerializableDate) *string {
@@ -185,11 +167,6 @@ func permanent(err error) error { return &typedErr{kind: contracts.Permanent, ca
 
 // pgDB is the pgx adapter of database.
 type pgDB struct{ pool *pgxpool.Pool }
-
-func (d pgDB) Exec(ctx context.Context, sql string, args ...any) error {
-	_, err := d.pool.Exec(ctx, sql, args...)
-	return err
-}
 
 func (d pgDB) Select(ctx context.Context, sql string, args []any, scan func(scanner) error) error {
 	rows, err := d.pool.Query(ctx, sql, args...)

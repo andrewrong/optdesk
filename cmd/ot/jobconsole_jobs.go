@@ -42,7 +42,6 @@ const (
 	textAppendOnly     = "a forced run adds executions by (alias, exec_id) and never replaces the day's capture"
 	textInsertOnly     = "a stored capture of a statement day is never replaced, so a forced run writes nothing new"
 	textAttemptRows    = "a re-run adds one row under the next attempt, which replaces nothing"
-	textNewRunID       = "changed inputs make a new run id and a second run of rows"
 	textQuota          = "the Alpha Vantage quota is 25 a day"
 	textNotProved      = "nothing read proves that a second run equals the first"
 	textNoLowerBound   = "a run before its slot would store pre-open prices as the open"
@@ -78,7 +77,7 @@ var jobTable = []jobRow{
 	{ID: "fred_series", Kind: kindAnyDay, Force: true},
 	anyDay("fundamentals", "quota", textQuota),
 	{ID: "compute_figures", Kind: kindAnyDay, Force: true},
-	anyDay("option_candidates", "new_run_id", textNewRunID),
+	{ID: "option_candidates", Kind: kindAnyDay, Force: true},
 	todayOnly("account_capture", "append_only", textAppendOnly),
 	anyDay("statement_capture", "insert_only", textInsertOnly),
 	todayOnly("position_marks", "attempt_rows", textAttemptRows),
