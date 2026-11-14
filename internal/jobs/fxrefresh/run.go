@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
@@ -23,6 +25,7 @@ const (
 	datasetID      = "obs.fx_rate"
 	pair           = "USDJPY"
 	sourceMidpoint = "ibkr_midpoint"
+	sourceFred     = "fred_h10"
 	dayLayout      = "2006-01-02"
 )
 
@@ -35,7 +38,10 @@ type manifest struct {
 	Version      int    `toml:"version"`
 	ID           string `toml:"id"`
 	DurationDays int    `toml:"duration_days"`
-	Schedule     struct {
+	// Sources is the rank: the first is the primary, every later one a fill source.
+	Sources          []string `toml:"sources"`
+	FillLookbackDays int      `toml:"fill_lookback_days"`
+	Schedule         struct {
 		Calendar string `toml:"calendar"`
 		Anchor   string `toml:"anchor"`
 		Offset   string `toml:"offset"`
@@ -74,6 +80,8 @@ type job struct {
 	w        bar.FxRateWriter
 	r        bar.FxRateReader
 	clk      clock.Clock
+	log      *slog.Logger
+	second   sources.Source // the fill source; nil means no fill
 }
 
 // New builds the fx_refresh job from the embedded job.toml: one key, {obs.fx_rate, USDJPY}.
@@ -81,14 +89,22 @@ func New(b broker.Broker, h broker.HistoryClient, w bar.FxRateWriter, r bar.FxRa
 	if b == nil || h == nil || w == nil || r == nil || clk == nil { // r is kept for the signature only
 		return nil, errors.New("fxrefresh: broker, history client, writer, reader and clock are required")
 	}
+	return build(manifestBytes, b, h, w, r, clk)
+}
+
+// build is New over the bytes of a manifest.
+func build(raw []byte, b broker.Broker, h broker.HistoryClient, w bar.FxRateWriter, r bar.FxRateReader, clk clock.Clock) (contracts.Job, error) {
 	var m manifest
-	if err := toml.Unmarshal(manifestBytes, &m); err != nil {
+	if err := toml.Unmarshal(raw, &m); err != nil {
 		return nil, errors.New("fxrefresh: manifest: not valid TOML")
 	}
 	if m.ID == "" || m.DurationDays <= 0 || m.Schedule.Calendar == "" {
 		return nil, errors.New("fxrefresh: manifest: id, duration_days and schedule.calendar are required")
 	}
-	j := &job{m: m, b: b, h: h, w: w, r: r, clk: clk}
+	if err := checkSources(m); err != nil {
+		return nil, err
+	}
+	j := &job{m: m, b: b, h: h, w: w, r: r, clk: clk, log: slog.Default()}
 	var err error
 	if j.offset, err = time.ParseDuration(m.Schedule.Offset); err != nil {
 		return nil, errors.New("fxrefresh: manifest: schedule.offset is not a duration")
@@ -97,6 +113,22 @@ func New(b broker.Broker, h broker.HistoryClient, w bar.FxRateWriter, r bar.FxRa
 		return nil, errors.New("fxrefresh: manifest: schedule.run_bound is not a duration")
 	}
 	return j, nil
+}
+
+// checkSources refuses a rank that is empty, does not start with the primary or names a source the job cannot serve.
+func checkSources(m manifest) error {
+	if len(m.Sources) == 0 || m.Sources[0] != sourceMidpoint {
+		return fmt.Errorf("fxrefresh: manifest: sources must start with %s", sourceMidpoint)
+	}
+	for _, s := range m.Sources {
+		if s != sourceMidpoint && s != sourceFred {
+			return fmt.Errorf("fxrefresh: manifest: unknown source %q", s)
+		}
+	}
+	if m.FillLookbackDays <= 0 {
+		return errors.New("fxrefresh: manifest: fill_lookback_days must be positive")
+	}
+	return nil
 }
 
 // ID is the job id of the manifest.
@@ -121,7 +153,15 @@ func (j *job) Plan(_ context.Context, day contracts.Day) ([]contracts.ExpectedKe
 
 // Run upserts the days of the MIDPOINT answer that end on day, by key, with writtenBy "fx_refresh:<day>".
 // A differing stored rate is replaced, an equal one is untouched, an empty answer replaces nothing.
+// After that step, whatever its result, the fill source (when attached) stores the days the table has no row for;
+// the result is the primary's.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	res := j.runPrimary(ctx, day, keys)
+	j.fill(ctx, day)
+	return res
+}
+
+func (j *job) runPrimary(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	if _, err := time.Parse(dayLayout, string(day)); err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
 	}

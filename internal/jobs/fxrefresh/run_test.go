@@ -115,8 +115,18 @@ func (m *memFx) InsertFxRates(_ context.Context, rows []contracts.FxRate) (int, 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls++
-	m.rows = append(m.rows, rows...)
-	return len(rows), nil
+	n := 0
+	for _, r := range rows { // a stored key is left alone, as the store does
+		dup := false
+		for _, s := range m.rows {
+			dup = dup || (s.Pair == r.Pair && s.RateDay.Format(dayLayout) == r.RateDay.Format(dayLayout))
+		}
+		if !dup {
+			m.rows = append(m.rows, r)
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (m *memFx) FxRates(_ context.Context, p string, from, to contracts.Day) ([]contracts.FxRate, error) {
@@ -144,7 +154,7 @@ func mkbar(day, close string) broker.Bar {
 	return broker.Bar{Day: day, Open: close, High: close, Low: close, Close: close}
 }
 
-func build(t *testing.T, b *fakeBroker, h *fakeHistory, st *memFx) contracts.Job {
+func buildJob(t *testing.T, b *fakeBroker, h *fakeHistory, st *memFx) contracts.Job {
 	t.Helper()
 	j, err := New(b, h, st, st, fixedClock{})
 	if err != nil {
@@ -160,7 +170,7 @@ func TestOneKeyUSDJPY(t *testing.T) {
 	b := &fakeBroker{listed: true}
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.2150")}}
 	st := &memFx{}
-	j := build(t, b, h, st)
+	j := buildJob(t, b, h, st)
 	keys, hash, err := j.Plan(context.Background(), runDay)
 	if err != nil || hash == "" || len(keys) != 1 || keys[0].DatasetID != "obs.fx_rate" || keys[0].SubjectKey != "USDJPY" {
 		t.Fatalf("plan %+v %q %v", keys, hash, err)
@@ -189,7 +199,7 @@ func TestReplacesDifferingDay(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-05", "151.1000"), mkbar("2026-11-06", "152.2000"), mkbar("2026-11-09", "153.3000")}}
 	st := &memFx{rows: []contracts.FxRate{stored("2026-11-06", "999.0000")}}
-	j := build(t, &fakeBroker{listed: true}, h, st)
+	j := buildJob(t, &fakeBroker{listed: true}, h, st)
 	res := j.Run(context.Background(), runDay, usdjpy)
 	if res.Err != nil || res.Returned != 3 || res.Usable != 1 {
 		t.Fatalf("result %+v", res)
@@ -214,7 +224,7 @@ func TestEqualDayNoRewrite(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.4250")}}
 	st := &memFx{rows: []contracts.FxRate{stored("2026-11-09", "153.425")}}
-	j := build(t, &fakeBroker{listed: true}, h, st)
+	j := buildJob(t, &fakeBroker{listed: true}, h, st)
 	res := j.Run(context.Background(), runDay, usdjpy)
 	if res.Err != nil || res.Usable != 1 {
 		t.Fatalf("result %+v", res)
@@ -227,7 +237,7 @@ func TestEqualDayNoRewrite(t *testing.T) {
 func TestPastDayAsksEndDay(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-06", "152.2000")}}
-	j := build(t, &fakeBroker{listed: true}, h, &memFx{})
+	j := buildJob(t, &fakeBroker{listed: true}, h, &memFx{})
 	if res := j.Run(context.Background(), "2026-11-06", usdjpy); res.Err != nil {
 		t.Fatal(res.Err)
 	}
@@ -239,7 +249,7 @@ func TestPastDayAsksEndDay(t *testing.T) {
 func TestTodayAsksNoEnd(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.2000")}}
-	j := build(t, &fakeBroker{listed: true}, h, &memFx{})
+	j := buildJob(t, &fakeBroker{listed: true}, h, &memFx{})
 	if res := j.Run(context.Background(), runDay, usdjpy); res.Err != nil {
 		t.Fatal(res.Err)
 	}
@@ -252,7 +262,7 @@ func TestBarsAfterDayAreDropped(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-05", "151.1000"), mkbar("2026-11-06", "152.2000"), mkbar("2026-11-07", "153.3000")}}
 	st := &memFx{}
-	j := build(t, &fakeBroker{listed: true}, h, st)
+	j := buildJob(t, &fakeBroker{listed: true}, h, st)
 	res := j.Run(context.Background(), "2026-11-06", usdjpy)
 	if res.Err != nil || res.Returned != 2 {
 		t.Fatalf("result %+v", res)
@@ -265,7 +275,7 @@ func TestBarsAfterDayAreDropped(t *testing.T) {
 func TestEmptyAnswerNeverReplaces(t *testing.T) {
 	t.Parallel()
 	st := &memFx{rows: []contracts.FxRate{stored("2026-11-09", "153.3000")}}
-	j := build(t, &fakeBroker{listed: true}, &fakeHistory{}, st)
+	j := buildJob(t, &fakeBroker{listed: true}, &fakeHistory{}, st)
 	res := j.Run(context.Background(), runDay, usdjpy)
 	if res.Err != nil || res.Returned != 0 || st.upserts != 0 || len(st.rows) != 1 || st.rows[0].Rate != "153.3000" {
 		t.Fatalf("result %+v rows %+v upserts %d", res, st.rows, st.upserts)
@@ -294,7 +304,7 @@ func TestBadBarIsPermanent(t *testing.T) {
 	t.Parallel()
 	for _, bars := range [][]broker.Bar{{mkbar("2026-11-09", "0")}, {mkbar("2026-11-09", "abc")}, {mkbar("bad", "1.5")}} {
 		st := &memFx{}
-		j := build(t, &fakeBroker{listed: true}, &fakeHistory{bars: bars}, st)
+		j := buildJob(t, &fakeBroker{listed: true}, &fakeHistory{bars: bars}, st)
 		res := j.Run(context.Background(), runDay, usdjpy)
 		if res.Err == nil || res.Err.Kind() != contracts.Permanent || st.upserts != 0 {
 			t.Fatalf("%+v: result %+v", bars, res)
@@ -318,7 +328,7 @@ func TestStoreErrorIsRetryable(t *testing.T) {
 func TestEmptyAnswerWritesNothing(t *testing.T) {
 	t.Parallel()
 	st := &memFx{}
-	j := build(t, &fakeBroker{listed: true}, &fakeHistory{}, st)
+	j := buildJob(t, &fakeBroker{listed: true}, &fakeHistory{}, st)
 	res := j.Run(context.Background(), runDay, usdjpy)
 	if res.Err != nil || res.Returned != 0 || res.Usable != 0 || st.calls != 0 || len(st.rows) != 0 {
 		t.Fatalf("result %+v rows %+v calls %d", res, st.rows, st.calls)
@@ -328,7 +338,7 @@ func TestEmptyAnswerWritesNothing(t *testing.T) {
 func TestNotListedIsPermanent(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{}
-	j := build(t, &fakeBroker{listed: false}, h, &memFx{})
+	j := buildJob(t, &fakeBroker{listed: false}, h, &memFx{})
 	res := j.Run(context.Background(), runDay, usdjpy)
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent || len(h.queries) != 0 {
 		t.Fatalf("result %+v", res)
@@ -344,7 +354,7 @@ func TestPacedIsRetryable(t *testing.T) {
 	t.Parallel()
 	for _, err := range []error{pacedErr{}, errors.New("socket closed")} {
 		h := &fakeHistory{err: err}
-		j := build(t, &fakeBroker{listed: true}, h, &memFx{})
+		j := buildJob(t, &fakeBroker{listed: true}, h, &memFx{})
 		res := j.Run(context.Background(), runDay, usdjpy)
 		if res.Err == nil || res.Err.Kind() != contracts.Retryable {
 			t.Fatalf("%v: result %+v", err, res)
