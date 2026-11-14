@@ -174,7 +174,7 @@ Acceptance:
 ### 2 liquidity-view-contract (interface)
 
 Module: contracts. Size: M.
-Order: first (parallel with 1).
+Order: first.
 Files: `contracts/schemas/page.macro_page.v2.json`, `contracts/fixtures/page.macro_page.v2.golden.json`, `contracts/fixtures/page.macro_page.v2.gap.json`, `contracts/fixtures/page.macro_page.v2.stale.json`, `contracts/fixtures/page.macro_page.v2.bad-version.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `web/src/generated/macro_page.v2.ts`, `internal/contracts/macropage_v2_test.go`, `docs/contracts/page-schemas.md`
 Contracts: page.macro_page v2 (new; the schema and its generated type land together)
 Design: docs/design/liquidity-view.md#Interface
@@ -190,7 +190,7 @@ Acceptance:
 ### 3 liquidity-view-sources
 
 Module: sources. Size: S.
-Order: first (before 4).
+Order: first.
 Files: `internal/sources/fred/mapping.go`, `internal/sources/fred/mapping_test.go`, `internal/sources/fred/testdata/series_units.json`, `docs/contracts/sources.md`
 Contracts: unchanged
 Design: docs/design/liquidity-view.md#Issues (Decision 5)
@@ -204,7 +204,7 @@ Acceptance:
 ### 4 liquidity-view-job
 
 Module: jobs. Size: S.
-Order: after 3 (a manifest id without a mapping row fails the whole run).
+Order: after 3.
 Files: `internal/jobs/fredseries/job.toml`, `internal/jobs/fredseries/run_test.go`, `internal/jobs/fredseries/seed_test.go`, `docs/contracts/jobs/fred_series.md`
 Contracts: unchanged
 Design: docs/design/liquidity-view.md#Issues (Decisions 5, 6)
@@ -219,7 +219,7 @@ Acceptance:
 ### 5 liquidity-view-web
 
 Module: web. Size: M.
-Order: after 2 (the generated type); it does not wait for the page.
+Order: after 2.
 Contracts: unchanged
 Files: `web/src/pages/macro/MacroPage.tsx`, `web/src/pages/macro/LiquidityBlock.tsx`, `web/src/pages/home/MacroCard.tsx`, `web/src/types/macro_page.ts`, `web/test/pages/macro/MacroPage.test.tsx`, `web/test/pages/macro/LiquidityBlock.test.tsx`, `web/test/pages/home/MacroCard.test.tsx`
 Design: docs/design/liquidity-view.md#Issues (Decisions 3, 4, 10, 13)
@@ -234,7 +234,7 @@ Acceptance:
 ### 6 liquidity-view-page
 
 Module: pages. Size: L.
-Order: after 1, 2 and 5 (additive: it turns nothing on by itself, Decision 13).
+Order: after 1, 2, 5.
 Contracts: unchanged
 Files: `internal/pages/macro_page/liquidity.go`, `internal/pages/macro_page/liquidity_test.go`, `internal/pages/macro_page/builder.go`, `internal/pages/macro_page/builder_test.go`, `internal/pages/macro_page/page.go`, `internal/pages/macro_page/page_test.go`, `internal/pages/home_macro/member.go`, `internal/pages/home_macro/member_test.go`, `internal/pages/home_macro/testdata/reserves.golden.json`, `docs/contracts/pages.md`
 Design: docs/design/liquidity-view.md#Issues (Decisions 2, 3, 4, 7, 9, 11)
@@ -250,7 +250,7 @@ Acceptance:
 ### 7 liquidity-view-wire
 
 Module: ot. Size: S.
-Order: after 1 and 6 (the one switching step, Decision 13).
+Order: after 1, 6.
 Contracts: unchanged
 Files: `cmd/ot/wire_macro.go`, `cmd/ot/wire.go`, `cmd/ot/home_site.go`, `cmd/ot/wire_macro_test.go`, `cmd/ot/home_site_test.go`, `cmd/ot/page_test.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/testdata/macro_page_demo.golden.json`
 Design: docs/design/liquidity-view.md#Issues (Decision 7)
