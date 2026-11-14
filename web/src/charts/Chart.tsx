@@ -100,7 +100,8 @@ export function Chart({
       {...axis}
       interval="preserveStartEnd"
       minTickGap={24}
-      padding={{ left: 24, right: 24 }}
+      padding={{ left: 40, right: 24 }}
+      tickMargin={8}
     />,
     spec.kind === 'line' ? (
       <YAxis key="y" {...axis} {...yAxis} tickCount={5} domain={['auto', 'auto']} />
