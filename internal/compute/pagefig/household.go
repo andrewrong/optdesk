@@ -201,11 +201,39 @@ func obligations(in blockapi.HouseholdInput) []blockapi.MoneyLine {
 		}
 		l := line(name, o.Currency, n, in.UsdJpy)
 		if o.PremiumIncome != "" {
-			l.Note = strings.TrimSpace(l.Note + " premium " + o.PremiumIncome)
+			l.Note = strings.TrimSpace(l.Note + " premium " + premiumText(o.Currency, o.PremiumIncome))
 		}
 		rows = append(rows, l)
 	}
 	return rows
+}
+
+// premiumText is the stored premium text as money with two decimals, rounded half away from
+// zero on the exact decimal: USD gets a dollar sign, any other currency its code and a space.
+// A zero result carries no sign. Text that is not a decimal is returned unchanged.
+func premiumText(currency, text string) string {
+	r, ok := parse(text)
+	if !ok {
+		return text
+	}
+	scaled := new(big.Rat).Mul(new(big.Rat).Abs(r), big.NewRat(100, 1))
+	// floor(scaled + 1/2) rounds the magnitude half up, i.e. away from zero.
+	scaled.Add(scaled, big.NewRat(1, 2))
+	q := new(big.Int).Quo(scaled.Num(), scaled.Denom())
+	neg := r.Sign() < 0 && q.Sign() != 0
+	s := q.String()
+	for len(s) < 3 {
+		s = "0" + s
+	}
+	s = s[:len(s)-2] + "." + s[len(s)-2:]
+	prefix := currency + " "
+	if currency == "USD" {
+		prefix = "$"
+	}
+	if neg {
+		prefix = "-" + prefix
+	}
+	return prefix + s
 }
 
 // premium sums PremiumIncome per currency, in order of first appearance.
