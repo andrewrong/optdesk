@@ -25,8 +25,10 @@ ot series-load --series VIXCLS --series VXNCLS --series RVXCLS --from DAY --to D
 
 ## After the load
 
-Run `ot run-once` for the day. The `compute_figures` job then stores the readings at once; without it
-they appear with the next scheduled run, which computes the as-of day only.
+Run `ot run-once` for the day. The command only enqueues console requests and returns; the scheduler
+runs them, so the console must be on (`--wait` polls until the requests end). The `compute_figures` job
+then stores the readings when the scheduler has run its request; without it they appear with the next
+scheduled run, which computes the as-of day only.
 
 ## The check
 
@@ -35,7 +37,7 @@ stored reading of the day is one of:
 
 - `ok`: the percentile is stored and the page shows it.
 - `short_history`: `--from` was too late. The page then shows `历史不满 3 年，不给分位`, which is true.
-  Load again with an earlier `--from` and run `ot run-once` again.
+  Load again with an earlier `--from` and run `ot run-once` again (it enqueues; the scheduler runs it).
 
 ## Not part of this
 
