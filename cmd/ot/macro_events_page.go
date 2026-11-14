@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/ease"
+	"github.com/andrewrong/optdesk/internal/compute/liquidity"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -23,15 +25,17 @@ func newMacroPageEvents(zone *time.Location, buildID string, read compute.Readin
 	return macro_page.NewPage(cfg)
 }
 
-// macroPageConfig is the config of the macro page without events: the one place newMacroPageEvents takes it from.
-// newMacroPage of wire.go (not edited) holds the same literal for the page without a reader.
+// macroPageConfig is the config of the macro page without events: newMacroPage and newMacroPageEvents both take it.
 func macroPageConfig(zone *time.Location, buildID string, read compute.ReadingFunc) macro_page.Config {
 	return macro_page.Config{
-		RunID:   "ot-page",
-		BuildID: buildID,
-		Scope:   "macro",
-		Zone:    zone,
-		Read:    read,
+		RunID:           "ot-page",
+		BuildID:         buildID,
+		Scope:           "macro",
+		Zone:            zone,
+		Read:            read,
+		Liquidity:       liquidity.Compute,
+		LiquidityParams: liquidity.TrialParams(),
+		Net:             ease.NetLiquidity,
 		Indicators: []macro_page.Indicator{
 			{SeriesID: "DGS10", Name: "10-year Treasury yield", SourceText: "FRED"},
 		},

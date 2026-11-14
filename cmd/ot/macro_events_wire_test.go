@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"slices"
 	"sync/atomic"
@@ -164,3 +165,32 @@ func (emptyView) WinnerReadings(context.Context, string, string, string, contrac
 	return nil, nil
 }
 func (emptyView) Close() error { return nil }
+
+// oneEvent is a reader with one stored date inside the window of the page.
+type oneEvent struct{ *recordingEvents }
+
+func (oneEvent) Between(context.Context, contracts.Day, contracts.Day) ([]macroevent.Event, error) {
+	return []macroevent.Event{{Kind: "cpi", Source: "fred", Date: "2026-11-12", RunDay: "2026-11-04"}}, nil
+}
+
+func TestEventsPageIsV2WithLiquidity(t *testing.T) {
+	t.Parallel()
+	p := newMacroPageEvents(time.UTC, "dev", nil, oneEvent{&recordingEvents{}})
+	if p.Meta.Schema != "page.macro_page.v2" {
+		t.Fatalf("schema %q", p.Meta.Schema)
+	}
+	b, err := p.Build(t.Context(), newLiquidityFake(), "2026-11-05", time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Events    []json.RawMessage `json:"events"`
+		Liquidity map[string]any    `json:"liquidity"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Events) == 0 || m.Liquidity == nil {
+		t.Fatalf("events %d, liquidity %v: %s", len(m.Events), m.Liquidity, b)
+	}
+}
