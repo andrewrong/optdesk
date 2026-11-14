@@ -5,6 +5,7 @@ import React, { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChartSpec } from '@/charts/spec'
+import { ChartTooltip } from '@/components/ui/chart'
 import { MarketStatePage, registration } from '@/pages/market_state/MarketStatePage'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -54,24 +55,37 @@ vi.mock('recharts', async (importOriginal) => {
       </g>
     ),
     // Outside a real chart there is no scale: a fixed one stands in, so the arrow can be drawn.
-    XAxis: ({ label, padding }: { label: { value: string }; padding: object }) => (
-      <g data-axis="x" data-padding={JSON.stringify(padding)}>
-        <text>{label.value}</text>
-      </g>
-    ),
-    YAxis: ({ label, padding }: { label: { value: string }; padding: { top: number } }) => (
-      <g data-axis="y" data-padding-top={padding.top}>
-        <text>{label.value}</text>
-      </g>
-    ),
+    // Only the axes of the rotation map carry a title; the bar chart's axes are the real ones.
+    XAxis: (props: React.ComponentProps<typeof actual.XAxis>) =>
+      props.label ? (
+        <g data-axis="x" data-padding={JSON.stringify(props.padding)}>
+          <text>{(props.label as { value: string }).value}</text>
+        </g>
+      ) : (
+        <actual.XAxis {...props} />
+      ),
+    YAxis: (props: React.ComponentProps<typeof actual.YAxis>) =>
+      props.label ? (
+        <g data-axis="y" data-padding-top={(props.padding as { top: number }).top}>
+          <text>{(props.label as { value: string }).value}</text>
+        </g>
+      ) : (
+        <actual.YAxis {...props} />
+      ),
     useCartesianScale: (pt: { x: number; y: number }) => ({ x: pt.x, y: pt.y }),
     ReferenceArea: ({ x1, x2, y1, y2, label }: { x1?: number; x2?: number; y1?: number; y2?: number; label: { value: string; position: string } }) => (
       <g data-quadrant-area={`${x1 === undefined ? 'left' : 'right'}-${y1 === undefined ? 'bottom' : 'top'}`} data-corner={label.position} data-y2={y2} data-x2={x2}>
         <text>{label.value}</text>
       </g>
     ),
-    BarChart: ({ data, layout }: { data: unknown[]; layout: string }) => (
-      <svg data-bar-chart data-bars={data.length} data-layout={layout} />
+    // The bar chart is marked and also drawn for real at a fixed size, so the test reads what recharts lays out.
+    BarChart: (props: React.ComponentProps<typeof actual.BarChart>) => (
+      <>
+        <svg data-bar-chart data-bars={(props.data as unknown[]).length} data-layout={props.layout} />
+        <actual.BarChart {...props} width={700} height={360}>
+          {React.Children.toArray(props.children).filter((c) => !(React.isValidElement(c) && c.type === ChartTooltip))}
+        </actual.BarChart>
+      </>
     ),
   }
 })
@@ -292,6 +306,30 @@ describe('market state page', () => {
     const values = p.sectors.rows.filter((r: { gap_63: { kind: string } }) => r.gap_63.kind === 'value')
     expect(bars.getAttribute('data-bars')).toBe(String(values.length))
     expect(host.querySelector('[data-bars-caption]')?.textContent).toBe(p.sectors.bars_caption)
+  })
+
+  it('leaves room beyond the extreme bars and puts each label at the outer end of its bar, on one line', async () => {
+    const p = fixture('ok')
+    await show(p)
+    const rows = p.sectors.rows.filter((r: { gap_63: { kind: string } }) => r.gap_63.kind === 'value') as {
+      symbol: string
+      gap_63: { value: number; text: string }
+    }[]
+    const values = rows.map((r) => r.gap_63.value)
+    const negative = rows.find((r) => r.gap_63.value < 0)!
+    const positive = rows.find((r) => r.gap_63.value > 0)!
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => Number(t.textContent))
+    // The ends of the axis (its first and last tick) lie at least 4 points beyond the extreme bars.
+    expect(Math.min(...ticks)).toBeLessThanOrEqual(Math.min(...values) - 4)
+    expect(Math.max(...ticks)).toBeGreaterThanOrEqual(Math.max(...values) + 4)
+    const label = (text: string) => [...host.querySelectorAll('text.recharts-label')].find((t) => t.textContent === text)!
+    expect(label(negative.gap_63.text).getAttribute('text-anchor')).toBe('end')
+    expect(label(positive.gap_63.text).getAttribute('text-anchor')).toBe('start')
+    for (const r of rows) expect(label(r.gap_63.text).querySelectorAll('tspan')).toHaveLength(1)
+    // No label is drawn over the y axis tick text: the left edge of the plot is the x of the tick texts.
+    const tickX = Number(host.querySelector('text.recharts-cartesian-axis-tick-value[orientation=left]')!.getAttribute('x'))
+    const textRight = Number(label(negative.gap_63.text).getAttribute('x'))
+    expect(textRight).toBeGreaterThan(tickX)
   })
 
   it('the gap fixture draws no rotation series', async () => {
