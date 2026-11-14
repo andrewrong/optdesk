@@ -262,3 +262,6 @@ func TestStressNewSharesOnlyBookIsLinear(t *testing.T) {
 		t.Fatalf("total %q excluded %+v", got, o.Excluded)
 	}
 }
+
+// the real pricer satisfies the interface of this package.
+var _ stress.Pricer = bsm.New()

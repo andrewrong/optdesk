@@ -21,6 +21,9 @@ const baseCurrency = "USD"
 
 const dayLayout = "2006-01-02"
 
+// optionIn is the option part of a pricer call that does not change along the ladder.
+type optionIn struct{ right, spot, strike, years, rate string }
+
 type stresser struct{ p Pricer }
 
 // New returns the stresser that reprices options with p.
@@ -206,7 +209,7 @@ func (s stresser) option(b strategy.RiskBook, h strategy.RiskHolding, qty, mult,
 		return nil, nil, "no_vol"
 	}
 	years := new(big.Rat).SetFrac64(days, 365).FloatString(12)
-	in := Input{Right: right[:1], Spot: h.Spot, Strike: o.Strike, Years: years, Rate: b.Rate}
+	in := optionIn{right: right[:1], spot: h.Spot, strike: o.Strike, years: years, rate: b.Rate}
 	intrinsic := func(sp *big.Rat) *big.Rat {
 		v := new(big.Rat).Sub(strike, sp)
 		if !isPut {
@@ -220,7 +223,7 @@ func (s stresser) option(b strategy.RiskBook, h strategy.RiskHolding, qty, mult,
 	vol := ""
 	if mark.Cmp(intrinsic(spot)) > 0 {
 		var err error
-		vol, err = s.p.Implied(in, h.Mark)
+		vol, err = s.p.Implied(in.right, in.spot, in.strike, in.years, in.rate, h.Mark)
 		if err != nil {
 			return nil, nil, "no_vol"
 		}
@@ -248,9 +251,8 @@ func stale(b strategy.RiskBook, d contracts.Day) bool {
 }
 
 // repriced is the model value of the option at the moved spot and the volatility implied by its own mark.
-func (s stresser) repriced(in Input, moved *big.Rat, vol string) (*big.Rat, bool) {
-	in.Spot, in.Vol = moved.FloatString(8), vol
-	txt, err := s.p.Value(in)
+func (s stresser) repriced(in optionIn, moved *big.Rat, vol string) (*big.Rat, bool) {
+	txt, err := s.p.Value(in.right, moved.FloatString(8), in.strike, in.years, in.rate, vol)
 	if err != nil {
 		return nil, false
 	}
@@ -276,17 +278,13 @@ func optionGate(b strategy.RiskBook, h strategy.RiskHolding) (int64, string) {
 	}
 	return days, ""
 }
-// Input is one option to price, every number as decimal text. Years is the time to expiry in years, Rate the
-// continuously compounded risk-free rate; Vol is read by Value and ignored by Implied.
-type Input struct {
-	Right, Spot, Strike, Years, Rate, Vol string
-}
 
-// Pricer values an option and solves the volatility of a price; the text in and out is decimal. An expired
-// option, or a price that is at or below intrinsic value, is an error of Implied.
+// Pricer values an option and solves the volatility of a price; every number is decimal text, years is the time
+// to expiry in years and rate the continuously compounded risk-free rate. An expired option, or a price at or
+// below intrinsic value, is an error of Implied.
 type Pricer interface {
-	// Value is the price of one unit of the option at in.Vol.
-	Value(in Input) (string, error)
+	// Value is the price of one unit of the option at volatility vol.
+	Value(right, spot, strike, years, rate, vol string) (string, error)
 	// Implied is the volatility at which the option is worth price.
-	Implied(in Input, price string) (string, error)
+	Implied(right, spot, strike, years, rate, price string) (string, error)
 }

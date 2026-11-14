@@ -11,8 +11,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-
-	"github.com/andrewrong/optdesk/internal/strategy/risk/stress"
 )
 
 // Errors of the pricer.
@@ -24,10 +22,9 @@ var (
 	ErrNoConvergent = errors.New("bsm: volatility did not converge")
 )
 
-// Pricer implements stress.Pricer.
+// Pricer prices options; it implements the Pricer interface of package stress. Its methods take plain decimal
+// texts so that it satisfies that interface without importing the package.
 type Pricer struct{}
-
-var _ stress.Pricer = Pricer{}
 
 // New returns the pricer.
 func New() Pricer { return Pricer{} }
@@ -37,7 +34,10 @@ type params struct {
 	spot, strike, years, rate float64
 }
 
-func parse(in stress.Input) (params, error) {
+// input is one option to price, every number as decimal text.
+type input struct{ Right, Spot, Strike, Years, Rate string }
+
+func parse(in input) (params, error) {
 	p := params{}
 	switch strings.ToUpper(strings.TrimSpace(in.Right)) {
 	case "P", "PUT":
@@ -94,23 +94,23 @@ func (p params) intrinsic() float64 {
 
 func text(v float64) string { return strconv.FormatFloat(v, 'f', 8, 64) }
 
-// Value is the price of one unit of the option at in.Vol.
-func (Pricer) Value(in stress.Input) (string, error) {
-	p, err := parse(in)
+// Value is the price of one unit of the option at vol.
+func (Pricer) Value(right, spot, strike, years, rate, vol string) (string, error) {
+	p, err := parse(input{right, spot, strike, years, rate})
 	if err != nil {
 		return "", err
 	}
-	vol, err := strconv.ParseFloat(in.Vol, 64)
-	if err != nil || math.IsNaN(vol) || vol <= 0 || math.IsInf(vol, 0) {
-		return "", fmt.Errorf("%w: vol %q", ErrBadInput, in.Vol)
+	v, err := strconv.ParseFloat(vol, 64)
+	if err != nil || math.IsNaN(v) || v <= 0 || math.IsInf(v, 0) {
+		return "", fmt.Errorf("%w: vol %q", ErrBadInput, vol)
 	}
-	return text(p.value(vol)), nil
+	return text(p.value(v)), nil
 }
 
 // Implied is the volatility at which the option is worth price, found by bisection; a price at or below
 // the intrinsic value is an error, as is an expired option.
-func (Pricer) Implied(in stress.Input, price string) (string, error) {
-	p, err := parse(in)
+func (Pricer) Implied(right, spot, strike, years, rate, price string) (string, error) {
+	p, err := parse(input{right, spot, strike, years, rate})
 	if err != nil {
 		return "", err
 	}
