@@ -94,7 +94,14 @@ export function Chart({
   }
   const parts = [
     <CartesianGrid key="grid" vertical={false} stroke="var(--border)" strokeWidth={1} />,
-    <XAxis key="x" dataKey="category" {...axis} interval="preserveStartEnd" minTickGap={24} />,
+    <XAxis
+      key="x"
+      dataKey="category"
+      {...axis}
+      interval="preserveStartEnd"
+      minTickGap={24}
+      padding={{ left: 24, right: 24 }}
+    />,
     spec.kind === 'line' ? (
       <YAxis key="y" {...axis} {...yAxis} tickCount={5} domain={['auto', 'auto']} />
     ) : (
