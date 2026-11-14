@@ -188,7 +188,7 @@ func TestTreeNestedPackageKeepsEveryExistingAllowance(t *testing.T) {
 			}
 		}
 		for _, d := range now {
-			if !slices.Contains(old, d) && !(c.name == "ot" && d == "x/y/z") {
+			if !slices.Contains(old, d) && (c.name != "ot" || d != "x/y/z") {
 				t.Errorf("%s gained the allowance %s", c.name, d)
 			}
 		}
