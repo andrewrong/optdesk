@@ -265,3 +265,20 @@ func TestStressNewSharesOnlyBookIsLinear(t *testing.T) {
 
 // the real pricer satisfies the interface of this package.
 var _ stress.Pricer = bsm.New()
+
+func TestStressNewItmCallBelowDiscountedBoundIsValuedNotExcluded(t *testing.T) {
+	t.Parallel()
+	b := book(strategy.RiskHolding{Underlying: "ABC", Currency: "USD", Class: "equity",
+		Option:   &strategy.RiskLeg{Right: "C", Strike: "100", Expiry: oneYearOn},
+		Quantity: "-1", Multiplier: "100", Spot: "120", Mark: "22", MarkDay: runDay, SpotDay: runDay, MarkUsable: true})
+	b.Rate = "0.05"
+	o := stressIt(b)
+	if len(o.Excluded) != 0 {
+		t.Fatalf("priced ITM call excluded: %+v", o.Excluded)
+	}
+	// valued at intrinsic at the moved spot: at +15% the spot is 138, intrinsic 38, short one contract of 100:
+	// -100*(38-22) = -1600.
+	if got, ok := total(o, "USD"); !ok || got != "1600.00" {
+		t.Fatalf("totals %+v", o.Totals)
+	}
+}

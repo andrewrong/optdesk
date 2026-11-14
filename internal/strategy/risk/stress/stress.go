@@ -220,12 +220,12 @@ func (s stresser) option(b strategy.RiskBook, h strategy.RiskHolding, qty, mult,
 		}
 		return v
 	}
+	// A price no volatility solves (at or below intrinsic, or below the discounted lower bound when the rate is
+	// above zero) is valued at the intrinsic value at the moved spot, not excluded [T].
 	vol := ""
 	if mark.Cmp(intrinsic(spot)) > 0 {
-		var err error
-		vol, err = s.p.Implied(in.right, in.spot, in.strike, in.years, in.rate, h.Mark)
-		if err != nil {
-			return nil, nil, "no_vol"
+		if v, err := s.p.Implied(in.right, in.spot, in.strike, in.years, in.rate, h.Mark); err == nil {
+			vol = v
 		}
 	}
 	size := new(big.Rat).Mul(qty, mult)
