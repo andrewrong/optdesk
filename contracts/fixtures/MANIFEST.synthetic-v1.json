@@ -40,6 +40,7 @@
     {"path": "page.companies_page.v2.input.json", "sha256": "d83f65a4ab2f621719c0794d99a67ebcb6180e5ee6af06084ddb7712c769ebf5"},
     {"path": "page.companies_page.v2.ok.json", "sha256": "138a563f83a3a9a7334ef692aeb8005417eb349918c7f579dade3fecdbe6e373"},
     {"path": "page.companies_page.v2.gap.json", "sha256": "c37297c2f4c806ddf0232da3c6caf38ad61574992eb63ec9d725a6bc36b93559"},
+    {"path": "page.companies_page.v2.pepb.json", "sha256": "188d7815fccf0b03297f17a483ab3b587cb3428e15b12de5ee6d5bb425aec502"},
     {"path": "obs.price_bar.r1.json", "sha256": "882e004dd8cc1191ca183f269c90128eee3d26ac9531f680f927532bc32787c8"},
     {"path": "obs.fx_rate.r1.json", "sha256": "0a9e5e48be87f96c38273f5c9a03390b19ae13cf6386c375db0404982465f2d9"},
     {"path": "account.position_mark.r1.json", "sha256": "c57dd61959e3ba4c4d07657d1c3112d80433877f37589b3bf49f0d8591822bc4"},
