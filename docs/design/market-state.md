@@ -143,7 +143,7 @@ One interface change, entry 1 (module compute, new package `internal/compute/mar
 
 ## Issues
 
-Build order: every entry compiles and its tests pass against main. BASE is `git merge-base origin/main HEAD`. No migration, nothing holds the auto-deploy. Every entry carries its own `Contracts:` line: entry 2 alone changes a file under `contracts/schemas`. Order: 1, 2 and 3 first; 5 after 1 and 2; 6 after 5 and after `liquidity-view-wire`; 4 after 2 and 6. Test runs are in `## Checked by CI`.
+Build order: every entry compiles and its tests pass against main. BASE is `git merge-base origin/main HEAD`. No migration, nothing holds the auto-deploy. Every entry carries its own `Contracts:` line: entry 2 alone changes a file under `contracts/schemas`. Order: 1, 2 and 3 first; 5 after 1 and 2; 6 after 3, 5 and `liquidity-view-wire`; 4 after 2 and 6. Test runs are in `## Checked by CI`.
 
 ### 1 market-state-compute (interface)
 
@@ -227,7 +227,7 @@ Acceptance:
 ### 6 market-state-wire
 
 Module: ot. Size: S.
-Order: after 5 and after liquidity-view-wire (entry 7 of `docs/design/liquidity-view.md`), because both edit `cmd/ot/pagelist_test.go`. This is the switching step: it makes the route live.
+Order: after 3 (it adds the `industry` group and SMH that the wire reads), after 5 and after liquidity-view-wire (entry 7 of `docs/design/liquidity-view.md`), because both edit `cmd/ot/pagelist_test.go`. Judged exception to the interface-only rule: this is the switching step, it imports `market_state_page` and its test builds the real page, so it cannot be written before entry 5 merges; entry 5 is a sibling module entry, not an interface entry, and the order says so on purpose.
 Files: `cmd/ot/market_state_site.go`, `cmd/ot/market_state_site_test.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`
 Contracts: unchanged
 Design: docs/design/market-state.md#Decisions (Decisions 1, 7 and 13)
