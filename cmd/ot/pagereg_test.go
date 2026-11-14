@@ -23,6 +23,7 @@ func TestPageRegistryRoutes(t *testing.T) {
 		{"companies", "companies_page", 50},
 		{"positions", "positions_page", 90},
 		{"options/today", "ops_today_page", 110},
+		{"market-state", "market_state_page", 120},
 		{"settings", "", 0},
 	}
 	for _, w := range want {
@@ -42,7 +43,7 @@ func TestPageRegistryRoutes(t *testing.T) {
 	}
 	got := registeredPageNames()
 	wantNames := "option_candidates_page,option_notices_page,option_tracking_page,option_page,companies_page,household_page,advice_page," +
-		"household_risk,positions_page,home_page,ops_today_page"
+		"household_risk,positions_page,home_page,ops_today_page,market_state_page"
 	if strings.Join(got, ",") != wantNames {
 		t.Errorf("registered names %v", got)
 	}
@@ -83,6 +84,7 @@ func TestUnknownPageText(t *testing.T) {
 	a.deps.pageList = []pages.Page{fakePage("alpha", "a")}
 	_, _, err := pageNamed(a, "nosuch")
 	want := `unknown page "nosuch"; known pages: advice_page, alpha, companies_page, home_page, household_page, household_risk, macro_page, market_page, ` +
+		`market_state_page, ` +
 		`ops_today_page, ` +
 		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page`
 	if err == nil || err.Error() != want {

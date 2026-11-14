@@ -71,7 +71,7 @@ ALTER TABLE obs.option_eod SET (
     timescaledb.compress_segmentby = 'underlying_id',
     timescaledb.compress_orderby = 'session_day DESC, capture_id, instrument_id'
 );
-SELECT public.add_compression_policy('obs.option_eod', INTERVAL '7 days');
+SELECT public.add_compression_policy('obs.option_eod', INTERVAL '7 days', initial_start => now() + INTERVAL '1 day');
 
 CREATE INDEX option_eod_instrument_day ON obs.option_eod (instrument_id, session_day DESC);
 
