@@ -3,11 +3,13 @@ package contracts_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -180,14 +182,14 @@ func TestSessionDayFixtureValues(t *testing.T) {
 func TestSeriesPointFixtureValues(t *testing.T) {
 	t.Parallel()
 	recs, _ := loadRecords(t, "obs.series_point")
-	if len(recs) != 4 {
-		t.Fatalf("want 4 records, got %d", len(recs))
+	if len(recs) != 5 {
+		t.Fatalf("want 5 records, got %d", len(recs))
 	}
-	ids := []string{"DGS10", "DGS10", "DGS10", "VIXCLS"}
-	units := []string{"percent", "percent", "percent", "index_points"}
-	dates := []string{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-04"}
-	values := []any{4.1, nil, 4.2, 18.2}
-	statuses := []string{"present", "no_value", "present", "present"}
+	ids := []string{"DGS10", "DGS10", "DGS10", "VIXCLS", "DEXJPUS"}
+	units := []string{"percent", "percent", "percent", "index_points", "jpy_per_usd"}
+	dates := []string{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-04", "2026-11-05"}
+	values := []any{4.1, nil, 4.2, 18.2, 153.41}
+	statuses := []string{"present", "no_value", "present", "present", "present"}
 	for i, r := range recs {
 		if r["series_id"] != ids[i] || r["unit"] != units[i] || r["source"] != "fred" ||
 			r["observation_date"] != dates[i] || r["value"] != values[i] || r["status"] != statuses[i] {
@@ -484,14 +486,16 @@ func TestFxRateFixtureValues(t *testing.T) {
 	t.Parallel()
 	s := compileDataset(t, "obs.fx_rate")
 	recs, _ := loadRecords(t, "obs.fx_rate")
-	if len(recs) != 1 {
-		t.Fatalf("want 1 record, got %d", len(recs))
+	if len(recs) != 2 {
+		t.Fatalf("want 2 records, got %d", len(recs))
 	}
-	if err := s.Validate(recs[0]); err != nil {
-		t.Fatal(err)
+	for _, r := range recs {
+		if err := s.Validate(r); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if recs[0]["source"] != "ibkr_midpoint" {
-		t.Fatalf("source: %v", recs[0]["source"])
+	if recs[0]["source"] != "ibkr_midpoint" || recs[1]["source"] != "fred_h10" {
+		t.Fatalf("sources: %v %v", recs[0]["source"], recs[1]["source"])
 	}
 	cases := map[string]map[string]any{
 		"pair lowercase": copyRec(recs[0], func(m map[string]any) { m["pair"] = "usdjpy" }),
@@ -507,6 +511,52 @@ func TestFxRateFixtureValues(t *testing.T) {
 		if err := s.Validate(rec); err == nil {
 			t.Fatalf("%s must be rejected", label)
 		}
+	}
+}
+
+func TestFxRateSourceFredH10Accepted(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.fx_rate")
+	recs, _ := loadRecords(t, "obs.fx_rate")
+	ok := copyRec(recs[0], func(m map[string]any) { m["source"] = "fred_h10" })
+	if err := s.Validate(ok); err != nil {
+		t.Fatalf("fred_h10 must validate: %v", err)
+	}
+	bad := copyRec(recs[0], func(m map[string]any) { m["source"] = "stooq" })
+	if err := s.Validate(bad); err == nil {
+		t.Fatal("stooq must be refused")
+	}
+	var g gen.FxRate
+	if err := json.Unmarshal([]byte(`{"pair":"USDJPY","rate_day":"2026-11-05","rate":"153.41","source":"fred_h10","received_at":"2026-11-06T22:15:00Z"}`), &g); err != nil {
+		t.Fatalf("generated record must accept fred_h10: %v", err)
+	}
+	if g.Source != gen.FxRateSourceFredH10 {
+		t.Fatalf("source: %v", g.Source)
+	}
+	if err := json.Unmarshal([]byte(`{"pair":"USDJPY","rate_day":"2026-11-05","rate":"153.41","source":"stooq","received_at":"2026-11-06T22:15:00Z"}`), &g); err == nil {
+		t.Fatal("generated record must refuse stooq")
+	}
+}
+
+func TestSeriesUnitJpyPerUsdAccepted(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.series_point")
+	recs, _ := loadRecords(t, "obs.series_point")
+	ok := copyRec(recs[0], func(m map[string]any) { m["unit"] = "jpy_per_usd" })
+	if err := s.Validate(ok); err != nil {
+		t.Fatalf("jpy_per_usd must validate: %v", err)
+	}
+	bad := copyRec(recs[0], func(m map[string]any) { m["unit"] = "eur_per_usd" })
+	if err := s.Validate(bad); err == nil {
+		t.Fatal("eur_per_usd must be refused")
+	}
+	var g gen.SeriesPoint
+	row := `{"series_id":"DEXJPUS","observation_date":"2026-11-05","realtime_start":"2026-11-06","realtime_end":"9999-12-31","value":153.41,"status":"present","unit":"%s","currency":"","published_at":"2026-11-06T21:15:00Z","source":"fred","source_revision":"r1"}`
+	if err := json.Unmarshal([]byte(fmt.Sprintf(row, "jpy_per_usd")), &g); err != nil || g.Unit != gen.SeriesUnitJpyPerUsd {
+		t.Fatalf("generated record must accept jpy_per_usd: %v %v", err, g.Unit)
+	}
+	if err := json.Unmarshal([]byte(fmt.Sprintf(row, "eur_per_usd")), &g); err == nil {
+		t.Fatal("generated record must refuse eur_per_usd")
 	}
 }
 
