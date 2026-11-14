@@ -1,0 +1,35 @@
+# Manifest of the book_risk job: once per XNYS session day, forty-five minutes after the close, after
+# option_candidates (design strategy-risk, Decision 9). Tags: [V] read on the source, [S] not confirmed,
+# [O] the owner's own decision, [T] trial: our choice.
+version = 1 # [T] the manifest version
+id = "book_risk"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+zone = "America/New_York"
+offset = "45m" # [T] fifteen minutes after option_candidates (30m), so its rows of the day are there
+run_bound = "10m" # [T]
+restart_sensitive = false
+
+[params]
+# Sessions a mark may be old: 5 is the value of risk_page (internal/pages/risk_page/load.go) [O].
+max_mark_age_sessions = 5
+
+# The product class of an underlying (FINRA Rule 4210(g)(2)(F), design strategy-risk Decision 1); every symbol
+# not listed is "equity". The owner's table [O]; that NDX is high capitalization and RUT is other broad is [S].
+[[class]]
+symbol = "SPX" # [O]
+class = "broad_high" # [V] a high-capitalization broad-based index: +6 / -8 percent
+
+[[class]]
+symbol = "XSP" # [O]
+class = "broad_high" # [V]
+
+[[class]]
+symbol = "NDX" # [O]
+class = "broad_high" # [S] footnote 2 of the rule, not read
+
+[[class]]
+symbol = "RUT" # [O]
+class = "broad_other" # [S] a non-high-capitalization broad-based index: +-10 percent
