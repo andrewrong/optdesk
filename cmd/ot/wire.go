@@ -513,7 +513,7 @@ func (f jobFactory) fxRefresh(b broker.Broker, h broker.HistoryClient) (contract
 	if err != nil {
 		return nil, fmt.Errorf("build fx_refresh job failed: %w", err)
 	}
-	return j, nil
+	return withFxSecondary(j, f.src), nil
 }
 
 // barJobs builds bars_refresh and fx_refresh beside option_eod and opens the bar reader of the HV step. It is empty for
