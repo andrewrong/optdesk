@@ -155,7 +155,7 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 	o.KeptPercent, o.Delta, o.Commissions, o.RealizedPnL = "62.98765", "-0.2512345", "1.3", "12.345678"
 	o.Iv = "0.31254"
 	c := openTable([]opt{o}).Rows[0].Cells
-	want := map[string]string{"spot": "394.82", "mid": "3.33", "kept": "$201.50", "kept_percent": "62.99",
+	want := map[string]string{"spot": "$394.82", "mid": "$3.33", "kept": "$201.50", "kept_percent": "62.99",
 		"delta": "−0.25", "iv": "31.3%"}
 	for k, w := range want {
 		if v := asValue(t, c[k]); v.Text != w {
@@ -163,10 +163,10 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 		}
 	}
 	r := recentTable([]opt{o}).Rows[0].Cells
-	if v := asValue(t, r["commissions"]); v.Text != "1.30" {
+	if v := asValue(t, r["commissions"]); v.Text != "$1.30" {
 		t.Errorf("commissions = %q", v.Text)
 	}
-	if v := asValue(t, r["realized"]); v.Text != "12.35" {
+	if v := asValue(t, r["realized"]); v.Text != "$12.35" {
 		t.Errorf("realized = %q", v.Text)
 	}
 }
@@ -187,6 +187,50 @@ func TestOpenTableDeltaIvFormat(t *testing.T) {
 		}
 		if v := asValue(t, c["iv"]); v.Text != tc.wantIv || string(*v.Value) != tc.iv {
 			t.Errorf("iv %s = %q (%v), want %q", tc.iv, v.Text, v.Value, tc.wantIv)
+		}
+	}
+}
+
+func TestTrackingMoneyColumnsFormat(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.Currency, o.Spot, o.Mid, o.Commissions, o.RealizedPnL = "USD", "12345.675", "-3.005", "1.3", "-1234.5"
+	open := openTable([]opt{o}).Rows[0].Cells
+	recent := recentTable([]opt{o}).Rows[0].Cells
+	cases := []struct {
+		cells     map[string]any
+		col, want string
+		stored    string
+	}{
+		{open, "spot", "$12,345.68", "12345.675"},
+		{open, "mid", "−$3.01", "-3.005"},
+		{recent, "commissions", "$1.30", "1.3"},
+		{recent, "realized", "−$1,234.50", "-1234.5"},
+	}
+	for _, tc := range cases {
+		v := asValue(t, tc.cells[tc.col])
+		if v.Text != tc.want || v.Value == nil || string(*v.Value) != tc.stored {
+			t.Errorf("%s = %q (%v), want %q with value %s", tc.col, v.Text, v.Value, tc.want, tc.stored)
+		}
+	}
+}
+
+func TestRecentMoneyColumnsRoundingAndGap(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.Currency, o.Commissions, o.RealizedPnL = "USD", "-3.005", "-0.001"
+	r := recentTable([]opt{o}).Rows[0].Cells
+	for col, want := range map[string]string{"commissions": "−$3.01", "realized": "$0.00"} {
+		if v := asValue(t, r[col]); v.Text != want {
+			t.Errorf("%s = %q, want %q", col, v.Text, want)
+		}
+	}
+	// A row without a mark: the recent columns keep the no_value gap, not the mark gap.
+	o.Commissions, o.RealizedPnL, o.MarkStatus = "", "", codeNoMark
+	r = recentTable([]opt{o}).Rows[0].Cells
+	for _, col := range []string{"commissions", "realized"} {
+		if g := asGap(t, r[col]); g != codeGap(codeNoValue) {
+			t.Errorf("%s gap = %+v, want %+v", col, g, codeGap(codeNoValue))
 		}
 	}
 }
