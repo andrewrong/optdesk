@@ -1,7 +1,8 @@
 // Package home_macro builds the macro member of the home page: a page.macro_summary.v2
 // document read from the stored macro.ease reading. It computes nothing beyond rounding the
 // stored value and the week change, reads no clock and makes no request. The events have no
-// stored source, so they are empty and named as a not_built gap.
+// stored source, so they are empty and named as a not_built gap. With a Liquidity function the
+// card's say is the dated reserves fact of that function's result (reserves.go) instead of the Ease.
 package home_macro
 
 import (
@@ -15,7 +16,9 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const (
@@ -57,6 +60,12 @@ type Config struct {
 	Scope   string
 	Zone    *time.Location
 	Read    compute.ReadingFunc
+	// Series, Liquidity and LiquidityParams are optional. Only with Liquidity set, say is the dated reserves
+	// fact built from the figures Liquidity returns over the WRESBAL series read through Series (a nil Series
+	// is a gap); with Liquidity nil, say is the Ease sentence as before. An error of Series is an error of Build.
+	Series          store.SeriesReader
+	Liquidity       liquidityapi.Func
+	LiquidityParams liquidityapi.Params
 }
 
 type gap struct {
@@ -176,6 +185,16 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			base, baseText = cur.dataDay, "Data day "+cur.dataDay.Format("01-02")
 			s.DataTimes = append(s.DataTimes, sourceTime{Source: "macro_ease", DataTime: midnight(base, c.Zone)})
 			s.Card.DataTimesText = "Ease data day " + base.Format("01-02") + ". " + noteDates
+		}
+	}
+	if c.Liquidity != nil {
+		say, err := reservesSay(ctx, c, d)
+		if err != nil {
+			return nil, err
+		}
+		s.Card.Say = say
+		if say == sayNoReserves {
+			s.Card.Gaps = append(s.Card.Gaps, gap{Reason: "no_data", Text: textNoReserves})
 		}
 	}
 	if s.Card.Ease == nil {

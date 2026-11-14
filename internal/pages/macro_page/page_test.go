@@ -110,3 +110,20 @@ func TestConfigReadWithoutReadingUnchanged(t *testing.T) {
 		t.Fatal("Read was not called")
 	}
 }
+
+func TestNewPageWithLiquidityIsV2(t *testing.T) {
+	t.Parallel()
+	c := pageConfig()
+	c.Liquidity = fixedFunc(fullResult())
+	p := NewPage(c)
+	if want := (pages.Meta{Name: "macro_page", Schema: "page.macro_page.v2"}); p.Meta != want {
+		t.Fatalf("meta = %+v", p.Meta)
+	}
+	got, err := p.Build(t.Context(), pageReader(t), "2026-11-04", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(got, []byte(`"schema_version":2`)) {
+		t.Fatalf("not version 2: %s", got)
+	}
+}

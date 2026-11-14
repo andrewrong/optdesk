@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,8 +15,10 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/home_macro"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const (
@@ -190,5 +193,176 @@ func TestBadConfigIsError(t *testing.T) {
 	}
 	if _, err := home_macro.Build(context.Background(), home_macro.Config{RunID: "r", BuildID: "b", Scope: "s", Zone: zone}, "nope", generated); err == nil {
 		t.Error("bad day: no error")
+	}
+}
+
+type seriesFake struct {
+	points []contracts.SeriesPoint
+	err    error
+}
+
+func (s seriesFake) SeriesPoints(_ context.Context, id string, _, _ contracts.Day) ([]contracts.SeriesPoint, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	if id != "WRESBAL" {
+		return nil, errors.New("only WRESBAL is read, got " + id)
+	}
+	return s.points, nil
+}
+
+func wresbal(t *testing.T, d string, v float64) contracts.SeriesPoint {
+	t.Helper()
+	tm, err := time.Parse("2006-01-02", d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return contracts.SeriesPoint{ObservationDate: types.SerializableDate{Time: tm}, RealtimeStart: types.SerializableDate{Time: tm}, Value: &v}
+}
+
+func reservesResult(level, change string) liquidityapi.Result {
+	return liquidityapi.Result{
+		Reserves:   liquidityapi.Num{Value: level, Day: "2026-11-04"},
+		Reserves4w: liquidityapi.Change{Num: liquidityapi.Num{Value: change, Day: "2026-11-04"}, Weeks: 4, From: "2026-10-07"},
+	}
+}
+
+func buildReserves(t *testing.T, s store.SeriesReader, res liquidityapi.Result, read compute.ReadingFunc) []byte {
+	t.Helper()
+	var got liquidityapi.Input
+	b, err := home_macro.Build(context.Background(), home_macro.Config{
+		RunID: "run-test", BuildID: "build-test", Scope: "scope-test", Zone: zone, Read: read,
+		Series: s, LiquidityParams: liquidityapi.Params{DailyMaxAgeDays: 4},
+		Liquidity: func(in liquidityapi.Input) liquidityapi.Result {
+			got = in
+			return res
+		},
+	}, day, generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, b)
+	if s != nil {
+		if got.Day != day || got.Params.DailyMaxAgeDays != 4 || len(got.WRESBAL) != 1 || got.WALCL != nil || got.SOFR != nil {
+			t.Fatalf("input = %+v, want the WRESBAL series alone", got)
+		}
+	}
+	return b
+}
+
+func sayOf(t *testing.T, b []byte) string {
+	t.Helper()
+	return decode(t, b)["card"].(map[string]any)["say"].(string)
+}
+
+func TestSayIsReservesFact(t *testing.T) {
+	t.Parallel()
+	s := seriesFake{points: []contracts.SeriesPoint{wresbal(t, "2026-11-04", 2.97e12)}}
+	read := readerOf(row(t, day, "56.04", "steady"), row(t, weekAgo, "56.24", "steady"))
+	cases := []struct{ level, change, want string }{
+		{"2970000000000", "-40000000000", "Reserves $3.0tn, 4 weeks −$40bn (2026-11-04)."},
+		{"2970000000000", "48000000000", "Reserves $3.0tn, 4 weeks +$48bn (2026-11-04)."},
+		{"820000000000", "0", "Reserves $820bn, 4 weeks $0bn (2026-11-04)."},
+		{"1000000000000", "-400000000", "Reserves $1.0tn, 4 weeks $0bn (2026-11-04)."},
+	}
+	for _, tc := range cases {
+		if got := sayOf(t, buildReserves(t, s, reservesResult(tc.level, tc.change), read)); got != tc.want {
+			t.Errorf("say = %q, want %q", got, tc.want)
+		}
+	}
+}
+
+func TestSayMissingReserves(t *testing.T) {
+	t.Parallel()
+	s := seriesFake{points: []contracts.SeriesPoint{wresbal(t, "2026-11-04", 2.97e12)}}
+	stale := reservesResult("2970000000000", "1")
+	stale.Reserves.Reason = compute.StaleInput
+	noDay := reservesResult("2970000000000", "1")
+	noDay.Reserves4w.Reason = liquidityapi.MissingInput
+	cases := map[string]struct {
+		s   store.SeriesReader
+		res liquidityapi.Result
+	}{
+		"no series":      {nil, reservesResult("2970000000000", "1")},
+		"stale figure":   {s, stale},
+		"missing 4w day": {s, noDay},
+	}
+	for name, tc := range cases {
+		b := buildReserves(t, tc.s, tc.res, nil)
+		if got := sayOf(t, b); got != "Reserves: no data yet." {
+			t.Errorf("%s: say = %q", name, got)
+		}
+		found := false
+		for _, g := range decode(t, b)["card"].(map[string]any)["gaps"].([]any) {
+			if g.(map[string]any)["reason"] == "no_data" && g.(map[string]any)["text"] == "Reserves: no data yet" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: no no_data gap in %s", name, b)
+		}
+	}
+}
+
+func TestSayHasNoEaseWords(t *testing.T) {
+	t.Parallel()
+	s := seriesFake{points: []contracts.SeriesPoint{wresbal(t, "2026-11-04", 2.97e12)}}
+	read := readerOf(row(t, day, "56.04", "steady"), row(t, weekAgo, "56.24", "steady"))
+	for _, b := range [][]byte{
+		buildReserves(t, s, reservesResult("2970000000000", "1000000000"), read),
+		buildReserves(t, nil, liquidityapi.Result{}, read),
+	} {
+		say := sayOf(t, b)
+		if strings.Contains(say, "Ease") || strings.Contains(say, "vs last week") {
+			t.Errorf("say = %q", say)
+		}
+	}
+}
+
+func TestSayUnchangedWithoutLiquidity(t *testing.T) {
+	t.Parallel()
+	b, err := home_macro.Build(context.Background(), home_macro.Config{
+		RunID: "run-test", BuildID: "build-test", Scope: "scope-test", Zone: zone,
+		Read:   readerOf(row(t, day, "56.04", "steady"), row(t, weekAgo, "56.24", "steady")),
+		Series: seriesFake{err: errors.New("must not be read")},
+	}, day, generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sayOf(t, b); got != "Ease neutral, vs last week −0.2." {
+		t.Errorf("say = %q", got)
+	}
+	if got := sayOf(t, build(t, nil)); got != "Ease: no data yet." {
+		t.Errorf("say = %q", got)
+	}
+}
+
+func TestReservesSeriesErrorFailsBuild(t *testing.T) {
+	t.Parallel()
+	_, err := home_macro.Build(context.Background(), home_macro.Config{
+		RunID: "run-test", BuildID: "build-test", Scope: "scope-test", Zone: zone,
+		Series: seriesFake{err: errors.New("boom")}, Liquidity: func(liquidityapi.Input) liquidityapi.Result { return liquidityapi.Result{} },
+	}, day, generated)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+}
+
+func TestGoldenReserves(t *testing.T) {
+	t.Parallel()
+	s := seriesFake{points: []contracts.SeriesPoint{wresbal(t, "2026-11-04", 2.97e12)}}
+	got := buildReserves(t, s, reservesResult("2970000000000", "-40000000000"),
+		readerOf(row(t, day, "56.04", "steady"), row(t, weekAgo, "56.24", "steady")))
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, got, "", "  "); err != nil {
+		t.Fatal(err)
+	}
+	pretty.WriteByte('\n')
+	want, err := os.ReadFile(filepath.Join("testdata", "reserves.golden.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(pretty.Bytes(), want) {
+		t.Fatalf("golden differs:\n%s", pretty.Bytes())
 	}
 }
