@@ -42,8 +42,17 @@ function cellOf(cell: PayloadCell): Cell {
   }
 }
 
+// Columns whose cells hold sentences; they wrap so the table fits the page.
+const WRAP_COLUMNS: readonly string[] = ['results', 'ex', 'guard']
+
 function PayloadTable({ name, table }: { name: string; table: Table }) {
-  const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({ id, label, align, hint }))
+  const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({
+    id,
+    label,
+    align,
+    hint,
+    ...(WRAP_COLUMNS.includes(id) ? { wrap: true } : {}),
+  }))
   return (
     <div data-table={name} className="min-w-0 overflow-x-auto">
       <DataTable
