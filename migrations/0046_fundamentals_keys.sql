@@ -153,7 +153,18 @@ ALTER TABLE obs.earnings_date ALTER COLUMN period_key SET NOT NULL;
 ALTER TABLE obs.earnings_date ALTER COLUMN report_date SET NOT NULL;
 ALTER TABLE obs.earnings_date ADD CONSTRAINT earnings_date_pk PRIMARY KEY (issuer, period_key);
 
+-- The view joins on the column, so it is dropped around the type change and made again with its owner and grants.
+DROP VIEW rd.dividend_expectation_r1;
 ALTER TABLE obs.dividend_expectation ALTER COLUMN instrument_id TYPE bigint;
+CREATE VIEW rd.dividend_expectation_r1 AS
+SELECT c.session_day, c.instrument_id::integer AS instrument_id, 1 AS attempt, c.issuer, c.status, c.past_12m,
+       c.next_12m, d.amount AS next_amount, d.ex_date AS next_ex_date, c.currency, c.error_code, c.source,
+       c.updated_at AS received_at
+FROM obs.dividend_check c
+LEFT JOIN obs.dividend_expectation d ON d.instrument_id = c.instrument_id AND d.ex_date = c.ex_date;
+ALTER VIEW rd.dividend_expectation_r1 OWNER TO ot_owner;
+GRANT SELECT ON rd.dividend_expectation_r1 TO ot_w_events;
+GRANT SELECT ON rd.dividend_expectation_r1 TO ot_ro_pages;
 ALTER TABLE obs.dividend_expectation ALTER COLUMN ex_date SET NOT NULL;
 ALTER TABLE obs.dividend_expectation ALTER COLUMN amount SET NOT NULL;
 ALTER TABLE obs.dividend_expectation
