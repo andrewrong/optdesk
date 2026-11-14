@@ -155,7 +155,7 @@ func TestCardsBestPerCompany(t *testing.T) {
 	if got := cards[0].(map[string]any)["contract_line"]; got != "sell put 62 · 11-13 Fri · 3 days · Δ −0.15" {
 		t.Errorf("contract_line = %v", got)
 	}
-	if got := cards[0].(map[string]any)["iv_line"]; got != "IV 38% · HV30 n/a · IVP n/a" {
+	if got := cards[0].(map[string]any)["iv_line"]; got != "IV 38.0% · HV30 n/a · IVP n/a" {
 		t.Errorf("iv_line = %v", got)
 	}
 	if got := cards[0].(map[string]any)["liquidity_line"]; got != "Volume 1240 · Open interest 5310" {
@@ -545,5 +545,24 @@ func TestCardNumberFormats(t *testing.T) {
 	r.BidEod = "abc"
 	if got := buildCard(r, nil, displayNames{}).PremiumLine; !strings.HasPrefix(got, "Premium n/a (close") {
 		t.Errorf("premium line = %q", got)
+	}
+}
+
+func TestTableChainCardsMoneyAndIvFormats(t *testing.T) {
+	t.Parallel()
+	one := candRow(1, "NOB", 1, "ok")
+	one.BidEod, one.Ask, one.Iv = "24.4", sp("26"), sp("0.38")
+	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
+	if c := cellOf(t, tableRowsOf(m)[0], "bid_ask"); c["text"] != "$24.40 / $26.00" {
+		t.Errorf("bid_ask = %v", c)
+	}
+	if c := bidCell(map[pairKey]string{{"60", "e"}: "10.7"}, pairKey{"60", "e"}).(usdAmount); c.Text != "$10.70" {
+		t.Errorf("chain cell = %+v", c)
+	}
+	if got := ivLine(sp("0.38")); got != "IV 38.0% · HV30 n/a · IVP n/a" {
+		t.Errorf("iv line = %q", got)
+	}
+	if got := ivLine(sp("abc")); got != "IV n/a · HV30 n/a · IVP n/a" {
+		t.Errorf("iv line = %q", got)
 	}
 }

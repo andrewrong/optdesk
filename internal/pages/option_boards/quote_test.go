@@ -279,7 +279,7 @@ func TestOptionTableRowOfAnOpenQuoteShowsItsPrices(t *testing.T) {
 			closed = r
 		}
 	}
-	if got := cellOf(t, open, "bid_ask")["text"]; got != "$2 / $2.2" {
+	if got := cellOf(t, open, "bid_ask")["text"]; got != "$2.00 / $2.20" {
 		t.Errorf("open bid_ask = %v", got)
 	}
 	if got := cellOf(t, open, "delta")["text"]; got != "−0.25" {

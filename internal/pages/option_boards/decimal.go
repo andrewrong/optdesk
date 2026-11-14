@@ -56,6 +56,20 @@ func shiftPercent(text string) (string, error) {
 	return sign + out + "%", nil
 }
 
+// percentOneDecimal writes the stored fraction "0.6955" as the percent "69.6%": one decimal, rounded half away
+// from zero on the text. Text that is not a plain decimal is refused.
+func percentOneDecimal(text string) (string, error) {
+	shifted, err := shiftPercent(text)
+	if err != nil {
+		return "", err
+	}
+	out, ok := fixedDecimals(strings.TrimSuffix(shifted, "%"), 1)
+	if !ok {
+		return "", errBadDecimal
+	}
+	return out + "%", nil
+}
+
 // roundDecimal rounds the decimal text to places decimal places, half away from zero, exactly (no float). A text
 // with places digits or fewer is returned as written; a rounded text loses its trailing zeros, and a result that
 // is zero carries no sign. ok is false when the text is not a decimal.

@@ -100,7 +100,7 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 	}
 	ask := gapText
 	if askText != nil {
-		ask = "$" + *askText
+		ask = moneyText(*askText)
 	}
 	var delta any = mkGap("no_data", gapText)
 	if deltaStr != nil {
@@ -116,7 +116,7 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 		{Column: "strike_pct", Cell: ratioCell(strikePct(r.Strike, r.Spot))},
 		{Column: "dte", Cell: textCell{Kind: "text", Text: fmt.Sprintf("%d days", r.DTE), Value: r.DTE}},
 		{Column: "delta", Cell: delta},
-		{Column: "bid_ask", Cell: textCell{Kind: "text", Text: dollar(bid) + " / " + ask, Value: keyValue(bid, 2)}},
+		{Column: "bid_ask", Cell: textCell{Kind: "text", Text: moneyText(bid) + " / " + ask, Value: keyValue(bid, 2)}},
 		{Column: "spread_pct", Cell: ratioCell(spreadPct(bid, askText))},
 		{Column: "volume", Cell: countCell(volume)},
 		{Column: "open_interest", Cell: countCell(e.OpenInterest)},
@@ -124,12 +124,4 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 		{Column: "earnings", Cell: earningsCell(r)},
 	}
 	return row{ID: fmt.Sprintf("r%d", r.InstrumentID), Cells: cells, Quote: qs.of(r.InstrumentID)}
-}
-
-// dollar is "$" before a price text; the gap text has none.
-func dollar(price string) string {
-	if !hasBid(price) {
-		return gapText
-	}
-	return "$" + price
 }

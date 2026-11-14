@@ -48,7 +48,7 @@
           ],
           "size_line": "1 contract · Strike 62 · Multiplier 100",
           "size_usd_approx": null,
-          "iv_line": "IV 38% · HV30 n/a · IVP n/a",
+          "iv_line": "IV 38.0% · HV30 n/a · IVP n/a",
           "premium_line": "Premium $1.20 (close bid est.) · Breakeven $60.80 · in-the-money probability at expiry n/a · above cash n/a"
         },
         {
@@ -74,7 +74,7 @@
           ],
           "size_line": "1 contract · Strike 30.5 · Multiplier 100",
           "size_usd_approx": null,
-          "iv_line": "IV 38% · HV30 n/a · IVP n/a",
+          "iv_line": "IV 38.0% · HV30 n/a · IVP n/a",
           "premium_line": "Premium $0.40 (close bid est.) · Breakeven $60.80 · in-the-money probability at expiry n/a · above cash n/a"
         }
       ],
@@ -316,7 +316,7 @@
                 "column": "bid_ask",
                 "cell": {
                   "kind": "text",
-                  "text": "$0.9 / $1.1",
+                  "text": "$0.90 / $1.10",
                   "value": 90
                 }
               },
