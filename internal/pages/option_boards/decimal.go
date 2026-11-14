@@ -132,6 +132,28 @@ func fixedDecimals(text string, places int) (string, bool) {
 	return sign + out, true
 }
 
+// groupThousands writes a plain decimal text with its integer digits in groups of three separated by commas;
+// the sign and the fraction are kept as given. Text that is not a decimal is returned unchanged.
+func groupThousands(text string) string {
+	m := decimalPattern.FindStringSubmatch(text)
+	if m == nil {
+		return text
+	}
+	whole := m[2]
+	var b strings.Builder
+	for i, c := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	out := m[1] + b.String()
+	if m[3] != "" {
+		out += "." + m[3]
+	}
+	return out
+}
+
 // signedText writes a stored decimal text with the typographic minus "−" for the sign.
 func signedText(text string) string {
 	if rest, ok := strings.CutPrefix(text, minus); ok {
