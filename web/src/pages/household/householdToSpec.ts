@@ -7,12 +7,14 @@ type MoneyBlock = Payload['income']
 
 type TrendSeries = NonNullable<Payload['trend']['series']>[number]
 
-// The scopes with a percent series, in one chart: the y axis is the percent since each series' first point, so every
-// line starts at 0. The x axis holds the union of the days; a line has a point only on the days its series has (no
-// filling). A point's tooltip text is Python's percent text and dollar text. A series without percent points has no
-// line. Returns null when no series has one.
+// The scopes in one chart. When any row carries a percent change, the y axis is the percent since each series' first
+// point, so every line starts at 0, and a series without percent points has no line. When no row of any series
+// carries one, each series with rows is a line of the rows' own net value. The x axis holds the union of the days; a
+// line has a point only on the days its series has (no filling). A point's tooltip text is the payload's text.
+// Returns null when no series has a row.
 export function trendToSpec(series: readonly TrendSeries[]): ChartSpec | null {
-  const lines = series.filter((s) => s.rows.some((row) => row.change))
+  const percent = series.some((s) => s.rows.some((row) => row.change))
+  const lines = series.filter((s) => (percent ? s.rows.some((row) => row.change) : s.rows.length > 0))
   if (lines.length === 0) return null
   const days = [...new Set(lines.flatMap((s) => s.rows.map((row) => row.day)))].sort()
   return {
@@ -24,7 +26,9 @@ export function trendToSpec(series: readonly TrendSeries[]): ChartSpec | null {
       hole: true,
       points: days.map((day) => {
         const row = s.rows.find((r) => r.day === day)
-        return row?.change
+        if (!row) return { value: null }
+        if (!percent) return { value: row.value.value, text: row.value.text }
+        return row.change
           ? { value: row.change.value, text: `${row.change.text} ${row.value.text}` }
           : { value: null }
       }),

@@ -293,6 +293,22 @@ it('draws the trend as one chart with a line for each scope, as percent since th
   expect(spec.series[0]!.points[at]!.text).toBe(`${first.change.text} ${first.value.text}`)
 })
 
+it('draws the net value of each scope when no row has a percent change', async () => {
+  const payload = fixture('ok.json')
+  for (const s of payload.trend.series) for (const r of s.rows) delete r.change
+  await show(<HouseholdPage payload={payload} />)
+  expect(host.querySelectorAll('[data-block=trend] [data-chart]')).toHaveLength(1)
+  const spec = trendToSpec(payload.trend.series)!
+  expect(spec.series).toHaveLength(payload.trend.series.length)
+  payload.trend.series.forEach(
+    (scope: { rows: { value: { value: number; text: string } }[] }, i: number) => {
+      const points = spec.series[i]!.points.filter((p) => p.value !== null)
+      expect(points.map((p) => p.value)).toEqual(scope.rows.map((r) => r.value.value))
+      expect(points.map((p) => p.text)).toEqual(scope.rows.map((r) => r.value.text))
+    },
+  )
+})
+
 it('keeps the gap of a scope with no rows as a line and draws one line for the other', async () => {
   const payload = fixture('ok.json')
   const daughter = payload.trend.series[1]
