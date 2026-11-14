@@ -20,6 +20,9 @@ import (
 
 const rolePassword = "pg-test-only"
 
+// stubInstrument stands for migration 0008 in the list of newDatabase.
+const stubInstrument = `CREATE TABLE master.instrument (instrument_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY)`
+
 func connURL(t *testing.T, dbname, user string) string {
 	t.Helper()
 	for _, v := range []string{"PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGDATABASE"} {
@@ -44,7 +47,8 @@ func connURL(t *testing.T, dbname, user string) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newDatabase makes a throwaway database with the schemas, the roles and migration 0017, dropped in t.Cleanup.
+// newDatabase makes a throwaway database with the schemas, the roles and, in one list, 0017, the files
+// 0046 needs and 0046, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
@@ -55,7 +59,7 @@ func newDatabase(t *testing.T) string {
 	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(654)`); err != nil {
 		t.Fatal(err)
 	}
-	for _, r := range []string{"ot_owner", "ot_w_fundamental", "ot_ro_pages"} {
+	for _, r := range []string{"ot_owner", "ot_w_fundamental", "ot_w_events", "ot_ro_pages"} {
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
@@ -86,21 +90,32 @@ func newDatabase(t *testing.T) string {
 			t.Errorf("drop database %s: %v", name, err)
 		}
 	})
-	raw, err := os.ReadFile("../../../migrations/0017_fundamental_fact.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
 	c, err := pgx.Connect(ctx, connURL(t, name, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = c.Close(ctx) }()
-	if _, err := c.Exec(ctx, `CREATE SCHEMA obs; CREATE SCHEMA rd`); err != nil {
+	if _, err := c.Exec(ctx, `CREATE SCHEMA obs; CREATE SCHEMA rd; CREATE SCHEMA master`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
-		t.Fatalf("apply 0017: %v", err)
+	// 0046 reaches the event tables, the views and master.instrument. 0008 makes master.instrument but also
+	// needs the timescale hypertables of 0006 and 0007, which no fact test has, so the stub below is the one
+	// column 0046 refers to.
+	for _, f := range []string{
+		"0017_fundamental_fact.sql", "0020_events.sql", "0023_dividends.sql", stubInstrument, "0046_fundamentals_keys.sql",
+	} {
+		sql := f
+		if f != stubInstrument {
+			raw, err := os.ReadFile("../../../migrations/" + f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+			sql = strings.Replace(up, "-- +goose Up", "", 1)
+		}
+		if _, err := c.Exec(ctx, sql); err != nil {
+			t.Fatalf("apply %.40s: %v", f, err)
+		}
 	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_fundamental, ot_ro_pages`); err != nil {
 		t.Fatal(err)
