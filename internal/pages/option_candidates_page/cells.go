@@ -56,19 +56,37 @@ func rankCell(p *int) any {
 	return intCell(*p)
 }
 
-func yieldCell(p *string) any {
-	if p == nil {
-		return textCell(dash)
-	}
-	text, err := shiftPoint(*p)
-	v, ok := numberLiteral(*p)
-	if err != nil || !ok {
+// textCellOf shows the stored decimal text as written by format, with the stored text as its sort value.
+func textCellOf(text string, format func(string) (string, bool)) any {
+	shown, ok := format(text)
+	v, isNum := numberLiteral(text)
+	if !ok || !isNum {
 		return unreadableCell()
 	}
-	c := textCell(text)
+	c := textCell(shown)
 	c.Value = &v
 	return c
 }
+
+func formatCellPtr(p *string, format func(string) (string, bool)) any {
+	if p == nil {
+		return textCell(dash)
+	}
+	return textCellOf(*p, format)
+}
+
+func yieldCell(p *string) any { return formatCellPtr(p, percentText) }
+
+func deltaCell(p *string) any {
+	return formatCellPtr(p, func(s string) (string, bool) {
+		t, ok := fixedText(s, 2)
+		return minusText(t), ok
+	})
+}
+
+func ivCell(p *string) any { return formatCellPtr(p, percentText) }
+
+func moneyCell(text string) any { return textCellOf(text, moneyText) }
 
 func plainCell(s string) any {
 	if s == "" {
@@ -207,11 +225,11 @@ var (
 	colExpiry    = col("expiry", "Expiry", "left", func(c store.Candidate) any { return dayCell(c.Expiry) })
 	colDTE       = col("dte", "DTE", "right", func(c store.Candidate) any { return intCell(c.DTE) })
 	colStrike    = col("strike", "Strike", "right", func(c store.Candidate) any { return numCell(c.Strike) })
-	colBid       = col("bid", bidLabel, "right", func(c store.Candidate) any { return numCell(c.BidEod) }).hinted(bidHint)
+	colBid       = col("bid", bidLabel, "right", func(c store.Candidate) any { return moneyCell(c.BidEod) }).hinted(bidHint)
 	colYield     = col("yield", "Annualised yield", "right", func(c store.Candidate) any { return yieldCell(c.AnnualizedYield) })
-	colBreakEven = col("break_even", "Break-even", "right", func(c store.Candidate) any { return numCell(c.BreakEven) })
-	colDelta     = col("delta", "Delta", "right", func(c store.Candidate) any { return numCellPtr(c.Delta) })
-	colIV        = col("iv", "IV", "right", func(c store.Candidate) any { return numCellPtr(c.Iv) })
+	colBreakEven = col("break_even", "Break-even", "right", func(c store.Candidate) any { return moneyCell(c.BreakEven) })
+	colDelta     = col("delta", "Delta", "right", func(c store.Candidate) any { return deltaCell(c.Delta) })
+	colIV        = col("iv", "IV", "right", func(c store.Candidate) any { return ivCell(c.Iv) })
 	colITM       = colDef{column: column{ID: itmID, Label: "ITM probability", Align: "right", Hint: ptr(itmHint)}}
 	colExcess    = colDef{column: column{ID: excessID, Label: "Vs cash", Align: "right"}}
 	colMarks     = col("marks", "Marks", "left", marksCell)

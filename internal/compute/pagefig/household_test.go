@@ -175,13 +175,14 @@ func TestObligationNoteShowsPremiumAsMoney(t *testing.T) {
 	jpy := put("10000", "100", "1", "5000")
 	jpy.Currency = "JPY"
 	in := blockapi.HouseholdInput{
-		UsdJpy:      "150",
+		UsdJpy: "150",
 		Obligations: []blockapi.ObligationIn{
 			put("100", "100", "1", "647.0000"), put("100", "100", "1", "0.125"), jpy, put("100", "100", "1", "x"), put("100", "100", "1", ""),
+			put("100", "100", "1", "1100.0000"),
 		},
 	}
 	got := obligations(in)
-	want := []string{"premium $647.00", "premium $0.13", "≈USD 6667 premium JPY 5000.00", "premium x", ""}
+	want := []string{"premium $647.00", "premium $0.13", "≈USD 6667 premium JPY 5,000.00", "premium x", "", "premium $1,100.00"}
 	if len(got) != len(want) {
 		t.Fatalf("rows: %+v", got)
 	}
@@ -197,10 +198,29 @@ func TestPremiumTextRoundsHalfAwayFromZero(t *testing.T) {
 	cases := []struct{ cur, in, want string }{
 		{"USD", "647.0000", "$647.00"},
 		{"USD", "0.125", "$0.13"},
-		{"USD", "-0.125", "-$0.13"},
+		{"USD", "-0.125", "−$0.13"},
 		{"USD", "1.005", "$1.01"},
 		{"USD", "-0.001", "$0.00"},
-		{"JPY", "5000", "JPY 5000.00"},
+		{"JPY", "5000", "JPY 5,000.00"},
+	}
+	for _, c := range cases {
+		if got := premiumText(c.cur, c.in); got != c.want {
+			t.Errorf("premiumText(%s, %s) = %q, want %q", c.cur, c.in, got, c.want)
+		}
+	}
+}
+
+func TestPremiumTextGroupsThousands(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ cur, in, want string }{
+		{"USD", "1100", "$1,100.00"},
+		{"USD", "1234567.891", "$1,234,567.89"},
+		{"USD", "999.999", "$1,000.00"},
+		{"JPY", "5000", "JPY 5,000.00"},
+		{"USD", "-0.125", "−$0.13"},
+		{"USD", "-1100", "−$1,100.00"},
+		{"USD", "-0.001", "$0.00"},
+		{"USD", "x", "x"},
 	}
 	for _, c := range cases {
 		if got := premiumText(c.cur, c.in); got != c.want {

@@ -86,7 +86,7 @@ func (c cells) money(f compute.FigureValue) any {
 }
 
 // listMoney is the Usd cell of a list figure: Value is the stored number, Text has two decimals
-// (rounded half to even); a text that is not a number is a gap.
+// (see siteMoney); a text that is not a number is a gap.
 func (c cells) listMoney(f compute.FigureValue) any {
 	cell := c.money(f)
 	m, ok := cell.(usd)
@@ -97,12 +97,28 @@ func (c cells) listMoney(f compute.FigureValue) any {
 	if err != nil {
 		return mkGap(reasonMissing)
 	}
-	text := d.RoundBank(2).StringFixed(2)
-	if text == "-0.00" {
-		text = "0.00"
-	}
-	m.Text = text
+	m.Text = siteMoney(d)
 	return m
+}
+
+// siteMoney is the site's money text: "$", thousands separators, two decimals rounded half away from
+// zero, and U+2212 before the dollar sign for a negative that does not round to zero.
+func siteMoney(d decimal.Decimal) string {
+	r := d.Round(2)
+	digits := r.Abs().StringFixed(2)
+	whole, frac, _ := strings.Cut(digits, ".")
+	var b strings.Builder
+	for i, ch := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(ch)
+	}
+	sign := ""
+	if r.IsNegative() {
+		sign = "−"
+	}
+	return sign + "$" + b.String() + "." + frac
 }
 
 // percent is the figure's ratio text moved two places; bad text is a gap, never a panic.
