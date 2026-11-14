@@ -136,9 +136,11 @@ func buildCompaniesAt(ctx context.Context, a *app, rd siteReaders, day contracts
 	}
 	if fd, ok := fundamentalsOf(a.deps); ok {
 		facts, _ := siteReaderOf[store.FactReader](rd, siteFactsKey)
-		cfg = newCompaniesPage(cfg, companiesInputs{
+		in := companiesInputs{
 			Facts: facts, Series: rd.series, Catalog: rd.catalog, Names: rd.names, Eod: rd.eod, Terms: rd.terms, Quotes: rd.quotes,
-		}, fd.fn)
+			Bars: rd.bars,
+		}
+		cfg = withCompaniesPepb(newCompaniesPage(cfg, in, fd.fn), in)
 	}
 	return companies_page.Build(ctx, cfg, now)
 }
