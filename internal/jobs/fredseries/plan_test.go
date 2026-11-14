@@ -35,8 +35,10 @@ func TestPlanHash(t *testing.T) {
 func TestEmbeddedManifest(t *testing.T) {
 	t.Parallel()
 	want := []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS",
-		"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL"}
-	wantWindowed := []string{"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL"}
+		"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL",
+		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL"}
+	wantWindowed := []string{"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL",
+		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL"}
 	m, err := parseManifest(manifestBytes)
 	if err != nil {
 		t.Fatal(err)

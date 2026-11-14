@@ -100,7 +100,10 @@ func newDatabaseWith(t *testing.T, files []string) string {
 		applyMigration(t, name, f)
 		if f == "0001_master_session_day.sql" {
 			// The foreign-key checks on master.instrument run as its owner ot_owner, which needs the schema.
-			execAdmin(t, name, `ALTER SCHEMA master OWNER TO ot_owner`)
+			func() {
+				defer lockMigrations(t)()
+				execAdmin(t, name, `ALTER SCHEMA master OWNER TO ot_owner`)
+			}()
 		}
 	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_events, ot_ro_pages, ot_w_fundamental`); err != nil {
