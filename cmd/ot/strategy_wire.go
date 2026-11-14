@@ -120,6 +120,6 @@ func openResultCandidateWith(openRes openStrategyResultsFunc, openOld openCandid
 			_ = res.Close()
 			return nil, err
 		}
-		return resultCandidates{CandidateReader: strategyresultpg.NewCandidateReader(res, old), res: res, old: old}, nil
+		return resultCandidates{CandidateReader: strategyresultpg.NewCandidateReader(res, oldReader(old)), res: res, old: old}, nil
 	}
 }
