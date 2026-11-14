@@ -50,8 +50,8 @@ vi.mock('recharts', async (importOriginal) => {
     ...actual,
     ScatterChart: ({ children }: { children?: React.ReactNode }) => <svg data-scatter-chart>{children}</svg>,
     // A series draws its shape per point and the content of its label list per point, as recharts does.
-    Scatter: ({ data, name, shape, children, line }: { data: unknown[]; name: string; shape: React.ReactElement; children?: React.ReactElement<{ content: React.ReactElement }>; line?: { strokeDasharray?: string } }) => (
-      <g data-scatter={name} data-dash={line?.strokeDasharray} data-points={data.length} data-data={JSON.stringify(data)}>
+    Scatter: ({ data, name, shape, children, line, onClick }: { data: unknown[]; name: string; onClick?: () => void; shape: React.ReactElement; children?: React.ReactElement<{ content: React.ReactElement }>; line?: { strokeDasharray?: string } }) => (
+      <g data-scatter={name} data-line={line ? 'on' : undefined} data-dash={line?.strokeDasharray} onClick={onClick} data-points={data.length} data-data={JSON.stringify(data)}>
         {data.map((_, i) => React.cloneElement(shape, { key: i, cx: 10 * i, cy: 5, index: i } as object))}
         {data.map((_, i) => React.cloneElement(children!.props.content, { key: i, x: (data[i] as { x: number }).x * 50, y: -(data[i] as { y: number }).y * 50, index: i } as object))}
       </g>
@@ -224,28 +224,64 @@ describe('market state page', () => {
     expect(table.querySelector('[data-sector-row=SMH]')!.textContent).toContain('not ranked')
   })
 
-  it('draws one series per drawn fund with its points, a today label and an arrow', async () => {
+  const clickFund = async (symbol: string) => {
+    await act(async () => {
+      host.querySelector(`[data-scatter=${symbol}]`)!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+  }
+  const withLine = () => [...host.querySelectorAll('[data-line]')].map((e) => e.getAttribute('data-scatter'))
+
+  it('draws by default one series per drawn fund with only today point and label, no line and no arrow', async () => {
     const p = fixture('ok')
     await show(p)
     const series = [...host.querySelectorAll('[data-scatter]')]
     const withRotation = p.sectors.rows.filter((r: { rotation: { kind?: string } }) => r.rotation.kind === undefined)
     expect(series).toHaveLength(withRotation.length)
     expect(host.querySelector('[data-scatter=XLRE]')).toBeNull()
-    expect(host.querySelector('[data-scatter=XLF]')!.getAttribute('data-points')).toBe('4')
-    expect(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-points')).toBe('5')
+    expect(withLine()).toEqual([])
+    expect(host.querySelectorAll('[data-arrow]')).toHaveLength(0)
     for (const row of withRotation) {
       const s = host.querySelector(`[data-scatter=${row.symbol}]`)!
       const drawn = JSON.parse(s.getAttribute('data-data')!)
-      expect(drawn.map((pt: { text: string }) => pt.text)).toEqual(row.rotation.map((pt: { text: string }) => pt.text))
-      expect(drawn.map((pt: { x: number }) => pt.x)).toEqual(row.rotation.map((pt: { x: number }) => pt.x))
-      expect(s.querySelectorAll('[data-tail-point]')).toHaveLength(row.rotation.length)
+      expect(drawn).toHaveLength(1)
+      expect(drawn[0].text).toBe(row.rotation.at(-1).text)
+      expect(s.querySelectorAll('[data-tail-point]')).toHaveLength(1)
+      expect(Number(s.querySelector('[data-tail-point]')!.getAttribute('r'))).toBe(7)
       expect([...s.querySelectorAll('[data-today-label]')].map((e) => e.textContent)).toEqual([row.symbol])
-      expect(host.querySelectorAll(`[data-arrow=${row.symbol}]`)).toHaveLength(1)
-      const last = s.querySelector(`[data-tail-point="${row.rotation.length - 1}"]`)!
-      const first = s.querySelector('[data-tail-point="0"]')!
-      expect(Number(last.getAttribute('r'))).toBeGreaterThan(Number(first.getAttribute('r')))
-      expect(Number(first.getAttribute('opacity'))).toBeLessThan(1)
     }
+  })
+
+  it('a click on a fund draws its whole tail and arrow only; a second click clears it; another click moves it', async () => {
+    const p = fixture('ok')
+    await show(p)
+    const xlk = p.sectors.rows.find((r: { symbol: string }) => r.symbol === 'XLK').rotation
+    await clickFund('XLK')
+    expect(withLine()).toEqual(['XLK'])
+    const s = host.querySelector('[data-scatter=XLK]')!
+    expect(JSON.parse(s.getAttribute('data-data')!).map((pt: { text: string }) => pt.text)).toEqual(xlk.map((pt: { text: string }) => pt.text))
+    expect(s.querySelectorAll('[data-tail-point]')).toHaveLength(xlk.length)
+    expect(host.querySelectorAll('[data-arrow]')).toHaveLength(1)
+    expect(host.querySelector('[data-scatter=XLF]')!.getAttribute('data-points')).toBe('1')
+    await clickFund('XLK')
+    expect(withLine()).toEqual([])
+    expect(host.querySelectorAll('[data-arrow]')).toHaveLength(0)
+    await clickFund('XLK')
+    await clickFund('XLF')
+    expect(withLine()).toEqual(['XLF'])
+    expect(host.querySelector('[data-scatter=XLF]')!.getAttribute('data-points')).toBe('4')
+    expect(host.querySelector('[data-scatter=XLK]')!.getAttribute('data-points')).toBe('1')
+  })
+
+  it('a selected fund keeps today dot large and its tail faded; SMH keeps its dashed tail and hollow ring', async () => {
+    await show(fixture('ok'))
+    await clickFund('XLK')
+    await clickFund('SMH')
+    const o = [...host.querySelectorAll('[data-scatter=SMH] [data-tail-point]')]
+    expect(Number(o.at(-1)!.getAttribute('r'))).toBe(7)
+    expect(Number(o[0]!.getAttribute('opacity'))).toBeLessThan(1)
+    expect(o[0]!.getAttribute('fill')).toBe('var(--background)')
+    expect(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-dash')).toBeTruthy()
+    expect(host.querySelector('[data-scatter=XLK]')!.getAttribute('data-dash')).toBeNull()
   })
 
   it('draws each fund in its own fixed colour and SMH as a hollow neutral ring', async () => {
@@ -283,10 +319,10 @@ describe('market state page', () => {
     const p = fixture('ok')
     await show(p)
     const word = (corner: string) => host.querySelector(`[data-corner=${corner}]`)?.textContent
-    expect(word('insideTopRight')).toBe('Leading')
-    expect(word('insideTopLeft')).toBe('Improving')
-    expect(word('insideBottomLeft')).toBe('Lagging')
-    expect(word('insideBottomRight')).toBe('Weakening')
+    expect(word('insideTopRight')).toMatch(/^Leading — /)
+    expect(word('insideTopLeft')).toMatch(/^Improving — /)
+    expect(word('insideBottomLeft')).toMatch(/^Lagging — /)
+    expect(word('insideBottomRight')).toMatch(/^Weakening — /)
     const map = host.querySelector('[data-rotation-map]')!.textContent!
     for (const q of p.sectors.rotation_axes.quadrants) expect(map).not.toContain(q.text)
     expect(host.querySelector('[data-rotation-note]')?.textContent).toBe(p.sectors.rotation_axes.note)
@@ -360,7 +396,7 @@ describe('market state page', () => {
   it('draws no legend and names the four quadrants (rotation map, from the ok fixture)', async () => {
     await show(fixture('ok'))
     expect(host.querySelector('[data-rotation-map] [data-chart-legend]')).toBeNull()
-    const names = [...host.querySelectorAll('[data-quadrant-area]')].map((e) => e.textContent).sort()
+    const names = [...host.querySelectorAll('[data-quadrant-area]')].map((e) => e.textContent!.split(' — ')[0]).sort()
     expect(names).toEqual(['Improving', 'Lagging', 'Leading', 'Weakening'])
   })
 
@@ -393,16 +429,21 @@ describe('market state page', () => {
     expect(host.querySelector('[data-y-caption]')).toBeNull()
   })
 
-  it('draws SMH with a dashed tail and the funds with a solid one', async () => {
+  it('fades the selected tail: the older the point, the lower its opacity', async () => {
     await show(fixture('ok'))
-    expect(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-dash')).toBeTruthy()
-    expect(host.querySelector('[data-scatter=XLK]')!.getAttribute('data-dash')).toBeNull()
+    await clickFund('XLK')
+    const o = [...host.querySelectorAll('[data-scatter=XLK] [data-tail-point]')].map((e) => Number(e.getAttribute('opacity')))
+    expect(o.length).toBeGreaterThan(1)
+    for (let i = 1; i < o.length; i++) expect(o[i]!).toBeGreaterThan(o[i - 1]!)
   })
 
-  it('fades the tail: the older the point, the lower its opacity', async () => {
+  it('glosses each quadrant word beside it in the same label', async () => {
     await show(fixture('ok'))
-    const o = [...host.querySelectorAll('[data-scatter=XLK] [data-tail-point]')].map((e) => Number(e.getAttribute('opacity')))
-    for (let i = 1; i < o.length; i++) expect(o[i]!).toBeGreaterThan(o[i - 1]!)
+    const label = (corner: string) => host.querySelector(`[data-corner=${corner}]`)?.textContent
+    expect(label('insideTopRight')).toBe('Leading — ahead of SPY over 3 months and still gaining')
+    expect(label('insideBottomRight')).toBe('Weakening — ahead of SPY over 3 months but losing pace')
+    expect(label('insideBottomLeft')).toBe('Lagging — behind SPY over 3 months and still losing')
+    expect(label('insideTopLeft')).toBe('Improving — behind SPY over 3 months but gaining pace')
   })
 
   it('moves a label that would print over an earlier one', () => {
