@@ -2,23 +2,30 @@ package option_candidates_page
 
 import "testing"
 
-func TestYieldTextShift(t *testing.T) {
+func TestFixedText(t *testing.T) {
 	t.Parallel()
-	for in, want := range map[string]string{
-		"0.123456": "12.3456%", "0.050000": "5.0000%", "1.500000": "150.0000%", "0.000000": "0.0000%",
-		"-0.012300": "-1.2300%", "0.5": "50%", "0.05": "5%", "12.34": "1234%",
+	for _, c := range []struct {
+		in     string
+		places int
+		want   string
+	}{
+		{"0.5", 2, "0.50"}, {"-0.5594", 2, "-0.56"}, {"1.005", 2, "1.01"}, {"0.696", 3, "0.696"},
+		{"-0.001", 2, "0.00"}, {"-1.005", 2, "-1.01"}, {"12", 1, "12.0"}, {"9.96", 1, "10.0"},
 	} {
-		got, err := shiftPoint(in)
-		if err != nil || got != want {
-			t.Errorf("shiftPoint(%q) = %q, %v; want %q", in, got, err, want)
+		got, ok := fixedText(c.in, c.places)
+		if !ok || got != c.want {
+			t.Errorf("fixedText(%q, %d) = %q, %v; want %q", c.in, c.places, got, ok, c.want)
 		}
 	}
-	for _, bad := range []string{"abc", "1e-2", "", "12", ".5", "1.", "0.1x"} {
-		if got, err := shiftPoint(bad); err == nil {
-			t.Errorf("shiftPoint(%q) = %q, want an error", bad, got)
+	for _, bad := range []string{"abc", "1e-2", "", ".5", "1.", "0.1x", "1/2"} {
+		if got, ok := fixedText(bad, 2); ok {
+			t.Errorf("fixedText(%q) = %q, want ok false", bad, got)
 		}
 	}
-	// a bad text is an error cell and not a panic
+}
+
+func TestYieldCellUnreadable(t *testing.T) {
+	t.Parallel()
 	for _, bad := range []string{"abc", "1e-2"} {
 		if g, ok := yieldCell(strp(bad)).(gap); !ok || g.Reason != "unreadable" {
 			t.Errorf("yieldCell(%q) = %+v", bad, yieldCell(strp(bad)))

@@ -21,8 +21,37 @@ func TestValueIsNumberLiteral(t *testing.T) {
 		}
 	}
 	// the yield keeps the stored text as the value
-	if b, _ = json.Marshal(yieldCell(strp("0.050000"))); string(b) != `{"text":"5.0000%","value":0.050000,"badges":[],"tone":"none"}` {
+	if b, _ = json.Marshal(yieldCell(strp("0.050000"))); string(b) != `{"text":"5.0%","value":0.050000,"badges":[],"tone":"none"}` {
 		t.Errorf("yield cell = %s", b)
+	}
+}
+
+func TestOptionsPageFormats(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, text, value string
+		cell              any
+	}{
+		{"yield", "11.8%", "0.118212", yieldCell(strp("0.118212"))},
+		{"yield", "144.4%", "1.444379", yieldCell(strp("1.444379"))},
+		{"delta", "\u22120.56", "-0.5594", deltaCell(strp("-0.5594"))},
+		{"delta", "0.30", "0.3", deltaCell(strp("0.3"))},
+		{"iv", "69.6%", "0.696", ivCell(strp("0.696"))},
+		{"iv", "50.9%", "0.5086", ivCell(strp("0.5086"))},
+		{"bid", "$65.65", "65.65", moneyCell("65.65")},
+		{"break-even", "$1,105.75", "1105.75", moneyCell("1105.75")},
+		{"break-even", "$1,100.65", "1100.65", moneyCell("1100.65")},
+	}
+	for _, c := range cases {
+		vc, ok := c.cell.(valueCell)
+		if !ok || vc.Text != c.text || vc.Value == nil || string(*vc.Value) != c.value {
+			t.Errorf("%s %q: cell = %+v", c.name, c.text, c.cell)
+		}
+	}
+	for _, f := range []func(*string) any{deltaCell, ivCell} {
+		if vc, ok := f(nil).(valueCell); !ok || vc.Text != "—" || vc.Value != nil {
+			t.Errorf("nil cell = %+v", f(nil))
+		}
 	}
 }
 
