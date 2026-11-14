@@ -17,7 +17,8 @@ export function ExcessBars({ block }: { block: Payload['sectors'] }) {
       <ChartContainer config={config} className="h-[360px] w-full">
         <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 8, bottom: 8 }}>
           <CartesianGrid horizontal={false} stroke="var(--border)" />
-          <XAxis type="number" tickLine={false} axisLine={false} />
+          {/* Recharts' own domain expressions: 8 points beyond the extreme bars, room for the label at the end of every bar. */}
+          <XAxis type="number" domain={['dataMin - 8', 'dataMax + 8']} tickLine={false} axisLine={false} />
           <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} interval={0} />
           <ChartTooltip content={<ChartTooltipContent />} />
           <Bar dataKey="value" fill="var(--color-value)" isAnimationActive={false}>
