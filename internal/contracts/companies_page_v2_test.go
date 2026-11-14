@@ -131,3 +131,58 @@ func checkCompaniesV2Input(t *testing.T) {
 		t.Error("no instruments")
 	}
 }
+
+// TestCompaniesPageV2PepbFixture: the pepb fixture validates, the ok and gap fixtures (no pepb)
+// still validate, and a verdict field on a pepb row or line is refused.
+func TestCompaniesPageV2PepbFixture(t *testing.T) {
+	t.Parallel()
+	s := compilePageV2(t, companiesPageV2)
+	for _, name := range []string{"pepb", "ok", "gap"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			page := companiesV2Fixture(t, name)
+			if _, has := page["pepb"]; has != (name == "pepb") {
+				t.Fatalf("%s: pepb present = %v", name, has)
+			}
+			if err := s.Validate(page); err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+		})
+	}
+	pepbRows := func(page map[string]any) []any {
+		return page["pepb"].(map[string]any)["rows"].([]any)
+	}
+	t.Run("verdict-field-on-row", func(t *testing.T) {
+		t.Parallel()
+		page := companiesV2Fixture(t, "pepb")
+		pepbRows(page)[0].(map[string]any)["verdict"] = "cheap"
+		if s.Validate(page) == nil {
+			t.Fatal("verdict field on a pepb row validates")
+		}
+	})
+	t.Run("verdict-field-on-line", func(t *testing.T) {
+		t.Parallel()
+		page := companiesV2Fixture(t, "pepb")
+		pepbRows(page)[0].(map[string]any)["pe"].(map[string]any)["verdict"] = "cheap"
+		if s.Validate(page) == nil {
+			t.Fatal("verdict field on a pepb line validates")
+		}
+	})
+	t.Run("forward-must-be-gap", func(t *testing.T) {
+		t.Parallel()
+		page := companiesV2Fixture(t, "pepb")
+		row := pepbRows(page)[0].(map[string]any)
+		row["forward"] = row["pe"]
+		if s.Validate(page) == nil {
+			t.Fatal("a line as forward validates")
+		}
+	})
+	t.Run("pepb-not-required", func(t *testing.T) {
+		t.Parallel()
+		page := companiesV2Fixture(t, "pepb")
+		delete(page, "pepb")
+		if err := s.Validate(page); err != nil {
+			t.Fatalf("page without pepb: %v", err)
+		}
+	})
+}
