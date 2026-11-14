@@ -150,6 +150,63 @@ func moneyCell(text, currency string) any {
 	return c
 }
 
+// moneyHalfUp is moneyCell rounded half away from zero, with the typographic minus; the value stays
+// the stored number. The empty text is the gap of code, an unreadable text or a currency with no
+// symbol the gap unreadable.
+func moneyHalfUp(text, currency, code string) any {
+	if text == "" {
+		return codeGap(code)
+	}
+	c, d, ok := parseNumber(text)
+	sym, known := currencySymbols[currency]
+	if !ok || !known {
+		return codeGap(codeUnreadable)
+	}
+	c.Text = signedText(d, 2, sym)
+	return c
+}
+
+// signedText is d rounded half away from zero to places, grouped, with prefix after the sign; a
+// negative gets the typographic minus unless it rounds to zero.
+func signedText(d decimal.Decimal, places int32, prefix string) string {
+	r := d.Round(places)
+	whole, frac, _ := strings.Cut(r.Abs().StringFixed(places), ".")
+	s := prefix + groupThousands(whole)
+	if frac != "" {
+		s += "." + frac
+	}
+	if r.IsNegative() {
+		s = "−" + s
+	}
+	return s
+}
+
+// deltaCell is the delta with two decimals and the typographic minus.
+func deltaCell(text, code string) any {
+	if text == "" {
+		return codeGap(code)
+	}
+	c, d, ok := parseNumber(text)
+	if !ok {
+		return codeGap(codeUnreadable)
+	}
+	c.Text = signedText(d, 2, "")
+	return c
+}
+
+// ivPercentCell is the stored IV fraction as a percent with one decimal, half away from zero.
+func ivPercentCell(text, code string) any {
+	if text == "" {
+		return codeGap(code)
+	}
+	c, d, ok := parseNumber(text)
+	if !ok {
+		return codeGap(codeUnreadable)
+	}
+	c.Text = signedText(d.Mul(decimal.NewFromInt(100)), 1, "") + "%"
+	return c
+}
+
 func plainCell(s string) any {
 	if s == "" {
 		return textCell(dash)
