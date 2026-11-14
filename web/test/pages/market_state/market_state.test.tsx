@@ -1,7 +1,7 @@
 // The market state page shows the texts of the contract fixtures and nothing else. Expected strings are read from them.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { act } from 'react'
+import React, { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChartSpec } from '@/charts/spec'
@@ -37,8 +37,19 @@ vi.mock('recharts', async (importOriginal) => {
   return {
     ...actual,
     ScatterChart: ({ children }: { children?: React.ReactNode }) => <svg data-scatter-chart>{children}</svg>,
-    Scatter: ({ data, name }: { data: unknown[]; name: string }) => (
-      <g data-scatter={name} data-points={data.length} data-data={JSON.stringify(data)} />
+    // A series draws its shape per point and the content of its label list per point, as recharts does.
+    Scatter: ({ data, name, shape, children }: { data: unknown[]; name: string; shape: React.ReactElement; children?: React.ReactElement<{ content: React.ReactElement }> }) => (
+      <g data-scatter={name} data-points={data.length} data-data={JSON.stringify(data)}>
+        {data.map((_, i) => React.cloneElement(shape, { key: i, cx: 10 * i, cy: 5, index: i } as object))}
+        {data.map((_, i) => React.cloneElement(children!.props.content, { key: i, x: 10 * i, y: 5, index: i } as object))}
+      </g>
+    ),
+    // Outside a real chart there is no scale: a fixed one stands in, so the arrow can be drawn.
+    useCartesianScale: (pt: { x: number; y: number }) => ({ x: pt.x, y: pt.y }),
+    ReferenceArea: ({ x1, x2, y1, y2, label }: { x1?: number; x2?: number; y1?: number; y2?: number; label: { value: string; position: string } }) => (
+      <g data-quadrant-area={`${x1 === undefined ? 'left' : 'right'}-${y1 === undefined ? 'bottom' : 'top'}`} data-corner={label.position} data-y2={y2} data-x2={x2}>
+        <text>{label.value}</text>
+      </g>
     ),
     BarChart: ({ data, layout }: { data: unknown[]; layout: string }) => (
       <svg data-bar-chart data-bars={data.length} data-layout={layout} />
@@ -146,7 +157,7 @@ describe('market state page', () => {
   it('shows no state word outside the four quadrant labels', async () => {
     await show(fixture('ok'))
     const text = [...host.querySelectorAll('*')]
-      .filter((e) => e.children.length === 0 && !e.hasAttribute('data-quadrant'))
+      .filter((e) => e.children.length === 0 && !e.closest('[data-quadrant-area]'))
       .map((e) => e.textContent)
       .join(' ')
     for (const word of ['leading', 'lagging', 'risk-off', 'bullish', 'bearish']) {
@@ -170,27 +181,63 @@ describe('market state page', () => {
     expect(table.querySelector('[data-sector-row=SMH]')!.textContent).toContain('not ranked')
   })
 
-  it('draws one rotation series per row with a rotation, with the quadrant texts and captions', async () => {
+  it('draws one series per drawn fund with its points, a today label and an arrow', async () => {
     const p = fixture('ok')
     await show(p)
     const series = [...host.querySelectorAll('[data-scatter]')]
     const withRotation = p.sectors.rows.filter((r: { rotation: { kind?: string } }) => r.rotation.kind === undefined)
     expect(series).toHaveLength(withRotation.length)
-    expect(host.querySelector('[data-scatter^=XLRE]')).toBeNull()
-    expect(host.querySelector('[data-scatter^=XLF]')!.getAttribute('data-points')).toBe('4')
-    const smh = host.querySelector('[data-scatter^=SMH]')!
-    expect(smh.getAttribute('data-points')).toBe('5')
-    expect(smh.getAttribute('data-scatter')).toContain('not ranked')
+    expect(host.querySelector('[data-scatter=XLRE]')).toBeNull()
+    expect(host.querySelector('[data-scatter=XLF]')!.getAttribute('data-points')).toBe('4')
+    expect(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-points')).toBe('5')
     for (const row of withRotation) {
-      const drawn = JSON.parse(host.querySelector(`[data-scatter^=${row.symbol}]`)!.getAttribute('data-data')!)
+      const s = host.querySelector(`[data-scatter=${row.symbol}]`)!
+      const drawn = JSON.parse(s.getAttribute('data-data')!)
       expect(drawn.map((pt: { text: string }) => pt.text)).toEqual(row.rotation.map((pt: { text: string }) => pt.text))
+      expect(drawn.map((pt: { x: number }) => pt.x)).toEqual(row.rotation.map((pt: { x: number }) => pt.x))
+      expect(s.querySelectorAll('[data-tail-point]')).toHaveLength(row.rotation.length)
+      expect([...s.querySelectorAll('[data-today-label]')].map((e) => e.textContent)).toEqual([row.symbol])
+      expect(host.querySelectorAll(`[data-arrow=${row.symbol}]`)).toHaveLength(1)
+      const last = s.querySelector(`[data-tail-point="${row.rotation.length - 1}"]`)!
+      const first = s.querySelector('[data-tail-point="0"]')!
+      expect(Number(last.getAttribute('r'))).toBeGreaterThan(Number(first.getAttribute('r')))
+      expect(Number(first.getAttribute('opacity'))).toBeLessThan(1)
     }
-    for (const q of p.sectors.rotation_axes.quadrants) {
-      expect(host.querySelector(`[data-quadrant=${q.id}]`)?.textContent).toBe(q.text)
-    }
+  })
+
+  it('draws each fund in its own colour and SMH as a hollow ring', async () => {
+    await show(fixture('ok'))
+    const colours = [...host.querySelectorAll('[data-scatter]')]
+      .filter((s) => s.getAttribute('data-scatter') !== 'SMH')
+      .map((s) => s.querySelector('[data-tail-point]')!.getAttribute('stroke'))
+    expect(new Set(colours).size).toBe(colours.length)
+    const ring = host.querySelector('[data-scatter=SMH] [data-tail-point]')!
+    expect(ring.getAttribute('fill')).toBe('var(--background)')
+  })
+
+  it('names the quadrants by fixed words at the four corners and shows no producer sentence', async () => {
+    const p = fixture('ok')
+    await show(p)
+    const word = (corner: string) => host.querySelector(`[data-corner=${corner}]`)?.textContent
+    expect(word('insideTopRight')).toBe('Leading')
+    expect(word('insideTopLeft')).toBe('Improving')
+    expect(word('insideBottomLeft')).toBe('Lagging')
+    expect(word('insideBottomRight')).toBe('Weakening')
+    const map = host.querySelector('[data-rotation-map]')!.textContent!
+    for (const q of p.sectors.rotation_axes.quadrants) expect(map).not.toContain(q.text)
     expect(host.querySelector('[data-x-caption]')?.textContent).toBe(p.sectors.rotation_axes.x_caption)
     expect(host.querySelector('[data-y-caption]')?.textContent).toBe(p.sectors.rotation_axes.y_caption)
     expect(host.querySelector('[data-rotation-note]')?.textContent).toBe(p.sectors.rotation_axes.note)
+  })
+
+  it('keeps "not ranked" out of the legend names and in the SMH points for the tooltip', async () => {
+    await show(fixture('ok'))
+    expect(host.querySelector('[data-scatter=SMH]')).not.toBeNull()
+    expect(host.querySelector('[data-rotation-map]')!.textContent).not.toContain('not ranked')
+    const smh = JSON.parse(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-data')!)
+    expect(smh[0].note).toContain('not ranked')
+    const xlk = JSON.parse(host.querySelector('[data-scatter=XLK]')!.getAttribute('data-data')!)
+    expect(xlk[0].note).toBe('')
   })
 
   it('draws one vertical bar per row whose gap_63 is a value, with its caption', async () => {
