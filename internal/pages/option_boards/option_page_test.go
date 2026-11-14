@@ -578,3 +578,13 @@ func TestTableChainCardsMoneyAndIvFormats(t *testing.T) {
 		t.Errorf("iv line = %q", got)
 	}
 }
+
+func TestTableBidAskMissingSides(t *testing.T) {
+	t.Parallel()
+	noAsk := candRow(1, "NOB", 1, "ok")
+	noAsk.BidEod, noAsk.Ask = "24.4", nil
+	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {noAsk}}}, nil, buildDay))
+	if c := cellOf(t, tableRowsOf(m)[0], "bid_ask"); c["text"] != "$24.40 / n/a" {
+		t.Errorf("missing ask: bid_ask = %v", c)
+	}
+}
