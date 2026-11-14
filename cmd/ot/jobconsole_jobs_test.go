@@ -54,7 +54,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 31 {
+	if !slices.Equal(got, want) || len(got) != 32 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -67,7 +67,7 @@ func TestForceYesIsNineJobs(t *testing.T) {
 			yes = append(yes, r.ID)
 		}
 	}
-	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "earnings_refresh",
+	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "book_risk", "earnings_refresh",
 		"dividend_capture", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
@@ -114,7 +114,7 @@ func TestZoneOfEachTodayOnlyJobIsTheJobsOwn(t *testing.T) {
 
 func TestAnyDayIsExactlyTheNine(t *testing.T) {
 	t.Parallel()
-	want := []string{"bars_refresh", "compute_figures", "dividend_capture", "earnings_refresh", "fred_series", "fundamentals",
+	want := []string{"bars_refresh", "book_risk", "compute_figures", "dividend_capture", "earnings_refresh", "fred_series", "fundamentals",
 		"fx_refresh", "option_candidates", "statement_capture"}
 	if got := idsOfKind(kindAnyDay); !slices.Equal(got, want) {
 		t.Fatalf("any_day %v", got)
