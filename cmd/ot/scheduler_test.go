@@ -518,7 +518,7 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	if got := ids(r.sched.jobs); !slices.Equal(got, allUSJobs) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
-	if len(r.sched.disabled) != 1 || r.sched.disabled[jobFredSeries] == "" {
+	if len(r.sched.disabled) != 2 || r.sched.disabled[jobFredSeries] == "" || r.sched.disabled[jobMacroEvents] != r.sched.disabled[jobFredSeries] {
 		t.Fatalf("disabled %v", r.sched.disabled)
 	}
 	_ = r.stop(t, done)
@@ -608,7 +608,7 @@ func TestSchedulerFredStaysDisabledUntilRestart(t *testing.T) {
 		if got := r.lastBuild(); !slices.Equal(got, noFredJobs) {
 			t.Fatalf("reconciler jobs %v", got)
 		}
-		if len(r.sched.disabled) != 1 {
+		if len(r.sched.disabled) != 2 {
 			t.Fatalf("disabled %v", r.sched.disabled)
 		}
 	}
