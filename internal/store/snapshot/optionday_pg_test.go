@@ -40,7 +40,8 @@ func TestOptionDayKeepsFieldsByCoalesce(t *testing.T) {
 	if d.bid == nil || *d.bid != "1.25" {
 		t.Fatalf("bid %v, want the stored 1.25", d.bid)
 	}
-	if want := first.ReceivedAt.Add(5 * time.Minute); !d.receivedAt.Equal(want) {
+	// The later row leaves every compared column as stored, so the day row is not rewritten and keeps its received_at.
+	if want := first.ReceivedAt; !d.receivedAt.Equal(want) {
 		t.Fatalf("received_at %v, want %v", d.receivedAt, want)
 	}
 	// An earlier received_at changes nothing.

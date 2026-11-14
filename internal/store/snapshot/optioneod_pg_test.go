@@ -85,6 +85,12 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 // and 0006 there, a master.instrument stub (ids 1..100 and those of the fixture), and 0029, 0047 and 0049, and drops the database in t.Cleanup. It returns its name.
 func newDatabase(t *testing.T) string {
 	t.Helper()
+	return newDatabaseAt(t, true)
+}
+
+// newDatabaseAt is newDatabase; captures false leaves out 0029, 0047 and 0049, so the database holds the earlier migrations only.
+func newDatabaseAt(t *testing.T, captures bool) string {
+	t.Helper()
 	ctx := context.Background()
 	admin, err := pgx.Connect(ctx, connURL(t, pgEnv("PGDATABASE"), ""))
 	if err != nil {
@@ -128,8 +134,10 @@ func newDatabase(t *testing.T) string {
 		`INSERT INTO master.instrument VALUES (800001), (900001), (900002), (900003)`); err != nil {
 		t.Fatalf("master stub: %v", err)
 	}
-	for _, f := range []string{"0029_option_open.sql", "0047_option_captures.sql", "0049_option_day_select.sql"} {
-		applyMigration(t, connURL(t, name, ""), f)
+	if captures {
+		for _, f := range []string{"0029_option_open.sql", "0047_option_captures.sql", "0049_option_day_select.sql"} {
+			applyMigration(t, connURL(t, name, ""), f)
+		}
 	}
 	for _, r := range []string{"ot_runner", "ot_ro_pages", "ot_w_option_eod"} {
 		if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO `+r); err != nil {
@@ -376,14 +384,17 @@ func TestOptionEodCompressPG(t *testing.T) {
 
 func TestOptionEodGrantsPG(t *testing.T) {
 	t.Parallel()
-	name := newDatabase(t)
-	rows := loadFixture(t)
-	if err := openAs(t, name, "ot_w_option_eod").InsertOptionEod(context.Background(), rows); err != nil {
+	// This database applies the earlier migrations only (0006 alone): the table-level UPDATE of 0047 would allow a
+	// key-column UPDATE, and the grants of 0047 are checked by TestMig47GrantsPG in internal/store/setup/migrate_0047_pg_test.go.
+	name := newDatabaseAt(t, false)
+	if _, err := connectAs(t, name, "").Exec(context.Background(), `INSERT INTO obs.option_eod (session_day, capture_id, `+
+		`instrument_id, underlying_id, generation, market_data_type, received_at, status, currency, snapshot_kind, `+
+		`underlying_ccy) VALUES ('2026-11-06', gen_random_uuid(), 1, 1, 1, 1, now(), 1, 'USD', 'eod', 'USD')`); err != nil {
 		t.Fatal(err)
 	}
+	const wantRows = 1
 	w := connectAs(t, name, "ot_w_option_eod")
-	// DELETE, TRUNCATE and an UPDATE of a key column are refused (this database applies the earlier migrations only, 0006
-	// alone; the table-level grants of 0047 are checked by TestMig47GrantsPG in internal/store/setup/migrate_0047_pg_test.go).
+	// DELETE, TRUNCATE and an UPDATE of a key column are refused.
 	mustFail(t, w, `UPDATE obs.option_eod SET capture_id = gen_random_uuid()`)
 	mustFail(t, w, `UPDATE obs.option_eod SET instrument_id = instrument_id + 1`)
 	mustFail(t, w, `DELETE FROM obs.option_eod`)
@@ -395,8 +406,8 @@ func TestOptionEodGrantsPG(t *testing.T) {
 	if err := p.QueryRow(context.Background(), `SELECT count(*) FROM rd.option_eod_r1`).Scan(&n); err != nil {
 		t.Fatalf("view not readable: %v", err)
 	}
-	if n != len(rows) {
-		t.Fatalf("view has %d rows, want %d", n, len(rows))
+	if n != wantRows {
+		t.Fatalf("view has %d rows, want %d", n, wantRows)
 	}
 	rn := connectAs(t, name, "ot_runner")
 	mustFail(t, rn, `UPDATE obs.option_eod SET bid = 1`)
