@@ -1,7 +1,6 @@
 package main
 
 import (
-	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -121,7 +120,6 @@ func TestTreeNestedPackageIsImportableByOT(t *testing.T) {
 	if ins["internal/x/y/z"] != "x/y/z" {
 		t.Errorf("in of internal/x/y/z is component %q, want x/y/z", ins["internal/x/y/z"])
 	}
-	_ = maps.Keys[map[string]string]
 }
 
 // componentsOfYAML reads the name and in of each component of a generated lint file.
