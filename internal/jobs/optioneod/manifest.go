@@ -79,23 +79,25 @@ const (
 )
 
 type manifest struct {
-	Version              int           `toml:"version"`
-	ID                   string        `toml:"id"`
-	Zone                 string        `toml:"zone"`
-	Window               window        `toml:"window"`
-	Schedule             scheduleTable `toml:"schedule"`
-	MaxExpiries          int           `toml:"max_expiries"`
-	StrikeBand           float64       `toml:"strike_band"`
-	MaxStrikesPerSide    int           `toml:"max_strikes_per_side"`
-	StrikeBandBelow      float64       `toml:"strike_band_below"`
-	StrikeBandAbove      float64       `toml:"strike_band_above"`
-	MinDTE               int           `toml:"min_dte"`
-	MaxDTE               int           `toml:"max_dte"`
-	MaxStrikes           int           `toml:"max_strikes"`
-	Chunk                int           `toml:"chunk"`
-	BudgetMinutes        int           `toml:"budget_minutes"`
-	FreezeAfter          string        `toml:"freeze_after"`
-	OptionPriceIncrement string        `toml:"option_price_increment"`
+	Version  int           `toml:"version"`
+	ID       string        `toml:"id"`
+	Zone     string        `toml:"zone"`
+	Window   window        `toml:"window"`
+	Schedule scheduleTable `toml:"schedule"`
+	// Slot is the label "HHMM" of the run's slot, a manifest key only: it is in the capture id, never in the plan hash.
+	Slot                 string  `toml:"slot"`
+	MaxExpiries          int     `toml:"max_expiries"`
+	StrikeBand           float64 `toml:"strike_band"`
+	MaxStrikesPerSide    int     `toml:"max_strikes_per_side"`
+	StrikeBandBelow      float64 `toml:"strike_band_below"`
+	StrikeBandAbove      float64 `toml:"strike_band_above"`
+	MinDTE               int     `toml:"min_dte"`
+	MaxDTE               int     `toml:"max_dte"`
+	MaxStrikes           int     `toml:"max_strikes"`
+	Chunk                int     `toml:"chunk"`
+	BudgetMinutes        int     `toml:"budget_minutes"`
+	FreezeAfter          string  `toml:"freeze_after"`
+	OptionPriceIncrement string  `toml:"option_price_increment"`
 	// TradingClass, when set, makes the chain choice take the chain of that trading class on the underlying's exchange.
 	TradingClass string `toml:"trading_class"`
 	// BuyLow and BuyHigh, both or neither, are the multiples of a BuyPrice that bound the strikes of an entry with
@@ -192,6 +194,9 @@ func (m manifest) validate() error {
 	}
 	if _, err := time.LoadLocation(m.Zone); err != nil {
 		return fmt.Errorf("optioneod: manifest: zone is unknown")
+	}
+	if m.Slot != "" && !fourDigits(m.Slot) {
+		return fmt.Errorf("optioneod: manifest: slot must be four digits")
 	}
 	if _, err := parseHHMM(m.FreezeAfter); err != nil {
 		return fmt.Errorf("optioneod: manifest: freeze_after must be HHMM")
@@ -316,6 +321,18 @@ func (m manifest) validateUnderlying(u underlying) error {
 }
 
 // parseHHMM reads "HHMM" as minutes after midnight.
+func fourDigits(s string) bool {
+	if len(s) != 4 {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func parseHHMM(s string) (int, error) {
 	if len(s) != 4 {
 		return 0, fmt.Errorf("bad time")

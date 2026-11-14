@@ -2,6 +2,7 @@
 version = 1
 id = "option_eod"
 zone = "America/New_York"
+slot = "1100"
 max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
