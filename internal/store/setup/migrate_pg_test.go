@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"io/fs"
 	"log/slog"
 	"net/url"
 	"os"
@@ -19,6 +20,33 @@ import (
 )
 
 const migrationsDir = "../../../migrations"
+
+// migrationLockKey is the advisory lock, on the admin database, that every test-side application of migration
+// files holds while it runs: the migrations write the roles, which every database of the server shares.
+// Lock order: key 54 (role passwords), where a test takes it, is taken before 8008; 8008 is held only while a
+// migration runs and nothing requests 54 or any other key while it is held, so the two cannot form a cycle.
+const migrationLockKey = 8008
+
+// migrateLocked is migrateWith with gooseUp, run while holding migrationLockKey on a connection of its own.
+func migrateLocked(
+	ctx context.Context,
+	t *testing.T,
+	open func(context.Context, func(context.Context, execer) error) (*sql.DB, error),
+	fsys fs.FS,
+	log *slog.Logger,
+) error {
+	t.Helper()
+	c, err := pgx.Connect(ctx, adminDSN(t, os.Getenv("PGDATABASE")))
+	if err != nil {
+		t.Fatalf("connect admin: %v", err)
+	}
+	defer func() { _ = c.Close(ctx) }()
+	if _, err := c.Exec(ctx, `SELECT pg_advisory_lock($1)`, migrationLockKey); err != nil {
+		t.Fatalf("migration lock: %v", err)
+	}
+	defer func() { _, _ = c.Exec(ctx, `SELECT pg_advisory_unlock($1)`, migrationLockKey) }()
+	return migrateWith(ctx, open, gooseUp, fsys, log)
+}
 
 // ensureOwnerRoles creates the roles of `roles` when missing, under an advisory lock because roles are shared
 // by every database of the server and the tests run in parallel.
@@ -155,7 +183,7 @@ func TestMigrateUpAsOwnerPG(t *testing.T) {
 	s := newScratch(t, true)
 	open := s.openAs(t, testPassword)
 	for i := 0; i < 2; i++ {
-		if err := migrateWith(ctx, open, gooseUp, os.DirFS(migrationsDir), quietLog()); err != nil {
+		if err := migrateLocked(ctx, t, open, os.DirFS(migrationsDir), quietLog()); err != nil {
 			t.Fatalf("run %d: %v", i+1, err)
 		}
 	}
@@ -178,7 +206,7 @@ func TestMigrateUpAsOwnerPG(t *testing.T) {
 
 func TestMigrateUpRejectedRolePG(t *testing.T) {
 	s := newScratch(t, false)
-	err := migrateWith(context.Background(), s.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), quietLog())
+	err := migrateLocked(context.Background(), t, s.openAs(t, testPassword), os.DirFS(migrationsDir), quietLog())
 	if err == nil || !strings.Contains(err.Error(), "set role") {
 		t.Fatalf("want error of stage set role, got %v", err)
 	}
@@ -244,7 +272,7 @@ func TestMigrateLogsNoSecret(t *testing.T) {
 	// A run that succeeds logs names only.
 	logs.Reset()
 	ok := newScratch(t, true)
-	if err := migrateWith(context.Background(), ok.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), log); err != nil {
+	if err := migrateLocked(context.Background(), t, ok.openAs(t, testPassword), os.DirFS(migrationsDir), log); err != nil {
 		t.Fatal(err)
 	}
 	for _, line := range strings.Split(strings.TrimSpace(logs.String()), "\n") {

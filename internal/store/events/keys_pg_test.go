@@ -31,6 +31,30 @@ var keysRoles = []string{
 	"ot_w_option_eod", "ot_w_quote_snapshot", "ot_w_series_fred",
 }
 
+// migrationLockKey is the advisory lock, on the admin database, that every test-side application of a migration
+// file holds while it runs: the migrations write the roles, which every database of the server shares.
+// Lock order: key 54 (role passwords), where a test takes it, is taken before 8008; 8008 is held only while a
+// migration runs and nothing requests 54 or any other key while it is held, so the two cannot form a cycle.
+const migrationLockKey = 8008
+
+// lockMigrations takes migrationLockKey on a connection of its own and returns the function that releases it.
+func lockMigrations(t *testing.T) func() {
+	t.Helper()
+	ctx := context.Background()
+	c, err := pgx.Connect(ctx, connURL(t, os.Getenv("PGDATABASE"), ""))
+	if err != nil {
+		t.Fatalf("connect admin: %v", err)
+	}
+	if _, err := c.Exec(ctx, `SELECT pg_advisory_lock($1)`, migrationLockKey); err != nil {
+		_ = c.Close(ctx)
+		t.Fatalf("migration lock: %v", err)
+	}
+	return func() {
+		_, _ = c.Exec(ctx, `SELECT pg_advisory_unlock($1)`, migrationLockKey)
+		_ = c.Close(ctx)
+	}
+}
+
 func applyMigration(t *testing.T, name, file string) {
 	t.Helper()
 	raw, err := os.ReadFile("../../../migrations/" + file)
@@ -38,6 +62,8 @@ func applyMigration(t *testing.T, name, file string) {
 		t.Fatalf("read migration: %v", err)
 	}
 	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+	unlock := lockMigrations(t)
+	defer unlock()
 	execAdmin(t, name, strings.Replace(up, "-- +goose Up", "", 1))
 }
 

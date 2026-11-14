@@ -19,11 +19,11 @@ func TestMigrateAppliesOutOfOrder(t *testing.T) {
 	open := s.openAs(t, testPassword)
 
 	high := fstest.MapFS{"0200_high.sql": fixtureMigration("ooo_high")}
-	if err := migrateWith(ctx, open, gooseUp, high, quietLog()); err != nil {
+	if err := migrateLocked(ctx, t, open, high, quietLog()); err != nil {
 		t.Fatalf("apply high: %v", err)
 	}
 	both := fstest.MapFS{"0200_high.sql": high["0200_high.sql"], "0100_low.sql": fixtureMigration("ooo_low")}
-	if err := migrateWith(ctx, open, gooseUp, both, quietLog()); err != nil {
+	if err := migrateLocked(ctx, t, open, both, quietLog()); err != nil {
 		t.Fatalf("apply low after high: %v", err)
 	}
 	for _, v := range []int{100, 200} {
