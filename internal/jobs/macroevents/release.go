@@ -16,12 +16,14 @@ import (
 const maxBody = 16 << 20
 
 type typedError struct {
-	kind contracts.ErrorKind
-	msg  string
+	kind  contracts.ErrorKind
+	msg   string
+	cause error // optional
 }
 
 func (e *typedError) Error() string             { return e.msg }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
+func (e *typedError) Unwrap() error             { return e.cause }
 
 func fail(kind contracts.ErrorKind, format string, a ...any) error {
 	return &typedError{kind: kind, msg: fmt.Sprintf(format, a...)}

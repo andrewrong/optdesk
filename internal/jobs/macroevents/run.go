@@ -106,7 +106,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if err != nil {
 		rep.fail("file", err)
 	}
-	for _, kind := range []string{kindFOMC, kindMinutes, kindBOJ, kindQuarterEnd, kindUSTax} {
+	for _, kind := range fileKinds {
 		if wanted(kind) && len(files[kind]) > 0 {
 			j.replace(ctx, rep, day, kind, sourceFile, files[kind])
 		}
@@ -150,22 +150,11 @@ func fileEvents() (map[string][]macroevent.Event, error) {
 	return out, nil
 }
 
-// asTyped returns err unchanged when it is a TypedError, else wraps it with kind. A TypedError found inside err
-// keeps its own kind.
+// asTyped wraps err as a TypedError; a TypedError found inside err keeps its own kind, else kind is used.
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 	var te contracts.TypedError
 	if errors.As(err, &te) {
-		return &wrapped{msg: err.Error(), kind: te.Kind(), err: err}
+		kind = te.Kind()
 	}
-	return &wrapped{msg: err.Error(), kind: kind, err: err}
+	return &typedError{kind: kind, msg: err.Error(), cause: err}
 }
-
-type wrapped struct {
-	msg  string
-	kind contracts.ErrorKind
-	err  error
-}
-
-func (e *wrapped) Error() string             { return e.msg }
-func (e *wrapped) Kind() contracts.ErrorKind { return e.kind }
-func (e *wrapped) Unwrap() error             { return e.err }

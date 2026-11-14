@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -32,9 +33,12 @@ var releases = []release{
 	{"ppi", "46"}, {"retail_sales", "9"}, {"jolts", "192"}, {"h41", "20"},
 }
 
+// fileKinds are the five kinds of the hand-kept file, fomc_minutes derived from fomc.
+var fileKinds = []string{kindFOMC, kindMinutes, kindBOJ, kindQuarterEnd, kindUSTax}
+
 // allKinds are the 13 kinds of the job, sorted.
 func allKinds() []string {
-	kinds := []string{kindFOMC, kindMinutes, kindBOJ, kindQuarterEnd, kindUSTax}
+	kinds := slices.Clone(fileKinds)
 	for _, r := range releases {
 		kinds = append(kinds, r.kind)
 	}
