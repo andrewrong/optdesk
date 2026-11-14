@@ -4,6 +4,7 @@
 package stress
 
 import (
+	"errors"
 	"math/big"
 	"sort"
 	"strings"
@@ -220,13 +221,9 @@ func (s stresser) option(b strategy.RiskBook, h strategy.RiskHolding, qty, mult,
 		}
 		return v
 	}
-	// A price no volatility solves (at or below intrinsic, or below the discounted lower bound when the rate is
-	// above zero) is valued at the intrinsic value at the moved spot, not excluded [T].
-	vol := ""
-	if mark.Cmp(intrinsic(spot)) > 0 {
-		if v, err := s.p.Implied(in.right, in.spot, in.strike, in.years, in.rate, h.Mark); err == nil {
-			vol = v
-		}
+	vol, ok := s.volatility(in, h.Mark, mark.Cmp(intrinsic(spot)) > 0)
+	if !ok {
+		return nil, nil, "no_vol"
 	}
 	size := new(big.Rat).Mul(qty, mult)
 	for i, m := range mv {
@@ -281,10 +278,30 @@ func optionGate(b strategy.RiskBook, h strategy.RiskHolding) (int64, string) {
 
 // Pricer values an option and solves the volatility of a price; every number is decimal text, years is the time
 // to expiry in years and rate the continuously compounded risk-free rate. An expired option, or a price at or
-// below intrinsic value, is an error of Implied.
+// below intrinsic value, is an error of Implied; an error with a NoSolution() bool method that returns true
+// says that no volatility matches the price (stress then values the leg at intrinsic).
 type Pricer interface {
 	// Value is the price of one unit of the option at volatility vol.
 	Value(right, spot, strike, years, rate, vol string) (string, error)
 	// Implied is the volatility at which the option is worth price.
 	Implied(right, spot, strike, years, rate, price string) (string, error)
+}
+
+// volatility is the volatility implied by the mark, "" when the leg is to be valued at intrinsic: a price no
+// volatility solves (at or below intrinsic, or below the discounted lower bound when the rate is above zero)
+// is valued at the intrinsic value at the moved spot, not excluded [T]. Any other error of the pricer (an
+// unusable number) leaves the leg without a value, and ok is false.
+func (s stresser) volatility(in optionIn, mark string, aboveIntrinsic bool) (vol string, ok bool) {
+	if !aboveIntrinsic {
+		return "", true
+	}
+	v, err := s.p.Implied(in.right, in.spot, in.strike, in.years, in.rate, mark)
+	var ns interface{ NoSolution() bool }
+	switch {
+	case err == nil:
+		return v, true
+	case errors.As(err, &ns) && ns.NoSolution():
+		return "", true
+	}
+	return "", false
 }

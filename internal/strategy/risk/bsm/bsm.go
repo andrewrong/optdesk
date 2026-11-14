@@ -17,10 +17,19 @@ import (
 var (
 	ErrExpired      = errors.New("bsm: option expired or no time left")
 	ErrBadInput     = errors.New("bsm: input is not a usable number")
-	ErrBelowPayoff  = errors.New("bsm: price is at or below intrinsic value")
+	ErrBelowPayoff  = noSolution("bsm: price is at or below intrinsic value")
 	ErrAboveBound   = errors.New("bsm: price is at or above the upper bound of the option")
 	ErrNoConvergent = errors.New("bsm: volatility did not converge")
 )
+
+// noSolution is an error that says no volatility prices the option; package stress recognises it by its
+// NoSolution method, so the two packages need not import each other.
+type noSolution string
+
+func (e noSolution) Error() string { return string(e) }
+
+// NoSolution reports that the price cannot be matched by any volatility.
+func (noSolution) NoSolution() bool { return true }
 
 // Pricer prices options; it implements the Pricer interface of package stress. Its methods take plain decimal
 // texts so that it satisfies that interface without importing the package.

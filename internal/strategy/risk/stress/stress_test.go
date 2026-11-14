@@ -282,3 +282,16 @@ func TestStressNewItmCallBelowDiscountedBoundIsValuedNotExcluded(t *testing.T) {
 		t.Fatalf("totals %+v", o.Totals)
 	}
 }
+
+func TestStressNewUnparsableRateIsNoVolNotIntrinsic(t *testing.T) {
+	t.Parallel()
+	b := book(put("equity", "-1", "100", "90", "3", false))
+	b.Rate = "n/a"
+	o := stressIt(b)
+	if len(o.Excluded) != 1 || o.Excluded[0].Reason != "no_vol" {
+		t.Fatalf("excluded %+v totals %+v", o.Excluded, o.Totals)
+	}
+	if _, ok := total(o, "USD"); ok {
+		t.Fatalf("total with an unparsable rate: %+v", o.Totals)
+	}
+}
