@@ -83,9 +83,6 @@ export function OptionsSummaryCard({ payload, titleHref }: { payload: Payload; t
           ))}
         </div>
         <div className="space-y-1" data-premium-series>
-          <div className="text-sm font-medium" data-series-text>
-            {card.premium_series_text}
-          </div>
           <Chart spec={spec} ariaText={card.premium_series_text} name="options-premium-6m" />
           <div className="text-xs text-muted-foreground" data-series-caption>
             {card.premium_series_caption}
