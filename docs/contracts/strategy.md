@@ -81,3 +81,17 @@ Fact keys:
 
 `no_class`, `no_vol`, `stale_mark`, `expired`, `not_in_ledger`, `no_capture` (exclusions of a holding); `no_funds`, `no_fx`, `no_rule`,
 `capital` (of `fit_capital`: `unknown no_funds`, `unknown no_fx`, `no_rule` for a structure no formula covers, `block capital`).
+
+## Replay
+
+Types in `internal/strategy/replayapi/api.go` (declarations only; imports `contracts` and `strategy`): interface `Replayer`
+(`Replay(lots, mkt, variants, sessionDays, asOf, minLots) Report`, pure) and types `Variant`, `Lot`, `Market`, `Quote`,
+`Outcome`, `Line`, `Report`. Design: `docs/design/strategy-replay.md` (Interface, Decisions 2, 3, 5, 10). All names are new.
+
+- An absent day of `Market.Quotes` is no quote and is never filled by a mid, a last, a neighbouring day or a model.
+- `Outcome.Reason` of a lot that is not priced is one of five words: `no_instrument`, `gap_before_close`, `no_settle_price`,
+  `not_expired`, `split_in_life`.
+- `Lot.Fate` is one of six words: `held`, `assigned`, `assigned_early`, `closed_early`, `rolled`, `open`.
+- A `Line` covers the lots priced under its variant and carries the hold and actual figures (`HoldKeptShare`, `ActualKeptShare`)
+  of the same lots, so a rule is read against hold and against him on identical lots.
+- The replayer writes nothing: no store, file, clock or network.
