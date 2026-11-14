@@ -226,7 +226,7 @@ func TestRecentMoneyColumnsRoundingAndGap(t *testing.T) {
 		}
 	}
 	// A row without a mark: the recent columns keep the no_value gap, not the mark gap.
-	o.Commissions, o.RealizedPnL, o.Mid, o.Spot = "", "", "", ""
+	o.Commissions, o.RealizedPnL, o.MarkStatus = "", "", codeNoMark
 	r = recentTable([]opt{o}).Rows[0].Cells
 	for _, col := range []string{"commissions", "realized"} {
 		if g := asGap(t, r[col]); g != codeGap(codeNoValue) {
