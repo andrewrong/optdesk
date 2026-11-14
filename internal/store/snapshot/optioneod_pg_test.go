@@ -373,10 +373,19 @@ func TestOptionEodGrantsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := connectAs(t, name, "ot_w_option_eod")
-	mustFail(t, w, `UPDATE obs.option_eod SET bid = 1`)
+	// Migration 0047: the writer may UPDATE its non-key columns and SELECT the compared ones; a key column, DELETE and
+	// TRUNCATE stay refused.
+	mustFail(t, w, `UPDATE obs.option_eod SET capture_id = gen_random_uuid()`)
+	mustFail(t, w, `UPDATE obs.option_eod SET instrument_id = instrument_id + 1`)
 	mustFail(t, w, `DELETE FROM obs.option_eod`)
-	mustFail(t, w, `SELECT count(*) FROM obs.option_eod`)
 	mustFail(t, w, `TRUNCATE obs.option_eod`)
+	if _, err := w.Exec(context.Background(), `UPDATE obs.option_eod SET bid = bid WHERE false`); err != nil {
+		t.Fatalf("UPDATE of a non-key column must be granted: %v", err)
+	}
+	var wn int
+	if err := w.QueryRow(context.Background(), `SELECT count(session_day) FROM obs.option_eod`).Scan(&wn); err != nil {
+		t.Fatalf("SELECT of a compared column must be granted: %v", err)
+	}
 
 	p := connectAs(t, name, "ot_ro_pages")
 	mustFail(t, p, `SELECT count(*) FROM obs.option_eod`)

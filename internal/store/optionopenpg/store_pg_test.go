@@ -193,14 +193,23 @@ func TestOptionOpenRoundTripAndGrants(t *testing.T) {
 	if _, err := r.Plan(ctx, "2026-11-11", "0945"); err != nil {
 		t.Errorf("the pages role must read the plan view: %v", err)
 	}
-	// A writer cannot update, delete or read the base table.
+	// A writer cannot delete, truncate or update a key column (migration 0047 grants UPDATE of the non-key columns and
+	// SELECT of the compared ones).
 	wc, err := pgx.Connect(ctx, connURL(t, name, "ot_w_option_open"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = wc.Close(ctx) }()
-	mustFail(t, wc, `UPDATE obs.option_open SET skew = true`, `DELETE FROM obs.option_open`, `SELECT 1 FROM obs.option_open`,
+	mustFail(t, wc, `UPDATE obs.option_open SET slot = '0000'`, `UPDATE obs.option_open SET capture_id = gen_random_uuid()`,
+		`DELETE FROM obs.option_open`, `TRUNCATE obs.option_open`,
 		`DELETE FROM plan.option_open_item`, `DELETE FROM master.option_contract`)
+	if _, err := wc.Exec(ctx, `UPDATE obs.option_open SET skew = skew WHERE false`); err != nil {
+		t.Errorf("UPDATE of a non-key column must be granted: %v", err)
+	}
+	var wn int
+	if err := wc.QueryRow(ctx, `SELECT count(session_day) FROM obs.option_open`).Scan(&wn); err != nil {
+		t.Errorf("SELECT of a compared column must be granted: %v", err)
+	}
 	bad := openRow("refresh", 2, t0, 1)
 	if err := w.InsertOptionOpen(ctx, []contracts.OptionOpen{bad}); err == nil {
 		t.Error("a refresh row was stored")
