@@ -23,6 +23,8 @@ from optdesk.ibkr.gateways import ConfigError, GatewaySpec
 from optdesk.ibkr.model import AccountRows, AccountValueRow, Gateway, SessionState
 from optdesk.ibkr.server import (
     BACKOFF_CAP_S,
+    BACKOFF_FIRST_S,
+    STABLE_SESSION_S,
     Config,
     gateway_factory,
     load_config,
@@ -170,19 +172,100 @@ class FlakyGateway:
 def test_supervisor_reconnects_with_backoff() -> None:
     async def run() -> tuple[list[float], int]:
         clock = RecordingClock()
-        gateway = FlakyGateway(failures=8)
+        gateway = FlakyGateway(failures=11)
         task = asyncio.ensure_future(supervise(gateway, clock, "main"))
-        for _ in range(12):
+        for _ in range(14):
             for _ in range(10):
                 await asyncio.sleep(0)
-            await clock.advance(30)
+            await clock.advance(BACKOFF_CAP_S)
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
         return clock.asked, gateway.generation
 
     asked, generation = asyncio.run(run())
-    assert asked[:8] == [1.0, 2.0, 4.0, 8.0, 16.0, BACKOFF_CAP_S, BACKOFF_CAP_S, 30.0]
+    doubling = [BACKOFF_FIRST_S * 2**i for i in range(9)]
+    assert asked[:11] == [*doubling, BACKOFF_CAP_S, BACKOFF_CAP_S]
+    assert asked[:9] == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0, 256.0]
+    assert max(asked) <= BACKOFF_CAP_S
     assert generation == 1
+
+
+class ScriptedGateway:
+    """open_session succeeds; a session lives `lifetimes[n]` seconds of fake time (last repeats)."""
+
+    def __init__(
+        self, clock: FakeClock, lifetimes: list[float], fails: int = 0
+    ) -> None:
+        self.clock = clock
+        self.lifetimes = lifetimes
+        self.fails = fails
+        self.opened_at: list[float] = []
+        self.until = 0.0
+        self.sessions = 0
+
+    async def open_session(self) -> None:
+        self.opened_at.append(self.clock.monotonic())
+        if self.fails:
+            self.fails -= 1
+            raise ConnectionError("down")
+        life = self.lifetimes[min(self.sessions, len(self.lifetimes) - 1)]
+        self.sessions += 1
+        self.until = self.clock.monotonic() + life
+
+    async def status(self) -> SessionState:
+        return SessionState(self.clock.monotonic() < self.until, self.sessions, 1)
+
+
+async def run_supervised(
+    gateway: ScriptedGateway, clock: FakeClock, seconds: float
+) -> None:
+    task = asyncio.ensure_future(supervise(gateway, clock, "main"))
+    await clock.advance(seconds)
+    task.cancel()
+    await asyncio.gather(task, return_exceptions=True)
+
+
+def test_supervisor_backs_off_when_the_session_is_lost_at_once() -> None:
+    clock = RecordingClock()
+    gateway = ScriptedGateway(clock, [0.0])
+    asyncio.run(run_supervised(gateway, clock, 2000.0))
+    assert clock.asked[:11] == [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        BACKOFF_CAP_S,
+        BACKOFF_CAP_S,
+    ]
+    assert BACKOFF_FIRST_S not in clock.asked[1:]
+    assert max(clock.asked) <= BACKOFF_CAP_S
+
+
+def test_supervisor_resets_backoff_after_a_stable_session() -> None:
+    def next_open_after(lifetime: float) -> float:
+        clock = FakeClock()
+        # three failed connects raise the delay to 8; the session opens at 7
+        gateway = ScriptedGateway(clock, [lifetime], fails=3)
+        asyncio.run(run_supervised(gateway, clock, 200.0))
+        return gateway.opened_at[4] - gateway.opened_at[3]
+
+    stable = next_open_after(STABLE_SESSION_S)
+    short = next_open_after(STABLE_SESSION_S - 1)
+    assert stable == STABLE_SESSION_S + BACKOFF_FIRST_S
+    assert short == STABLE_SESSION_S - 1 + 8.0
+
+
+def test_supervisor_waits_after_a_1100_then_lost_session() -> None:
+    clock = RecordingClock()
+    # first session lives 5 s then is lost; every later one connects but is not healthy
+    gateway = ScriptedGateway(clock, [5.0, 0.0])
+    asyncio.run(run_supervised(gateway, clock, 30.0))
+    assert gateway.opened_at[:5] == [0.0, 6.0, 8.0, 12.0, 20.0]
 
 
 class FakeGateway:
