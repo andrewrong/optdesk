@@ -35,7 +35,7 @@ Read at the base (origin/main caacdb4, which includes #135; every item read or g
   (`scramVerifier`), and `extensions` is `timescaledb`. `TestRolesTable` expects five roles.
 - `internal/store/setup/migrate_pg_test.go` and `loader_pg_test.go` migrate all of `migrations/` into scratch databases made
   by `newScratch` (which creates the roles of `roles` under `pg_advisory_lock(54)` and does not create the Timescale
-  extension). CI runs `timescale/timescaledb:2.30.2-pg17` (`.github/workflows/ci-go.yml`).
+  extension). CI runs `timescale/timescaledb:2.19.0-pg15`, the versions of production (#2415) (`.github/workflows/ci-go.yml`).
 - `docs/contracts/store.md` has the eight contract headings and versions v1 to v4; v4 is the loader role.
 - `ops.dataset_window`: see the next section.
 
