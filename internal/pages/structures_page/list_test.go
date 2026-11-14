@@ -64,7 +64,7 @@ func TestRowFieldsFromFigures(t *testing.T) {
 		t.Fatalf("moneyness = %v, ex_dividend = %v", r["moneyness"], r["ex_dividend"])
 	}
 	loss := r["max_loss"].(map[string]any)
-	if loss["value"] != -14750.0 || loss["text"] != "-14750.0000" || loss["unit"] != "usd" {
+	if loss["value"] != -14750.0 || loss["text"] != "-14750.00" || loss["unit"] != "usd" {
 		t.Fatalf("max_loss = %v", loss)
 	}
 	if m["scope"] != "main" || m["generated_at"] != "2026-11-09T09:00:00+08:00" {
