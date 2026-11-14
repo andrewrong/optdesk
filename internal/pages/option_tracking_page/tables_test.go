@@ -155,7 +155,7 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 	o.KeptPercent, o.Delta, o.Commissions, o.RealizedPnL = "62.98765", "-0.2512345", "1.3", "12.345678"
 	o.Iv = "0.31254"
 	c := openTable([]opt{o}).Rows[0].Cells
-	want := map[string]string{"spot": "$394.82", "mid": "$3.33", "kept": "$201.50", "kept_percent": "62.99",
+	want := map[string]string{"spot": "$394.82", "mid": "$3.33", "kept": "$201.50", "kept_percent": "63.0%",
 		"delta": "−0.25", "iv": "31.3%"}
 	for k, w := range want {
 		if v := asValue(t, c[k]); v.Text != w {

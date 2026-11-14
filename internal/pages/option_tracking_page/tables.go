@@ -50,7 +50,7 @@ var openColumns = []colDef[opt]{
 	col("mid", "Mid price", "right", func(o opt) any { return moneyHalfUp(o.Mid, o.Currency, markCode(o)) }).hinted(markNote),
 	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
 	col("kept", "Kept", "right", func(o opt) any { return moneyHalfUp(o.Kept, o.Currency, markCode(o)) }),
-	col("kept_percent", "Kept %", "right", func(o opt) any { return decimalCell(o.KeptPercent, markCode(o), 2) }),
+	col("kept_percent", "Kept %", "right", func(o opt) any { return keptPercentCell(o.KeptPercent, markCode(o)) }),
 	col("delta", "Delta", "right", func(o opt) any { return deltaCell(o.Delta, markCode(o)) }),
 	col("iv", "IV", "right", func(o opt) any { return ivPercentCell(o.Iv, markCode(o)) }),
 	col("results", "Next earnings", "left", resultsCell),
