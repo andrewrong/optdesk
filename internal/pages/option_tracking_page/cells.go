@@ -207,6 +207,19 @@ func ivPercentCell(text, code string) any {
 	return c
 }
 
+// keptPercentCell is the stored kept percent (already a percent number) with one decimal, half away from zero.
+func keptPercentCell(text, code string) any {
+	if text == "" {
+		return codeGap(code)
+	}
+	c, d, ok := parseNumber(text)
+	if !ok {
+		return codeGap(codeUnreadable)
+	}
+	c.Text = signedText(d, 1, "") + "%"
+	return c
+}
+
 func plainCell(s string) any {
 	if s == "" {
 		return textCell(dash)

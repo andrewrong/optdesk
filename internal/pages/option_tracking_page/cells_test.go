@@ -227,3 +227,19 @@ func TestMoneyHalfUp(t *testing.T) {
 		t.Error("unreadable text is not a gap")
 	}
 }
+
+func TestKeptPercentCell(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{"37.73": "37.7%", "62.98765": "63.0%", "-25.00": "−25.0%", "-0.04": "0.0%", "0.05": "0.1%"} {
+		c := asValue(t, keptPercentCell(in, codeNoValue))
+		if c.Text != want || c.Value == nil || string(*c.Value) != in {
+			t.Errorf("keptPercentCell(%q) = %+v, want text %q", in, c, want)
+		}
+	}
+	if g := asGap(t, keptPercentCell("", codeNoMark)); g.Reason != "missing_quote" {
+		t.Errorf("empty = %+v", g)
+	}
+	if g := asGap(t, keptPercentCell("abc", codeNoValue)); g.Text != "Unreadable" {
+		t.Errorf("abc = %+v", g)
+	}
+}
