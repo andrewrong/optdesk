@@ -82,7 +82,8 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 }
 
 // newDatabase creates a database with a random name, the Timescale extension and the roles, applies 0002, 0003
-// and 0006 there, a master.instrument stub (ids 1..100 and those of the fixture), and 0029, 0047 and 0049, and drops the database in t.Cleanup. It returns its name.
+// and 0006 there, a master.instrument stub (ids 1..100 and those of the fixture), and 0029, 0047 and 0049,
+// and drops the database in t.Cleanup. It returns its name.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	return newDatabaseAt(t, true)
