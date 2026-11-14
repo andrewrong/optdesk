@@ -20,6 +20,7 @@ const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
 const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; icon?: LucideIcon })[] = [
   { label: 'Home', path: '/home' },
   { label: 'Macro', path: '/macro' },
+  { label: 'Market state', path: '/market-state' },
   { label: 'Household', path: '/household' },
   { label: 'Positions', path: '/positions' },
   { label: 'Risk', path: '/risk' },
