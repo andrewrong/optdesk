@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,8 +37,33 @@ func TestCompaniesPepbWiring(t *testing.T) {
 	if _, ok := pepbPageOf(t, fx)["pepb"]; !ok {
 		t.Fatal("page with a bar reader has no pepb property")
 	}
-	fx.inputs.Bars = nil
+	// Without the catalog and the name reader no symbol can be resolved: the block is off.
+	fx.inputs.Catalog, fx.inputs.Names = nil, nil
 	if _, ok := pepbPageOf(t, fx)["pepb"]; ok {
-		t.Fatal("page with a nil bar reader has a pepb property")
+		t.Fatal("page with no resolver has a pepb property")
+	}
+}
+
+func TestNilBarReaderGivesNoDataGap(t *testing.T) {
+	t.Parallel()
+	in := loadFixtureInput(t)
+	view, inputs := fixtureStores(t, in)
+	inputs.Bars = nil
+	page := pepbPageOf(t, companiesInputsFixture{in: in, view: view, inputs: inputs})
+	raw, ok := page["pepb"]
+	if !ok || !strings.Contains(string(raw), `"no_data"`) {
+		t.Fatal("nil bar reader: want a Gap no_data (acceptance 3)")
+	}
+}
+
+func TestSymbolWithNoInstrumentGivesNoDataGap(t *testing.T) {
+	t.Parallel()
+	in := loadFixtureInput(t)
+	view, inputs := fixtureStores(t, in)
+	inputs.Catalog, inputs.Names = fxFakeCatalog{}, fxFakeNames{}
+	page := pepbPageOf(t, companiesInputsFixture{in: in, view: view, inputs: inputs})
+	raw, ok := page["pepb"]
+	if !ok || !strings.Contains(string(raw), `"no_data"`) {
+		t.Fatal("symbol with no instrument id: want a Gap no_data")
 	}
 }

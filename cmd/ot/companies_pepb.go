@@ -30,10 +30,10 @@ func barsOf(res *symbolIDs, bars bar.PriceBarReader) func(context.Context, strin
 	}
 }
 
-// withCompaniesPepb sets Pepb and Bars of cfg when the inputs have the bar reader, the catalog and the name
-// reader; otherwise the page has no pepb property.
+// withCompaniesPepb sets Pepb and Bars of cfg when the inputs have the catalog and the name reader; otherwise the
+// page has no pepb property. A nil bar reader still switches the block on: every symbol has no bars, a Gap no_data.
 func withCompaniesPepb(cfg companies_page.Config, in companiesInputs) companies_page.Config {
-	if in.Bars == nil || in.Catalog == nil || in.Names == nil {
+	if in.Catalog == nil || in.Names == nil {
 		return cfg
 	}
 	cfg.Pepb = pepb.New(gonumstats.New())
