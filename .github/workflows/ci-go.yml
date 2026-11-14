@@ -94,7 +94,10 @@ jobs:
         if: steps.affected.outputs.pkgs != ''
         env:
           PKGS: ${{ steps.affected.outputs.pkgs }}
-        run: go test $PKGS
+        run: |
+          if [ -d /dev/shm ] && [ -w /dev/shm ]; then export TMPDIR=/dev/shm; fi
+          export GOTMPDIR="$RUNNER_TEMP"
+          go test $PKGS
 
   test-pg:
     runs-on: ubuntu-latest
@@ -129,4 +132,7 @@ jobs:
           cache: true
       # Passes while no test carries the pg build tag.
       - name: go test -tags pg
-        run: go test -tags pg ./...
+        run: |
+          if [ -d /dev/shm ] && [ -w /dev/shm ]; then export TMPDIR=/dev/shm; fi
+          export GOTMPDIR="$RUNNER_TEMP"
+          go test -tags pg ./...

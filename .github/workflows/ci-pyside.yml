@@ -38,4 +38,6 @@ jobs:
       - name: mypy
         run: uv run mypy --strict src tests
       - name: pytest
-        run: uv run pytest -n auto
+        run: |
+          if [ -d /dev/shm ] && [ -w /dev/shm ]; then export TMPDIR=/dev/shm; fi
+          uv run pytest -n auto

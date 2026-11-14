@@ -67,7 +67,9 @@ jobs:
         run: pnpm --dir web exec eslint .
       - name: vitest
         if: steps.guard.outputs.run == 'true'
-        run: pnpm --dir web exec vitest run
+        run: |
+          if [ -d /dev/shm ] && [ -w /dev/shm ]; then export TMPDIR=/dev/shm; fi
+          pnpm --dir web exec vitest run
       - name: build
         if: steps.guard.outputs.run == 'true'
         run: pnpm --dir web run build
