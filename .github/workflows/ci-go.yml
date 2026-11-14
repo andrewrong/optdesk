@@ -108,7 +108,8 @@ jobs:
       PGSSLMODE: disable
     services:
       timescaledb:
-        image: timescale/timescaledb:2.30.2-pg17@sha256:b346edcdb51a1fd6020e3965e0bd1c9f3406fa6d5fbce1e28f4852587ef934e2
+        # Equals production (TimescaleDB 2.19.0 on PostgreSQL 15); change only together with production.
+        image: timescale/timescaledb:2.19.0-pg15@sha256:27f904a5870dc0f28afd7b87d62b83c8c420a21d29320bdf4e4371cdabdc40a3
         env:
           POSTGRES_PASSWORD: ci-only-throwaway
           POSTGRES_DB: optdesk_test
