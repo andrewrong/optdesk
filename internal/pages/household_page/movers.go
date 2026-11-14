@@ -276,7 +276,7 @@ func priceOf(f compute.FigureValue, currency string) any {
 	if currency != "USD" && currency != currencyJPY {
 		return gapJSON{Reason: "unsupported_currency", Text: gapText("unsupported_currency")}
 	}
-	return priceCell{Value: json.Number(f.Value), Text: moneyText("", f.Value), Currency: currency}
+	return priceCell{Value: json.Number(f.Value), Text: moneyText("", twoDecimals(f.Value)), Currency: currency}
 }
 
 // moverRowsOf copies the lines in the order the figure returns them.
@@ -294,6 +294,36 @@ func moverRowsOf(lines []blockapi.MoverLine, alias string, tag accountTag) []mov
 			r.Note = strings.TrimSpace(r.Note + " (" + gapText(l.Amount.Gap) + ")")
 		}
 		out = append(out, r)
+	}
+	return out
+}
+
+// twoDecimals is the decimal text rounded to two decimals, half away from zero, on the digits of the
+// text (no float). A result of zero carries no sign. The text is a decimal the caller has checked.
+func twoDecimals(v string) string {
+	neg := strings.HasPrefix(v, "-")
+	v = strings.TrimLeft(v, "+-")
+	whole, frac, _ := strings.Cut(v, ".")
+	if whole == "" {
+		whole = "0"
+	}
+	frac += "000"
+	digits := []byte(whole + frac[:2])
+	if frac[2] >= '5' {
+		i := len(digits) - 1
+		for ; i >= 0 && digits[i] == '9'; i-- {
+			digits[i] = '0'
+		}
+		if i < 0 {
+			digits = append([]byte{'1'}, digits...)
+		} else {
+			digits[i]++
+		}
+	}
+	n := len(digits) - 2
+	out := string(digits[:n]) + "." + string(digits[n:])
+	if neg && strings.Trim(out, "0.") != "" {
+		out = "-" + out
 	}
 	return out
 }
