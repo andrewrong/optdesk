@@ -73,6 +73,19 @@ func numValue(text string) (valueCell, bool) {
 	return c, true
 }
 
+// parseNumber is the value cell of the stored decimal text with the decimal it holds.
+func parseNumber(text string) (valueCell, decimal.Decimal, bool) {
+	c, ok := numValue(text)
+	if !ok {
+		return valueCell{}, decimal.Decimal{}, false
+	}
+	d, err := decimal.NewFromString(strings.TrimPrefix(text, "+"))
+	if err != nil {
+		return valueCell{}, decimal.Decimal{}, false
+	}
+	return c, d, true
+}
+
 // numCell is a numeric cell; the empty text is a gap with code, never a zero.
 func numCell(text, code string) any {
 	if text == "" {
@@ -93,12 +106,8 @@ func decimalCell(text, code string, places int32) any {
 	if text == "" {
 		return codeGap(code)
 	}
-	c, ok := numValue(text)
+	c, d, ok := parseNumber(text)
 	if !ok {
-		return codeGap(codeUnreadable)
-	}
-	d, err := decimal.NewFromString(strings.TrimPrefix(text, "+"))
-	if err != nil {
 		return codeGap(codeUnreadable)
 	}
 	c.Text = d.Round(places).StringFixed(places)
@@ -127,13 +136,9 @@ func moneyCell(text, currency string) any {
 	if text == "" {
 		return codeGap(codeNoValue)
 	}
-	c, ok := numValue(text)
+	c, d, ok := parseNumber(text)
 	sym, known := currencySymbols[currency]
 	if !ok || !known {
-		return codeGap(codeUnreadable)
-	}
-	d, err := decimal.NewFromString(strings.TrimPrefix(text, "+"))
-	if err != nil {
 		return codeGap(codeUnreadable)
 	}
 	neg := d.IsNegative()
