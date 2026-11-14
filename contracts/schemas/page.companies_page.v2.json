@@ -229,6 +229,10 @@
       ],
       "description": "One company at one cost (the bare strike of a shown offer): the returns at that cost, no rank and no verdict."
     },
+    "Day": {
+      "type": "string",
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$"
+    },
     "DiagGroup": {
       "type": "object",
       "additionalProperties": false,
@@ -528,6 +532,225 @@
       ],
       "title": "HoldingsBlock",
       "type": "object"
+    },
+    "PepbAtPercentile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "percentile": {
+          "type": "integer",
+          "enum": [
+            20,
+            50
+          ]
+        },
+        "ratio": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "unit": {
+                  "const": "ratio"
+                }
+              }
+            }
+          ]
+        },
+        "price": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "unit": {
+                  "const": "price"
+                }
+              }
+            }
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "percentile",
+        "ratio",
+        "price",
+        "text"
+      ],
+      "description": "The ratio at a rank of the window and the price that puts today's ratio there; history, not a buy price."
+    },
+    "PepbBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "basis_note": {
+          "$ref": "#/$defs/Text"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PepbRow"
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "basis_note",
+        "rows"
+      ]
+    },
+    "PepbHistoryPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "day": {
+          "$ref": "#/$defs/Day"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "day",
+        "value",
+        "text"
+      ],
+      "description": "One stored day of the chart."
+    },
+    "PepbLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "ratio": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "unit": {
+                  "const": "ratio"
+                }
+              }
+            }
+          ]
+        },
+        "day": {
+          "$ref": "#/$defs/Day"
+        },
+        "basis_end": {
+          "$ref": "#/$defs/Day"
+        },
+        "percentile": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ]
+        },
+        "at_percentile": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PepbAtPercentile"
+          },
+          "maxItems": 2
+        },
+        "shares": {
+          "$ref": "#/$defs/Text"
+        },
+        "shares_filed": {
+          "$ref": "#/$defs/Day"
+        },
+        "window_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "window_from": {
+          "$ref": "#/$defs/Day"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PepbHistoryPoint"
+          },
+          "maxItems": 120
+        }
+      },
+      "required": [
+        "text",
+        "ratio",
+        "day",
+        "basis_end",
+        "percentile",
+        "at_percentile",
+        "shares",
+        "shares_filed",
+        "window_days",
+        "window_from",
+        "history"
+      ],
+      "description": "One ratio of one company on the newest stored day, as produced text and figures; no verdict."
+    },
+    "PepbRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "pe": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PepbLine"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ]
+        },
+        "pb": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PepbLine"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ]
+        },
+        "forward": {
+          "allOf": [
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "Forward PE has no estimates source: always a Gap."
+        }
+      },
+      "required": [
+        "symbol",
+        "pe",
+        "pb",
+        "forward"
+      ],
+      "description": "One company: PE and PB each a line or a Gap, and the forward Gap."
     },
     "QuestionRow": {
       "type": "object",
@@ -889,6 +1112,17 @@
       "maxItems": 20,
       "title": "Notes",
       "type": "array"
+    },
+    "pepb": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PepbBlock"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ],
+      "description": "Optional: PE and PB of each company from stored filings and bars, or a Gap."
     },
     "questions": {
       "anyOf": [

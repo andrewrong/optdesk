@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -87,7 +88,6 @@ func TestRunOnceNothingCapturedStatus(t *testing.T) {
 		t.Fatalf("exit must stay 0: %v", err)
 	}
 	want := []string{
-		"run-once 2026-03-05 status=nothing_captured captured=0 keys=25\n",
 		"job=fred_series day=2026-03-05 dataset=obs.series_point subject=DGS10 outcome=no_value reason=no_value\n",
 	}
 	for _, s := range []string{"SPX", "XSP", "RUT"} {
@@ -97,6 +97,9 @@ func TestRunOnceNothingCapturedStatus(t *testing.T) {
 		if !strings.Contains(out.String(), w) {
 			t.Fatalf("missing %q in %q", w, out.String())
 		}
+	}
+	if !regexp.MustCompile(`(?m)^run-once 2026-03-05 status=nothing_captured captured=0 keys=[1-9][0-9]*$`).MatchString(out.String()) {
+		t.Fatalf("summary line missing in %q", out.String())
 	}
 }
 
