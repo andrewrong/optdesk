@@ -32,6 +32,9 @@ func (e *listedError) Unwrap() error             { return e.err }
 // listedBuild builds the inner job of one job family from the entries of its group.
 type listedBuild func([]jobs.WatchEntry) (contracts.Job, error)
 
+// listedKeepDays is the number of newest planned days whose snapshots a listedJob keeps.
+const listedKeepDays = 7
+
 // planSnap is one Plan of a day: its key set and the inner job that planned it.
 type planSnap struct {
 	keys  map[contracts.ExpectedKey]bool
@@ -48,9 +51,8 @@ type listedJob struct {
 	clock  clock.Clock
 
 	mu     sync.Mutex
-	newest contracts.Job // answers ID and the optional methods
-	day    contracts.Day
-	snaps  []planSnap // oldest first, all of day
+	newest contracts.Job                // answers ID and the optional methods
+	snaps  map[contracts.Day][]planSnap // per day, oldest first; at most listedKeepDays days
 }
 
 // newListedJob builds the inner job once from the list at start, so that the schedule and the optional methods
@@ -136,10 +138,20 @@ func (l *listedJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.Ex
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.day != day {
-		l.day, l.snaps = day, nil
+	if l.snaps == nil {
+		l.snaps = map[contracts.Day][]planSnap{}
 	}
-	l.snaps = append(l.snaps, planSnap{keys: set, inner: inner})
+	l.snaps[day] = append(l.snaps[day], planSnap{keys: set, inner: inner})
+	if len(l.snaps) > listedKeepDays {
+		all := make([]contracts.Day, 0, len(l.snaps))
+		for d := range l.snaps {
+			all = append(all, d)
+		}
+		slices.Sort(all) // ISO days sort by date
+		for _, d := range all[:len(all)-listedKeepDays] {
+			delete(l.snaps, d)
+		}
+	}
 	l.newest = inner
 	return keys, hash, nil
 }
@@ -148,11 +160,10 @@ func (l *listedJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.Ex
 func (l *listedJob) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	l.mu.Lock()
 	var inner contracts.Job
-	if l.day == day {
-		for i := len(l.snaps) - 1; i >= 0 && inner == nil; i-- {
-			if l.snaps[i].holds(keys) {
-				inner = l.snaps[i].inner
-			}
+	snaps := l.snaps[day]
+	for i := len(snaps) - 1; i >= 0 && inner == nil; i-- {
+		if snaps[i].holds(keys) {
+			inner = snaps[i].inner
 		}
 	}
 	l.mu.Unlock()
