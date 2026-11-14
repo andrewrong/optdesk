@@ -72,6 +72,21 @@ func TestRowFieldsFromFigures(t *testing.T) {
 	}
 }
 
+func TestRowMoneyTextsHaveTwoDecimals(t *testing.T) {
+	t.Parallel()
+	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
+	r := groupRows(t, m, 0)[0]
+	for key, want := range map[string]struct {
+		value float64
+		text  string
+	}{"max_gain": {250, "250.00"}, "pnl": {130, "130.00"}} {
+		c := r[key].(map[string]any)
+		if c["value"] != want.value || c["text"] != want.text {
+			t.Fatalf("%s = %v, want value %v text %s", key, c, want.value, want.text)
+		}
+	}
+}
+
 func TestCompareParamsFromStructureParams(t *testing.T) {
 	t.Parallel()
 	res := readResult(t, "list_ok")
