@@ -87,7 +87,7 @@ func TestRunOnceNothingCapturedStatus(t *testing.T) {
 		t.Fatalf("exit must stay 0: %v", err)
 	}
 	want := []string{
-		"run-once 2026-03-05 status=nothing_captured captured=0 keys=19\n",
+		"run-once 2026-03-05 status=nothing_captured captured=0 keys=25\n",
 		"job=fred_series day=2026-03-05 dataset=obs.series_point subject=DGS10 outcome=no_value reason=no_value\n",
 	}
 	for _, s := range []string{"SPX", "XSP", "RUT"} {
