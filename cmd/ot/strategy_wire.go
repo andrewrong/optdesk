@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/candidate"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
 	"github.com/andrewrong/optdesk/internal/store/strategyresultpg"
 	"github.com/andrewrong/optdesk/internal/strategy"
@@ -77,4 +78,48 @@ func (f jobFactory) shadowOf(ctx context.Context, dsn string, extra *closerSet) 
 		return shadowStores{}, errors.New("build strategies failed: the job takes one strategy")
 	}
 	return shadowStores{strategy: list[0], results: res}, nil
+}
+
+// openOldCandidateStore opens the old candidate store (candidates.option_candidate); a failed open is a nil
+// interface, not a typed nil. strategy-compare reads its old side through it, so it does not follow the cutover.
+func openOldCandidateStore(ctx context.Context, dsn string) (candidateStore, error) {
+	s, err := candidate.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// resultCandidates is the candidate store of the cutover: the result reader over the old one, and the close of both.
+type resultCandidates struct {
+	store.CandidateReader
+	res resultStore
+	old candidateStore
+}
+
+func (r resultCandidates) Close() error {
+	return errors.Join(r.res.Close(), r.old.Close())
+}
+
+// openResultCandidateStore is the default of deps.openCandidate (docs/design/strategy-framework.md, 8 cutover):
+// short_put of a day with a result run is read from strategy.result, everything else from the old rows. A failed
+// open is a nil interface, not a typed nil.
+func openResultCandidateStore(ctx context.Context, dsn string) (candidateStore, error) {
+	return openResultCandidateWith(openStrategyResults, openOldCandidateStore)(ctx, dsn)
+}
+
+// openResultCandidateWith is openResultCandidateStore over the given openers, so a test hands it fake stores.
+func openResultCandidateWith(openRes openStrategyResultsFunc, openOld openCandidateFunc) openCandidateFunc {
+	return func(ctx context.Context, dsn string) (candidateStore, error) {
+		res, err := openRes(ctx, dsn)
+		if err != nil {
+			return nil, err
+		}
+		old, err := openOld(ctx, dsn)
+		if err != nil {
+			_ = res.Close()
+			return nil, err
+		}
+		return resultCandidates{CandidateReader: strategyresultpg.NewCandidateReader(res, old), res: res, old: old}, nil
+	}
 }

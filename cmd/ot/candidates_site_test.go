@@ -14,6 +14,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/strategyresult"
+	"github.com/andrewrong/optdesk/internal/store/strategyresultpg"
 )
 
 // candidatesFixture is an app whose optionCandidatesPage fake builds {"schema":"option_candidates_page"} and
@@ -284,5 +286,59 @@ func TestBuildCandidatesReadsRateSeries(t *testing.T) {
 		if id != "DGS3MO" {
 			t.Fatalf("series asked for %v, want only DGS3MO", rs.ids)
 		}
+	}
+}
+
+// emptyCandidates is an old reader with no row.
+type emptyCandidates struct{}
+
+func (emptyCandidates) Candidates(context.Context, contracts.Day, string) ([]store.Candidate, error) {
+	return nil, nil
+}
+
+// shortPutOnly answers its rows for kind short_put and nothing for the other kinds.
+type shortPutOnly struct{ rows []store.Candidate }
+
+func (s shortPutOnly) Candidates(_ context.Context, _ contracts.Day, kind string) ([]store.Candidate, error) {
+	if kind != "short_put" {
+		return nil, nil
+	}
+	return s.rows, nil
+}
+
+// namesNone is a name reader that knows no instrument.
+type namesNone struct{}
+
+func (namesNone) InstrumentNames(context.Context, []int64) ([]store.InstrumentName, error) {
+	return nil, nil
+}
+
+// seriesNone is a series reader with no point.
+type seriesNone struct{}
+
+func (seriesNone) SeriesPoints(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SeriesPoint, error) {
+	return nil, nil
+}
+
+func TestCandidatesPageSameRowsFromEitherReader(t *testing.T) {
+	t.Parallel()
+	res := &fakeResultStore{rows: []strategyresult.Row{shortPutResultRow("2026-11-05", "r1")}}
+	fromResult := strategyresultpg.NewCandidateReader(res, emptyCandidates{})
+	rows, err := fromResult.Candidates(t.Context(), "2026-11-05", "short_put")
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("rows %v, %v", rows, err)
+	}
+	fromOld := shortPutOnly{rows: rows}
+	render := func(c store.CandidateReader) string {
+		p := newOptionCandidatesPage(time.UTC, "ot-page", "b", "option", c, namesNone{})
+		b, err := p.Build(t.Context(), seriesNone{}, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	a, b := render(fromResult), render(fromOld)
+	if a != b || !strings.Contains(a, `"kind":"short_put"`) {
+		t.Fatalf("pages differ:\n%s\n%s", a, b)
 	}
 }
