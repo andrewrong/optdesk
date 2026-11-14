@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -131,4 +132,45 @@ func fedFundsChange(dff, sp500 compute.Series, asOf contracts.Day, window int, p
 		}
 	}
 	return noFigure(rates, ratsByDay(sp500, asOf))
+}
+
+// NetLiquidity is the net liquidity in whole USD on the newest Wednesday on or before asOf
+// that has one, by the Ease's own day rule (weeklyNetLiquidity); Day is that Wednesday and
+// Aux the day of the RRP point it used. No such Wednesday is the reason no_input.
+func NetLiquidity(walcl, wdtgal, rrp compute.Series, asOf contracts.Day) liquidityapi.Num {
+	wa, wd, rr := ratsByDay(walcl, asOf), ratsByDay(wdtgal, asOf), ratsByDay(rrp, asOf)
+	end, ok := parseDay(asOf)
+	if !ok {
+		return liquidityapi.Num{Reason: compute.BadInput}
+	}
+	if len(wa) == 0 {
+		return liquidityapi.Num{Reason: compute.NoInput}
+	}
+	earliest, _ := parseDay(sortedDays(wa)[0])
+	w := end.AddDate(0, 0, -((int(end.Weekday()) - int(time.Wednesday) + 7) % 7))
+	for ; !w.Before(earliest); w = w.AddDate(0, 0, -7) {
+		v := weeklyNetLiquidity(wa, wd, rr, w)
+		if v == nil {
+			continue
+		}
+		out := liquidityapi.Num{Value: ratText(v), Day: dayText(w)}
+		for k := 0; k < 7; k++ {
+			if rr[dayText(w.AddDate(0, 0, -k))] != nil {
+				out.Aux = dayText(w.AddDate(0, 0, -k))
+				break
+			}
+		}
+		return out
+	}
+	return liquidityapi.Num{Reason: compute.NoInput}
+}
+
+// ratText is a finite decimal exactly as text.
+func ratText(x *big.Rat) string {
+	for p := 0; p <= 40; p++ {
+		if new(big.Rat).Mul(x, new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(p)), nil))).IsInt() {
+			return x.FloatString(p)
+		}
+	}
+	return x.FloatString(6)
 }

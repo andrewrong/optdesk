@@ -109,20 +109,22 @@ func reportPage(ctx context.Context, a *app, market, slot string) (pages.Page, f
 // series and account stores opened with the pages line when deps has an opener (a missing opener is a nil
 // reader, which the block shows as the gap no_reader). No reader of master.session_day is opened today, as in
 // openSiteReaders.
-func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingViewReader) (siteReaders, func(), error) {
+func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingViewReader) (reportReaders, func(), error) {
 	if m == "JP" {
-		return siteReaders{view: v}, func() {}, nil // the builder never calls the blocks of JP
+		return reportReaders{siteReaders: siteReaders{view: v}}, func() {}, nil // the builder never calls the blocks of JP
 	}
 	if a.profile.Name == "demo" {
-		return siteReaders{view: v, series: demoReader{}, noticeAccount: demoNoticeAccount{}}, func() {}, nil
+		// the global assets block has no demo bars: it is the gap no_reader, never a connection
+		return reportReaders{siteReaders: siteReaders{view: v, series: demoReader{}, noticeAccount: demoNoticeAccount{}}}, func() {}, nil
 	}
-	rd := siteReaders{view: v}
-	if a.deps.openSeries == nil && a.deps.openAccount == nil {
+	rd := reportReaders{siteReaders: siteReaders{view: v}}
+	openIDs := reportStockIDOpener(a)
+	if a.deps.openSeries == nil && a.deps.openAccount == nil && a.deps.openBar == nil && openIDs == nil {
 		return rd, func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
-		return siteReaders{}, nil, err
+		return reportReaders{}, nil, err
 	}
 	dsn := env[pagesDSNName]
 	var closers []func() error
@@ -131,9 +133,9 @@ func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingVi
 			_ = closers[i]()
 		}
 	}
-	fail := func() (siteReaders, func(), error) {
+	fail := func() (reportReaders, func(), error) {
 		closeAll()
-		return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
+		return reportReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
 	}
 	if a.deps.openSeries != nil {
 		ser, err := a.deps.openSeries(ctx, dsn)
@@ -151,16 +153,33 @@ func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingVi
 		closers = append(closers, acc.Close)
 		rd.noticeAccount = acc // the account reader of the notices page, which the report blocks read too
 	}
+	if a.deps.openBar != nil {
+		bs, err := a.deps.openBar(ctx, dsn)
+		if err != nil {
+			return fail()
+		}
+		closers = append(closers, bs.Close)
+		rd.bars = bs
+	}
+	if openIDs != nil {
+		ids, err := openIDs(ctx, dsn)
+		if err != nil {
+			return fail()
+		}
+		closers = append(closers, ids.Close)
+		rd.stockIDs = ids
+	}
 	return rd, closeAll, nil
 }
 
 // reportBlocksConfig is the one report_blocks.Config of the report: the zone, the aliases (main first) of
 // noticeAliases and the readers of rd. The option ledger fields stay nil, so the blocks that need them show
 // no_reader. An error of noticeAliases leaves the aliases empty, which is the same gap.
-func reportBlocksConfig(a *app, rd siteReaders) report_blocks.Config {
+func reportBlocksConfig(a *app, rd reportReaders) report_blocks.Config {
 	c := report_blocks.Config{
 		Zone: a.profile.Zone, Account: rd.noticeAccount, Series: rd.series, Sessions: rd.sessions,
 		Figures: pagefig.New,
+		Bars:    rd.bars, StockIDs: rd.stockIDs, Global: pagefig.NewGlobal, Assets: reportAssets(),
 	}
 	if main, labels, err := noticeAliases(a); err == nil {
 		c.Aliases = append([]string{main}, slices.DeleteFunc(slices.Clone(labels), func(l string) bool { return l == main })...)
@@ -171,7 +190,7 @@ func reportBlocksConfig(a *app, rd siteReaders) report_blocks.Config {
 // reportPageOver is the report page for envelope values m and s whose risks block is read from v and whose
 // actions, account_moves and market_watch blocks are built by report_blocks from the readers rd. A nil
 // reader of rd keeps the gap of its block; market JP never calls them.
-func reportPageOver(a *app, m, s string, v store.ReadingViewReader, rd siteReaders) pages.Page {
+func reportPageOver(a *app, m, s string, v store.ReadingViewReader, rd reportReaders) pages.Page {
 	risks := func(ctx context.Context, day contracts.Day, at time.Time) ([]byte, error) {
 		rules, err := a.deps.alertRules()
 		if err != nil {
@@ -188,6 +207,7 @@ func reportPageOver(a *app, m, s string, v store.ReadingViewReader, rd siteReade
 		Actions:      report_page.BlockFunc(report_blocks.Actions(bc)),
 		AccountMoves: report_page.BlockFunc(report_blocks.AccountMoves(bc)),
 		MarketWatch:  report_page.BlockFunc(report_blocks.MarketWatch(bc)),
+		GlobalAssets: report_page.BlockFunc(report_blocks.GlobalAssets(bc)),
 	})
 }
 

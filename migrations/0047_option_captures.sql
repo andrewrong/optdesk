@@ -7,6 +7,29 @@ SET LOCAL lock_timeout = '5s';
 -- Needs the timescaledb extension, whose functions are schema-qualified because the migrator runs with search_path set
 -- to meta.
 
+-- 0. Reset: production may hold a compressed twin of obs.option_open made before this file with other settings (the
+-- first run there failed with SQLSTATE 42703, column "underlying_id" of "_compressed_hypertable_11"). When compression
+-- is on, drop the policy, decompress every chunk and turn compression off, which drops the stale twin. A no-op on a
+-- fresh database, where compression is off.
+-- +goose StatementBegin
+DO $reset$
+DECLARE
+    c regclass;
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables
+        WHERE hypertable_schema = 'obs' AND hypertable_name = 'option_open' AND compression_enabled
+    ) THEN
+        PERFORM public.remove_compression_policy('obs.option_open', if_exists => true);
+        FOR c IN SELECT public.show_chunks('obs.option_open') LOOP
+            PERFORM public.decompress_chunk(c, if_compressed => true);
+        END LOOP;
+        ALTER TABLE obs.option_open SET (timescaledb.compress = false);
+    END IF;
+END
+$reset$;
+-- +goose StatementEnd
+
 -- 1. Compression of obs.option_open (never compressed; the orderby holds the whole key).
 ALTER TABLE obs.option_open SET (
     timescaledb.compress,
