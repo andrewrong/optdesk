@@ -312,3 +312,105 @@ func TestShadowThroughRealReaderEqualsOldRows(t *testing.T) {
 		}
 	}
 }
+
+// shortPutResultRow is a result row of a short put on day, as the job writes it.
+func shortPutResultRow(day contracts.Day, runID string) strategyresult.Row {
+	rank := 1
+	return strategyresult.Row{SessionDay: day, RunID: runID, Strategy: "short_put", RuleVersion: "put_v1", ParamHash: "h",
+		Key: "42", UnderlyingID: 7, Status: "ok", Rank: &rank,
+		Legs:   `[{"instrument_id":"42","side":"short","right":"put","strike":"90","expiry":"2026-12-18","multiplier":"100","quantity":1}]`,
+		Checks: "[]", Facts: "{}", ComputedAt: time.Date(2026, 11, 5, 15, 0, 0, 0, time.UTC)}
+}
+
+// kindDayCandidates is the old reader: it answers the one row it holds and counts its reads and its closes.
+type kindDayCandidates struct {
+	row    store.Candidate
+	reads  atomic.Int32
+	closed atomic.Int32
+}
+
+func (k *kindDayCandidates) Candidates(context.Context, contracts.Day, string) ([]store.Candidate, error) {
+	k.reads.Add(1)
+	return []store.Candidate{k.row}, nil
+}
+
+func (k *kindDayCandidates) Close() error { k.closed.Add(1); return nil }
+
+// cutoverOpener is the default opener of the candidate seam over fake stores.
+func cutoverOpener(res *fakeResultStore, old *kindDayCandidates) openCandidateFunc {
+	return openResultCandidateWith(
+		func(context.Context, string) (resultStore, error) { return res, nil },
+		func(context.Context, string) (candidateStore, error) { return old, nil })
+}
+
+func TestDefaultCandidateOpenerReadsResultTable(t *testing.T) {
+	t.Parallel()
+	d := newDeps()
+	if d.openCandidate == nil || d.openOldCandidate == nil {
+		t.Fatal("the default wiring leaves a candidate opener nil")
+	}
+	res := &fakeResultStore{rows: []strategyresult.Row{shortPutResultRow("2026-11-05", "r1")}}
+	old := &kindDayCandidates{row: store.Candidate{Alias: "old"}}
+	cs, err := cutoverOpener(res, old)(t.Context(), "dsn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := cs.Candidates(t.Context(), "2026-11-05", "short_put")
+	if err != nil || len(got) != 1 || got[0].InstrumentID != 42 || got[0].RunID != "r1" || got[0].Alias == "old" {
+		t.Fatalf("rows %+v, %v", got, err)
+	}
+	if old.reads.Load() != 0 {
+		t.Fatal("the old reader was read")
+	}
+	if err := cs.Close(); err != nil || old.closed.Load() != 1 {
+		t.Fatalf("close %v, old closed %d", err, old.closed.Load())
+	}
+}
+
+func TestCutoverFallsBackToOldRows(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		day  contracts.Day
+		kind string
+		res  *fakeResultStore
+	}{
+		{"covered_call", "2026-11-05", "covered_call", &fakeResultStore{rows: []strategyresult.Row{shortPutResultRow("2026-11-05", "r1")}}},
+		{"held_call_guard", "2026-11-05", "held_call_guard", &fakeResultStore{rows: []strategyresult.Row{shortPutResultRow("2026-11-05", "r1")}}},
+		{"no result run", "2026-11-05", "short_put", &fakeResultStore{}},
+		{"insert failed", "2026-11-05", "short_put", &fakeResultStore{}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			old := &kindDayCandidates{row: store.Candidate{Alias: "old"}}
+			cs, err := cutoverOpener(c.res, old)(t.Context(), "dsn")
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := cs.Candidates(t.Context(), c.day, c.kind)
+			if err != nil || len(got) != 1 || got[0].Alias != "old" || old.reads.Load() != 1 {
+				t.Fatalf("rows %+v, %v, old reads %d", got, err, old.reads.Load())
+			}
+		})
+	}
+}
+
+func TestResultCandidateOpenFailureIsNilInterface(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	var closed atomic.Int32
+	res := &fakeResultStore{closed: &closed}
+	cs, err := openResultCandidateWith(
+		func(context.Context, string) (resultStore, error) { return res, nil },
+		func(context.Context, string) (candidateStore, error) { return nil, boom })(t.Context(), "dsn")
+	if cs != nil || !errors.Is(err, boom) || closed.Load() != 1 {
+		t.Fatalf("store %v, err %v, result closed %d", cs, err, closed.Load())
+	}
+	cs, err = openResultCandidateWith(
+		func(context.Context, string) (resultStore, error) { return nil, boom },
+		nil)(t.Context(), "dsn")
+	if cs != nil || !errors.Is(err, boom) {
+		t.Fatalf("store %v, err %v", cs, err)
+	}
+}

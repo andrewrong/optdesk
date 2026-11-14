@@ -16,7 +16,7 @@ import (
 func init() { register("strategy-compare", strategyCompareCmd) }
 
 // strategyCompareCmd is `ot strategy-compare [--day DAY]`: it reads the short_put rows of DAY from the old table
-// (deps.openCandidate) and from strategy.result (deps.openStrategyResults), both with OT_PG_DSN_PAGES (role
+// (deps.openOldCandidate) and from strategy.result (deps.openStrategyResults), both with OT_PG_DSN_PAGES (role
 // ot_ro_pages), and prints `equal rows=N` or one line per difference; a difference is an error (exit 1). It
 // writes nothing. DAY defaults to the newest XNYS session day on or before today (read with the same line), so a run on a weekend or
 // before the open never compares an empty day; with no session day found it is an error, not `equal`.
@@ -38,7 +38,7 @@ func strategyCompareCmd(a *app, args []string) error {
 	if dsn == "" {
 		return errors.New(pagesDSNName + " is not set")
 	}
-	if a.deps.openCandidate == nil || a.deps.openStrategyResults == nil {
+	if a.deps.openOldCandidate == nil || a.deps.openStrategyResults == nil {
 		return errors.New("strategy-compare is not wired")
 	}
 	ctx := context.Background()
@@ -46,7 +46,7 @@ func strategyCompareCmd(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	old, err := a.deps.openCandidate(ctx, dsn)
+	old, err := a.deps.openOldCandidate(ctx, dsn)
 	if err != nil {
 		return fmt.Errorf("open candidate store with %s failed", pagesDSNName)
 	}
