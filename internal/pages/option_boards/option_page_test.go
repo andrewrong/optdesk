@@ -510,10 +510,18 @@ func TestCardPremiumLineThousands(t *testing.T) {
 	}
 }
 
-func TestMoneyTextNegative(t *testing.T) {
+func TestMoneyText(t *testing.T) {
 	t.Parallel()
-	if got := moneyText("-1234.5"); got != "−$1,234.50" {
-		t.Errorf("moneyText = %q", got)
+	for in, want := range map[string]string{
+		"1940":    "$1,940.00",
+		"1105.75": "$1,105.75",
+		"65.6":    "$65.60",
+		"-1234.5": "−$1,234.50",
+		"abc":     "n/a",
+	} {
+		if got := moneyText(in); got != want {
+			t.Errorf("moneyText(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
