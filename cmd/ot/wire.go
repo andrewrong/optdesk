@@ -165,6 +165,7 @@ type deps struct {
 	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 	openCandidate           openCandidateFunc
+	openOldCandidate        openCandidateFunc
 	openStrategyResults     openStrategyResultsFunc
 	structuresListPage      func(c structures_page.Config, alias string) pages.Page
 	structureDetailPage     func(c structures_page.Config, alias, structureID string) pages.Page
@@ -310,7 +311,8 @@ func newBaseDeps() deps {
 		macroPage:               newMacroPage,
 		marketPage:              newMarketPageOf,
 		optionDataPage:          newOptionDataPage,
-		openCandidate:           openCandidateStore,
+		openCandidate:           openResultCandidateStore,
+		openOldCandidate:        openOldCandidateStore,
 		structuresListPage:      structures_page.NewListPage,
 		structureDetailPage:     structures_page.NewDetailPage,
 		optionResultPage:        option_result_page.NewPage,
@@ -418,15 +420,6 @@ func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main strin
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Main: main, Aliases: aliases,
 		Account: acct, Candidates: cands, Earnings: earn, Rule: rule, Params: params,
 	})
-}
-
-// openCandidateStore opens the candidate store; a failed open is a nil interface, not a typed nil.
-func openCandidateStore(ctx context.Context, dsn string) (candidateStore, error) {
-	s, err := candidate.Open(ctx, dsn)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
 }
 
 // openCandidateWriter opens the candidate store for the job; a failed open is a nil interface, not a typed nil.

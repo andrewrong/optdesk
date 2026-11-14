@@ -1,0 +1,26 @@
+{
+  "_note": "Hand-written, invented numbers for tests of internal/compute/liquidity. Not market data.",
+  "day": "2026-11-12",
+  "series": {
+    "WRESBAL": [
+      {"day": "2026-08-12", "value": 3200000000000},
+      {"day": "2026-10-14", "value": 3000000000000},
+      {"day": "2026-11-11", "value": 3050000000000}
+    ],
+    "TLAACBW027SBOG": [
+      {"day": "2026-11-04", "value": 24000000000000},
+      {"day": "2026-11-11", "value": 24400000000000}
+    ],
+    "RRPONTSYD": [{"day": "2026-11-12", "value": 5000000000}],
+    "SOFR": [
+      {"day": "2026-11-11", "value": 4.30},
+      {"day": "2026-11-12", "value": 4.31}
+    ],
+    "IORB": [
+      {"day": "2026-11-11", "value": 4.15},
+      {"day": "2026-11-12", "value": 4.15}
+    ],
+    "WLCFLPCL": [{"day": "2026-11-11", "value": 3000000000}]
+  },
+  "rank": {"count": 250, "values": [3.0, 3.5, 4.0, 4.5]}
+}
