@@ -17,7 +17,7 @@ const badVersion: unknown = JSON.parse(
 )
 let root: Root | undefined
 let host: HTMLElement
-async function show(payload: typeof ok | typeof noMarks | typeof gap): Promise<string> {
+async function show(payload: Parameters<typeof OptionTrackingView>[0]['payload']): Promise<string> {
   host = document.createElement('div')
   document.body.append(host)
   await act(async () => {
@@ -123,4 +123,18 @@ it('registers the schema once', () => {
   const found = discoverCards(import.meta.glob('@/pages/optiontracking/*.tsx', { eager: true }))
   expect(Object.keys(found)).toEqual(['option_tracking_page'])
   expect(registration.schema).toBe('option_tracking_page')
+})
+
+it('lets the results, ex and guard cells of the open table wrap and no other column', async () => {
+  const ids = ['qty', 'results', 'ex', 'guard', 'dte', 'delta', 'iv']
+  const account = ok.accounts[0]
+  const cell = { text: 'A long sentence of the column', value: null, badges: [], tone: 'none' as const }
+  const open = {
+    columns: ids.map((id) => ({ id, label: `${id} col`, align: 'left' as const, hint: null })),
+    rows: [{ id: 'pos-x', cells: Object.fromEntries(ids.map((id) => [id, cell])) }],
+  }
+  await show({ ...ok, accounts: [{ ...account, open }] })
+  const tds = [...host.querySelectorAll('[data-table="open"] tbody tr:first-child td')]
+  const wraps = Object.fromEntries(ids.map((id, i) => [id, tds[i]?.classList.contains('whitespace-normal')]))
+  expect(wraps).toEqual({ qty: false, results: true, ex: true, guard: true, dte: false, delta: false, iv: false })
 })
