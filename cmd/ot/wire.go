@@ -59,7 +59,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/companies_page"
 	"github.com/andrewrong/optdesk/internal/pages/embed"
-	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
@@ -354,22 +353,6 @@ func openBarStore(ctx context.Context, dsn string) (bar.BarStore, error) {
 		return nil, err
 	}
 	return s, nil
-}
-
-// newMacroPage builds the page macro_page in zone; the run id is a label inside the page JSON only.
-func newMacroPage(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page {
-	cfg := macro_page.Config{
-		RunID:   "ot-page",
-		BuildID: buildID,
-		Scope:   "macro",
-		Zone:    zone,
-		Read:    read,
-		Indicators: []macro_page.Indicator{
-			// single source moves to the job manifest in a later design
-			{SeriesID: "DGS10", Name: "10-year Treasury yield", SourceText: "FRED"},
-		},
-	}
-	return macro_page.NewPage(cfg)
 }
 
 // newMarketPageOf builds the page market_page in zone from the plain arguments; the one place that names market_page.Config.
