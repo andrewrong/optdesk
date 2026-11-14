@@ -195,3 +195,16 @@ func TestFitNewWorstLossWithAddsTheCandidateToItsClass(t *testing.T) {
 		t.Fatalf("caller's book changed")
 	}
 }
+
+func TestFitNewSharesAlreadyCoveringAnOpenCallDoNotCoverTheCandidate(t *testing.T) {
+	t.Parallel()
+	shares := strategy.RiskHolding{Underlying: "AAA", Currency: "USD", Quantity: "100", Multiplier: "1", Spot: "50"}
+	open := leg("AAA", "C", "55", "-1", "1", "50") // already uses the 100 shares
+	book := strategy.RiskBook{Funds: funds("0"), Holdings: []strategy.RiskHolding{shares, open}}
+	c := strategy.RiskCandidate{Class: "equity", Legs: []strategy.RiskHolding{leg("AAA", "C", "60", "-1", "0.5", "50")}}
+	got, _ := run(t, book, strategy.RiskOutcome{}, c)
+	// uncovered: max(20%x50-10, 10%x50)=5 + 0.5 = 5.5 x 100
+	if got.Facts["capital"] != "550.00" || got.Check.Status != "block" {
+		t.Fatalf("got %+v", got)
+	}
+}

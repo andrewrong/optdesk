@@ -64,9 +64,7 @@ func singleShort(class strategy.RiskClass, o strategy.RiskHolding, shares []stra
 	case index:
 		// short broad-index option: 15 percent of the index value less the out-of-the-money amount, minimum
 		// 10 percent (of the index value, of the strike for a put) [V, Cboe, FINRA 4210], per unit times units.
-		per := new(big.Rat).Mul(pctFifteen, underlying)
-		per.Sub(per, otm)
-		per = maxRat(per, new(big.Rat).Mul(pctTen, floorBase))
+		per := pctLessOtm(pctFifteen, underlying, otm, floorBase)
 		return per.Mul(per, units), "", true
 	case isCall && coveredBy(o, shares, book, units):
 		// covered call: nil, the shares are the cover [arithmetic].
@@ -82,29 +80,38 @@ func singleShort(class strategy.RiskClass, o strategy.RiskHolding, shares []stra
 	if !ok {
 		return nil, reasonNoRule, false
 	}
-	per := new(big.Rat).Mul(pctTwenty, underlying)
-	per.Sub(per, otm)
-	per = maxRat(per, new(big.Rat).Mul(pctTen, floorBase))
+	per := pctLessOtm(pctTwenty, underlying, otm, floorBase)
 	per.Add(per, mark)
 	return per.Mul(per, units), "", true
 }
 
-// coveredBy reports whether shares of the same underlying, in the candidate or the book, cover units.
+// coveredBy reports whether the free shares of the same underlying cover units: the shares of the candidate
+// and the book less the units of the short calls already open in the book, which use them first.
 func coveredBy(o strategy.RiskHolding, cand []strategy.RiskHolding, book strategy.RiskBook, units *big.Rat) bool {
-	have := new(big.Rat)
+	free := new(big.Rat)
 	add := func(hs []strategy.RiskHolding) {
 		for _, h := range hs {
 			if h.Option != nil || h.Underlying != o.Underlying || h.Currency != o.Currency {
 				continue
 			}
 			if q, ok := rat(h.Quantity); ok && q.Sign() > 0 {
-				have.Add(have, q)
+				free.Add(free, q)
 			}
 		}
 	}
 	add(cand)
 	add(book.Holdings)
-	return have.Cmp(units) >= 0
+	for _, h := range book.Holdings {
+		if h.Option == nil || h.Option.Right != "C" || h.Underlying != o.Underlying || h.Currency != o.Currency {
+			continue
+		}
+		q, ok1 := rat(h.Quantity)
+		m, ok2 := rat(h.Multiplier)
+		if ok1 && ok2 && q.Sign() < 0 {
+			free.Add(free, new(big.Rat).Mul(q, m)) // q is negative
+		}
+	}
+	return free.Cmp(units) >= 0
 }
 
 // putCreditSpread is a short put and a long put of one underlying, expiry and size: width less credit,
@@ -152,4 +159,11 @@ func maxRat(a, b *big.Rat) *big.Rat {
 		return a
 	}
 	return b
+}
+
+// pctLessOtm is pct of base less the out-of-the-money amount, at least 10 percent of floorBase.
+func pctLessOtm(pct, base, otm, floorBase *big.Rat) *big.Rat {
+	per := new(big.Rat).Mul(pct, base)
+	per.Sub(per, otm)
+	return maxRat(per, new(big.Rat).Mul(pctTen, floorBase))
 }

@@ -13,7 +13,15 @@ type fitter struct{ st strategy.RiskStresser }
 // New returns the capital fit that revalues books through st.
 func New(st strategy.RiskStresser) strategy.RiskFitter { return fitter{st: st} }
 
-const checkName = "fit_capital"
+const (
+	checkName     = "fit_capital"
+	statusPass    = "pass"
+	statusBlock   = "block"
+	statusUnknown = "unknown"
+	reasonNoFunds = "no_funds"
+	reasonNoFx    = "no_fx"
+	reasonCapital = "capital"
+)
 
 // Fit gives the one check fit_capital and the facts capital, open_put_strikes and worst_loss_with.
 // No check is made on the facts.
@@ -32,21 +40,21 @@ func (f fitter) Fit(book strategy.RiskBook, out strategy.RiskOutcome, c strategy
 		facts["worst_loss_with"] = w
 	}
 
-	chk := strategy.Check{Name: checkName, Status: "pass"}
+	chk := strategy.Check{Name: checkName, Status: statusPass}
 	var avail *big.Rat
 	if book.Funds != nil {
 		avail, _ = rat(book.Funds.Available)
 	}
 	switch {
 	case book.Funds == nil || avail == nil:
-		chk.Status, chk.Reason = "unknown", "no_funds"
+		chk.Status, chk.Reason = statusUnknown, reasonNoFunds
 	case book.Funds.Currency != cur:
-		chk.Status, chk.Reason = "unknown", "no_fx"
+		chk.Status, chk.Reason = statusUnknown, reasonNoFx
 	case !haveCap:
-		chk.Status, chk.Reason = "unknown", reasonNoRule
+		chk.Status, chk.Reason = statusUnknown, reasonNoRule
 	// The comparison is with the broker's available funds, not with cash net of the puts already open.
 	case capRat.Cmp(avail) > 0:
-		chk.Status, chk.Reason = "block", "capital"
+		chk.Status, chk.Reason = statusBlock, reasonCapital
 	}
 	return strategy.RiskFit{Check: chk, Facts: facts}
 }
