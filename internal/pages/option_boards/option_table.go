@@ -86,7 +86,7 @@ func earningsCell(r store.Candidate) textCell {
 
 func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames, qs quoteSource) row {
 	symbol := names.of(r)
-	v := verdictOf(r.Status)
+	v := labelOf(r)
 	e := eodTextFor(eod, r.InstrumentID)
 	bid, askText, deltaStr, volume := r.BidEod, r.Ask, r.Delta, e.Volume
 	if l := qs.live(r.InstrumentID); l != nil {
@@ -105,7 +105,8 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 	var delta any = mkGap("no_data", gapText)
 	if deltaStr != nil {
 		if rounded, ok := roundDecimal(*deltaStr, 4); ok {
-			delta = textCell{Kind: "text", Text: signedText(rounded), Value: keyValue(rounded, 4)}
+			text, _ := fixedDecimals(*deltaStr, 2)
+			delta = textCell{Kind: "text", Text: signedText(text), Value: keyValue(rounded, 4)}
 		}
 	}
 	cells := []cellAt{

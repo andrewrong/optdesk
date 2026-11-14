@@ -377,11 +377,11 @@ func TestDeltaCellKeepsFourPlaces(t *testing.T) {
 		text  string
 		value any
 	}{
-		{"four places", sp("-0.2446"), "−0.2446", float64(-2446)},
+		{"four places", sp("-0.2446"), "−0.24", float64(-2446)},
 		{"two places", sp("-0.15"), "−0.15", float64(-1500)},
-		{"one place", sp("-0.1"), "−0.1", float64(-1000)},
-		{"long stored delta", sp("-0.31495717239425247"), "−0.315", float64(-3150)},
-		{"rounds up to one", sp("0.99999999"), "1", float64(10000)},
+		{"one place", sp("-0.1"), "−0.10", float64(-1000)},
+		{"long stored delta", sp("-0.31495717239425247"), "−0.31", float64(-3150)},
+		{"rounds up to one", sp("0.99999999"), "1.00", float64(10000)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -424,7 +424,7 @@ func TestDeltaCellRoundsLiveDelta(t *testing.T) {
 		t.Fatal(err)
 	}
 	cell := cellOf(t, tableRowsOf(decodeMap(t, b))[0], "delta")
-	if cell["text"] != "−0.315" || cell["value"] != float64(-3150) {
+	if cell["text"] != "−0.31" || cell["value"] != float64(-3150) {
 		t.Errorf("live delta cell = %v", cell)
 	}
 }
@@ -472,5 +472,50 @@ func TestCardReasonNamesMarks(t *testing.T) {
 		if got := buildCard(tc.row, nil, displayNames{}).Reason; got != tc.want {
 			t.Errorf("reason = %q, want %q", got, tc.want)
 		}
+	}
+}
+
+func TestItmNoBuyPriceLabel(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct{ marks, want string }{
+		"both marks": {`["itm","no_buy_price"]`, "In the money, no buy price"},
+		"itm only":   {`["itm"]`, "Worth a look"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := okRow(1, issuerApple, 1, 1, 1)
+			r.Marks = tc.marks
+			m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {r}}}, nil, buildDay))
+			card := cardsOf(m)[0].(map[string]any)["verdict"].(map[string]any)
+			if card["label"] != tc.want || card["key"] != "worth" {
+				t.Errorf("card verdict = %v, want label %q key worth", card, tc.want)
+			}
+			if c := cellOf(t, tableRowsOf(m)[0], "verdict"); c["text"] != tc.want {
+				t.Errorf("table verdict = %v, want %q", c, tc.want)
+			}
+		})
+	}
+}
+
+func TestCardNumberFormats(t *testing.T) {
+	t.Parallel()
+	r := okRow(1, issuerApple, 1, 1, 1)
+	r.AnnualizedYield, r.Delta, r.BidEod, r.BreakEven = sp("1.444379"), sp("-0.5594"), "65.6", "724.35"
+	c := buildCard(r, nil, displayNames{})
+	if c.AnnualisedText != "144.4%" {
+		t.Errorf("annualised text = %q", c.AnnualisedText)
+	}
+	if pa := c.Annualised.(percentAmount); pa.Text != "144.4%" || pa.Value != "144.4379" {
+		t.Errorf("annualised cell = %+v", pa)
+	}
+	if !strings.Contains(c.ContractLine, "Δ −0.56") {
+		t.Errorf("contract line = %q", c.ContractLine)
+	}
+	if !strings.HasPrefix(c.PremiumLine, "Premium $65.60 (close bid est.) · Breakeven $724.35 · ") {
+		t.Errorf("premium line = %q", c.PremiumLine)
+	}
+	r.BidEod = "abc"
+	if got := buildCard(r, nil, displayNames{}).PremiumLine; !strings.HasPrefix(got, "Premium n/a (close") {
+		t.Errorf("premium line = %q", got)
 	}
 }
