@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CompaniesPageV2 } from '@/generated/companies_page.v2'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/companies_page'
+import { PepbBlock } from './PepbBlock'
 import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
 export { validate as validateCompaniesPage } from '@/types/companies_page'
@@ -174,6 +175,7 @@ function V2Blocks({ payload }: { payload: CompaniesPageV2 }) {
           </>
         )}
       </Section>
+      {payload.pepb ? <PepbBlock pepb={payload.pepb} /> : null}
     </>
   )
 }
