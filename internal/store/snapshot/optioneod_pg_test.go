@@ -525,15 +525,19 @@ func TestOptionEodTimeoutKeepsStoredQuote(t *testing.T) {
 			}
 		})
 	}
-	// A status 5 row with no stored row writes no day row.
-	name := newDatabase(t)
-	bad := sessionRow(t, capA, 0, nil)
-	bad.Status = 5
-	insertEod(t, name, bad)
-	var n int
-	if err := connectAs(t, name, "").QueryRow(context.Background(), `SELECT count(*) FROM obs.option_day`).Scan(&n); err != nil || n != 0 {
-		t.Fatalf("day rows %d, err %v", n, err)
-	}
+	// A status 5 row with no stored row writes no day row. Its own subtest: the parent holds no database, because
+	// newDatabase keeps an advisory lock that the parallel subtests above need.
+	t.Run("no stored row", func(t *testing.T) {
+		t.Parallel()
+		name := newDatabase(t)
+		bad := sessionRow(t, capA, 0, nil)
+		bad.Status = 5
+		insertEod(t, name, bad)
+		var n int
+		if err := connectAs(t, name, "").QueryRow(context.Background(), `SELECT count(*) FROM obs.option_day`).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("day rows %d, err %v", n, err)
+		}
+	})
 }
 
 func TestOptionEodFullerSessionRowKept(t *testing.T) {
