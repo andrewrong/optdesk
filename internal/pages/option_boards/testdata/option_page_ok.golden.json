@@ -37,10 +37,10 @@
           "reason": "All gates passed",
           "annualised": {
             "value": 12.3456,
-            "text": "12.3456%",
+            "text": "12.3%",
             "unit": "percent"
           },
-          "annualised_text": "12.3456%",
+          "annualised_text": "12.3%",
           "contract_line": "sell put 62 · 11-13 Fri · 3 days · Δ −0.15",
           "liquidity_line": "Volume 1240 · Open interest 5310",
           "tags": [
@@ -49,7 +49,7 @@
           "size_line": "1 contract · Strike 62 · Multiplier 100",
           "size_usd_approx": null,
           "iv_line": "IV 38% · HV30 n/a · IVP n/a",
-          "premium_line": "Premium 1.20 (close bid est.) · Breakeven 60.80 · in-the-money probability at expiry n/a · above cash n/a"
+          "premium_line": "Premium $1.20 (close bid est.) · Breakeven $60.80 · in-the-money probability at expiry n/a · above cash n/a"
         },
         {
           "id": "c21",
@@ -62,10 +62,10 @@
           "reason": "Passed, with marks: Earnings date not confirmed",
           "annualised": {
             "value": 12.3456,
-            "text": "12.3456%",
+            "text": "12.3%",
             "unit": "percent"
           },
-          "annualised_text": "12.3456%",
+          "annualised_text": "12.3%",
           "contract_line": "sell put 30.5 · 11-13 Fri · 3 days · Δ −0.15",
           "liquidity_line": "Volume 10 · Open interest n/a",
           "tags": [
@@ -75,7 +75,7 @@
           "size_line": "1 contract · Strike 30.5 · Multiplier 100",
           "size_usd_approx": null,
           "iv_line": "IV 38% · HV30 n/a · IVP n/a",
-          "premium_line": "Premium 0.40 (close bid est.) · Breakeven 60.80 · in-the-money probability at expiry n/a · above cash n/a"
+          "premium_line": "Premium $0.40 (close bid est.) · Breakeven $60.80 · in-the-money probability at expiry n/a · above cash n/a"
         }
       ],
       "candidates_title": "Candidates",
@@ -178,7 +178,7 @@
                 "column": "annualised",
                 "cell": {
                   "value": 12.3456,
-                  "text": "12.3456%",
+                  "text": "12.3%",
                   "unit": "percent"
                 }
               },
@@ -285,7 +285,7 @@
                 "column": "annualised",
                 "cell": {
                   "value": 12.3456,
-                  "text": "12.3456%",
+                  "text": "12.3%",
                   "unit": "percent"
                 }
               },
@@ -309,7 +309,7 @@
                 "column": "delta",
                 "cell": {
                   "kind": "text",
-                  "text": "−0.1",
+                  "text": "−0.10",
                   "value": -1000
                 }
               },
@@ -390,7 +390,7 @@
                 "column": "annualised",
                 "cell": {
                   "value": 12.3456,
-                  "text": "12.3456%",
+                  "text": "12.3%",
                   "unit": "percent"
                 }
               },
@@ -496,7 +496,7 @@
                 "column": "annualised",
                 "cell": {
                   "value": 12.3456,
-                  "text": "12.3456%",
+                  "text": "12.3%",
                   "unit": "percent"
                 }
               },
@@ -601,7 +601,7 @@
                 "column": "annualised",
                 "cell": {
                   "value": 12.3456,
-                  "text": "12.3456%",
+                  "text": "12.3%",
                   "unit": "percent"
                 }
               },

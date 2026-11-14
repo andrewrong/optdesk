@@ -149,3 +149,29 @@ func TestRoundDecimal(t *testing.T) {
 		}
 	}
 }
+
+func TestFixedDecimals(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		in     string
+		places int
+		want   string
+		bad    bool
+	}{
+		{"0.5", 2, "0.50", false},
+		{"-0.5594", 2, "-0.56", false},
+		{"1.005", 2, "1.01", false},
+		{"-0.001", 2, "0.00", false},
+		{"9.996", 2, "10.00", false},
+		{"65", 2, "65.00", false},
+		{"144.4379", 1, "144.4", false},
+		{"abc", 2, "", true},
+		{"1e-3", 2, "", true},
+	}
+	for _, tc := range cases {
+		got, ok := fixedDecimals(tc.in, tc.places)
+		if ok == tc.bad || got != tc.want {
+			t.Errorf("fixedDecimals(%q, %d) = %q, %v; want %q", tc.in, tc.places, got, ok, tc.want)
+		}
+	}
+}

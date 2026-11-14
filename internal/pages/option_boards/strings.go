@@ -16,6 +16,7 @@ const (
 	gapStale       = "Candidate rows are not from today"
 
 	verdictWorth    = "Worth a look"
+	verdictItmNoBuy = "In the money, no buy price"
 	verdictPending  = "Incomplete data"
 	verdictSkip     = "Not eligible"
 	gatesPassed     = "All gates passed"

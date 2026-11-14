@@ -94,6 +94,44 @@ func roundDecimal(text string, places int) (string, bool) {
 	return sign + out, true
 }
 
+// fixedDecimals writes the decimal text with exactly places decimal places, rounded half away from zero on the
+// text (no float) and padded with zeros; a result that is zero carries no sign. ok is false when the text is not
+// a decimal.
+func fixedDecimals(text string, places int) (string, bool) {
+	m := decimalPattern.FindStringSubmatch(text)
+	if m == nil || places < 0 {
+		return "", false
+	}
+	sign, whole, frac := m[1], m[2], m[3]
+	if len(frac) < places {
+		frac += strings.Repeat("0", places-len(frac))
+	}
+	digits := []byte(whole + frac[:places])
+	if len(frac) > places && frac[places] >= '5' {
+		i := len(digits) - 1
+		for ; i >= 0 && digits[i] == '9'; i-- {
+			digits[i] = '0'
+		}
+		if i < 0 {
+			digits = append([]byte{'1'}, digits...)
+		} else {
+			digits[i]++
+		}
+	}
+	w, f := string(digits[:len(digits)-places]), string(digits[len(digits)-places:])
+	if w = strings.TrimLeft(w, "0"); w == "" {
+		w = "0"
+	}
+	out := w
+	if places > 0 {
+		out += "." + f
+	}
+	if strings.Trim(out, "0.") == "" {
+		sign = ""
+	}
+	return sign + out, true
+}
+
 // signedText writes a stored decimal text with the typographic minus "−" for the sign.
 func signedText(text string) string {
 	if rest, ok := strings.CutPrefix(text, minus); ok {

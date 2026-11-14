@@ -30,6 +30,22 @@ func verdictOf(status string) verdict {
 	return verdict{Key: "skip", Label: verdictSkip, Tone: "muted"}
 }
 
+// labelOf is the verdict of a stored row: the stored status gives the verdict, and a row with both marks itm and
+// no_buy_price (which worthCount leaves out of the headline) carries its own label in place of the worth label.
+// The key does not change.
+func labelOf(r store.Candidate) verdict {
+	v := verdictOf(r.Status)
+	if v.Key == "worth" && itmNoBuyPrice(r) {
+		v.Label = verdictItmNoBuy
+	}
+	return v
+}
+
+func itmNoBuyPrice(r store.Candidate) bool {
+	marks, err := parseMarks(r.Marks)
+	return err == nil && slices.Contains(marks, "itm") && slices.Contains(marks, "no_buy_price")
+}
+
 // cardRows are the ok rows whose RankInUnderlying is 1, in the stored order, at most maxCards.
 func cardRows(rows []store.Candidate) []store.Candidate {
 	out := []store.Candidate{}
@@ -62,7 +78,20 @@ func optionDeltaText(delta *string) string {
 	if delta == nil || !decimalPattern.MatchString(*delta) {
 		return gapText
 	}
-	return signedText(*delta)
+	text, ok := fixedDecimals(*delta, 2)
+	if !ok {
+		return gapText
+	}
+	return signedText(text)
+}
+
+// moneyText is "$" and a stored price at two decimals, "n/a" when it is not a decimal.
+func moneyText(price string) string {
+	text, ok := fixedDecimals(price, 2)
+	if !ok {
+		return gapText
+	}
+	return "$" + text
 }
 
 // ivLine is "IV 38% · HV30 n/a · IVP n/a": HV30 and IVP have no producer and are always n/a.
@@ -81,8 +110,11 @@ func ivLine(iv *string) string {
 func annualisedOf(yield *string) (cell any, text string) {
 	if yield != nil {
 		if s, err := shiftPercent(*yield); err == nil {
-			if n, ok := numberLiteral(strings.TrimSuffix(s, "%")); ok {
-				return percentAmount{Value: n, Text: s, Unit: "percent"}, s
+			num := strings.TrimSuffix(s, "%")
+			n, ok := numberLiteral(num)
+			fixed, ok2 := fixedDecimals(num, 1)
+			if ok && ok2 {
+				return percentAmount{Value: n, Text: fixed + "%", Unit: "percent"}, fixed + "%"
 			}
 		}
 	}
@@ -115,7 +147,7 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 	return opportunity{
 		ID:             fmt.Sprintf("c%d", r.InstrumentID),
 		Symbol:         names.of(r),
-		Verdict:        verdictOf(r.Status),
+		Verdict:        labelOf(r),
 		Reason:         reason,
 		Annualised:     ann,
 		AnnualisedText: annText,
@@ -124,7 +156,7 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 		Tags:           tags,
 		SizeLine:       fmt.Sprintf("1 contract · Strike %s · Multiplier %d", r.Strike, r.Multiplier),
 		IvLine:         ivLine(r.Iv),
-		PremiumLine:    fmt.Sprintf("Premium %s (close bid est.) · Breakeven %s · in-the-money probability at expiry n/a · above cash n/a", r.BidEod, r.BreakEven),
+		PremiumLine:    fmt.Sprintf("Premium %s (close bid est.) · Breakeven %s · in-the-money probability at expiry n/a · above cash n/a", moneyText(r.BidEod), moneyText(r.BreakEven)),
 	}
 }
 
@@ -132,11 +164,9 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 func worthCount(rows []store.Candidate) int {
 	n := 0
 	for _, r := range rows {
-		marks, err := parseMarks(r.Marks)
-		if err == nil && slices.Contains(marks, "itm") && slices.Contains(marks, "no_buy_price") {
-			continue
+		if !itmNoBuyPrice(r) {
+			n++
 		}
-		n++
 	}
 	return n
 }
