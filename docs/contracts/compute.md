@@ -167,3 +167,11 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - The golden suites per interface (`internal/compute/contracttest`) come with later issues.
 - `internal/compute/valuationapi/api_test.go` tests the seven function types from both sides: a fake of each and a caller that fills every input and reads every output field.
 - `internal/compute/optionfigapi/api_test.go` tests `OptionFigures` from both sides: a fake and a caller that sets every input field and reads every output field.
+
+## Liquidity figures
+
+`Func`, `Input`, `Result` and their types are declared in the package `internal/compute/liquidityapi` (declarations only, not in `internal/compute/api.go`); `internal/compute/liquidity.Compute` is the one implementation. Design: `docs/design/liquidity-view.md#Interface`.
+
+- Five derived figures: the change over 4 and 13 weeks (`Reserves4w`, `Reserves13w`), SOFR minus IORB in basis points (`SofrIorbBP`), the high-yield percentile (`HighYieldRank`), the reserves ratio (`ReservesOverAssets`) and net liquidity (`NetLiquidity`, taken from `Input.Net`, which `internal/compute/ease.NetLiquidity` implements). Levels carry their own data day and an age rule (4 days daily, 14 weekly).
+- A figure that cannot be formed has an empty `Value` and a reason (`no_input`, `stale_input`, `short_history`, `bad_input` or `liquidityapi.MissingInput`), never 0. Pure: no I/O, no clock, exact decimal arithmetic, results are decimal text.
+- Nothing is stored as a reading: the page calls `Func` when it builds.
