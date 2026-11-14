@@ -12,8 +12,11 @@ import {
   XAxis,
   YAxis,
   useCartesianScale,
+  useXAxisScale,
+  useYAxisScale,
 } from 'recharts'
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
+import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
+import { unitSuffix } from '@/charts/unitSuffix'
 import type { Payload } from '@/types/market_state_page'
 
 type Sectors = Payload['sectors']
@@ -38,12 +41,59 @@ export const FUND_COLOR: Record<string, string> = {
 const RING_COLOR = '#6b7280'
 const RING_SYMBOL = 'SMH'
 
+// Each quadrant is bounded on both axes (0 to the axis end) so its name is drawn in its own plot corner.
 const QUADRANT = {
-  leading: { word: 'Leading', area: { x1: 0, y1: 0 }, position: 'insideTopRight' },
-  improving: { word: 'Improving', area: { x2: 0, y1: 0 }, position: 'insideTopLeft' },
-  lagging: { word: 'Lagging', area: { x2: 0, y2: 0 }, position: 'insideBottomLeft' },
-  weakening: { word: 'Weakening', area: { x1: 0, y2: 0 }, position: 'insideBottomRight' },
+  leading: { word: 'Leading', sx: 1, sy: 1, position: 'insideTopRight' },
+  improving: { word: 'Improving', sx: -1, sy: 1, position: 'insideTopLeft' },
+  lagging: { word: 'Lagging', sx: -1, sy: -1, position: 'insideBottomLeft' },
+  weakening: { word: 'Weakening', sx: 1, sy: -1, position: 'insideBottomRight' },
 } as const
+
+// The end of a zero-centred axis: the largest absolute value, rounded up to a whole number (at least 1), by remainder arithmetic: the web source calls no Math function.
+function axisEnd(values: number[]): number {
+  const largest = values.reduce((m, v) => (v < 0 ? -v : v) > m ? (v < 0 ? -v : v) : m, 0)
+  const whole = largest - (largest % 1)
+  const up = whole < largest ? whole + 1 : whole
+  return up < 1 ? 1 : up
+}
+// Recharts' function form of `domain`: symmetric about 0; display only, no payload value changes.
+const symmetric = ([lo, hi]: readonly [number, number]): [number, number] => {
+  const end = axisEnd([lo, hi])
+  return [-end, end]
+}
+
+const LABEL_GAP = 10
+const LINE_HEIGHT = 13
+const CHAR_WIDTH = 7
+
+type Anchor = { id: string; x: number; y: number; width: number }
+export type Placed = { id: string; x: number; y: number; anchor: 'start' | 'end'; left: number; right: number; top: number; bottom: number }
+
+// Places each label beside its point in order: right of it, else left of it, else shifted by whole line heights;
+// the first position whose box clears every label already placed wins.
+export function placeLabels(anchors: Anchor[], lineHeight: number): Placed[] {
+  const placed: Placed[] = []
+  const clear = (b: Placed) =>
+    placed.every((o) => b.right <= o.left || o.right <= b.left || b.bottom <= o.top || o.bottom <= b.top)
+  for (const a of anchors) {
+    let pick: Placed | undefined
+    const shifts = [0, 1, -1, 2, -2, 3, -3]
+    for (const shift of shifts) {
+      for (const side of ['start', 'end'] as const) {
+        const x = side === 'start' ? a.x + LABEL_GAP : a.x - LABEL_GAP
+        const y = a.y + shift * lineHeight
+        const left = side === 'start' ? x : x - a.width
+        const box: Placed = { id: a.id, x, y, anchor: side, left, right: left + a.width, top: y - lineHeight / 2, bottom: y + lineHeight / 2 }
+        if (!pick && clear(box)) pick = box
+      }
+      if (pick) break
+    }
+    // Every position taken: fall back to the plain right-hand one.
+    pick ??= { id: a.id, x: a.x + LABEL_GAP, y: a.y, anchor: 'start', left: a.x + LABEL_GAP, right: a.x + LABEL_GAP + a.width, top: a.y - lineHeight / 2, bottom: a.y + lineHeight / 2 }
+    placed.push(pick)
+  }
+  return placed
+}
 
 const SMALL = 3
 const LARGE = 7
@@ -69,11 +119,24 @@ function TailPoint({ cx, cy, index = 0, count, tone, ring }: ShapeProps) {
   )
 }
 
-// The fund's symbol beside today's point.
-function TodayLabel({ x, y, index, count, symbol, tone }: { x?: number; y?: number; index?: number; count: number; symbol: string; tone: string }) {
+type Today = { symbol: string; x: number; y: number }
+type LabelProps = { x?: number; y?: number; index?: number; count: number; symbol: string; tone: string; todays: Today[] }
+
+// The fund's symbol beside today's point; a label that would overlap an earlier one moves to the left or up/down a line.
+function TodayLabel({ x, y, index, count, symbol, tone, todays }: LabelProps) {
+  const xScale = useXAxisScale()
+  const yScale = useYAxisScale()
   if (index !== count - 1 || typeof x !== 'number' || typeof y !== 'number') return null
+  const anchors: Anchor[] = todays.map((t) => ({
+    id: t.symbol,
+    x: t.symbol === symbol || !xScale ? x : (xScale(t.x) ?? x),
+    y: t.symbol === symbol || !yScale ? y : (yScale(t.y) ?? y),
+    width: CHAR_WIDTH * t.symbol.length,
+  }))
+  const own = placeLabels(anchors, LINE_HEIGHT).find((p) => p.id === symbol)
+  const at = own ?? { x: x + LABEL_GAP, y, anchor: 'start' as const }
   return (
-    <text x={x + LARGE + 3} y={y} dy="0.35em" fontSize={11} fontWeight={600} fill={tone} data-today-label={symbol}>
+    <text x={at.x} y={at.y} dy="0.35em" textAnchor={at.anchor} fontSize={11} fontWeight={600} fill={tone} data-today-label={symbol}>
       {symbol}
     </text>
   )
@@ -130,6 +193,13 @@ export function RotationMap({ block }: { block: Sectors }) {
           },
         ],
   )
+  const todays: Today[] = drawn.flatMap((item) => {
+    const last = item.points[item.points.length - 1]
+    return last ? [{ symbol: item.symbol, x: last.x, y: last.y }] : []
+  })
+  const all = drawn.flatMap((item) => item.points)
+  const endX = axisEnd(all.map((p) => p.x))
+  const endY = axisEnd(all.map((p) => p.y))
   const config: ChartConfig = Object.fromEntries(drawn.map((item) => [item.symbol, { label: item.symbol, color: item.tone }]))
   return (
     <section aria-label="Rotation map" data-rotation-map>
@@ -144,10 +214,10 @@ export function RotationMap({ block }: { block: Sectors }) {
               type="number"
               dataKey="x"
               name={axes.x_caption}
-              domain={['auto', 'auto']}
+              domain={symmetric}
               padding={{ left: 16, right: 16 }}
               tickLine={false}
-              // The axis band is tall enough for its tick row and the title on its own line; the legend is drawn below the band.
+              // The axis band is tall enough for its tick row and the title on its own line.
               height={52}
               label={{ value: axes.x_caption, position: 'insideBottom', offset: 0, fontSize: 12 }}
             />
@@ -155,15 +225,19 @@ export function RotationMap({ block }: { block: Sectors }) {
               type="number"
               dataKey="y"
               name={axes.y_caption}
-              domain={['auto', 'auto']}
+              domain={symmetric}
               padding={{ top: 32, bottom: 16 }}
               tickLine={false}
+              tickFormatter={(tick: number) => `${tick}${unitSuffix('percentage_points')}`}
               label={{ value: axes.y_caption, angle: -90, position: 'insideLeft', offset: 0, fontSize: 12, style: { textAnchor: 'middle' } }}
             />
             {axes.quadrants.map((q) => (
               <ReferenceArea
                 key={q.id}
-                {...QUADRANT[q.id].area}
+                x1={QUADRANT[q.id].sx > 0 ? 0 : -endX}
+                x2={QUADRANT[q.id].sx > 0 ? endX : 0}
+                y1={QUADRANT[q.id].sy > 0 ? 0 : -endY}
+                y2={QUADRANT[q.id].sy > 0 ? endY : 0}
                 ifOverflow="extendDomain"
                 fill="none"
                 stroke="none"
@@ -173,19 +247,18 @@ export function RotationMap({ block }: { block: Sectors }) {
             <ReferenceLine x={0} stroke="var(--foreground)" />
             <ReferenceLine y={0} stroke="var(--foreground)" />
             <ChartTooltip content={<Tip />} />
-            <ChartLegend verticalAlign="bottom" content={<ChartLegendContent />} />
             {drawn.map((item) => (
               <Scatter
                 key={item.symbol}
                 name={item.symbol}
                 data={item.points}
-                line={{ stroke: item.tone, strokeWidth: 1.5 }}
+                line={{ stroke: item.tone, strokeWidth: 1.5, ...(item.ring ? { strokeDasharray: '4 3' } : {}) }}
                 fill={item.tone}
                 stroke={item.tone}
                 shape={<TailPoint count={item.points.length} tone={item.tone} ring={item.ring} />}
                 isAnimationActive={false}
               >
-                <LabelList content={<TodayLabel count={item.points.length} symbol={item.symbol} tone={item.tone} />} />
+                <LabelList content={<TodayLabel count={item.points.length} symbol={item.symbol} tone={item.tone} todays={todays} />} />
               </Scatter>
             ))}
             {drawn.map((item) => (
