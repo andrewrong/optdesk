@@ -147,3 +147,26 @@ func TestAccountTitleNamesAccount(t *testing.T) {
 		t.Fatalf("title = %q", a.Title)
 	}
 }
+
+func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.Spot, o.Mid, o.Kept = "394.8229675292969", "3.3250", "201.5000"
+	o.KeptPercent, o.Delta, o.Commissions, o.RealizedPnL = "62.98765", "-0.2512345", "1.3", "12.345678"
+	o.Iv = "0.31254"
+	c := openTable([]opt{o}).Rows[0].Cells
+	want := map[string]string{"spot": "394.82", "mid": "3.33", "kept": "201.50", "kept_percent": "62.99",
+		"delta": "-0.25", "iv": "0.3125"}
+	for k, w := range want {
+		if v := asValue(t, c[k]); v.Text != w {
+			t.Errorf("%s = %q, want %q", k, v.Text, w)
+		}
+	}
+	r := recentTable([]opt{o}).Rows[0].Cells
+	if v := asValue(t, r["commissions"]); v.Text != "1.30" {
+		t.Errorf("commissions = %q", v.Text)
+	}
+	if v := asValue(t, r["realized"]); v.Text != "12.35" {
+		t.Errorf("realized = %q", v.Text)
+	}
+}

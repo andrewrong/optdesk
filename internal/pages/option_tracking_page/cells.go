@@ -73,6 +73,19 @@ func numValue(text string) (valueCell, bool) {
 	return c, true
 }
 
+// parseNumber is the value cell of the stored decimal text with the decimal it holds.
+func parseNumber(text string) (valueCell, decimal.Decimal, bool) {
+	c, ok := numValue(text)
+	if !ok {
+		return valueCell{}, decimal.Decimal{}, false
+	}
+	d, err := decimal.NewFromString(strings.TrimPrefix(text, "+"))
+	if err != nil {
+		return valueCell{}, decimal.Decimal{}, false
+	}
+	return c, d, true
+}
+
 // numCell is a numeric cell; the empty text is a gap with code, never a zero.
 func numCell(text, code string) any {
 	if text == "" {
@@ -82,6 +95,22 @@ func numCell(text, code string) any {
 	if !ok {
 		return codeGap(codeUnreadable)
 	}
+	return c
+}
+
+// decimalCell is a numeric cell whose text is the stored decimal rounded half away from zero to places
+// (moneyCell rounds half to even; the two differ on exact halves);
+// the value stays the stored number. The empty text is the gap of code, an unreadable text the gap
+// unreadable, never a zero.
+func decimalCell(text, code string, places int32) any {
+	if text == "" {
+		return codeGap(code)
+	}
+	c, d, ok := parseNumber(text)
+	if !ok {
+		return codeGap(codeUnreadable)
+	}
+	c.Text = d.Round(places).StringFixed(places)
 	return c
 }
 
@@ -107,13 +136,9 @@ func moneyCell(text, currency string) any {
 	if text == "" {
 		return codeGap(codeNoValue)
 	}
-	c, ok := numValue(text)
+	c, d, ok := parseNumber(text)
 	sym, known := currencySymbols[currency]
 	if !ok || !known {
-		return codeGap(codeUnreadable)
-	}
-	d, err := decimal.NewFromString(strings.TrimPrefix(text, "+"))
-	if err != nil {
 		return codeGap(codeUnreadable)
 	}
 	neg := d.IsNegative()
