@@ -320,7 +320,7 @@ func (m manifest) validateUnderlying(u underlying) error {
 	return nil
 }
 
-// parseHHMM reads "HHMM" as minutes after midnight.
+// fourDigits reports whether s is exactly four ASCII digits.
 func fourDigits(s string) bool {
 	if len(s) != 4 {
 		return false
@@ -333,6 +333,7 @@ func fourDigits(s string) bool {
 	return true
 }
 
+// parseHHMM reads "HHMM" as minutes after midnight.
 func parseHHMM(s string) (int, error) {
 	if len(s) != 4 {
 		return 0, fmt.Errorf("bad time")
