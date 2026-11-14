@@ -11,7 +11,7 @@ import (
 func TestMig49GrantsPG(t *testing.T) {
 	t.Parallel()
 	s := newScratch(t, true)
-	if err := migrateWith(context.Background(), s.openAs(t, testPassword), gooseUp, migrationsUpTo(t, 49), quietLog()); err != nil {
+	if err := migrateLocked(context.Background(), t, s.openAs(t, testPassword), migrationsUpTo(t, 49), quietLog()); err != nil {
 		t.Fatalf("apply 1 to 49: %v", err)
 	}
 	for _, role := range []string{"ot_w_option_eod", "ot_w_option_open"} {

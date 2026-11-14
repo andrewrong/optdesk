@@ -219,6 +219,7 @@ func TestMigrateUpWrongPasswordPG(t *testing.T) {
 	s := newScratch(t, true)
 	const wrong = "wrong-S3NTINEL"
 	var logs bytes.Buffer
+	// migrateWith, not migrateLocked: the connection fails (wrong password) before any migration runs, so no migration lock is needed.
 	err := migrateWith(context.Background(), s.openAs(t, wrong), gooseUp, os.DirFS(migrationsDir), slog.New(slog.NewTextHandler(&logs, nil)))
 	if err == nil {
 		t.Fatal("want an error")
@@ -254,12 +255,14 @@ func TestMigrateLogsNoSecret(t *testing.T) {
 	const dsn = "postgres://sentinel-user:sentinel-dsn-secret@127.0.0.1:1/x?connect_timeout=1"
 	var logs bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	// migrateWith, not migrateLocked: the connection fails (sentinel DSN) before any migration runs, so no migration lock is needed.
 	err := migrateWith(context.Background(), sentinelOpen(t, dsn), gooseUp, os.DirFS(migrationsDir), log)
 	if err == nil {
 		t.Fatal("want an error")
 	}
 	s := newScratch(t, true)
 	const wrong = "wrong-S3NTINEL-pw"
+	// migrateWith, not migrateLocked: the connection fails (wrong password) before any migration runs, so no migration lock is needed.
 	errWrong := migrateWith(context.Background(), s.openAs(t, wrong), gooseUp, os.DirFS(migrationsDir), log)
 	if errWrong == nil {
 		t.Fatal("want an error for the wrong password")
