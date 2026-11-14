@@ -61,7 +61,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesIsFredCalendarFxBarsAndComputeFigures(t *testing.T) {
+func TestForceYesIsSixJobs(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -69,14 +69,14 @@ func TestForceYesIsFredCalendarFxBarsAndComputeFigures(t *testing.T) {
 			yes = append(yes, r.ID)
 		}
 	}
-	if !slices.Equal(yes, []string{"fred_series", "compute_figures", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
+	if !slices.Equal(yes, []string{"fred_series", "compute_figures", "option_candidates", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
 
 func TestEveryForceNoJobHasReason(t *testing.T) {
 	t.Parallel()
-	codes := []string{"moment_mix", "append_only", "attempt_rows", "new_run_id", "quota", "not_proved", "insert_only"}
+	codes := []string{"moment_mix", "append_only", "attempt_rows", "quota", "not_proved", "insert_only"}
 	n := 0
 	for _, r := range jobTable {
 		if !r.runnable() || r.Force {
@@ -90,8 +90,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 18 {
-		t.Fatalf("%d force-no jobs, want 18", n)
+	if n != 17 {
+		t.Fatalf("%d force-no jobs, want 17", n)
 	}
 }
 
@@ -207,5 +207,21 @@ func TestBarsRefreshRunValidatesPastDayWithForce(t *testing.T) {
 	}
 	if _, ok := post("2026-11-14"); ok {
 		t.Error("a day after today was accepted")
+	}
+}
+
+func TestOptionCandidatesAcceptsForcePost(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 13, 15, 0, 0, 0, time.UTC)
+	post := func(job, day string) (jobRun, bool) {
+		r := &http.Request{PostForm: url.Values{"job": {job}, "day": {day}, "force": {"on"}}}
+		return readJobRun(r, now)
+	}
+	run, ok := post("option_candidates", "2026-11-10")
+	if !ok || !run.force || run.day != "2026-11-10" || run.job.ID != "option_candidates" {
+		t.Fatalf("past day with force: %+v %v", run, ok)
+	}
+	if _, ok := post("account_capture", "2026-11-13"); ok {
+		t.Error("force on a force-no job was accepted")
 	}
 }
