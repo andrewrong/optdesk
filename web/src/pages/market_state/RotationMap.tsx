@@ -49,12 +49,12 @@ const QUADRANT = {
   weakening: { word: 'Weakening', sx: 1, sy: -1, position: 'insideBottomRight' },
 } as const
 
-// The end of a zero-centred axis: the largest absolute value, rounded up to a whole number (at least 1), by remainder arithmetic: the web source calls no Math function.
-function axisEnd(values: number[]): number {
+// The end of a zero-centred axis: the largest absolute value rounded up to a multiple of 10 (at least 10), by remainder arithmetic: the web source calls no Math function.
+export function axisEnd(values: number[]): number {
   const largest = values.reduce((m, v) => (v < 0 ? -v : v) > m ? (v < 0 ? -v : v) : m, 0)
-  const whole = largest - (largest % 1)
-  const up = whole < largest ? whole + 1 : whole
-  return up < 1 ? 1 : up
+  const rest = largest % 10
+  const up = rest === 0 ? largest : largest - rest + 10
+  return up < 10 ? 10 : up
 }
 // Recharts' function form of `domain`: symmetric about 0; display only, no payload value changes.
 const symmetric = ([lo, hi]: readonly [number, number]): [number, number] => {
@@ -215,6 +215,7 @@ export function RotationMap({ block }: { block: Sectors }) {
               dataKey="x"
               name={axes.x_caption}
               domain={symmetric}
+              tickCount={5}
               padding={{ left: 16, right: 16 }}
               tickLine={false}
               // The axis band is tall enough for its tick row and the title on its own line.
@@ -226,6 +227,7 @@ export function RotationMap({ block }: { block: Sectors }) {
               dataKey="y"
               name={axes.y_caption}
               domain={symmetric}
+              tickCount={5}
               padding={{ top: 32, bottom: 16 }}
               tickLine={false}
               tickFormatter={(tick: number) => `${tick}${unitSuffix('percentage_points')}`}
@@ -267,12 +269,6 @@ export function RotationMap({ block }: { block: Sectors }) {
           </ScatterChart>
         </ChartContainer>
       </div>
-      <p className="text-sm text-muted-foreground" data-x-caption>
-        {axes.x_caption}
-      </p>
-      <p className="text-sm text-muted-foreground" data-y-caption>
-        {axes.y_caption}
-      </p>
     </section>
   )
 }

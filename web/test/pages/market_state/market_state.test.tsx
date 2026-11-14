@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChartSpec } from '@/charts/spec'
 import { ChartTooltip } from '@/components/ui/chart'
-import { placeLabels } from '@/pages/market_state/RotationMap'
+import { axisEnd, placeLabels } from '@/pages/market_state/RotationMap'
 import { MarketStatePage, registration } from '@/pages/market_state/MarketStatePage'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -60,7 +60,7 @@ vi.mock('recharts', async (importOriginal) => {
     // Only the axes of the rotation map carry a title; the bar chart's axes are the real ones.
     XAxis: (props: React.ComponentProps<typeof actual.XAxis>) =>
       props.label ? (
-        <g data-axis="x" data-padding={JSON.stringify(props.padding)} data-domain={JSON.stringify(typeof props.domain === 'function' ? props.domain([-6.86, 9.1] as never, false) : null)}>
+        <g data-axis="x" data-tick-count={props.tickCount} data-padding={JSON.stringify(props.padding)} data-domain={JSON.stringify(typeof props.domain === 'function' ? props.domain([-6.86, 9.1] as never, false) : null)}>
           <text>{(props.label as { value: string }).value}</text>
         </g>
       ) : (
@@ -70,6 +70,7 @@ vi.mock('recharts', async (importOriginal) => {
       props.label ? (
         <g
           data-axis="y"
+          data-tick-count={props.tickCount}
           data-padding-top={(props.padding as { top: number }).top}
           data-domain={JSON.stringify(typeof props.domain === 'function' ? props.domain([-1.27, 2.81] as never, false) : null)}
           data-tick={props.tickFormatter?.(2, 0)}
@@ -288,8 +289,6 @@ describe('market state page', () => {
     expect(word('insideBottomRight')).toBe('Weakening')
     const map = host.querySelector('[data-rotation-map]')!.textContent!
     for (const q of p.sectors.rotation_axes.quadrants) expect(map).not.toContain(q.text)
-    expect(host.querySelector('[data-x-caption]')?.textContent).toBe(p.sectors.rotation_axes.x_caption)
-    expect(host.querySelector('[data-y-caption]')?.textContent).toBe(p.sectors.rotation_axes.y_caption)
     expect(host.querySelector('[data-rotation-note]')?.textContent).toBe(p.sectors.rotation_axes.note)
   })
 
@@ -368,18 +367,30 @@ describe('market state page', () => {
   it('bounds each quadrant on both axes so its name sits in its own plot corner', async () => {
     await show(fixture('ok'))
     const box = (corner: string) => JSON.parse(host.querySelector(`[data-corner=${corner}]`)!.getAttribute('data-box')!)
-    // [x1, x2, y1, y2]: the fixture's largest |x| is 9.1 (end 10) and largest |y| is 2.81 (end 3).
-    expect(box('insideTopRight')).toEqual([0, 10, 0, 3])
-    expect(box('insideTopLeft')).toEqual([-10, 0, 0, 3])
-    expect(box('insideBottomLeft')).toEqual([-10, 0, -3, 0])
-    expect(box('insideBottomRight')).toEqual([0, 10, -3, 0])
+    // [x1, x2, y1, y2]: the fixture's largest |x| is 9.1 (end 10) and largest |y| is 2.81 (end 10).
+    expect(box('insideTopRight')).toEqual([0, 10, 0, 10])
+    expect(box('insideTopLeft')).toEqual([-10, 0, 0, 10])
+    expect(box('insideBottomLeft')).toEqual([-10, 0, -10, 0])
+    expect(box('insideBottomRight')).toEqual([0, 10, -10, 0])
   })
 
-  it('centres both axes on zero with the largest absolute value rounded up, and writes y ticks in pp', async () => {
+  it('centres both axes on zero with the largest absolute value rounded up to a multiple of 10, and writes y ticks in pp', async () => {
     await show(fixture('ok'))
     expect(JSON.parse(host.querySelector('[data-axis=x]')!.getAttribute('data-domain')!)).toEqual([-10, 10])
-    expect(JSON.parse(host.querySelector('[data-axis=y]')!.getAttribute('data-domain')!)).toEqual([-3, 3])
+    expect(JSON.parse(host.querySelector('[data-axis=y]')!.getAttribute('data-domain')!)).toEqual([-10, 10])
     expect(host.querySelector('[data-axis=y]')!.getAttribute('data-tick')).toBe('2 pp')
+  })
+
+  it('(new) rounds the axis end up to a multiple of 10, sets five ticks on both axes and prints no caption lines', async () => {
+    expect(axisEnd([9.1])).toBe(10)
+    expect(axisEnd([-15, 3])).toBe(20)
+    expect(axisEnd([20])).toBe(20)
+    expect(axisEnd([])).toBe(10)
+    await show(fixture('ok'))
+    expect(host.querySelector('[data-axis=x]')!.getAttribute('data-tick-count')).toBe('5')
+    expect(host.querySelector('[data-axis=y]')!.getAttribute('data-tick-count')).toBe('5')
+    expect(host.querySelector('[data-x-caption]')).toBeNull()
+    expect(host.querySelector('[data-y-caption]')).toBeNull()
   })
 
   it('draws SMH with a dashed tail and the funds with a solid one', async () => {
