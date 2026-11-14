@@ -193,8 +193,8 @@ func TestOptionOpenRoundTripAndGrants(t *testing.T) {
 	if _, err := r.Plan(ctx, "2026-11-11", "0945"); err != nil {
 		t.Errorf("the pages role must read the plan view: %v", err)
 	}
-	// A writer cannot delete, truncate or update a key column (migration 0047 widens UPDATE of non-key columns and SELECT
-	// of compared ones; this database applies 0029 to 0032 only).
+	// A writer cannot delete, truncate or update a key column (this database applies the earlier migrations only, 0029 to
+	// 0032; the table-level grants of 0047 are checked by TestMig47GrantsPG in internal/store/setup/migrate_0047_pg_test.go).
 	wc, err := pgx.Connect(ctx, connURL(t, name, "ot_w_option_open"))
 	if err != nil {
 		t.Fatal(err)

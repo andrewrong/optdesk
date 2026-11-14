@@ -593,6 +593,7 @@ export type Notes =
       string,
       string
     ];
+export type Day = string;
 export type RunId = string;
 export type RunStatus = "ok" | "partial" | "failed";
 export type Schema = "companies_page";
@@ -669,6 +670,10 @@ export interface CompaniesPageV2 {
   header: Header;
   holdings: HoldingsBlock | null;
   notes: Notes;
+  /**
+   * Optional: PE and PB of each company from stored filings and bars, or a Gap.
+   */
+  pepb?: PepbBlock | Gap;
   questions: QuestionsBlock | Gap;
   run_id: RunId;
   run_status: RunStatus;
@@ -994,6 +999,81 @@ export interface Cell {
    */
   hand_price?: string;
 }
+export interface PepbBlock {
+  basis_note: Text;
+  /**
+   * @maxItems 200
+   */
+  rows: PepbRow[];
+}
+/**
+ * One company: PE and PB each a line or a Gap, and the forward Gap.
+ */
+export interface PepbRow {
+  symbol: Text;
+  pe: PepbLine | Gap;
+  pb: PepbLine | Gap;
+  /**
+   * Forward PE has no estimates source: always a Gap.
+   */
+  forward: Gap;
+}
+/**
+ * One ratio of one company on the newest stored day, as produced text and figures; no verdict.
+ */
+export interface PepbLine {
+  text: Text;
+  ratio: Figure & {
+    unit?: "ratio";
+    [k: string]: unknown;
+  };
+  day: Day;
+  basis_end: Day;
+  percentile: Figure | Gap;
+  /**
+   * @maxItems 2
+   */
+  at_percentile: [] | [PepbAtPercentile] | [PepbAtPercentile, PepbAtPercentile];
+  shares: Text;
+  shares_filed: Day;
+  window_days: number;
+  window_from: Day;
+  /**
+   * @maxItems 120
+   */
+  history: PepbHistoryPoint[];
+}
+/**
+ * A number the producer wrote; the view prints text.
+ */
+export interface Figure {
+  value: number;
+  text: Text;
+  unit: string;
+}
+/**
+ * The ratio at a rank of the window and the price that puts today's ratio there; history, not a buy price.
+ */
+export interface PepbAtPercentile {
+  percentile: 20 | 50;
+  ratio: Figure & {
+    unit?: "ratio";
+    [k: string]: unknown;
+  };
+  price: Figure & {
+    unit?: "price";
+    [k: string]: unknown;
+  };
+  text: Text;
+}
+/**
+ * One stored day of the chart.
+ */
+export interface PepbHistoryPoint {
+  day: Day;
+  value: number;
+  text: Text;
+}
 export interface QuestionsBlock {
   basis_note: Text;
   /**
@@ -1026,14 +1106,6 @@ export interface QuestionRow {
    * The owner's own text for the fifth question, or a Gap when none is entered.
    */
   fifth: Text | Gap;
-}
-/**
- * A number the producer wrote; the view prints text.
- */
-export interface Figure {
-  value: number;
-  text: Text;
-  unit: string;
 }
 /**
  * The times and the label; the browser only compares its clock with stale_after.

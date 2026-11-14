@@ -1,6 +1,8 @@
-// Package macro_page builds the page.macro_page.v1 view model from stored series points.
-// The ease and the events are named gaps, so the page is always partial. It only formats
-// stored values; it computes nothing, reads no clock and makes no request.
+// Package macro_page builds the page.macro_page.v1 view model from stored series points, and
+// page.macro_page.v2 when its Config has a Liquidity function. The ease and the events are
+// named gaps, so the page is always partial. The page formats stored values and the figures
+// its Liquidity function returns and computes nothing itself (rounding for display aside); it
+// reads no clock and makes no request.
 package macro_page
 
 import (
@@ -12,8 +14,10 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
 
 const (
@@ -27,9 +31,12 @@ const (
 	// maxIndicators is the maxItems of the indicators array in the schema.
 	maxIndicators = 20
 
-	title           = "Macro"
-	sentence        = "Macro indicators come from stored series; ease and events: no data yet."
-	sentenceEase    = "Macro indicators come from stored series; events: no data yet."
+	title        = "Macro"
+	sentence     = "Macro indicators come from stored series; ease and events: no data yet."
+	sentenceEase = "Macro indicators come from stored series; events: no data yet."
+	// With an events reader the sentences no longer say the events are missing.
+	sentenceEv      = "Macro indicators come from stored series; ease: no data yet."
+	sentenceEaseEv  = "Macro indicators come from stored series."
 	easeTitle       = "Ease"
 	eventsTitle     = "This week and next"
 	indicatorsTitle = "Indicators"
@@ -64,6 +71,17 @@ type Config struct {
 	// Build may read stored readings through it; an error of Read is an error of Build,
 	// never a gap.
 	Read compute.ReadingFunc
+	// Events is optional. Nil keeps the page as it is: no event rows, the events gap and the old title.
+	// With it, Build lists the stored events of the next 60 days and the gaps in them (events.go); an
+	// error of Events is an error of Build, never a gap.
+	Events macroevent.Reader
+	// Liquidity is optional. Nil keeps the page as it is (page.macro_page.v1, no liquidity field, no series read
+	// for the block). With it, Build reads the fourteen series of liquidityapi.Input, calls it once and writes
+	// page.macro_page.v2 with the funding and credit block (liquidity.go). LiquidityParams and Net go into its
+	// Input. An error of a read is an error of Build, never a gap.
+	Liquidity       liquidityapi.Func
+	LiquidityParams liquidityapi.Params
+	Net             liquidityapi.NetFunc
 }
 
 type gap struct {
@@ -113,11 +131,14 @@ type viewModel struct {
 	IndicatorsTitle string         `json:"indicators_title"`
 	NotesTitle      string         `json:"notes_title"`
 	Ease            any            `json:"ease"`
-	Events          []struct{}     `json:"events"`
+	Events          []eventRow     `json:"events"`
 	Indicators      []indicatorRow `json:"indicators"`
 	Notes           []string       `json:"notes"`
 	Gaps            []gap          `json:"gaps"`
 	Stale           staleLabel     `json:"stale"`
+	// Written only with a Liquidity function (version 2).
+	LiquidityTitle string          `json:"liquidity_title,omitempty"`
+	Liquidity      *liquidityBlock `json:"liquidity,omitempty"`
 }
 
 func validate(c Config) error {
@@ -143,7 +164,7 @@ func validate(c Config) error {
 	return nil
 }
 
-// Build returns the page.macro_page.v1 JSON for day, read from r. The page is partial: the
+// Build returns the page.macro_page.v1 JSON (v2 with c.Liquidity) for day, read from r. The page is partial: the
 // events are a no_data gap, and so is the ease unless c.Read returns a stored macro.ease
 // reading with a value. generatedAt is written in c.Zone.
 func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Day, generatedAt time.Time) ([]byte, error) {
@@ -171,13 +192,17 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		IndicatorsTitle: indicatorsTitle,
 		NotesTitle:      notesTitle,
 		Ease:            gap{Reason: "no_data", Text: "Ease: no data yet"},
-		Events:          []struct{}{},
+		Events:          []eventRow{},
 		Indicators:      []indicatorRow{},
 		Notes:           notes,
 		Gaps: []gap{
 			{Reason: "no_data", Text: "Ease: no data yet"},
 			{Reason: "no_data", Text: "Event calendar: no data yet"},
 		},
+	}
+	eventGaps, err := withEvents(ctx, c, d, &vm)
+	if err != nil {
+		return nil, err
 	}
 	if c.Read != nil {
 		block, reading, err := easeFor(ctx, c, d)
@@ -187,9 +212,16 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		if block != nil {
 			vm.Ease = block
 			vm.Sentence = sentenceEase
+			if c.Events != nil {
+				vm.Sentence = sentenceEaseEv
+			}
 			vm.Gaps = vm.Gaps[1:]
 			vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "macro_ease", DataTime: midnight(reading.dataDay, c.Zone)})
 		}
+	}
+	vm.Gaps = append(vm.Gaps, eventGaps...)
+	if err := withLiquidity(ctx, r, c, d, &vm); err != nil {
+		return nil, err
 	}
 	var oldest *time.Time
 	for _, ind := range c.Indicators {
@@ -208,16 +240,21 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 			}
 		}
 	}
+	vm.Stale = staleOf(d, oldest, c.Zone)
+	return json.Marshal(vm)
+}
+
+// staleOf is the stale label: the oldest latest observation of the indicators, else the page day.
+func staleOf(d time.Time, oldest *time.Time, zone *time.Location) staleLabel {
 	base, text := d, "No data day"
 	if oldest != nil {
 		base, text = *oldest, "Data day "+oldest.Format("01-02")
 	}
-	vm.Stale = staleLabel{
-		DataTime:   midnight(base, c.Zone),
-		StaleAfter: time.Date(base.Year(), base.Month(), base.Day()+freshnessLimitDays, 9, 30, 0, 0, c.Zone).Format(timeLayout),
+	return staleLabel{
+		DataTime:   midnight(base, zone),
+		StaleAfter: time.Date(base.Year(), base.Month(), base.Day()+freshnessLimitDays, 9, 30, 0, 0, zone).Format(timeLayout),
 		Text:       text,
 	}
-	return json.Marshal(vm)
 }
 
 func midnight(t time.Time, zone *time.Location) string {
