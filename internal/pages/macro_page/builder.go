@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
 
 const (
@@ -27,9 +28,12 @@ const (
 	// maxIndicators is the maxItems of the indicators array in the schema.
 	maxIndicators = 20
 
-	title           = "Macro"
-	sentence        = "Macro indicators come from stored series; ease and events: no data yet."
-	sentenceEase    = "Macro indicators come from stored series; events: no data yet."
+	title        = "Macro"
+	sentence     = "Macro indicators come from stored series; ease and events: no data yet."
+	sentenceEase = "Macro indicators come from stored series; events: no data yet."
+	// With an events reader the sentences no longer say the events are missing.
+	sentenceEv      = "Macro indicators come from stored series; ease: no data yet."
+	sentenceEaseEv  = "Macro indicators come from stored series."
 	easeTitle       = "Ease"
 	eventsTitle     = "This week and next"
 	indicatorsTitle = "Indicators"
@@ -64,6 +68,10 @@ type Config struct {
 	// Build may read stored readings through it; an error of Read is an error of Build,
 	// never a gap.
 	Read compute.ReadingFunc
+	// Events is optional. Nil keeps the page as it is: no event rows, the events gap and the old title.
+	// With it, Build lists the stored events of the next 60 days and the gaps in them (events.go); an
+	// error of Events is an error of Build, never a gap.
+	Events macroevent.Reader
 }
 
 type gap struct {
@@ -113,7 +121,7 @@ type viewModel struct {
 	IndicatorsTitle string         `json:"indicators_title"`
 	NotesTitle      string         `json:"notes_title"`
 	Ease            any            `json:"ease"`
-	Events          []struct{}     `json:"events"`
+	Events          []eventRow     `json:"events"`
 	Indicators      []indicatorRow `json:"indicators"`
 	Notes           []string       `json:"notes"`
 	Gaps            []gap          `json:"gaps"`
@@ -171,13 +179,17 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		IndicatorsTitle: indicatorsTitle,
 		NotesTitle:      notesTitle,
 		Ease:            gap{Reason: "no_data", Text: "Ease: no data yet"},
-		Events:          []struct{}{},
+		Events:          []eventRow{},
 		Indicators:      []indicatorRow{},
 		Notes:           notes,
 		Gaps: []gap{
 			{Reason: "no_data", Text: "Ease: no data yet"},
 			{Reason: "no_data", Text: "Event calendar: no data yet"},
 		},
+	}
+	eventGaps, err := withEvents(ctx, c, d, &vm)
+	if err != nil {
+		return nil, err
 	}
 	if c.Read != nil {
 		block, reading, err := easeFor(ctx, c, d)
@@ -187,10 +199,14 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		if block != nil {
 			vm.Ease = block
 			vm.Sentence = sentenceEase
+			if c.Events != nil {
+				vm.Sentence = sentenceEaseEv
+			}
 			vm.Gaps = vm.Gaps[1:]
 			vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "macro_ease", DataTime: midnight(reading.dataDay, c.Zone)})
 		}
 	}
+	vm.Gaps = append(vm.Gaps, eventGaps...)
 	var oldest *time.Time
 	for _, ind := range c.Indicators {
 		rows, err := r.SeriesPoints(ctx, ind.SeriesID, from, day)
