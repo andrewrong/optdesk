@@ -8,6 +8,7 @@ type Row = Payload['market']['rows'][number]
 
 function RowText({ row }: { row: Row }) {
   const { figure, percentile } = row
+  const suffix = figure.kind === 'value' ? unitSuffix(figure.unit) : ''
   return (
     <span className="grid gap-1 text-left">
       <span className="font-medium">{row.label}</span>
@@ -15,9 +16,7 @@ function RowText({ row }: { row: Row }) {
         {figure.kind === 'value' ? (
           <>
             {figure.text}
-            {unitSuffix(figure.unit) === '' ? null : (
-              <span className="ml-1 text-muted-foreground">{unitSuffix(figure.unit)}</span>
-            )}
+            {suffix === '' ? null : <span className="ml-1 text-muted-foreground">{suffix}</span>}
           </>
         ) : (
           figure.text
