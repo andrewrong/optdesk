@@ -1,0 +1,11 @@
+# Manifest of the macro_events job.
+version = 1
+id = "macro_events"
+
+[schedule]
+calendar = "XNYS"
+anchor = "time"
+zone = "America/New_York"
+offset = "6h"
+run_bound = "5m"
+restart_sensitive = false
