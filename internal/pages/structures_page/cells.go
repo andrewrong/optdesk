@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/shopspring/decimal"
 )
 
 // gap is the schema's Gap: a named reason in place of a figure.
@@ -84,6 +85,26 @@ func (c cells) money(f compute.FigureValue) any {
 	return usd{Value: json.Number(n), Text: f.Value, Unit: "usd"}
 }
 
+// listMoney is the Usd cell of a list figure: Value is the stored number, Text has two decimals
+// (rounded half to even); a text that is not a number is a gap.
+func (c cells) listMoney(f compute.FigureValue) any {
+	cell := c.money(f)
+	m, ok := cell.(usd)
+	if !ok {
+		return cell
+	}
+	d, err := decimal.NewFromString(string(m.Value))
+	if err != nil {
+		return mkGap(reasonMissing)
+	}
+	text := d.RoundBank(2).StringFixed(2)
+	if text == "-0.00" {
+		text = "0.00"
+	}
+	m.Text = text
+	return m
+}
+
 // percent is the figure's ratio text moved two places; bad text is a gap, never a panic.
 func (c cells) percent(f compute.FigureValue) any {
 	if r := c.reasonOf(f); r != "" {
@@ -119,8 +140,13 @@ func (c cells) moneyness(s compute.Structure) any {
 }
 
 // maxLossCell is max_loss; an unbounded naked call is shown as such.
-func (c cells) maxLossCell(s compute.Structure) any {
-	m := c.money(s.Figures.MaxLoss)
+func (c cells) maxLossCell(s compute.Structure) any { return c.maxLossWith(s, c.money) }
+
+// listMaxLossCell is maxLossCell with the two-decimal text of the list.
+func (c cells) listMaxLossCell(s compute.Structure) any { return c.maxLossWith(s, c.listMoney) }
+
+func (c cells) maxLossWith(s compute.Structure, money func(compute.FigureValue) any) any {
+	m := money(s.Figures.MaxLoss)
 	if g, ok := m.(gap); ok && s.Kind == "naked_call" && g.Reason == reasonNoRule {
 		return gap{Reason: reasonNoRule, Text: "No limit"}
 	}

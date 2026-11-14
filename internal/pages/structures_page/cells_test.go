@@ -44,6 +44,31 @@ func TestMoneyCellsAreNumbersOrGaps(t *testing.T) {
 	}
 }
 
+func TestListMoneyTextTwoDecimals(t *testing.T) {
+	t.Parallel()
+	c := cells{}
+	cases := map[string]string{
+		"-18295.0000": "-18295.00", "-12.5000": "-12.50", "205.0000": "205.00", "0.0050": "0.00",
+		"0.0150": "0.02", "2.675": "2.68", "7": "7.00", "-0.0050": "0.00",
+	}
+	for in, want := range cases {
+		got, ok := c.listMoney(figure(in)).(usd)
+		if !ok || got.Text != want || string(got.Value) != in || got.Unit != "usd" {
+			t.Fatalf("listMoney(%s) = %v, want text %s", in, c.listMoney(figure(in)), want)
+		}
+	}
+	if got := c.listMoney(figure("x1")); got != mkGap("missing_input") {
+		t.Fatalf("bad text = %v", got)
+	}
+	if got := c.listMoney(compute.FigureValue{Gap: "no_rule"}); got != mkGap("no_rule") {
+		t.Fatalf("gap = %v", got)
+	}
+	naked := compute.Structure{Kind: "naked_call", Figures: compute.StructureFigures{MaxLoss: compute.FigureValue{Gap: "no_rule"}}}
+	if g := c.listMaxLossCell(naked).(gap); g.Text != "No limit" || g.Reason != "no_rule" {
+		t.Fatalf("naked call list max loss = %v", g)
+	}
+}
+
 func TestMoneynessFromDistanceSign(t *testing.T) {
 	t.Parallel()
 	mk := func(right, dist string) compute.Structure {

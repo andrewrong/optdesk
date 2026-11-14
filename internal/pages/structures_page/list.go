@@ -221,7 +221,8 @@ func (c cells) rowOf(s compute.Structure) row {
 		Symbol: symbol, Href: hrefOf(s.ID), KindText: kind, ExpiryText: expiry,
 		Moneyness: c.moneyness(s), Distance: c.percent(s.Figures.ExpiryDistance), Earned: c.percent(s.Figures.EarnedShare),
 		Compare: c.compare(s),
-		MaxLoss: c.maxLossCell(s), MaxGain: c.money(s.Figures.MaxGain), PnL: c.money(s.Figures.UnrealizedPnL),
+		MaxLoss: c.listMaxLossCell(s),
+		MaxGain: c.listMoney(s.Figures.MaxGain), PnL: c.listMoney(s.Figures.UnrealizedPnL),
 	}
 }
 
