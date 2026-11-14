@@ -17,11 +17,11 @@
   {"series_id": "BAA10Y", "units": "Percent", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"},
   {"series_id": "SOFR", "units": "Percent", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"},
   {"series_id": "WRESBAL", "units": "Millions of U.S. Dollars", "note": "read on the FRED series page on 2026-11-13, not downloaded metadata"},
-  {"series_id": "IORB", "units": "Percent", "note": "units text taken from docs/design/liquidity-view.md; the FRED series page could not be read on 2026-11-14 (network egress blocked), so this is not yet checked against the page"},
-  {"series_id": "SOFR99", "units": "Percent", "note": "units text taken from docs/design/liquidity-view.md; the FRED series page could not be read on 2026-11-14 (network egress blocked), so this is not yet checked against the page"},
-  {"series_id": "NFCI", "units": "Index", "note": "units text taken from docs/design/liquidity-view.md; the FRED series page could not be read on 2026-11-14 (network egress blocked), so this is not yet checked against the page"},
-  {"series_id": "STLFSI4", "units": "Index", "note": "units text taken from docs/design/liquidity-view.md; the FRED series page could not be read on 2026-11-14 (network egress blocked), so this is not yet checked against the page"},
-  {"series_id": "TLAACBW027SBOG", "units": "Billions of U.S. Dollars", "note": "units text taken from docs/design/liquidity-view.md; the FRED series page could not be read on 2026-11-14 (network egress blocked), so this is not yet checked against the page"},
-  {"series_id": "WLCFLPCL", "units": "Millions of U.S. Dollars", "note": "units text taken from docs/design/liquidity-view.md; the FRED series page could not be read on 2026-11-14 (network egress blocked), so this is not yet checked against the page"},
+  {"series_id": "IORB", "units": "Percent", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
+  {"series_id": "SOFR99", "units": "Percent", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
+  {"series_id": "NFCI", "units": "Index", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
+  {"series_id": "STLFSI4", "units": "Index", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
+  {"series_id": "TLAACBW027SBOG", "units": "Billions of U.S. Dollars", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
+  {"series_id": "WLCFLPCL", "units": "Millions of U.S. Dollars", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
   {"series_id": "DEXJPUS", "units": "Japanese Yen to One U.S. Dollar", "note": "read on the FRED series page on 2026-11-14, not downloaded metadata"}
 ]
