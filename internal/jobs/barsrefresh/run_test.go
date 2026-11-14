@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -411,5 +412,56 @@ func TestUnresolvedStockFailsOnlyItsOwnKey(t *testing.T) {
 	}
 	if len(st.rows) != 2 || res.Usable != 2 || len(h.queries) != 2 {
 		t.Fatalf("rows %+v result %+v queries %d", st.rows, res, len(h.queries))
+	}
+}
+
+// distinctBroker gives each symbol its own contract id, so no two stocks share an instrument.
+type distinctBroker struct {
+	unlistedBroker
+	ids map[string]int64
+}
+
+func (d distinctBroker) ResolveContract(ctx context.Context, c broker.Contract) (broker.Resolved, error) {
+	got, err := d.unlistedBroker.ResolveContract(ctx, c)
+	if err != nil {
+		return got, err
+	}
+	if _, ok := d.ids[c.Symbol]; !ok {
+		d.ids[c.Symbol] = 5000 + int64(len(d.ids))
+	}
+	got.Contract.ConID = d.ids[c.Symbol]
+	return got, nil
+}
+
+func TestUnresolvedSMHKeepsRun(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "90.0000"))}
+	st := &memBars{}
+	j, err := New(distinctBroker{unlistedBroker{unlisted: "SMH"}, map[string]int64{}}, h, fakeResolver{}, st, st, nil, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.(*job).m.AdjustedCadenceDays = 0
+	j.(*job).m.BackfillNamesPerRun = 100
+	keys, _, err := j.Plan(context.Background(), runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stocks []contracts.ExpectedKey
+	for _, k := range keys {
+		if strings.HasPrefix(k.SubjectKey, "stock:") {
+			stocks = append(stocks, k)
+		}
+	}
+	if len(stocks) != 17 {
+		t.Fatalf("stock keys %d", len(stocks))
+	}
+	res := j.Run(context.Background(), runDay, stocks)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent ||
+		!strings.Contains(res.Err.Error(), "stock:SMH") || !strings.Contains(res.Err.Error(), "not listed") {
+		t.Fatalf("err %v", res.Err)
+	}
+	if res.Usable != 16 || len(h.queries) != 16 {
+		t.Fatalf("result %+v queries %d", res, len(h.queries))
 	}
 }

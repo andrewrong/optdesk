@@ -27,17 +27,18 @@ type Index struct {
 type Stock struct {
 	Symbol   string
 	Label    string
-	Group    string // GroupProxy or GroupSector
+	Group    string // GroupProxy, GroupSector or GroupIndustry
 	SecType  string
 	Exchange string
 	Currency string
 	ConID    int64 // 0 is resolved once per run
 }
 
-// The two groups of a [[stock]] table.
+// The three groups of a [[stock]] table.
 const (
-	GroupProxy  = "proxy"
-	GroupSector = "sector"
+	GroupProxy    = "proxy"
+	GroupSector   = "sector"
+	GroupIndustry = "industry"
 )
 
 // Schedule is the [schedule] table.
@@ -100,7 +101,7 @@ type rawManifest struct {
 	GlobalAssets        struct {
 		Benchmark string `toml:"benchmark"`
 	} `toml:"global_assets"`
-	Schedule            struct {
+	Schedule struct {
 		Calendar string `toml:"calendar"`
 		Anchor   string `toml:"anchor"`
 		Offset   string `toml:"offset"`
@@ -203,8 +204,8 @@ func loadStocks(raws []rawStock, benchmark string) ([]Stock, error) {
 				return nil, refuse(f.key, "is missing")
 			}
 		}
-		if s.Group != GroupProxy && s.Group != GroupSector {
-			return nil, refuse("stock.group", "must be proxy or sector")
+		if s.Group != GroupProxy && s.Group != GroupSector && s.Group != GroupIndustry {
+			return nil, refuse("stock.group", "must be proxy, sector or industry")
 		}
 		if seen[s.Symbol] {
 			return nil, refuse("stock.symbol", "is repeated")
