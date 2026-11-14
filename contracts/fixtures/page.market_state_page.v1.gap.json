@@ -1,0 +1,517 @@
+{
+  "schema": "market_state_page",
+  "schema_version": 1,
+  "run_id": "run-demo-0001",
+  "build_id": "build-demo-0001",
+  "scope": "market-state",
+  "generated_at": "2026-11-13T22:30:00-05:00",
+  "data_times": [],
+  "run_status": "failed",
+  "stale": null,
+  "title": "Market state",
+  "notes": [
+    "Synthetic fixture: every figure is a gap."
+  ],
+  "gaps": [],
+  "day": "2026-11-13",
+  "freshness_text": "Synthetic fixture text. No source has data yet.",
+  "market": {
+    "title": "Market",
+    "rows": [
+      {
+        "id": "sp500_vs_200d",
+        "label": "sp500 vs 200d",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "window": "no window: no data",
+        "day": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "history": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "id": "sp500_drawdown",
+        "label": "sp500 drawdown",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "window": "no window: no data",
+        "day": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "history": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "id": "vix",
+        "label": "vix",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "window": "no window: no data",
+        "day": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "history": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "id": "vix_term",
+        "label": "vix term",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "window": "no window: no data",
+        "day": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "history": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "id": "hy_spread",
+        "label": "hy spread",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "window": "no window: no data",
+        "day": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "history": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      }
+    ]
+  },
+  "sectors": {
+    "caption": "Synthetic fixture text. Fund change minus SPY change over 21 and 63 sessions ending on the end day; a rank counts only funds with both closes; trial windows, not a forecast.",
+    "end_day": {
+      "kind": "gap",
+      "reason": "no_data",
+      "text": "no data yet"
+    },
+    "bars_caption": "Synthetic fixture text. 63-session fund change minus SPY change, one bar per fund, in the table's order.",
+    "rotation_axes": {
+      "x_caption": "63-session change minus SPY, points",
+      "y_caption": "21-session change minus a third of the 63-session change, points",
+      "note": "Synthetic fixture text. x is the 63-session gap and y is the 21-session gap minus a third of the 63-session gap, both against SPY; the tail shows the same two numbers 5, 10, 15 and 20 sessions before the end day.",
+      "quadrants": [
+        {
+          "id": "leading",
+          "text": "x above 0, y above 0"
+        },
+        {
+          "id": "weakening",
+          "text": "x above 0, y below 0"
+        },
+        {
+          "id": "lagging",
+          "text": "x below 0, y below 0"
+        },
+        {
+          "id": "improving",
+          "text": "x below 0, y above 0"
+        }
+      ]
+    },
+    "rows": [
+      {
+        "symbol": "XLK",
+        "label": "Technology",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLC",
+        "label": "Communication",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLY",
+        "label": "Consumer discretionary",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLF",
+        "label": "Financials",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLI",
+        "label": "Industrials",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLE",
+        "label": "Energy",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLV",
+        "label": "Health care",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLB",
+        "label": "Materials",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLU",
+        "label": "Utilities",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLP",
+        "label": "Consumer staples",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "XLRE",
+        "label": "Real estate",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      },
+      {
+        "symbol": "SMH",
+        "label": "Semiconductors",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        },
+        "group": "industry",
+        "rotation": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data yet"
+        }
+      }
+    ]
+  }
+}
