@@ -38,6 +38,14 @@ func builtPages() map[string]builtPage {
 			if err != nil {
 				return pages.Page{}, nil, err
 			}
+			events, closeEvents, err := openMacroEvents(ctx, a)
+			if err != nil {
+				closeRead()
+				return pages.Page{}, nil, err
+			}
+			if events != nil {
+				return newMacroPageEvents(a.profile.Zone, buildIDOf(version), read, events), func() { closeEvents(); closeRead() }, nil
+			}
 			return a.deps.macroPage(a.profile.Zone, buildIDOf(version), read), closeRead, nil
 		}},
 		reportName: {noSeriesDB: true, build: func(ctx context.Context, a *app, market, slot string) (pages.Page, func(), error) {
