@@ -1,27 +1,16 @@
 // The five market rows: a row opens its chart below it. Every text, day and point is the payload's; nothing is parsed.
 import { useState } from 'react'
 import { Chart } from '@/charts/Chart'
-import { unitSuffix } from '@/charts/unitSuffix'
 import type { Payload } from '@/types/market_state_page'
 
 type Row = Payload['market']['rows'][number]
 
 function RowText({ row }: { row: Row }) {
   const { figure, percentile } = row
-  const suffix = figure.kind === 'value' ? unitSuffix(figure.unit) : ''
   return (
     <span className="grid gap-1 text-left">
       <span className="font-medium">{row.label}</span>
-      <span>
-        {figure.kind === 'value' ? (
-          <>
-            {figure.text}
-            {suffix === '' ? null : <span className="ml-1 text-muted-foreground">{suffix}</span>}
-          </>
-        ) : (
-          figure.text
-        )}
-      </span>
+      <span>{figure.text}</span>
       {percentile ? (
         <span className="text-sm text-muted-foreground">
           {percentile.text} · {percentile.window}

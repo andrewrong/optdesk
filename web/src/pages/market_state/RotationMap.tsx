@@ -138,7 +138,7 @@ export function RotationMap({ block }: { block: Sectors }) {
       </p>
       <div className="mt-2">
         <ChartContainer config={config} className="h-[460px] w-full">
-          <ScatterChart margin={{ left: 16, right: 24, top: 16, bottom: 28 }}>
+          <ScatterChart margin={{ left: 16, right: 24, top: 16, bottom: 8 }}>
             <CartesianGrid stroke="var(--border)" />
             <XAxis
               type="number"
@@ -147,7 +147,9 @@ export function RotationMap({ block }: { block: Sectors }) {
               domain={['auto', 'auto']}
               padding={{ left: 16, right: 16 }}
               tickLine={false}
-              label={{ value: axes.x_caption, position: 'insideBottom', offset: -16, fontSize: 12 }}
+              // The axis band is tall enough for its tick row and the title on its own line; the legend is drawn below the band.
+              height={52}
+              label={{ value: axes.x_caption, position: 'insideBottom', offset: 0, fontSize: 12 }}
             />
             <YAxis
               type="number"
@@ -171,7 +173,7 @@ export function RotationMap({ block }: { block: Sectors }) {
             <ReferenceLine x={0} stroke="var(--foreground)" />
             <ReferenceLine y={0} stroke="var(--foreground)" />
             <ChartTooltip content={<Tip />} />
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLegend verticalAlign="bottom" content={<ChartLegendContent />} />
             {drawn.map((item) => (
               <Scatter
                 key={item.symbol}
