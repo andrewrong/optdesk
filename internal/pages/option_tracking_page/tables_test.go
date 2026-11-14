@@ -214,3 +214,23 @@ func TestTrackingMoneyColumnsFormat(t *testing.T) {
 		}
 	}
 }
+
+func TestRecentMoneyColumnsRoundingAndGap(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.Currency, o.Commissions, o.RealizedPnL = "USD", "-3.005", "-0.001"
+	r := recentTable([]opt{o}).Rows[0].Cells
+	for col, want := range map[string]string{"commissions": "−$3.01", "realized": "$0.00"} {
+		if v := asValue(t, r[col]); v.Text != want {
+			t.Errorf("%s = %q, want %q", col, v.Text, want)
+		}
+	}
+	// A row without a mark: the recent columns keep the no_value gap, not the mark gap.
+	o.Commissions, o.RealizedPnL, o.Mid, o.Spot = "", "", "", ""
+	r = recentTable([]opt{o}).Rows[0].Cells
+	for _, col := range []string{"commissions", "realized"} {
+		if g := asGap(t, r[col]); g != codeGap(codeNoValue) {
+			t.Errorf("%s gap = %+v, want %+v", col, g, codeGap(codeNoValue))
+		}
+	}
+}
