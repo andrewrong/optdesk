@@ -1,0 +1,74 @@
+{
+  "schema": "macro_summary",
+  "schema_version": 2,
+  "run_id": "run-test",
+  "build_id": "build-test",
+  "scope": "scope-test",
+  "generated_at": "2026-11-06T09:30:00+08:00",
+  "data_times": [
+    {
+      "source": "macro_ease",
+      "data_time": "2026-11-05T00:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "card": {
+    "title": "Macro",
+    "say": "Reserves $3.0tn, 4 weeks −$40bn (2026-11-04).",
+    "stale": {
+      "data_time": "2026-11-05T00:00:00+08:00",
+      "stale_after": "2026-11-09T09:30:00+08:00",
+      "text": "Data day 11-05"
+    },
+    "ease": {
+      "figure": {
+        "value": 56.0,
+        "text": "56",
+        "unit": "index_points"
+      },
+      "week_change": {
+        "value": -0.2,
+        "text": "−0.2",
+        "unit": "index_points",
+        "tone": "down"
+      },
+      "marker_percent": {
+        "value": 56.04,
+        "text": "56",
+        "unit": "percent_of_track"
+      },
+      "neutral_band": {
+        "low": {
+          "value": 33.5,
+          "text": "33.5%",
+          "unit": "percent_of_track"
+        },
+        "high": {
+          "value": 66.5,
+          "text": "66.5%",
+          "unit": "percent_of_track"
+        }
+      },
+      "ticks": [
+        "0",
+        "25",
+        "50",
+        "75",
+        "100"
+      ],
+      "reading_text": "Now 56, neutral; fixed scale 0 to 100.",
+      "aria_text": "Ease 56, neutral, vs last week −0.2; fixed scale 0 to 100, neutral band 33.5 to 66.5."
+    },
+    "events": [],
+    "notes": [
+      "Event dates follow the release calendar, no release time."
+    ],
+    "gaps": [
+      {
+        "reason": "not_built",
+        "text": "Event calendar: not connected yet"
+      }
+    ],
+    "data_times_text": "Ease data day 11-05. Event dates follow the release calendar, no release time."
+  }
+}

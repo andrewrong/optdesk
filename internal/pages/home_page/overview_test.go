@@ -293,3 +293,25 @@ func TestOverviewEmptyHoursNoticesKeepEmptyList(t *testing.T) {
 		}
 	}
 }
+
+func TestOverviewCopiesReservesSay(t *testing.T) {
+	t.Parallel()
+	const say = "Reserves $3.0tn, 4 weeks −$40bn (2026-11-11)."
+	in := inputFrom(t, "overview_ok")
+	var doc map[string]any
+	if err := json.Unmarshal(in.Macro, &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["card"].(map[string]any)["say"] = say
+	b, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Macro = b
+	o, out := composeOverview(t, in)
+	validateV3(t, out)
+	got := o.Overview.Items[0]
+	if got.Text != say || strings.Contains(got.Text, "Ease") {
+		t.Errorf("macro line = %q, want %q", got.Text, say)
+	}
+}
