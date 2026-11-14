@@ -256,7 +256,9 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 	}
 	dirs := slices.Clone(generated)
 	for _, p := range pkgs {
-		dirs = append(dirs, p.dir)
+		if strings.Count(p.dir, "/") == 2 { // nested packages are components of the yml only, see deriveTree
+			dirs = append(dirs, p.dir)
+		}
 	}
 	var out []component
 	for _, r := range rows {

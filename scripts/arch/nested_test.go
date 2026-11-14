@@ -88,8 +88,6 @@ func TestTreeNestedPackageIsImportableByOT(t *testing.T) {
 		{"x/y/sub", "x/y/decl", true}, // item 4
 		{"x/y/z", "x/y/decl", true},
 		{"x/y/z", "x", true},
-		{"x/y/z", "x/shared", true},
-		{"x/y/decl", "x/shared", true},
 		{"x/shared", "x/y/z", false},
 		{"v/q/r", "x/y/kit", true},
 		{"ot", "x/y/kit", false},
@@ -104,8 +102,8 @@ func TestTreeNestedPackageIsImportableByOT(t *testing.T) {
 			t.Errorf("yml: %s imports %s = %v, want %v", e.from, e.to, got, e.want)
 		}
 		// arch.toml lists no test kit: the tree adds those edges to the lint file only.
-		if got := tomlHas(e.from, e.to); e.to != "x/y/kit" && got != e.want {
-			t.Errorf("toml: %s imports %s = %v, want %v", e.from, e.to, got, e.want)
+		if e.from == "ot" && e.to != "x/y/kit" && tomlHas(e.from, e.to) != e.want {
+			t.Errorf("toml: %s imports %s = %v, want %v", e.from, e.to, !e.want, e.want)
 		}
 	}
 
@@ -195,5 +193,30 @@ func TestTreeNestedPackageKeepsEveryExistingAllowance(t *testing.T) {
 	}
 	if !slices.Contains(depsOfYAML(after, "ot"), "x/y/z") {
 		t.Error("ot does not import x/y/z")
+	}
+}
+
+// On the real tree the nested packages strategy/risk/{bsm,fit,stress} are imported by ot, are
+// components of the lint file only, and import what they imported before they were discovered.
+func TestTreeRealNestedPackagesChangeOnlyOT(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	toml, yml, err := generate(modulesText(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []string{"strategy/risk/bsm", "strategy/risk/fit", "strategy/risk/stress"} {
+		if !slices.Contains(depsOfYAML(string(yml), "ot"), n) {
+			t.Errorf("ot does not import %s in the lint file", n)
+		}
+		if !strings.Contains(string(toml), `"`+n+`"`) {
+			t.Errorf("arch.toml does not list %s for ot", n)
+		}
+		if strings.Contains(string(toml), "[component.\""+n+"\"]") {
+			t.Errorf("arch.toml has a new component %s", n)
+		}
+		if slices.Contains(depsOfYAML(string(yml), n), "strategy/shared") {
+			t.Errorf("%s gained strategy/shared", n)
+		}
 	}
 }
