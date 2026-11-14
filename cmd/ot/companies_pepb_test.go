@@ -36,6 +36,9 @@ func TestCompaniesPepbWiring(t *testing.T) {
 	if _, ok := pepbPageOf(t, fx)["pepb"]; !ok {
 		t.Fatal("page with a bar reader has no pepb property")
 	}
+	// A nil bar reader gives no bars for any symbol: the Gap no_data.
+	fx.inputs.Bars = nil
+	wantNoBarsGap(t, pepbPageOf(t, fx))
 	// Without the catalog and the name reader no symbol can be resolved: the block is off.
 	fx.inputs.Catalog, fx.inputs.Names = nil, nil
 	if _, ok := pepbPageOf(t, fx)["pepb"]; ok {
