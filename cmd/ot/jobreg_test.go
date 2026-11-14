@@ -6,8 +6,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -83,11 +81,7 @@ func TestJobDupPanics(t *testing.T) {
 // TestJobDocsExist: every registered id has docs/contracts/ot/jobs/<id>.md with an Order line and a Version heading.
 func TestJobDocsExist(t *testing.T) {
 	t.Parallel()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("no caller")
-	}
-	root := os.DirFS(filepath.Join(filepath.Dir(file), "..", ".."))
+	root := os.DirFS("../..")
 	for _, id := range familyIDs() {
 		raw, err := fs.ReadFile(root, "docs/contracts/ot/jobs/"+id+".md")
 		if err != nil {
