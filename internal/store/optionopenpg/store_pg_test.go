@@ -278,15 +278,15 @@ func adminConn(t *testing.T, name string) *pgx.Conn {
 type stored struct {
 	n      int
 	status int
-	bid    *string
-	delta  *string
+	bid    string // "" when NULL
+	delta  string // "" when NULL
 	xmin   string
 }
 
 func readOpen(t *testing.T, c *pgx.Conn, inst int) stored {
 	t.Helper()
 	var s stored
-	err := c.QueryRow(context.Background(), `SELECT count(*), coalesce(max(status), 0), max(bid::text), max(delta::text), `+
+	err := c.QueryRow(context.Background(), `SELECT count(*), coalesce(max(status), 0), coalesce(max(bid::text), ''), coalesce(max(delta::text), ''), `+
 		`coalesce(max(xmin::text), '') FROM obs.option_open WHERE instrument_id = $1`, inst).
 		Scan(&s.n, &s.status, &s.bid, &s.delta, &s.xmin)
 	if err != nil {
@@ -299,17 +299,17 @@ func readOpen(t *testing.T, c *pgx.Conn, inst int) stored {
 type storedDay struct {
 	n          int
 	status     int
-	bid        *string
+	bid        string // "" when NULL
 	source     string
 	receivedAt time.Time
-	oi         *string
+	oi         string // "" when NULL
 }
 
 func readDay(t *testing.T, c *pgx.Conn, inst int) storedDay {
 	t.Helper()
 	var d storedDay
-	err := c.QueryRow(context.Background(), `SELECT count(*), coalesce(max(status), 0), max(bid::text), coalesce(max(source), ''), `+
-		`coalesce(max(received_at), 'epoch'), max(open_interest::text) FROM obs.option_day `+
+	err := c.QueryRow(context.Background(), `SELECT count(*), coalesce(max(status), 0), coalesce(max(bid::text), ''), coalesce(max(source), ''), `+
+		`coalesce(max(received_at), 'epoch'), coalesce(max(open_interest::text), '') FROM obs.option_day `+
 		`WHERE instrument_id = $1 AND session_day = '2026-11-11'`, inst).
 		Scan(&d.n, &d.status, &d.bid, &d.source, &d.receivedAt, &d.oi)
 	if err != nil {
@@ -338,7 +338,7 @@ func TestOptionOpenRerunReplacesRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := readOpen(t, c, 2)
-	if got.n != 1 || got.bid == nil || *got.bid != "2.2" || got.xmin == first.xmin {
+	if got.n != 1 || got.bid != "2.2" || got.xmin == first.xmin {
 		t.Fatalf("a re-run must replace the row: %+v", got)
 	}
 	var at time.Time
@@ -362,7 +362,7 @@ func TestOptionOpenTimeoutKeepsStoredQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := readOpen(t, c, 2)
-	if got.n != 1 || got.status != 1 || got.bid == nil || *got.bid != "1.1" {
+	if got.n != 1 || got.status != 1 || got.bid != "1.1" {
 		t.Fatalf("a status 3 row replaced the stored quote: %+v", got)
 	}
 }
@@ -384,7 +384,7 @@ func TestOptionOpenPartialKeepsFullRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := readOpen(t, c, 2)
-	if got.status != 1 || got.bid == nil || *got.bid != "1.1" || got.delta == nil || *got.delta != "0.4" {
+	if got.status != 1 || got.bid != "1.1" || got.delta != "0.4" {
 		t.Fatalf("a partial row replaced the full one: %+v", got)
 	}
 	// Of one rank, a row that lacks a quote column the stored one has is kept out too.
@@ -393,7 +393,7 @@ func TestOptionOpenPartialKeepsFullRow(t *testing.T) {
 	if err := w.InsertOptionOpen(ctx, []contracts.OptionOpen{thin}); err != nil {
 		t.Fatal(err)
 	}
-	if got := readOpen(t, c, 2); got.delta == nil || *got.delta != "0.4" {
+	if got := readOpen(t, c, 2); got.delta != "0.4" {
 		t.Fatalf("a thinner status 1 row replaced the fuller one: %+v", got)
 	}
 }
@@ -457,10 +457,10 @@ func TestOptionOpenDayRowKeepsOpenInterest(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := readDay(t, c, 2)
-	if d.source != "option_open" || d.bid == nil || *d.bid != "1.1" || !d.receivedAt.Equal(t0) {
+	if d.source != "option_open" || d.bid != "1.1" || !d.receivedAt.Equal(t0) {
 		t.Fatalf("the option_open capture did not update the day row: %+v", d)
 	}
-	if d.oi == nil || *d.oi != "55" {
+	if d.oi != "55" {
 		t.Fatalf("open interest = %v, want 55", d.oi)
 	}
 	var asof time.Time
