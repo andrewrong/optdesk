@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,12 +14,15 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 	"github.com/andrewrong/optdesk/internal/symbol"
+	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -88,11 +92,43 @@ type memEvents struct {
 	rows []contracts.EarningsDate
 }
 
-func (m *memEvents) InsertEarningsDate(_ context.Context, r contracts.EarningsDate) error {
+var _ fundkey.EarningsUpserter = (*memEvents)(nil)
+
+func (m *memEvents) InsertEarningsDate(ctx context.Context, r contracts.EarningsDate) error {
+	_, err := m.UpsertEarnings(ctx, []contracts.EarningsDate{r}, "")
+	return err
+}
+
+// UpsertEarnings keeps the rows by (Issuer, ObservedOn): a row of a stored key replaces it.
+func (m *memEvents) UpsertEarnings(_ context.Context, rows []contracts.EarningsDate, _ string) (fundkey.WriteCount, error) {
+	return m.put(rows, true), nil
+}
+
+// ReplayEarnings is UpsertEarnings that keeps a stored row of the same key.
+func (m *memEvents) ReplayEarnings(_ context.Context, rows []contracts.EarningsDate, _ string) (fundkey.WriteCount, error) {
+	return m.put(rows, false), nil
+}
+
+func (m *memEvents) put(rows []contracts.EarningsDate, replace bool) fundkey.WriteCount {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.rows = append(m.rows, r)
-	return nil
+	var n fundkey.WriteCount
+	for _, r := range rows {
+		i := slices.IndexFunc(m.rows, func(x contracts.EarningsDate) bool {
+			return x.Issuer == r.Issuer && x.ObservedOn.Format("2006-01-02") == r.ObservedOn.Format("2006-01-02")
+		})
+		switch {
+		case i < 0:
+			m.rows = append(m.rows, r)
+			n.Written++
+		case replace:
+			m.rows[i] = r
+			n.Written++
+		default:
+			n.Unchanged++
+		}
+	}
+	return n
 }
 
 func (m *memEvents) EarningsDates(_ context.Context, issuer string, from, to contracts.Day) ([]contracts.EarningsDate, error) {
@@ -109,7 +145,8 @@ func (m *memEvents) EarningsDates(_ context.Context, issuer string, from, to con
 
 func (m *memEvents) Close() error { return nil }
 
-// reconcilerOf runs the jobs it was built with on every Reconcile, as the ticker's reconciler does.
+// reconcilerOf runs the jobs it was built with on every Reconcile, as the ticker's reconciler does:
+// a key whose Postcondition is true for the day is present and is not run.
 type reconcilerOf struct{ jobs []contracts.Job }
 
 func (r reconcilerOf) Reconcile(ctx context.Context, day contracts.Day) error {
@@ -120,6 +157,18 @@ func (r reconcilerOf) Reconcile(ctx context.Context, day contracts.Day) error {
 		keys, _, err := j.Plan(ctx, day)
 		if err != nil {
 			return err
+		}
+		if pc, ok := j.(runner.Postcondition); ok {
+			var todo []contracts.ExpectedKey
+			for _, k := range keys {
+				if has, err := pc.Postcondition(ctx, string(day), k.DatasetID, k.SubjectKey); err != nil || !has {
+					todo = append(todo, k)
+				}
+			}
+			if len(todo) == 0 {
+				continue
+			}
+			keys = todo
 		}
 		_ = j.Run(ctx, day, keys)
 	}
@@ -161,4 +210,74 @@ func TestEarningsRefreshOncePerDayScheduled(t *testing.T) {
 		t.Fatalf("%d rows, want 1", rows)
 	}
 	_ = r.stop(t, done)
+}
+
+func earningsRow(issuer, day, source string) contracts.EarningsDate {
+	d, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		panic(err)
+	}
+	return contracts.EarningsDate{Issuer: issuer, Source: gen.EarningsDateSource(source), ObservedOn: types.SerializableDate{Time: d}}
+}
+
+func TestMemEventsUpsertReplacesAndReplayKeeps(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	m := &memEvents{}
+	if _, err := m.UpsertEarnings(ctx, []contracts.EarningsDate{earningsRow("a", "2026-11-09", "first")}, "w"); err != nil {
+		t.Fatal(err)
+	}
+	second := []contracts.EarningsDate{earningsRow("a", "2026-11-09", "second"), earningsRow("a", "2026-11-10", "other-day")}
+	replayed := []contracts.EarningsDate{earningsRow("a", "2026-11-09", "replayed"), earningsRow("b", "2026-11-09", "other-issuer")}
+	if _, err := m.UpsertEarnings(ctx, second, "w"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ReplayEarnings(ctx, replayed, "w"); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, r := range m.rows {
+		got[r.Issuer+r.ObservedOn.Format("2006-01-02")] = string(r.Source)
+	}
+	want := map[string]string{"a2026-11-09": "second", "a2026-11-10": "other-day", "b2026-11-09": "other-issuer"}
+	if len(m.rows) != 3 || !maps.Equal(got, want) {
+		t.Fatalf("rows %v, want %v", got, want)
+	}
+	if err := m.InsertEarningsDate(ctx, earningsRow("a", "2026-11-09", "inserted")); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.rows) != 3 {
+		t.Fatalf("InsertEarningsDate of a stored key made %d rows, want 3", len(m.rows))
+	}
+}
+
+type presentJob struct {
+	contracts.Job
+	runs int
+}
+
+func (p *presentJob) ID() string { return jobEarningsRefresh }
+
+func (p *presentJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return []contracts.ExpectedKey{{DatasetID: "d", SubjectKey: "k"}}, "", nil
+}
+
+func (p *presentJob) Postcondition(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+func (p *presentJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
+	p.runs++
+	return contracts.JobResult{}
+}
+
+func TestReconcilerOfSkipsPresentKey(t *testing.T) {
+	t.Parallel()
+	j := &presentJob{}
+	if err := (reconcilerOf{jobs: []contracts.Job{j}}).Reconcile(context.Background(), "2026-11-14"); err != nil {
+		t.Fatal(err)
+	}
+	if j.runs != 0 {
+		t.Fatalf("runs = %d, want 0", j.runs)
+	}
 }
