@@ -397,3 +397,21 @@ func TestMappingWRESBAL(t *testing.T) {
 	t.Parallel()
 	checkPinned(t, mapRecorded(t, "WRESBAL", "2900000"), "WRESBAL", ccyAmount, "USD", 2.9e12)
 }
+
+func TestMapDEXJPUSValueAndMissing(t *testing.T) {
+	t.Parallel()
+	pub := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	body := []byte(`{"observations":[` +
+		`{"realtime_start":"2026-11-10","realtime_end":"2026-11-10","date":"2026-11-06","value":"153.21"},` +
+		`{"realtime_start":"2026-11-10","realtime_end":"2026-11-10","date":"2026-11-07","value":"."}]}`)
+	got, err := mapObservations("DEXJPUS", body, pub)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("got %+v, err %v", got, err)
+	}
+	if got[0].Unit != jpyPerUsd || got[0].Value == nil || *got[0].Value != 153.21 || got[0].Status != "present" {
+		t.Errorf("value point: %+v", got[0])
+	}
+	if got[1].Unit != jpyPerUsd || got[1].Value != nil || got[1].Status != "no_value" {
+		t.Errorf("missing point: %+v", got[1])
+	}
+}

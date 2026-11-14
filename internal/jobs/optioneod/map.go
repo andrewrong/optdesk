@@ -54,10 +54,10 @@ func errorCode(q broker.Quote, name string) *string {
 	return &name
 }
 
-// captureID is the capture of one key in one run: uuid.NewSHA1(OID, day|dataset|subject|start), start being the
-// run's start instant from the job clock (RFC 3339, nanoseconds, UTC), so each run has its own capture.
-func captureID(day contracts.Day, k contracts.ExpectedKey, start time.Time) jobs.CaptureID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+k.DatasetID+"|"+k.SubjectKey+"|"+start.UTC().Format(time.RFC3339Nano)))
+// captureID is the capture of one key in one slot of a day: uuid.NewSHA1(OID, day|dataset|subject|slot), slot being
+// the manifest label "HHMM". A re-run of a slot has the same id and so meets the same keys.
+func captureID(day contracts.Day, k contracts.ExpectedKey, slot string) jobs.CaptureID {
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+k.DatasetID+"|"+k.SubjectKey+"|"+slot))
 }
 
 // snapshotKind is "session" for live quotes (market data type 1) and "off_session" for frozen or delayed ones.

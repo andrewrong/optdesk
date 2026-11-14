@@ -328,9 +328,14 @@ func TestLiveRefreshWaitsForARunningCall(t *testing.T) {
 		t.Fatalf("other symbols: %+v", a)
 	}
 	// same symbols: wait for the first call, then reuse its rows
-	r.l.d.After = func(time.Duration) <-chan time.Time { return make(chan time.Time) }
+	waiting := make(chan struct{}, 4)
+	r.l.d.After = func(time.Duration) <-chan time.Time {
+		waiting <- struct{}{}
+		return make(chan time.Time)
+	}
 	same := make(chan liveAnswer)
 	go func() { same <- r.l.refresh(t.Context(), []string{"AAPL"}) }()
+	<-waiting // the second call found the slot taken and is waiting for it
 	close(r.brk.block)
 	first, second := <-done, <-same
 	if first.Total != 3 || !strings.HasPrefix(second.Notice, "reused, ") || r.brk.calls.Load() != 1 {

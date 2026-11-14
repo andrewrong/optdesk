@@ -21,6 +21,7 @@ import (
 const runToml = `
 id = "option_eod"
 version = 1
+slot = "1100"
 max_expiries = 1
 max_strikes_per_side = 1
 chunk = 2
@@ -249,7 +250,7 @@ func TestRunWritesRows(t *testing.T) {
 	if len(r.w.calls) != 2 {
 		t.Fatalf("want one write per chunk, got %d", len(r.w.calls))
 	}
-	want := uuid.NewSHA1(uuid.NameSpaceOID, []byte("2026-11-06|obs.option_eod|TEST|2026-11-06T22:00:00Z")).String()
+	want := uuid.NewSHA1(uuid.NameSpaceOID, []byte("2026-11-06|obs.option_eod|TEST|1100")).String()
 	rows := r.w.all()
 	wantIDs := []int{5000950, 5000951, 5001000, 5001001}
 	for i, row := range rows {
@@ -308,19 +309,19 @@ func TestCaptureIDStable(t *testing.T) {
 	if rows[8].CaptureID == rows[0].CaptureID {
 		t.Fatal("another underlying must give another capture id")
 	}
-	start := time.Date(2026, 11, 6, 15, 0, 0, 0, time.UTC)
-	if captureID("2026-11-09", testKey, start) == captureID(testDay, testKey, start) {
+	if captureID("2026-11-09", testKey, "1100") == captureID(testDay, testKey, "1100") {
 		t.Fatal("another day must give another capture id")
 	}
-	if captureID(testDay, testKey, start) != captureID(testDay, testKey, start.Add(0).UTC()) {
-		t.Fatal("one (day, key, start) must give one capture id")
+	if a, b := captureID(testDay, testKey, "1100"), captureID(testDay, testKey, "1100"); a != b {
+		t.Fatal("one (day, key, slot) must give one capture id")
 	}
-	if captureID(testDay, testKey, start) == captureID(testDay, testKey, start.Add(time.Minute)) {
-		t.Fatal("another start must give another capture id")
+	if captureID(testDay, testKey, "1100") == captureID(testDay, testKey, "1030") {
+		t.Fatal("another slot must give another capture id")
 	}
+	// The run start is not a parameter: a start instant does not change the id, a slot does (TestCaptureIDSameForRerun).
 }
 
-func TestTwoRunsTwoCaptures(t *testing.T) {
+func TestTwoRunsOneCapturePerUnderlying(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, "2026-11-06 11:00")
 	if res := r.run(testDay, testKey); res.Err != nil {
@@ -337,12 +338,12 @@ func TestTwoRunsTwoCaptures(t *testing.T) {
 	for _, row := range r.w.all() {
 		ids[row.CaptureID]++
 	}
-	if len(ids) != 2 {
-		t.Fatalf("capture ids %v, want two", ids)
+	if len(ids) != 1 {
+		t.Fatalf("capture ids %v, want one for the underlying", ids)
 	}
 	for id, n := range ids {
-		if n != 4 {
-			t.Fatalf("capture %s holds %d rows, want 4", id, n)
+		if n != 8 {
+			t.Fatalf("capture %s holds %d rows, want 8 (two runs of 4)", id, n)
 		}
 	}
 }

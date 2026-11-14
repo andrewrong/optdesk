@@ -28,6 +28,7 @@ const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; ic
   { label: 'Option candidates', path: '/options/candidates' },
   { label: 'Advice', path: '/advice', icon: Lightbulb },
   { label: 'Settings', path: '/settings' },
+  { label: 'Price lines', path: '/plan/price-lines' },
   { label: 'Job console', path: '/job-console' },
 ]
 
