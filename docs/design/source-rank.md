@@ -91,7 +91,7 @@ Acceptance:
 ### 4 source-rank-store
 
 Module: store. Size: S.
-Order: after 2; after the store entries that carry the migrations of the readings design (`readings.md`, #2288), of `fundamentals-keys.md` and of `option-captures.md` (named by design entry; this entry takes the next free migration number at the cut, expected 0048, and rebases on them: all edit `docs/contracts/store.md`). Holds the auto-deploy: it carries a migration.
+Order: after 2. The migrations of `readings.md`, `fundamentals-keys.md` and `option-captures.md` are on main (`0045` to `0049`); this entry carries `0050` and holds the auto-deploy.
 Files: `migrations/0050_fx_rate_source.sql`, `internal/store/barpg/fill_pg_test.go`, `internal/store/barpg/store_pg_test.go`, `internal/store/barpg/upsert_pg_test.go`, `docs/contracts/store.md`
 Design: docs/design/source-rank.md#Decisions (2, 6, 10)
 `store_pg_test.go` and `upsert_pg_test.go` list the migrations their databases apply and gain the new file; they are edited for that list only.
