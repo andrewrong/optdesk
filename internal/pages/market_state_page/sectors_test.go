@@ -19,7 +19,7 @@ func TestSectorRowsAreNotReordered(t *testing.T) {
 		t.Errorf("order = %v", got)
 	}
 	rows := sectorRows(m)
-	if obj(obj(rows[1])["gap_63"])["text"] != "-3.00 points" || obj(rows[0])["group"] != "sector" || obj(rows[3])["group"] != "industry" {
+	if obj(obj(rows[1])["gap_63"])["text"] != "-3.00 pp" || obj(rows[0])["group"] != "sector" || obj(rows[3])["group"] != "industry" {
 		t.Errorf("rows = %v", rows)
 	}
 	if r := obj(obj(rows[0])["rank_63"]); r["at"].(json.Number) != "1" || r["of"].(json.Number) != "3" {
