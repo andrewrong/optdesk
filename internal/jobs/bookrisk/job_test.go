@@ -532,3 +532,19 @@ func TestBookRiskNewManifestIsTheScheduleOfThePlan(t *testing.T) {
 		t.Fatal("class table")
 	}
 }
+
+func TestBookRiskNewAliasWithoutFundsCarriesNoFundsReason(t *testing.T) {
+	t.Parallel()
+	w := newWorld()
+	w.aliases = []string{"mine"}
+	w.addPut("mine", "AAA", "USD")
+	w.totals["mine"] = map[string]string{"USD": "100.00"}
+	f := factsOf(t, w.run(t)["book_risk/mine:USD"])
+	if f["reason"] != "no_funds" && !strings.Contains(f["excluded"], "no_funds") {
+		t.Fatalf("no no_funds reason: %v", f)
+	}
+	w.addValues("mine", "USD")
+	if f := factsOf(t, w.run(t)["book_risk/mine:USD"]); f["reason"] != "" {
+		t.Fatalf("an alias with funds carries reason %q", f["reason"])
+	}
+}

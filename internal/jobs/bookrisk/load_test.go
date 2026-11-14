@@ -3,6 +3,8 @@ package bookrisk
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -194,5 +196,48 @@ func TestBookRiskNewLegsEqualRiskPageStructureLegs(t *testing.T) {
 	}
 	if want[0].Mid != "1.5" && want[1].Mid != "1.5" {
 		t.Fatalf("the fake world gives no mark: %+v", want)
+	}
+}
+
+// fileSeries reads the points of a series from a JSON file the test wrote.
+type fileSeries struct{ path string }
+
+func (f fileSeries) SeriesPoints(_ context.Context, id string, _, _ contracts.Day) ([]contracts.SeriesPoint, error) {
+	b, err := os.ReadFile(f.path)
+	if err != nil {
+		return nil, err
+	}
+	var pts map[string][]float64 // date -> [value]
+	if err := json.Unmarshal(b, &pts); err != nil || id != "DGS3MO" {
+		return nil, err
+	}
+	var out []contracts.SeriesPoint
+	for d, v := range pts {
+		x := v[0]
+		out = append(out, contracts.SeriesPoint{ObservationDate: date(d), Value: &x})
+	}
+	return out, nil
+}
+
+func TestBookRiskNewRateIsTheNewestSeriesPoint(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "series.json")
+	if err := os.WriteFile(path, []byte(`{"2026-11-05":[4.5],"2026-11-06":[4.25],"2026-11-03":[4.1]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w := newWorld()
+	w.addPut("mine", "AAA", "USD")
+	st := w.stores()
+	st.Series = fileSeries{path}
+	j, err := New(st, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := j.(*job).load(context.Background(), "mine", runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.book.Rate != "4.25" {
+		t.Fatalf("rate = %q", l.book.Rate)
 	}
 }

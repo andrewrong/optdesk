@@ -120,15 +120,17 @@ func bookRows(h header, runs []aliasRun) []strategyresult.Row {
 		incomplete []string
 	}
 	house := map[string]*sum{}
+	sumOf := func(m map[string]*sum, cur string) *sum {
+		if m[cur] == nil {
+			m[cur] = &sum{total: new(big.Rat)}
+		}
+		return m[cur]
+	}
 	for _, r := range runs {
 		if r.failed {
 			rows = append(rows, h.row(strategyBook, ruleBook, r.alias+":"+defaultCurrency, 0, "unknown", "[]", "[]",
 				map[string]string{"reason": "read_failed"}))
-			s := house[defaultCurrency]
-			if s == nil {
-				s = &sum{total: new(big.Rat)}
-				house[defaultCurrency] = s
-			}
+			s := sumOf(house, defaultCurrency)
 			s.incomplete = append(s.incomplete, r.alias)
 			continue
 		}
@@ -139,11 +141,7 @@ func bookRows(h header, runs []aliasRun) []strategyresult.Row {
 				status = "ok"
 			}
 			rows = append(rows, h.row(strategyBook, ruleBook, r.alias+":"+cur, 0, status, "[]", "[]", facts))
-			s := house[cur]
-			if s == nil {
-				s = &sum{total: new(big.Rat)}
-				house[cur] = s
-			}
+			s := sumOf(house, cur)
 			if v, good := new(big.Rat).SetString(total); ok && good {
 				s.total.Add(s.total, v)
 			} else {
@@ -221,6 +219,9 @@ func aliasFacts(r aliasRun, cur string) (facts map[string]string, total string, 
 		if c != cur && n > 0 {
 			facts["not_stressed_"+c] = strconv.Itoa(n)
 		}
+	}
+	if r.book.Funds == nil {
+		facts["reason"] = "no_funds" // no account.value of the day or the day before: no loss-against-liquidity pair
 	}
 	if f := r.book.Funds; ok && f != nil && f.Currency == cur && f.ExcessLiquidity != "" {
 		b, _ := json.Marshal(map[string]string{"worst_loss": total, "excess_liquidity": f.ExcessLiquidity})
