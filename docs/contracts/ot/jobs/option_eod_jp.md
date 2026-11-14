@@ -23,6 +23,10 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 
 It makes no second call to a vendor on the same day: the job reads the rows of the day and writes none for an entry that has one (Decision 12 of `docs/design/event-sources.md`).
 
+## Forced run
+
+A forced run (`ot backfill --force`, or the force box of the job console) replaces the rows of today's slot: the store entries of `docs/design/option-captures.md` (Decision 4) write the new rows over the stored ones. It is offered only for today; a past day is refused as before. It never replaces a stored good quote with a worse one: a later row that is an error, a timeout or off-session leaves the stored quote in place.
+
 ## Version
 
 v12: introduced after `option_eod`; v23: built over the watch list; moved to its own document with the job registry (no behaviour change).

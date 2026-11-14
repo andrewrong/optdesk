@@ -1,0 +1,516 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.market_state_page.v1.json",
+  "title": "MarketStatePage",
+  "description": "Where the index, VIX, high-yield spread and the sector funds stand today: level and percentile only, each market row with a trend chart. A render of text and numbers a producer wrote; nothing is computed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "notes",
+    "gaps",
+    "day",
+    "freshness_text",
+    "market",
+    "sectors"
+  ],
+  "properties": {
+    "schema": {
+      "const": "market_state_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Gap"
+      }
+    },
+    "day": {
+      "description": "The page day, an ISO date.",
+      "$ref": "#/$defs/Day"
+    },
+    "freshness_text": {
+      "description": "What the figures are and how old each source is; the producer's text.",
+      "$ref": "#/$defs/LongText"
+    },
+    "market": {
+      "$ref": "#/$defs/MarketBlock"
+    },
+    "sectors": {
+      "$ref": "#/$defs/SectorBlock"
+    }
+  },
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "LongText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600
+    },
+    "Day": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    },
+    "DayOrGap": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Day"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "Gap": {
+      "description": "A named data gap of the page, used in place of a value that cannot be shown. Never a zero.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reason",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "const": "gap",
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "pattern": "^[a-z_]{1,32}$"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Figure": {
+      "description": "A number the producer wrote; the view prints text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "properties": {
+        "kind": {
+          "const": "value",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "FigureOrGap": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Figure"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "MarketBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "rows"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/MarketRow"
+          }
+        }
+      }
+    },
+    "MarketRow": {
+      "description": "One market row. Level and percentile only: no verdict word.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "figure",
+        "window",
+        "day",
+        "history"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "sp500_vs_200d",
+            "sp500_drawdown",
+            "vix",
+            "vix_term",
+            "hy_spread"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "figure": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "window": {
+          "description": "What the figure is measured over, in words.",
+          "$ref": "#/$defs/Text"
+        },
+        "day": {
+          "description": "The data day of the figure, or the Gap when the figure is a gap.",
+          "$ref": "#/$defs/DayOrGap"
+        },
+        "percentile": {
+          "$ref": "#/$defs/Percentile"
+        },
+        "history": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/History"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        }
+      }
+    },
+    "Percentile": {
+      "description": "A percentile text and the words saying what it covers.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "window"
+      ],
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "window": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "History": {
+      "description": "The daily points of a row, ascending; the data of the chart. The caption is its visible text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caption",
+        "aria_text",
+        "unit",
+        "points"
+      ],
+      "properties": {
+        "caption": {
+          "description": "The visible text of the chart: first day and number of points.",
+          "$ref": "#/$defs/Text"
+        },
+        "aria_text": {
+          "$ref": "#/$defs/LongText"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "points": {
+          "type": "array",
+          "maxItems": 800,
+          "items": {
+            "$ref": "#/$defs/HistoryPoint"
+          }
+        }
+      }
+    },
+    "HistoryPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "day",
+        "value",
+        "text"
+      ],
+      "properties": {
+        "day": {
+          "$ref": "#/$defs/Day"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "description": "The display text of the point, as the tooltip shows it.",
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "SectorBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caption",
+        "end_day",
+        "bars_caption",
+        "rotation_axes",
+        "rows"
+      ],
+      "properties": {
+        "caption": {
+          "$ref": "#/$defs/LongText"
+        },
+        "end_day": {
+          "description": "The newest close day of the benchmark, or a Gap when it has none.",
+          "$ref": "#/$defs/DayOrGap"
+        },
+        "bars_caption": {
+          "$ref": "#/$defs/LongText"
+        },
+        "rotation_axes": {
+          "$ref": "#/$defs/RotationAxes"
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/SectorRow"
+          }
+        }
+      }
+    },
+    "RotationAxes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x_caption",
+        "y_caption",
+        "note",
+        "quadrants"
+      ],
+      "properties": {
+        "x_caption": {
+          "$ref": "#/$defs/Text"
+        },
+        "y_caption": {
+          "$ref": "#/$defs/Text"
+        },
+        "note": {
+          "description": "Names both windows and the tail offsets 5, 10, 15 and 20 sessions.",
+          "$ref": "#/$defs/LongText"
+        },
+        "quadrants": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Quadrant"
+          }
+        }
+      }
+    },
+    "Quadrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "leading",
+            "weakening",
+            "lagging",
+            "improving"
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "SectorRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "symbol",
+        "label",
+        "gap_21",
+        "gap_63",
+        "rank_21",
+        "rank_63",
+        "group",
+        "rotation"
+      ],
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "gap_21": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "gap_63": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "rank_21": {
+          "$ref": "#/$defs/RankOrGap"
+        },
+        "rank_63": {
+          "$ref": "#/$defs/RankOrGap"
+        },
+        "group": {
+          "type": "string",
+          "enum": [
+            "sector",
+            "industry"
+          ]
+        },
+        "rotation": {
+          "oneOf": [
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 5,
+              "items": {
+                "$ref": "#/$defs/RotationPoint"
+              }
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        }
+      }
+    },
+    "RankOrGap": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "at",
+            "of"
+          ],
+          "properties": {
+            "at": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "RotationPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "day",
+        "x",
+        "y",
+        "text"
+      ],
+      "properties": {
+        "day": {
+          "$ref": "#/$defs/Day"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "text": {
+          "description": "Starts with the point's own day.",
+          "$ref": "#/$defs/Text"
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/shared"
 )
 
 // fakeDB records the statements of the store and fails the Exec numbered failAt.
@@ -89,7 +91,8 @@ func TestInsertOptionOpenRefusesRefreshAndScreensSentinels(t *testing.T) {
 	if err := s.InsertOptionOpen(ctx, []contracts.OptionOpen{row, row}); err != nil {
 		t.Fatal(err)
 	}
-	if f.inTx != 1 || len(f.sqls) != 2 || !strings.Contains(f.sqls[0], "ON CONFLICT DO NOTHING") {
+	if f.inTx != 1 || len(f.sqls) != 2 || f.sqls[0] != insertOptionOpenSQL ||
+		!strings.Contains(f.sqls[0], "ON CONFLICT (session_day, capture_id, slot, instrument_id) DO UPDATE SET ") {
 		t.Fatalf("one transaction with two inserts expected: %d %d", f.inTx, len(f.sqls))
 	}
 	a := f.args[0]
@@ -194,5 +197,78 @@ func TestMarksAndContracts(t *testing.T) {
 	}
 	if err := s.Close(); err != nil || !f.closed {
 		t.Fatalf("close: %v %v", err, f.closed)
+	}
+}
+
+func TestOptionOpenGuardSQL(t *testing.T) {
+	t.Parallel()
+	if n := strings.Count(insertOptionOpenSQL, " WHERE "); n != 1 {
+		t.Fatalf("%d WHERE in the statement, want 1: %s", n, insertOptionOpenSQL)
+	}
+	_, guard, _ := strings.Cut(insertOptionOpenSQL, " WHERE ")
+	for _, want := range []string{
+		"status = 1 THEN 2", "status = 2 THEN 1", "ELSE 0", "IS DISTINCT FROM",
+		"(EXCLUDED.bid IS NULL AND option_open.bid IS NOT NULL)",
+		"(EXCLUDED.vega_per_vol_point IS NULL AND option_open.vega_per_vol_point IS NOT NULL)",
+	} {
+		if !strings.Contains(guard, want) {
+			t.Errorf("guard lacks %q: %s", want, guard)
+		}
+	}
+	if strings.Contains(guard, "received_at") {
+		t.Errorf("received_at is not compared: %s", guard)
+	}
+	if strings.Contains(insertOptionOpenSQL, "DO NOTHING") {
+		t.Errorf("the statement is not an upsert: %s", insertOptionOpenSQL)
+	}
+}
+
+func TestOptionOpenUpsertSetsNoKeyColumn(t *testing.T) {
+	t.Parallel()
+	_, rest, ok := strings.Cut(insertOptionOpenSQL, "DO UPDATE SET ")
+	if !ok {
+		t.Fatalf("no DO UPDATE SET in %s", insertOptionOpenSQL)
+	}
+	sets, _, _ := strings.Cut(rest, " WHERE ")
+	for _, item := range strings.Split(sets, ",") {
+		col, _, _ := strings.Cut(strings.TrimSpace(item), " = ")
+		switch col {
+		case "session_day", "capture_id", "slot", "instrument_id":
+			t.Errorf("SET list updates key column %q: %s", col, sets)
+		}
+	}
+	if !strings.Contains(sets, "bid = EXCLUDED.bid") || !strings.Contains(sets, "received_at = EXCLUDED.received_at") {
+		t.Errorf("SET list not parsed: %s", sets)
+	}
+}
+
+func TestInsertOptionOpenWritesDayRowsOfUsableStatusesAfterCaptureRows(t *testing.T) {
+	t.Parallel()
+	s, f := newStore()
+	var rows []contracts.OptionOpen
+	for i, st := range []int{1, 2, 3, 9} {
+		rows = append(rows, contracts.OptionOpen{Slot: "0945", InstrumentID: i + 10, Status: st})
+	}
+	if err := s.InsertOptionOpen(context.Background(), rows); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		insertOptionOpenSQL, insertOptionOpenSQL, insertOptionOpenSQL, insertOptionOpenSQL,
+		shared.UpsertDaySQL, shared.UpsertDaySQL,
+	}
+	if !reflect.DeepEqual(f.sqls, want) || f.inTx != 1 {
+		t.Fatalf("%d statements in %d transactions, want 4 captures then 2 day rows in one", len(f.sqls), f.inTx)
+	}
+	for _, i := range []int{4, 5} {
+		a := f.args[i]
+		if len(a) != shared.DayArgCount || a[3] != "option_open" || a[25] != "option_open" {
+			t.Fatalf("day row arguments %v", a)
+		}
+		if a[23].(*float64) != nil || a[24] != nil {
+			t.Errorf("open interest must be NULL: %v %v", a[23], a[24])
+		}
+	}
+	if f.args[4][0] != 10 || f.args[5][0] != 11 {
+		t.Errorf("day rows of instruments %v %v, want 10 and 11", f.args[4][0], f.args[5][0])
 	}
 }

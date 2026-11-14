@@ -59,6 +59,8 @@
     {"path": "page.macro_page.v2.golden.json", "sha256": "5db24c660a86a3492156b7c3b24431368c7bdf328a5fca7c1cae8fb8f98ceb1e"},
     {"path": "page.macro_page.v2.gap.json", "sha256": "3cf2d78fa0c49678a26411321c0a2b1889c0c7d3165b35a7c782fb5ed602e8fb"},
     {"path": "page.macro_page.v2.stale.json", "sha256": "e3ae72b3eb20ce05ba4b662b16b717bddd72e8a0a0c96791f1abf445baf3bc44"},
-    {"path": "page.macro_page.v2.bad-version.json", "sha256": "2766de3590ca64b421fd88bc94e0eaebd1b122c5145fc49b6be649e2ba673775"}
+    {"path": "page.macro_page.v2.bad-version.json", "sha256": "2766de3590ca64b421fd88bc94e0eaebd1b122c5145fc49b6be649e2ba673775"},
+    {"path": "page.market_state_page.v1.ok.json", "sha256": "3dbd4d4bc3aa8618321a8cbce9c0bba9ca1bd1b45f0e7d22a1b5df93f1bf5281"},
+    {"path": "page.market_state_page.v1.gap.json", "sha256": "028bf5e44589f7603e31887275f4cb78c3d5a74c8c878f212541a2261cefd92b"}
   ]
 }

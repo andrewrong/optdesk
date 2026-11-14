@@ -1,0 +1,94 @@
+{
+ "note": "INVENTED numbers for tests, not market data: close at session s (0 oldest) = start_cents + step_cents*s + wiggle_cents[s % len], in cents; sessions are weekdays ending on day.",
+ "day": "2026-11-13",
+ "sessions": 100,
+ "wiggle_cents": [
+  0,
+  13,
+  -7,
+  5,
+  -11
+ ],
+ "benchmark": {
+  "symbol": "SPY",
+  "name": "S&P 500 fund",
+  "start_cents": 40000,
+  "step_cents": 9
+ },
+ "funds": [
+  {
+   "symbol": "XLB",
+   "name": "Materials",
+   "start_cents": 5000,
+   "step_cents": 11
+  },
+  {
+   "symbol": "XLC",
+   "name": "Communication",
+   "start_cents": 5100,
+   "step_cents": 9
+  },
+  {
+   "symbol": "XLE",
+   "name": "Energy",
+   "start_cents": 5200,
+   "step_cents": 14
+  },
+  {
+   "symbol": "XLF",
+   "name": "Financials",
+   "start_cents": 5300,
+   "step_cents": 8
+  },
+  {
+   "symbol": "XLI",
+   "name": "Industrials",
+   "start_cents": 5400,
+   "step_cents": 12
+  },
+  {
+   "symbol": "XLK",
+   "name": "Technology",
+   "start_cents": 5500,
+   "step_cents": 17
+  },
+  {
+   "symbol": "XLP",
+   "name": "Staples",
+   "start_cents": 5600,
+   "step_cents": 5
+  },
+  {
+   "symbol": "XLRE",
+   "name": "Real estate",
+   "start_cents": 5700,
+   "step_cents": 6
+  },
+  {
+   "symbol": "XLU",
+   "name": "Utilities",
+   "start_cents": 5800,
+   "step_cents": 7
+  },
+  {
+   "symbol": "XLV",
+   "name": "Health care",
+   "start_cents": 5900,
+   "step_cents": 10
+  },
+  {
+   "symbol": "XLY",
+   "name": "Discretionary",
+   "start_cents": 6000,
+   "step_cents": 13
+  }
+ ],
+ "industry": [
+  {
+   "symbol": "SMH",
+   "name": "Semiconductors",
+   "start_cents": 20000,
+   "step_cents": 21
+  }
+ ]
+}

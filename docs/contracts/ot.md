@@ -54,6 +54,7 @@ With `--live-quotes` (off by default; refused, naming `--live-quotes`, with an `
 | `earnings_refresh` | `docs/contracts/ot/jobs/earnings_refresh.md` |
 | `account_capture` | `docs/contracts/ot/jobs/account_capture.md` |
 | `option_candidates` | `docs/contracts/ot/jobs/option_candidates.md` |
+| `book_risk` | `docs/contracts/ot/jobs/book_risk.md` |
 | `fundamentals` | `docs/contracts/ot/jobs/fundamentals.md` |
 
 ## Pages

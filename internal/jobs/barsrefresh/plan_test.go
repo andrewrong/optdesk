@@ -62,7 +62,7 @@ func TestTwoIssuerlessEntriesOfOneSymbolAreDuplicate(t *testing.T) {
 
 func stockKeys() []string {
 	var ks []string
-	for _, s := range []string{"SPY", "TLT", "GLD", "DBC", "USO", "XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY"} {
+	for _, s := range []string{"SPY", "TLT", "GLD", "DBC", "USO", "XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY", "SMH"} {
 		ks = append(ks, "stock:"+s)
 	}
 	return ks
@@ -82,4 +82,19 @@ func TestWatchSPYAndStockSPYBuildTogether(t *testing.T) {
 	if !seen["sym:SPY"] || !seen["stock:SPY"] {
 		t.Fatalf("keys %+v", keys)
 	}
+}
+
+func TestSMHKeyIsPlanned(t *testing.T) {
+	t.Parallel()
+	j, _ := build(t, &fakeHistory{answer: fixed()}, &memBars{})
+	keys, _, err := j.Plan(context.Background(), runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range keys {
+		if k.SubjectKey == "stock:SMH" {
+			return
+		}
+	}
+	t.Fatalf("keys %+v", keys)
 }

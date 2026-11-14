@@ -3,20 +3,71 @@ package optionopenpg
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/shared"
 )
 
-// insertOptionOpenSQL appends one row; a retry of the same key adds no row. Arguments, in order: session_day,
+// optionOpenQuoteColumns are the quote columns of obs.option_open: a thinner row (one with a NULL where the stored row
+// has a value) never replaces a fuller one of the same rank 2 or 1.
+var optionOpenQuoteColumns = []string{
+	"bid", "ask", "bid_size", "ask_size", "last", "volume", "underlying_price", "iv_bid_decimal", "iv_mid_decimal",
+	"iv_ask_decimal", "iv_decimal", "delta", "gamma", "theta_per_calendar_day", "vega_per_vol_point",
+}
+
+// optionOpenComparedColumns are the non-key columns a rewrite is judged by: every column except the key and
+// received_at.
+var optionOpenComparedColumns = append([]string{
+	"underlying_id", "plan_id", "generation", "market_data_type", "requested_at", "sent_at", "event_ts",
+	"connection_generation", "status", "error_code", "skew", "outside_band", "currency",
+}, append(append([]string{}, optionOpenQuoteColumns...), "underlying_ccy", "underlying_event_ts")...)
+
+// optionOpenRank is the rank of a row of table t (docs/design/option-captures.md Decision 4): 2 status 1 (a quote),
+// 1 status 2 (no quote), 0 any other status.
+func optionOpenRank(t string) string {
+	return "(CASE WHEN " + t + ".status = 1 THEN 2 WHEN " + t + ".status = 2 THEN 1 ELSE 0 END)"
+}
+
+// optionOpenGuard is the one WHERE of the upsert: a new row replaces the stored one only when it ranks higher, or when
+// it ranks the same, differs in a compared column and, for rank 2 and 1, has no quote column NULL where the stored row
+// has a value.
+func optionOpenGuard() string {
+	var newV, oldV, thinner []string
+	for _, c := range optionOpenComparedColumns {
+		newV = append(newV, "EXCLUDED."+c)
+		oldV = append(oldV, "option_open."+c)
+	}
+	for _, c := range optionOpenQuoteColumns {
+		thinner = append(thinner, "(EXCLUDED."+c+" IS NULL AND option_open."+c+" IS NOT NULL)")
+	}
+	nr, or := optionOpenRank("EXCLUDED"), optionOpenRank("option_open")
+	return nr + " > " + or + " OR (" + nr + " = " + or + " AND (" + strings.Join(newV, ", ") +
+		") IS DISTINCT FROM (" + strings.Join(oldV, ", ") + ") AND (" + nr + " = 0 OR NOT (" +
+		strings.Join(thinner, " OR ") + ")))"
+}
+
+func optionOpenUpsertSQL() string {
+	sets := []string{"received_at = EXCLUDED.received_at"}
+	for _, c := range optionOpenComparedColumns {
+		sets = append(sets, c+" = EXCLUDED."+c)
+	}
+	return `INSERT INTO obs.option_open (` + optionOpenCols + `) VALUES ($1, $2::uuid, $3, $4, $5, ` +
+		`$6::uuid, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, ` +
+		`$27, $28, $29, $30, $31, $32, $33, $34, $35) ` +
+		`ON CONFLICT (session_day, capture_id, slot, instrument_id) DO UPDATE SET ` + strings.Join(sets, ", ") +
+		` WHERE ` + optionOpenGuard()
+}
+
+// insertOptionOpenSQL upserts one row; a re-run of the same capture meets the key and, when the guard allows, replaces
+// the stored row (see optionOpenGuard). Arguments, in order: session_day,
 // capture_id, slot, instrument_id, underlying_id, plan_id, generation, market_data_type, requested_at, sent_at,
 // received_at, event_ts, connection_generation, status, error_code, skew, outside_band, currency, bid, ask,
 // bid_size, ask_size, last, volume, underlying_price, underlying_ccy, underlying_event_ts, iv_bid_decimal,
 // iv_mid_decimal, iv_ask_decimal, iv_decimal, delta, gamma, theta_per_calendar_day, vega_per_vol_point.
-const insertOptionOpenSQL = `INSERT INTO obs.option_open (` + optionOpenCols + `) VALUES ($1, $2::uuid, $3, $4, $5, ` +
-	`$6::uuid, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, ` +
-	`$28, $29, $30, $31, $32, $33, $34, $35) ON CONFLICT DO NOTHING`
+var insertOptionOpenSQL = optionOpenUpsertSQL()
 
 const optionOpenCols = `session_day, capture_id, slot, instrument_id, underlying_id, plan_id, generation, ` +
 	`market_data_type, requested_at, sent_at, received_at, event_ts, connection_generation, status, error_code, ` +
@@ -34,7 +85,8 @@ const selectOptionOpenSQL = `SELECT DISTINCT ON (instrument_id) session_day, cap
 	`FROM rd.option_open_r1 WHERE session_day = $1 ` +
 	`ORDER BY instrument_id, received_at DESC, slot DESC, capture_id DESC`
 
-// InsertOptionOpen appends the rows in one transaction; see openquote.OptionOpenWriter.
+// InsertOptionOpen upserts the rows in one transaction, guarded as optionOpenGuard says, and then writes
+// obs.option_day for each row of status 1 or 2 in the same transaction; see openquote.OptionOpenWriter.
 func (s *store) InsertOptionOpen(ctx context.Context, rows []contracts.OptionOpen) error {
 	if len(rows) == 0 {
 		return nil
@@ -47,6 +99,14 @@ func (s *store) InsertOptionOpen(ctx context.Context, rows []contracts.OptionOpe
 	return s.inTx(ctx, "insert option_open", func(tx execer) error {
 		for _, r := range rows {
 			if _, err := tx.Exec(ctx, insertOptionOpenSQL, optionOpenArgs(r)...); err != nil {
+				return err
+			}
+		}
+		for _, r := range rows {
+			if !optionDayUsable(r) {
+				continue
+			}
+			if _, err := tx.Exec(ctx, shared.UpsertDaySQL, optionDayArgs(r)...); err != nil {
 				return err
 			}
 		}

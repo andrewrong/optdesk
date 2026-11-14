@@ -71,20 +71,22 @@ func listedOnly(id, reason, text, needs string) jobRow {
 	return jobRow{ID: id, Kind: kindListedOnly, Reason: reason, Text: text, Needs: needs}
 }
 
-// jobTable is the table of the 31 jobs, in the order of the page.
+// jobTable is the table of the 33 jobs, in the order of the page.
 var jobTable = []jobRow{
 	{ID: "fred_series", Kind: kindAnyDay, Force: true},
 	{ID: "fundamentals", Kind: kindAnyDay, Force: true},
 	{ID: "compute_figures", Kind: kindAnyDay, Force: true},
 	{ID: "option_candidates", Kind: kindAnyDay, Force: true},
+	// book_risk is insert-only under a new run id and a rerun's run id is the newest one readers take, as option_candidates.
+	{ID: "book_risk", Kind: kindAnyDay, Force: true},
 	todayOnly("account_capture", "append_only", textAppendOnly),
 	anyDay("statement_capture", "insert_only", textInsertOnly),
 	todayOnly("position_marks", "attempt_rows", textAttemptRows),
 	{ID: "earnings_refresh", Kind: kindAnyDay, Force: true},
 	{ID: "dividend_capture", Kind: kindAnyDay, Force: true},
-	todayOnly("option_eod", "moment_mix", textMomentMix),
-	{ID: "option_eod_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "moment_mix", ForceText: textMomentMix},
-	todayOnly("option_eod_index", "moment_mix", textMomentMix),
+	{ID: "option_eod", Kind: kindTodayOnly, Zone: marketZone, Force: true},
+	{ID: "option_eod_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", Force: true},
+	{ID: "option_eod_index", Kind: kindTodayOnly, Zone: marketZone, Force: true},
 	{ID: "quote_snapshot", Kind: kindTodayOnly, Zone: marketZone, ForceReason: "moment_mix", ForceText: textMomentMix, Note: noteQuoteSnapshot},
 	{ID: "calendar_refresh", Kind: kindTodayOnly, Zone: marketZone, Force: true},
 	todayOnly("calendar_hours_us", "not_proved", textNotProved),
@@ -104,6 +106,7 @@ var jobTable = []jobRow{
 	listedOnly("option_open_resolve_jp", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
 	listedOnly("option_open_resolve_gap", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
 	listedOnly("option_ledger", "caches_failures", textCachesFailures, needsCachesFailure),
+	{ID: "macro_events", Kind: kindAnyDay, Force: true},
 }
 
 // jobRowOf returns the row of a job id.

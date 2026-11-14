@@ -96,7 +96,7 @@ func TestTreeNestedPackageIsImportableByOT(t *testing.T) {
 		{"ot", "x/y/kit", false},
 		{"x/y/sub", "x/y/kit", false},
 		{"v/q/r", "x/y/z", false},
-		{"x/y/sub", "x/y/z", false},
+		{"x/y/sub", "x/y/z", true}, // siblings of one row
 		{"v/q/r", "x", true},
 		{"v/q/r", "v", true},
 		{"v/q/r", "w", false},
@@ -223,6 +223,35 @@ func TestTreeRealNestedPackagesChangeOnlyOT(t *testing.T) {
 		}
 		if slices.Contains(depsOfYAML(string(yml), n), "strategy/shared") {
 			t.Errorf("%s gained strategy/shared", n)
+		}
+	}
+}
+
+func TestTreeSiblingImplementationsMayBeInjected(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for p, src := range map[string]string{
+		"internal/x/api.go":   "package x\n",
+		"internal/x/y/a/a.go": "package a\n",
+		"internal/x/y/b/b.go": "package b\n",
+		"internal/w/api.go":   "package w\n",
+		"internal/w/p/q/q.go": "package q\n",
+		"cmd/ot/main.go":      "package main\n\nfunc main() {}\n",
+	} {
+		write(t, filepath.Join(dir, p), src)
+	}
+	_, yml, err := generate(nestedModules, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []edge{
+		{"x/y/a", "x/y/b", true},
+		{"x/y/b", "x/y/a", true},
+		{"x/y/a", "w/p/q", false},
+		{"x/y/a", "x/y/a", false},
+	} {
+		if got := slices.Contains(depsOfYAML(string(yml), e.from), e.to); got != e.want {
+			t.Errorf("%s imports %s = %v, want %v", e.from, e.to, got, e.want)
 		}
 	}
 }

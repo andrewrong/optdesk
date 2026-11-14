@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidity"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -343,5 +346,34 @@ func TestHomeOptionsTilesShowFigures(t *testing.T) {
 	}
 	if f := tiles["max_loss_usd"].Figure; f["kind"] != "value" || f["text"] != "$800" || f["value"] != float64(800) {
 		t.Fatalf("max loss = %v", f)
+	}
+}
+
+func TestHomeMacroSayIsReserves(t *testing.T) {
+	t.Parallel()
+	f := newLiquidityFake()
+	want := liquidity.Compute(liquidityapi.Input{Day: "2026-11-05", WRESBAL: f["WRESBAL"], Params: liquidity.TrialParams()})
+	if want.Reserves.Reason != "" || want.Reserves4w.Reason != "" {
+		t.Fatalf("figures are gaps: %+v", want)
+	}
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	b, err := homeBuild(t.Context(), a, "ot-page", siteReaders{series: f}, "2026-11-05", time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Macro struct {
+			Card struct {
+				Say string `json:"say"`
+			} `json:"card"`
+		} `json:"macro"`
+	}
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	level, _ := strconv.ParseFloat(want.Reserves.Value, 64)
+	if got := p.Macro.Card.Say; !strings.HasPrefix(got, fmt.Sprintf("Reserves $%.1ftn, 4 weeks ", level/1e12)) ||
+		!strings.HasSuffix(got, "("+string(want.Reserves.Day)+").") {
+		t.Fatalf("say %q, want the reserves fact of %+v", got, want.Reserves)
 	}
 }

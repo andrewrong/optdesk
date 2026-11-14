@@ -1,0 +1,892 @@
+{
+  "schema": "market_state_page",
+  "schema_version": 1,
+  "run_id": "run-demo-0001",
+  "build_id": "build-demo-0001",
+  "scope": "market-state",
+  "generated_at": "2026-11-13T22:30:00-05:00",
+  "data_times": [
+    {
+      "data_time": "2026-11-13T00:00:00-05:00",
+      "source": "bars_refresh"
+    }
+  ],
+  "run_status": "ok",
+  "stale": null,
+  "title": "Market state",
+  "notes": [
+    "Synthetic fixture: invented numbers, not for trading decisions."
+  ],
+  "gaps": [],
+  "day": "2026-11-13",
+  "freshness_text": "Synthetic fixture text. Sector funds and SPY: daily closes stored 10 minutes after the NYSE close, last close Fri Nov 13; not intraday. S&P 500, VIX, VIX3M and high-yield rows: daily FRED series, each row shows its own day.",
+  "market": {
+    "title": "Market",
+    "rows": [
+      {
+        "id": "sp500_vs_200d",
+        "label": "S&P 500 against its 200-day average",
+        "figure": {
+          "kind": "value",
+          "value": 3.12,
+          "text": "+3.1%",
+          "unit": "percent"
+        },
+        "window": "newest close against the mean of the newest 200 closes; a level",
+        "day": "2026-11-13",
+        "history": {
+          "caption": "Synthetic fixture: from 2026-11-10, 4 points.",
+          "aria_text": "Synthetic fixture chart of 4 daily points, from 2026-11-10 to 2026-11-13.",
+          "unit": "percent",
+          "points": [
+            {
+              "day": "2026-11-10",
+              "value": 2.8,
+              "text": "+2.8%"
+            },
+            {
+              "day": "2026-11-11",
+              "value": 2.95,
+              "text": "+3.0%"
+            },
+            {
+              "day": "2026-11-12",
+              "value": 3.01,
+              "text": "+3.0%"
+            },
+            {
+              "day": "2026-11-13",
+              "value": 3.12,
+              "text": "+3.1%"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sp500_drawdown",
+        "label": "S&P 500 against its 60-session high",
+        "figure": {
+          "kind": "value",
+          "value": -2.41,
+          "text": "-2.4%",
+          "unit": "percent"
+        },
+        "window": "60 sessions; the high was on 2026-10-29; a level",
+        "day": "2026-11-13",
+        "history": {
+          "caption": "Synthetic fixture: from 2026-11-10, 4 points.",
+          "aria_text": "Synthetic fixture chart of 4 daily points, from 2026-11-10 to 2026-11-13.",
+          "unit": "percent",
+          "points": [
+            {
+              "day": "2026-11-10",
+              "value": -3.0,
+              "text": "-3.0%"
+            },
+            {
+              "day": "2026-11-11",
+              "value": -2.8,
+              "text": "-2.8%"
+            },
+            {
+              "day": "2026-11-12",
+              "value": -2.6,
+              "text": "-2.6%"
+            },
+            {
+              "day": "2026-11-13",
+              "value": -2.41,
+              "text": "-2.4%"
+            }
+          ]
+        }
+      },
+      {
+        "id": "vix",
+        "label": "VIX",
+        "figure": {
+          "kind": "value",
+          "value": 17.4,
+          "text": "17.4",
+          "unit": "index_points"
+        },
+        "window": "3 calendar years before the day, the day excluded; the share of days strictly below",
+        "day": "2026-11-13",
+        "percentile": {
+          "text": "38th percentile",
+          "window": "last 3 years"
+        },
+        "history": {
+          "caption": "Synthetic fixture: from 2026-11-10, 4 points.",
+          "aria_text": "Synthetic fixture chart of 4 daily points, from 2026-11-10 to 2026-11-13.",
+          "unit": "index_points",
+          "points": [
+            {
+              "day": "2026-11-10",
+              "value": 18.2,
+              "text": "18.2"
+            },
+            {
+              "day": "2026-11-11",
+              "value": 17.9,
+              "text": "17.9"
+            },
+            {
+              "day": "2026-11-12",
+              "value": 17.6,
+              "text": "17.6"
+            },
+            {
+              "day": "2026-11-13",
+              "value": 17.4,
+              "text": "17.4"
+            }
+          ]
+        }
+      },
+      {
+        "id": "vix_term",
+        "label": "VIX against VIX3M",
+        "figure": {
+          "kind": "value",
+          "value": 0.92,
+          "text": "0.92",
+          "unit": "ratio"
+        },
+        "window": "same-day VIX divided by VIX3M; 1.00 means equal; a level",
+        "day": "2026-11-13",
+        "history": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no chart: no stored history"
+        }
+      },
+      {
+        "id": "hy_spread",
+        "label": "High-yield spread",
+        "figure": {
+          "kind": "value",
+          "value": 3.12,
+          "text": "3.12%",
+          "unit": "percent"
+        },
+        "window": "all days stored, since 2023-11-14, 780 days",
+        "day": "2026-11-12",
+        "percentile": {
+          "text": "41st percentile",
+          "window": "our stored history since 2023-11-14 (780 days)"
+        },
+        "history": {
+          "caption": "Synthetic fixture: from 2026-11-09, 4 points.",
+          "aria_text": "Synthetic fixture chart of 4 daily points, from 2026-11-09 to 2026-11-12.",
+          "unit": "percent",
+          "points": [
+            {
+              "day": "2026-11-09",
+              "value": 3.2,
+              "text": "3.20%"
+            },
+            {
+              "day": "2026-11-10",
+              "value": 3.18,
+              "text": "3.18%"
+            },
+            {
+              "day": "2026-11-11",
+              "value": 3.15,
+              "text": "3.15%"
+            },
+            {
+              "day": "2026-11-12",
+              "value": 3.12,
+              "text": "3.12%"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "sectors": {
+    "caption": "Synthetic fixture text. Fund change minus SPY change over 21 and 63 sessions ending on the end day; a rank counts only funds with both closes; trial windows, not a forecast.",
+    "end_day": "2026-11-13",
+    "bars_caption": "Synthetic fixture text. 63-session fund change minus SPY change, one bar per fund, in the table's order.",
+    "rotation_axes": {
+      "x_caption": "63-session change minus SPY, points",
+      "y_caption": "21-session change minus a third of the 63-session change, points",
+      "note": "Synthetic fixture text. x is the 63-session gap and y is the 21-session gap minus a third of the 63-session gap, both against SPY; the tail shows the same two numbers 5, 10, 15 and 20 sessions before the end day.",
+      "quadrants": [
+        {
+          "id": "leading",
+          "text": "x above 0, y above 0"
+        },
+        {
+          "id": "weakening",
+          "text": "x above 0, y below 0"
+        },
+        {
+          "id": "lagging",
+          "text": "x below 0, y below 0"
+        },
+        {
+          "id": "improving",
+          "text": "x below 0, y above 0"
+        }
+      ]
+    },
+    "rows": [
+      {
+        "symbol": "XLK",
+        "label": "Technology",
+        "gap_21": {
+          "kind": "value",
+          "value": 4.1,
+          "text": "+4.10",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 7.9,
+          "text": "+7.90",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 1,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 1,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": 6.5,
+            "y": 2.31,
+            "text": "2026-10-16: 63-session +6.50, pace +2.31"
+          },
+          {
+            "day": "2026-10-23",
+            "x": 6.92,
+            "y": 1.99,
+            "text": "2026-10-23: 63-session +6.92, pace +1.99"
+          },
+          {
+            "day": "2026-10-30",
+            "x": 7.34,
+            "y": 1.67,
+            "text": "2026-10-30: 63-session +7.34, pace +1.67"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 7.76,
+            "y": 1.35,
+            "text": "2026-11-06: 63-session +7.76, pace +1.35"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 7.9,
+            "y": 1.47,
+            "text": "2026-11-13: 63-session +7.90, pace +1.47"
+          }
+        ]
+      },
+      {
+        "symbol": "XLC",
+        "label": "Communication",
+        "gap_21": {
+          "kind": "value",
+          "value": 3.2,
+          "text": "+3.20",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 6.4,
+          "text": "+6.40",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 2,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 2,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": 4.86,
+            "y": 1.91,
+            "text": "2026-10-16: 63-session +4.86, pace +1.91"
+          },
+          {
+            "day": "2026-10-23",
+            "x": 5.32,
+            "y": 1.58,
+            "text": "2026-10-23: 63-session +5.32, pace +1.58"
+          },
+          {
+            "day": "2026-10-30",
+            "x": 5.77,
+            "y": 1.26,
+            "text": "2026-10-30: 63-session +5.77, pace +1.26"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 6.23,
+            "y": 0.93,
+            "text": "2026-11-06: 63-session +6.23, pace +0.93"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 6.4,
+            "y": 1.07,
+            "text": "2026-11-13: 63-session +6.40, pace +1.07"
+          }
+        ]
+      },
+      {
+        "symbol": "XLY",
+        "label": "Consumer discretionary",
+        "gap_21": {
+          "kind": "value",
+          "value": 2.0,
+          "text": "+2.00",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 4.6,
+          "text": "+4.60",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 3,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 3,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": 2.92,
+            "y": 1.31,
+            "text": "2026-10-16: 63-session +2.92, pace +1.31"
+          },
+          {
+            "day": "2026-10-23",
+            "x": 3.41,
+            "y": 0.98,
+            "text": "2026-10-23: 63-session +3.41, pace +0.98"
+          },
+          {
+            "day": "2026-10-30",
+            "x": 3.9,
+            "y": 0.64,
+            "text": "2026-10-30: 63-session +3.90, pace +0.64"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 4.39,
+            "y": 0.31,
+            "text": "2026-11-06: 63-session +4.39, pace +0.31"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 4.6,
+            "y": 0.47,
+            "text": "2026-11-13: 63-session +4.60, pace +0.47"
+          }
+        ]
+      },
+      {
+        "symbol": "XLF",
+        "label": "Financials",
+        "gap_21": {
+          "kind": "value",
+          "value": 1.5,
+          "text": "+1.50",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 3.3,
+          "text": "+3.30",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 4,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 4,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": 1.48,
+            "y": 1.24,
+            "text": "2026-10-16: 63-session +1.48, pace +1.24"
+          },
+          {
+            "day": "2026-10-30",
+            "x": 2.53,
+            "y": 0.57,
+            "text": "2026-10-30: 63-session +2.53, pace +0.57"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 3.05,
+            "y": 0.23,
+            "text": "2026-11-06: 63-session +3.05, pace +0.23"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 3.3,
+            "y": 0.4,
+            "text": "2026-11-13: 63-session +3.30, pace +0.40"
+          }
+        ]
+      },
+      {
+        "symbol": "XLI",
+        "label": "Industrials",
+        "gap_21": {
+          "kind": "value",
+          "value": 0.9,
+          "text": "+0.90",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 2.2,
+          "text": "+2.20",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 5,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 5,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": 0.24,
+            "y": 1.01,
+            "text": "2026-10-16: 63-session +0.24, pace +1.01"
+          },
+          {
+            "day": "2026-10-23",
+            "x": 0.8,
+            "y": 0.66,
+            "text": "2026-10-23: 63-session +0.80, pace +0.66"
+          },
+          {
+            "day": "2026-10-30",
+            "x": 1.36,
+            "y": 0.32,
+            "text": "2026-10-30: 63-session +1.36, pace +0.32"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 1.92,
+            "y": -0.02,
+            "text": "2026-11-06: 63-session +1.92, pace -0.02"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 2.2,
+            "y": 0.17,
+            "text": "2026-11-13: 63-session +2.20, pace +0.17"
+          }
+        ]
+      },
+      {
+        "symbol": "XLE",
+        "label": "Energy",
+        "gap_21": {
+          "kind": "value",
+          "value": -0.4,
+          "text": "-0.40",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 0.8,
+          "text": "+0.80",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 6,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 6,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": -1.3,
+            "y": 0.17,
+            "text": "2026-10-16: 63-session -1.30, pace +0.17"
+          },
+          {
+            "day": "2026-10-23",
+            "x": -0.7,
+            "y": -0.17,
+            "text": "2026-10-23: 63-session -0.70, pace -0.17"
+          },
+          {
+            "day": "2026-10-30",
+            "x": -0.11,
+            "y": -0.52,
+            "text": "2026-10-30: 63-session -0.11, pace -0.52"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 0.49,
+            "y": -0.87,
+            "text": "2026-11-06: 63-session +0.49, pace -0.87"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 0.8,
+            "y": -0.67,
+            "text": "2026-11-13: 63-session +0.80, pace -0.67"
+          }
+        ]
+      },
+      {
+        "symbol": "XLV",
+        "label": "Health care",
+        "gap_21": {
+          "kind": "value",
+          "value": -0.8,
+          "text": "-0.80",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": -0.6,
+          "text": "-0.60",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 7,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 7,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": -2.84,
+            "y": 0.24,
+            "text": "2026-10-16: 63-session -2.84, pace +0.24"
+          },
+          {
+            "day": "2026-10-23",
+            "x": -2.21,
+            "y": -0.11,
+            "text": "2026-10-23: 63-session -2.21, pace -0.11"
+          },
+          {
+            "day": "2026-10-30",
+            "x": -1.58,
+            "y": -0.47,
+            "text": "2026-10-30: 63-session -1.58, pace -0.47"
+          },
+          {
+            "day": "2026-11-06",
+            "x": -0.95,
+            "y": -0.82,
+            "text": "2026-11-06: 63-session -0.95, pace -0.82"
+          },
+          {
+            "day": "2026-11-13",
+            "x": -0.6,
+            "y": -0.6,
+            "text": "2026-11-13: 63-session -0.60, pace -0.60"
+          }
+        ]
+      },
+      {
+        "symbol": "XLB",
+        "label": "Materials",
+        "gap_21": {
+          "kind": "value",
+          "value": -1.2,
+          "text": "-1.20",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": -1.9,
+          "text": "-1.90",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 8,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 8,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": -4.28,
+            "y": 0.27,
+            "text": "2026-10-16: 63-session -4.28, pace +0.27"
+          },
+          {
+            "day": "2026-10-23",
+            "x": -3.61,
+            "y": -0.09,
+            "text": "2026-10-23: 63-session -3.61, pace -0.09"
+          },
+          {
+            "day": "2026-10-30",
+            "x": -2.95,
+            "y": -0.44,
+            "text": "2026-10-30: 63-session -2.95, pace -0.44"
+          },
+          {
+            "day": "2026-11-06",
+            "x": -2.29,
+            "y": -0.8,
+            "text": "2026-11-06: 63-session -2.29, pace -0.80"
+          },
+          {
+            "day": "2026-11-13",
+            "x": -1.9,
+            "y": -0.57,
+            "text": "2026-11-13: 63-session -1.90, pace -0.57"
+          }
+        ]
+      },
+      {
+        "symbol": "XLU",
+        "label": "Utilities",
+        "gap_21": {
+          "kind": "value",
+          "value": -1.9,
+          "text": "-1.90",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": -3.1,
+          "text": "-3.10",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 9,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 9,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": -5.62,
+            "y": -0.03,
+            "text": "2026-10-16: 63-session -5.62, pace -0.03"
+          },
+          {
+            "day": "2026-10-23",
+            "x": -4.92,
+            "y": -0.39,
+            "text": "2026-10-23: 63-session -4.92, pace -0.39"
+          },
+          {
+            "day": "2026-10-30",
+            "x": -4.22,
+            "y": -0.75,
+            "text": "2026-10-30: 63-session -4.22, pace -0.75"
+          },
+          {
+            "day": "2026-11-06",
+            "x": -3.52,
+            "y": -1.12,
+            "text": "2026-11-06: 63-session -3.52, pace -1.12"
+          },
+          {
+            "day": "2026-11-13",
+            "x": -3.1,
+            "y": -0.87,
+            "text": "2026-11-13: 63-session -3.10, pace -0.87"
+          }
+        ]
+      },
+      {
+        "symbol": "XLP",
+        "label": "Consumer staples",
+        "gap_21": {
+          "kind": "value",
+          "value": -2.4,
+          "text": "-2.40",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": -4.2,
+          "text": "-4.20",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "at": 10,
+          "of": 10
+        },
+        "rank_63": {
+          "at": 10,
+          "of": 10
+        },
+        "group": "sector",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": -6.86,
+            "y": -0.16,
+            "text": "2026-10-16: 63-session -6.86, pace -0.16"
+          },
+          {
+            "day": "2026-10-23",
+            "x": -6.12,
+            "y": -0.53,
+            "text": "2026-10-23: 63-session -6.12, pace -0.53"
+          },
+          {
+            "day": "2026-10-30",
+            "x": -5.39,
+            "y": -0.9,
+            "text": "2026-10-30: 63-session -5.39, pace -0.90"
+          },
+          {
+            "day": "2026-11-06",
+            "x": -4.66,
+            "y": -1.27,
+            "text": "2026-11-06: 63-session -4.66, pace -1.27"
+          },
+          {
+            "day": "2026-11-13",
+            "x": -4.2,
+            "y": -1.0,
+            "text": "2026-11-13: 63-session -4.20, pace -1.00"
+          }
+        ]
+      },
+      {
+        "symbol": "XLRE",
+        "label": "Real estate",
+        "gap_21": {
+          "kind": "gap",
+          "reason": "missing_input",
+          "text": "no close on the benchmark's start day"
+        },
+        "gap_63": {
+          "kind": "gap",
+          "reason": "missing_input",
+          "text": "no close on the benchmark's start day"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "missing_input",
+          "text": "no close on the benchmark's start day"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "missing_input",
+          "text": "no close on the benchmark's start day"
+        },
+        "group": "sector",
+        "rotation": {
+          "kind": "gap",
+          "reason": "missing_input",
+          "text": "no close on the benchmark's start day"
+        }
+      },
+      {
+        "symbol": "SMH",
+        "label": "Semiconductors",
+        "gap_21": {
+          "kind": "value",
+          "value": 5.0,
+          "text": "+5.00",
+          "unit": "percentage_points"
+        },
+        "gap_63": {
+          "kind": "value",
+          "value": 9.1,
+          "text": "+9.10",
+          "unit": "percentage_points"
+        },
+        "rank_21": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "not ranked"
+        },
+        "rank_63": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "not ranked"
+        },
+        "group": "industry",
+        "rotation": [
+          {
+            "day": "2026-10-16",
+            "x": 6.16,
+            "y": 2.81,
+            "text": "2026-10-16: 63-session +6.16, pace +2.81"
+          },
+          {
+            "day": "2026-10-23",
+            "x": 6.96,
+            "y": 2.43,
+            "text": "2026-10-23: 63-session +6.96, pace +2.43"
+          },
+          {
+            "day": "2026-10-30",
+            "x": 7.77,
+            "y": 2.05,
+            "text": "2026-10-30: 63-session +7.77, pace +2.05"
+          },
+          {
+            "day": "2026-11-06",
+            "x": 8.58,
+            "y": 1.67,
+            "text": "2026-11-06: 63-session +8.58, pace +1.67"
+          },
+          {
+            "day": "2026-11-13",
+            "x": 9.1,
+            "y": 1.97,
+            "text": "2026-11-13: 63-session +9.10, pace +1.97"
+          }
+        ]
+      }
+    ]
+  }
+}

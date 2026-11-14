@@ -2,6 +2,9 @@
 version = 1
 id = "fx_refresh"
 duration_days = 5
+# The rank: the first is the primary (upsert), each later one fills days the table has no row for (insert only).
+sources = ["ibkr_midpoint", "fred_h10"]
+fill_lookback_days = 14
 
 [schedule]
 calendar = "XNYS"
