@@ -65,8 +65,8 @@ describe('table container scrollbar', () => {
     )
     const box = h.querySelector('[data-slot="table-container"]')!
     const cls = [...box.classList]
-    expect(cls.some((c) => c.includes('scrollbar-width') || c === 'scrollbar-thin')).toBe(true)
-    expect(cls.some((c) => c.includes('scrollbar-color'))).toBe(true)
+    expect(cls.some((c) => c === '[scrollbar-width:thin]')).toBe(true)
+    expect(cls.some((c) => c.startsWith('[scrollbar-color:var(--border)'))).toBe(true)
   })
 
   it('DataTable renders inside that container', async () => {
