@@ -60,7 +60,7 @@ func assertMig47(t *testing.T, s scratch) {
 func TestMig47FreshPG(t *testing.T) {
 	t.Parallel()
 	s := newScratch(t, true)
-	if err := migrateWith(context.Background(), s.openAs(t, testPassword), gooseUp, migrationsUpTo(t, 47), quietLog()); err != nil {
+	if err := migrateLocked(context.Background(), t, s.openAs(t, testPassword), migrationsUpTo(t, 47), quietLog()); err != nil {
 		t.Fatalf("apply 1 to 47: %v", err)
 	}
 	assertMig47(t, s)
@@ -70,7 +70,7 @@ func TestMig47FreshPG(t *testing.T) {
 func TestMig47GrantsPG(t *testing.T) {
 	t.Parallel()
 	s := newScratch(t, true)
-	if err := migrateWith(context.Background(), s.openAs(t, testPassword), gooseUp, migrationsUpTo(t, 47), quietLog()); err != nil {
+	if err := migrateLocked(context.Background(), t, s.openAs(t, testPassword), migrationsUpTo(t, 47), quietLog()); err != nil {
 		t.Fatalf("apply 1 to 47: %v", err)
 	}
 	for _, c := range []struct{ role, table string }{

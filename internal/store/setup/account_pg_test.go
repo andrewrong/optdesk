@@ -17,7 +17,7 @@ func TestAccountMigration(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	s := newScratch(t, true)
-	if err := migrateWith(ctx, s.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), quietLog()); err != nil {
+	if err := migrateLocked(ctx, t, s.openAs(t, testPassword), os.DirFS(migrationsDir), quietLog()); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
