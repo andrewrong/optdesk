@@ -1,6 +1,3 @@
-# The hand-kept dates of the macro_events job. Each [[source]] is one kind and year with the page a person read
-# it from and the day it was read. Read by the dispatcher on 2026-11-14.
-
 [[source]]
 kind = "fomc"
 year = 2026
