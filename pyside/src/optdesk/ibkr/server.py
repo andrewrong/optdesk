@@ -45,7 +45,8 @@ from optdesk.ibkr.transport import (
 _LOG = logging.getLogger("optdesk.ibkr.server")
 
 BACKOFF_FIRST_S = 1.0
-BACKOFF_CAP_S = 30.0
+BACKOFF_CAP_S = 300.0
+STABLE_SESSION_S = 60.0
 POLL_S = 1.0
 
 
@@ -132,6 +133,9 @@ def _gateway_line(logger: logging.Logger, event: str, name: str, **fields: int) 
 async def supervise(gateway: Supervised, clock: Clock, name: str) -> None:
     """Keep the session open: connect, poll, and reconnect with a capped backoff.
 
+    A session that is not healthy, or that ends within STABLE_SESSION_S, keeps the
+    backoff growing; only a longer one sends it back to BACKOFF_FIRST_S.
+
     Runs until cancelled.
     """
     delay = BACKOFF_FIRST_S
@@ -145,10 +149,15 @@ async def supervise(gateway: Supervised, clock: Clock, name: str) -> None:
             continue
         state = await gateway.status()
         _gateway_line(_LOG, "connect_ok", name, generation=state.generation)
-        delay = BACKOFF_FIRST_S
-        while (await gateway.status()).connected:
+        started = clock.monotonic()
+        healthy = state.connected
+        while healthy and (await gateway.status()).connected:
             await clock.sleep(POLL_S)
         _gateway_line(_LOG, "session_lost", name)
+        if healthy and clock.monotonic() - started >= STABLE_SESSION_S:
+            delay = BACKOFF_FIRST_S
+        await clock.sleep(delay)
+        delay = next_delay(delay)
 
 
 GatewayFactory = Callable[[GatewaySpec], Gateway]

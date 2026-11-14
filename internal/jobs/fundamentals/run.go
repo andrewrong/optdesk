@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -98,8 +97,9 @@ func (j *job) Skipped() []FundamentalsSkip {
 	return append([]FundamentalsSkip(nil), j.skipped...)
 }
 
-// Run fetches the facts of the issuers of keys with filing days in [day - lookback_days, day] and writes
-// them in one UpsertFacts call, so a fact read differently replaces the stored one.
+// Run fetches the facts of the issuers of keys with no From bound (the whole document of each name, up to day)
+// and writes them in one UpsertFacts call, so a fact read differently replaces the stored one.
+// lookback_days is no longer read here; it stays only in the plan hash.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	up, ok := j.w.(fundkey.FactUpserter)
 	if !ok {
@@ -112,7 +112,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if len(subjects) == 0 {
 		return contracts.JobResult{}
 	}
-	facts, err := j.src.Fetch(ctx, sources.FactPlan{Subjects: subjects, From: daysBefore(day, j.m.LookbackDays), To: day})
+	facts, err := j.src.Fetch(ctx, sources.FactPlan{Subjects: subjects, To: day})
 	if err != nil {
 		return contracts.JobResult{Err: asTyped(err, contracts.Permanent)}
 	}
@@ -125,13 +125,4 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		res.Err = asTyped(err, contracts.Retryable)
 	}
 	return res
-}
-
-// daysBefore is the calendar day n days before day; an unparsable day is returned as it is.
-func daysBefore(day contracts.Day, n int) contracts.Day {
-	t, err := time.Parse(dayLayoutDate, string(day))
-	if err != nil {
-		return day
-	}
-	return contracts.Day(t.AddDate(0, 0, -n).Format(dayLayoutDate))
 }
