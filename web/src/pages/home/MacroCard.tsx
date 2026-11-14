@@ -2,6 +2,12 @@
 // payload; this file formats and computes nothing. `value` is used only by the table's user-started sort.
 import { EaseGauge } from '@/components/ease-gauge/EaseGauge'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -48,25 +54,36 @@ export function MacroCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <StaleAlert stale={card.stale} generatedAt={payload.generated_at} />
-        {'reason' in ease ? (
-          <Badge variant="secondary" className="h-auto whitespace-normal text-left" data-ease-gap>
-            {ease.text}
-          </Badge>
-        ) : (
-          <div className="space-y-1" data-ease>
-            <div className="text-2xl font-semibold" data-ease-figure>
-              {ease.figure.text}
-            </div>
-            <EaseGauge ease={ease} />
-            <div className="text-xs text-muted-foreground" data-neutral-band>
-              Neutral band {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
-            </div>
-            <p>{ease.reading_text}</p>
-            <div className="text-xs text-muted-foreground" data-week-change>
-              vs last week {ease.week_change.text}
-            </div>
-          </div>
-        )}
+        <Accordion type="single" collapsible data-ease-fold>
+          <AccordionItem value="ease">
+            <AccordionTrigger>Ease score</AccordionTrigger>
+            <AccordionContent>
+              {'reason' in ease ? (
+                <Badge
+                  variant="secondary"
+                  className="h-auto whitespace-normal text-left"
+                  data-ease-gap
+                >
+                  {ease.text}
+                </Badge>
+              ) : (
+                <div className="space-y-1" data-ease>
+                  <div className="text-2xl font-semibold" data-ease-figure>
+                    {ease.figure.text}
+                  </div>
+                  <EaseGauge ease={ease} />
+                  <div className="text-xs text-muted-foreground" data-neutral-band>
+                    Neutral band {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
+                  </div>
+                  <p>{ease.reading_text}</p>
+                  <div className="text-xs text-muted-foreground" data-week-change>
+                    vs last week {ease.week_change.text}
+                  </div>
+                </div>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         <Separator />
         <div data-events>
           <DataTable columns={COLUMNS} rows={rows} />

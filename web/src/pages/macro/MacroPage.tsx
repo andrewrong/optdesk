@@ -4,11 +4,18 @@ import { EaseGauge } from '@/components/ease-gauge/EaseGauge'
 import { DataTable, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/macro_page'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
+import { LiquidityBlock } from './LiquidityBlock'
 export { validate as validateMacroPage } from '@/types/macro_page'
 export type { Payload as MacroPagePayload } from '@/types/macro_page'
 
@@ -53,28 +60,37 @@ export function MacroPage({ payload }: { payload: Payload }) {
       </header>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       <Card>
-        <CardHeader>
-          <CardTitle>{payload.ease_title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {'reason' in ease ? (
-            <Alert data-ease-gap>
-              <Info aria-hidden />
-              <AlertDescription>{ease.text}</AlertDescription>
-            </Alert>
-          ) : (
-            <>
-              <div className="text-2xl font-semibold">{ease.figure.text}</div>
-              <EaseGauge ease={ease} />
-              <p className="text-xs text-muted-foreground" data-neutral-band>
-                {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
-              </p>
-              <Separator />
-              <p>{ease.reading_text}</p>
-            </>
-          )}
+        <CardContent>
+          <Accordion type="single" collapsible data-ease-fold>
+            <AccordionItem value="ease">
+              <AccordionTrigger>{payload.ease_title}</AccordionTrigger>
+              <AccordionContent className="space-y-3">
+                {'reason' in ease ? (
+                  <Alert data-ease-gap>
+                    <Info aria-hidden />
+                    <AlertDescription>{ease.text}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    <div className="text-2xl font-semibold" data-ease-figure>
+                      {ease.figure.text}
+                    </div>
+                    <EaseGauge ease={ease} />
+                    <p className="text-xs text-muted-foreground" data-neutral-band>
+                      {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
+                    </p>
+                    <Separator />
+                    <p>{ease.reading_text}</p>
+                  </>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
+      {'liquidity' in payload && (
+        <LiquidityBlock title={payload.liquidity_title} liquidity={payload.liquidity} />
+      )}
       <Card className="min-w-0" data-events>
         <CardHeader>
           <CardTitle>{payload.events_title}</CardTitle>
