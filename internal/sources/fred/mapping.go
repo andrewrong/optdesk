@@ -73,6 +73,13 @@ var seriesUnits = map[string]unitRow{
 	"BAA10Y":       {unit: percent, pinVintage: true},
 	"SOFR":         {unit: percent, pinVintage: true},
 	"WRESBAL":      {unit: ccyAmount, currency: "USD", shift: 6, pinVintage: true},
+	// Funding and financial-conditions series (liquidity-view Decision 5).
+	"IORB":           {unit: percent, pinVintage: true},
+	"SOFR99":         {unit: percent, pinVintage: true},
+	"NFCI":           {unit: indexPoints, pinVintage: true},
+	"STLFSI4":        {unit: indexPoints, pinVintage: true},
+	"TLAACBW027SBOG": {unit: ccyAmount, currency: "USD", shift: 9, pinVintage: true},
+	"WLCFLPCL":       {unit: ccyAmount, currency: "USD", shift: 6, pinVintage: true},
 	// FX rate: JPY per one USD (source-rank Decision 4); the fx job turns the point into an FxRate.
 	"DEXJPUS": {unit: jpyPerUsd},
 }
