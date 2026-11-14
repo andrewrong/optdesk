@@ -1,6 +1,7 @@
 // The five market rows: a row opens its chart below it. Every text, day and point is the payload's; nothing is parsed.
 import { useState } from 'react'
 import { Chart } from '@/charts/Chart'
+import { unitSuffix } from '@/charts/unitSuffix'
 import type { Payload } from '@/types/market_state_page'
 
 type Row = Payload['market']['rows'][number]
@@ -14,7 +15,9 @@ function RowText({ row }: { row: Row }) {
         {figure.kind === 'value' ? (
           <>
             {figure.text}
-            {figure.unit === '' ? null : <span className="ml-1 text-muted-foreground">{figure.unit}</span>}
+            {unitSuffix(figure.unit) === '' ? null : (
+              <span className="ml-1 text-muted-foreground">{unitSuffix(figure.unit)}</span>
+            )}
           </>
         ) : (
           figure.text

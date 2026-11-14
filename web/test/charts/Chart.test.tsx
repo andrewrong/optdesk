@@ -90,15 +90,15 @@ describe('Chart', () => {
     expect(legend()).toContain('range')
   })
 
-  it('shows five y axis ticks, without axis or tick line, with the unit of the spec appended', async () => {
+  it('shows five y axis ticks, without axis or tick line, with the suffix of the unit appended', async () => {
     yAxes.length = 0
-    await show({ ...SPEC, unit: 'pts' })
+    await show({ ...SPEC, unit: 'percent' })
     const axis = yAxes[yAxes.length - 1]!
     expect(axis.tickCount).toBe(5)
     expect(axis.axisLine).toBe(false)
     expect(axis.tickLine).toBe(false)
     expect(axis.hide).toBeUndefined()
-    expect((axis.tickFormatter as (tick: number) => string)(5400)).toBe('5400pts')
+    expect((axis.tickFormatter as (tick: number) => string)(5400)).toBe('5400%')
     expect(host.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick')).toHaveLength(5)
   })
 

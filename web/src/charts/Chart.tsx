@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
 import type { ChartSpec } from './spec'
+import { unitSuffix } from './unitSuffix'
 
 type Row = Record<string, string | number | number[] | null>
 
@@ -85,7 +86,7 @@ export function Chart({
     axisLine: false,
     tick: { fontSize: 12, fill: 'var(--muted-foreground)' },
   } as const
-  const unit = spec.unit ?? ''
+  const unit = unitSuffix(spec.unit ?? '')
   const yAxis = { tickFormatter: (tick: string | number) => `${tick}${unit}` }
   const common = {
     data: rows,
