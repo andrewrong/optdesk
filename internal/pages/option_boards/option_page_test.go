@@ -559,6 +559,18 @@ func TestTableChainCardsMoneyAndIvFormats(t *testing.T) {
 	if c := bidCell(map[pairKey]string{{"60", "e"}: "10.7"}, pairKey{"60", "e"}).(usdAmount); c.Text != "$10.70" {
 		t.Errorf("chain cell = %+v", c)
 	}
+	for in, want := range map[string]string{"7.55": "$7.55", "16.4": "$16.40"} {
+		k := pairKey{"60", "e"}
+		if c := bidCell(map[pairKey]string{k: in}, k).(usdAmount); c.Text != want {
+			t.Errorf("chain cell %q = %q, want %q", in, c.Text, want)
+		}
+	}
+	two := candRow(2, "NOC", 2, "ok")
+	two.BidEod, two.Ask = "62.6", sp("62.8")
+	m2 := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {two}}}, nil, buildDay))
+	if c := cellOf(t, tableRowsOf(m2)[0], "bid_ask"); c["text"] != "$62.60 / $62.80" {
+		t.Errorf("bid_ask = %v", c)
+	}
 	if got := ivLine(sp("0.38")); got != "IV 38.0% · HV30 n/a · IVP n/a" {
 		t.Errorf("iv line = %q", got)
 	}
