@@ -200,3 +200,21 @@ func TestGoldenWeekly(t *testing.T) {
 		}
 	}
 }
+
+func TestNetLiquidityLevelMatchesEasePart(t *testing.T) {
+	t.Parallel()
+	walcl, wdtgal, rrp := nlSeries(wed, weeksUp(17, 101.5), 1e9)
+	part := nlPart(walcl, wdtgal, rrp, wed)
+	got := NetLiquidity(walcl, wdtgal, rrp, wed)
+	// WALCL 131.5e9 minus WDTGAL 10e9 minus RRP 20e9 on the Wednesday of the part.
+	if got.Reason != "" || got.Day != part.DataDay || got.Value != "101500000000" || got.Aux != addDays(wed, -1) {
+		t.Fatalf("level %+v, part %+v", got, part)
+	}
+	// A Thursday asks for the same Wednesday; a day with no WALCL gives no_input.
+	if g := NetLiquidity(walcl, wdtgal, rrp, addDays(wed, 1)); g.Day != wed || g.Value != got.Value {
+		t.Errorf("thursday %+v", g)
+	}
+	if g := NetLiquidity(nil, wdtgal, rrp, wed); g.Value != "" || g.Reason != compute.NoInput {
+		t.Errorf("no walcl %+v", g)
+	}
+}
