@@ -57,8 +57,11 @@ because the broker socket is `$OT_HOME/run/ibkr.sock`.
 The owner starts the keeper; the keeper brings the scheduler up and starts it again after a crash.
 The machine itself starts nothing: after a boot the IB gateways need a re-login anyway, so the owner
 starts the keeper then. While the scheduler is down no slot is run; on restart the ticker reads the
-ledger and runs the keys still missing, and a run left `running` by the crash is marked `crashed`
-when its lease lapses and is started again (up to the brake of three).
+ledger and runs the keys still missing. A start closes the previous process's `running` rows at once
+as `crashed` (once the instance fence is held, before the first tick), whatever their lease, and the
+keys are started again (up to the brake of three, which a deploy mid-run counts toward like a lapsed
+lease). A row the old process wrote after that close, in the moment between its fence ending and its
+stop, is still closed `crashed` when its lease lapses.
 
 A job whose broker is down at start (pyside not up, a gateway logged out) is left out and logged
 once; it comes back on the first tick whose probe passes, with no restart. `fred_series` with an
@@ -132,11 +135,14 @@ Owner lines, in order:
 
 ## A second process
 
-Only one scheduler runs. It takes a PostgreSQL advisory lock before anything else is opened. A
+Only `ot scheduler` runs jobs, and only one scheduler runs. The instance fence, a PostgreSQL advisory
+lock taken before anything else is opened, is the one-process guarantee. A
 second `ot scheduler` retries every 5 seconds for 60 seconds, then exits non-zero with the text
 `the scheduler lock is held or cannot be taken after 60s: is another ot scheduler running?`; it
-touches nothing. While the lock is held, `ot run-once` and `ot backfill` refuse and name
-`ot scheduler status`. During a restart the old process releases the lock when it exits, so the
+touches nothing. Once it holds the fence, a start closes every `running` row of the previous process as
+`crashed`. `ot run-once` and `ot backfill` run no job: they only enqueue console requests, which the
+scheduler's console runs, so they need the console on (`ot scheduler status`); without it a request
+stays queued. During a restart the old process releases the lock when it exits, so the
 new one gets it within its wait. If the old process died, the database releases the lock when its
 connection ends.
 
