@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 )
 
 type fakeClock struct{}
@@ -29,17 +32,33 @@ func (s *fakeSource) Fetch(_ context.Context, p sources.FactPlan) ([]contracts.F
 	return s.facts, s.err
 }
 
-// fakeWriter keys rows like the store: the eight-column key, a rerun adds nothing.
-type fakeWriter struct {
-	rows  map[string]contracts.FundamentalFact
-	calls int
-	err   error
+// insertOnlyWriter is a store.FactWriter with no upsert.
+type insertOnlyWriter struct{ calls int }
+
+func (w *insertOnlyWriter) InsertFacts(context.Context, []contracts.FundamentalFact) error {
+	w.calls++
+	return nil
 }
 
-func (w *fakeWriter) InsertFacts(_ context.Context, rows []contracts.FundamentalFact) error {
+// fakeWriter keys rows like the store: the eight-column key, a fact read differently replaces the stored one.
+type fakeWriter struct {
+	rows      map[string]contracts.FundamentalFact
+	calls     int
+	batches   [][]contracts.FundamentalFact
+	writtenBy []string
+	err       error
+}
+
+func (w *fakeWriter) InsertFacts(context.Context, []contracts.FundamentalFact) error {
+	return errors.New("InsertFacts must not be called")
+}
+
+func (w *fakeWriter) UpsertFacts(_ context.Context, rows []contracts.FundamentalFact, writtenBy string) (fundkey.WriteCount, error) {
 	w.calls++
+	w.batches = append(w.batches, rows)
+	w.writtenBy = append(w.writtenBy, writtenBy)
 	if w.err != nil {
-		return w.err
+		return fundkey.WriteCount{}, w.err
 	}
 	if w.rows == nil {
 		w.rows = map[string]contracts.FundamentalFact{}
@@ -50,11 +69,9 @@ func (w *fakeWriter) InsertFacts(_ context.Context, rows []contracts.Fundamental
 			start = fmt.Sprint(*r.PeriodStart)
 		}
 		k := fmt.Sprint(r.Source, "|", r.Subject, "|", r.DocID, "|", r.Taxonomy, "|", r.Concept, "|", r.Unit, "|", start, "|", r.PeriodEnd)
-		if _, ok := w.rows[k]; !ok {
-			w.rows[k] = r
-		}
+		w.rows[k] = r
 	}
-	return nil
+	return fundkey.WriteCount{}, nil
 }
 
 type kindErr struct{ kind contracts.ErrorKind }
@@ -73,7 +90,7 @@ func entry(issuer, market, symbol string) jobs.WatchEntry {
 	return jobs.WatchEntry{Issuer: issuer, Market: market, Contract: broker.Contract{Symbol: symbol}}
 }
 
-func build(t *testing.T, src sources.FactSource, w *fakeWriter, entries ...jobs.WatchEntry) contracts.Job {
+func build(t *testing.T, src sources.FactSource, w store.FactWriter, entries ...jobs.WatchEntry) contracts.Job {
 	t.Helper()
 	j, err := New(src, w, entries, fakeClock{})
 	if err != nil {
@@ -140,7 +157,7 @@ func TestEdinetSkippedWhileNil(t *testing.T) {
 	}
 }
 
-func TestRunTwiceAddsZero(t *testing.T) {
+func TestRunTwiceSendsTheSameFactsAgain(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{facts: []contracts.FundamentalFact{fact("cik:0000320193", "Revenues"), fact("cik:0000320193", "Assets")}}
 	w := &fakeWriter{}
@@ -156,8 +173,50 @@ func TestRunTwiceAddsZero(t *testing.T) {
 		t.Fatalf("plan = %+v", src.plans)
 	}
 	j.Run(ctx, "2026-11-05", keys)
-	if len(w.rows) != 2 || w.calls != 2 {
-		t.Fatalf("second run left %d rows after %d calls", len(w.rows), w.calls)
+	if len(w.rows) != 2 || w.calls != 2 || !reflect.DeepEqual(w.batches[0], w.batches[1]) {
+		t.Fatalf("second run left %d rows after %d calls, batches %v", len(w.rows), w.calls, w.batches)
+	}
+}
+
+func TestRunWithoutUpserterIsRetryable(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{facts: []contracts.FundamentalFact{fact("cik:0000320193", "Revenues")}}
+	w := &insertOnlyWriter{}
+	j := build(t, src, w, entry("cik:0000320193", "US", "AAPL"))
+	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
+	res := j.Run(context.Background(), "2026-11-05", keys)
+	var te contracts.TypedError
+	if !errors.As(res.Err, &te) || te.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "UpsertFacts") {
+		t.Fatalf("err %v", res.Err)
+	}
+	if w.calls != 0 {
+		t.Fatal("inserted without an upserter")
+	}
+}
+
+func TestRunSendsAllFactsInOneCallWithWrittenBy(t *testing.T) {
+	t.Parallel()
+	facts := []contracts.FundamentalFact{fact("cik:0000320193", "Revenues"), fact("cik:0000789019", "Assets"), fact("cik:0000789019", "Revenues")}
+	w := &fakeWriter{}
+	j := build(t, &fakeSource{facts: facts}, w, entry("cik:0000320193", "US", "AAPL"), entry("cik:0000789019", "US", "MSFT"))
+	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
+	res := j.Run(context.Background(), "2026-11-05", keys)
+	if res.Err != nil || res.Returned != 3 || res.Usable != 3 {
+		t.Fatalf("result %+v", res)
+	}
+	if w.calls != 1 || !reflect.DeepEqual(w.batches[0], facts) || w.writtenBy[0] != "fundamentals:2026-11-05" {
+		t.Fatalf("calls %d batches %v writtenBy %v", w.calls, w.batches, w.writtenBy)
+	}
+}
+
+func TestEmptyFetchMakesNoCall(t *testing.T) {
+	t.Parallel()
+	w := &fakeWriter{}
+	j := build(t, &fakeSource{}, w, entry("cik:0000320193", "US", "AAPL"))
+	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
+	res := j.Run(context.Background(), "2026-11-05", keys)
+	if res.Err != nil || res.Returned != 0 || w.calls != 0 {
+		t.Fatalf("result %+v calls %d", res, w.calls)
 	}
 }
 
