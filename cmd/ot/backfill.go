@@ -11,7 +11,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
-	"github.com/andrewrong/optdesk/internal/store"
 )
 
 func init() { register("backfill", backfill) }
@@ -20,65 +19,29 @@ func backfill(a *app, args []string) error {
 	fs := flag.NewFlagSet("backfill", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD to backfill (required)")
-	dataset := fs.String("dataset", "", "dataset id (default: every key of the day)")
-	job := fs.String("job", "", "job id to backfill (default: every job); see the known names in the error of an unknown one")
+	job := fs.String("job", "", "job id to backfill (default: one request per runnable job)")
+	force := fs.Bool("force", false, "ask for a forced run")
+	var ef enqueueFlags
+	ef.register(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *dayFlag == "" {
 		return fmt.Errorf("--day is required")
 	}
-	day, err := dayOrDefault(a.deps.newClock(), *dayFlag)
+	clk := a.deps.newClock()
+	day, err := dayOrDefault(clk, *dayFlag)
 	if err != nil {
 		return err
 	}
 	if a.profile.Name == "demo" {
 		return fmt.Errorf("backfill needs a real profile; the demo profile opens no store")
 	}
-	cfg, err := loadRunOnceConfig(a)
-	if err != nil {
-		return err
+	var names []string
+	if *job != "" {
+		names = []string{*job}
 	}
-	var datasets []string
-	if *dataset != "" {
-		datasets = []string{*dataset}
-	}
-	var filterErr error
-	ctx := context.Background()
-	clk := a.deps.newClock()
-	fw := a.deps.newFwClock()
-	// No advisory fence: the run lease under its own owner keeps a Reconcile and a Backfill apart (Decision 3).
-	sl, err := a.deps.openSchedulerLedger(ctx, cfg.runnerDSN)
-	if err != nil {
-		return fmt.Errorf("open scheduler ledger with %s failed", store.DSNEnvRunner)
-	}
-	defer func() { _ = sl.Close() }()
-	var res runner.BackfillResult
-	var runErr, syncErr error
-	// The key runner takes slog.Default() at construction: the report handler is installed before it.
-	report, restore := installKeyReport()
-	defer restore()
-	err = withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
-		if *job != "" {
-			if datasets, filterErr = jobDatasets(ctx, w.runnable(a.log), *job, *dataset, day); filterErr != nil {
-				return nil
-			}
-		}
-		kr := a.deps.newKeyRunner(w.ledger, sl, fw)
-		_, b := a.deps.newReconciler(w.ledger, sl, w.cal, fw, w.runnable(a.log), runner.WindowRule{}, kr)
-		res, runErr = b.Backfill(ctx, day, datasets)
-		if runErr == nil && res.Refused == "" {
-			syncErr = a.deps.newKeyGapSyncer(w.ledger, sl, fw).SyncKeys(ctx, day)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	if filterErr != nil {
-		return filterErr
-	}
-	return finishBackfill(a, day, *job, *dataset, res, runErr, syncErr, report.recorded())
+	return enqueue(context.Background(), a, "backfill", buildRequests(names, day, clk.Now(), *force, false), ef)
 }
 
 // finishBackfill prints the key lines of res, then returns the error of the run, of a refusal, of the key gap

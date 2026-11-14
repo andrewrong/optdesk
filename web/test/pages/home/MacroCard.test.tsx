@@ -27,6 +27,11 @@ async function show(payload: Shown, showGaps?: boolean) {
     root.render(<MacroCard payload={payload} showGaps={showGaps} />)
   })
 }
+async function openEase() {
+  await act(async () => {
+    host.querySelector<HTMLElement>('[data-ease-fold] [data-slot=accordion-trigger]')!.click()
+  })
+}
 // jsdom has no ResizeObserver, which the Radix slider measures its thumb with.
 vi.stubGlobal(
   'ResizeObserver',
@@ -57,6 +62,7 @@ describe('MacroCard (macro_summary v2)', () => {
 
   it('shows title, say, ease and stale text of ok as sent', async () => {
     await show(ok)
+    await openEase()
     expect(host.querySelector('[data-slot=card-title]')?.textContent).toBe(ok.card.title)
     expect(host.querySelector('[data-slot=card-description]')?.textContent).toBe(ok.card.say)
     expect(host.querySelector('[data-ease-figure]')?.textContent).toBe(ok.card.ease.figure.text)
@@ -76,8 +82,21 @@ describe('MacroCard (macro_summary v2)', () => {
     )
   })
 
+  it('keeps the Ease score in a closed fold: no ease figure text on the closed card', async () => {
+    await show(ok)
+    expect(host.querySelector('[data-ease-fold] [data-slot=accordion-trigger]')?.textContent).toBe(
+      'Ease score',
+    )
+    expect(host.querySelector('[data-ease-figure]')).toBeNull()
+    expect(host.querySelector('[data-neutral-band]')).toBeNull()
+    expect(host.querySelector('[role=slider]')).toBeNull()
+    expect(host.textContent).not.toContain(ok.card.ease.reading_text)
+    expect(host.querySelector('[data-slot=card-description]')?.textContent).toBe(ok.card.say)
+  })
+
   it('labels the week change', async () => {
     await show(ok)
+    await openEase()
     const text = host.querySelector('[data-week-change]')?.textContent ?? ''
     expect(text.startsWith('vs last week')).toBe(true)
     expect(text.indexOf('vs last week')).toBeLessThan(text.indexOf(ok.card.ease.week_change.text))
@@ -102,6 +121,7 @@ describe('MacroCard (macro_summary v2)', () => {
 
   it('draws the fixed 0 to 100 scale with the neutral band texts and the stored marker', async () => {
     await show(ok)
+    await openEase()
     const ticks = [...host.querySelectorAll('[data-ticks] span')].map((s) => s.textContent)
     expect(ticks[0]).toBe('0')
     expect(ticks[ticks.length - 1]).toBe('100')
@@ -135,7 +155,7 @@ describe('MacroCard (macro_summary v2)', () => {
     expect(host.querySelector('[data-gaps]')?.textContent).toBe(ok.card.gaps[0].text)
     for (const note of ok.card.notes) expect(host.textContent).toContain(note)
     await act(async () => {
-      host.querySelector<HTMLElement>('[data-slot=accordion-trigger]')!.click()
+      host.querySelector<HTMLElement>('[data-data-times] [data-slot=accordion-trigger]')!.click()
     })
     expect(host.textContent).toContain(ok.card.data_times_text)
   })
@@ -148,6 +168,7 @@ describe('MacroCard (macro_summary v2)', () => {
   it('shows the Gap ease of gap as its text, with no marker', async () => {
     expect('reason' in gap.card.ease).toBe(true)
     await show(gap)
+    await openEase()
     expect(host.querySelector('[data-ease-gap]')?.textContent).toBe(gap.card.ease.text)
     expect(host.textContent).toContain(gap.card.gaps[0].text)
     expect(host.querySelector('[role=slider]')).toBeNull()

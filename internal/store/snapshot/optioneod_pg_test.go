@@ -382,8 +382,8 @@ func TestOptionEodGrantsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := connectAs(t, name, "ot_w_option_eod")
-	// DELETE, TRUNCATE and an UPDATE of a key column are refused (migration 0047 widens only UPDATE of non-key columns and
-	// SELECT of compared ones; this database applies 0006 alone, so the widened grants are checked by the setup tests).
+	// DELETE, TRUNCATE and an UPDATE of a key column are refused (this database applies the earlier migrations only, 0006
+	// alone; the table-level grants of 0047 are checked by TestMig47GrantsPG in internal/store/setup/migrate_0047_pg_test.go).
 	mustFail(t, w, `UPDATE obs.option_eod SET capture_id = gen_random_uuid()`)
 	mustFail(t, w, `UPDATE obs.option_eod SET instrument_id = instrument_id + 1`)
 	mustFail(t, w, `DELETE FROM obs.option_eod`)

@@ -1,0 +1,673 @@
+{
+  "$defs": {
+    "Ease": {
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Aria Text",
+          "type": "string"
+        },
+        "figure": {
+          "$ref": "#/$defs/IndexPointsFigure"
+        },
+        "marker_percent": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        },
+        "neutral_band": {
+          "$ref": "#/$defs/NeutralBand"
+        },
+        "reading_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reading Text",
+          "type": "string"
+        },
+        "ticks": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "Ticks",
+          "type": "array"
+        },
+        "week_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexPointsFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Week Change"
+        }
+      },
+      "required": [
+        "figure",
+        "week_change",
+        "marker_percent",
+        "neutral_band",
+        "ticks",
+        "reading_text",
+        "aria_text"
+      ],
+      "title": "Ease",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+          "title": "Date",
+          "type": "string"
+        },
+        "name_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name Text",
+          "type": "string"
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Previous"
+        },
+        "when_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "When Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "when_text",
+        "name_text",
+        "previous"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "IndexPointsFigure": {
+      "additionalProperties": false,
+      "description": "A position on the stored 0 to 100 ease scale, or a change in it.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "index_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "IndexPointsFigure",
+      "type": "object"
+    },
+    "Indicator": {
+      "additionalProperties": false,
+      "properties": {
+        "detail_href": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Detail Href"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Latest"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "source_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Text",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "good",
+            "late",
+            "missing"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "latest",
+        "status",
+        "label",
+        "source_text",
+        "detail_href"
+      ],
+      "title": "Indicator",
+      "type": "object"
+    },
+    "Liquidity": {
+      "additionalProperties": false,
+      "properties": {
+        "background_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Background Text",
+          "type": "string"
+        },
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/LiquidityLine"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Lines",
+          "type": "array"
+        },
+        "taps": {
+          "items": {
+            "$ref": "#/$defs/LiquidityTap"
+          },
+          "maxItems": 4,
+          "title": "Taps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "background_text",
+        "lines",
+        "taps"
+      ],
+      "title": "Liquidity",
+      "type": "object"
+    },
+    "LiquidityLine": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "enum": [
+            "reserves",
+            "money_market",
+            "credit",
+            "conditions"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "sentence": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Sentence",
+              "type": "string"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Sentence"
+        },
+        "source_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "sentence",
+        "source_text"
+      ],
+      "title": "LiquidityLine",
+      "type": "object"
+    },
+    "LiquidityRow": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Text",
+              "type": "string"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Text"
+        },
+        "data_day": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data Day"
+        }
+      },
+      "required": [
+        "label",
+        "text",
+        "data_day"
+      ],
+      "title": "LiquidityRow",
+      "type": "object"
+    },
+    "LiquidityTap": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "enum": [
+            "stlfsi",
+            "reserves_over_assets",
+            "discount_window",
+            "net_liquidity"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/LiquidityRow"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Rows",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Note",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "rows",
+        "note"
+      ],
+      "title": "LiquidityTap",
+      "type": "object"
+    },
+    "NeutralBand": {
+      "additionalProperties": false,
+      "description": "The ends of the neutral band on the track, ``percent_of_track``.",
+      "properties": {
+        "high": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        },
+        "low": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        }
+      },
+      "required": [
+        "low",
+        "high"
+      ],
+      "title": "NeutralBand",
+      "type": "object"
+    },
+    "PercentFigure": {
+      "additionalProperties": false,
+      "description": "A fraction times 100, signed (``+2.1%``).",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "percent",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 10000,
+          "minimum": -10000,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 4,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PercentFigure",
+      "type": "object"
+    },
+    "PercentOfTrackFigure": {
+      "additionalProperties": false,
+      "description": "A marker position on its track, 0 to 100.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "percent_of_track",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PercentOfTrackFigure",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.macro_page.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "ease": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Ease"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ],
+      "title": "Ease"
+    },
+    "ease_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Ease Title",
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "maxItems": 20,
+      "title": "Events",
+      "type": "array"
+    },
+    "events_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Events Title",
+      "type": "string"
+    },
+    "gaps": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/Gap"
+      },
+      "maxItems": 20,
+      "title": "Gaps",
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "indicators": {
+      "items": {
+        "$ref": "#/$defs/Indicator"
+      },
+      "maxItems": 20,
+      "title": "Indicators",
+      "type": "array"
+    },
+    "indicators_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Indicators Title",
+      "type": "string"
+    },
+    "liquidity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Liquidity"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ],
+      "title": "Liquidity"
+    },
+    "liquidity_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Liquidity Title",
+      "type": "string"
+    },
+    "notes": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Notes",
+      "type": "array"
+    },
+    "notes_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Notes Title",
+      "type": "string"
+    },
+    "run_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "macro_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "sentence": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "common.v1.json#/$defs/StaleLabel"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "sentence",
+    "ease_title",
+    "events_title",
+    "indicators_title",
+    "notes_title",
+    "ease",
+    "events",
+    "indicators",
+    "notes",
+    "gaps",
+    "stale",
+    "liquidity_title",
+    "liquidity"
+  ],
+  "title": "MacroPageV2",
+  "type": "object"
+}

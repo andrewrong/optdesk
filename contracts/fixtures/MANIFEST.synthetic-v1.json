@@ -54,6 +54,10 @@
     {"path": "page.flex_import.v1.disabled.json", "sha256": "c3f2deb4c555d536b63cf3c49082a01b02fa1d22b347e293a2e0b3e837097d06"},
     {"path": "page.flex_import.v1.bad-version.json", "sha256": "b3a4892723a25018ef3a3870c0db8ff776402dc297d7286fe8441737140b6ac4"},
     {"path": "page.job_console.v1.golden.json", "sha256": "bb035c3b40fc4bcf938602018fa193076d4db14fb92250cd3afd489bd3325c29"},
-    {"path": "page.job_console.v1.bad-version.json", "sha256": "aa3537057a56a595d9fc0a6aaff7c624c8a29888cfe63c98929a6ff803e9c48e"}
+    {"path": "page.job_console.v1.bad-version.json", "sha256": "aa3537057a56a595d9fc0a6aaff7c624c8a29888cfe63c98929a6ff803e9c48e"},
+    {"path": "page.macro_page.v2.golden.json", "sha256": "5db24c660a86a3492156b7c3b24431368c7bdf328a5fca7c1cae8fb8f98ceb1e"},
+    {"path": "page.macro_page.v2.gap.json", "sha256": "3cf2d78fa0c49678a26411321c0a2b1889c0c7d3165b35a7c782fb5ed602e8fb"},
+    {"path": "page.macro_page.v2.stale.json", "sha256": "e3ae72b3eb20ce05ba4b662b16b717bddd72e8a0a0c96791f1abf445baf3bc44"},
+    {"path": "page.macro_page.v2.bad-version.json", "sha256": "2766de3590ca64b421fd88bc94e0eaebd1b122c5145fc49b6be649e2ba673775"}
   ]
 }

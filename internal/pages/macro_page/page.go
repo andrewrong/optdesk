@@ -14,8 +14,12 @@ import (
 // Indicators slice of c afterwards does not change the page.
 func NewPage(c Config) pages.Page {
 	c.Indicators = slices.Clone(c.Indicators)
+	schema := "page.macro_page.v1"
+	if c.Liquidity != nil {
+		schema = "page.macro_page.v2"
+	}
 	return pages.Page{
-		Meta: pages.Meta{Name: "macro_page", Schema: "page.macro_page.v1"},
+		Meta: pages.Meta{Name: "macro_page", Schema: schema},
 		Build: func(ctx context.Context, r store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 			return Build(ctx, r, c, day, generatedAt)
 		},
