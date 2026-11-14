@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
@@ -44,16 +43,35 @@ func TestCompaniesPepbWiring(t *testing.T) {
 	}
 }
 
+// wantNoBarsGap fails unless a row of the pepb block has the Gap no_data "no stored bars" for PE and PB.
+func wantNoBarsGap(t *testing.T, page map[string]json.RawMessage) {
+	t.Helper()
+	raw, ok := page["pepb"]
+	if !ok {
+		t.Fatal("no pepb property")
+	}
+	var blk struct {
+		Rows []struct {
+			PE, PB struct{ Reason, Text string }
+		}
+	}
+	if err := json.Unmarshal(raw, &blk); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range blk.Rows {
+		if r.PE.Reason == "no_data" && r.PE.Text == "no stored bars" && r.PB == r.PE {
+			return
+		}
+	}
+	t.Fatalf("no row with the Gap no_data \"no stored bars\": %s", raw)
+}
+
 func TestNilBarReaderGivesNoDataGap(t *testing.T) {
 	t.Parallel()
 	in := loadFixtureInput(t)
 	view, inputs := fixtureStores(t, in)
 	inputs.Bars = nil
-	page := pepbPageOf(t, companiesInputsFixture{in: in, view: view, inputs: inputs})
-	raw, ok := page["pepb"]
-	if !ok || !strings.Contains(string(raw), `"no_data"`) {
-		t.Fatal("nil bar reader: want a Gap no_data (acceptance 3)")
-	}
+	wantNoBarsGap(t, pepbPageOf(t, companiesInputsFixture{in: in, view: view, inputs: inputs}))
 }
 
 func TestSymbolWithNoInstrumentGivesNoDataGap(t *testing.T) {
@@ -61,9 +79,5 @@ func TestSymbolWithNoInstrumentGivesNoDataGap(t *testing.T) {
 	in := loadFixtureInput(t)
 	view, inputs := fixtureStores(t, in)
 	inputs.Catalog, inputs.Names = fxFakeCatalog{}, fxFakeNames{}
-	page := pepbPageOf(t, companiesInputsFixture{in: in, view: view, inputs: inputs})
-	raw, ok := page["pepb"]
-	if !ok || !strings.Contains(string(raw), `"no_data"`) {
-		t.Fatal("symbol with no instrument id: want a Gap no_data")
-	}
+	wantNoBarsGap(t, pepbPageOf(t, companiesInputsFixture{in: in, view: view, inputs: inputs}))
 }
