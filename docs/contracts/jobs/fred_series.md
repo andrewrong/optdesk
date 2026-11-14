@@ -2,7 +2,7 @@
 
 ## Inputs
 
-- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 96`, `calendar = "XNYS"`), read with github.com/pelletier/go-toml/v2. The fields are `version`, `id`, `series` (the list of series ids: 16 ids: DGS10, DGS3MO, SP500, VIXCLS, VXNCLS, RVXCLS, VXVCLS, WALCL, WDTGAL, RRPONTSYD, DFF, BAMLH0A0HYM2 and the new BAMLC0A0CM, BAA10Y, SOFR, WRESBAL; the last four are also `windowed`) and the `[window]` table with `rule`, `lateness_hours` and `calendar`. A manifest without an id or without a series list fails with the error "fredseries: manifest needs an id and a series list".
+- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 96`, `calendar = "XNYS"`), read with github.com/pelletier/go-toml/v2. The fields are `version`, `id`, `series` (the list of series ids: 22 ids: DGS10, DGS3MO, SP500, VIXCLS, VXNCLS, RVXCLS, VXVCLS, WALCL, WDTGAL, RRPONTSYD, DFF, BAMLH0A0HYM2, BAMLC0A0CM, BAA10Y, SOFR, WRESBAL and the six new IORB, SOFR99, NFCI, STLFSI4, TLAACBW027SBOG, WLCFLPCL; the six new ones have no registry row in migration 0043; 15 ids are also `windowed`, among them the six new ones) and the `[window]` table with `rule`, `lateness_hours` and `calendar`. A manifest without an id or without a series list fails with the error "fredseries: manifest needs an id and a series list".
 - A `sources.Source`, a `store.SeriesWriter` and a `clock.Clock`, passed to `New`.
 - A `contracts.Day` and, for `Run`, the keys of `Plan`.
 
@@ -40,7 +40,7 @@
 - `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
 - `internal/jobs/fredseries/window_test.go`: `TestWindowOf`, `TestWindowErrors`, `TestEmbeddedWindow`.
 - `internal/jobs/fredseries/run_test.go`: `TestRunWritesOnce`, `TestPlanLateRunRecovery`, `TestRunWithoutUpsertIsRetryable`, `TestRunUpsertsOnceWithWrittenBy`, `TestRunEmptyFetchMakesNoUpsert`.
-- `internal/jobs/fredseries/seed_test.go`: `TestRegistrySeedCoversManifest` (every manifest id is in migration 0043).
+- `internal/jobs/fredseries/seed_test.go`: `TestRegistrySeedCoversManifest` (every manifest id except the six unregistered ones is in migration 0043), `TestUnregisteredAreInManifest` (the six are in the manifest and not in migration 0043).
 
 There is no test yet: the wrapping of an untyped fetch error as `Permanent` and the `Retryable` kind of a failed `UpsertSeriesPoints` have no test (the fake writer never fails and no test gives the source an untyped error).
 
