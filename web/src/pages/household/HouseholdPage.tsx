@@ -127,18 +127,22 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
       <header>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold">{payload.title}</h1>
-          <Button asChild variant="link">
-            <a href="/risk" aria-label={payload.risk_link ?? undefined}>
-              {payload.risk_link}
-              <ChevronRight />
-            </a>
-          </Button>
-          <Button asChild variant="link">
-            <a href="/positions" aria-label={payload.positions_link ?? undefined}>
-              {payload.positions_link}
-              <ChevronRight />
-            </a>
-          </Button>
+          {payload.risk_link !== null && (
+            <Button asChild variant="link">
+              <a href="/risk" aria-label={payload.risk_link}>
+                {payload.risk_link}
+                <ChevronRight />
+              </a>
+            </Button>
+          )}
+          {payload.positions_link !== null && (
+            <Button asChild variant="link">
+              <a href="/positions" aria-label={payload.positions_link}>
+                {payload.positions_link}
+                <ChevronRight />
+              </a>
+            </Button>
+          )}
         </div>
         <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
       </header>

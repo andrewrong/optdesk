@@ -424,3 +424,28 @@ it('leaves a gap in the trend line at a null point instead of connecting over it
   expect(spec.series.every((s) => s.hole === true)).toBe(true)
   expect(spec.series.some((s) => s.points.some((p) => p.value === null))).toBe(true)
 })
+
+// Issue #2507: a header link is drawn only when the payload carries its words.
+it('draws no header link when risk_link and positions_link are null', async () => {
+  const payload = fixture('ok.json')
+  payload.risk_link = null
+  payload.positions_link = null
+  await show(<HouseholdPage payload={payload} />)
+  const header = host.querySelector('header')!
+  expect(header.querySelector('a[href="/risk"]')).toBeNull()
+  expect(header.querySelector('a[href="/positions"]')).toBeNull()
+  expect(header.querySelector('svg.lucide-chevron-right')).toBeNull()
+})
+
+it('draws only the risk link when only risk_link is set', async () => {
+  const payload = fixture('ok.json')
+  payload.risk_link = 'RISK-WORDS'
+  payload.positions_link = null
+  await show(<HouseholdPage payload={payload} />)
+  const header = host.querySelector('header')!
+  const risk = header.querySelector('a[href="/risk"]')
+  expect(risk?.textContent).toBe('RISK-WORDS')
+  expect(risk?.getAttribute('aria-label')).toBe('RISK-WORDS')
+  expect(risk?.querySelector('svg')).not.toBeNull()
+  expect(header.querySelector('a[href="/positions"]')).toBeNull()
+})
