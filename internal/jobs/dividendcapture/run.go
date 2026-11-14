@@ -9,8 +9,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
@@ -22,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 )
 
 //go:embed job.toml
@@ -60,6 +63,10 @@ type job struct {
 	entries  []jobs.WatchEntry
 	clk      clock.Clock
 	loc      *time.Location
+
+	// memo holds, per day, the result of the first Run of this instance: one Plan makes one Dividends call.
+	mu   sync.Mutex
+	memo map[contracts.Day]contracts.JobResult
 }
 
 type typedError struct {
@@ -129,7 +136,8 @@ func newWith(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, passed: p, offset: off, runBound: bound, ref: ref, res: res, w: w, r: r, entries: entries, clk: clk, loc: loc}, nil
+	return &job{m: m, passed: p, offset: off, runBound: bound, ref: ref, res: res, w: w, r: r, entries: entries, clk: clk, loc: loc,
+		memo: map[contracts.Day]contracts.JobResult{}}, nil
 }
 
 // ID is the job id of the manifest.
@@ -144,7 +152,7 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 // RunBound is the longest time one run may take.
 func (j *job) RunBound() time.Duration { return j.runBound }
 
-// RestartSensitive is false: a rerun of the day finds the rows and asks nothing.
+// RestartSensitive is false: a rerun of the day replaces the rows by key.
 func (j *job) RestartSensitive() bool { return false }
 
 // Plan returns one key per watch entry and the hash of the plan.
@@ -201,18 +209,33 @@ type target struct {
 	id int
 }
 
-// Run writes the rows of day that are missing. It makes one Dividends call for the entries of the passed
-// markets that have no row yet and never retries; a stock that fails does not stop the others.
+// Run writes the rows of day by key: it makes one Dividends call for the entries of the passed markets and
+// upserts one row per call, so a rerun replaces what the broker now says. A day before the clock's date in
+// the manifest zone is a replay. The first Run of an instance and day does the work and every later Run of the
+// same instance and day returns that result, a failure included, without a broker call. A stock that fails
+// does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	sd, err := time.Parse(dayLayout, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: &typedError{contracts.Permanent, "dividendcapture: bad day"}}
 	}
-	// Development mode: the vendor answer is of the clock's date in the manifest zone, so a past day runs with
-	// that date as its day.
-	day = contracts.Day(j.clk.Now().In(j.loc).Format(dayLayout))
-	sd, _ = time.Parse(dayLayout, string(day))
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if res, ok := j.memo[day]; ok {
+		return res
+	}
+	res := j.fetchAndWrite(ctx, day, sd)
+	j.memo[day] = res
+	return res
+}
+
+func (j *job) fetchAndWrite(ctx context.Context, day contracts.Day, sd time.Time) contracts.JobResult {
+	up, ok := j.w.(fundkey.DividendUpserter)
+	if !ok {
+		return contracts.JobResult{Err: &typedError{contracts.Retryable, "dividendcapture: the dividend store has no UpsertDividends"}}
+	}
 	now := j.clk.Now().UTC()
+	replay := string(day) < j.clk.Now().In(j.loc).Format(dayLayout)
 	base := func(t target) contracts.DividendExpectation {
 		return contracts.DividendExpectation{
 			Attempt: 1, InstrumentID: t.id, Issuer: t.e.Issuer, Currency: t.e.Contract.Currency,
@@ -232,22 +255,16 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			continue
 		}
 		t.id = id
-		have, herr := j.r.Dividends(ctx, id, day, day)
-		if herr != nil {
-			return contracts.JobResult{Err: asTyped(herr, contracts.Retryable)}
-		}
-		switch {
-		case len(have) > 0:
-		case !j.passed[e.Market]:
+		if !j.passed[e.Market] {
 			row := base(t)
 			row.Status = "unsupported"
 			rows = append(rows, row)
-		default:
-			ask = append(ask, t)
+			continue
 		}
+		ask = append(ask, t)
 	}
 	rows = append(rows, j.ask(ctx, ask, base)...)
-	return j.write(ctx, rows)
+	return j.write(ctx, up, replay, "dividend_capture:"+string(day), rows)
 }
 
 // ask makes the one Dividends call and turns each answer into a row.
@@ -318,11 +335,17 @@ func fill(row contracts.DividendExpectation, p broker.DividendProjection) contra
 	return row
 }
 
-// write inserts every row, keeps going after a failed insert and reports the first one as Retryable.
-func (j *job) write(ctx context.Context, rows []contracts.DividendExpectation) contracts.JobResult {
+// write upserts every row, one row per call, keeps going after a refused row (logged and not counted as
+// returned) and reports the first refusal as Retryable.
+func (j *job) write(ctx context.Context, up fundkey.DividendUpserter, replay bool, writtenBy string, rows []contracts.DividendExpectation) contracts.JobResult {
+	put := up.UpsertDividends
+	if replay {
+		put = up.ReplayDividends
+	}
 	res := contracts.JobResult{}
 	for _, row := range rows {
-		if err := j.w.InsertDividend(ctx, row); err != nil {
+		if _, err := put(ctx, []contracts.DividendExpectation{row}, writtenBy); err != nil {
+			slog.Warn("dividendcapture: a row was refused", "instrument_id", row.InstrumentID, "issuer", row.Issuer, "error", err.Error())
 			if res.Err == nil {
 				res.Err = asTyped(err, contracts.Retryable)
 			}
