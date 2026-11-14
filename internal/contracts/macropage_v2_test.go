@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -96,5 +97,17 @@ func TestMacroPageV2LiquidityShape(t *testing.T) {
 				t.Errorf("failures = %v, want %v among them", failuresOf(t, err), c.want)
 			}
 		})
+	}
+}
+
+// TestMacroPageV2NoHalfUp holds the v2-line rounding rule: no ROUND_HALF_UP in the schema.
+func TestMacroPageV2NoHalfUp(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile(filepath.Join(schemasDir, "page.macro_page.v2.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(b, []byte("ROUND_HALF_UP")) {
+		t.Error("page.macro_page.v2.json contains ROUND_HALF_UP; the v2 line requires ROUND_HALF_EVEN")
 	}
 }

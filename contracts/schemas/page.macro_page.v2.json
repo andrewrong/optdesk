@@ -141,7 +141,7 @@
           "title": "Value",
           "type": "number",
           "x-decimals": 1,
-          "x-rounding": "ROUND_HALF_UP"
+          "x-rounding": "ROUND_HALF_EVEN"
         }
       },
       "required": [
@@ -455,7 +455,7 @@
           "title": "Value",
           "type": "number",
           "x-decimals": 4,
-          "x-rounding": "ROUND_HALF_UP"
+          "x-rounding": "ROUND_HALF_EVEN"
         }
       },
       "required": [
@@ -487,7 +487,7 @@
           "title": "Value",
           "type": "number",
           "x-decimals": 2,
-          "x-rounding": "ROUND_HALF_UP"
+          "x-rounding": "ROUND_HALF_EVEN"
         }
       },
       "required": [
