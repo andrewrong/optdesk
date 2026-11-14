@@ -22,7 +22,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $1
 ON CONFLICT (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end) DO UPDATE SET
  currency = EXCLUDED.currency, value = EXCLUDED.value, form = EXCLUDED.form, filed = EXCLUDED.filed,
  retrieved_at = EXCLUDED.retrieved_at, raw_sha256 = EXCLUDED.raw_sha256, updated_at = now(),
- written_by = EXCLUDED.written_by
+ written_by = $15
 WHERE (f.currency, f.value, f.form, f.filed, f.raw_sha256)
  IS DISTINCT FROM (EXCLUDED.currency, EXCLUDED.value, EXCLUDED.form, EXCLUDED.filed, EXCLUDED.raw_sha256)
 RETURNING f.source`

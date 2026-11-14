@@ -212,7 +212,7 @@ func TestRolesCannotReadTableOrPageWritePG(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Exec(ctx, `SELECT 1 FROM obs.fundamental_fact`); err == nil {
+		if _, err := c.Exec(ctx, `SELECT updated_at FROM obs.fundamental_fact`); err == nil {
 			t.Errorf("%s read the base table", role)
 		}
 		_ = c.Close(ctx)
