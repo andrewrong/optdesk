@@ -345,3 +345,36 @@ func TestJpyPositionsUseRateInAccountCells(t *testing.T) {
 		t.Fatalf("stock %v", stock)
 	}
 }
+
+func TestConcentrationRowsCarryPageScope(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{rows: []mark.PositionMark{markOf(1, "250"), markOf(2, "100")}}
+	c, _ := holdingsConfig(twoStocks(), marks)
+	m, _ := build(t, c, "main")
+	want := m["scopes"].([]any)[0].(map[string]any)["key"]
+	rows := m["concentration"].(map[string]any)["rows"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %v", rows)
+	}
+	for _, r := range rows {
+		if r.(map[string]any)["scope"] != want {
+			t.Fatalf("row scope = %v, want %v", r, want)
+		}
+	}
+	for _, r := range m["composition"].(map[string]any)["rows"].([]any) {
+		if _, has := r.(map[string]any)["scope"]; has {
+			t.Fatalf("composition row has a scope: %v", r)
+		}
+	}
+}
+
+func TestConcentrationWithNoStockHasGap(t *testing.T) {
+	t.Parallel()
+	opt := store.Position{Symbol: "AAA", SecType: "option", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-1"}
+	c, _ := holdingsConfig([]store.Position{opt}, &fakeMarks{})
+	m, _ := build(t, c, "main")
+	g := gapOf(t, m, "concentration")
+	if g["reason"] != "no_data" || !strings.Contains(g["text"].(string), "no stock is held") {
+		t.Fatalf("gap = %v", g)
+	}
+}

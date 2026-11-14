@@ -16,10 +16,11 @@ import (
 )
 
 const (
-	secTypeStock = "stock"
-	currencyJPY  = "JPY"
-	pairUsdJpy   = "USDJPY"
-	maxNamed     = 5 // symbols a gap text names before it ends "and <M> more"
+	secTypeStock    = "stock"
+	currencyJPY     = "JPY"
+	pairUsdJpy      = "USDJPY"
+	textNoStockHeld = "Nothing to rank by share: no stock is held"
+	maxNamed        = 5 // symbols a gap text names before it ends "and <M> more"
 )
 
 // holdingBlocks are the three blocks built from the held stocks of the capture and their marks.
@@ -98,7 +99,7 @@ func (h held) positionsIn() []blockapi.PositionIn {
 
 // holdings builds the blocks from the held stocks; nil when Marks or Holdings is not set (the blocks
 // stay missing_quote).
-func (c Config) holdings(cp capture, h held) *holdingBlocks {
+func (c Config) holdings(alias string, cp capture, h held) *holdingBlocks {
 	if c.Marks == nil || c.Holdings == nil {
 		return nil
 	}
@@ -125,7 +126,7 @@ func (c Config) holdings(cp capture, h held) *holdingBlocks {
 		})
 	}
 	res := c.Holdings().Holdings(in)
-	x := rowsCtx{net: in.Currency, day: cp.day}
+	x := rowsCtx{net: in.Currency, day: cp.day, scope: alias}
 	meaning := func(m string) string {
 		for i, l := range res.Rows {
 			if in.Rows[i].Currency == currencyJPY && l.Currency == "USD" && h.rateD != "" {
@@ -136,14 +137,15 @@ func (c Config) holdings(cp capture, h held) *holdingBlocks {
 	}
 	return &holdingBlocks{
 		composition:   holdingRows(titleComposition, meaning(meaningComposition), headsComposition, x, res),
-		concentration: holdingRows(titleConcentration, meaning(meaningConcentration), headsConcentration, x, res),
+		concentration: concentrationOf(meaning(meaningConcentration), x, res),
 		allocation:    allocationOf(meaning(meaningAllocation), x, res),
 	}
 }
 
 // rowsCtx is what a holdings block needs besides the lines: the currency of the net value (the
-// currency of a total) and the capture day (named in a rate gap).
-type rowsCtx struct{ net, day string }
+// currency of a total), the capture day (named in a rate gap) and the scope key the concentration
+// rows carry.
+type rowsCtx struct{ net, day, scope string }
 
 // named joins at most maxNamed symbols and ends "and <M> more" when more are left.
 func named(names []string) string {
@@ -212,6 +214,19 @@ func holdingRows(title, meaning string, heads []string, x rowsCtx, res blockapi.
 		b.Totals = append(b.Totals, t)
 	} else if len(res.Rows) > 0 {
 		b.Gap = totalGap(res.TotalValue, x, res)
+	}
+	return b
+}
+
+// concentrationOf is the holdings rows under the scope key of the page; a block with no row and no gap
+// (no stock held) says so in a gap.
+func concentrationOf(meaning string, x rowsCtx, res blockapi.HoldingsResult) moneyBlock {
+	b := holdingRows(titleConcentration, meaning, headsConcentration, x, res)
+	for i := range b.Rows {
+		b.Rows[i].Scope = x.scope
+	}
+	if len(b.Rows) == 0 && b.Gap == nil {
+		b.Gap = &gapJSON{Reason: "no_data", Text: textNoStockHeld}
 	}
 	return b
 }
