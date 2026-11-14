@@ -1,6 +1,6 @@
 // Issue #2492: on each of the five pages a table sits inside the container that always shows a scrollbar.
 // The shell dispatches the payload to the page as in the browser; the payloads are the repository's recorded or
-// synthetic fixtures. jsdom has no layout, so the check is that every table has the scroll container as its parent.
+// synthetic fixtures. jsdom has no layout, so the check is that every table sits inside the scroll container.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -38,7 +38,7 @@ afterEach(async () => {
 })
 
 describe('tables of the five pages', () => {
-  it.each(PAGES)('%s: every table has the always-visible scrollbar container as its parent', async (_name, payload) => {
+  it.each(PAGES)('%s: every table sits inside the always-visible scrollbar container', async (_name, payload) => {
     vi.stubGlobal(
       'ResizeObserver',
       class {
