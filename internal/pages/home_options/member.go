@@ -52,15 +52,14 @@ const (
 	textOpen      = "Open premium: the ledger summary gives no open premium figure"
 	textMaxLoss   = "Max loss needs the combined structure, the ledger does not give it"
 	textOtherCcy  = "Ledger holds non-USD positions, not counted on this page"
-	seriesText    = "Settled premium by closing month; expiry, exercise, assignment and buy-back count, " +
-		"fees are not deducted; year and month of the closing day, no time zone conversion; " +
-		"by account alias, not merged"
-	closedText    = "Closed P/L, last six months: no data yet, monthly closed P/L is not given on this page"
+	seriesText    = "Settled premium"
+	closedText    = "Closed P/L"
 	seriesCaption = "USD, by closing month: expiry, exercise, assignment and buy-back included, " +
 		"fees are not deducted; the year and month of the closing day; " +
 		"no time zone conversion; by account alias, never merged"
-	noteCash   = "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative."
-	noteClosed = "Premium and realised P/L count only closed sold positions, all accounts combined."
+	noteCash        = "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative."
+	noteClosed      = "Premium and realised P/L count only closed sold positions, all accounts combined."
+	noteClosedEmpty = "Closed P/L has no data yet: monthly closed P/L is not given on this page."
 )
 
 var monthLabels = [12]string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
@@ -273,7 +272,7 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	k.Title, k.Subtitle, k.SeriesCaption = title, subtitle, seriesCaption
 	k.SeriesText, k.ClosedText = seriesText, closedText
 	k.Stale = stale{DataTime: midnight(base, c.Zone), Text: baseText, IsStale: at.After(staleAfter)}
-	k.Notes = []string{noteCash, noteClosed}
+	k.Notes = []string{noteCash, noteClosed, noteClosedEmpty}
 	k.Gaps = []gap{noData(textMonthly), noData(textMaxLoss)}
 	k.Series = series(d, nil)
 	k.Tiles = tiles{
