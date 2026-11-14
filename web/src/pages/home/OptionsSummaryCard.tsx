@@ -58,14 +58,26 @@ export function OptionsSummaryCard({ payload, titleHref }: { payload: Payload; t
         label: figure.text,
       }
     })
+  const candidates = [
+    { name: card.premium_series_text, points: points((point) => point.premium) },
+    { name: card.closed_series_text, points: points((point) => point.closed) },
+  ]
+  const hasBar = (series: (typeof candidates)[number]) => series.points.some((p) => p.value !== null)
+  const series = candidates.filter(hasBar)
+  const gapNames = candidates.filter((s) => !hasBar(s)).map((s) => s.name)
+  const firstFigure = card.premium_series_6m
+    .flatMap((point) => [
+      ...(hasBar(candidates[0]!) ? [point.premium] : []),
+      ...(hasBar(candidates[1]!) ? [point.closed] : []),
+    ])
+    .find((figure): figure is Exclude<Figure, { kind: 'gap' }> => figure.kind !== 'gap')
+  const unit = firstFigure?.unit
   const spec: ChartSpec = {
     kind: 'bar',
-    legend: true,
+    legend: series.length >= 2,
+    ...(unit ? { unit } : {}),
     categories: card.premium_series_6m.map((point) => point.label),
-    series: [
-      { name: card.premium_series_text, points: points((point) => point.premium) },
-      { name: card.closed_series_text, points: points((point) => point.closed) },
-    ],
+    series,
   }
   return (
     <Card data-card="options-summary">
@@ -87,6 +99,11 @@ export function OptionsSummaryCard({ payload, titleHref }: { payload: Payload; t
           <div className="text-xs text-muted-foreground" data-series-caption>
             {card.premium_series_caption}
           </div>
+          {gapNames.map((name) => (
+            <div key={name} className="text-xs text-muted-foreground" data-series-gap>
+              {name}
+            </div>
+          ))}
         </div>
         <CardNotes notes={card.notes} gaps={card.gaps} />
       </CardContent>

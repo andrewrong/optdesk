@@ -9,3 +9,13 @@ const suffixes = new Map<string, string>([
 export function unitSuffix(unit: string): string {
   return suffixes.get(unit) ?? ''
 }
+
+const prefixes = new Map<string, string>([
+  ['usd', '$'],
+  ['usd_signed', '$'],
+])
+
+// The display prefix of a unit id: the dollar sign of money, none for any other id.
+export function unitPrefix(unit: string): string {
+  return prefixes.get(unit) ?? ''
+}

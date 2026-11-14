@@ -65,11 +65,14 @@ describe('OptionsSummaryCard', () => {
     const ok = os('ok.json')
     await showCard(ok)
     const spec = drawn.at(-1)!.spec
+    // the fixture's closed series holds bars, so both series are drawn and the legend shows
     expect(spec.series.map((s) => s.name)).toEqual([
       ok.card.premium_series_text,
       ok.card.closed_series_text,
     ])
     expect(spec.legend).toBe(true)
+    expect(spec.unit).toBe('usd_signed')
+    expect(host.querySelector('[data-series-gap]')).toBeNull()
     const sent = ok.card.premium_series_6m
     expect(spec.categories).toEqual(sent.map((p: { label: string }) => p.label))
     expect(spec.series[0]!.points.map((p) => p.label)).toEqual(
@@ -79,6 +82,28 @@ describe('OptionsSummaryCard', () => {
       sent.map((p: { closed: { text: string } }) => p.closed.text),
     )
     expect(host.textContent).toContain(ok.card.premium_series_caption)
+  })
+
+  it('draws only the premium series, no legend, and the closed text as a note when every closed point is a gap', async () => {
+    const ok = os('ok.json')
+    for (const p of ok.card.premium_series_6m)
+      p.closed = { kind: 'gap', reason: 'no_data', text: 'No data' }
+    await showCard(ok)
+    const spec = drawn.at(-1)!.spec
+    expect(spec.series.map((s) => s.name)).toEqual([ok.card.premium_series_text])
+    expect(spec.legend).toBe(false)
+    const notes = host.querySelectorAll('[data-series-gap]')
+    expect(notes).toHaveLength(1)
+    expect(notes[0]!.textContent).toBe(ok.card.closed_series_text)
+  })
+
+  it('draws both series with a legend and no gap note when both hold bars', async () => {
+    const ok = os('ok.json')
+    await showCard(ok)
+    const spec = drawn.at(-1)!
+    expect(spec.spec.series).toHaveLength(2)
+    expect(spec.spec.legend).toBe(true)
+    expect(host.querySelector('[data-series-gap]')).toBeNull()
   })
 
   it('gives a gap point a null value with its text', async () => {
@@ -132,7 +157,7 @@ describe('OptionsSummaryCard', () => {
     }
   })
 
-  it('names the premium series only in the legend: no data-series-text line, spec keeps both names and legend', async () => {
+  it('names the series only in the legend while the fixture closed series holds bars: no data-series-text line, spec keeps both names and legend', async () => {
     const ok = os('ok.json')
     await showCard(ok)
     expect(host.querySelector('[data-series-text]')).toBeNull()

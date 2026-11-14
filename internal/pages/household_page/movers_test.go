@@ -429,3 +429,37 @@ func TestMoversFxErrorOnCaptureDayIsBuildError(t *testing.T) {
 		t.Fatal("an Fx read failure must be an error of Build")
 	}
 }
+
+func TestMoversPriceTextHasTwoDecimals(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ in, want string }{
+		{"3155.0000", "3,155.00"}, {"14.9500", "14.95"}, {"0.005", "0.01"}, {"-0.005", "−0.01"},
+	}
+	var pos0, pos1 []store.Position
+	var m0, m1 []mark.PositionMark
+	for i, tc := range cases {
+		sym := string(rune('A'+i)) + "SYM"
+		pos0 = append(pos0, capStock(sym, int64(i+1), "1", "c1"))
+		pos1 = append(pos1, capStock(sym, int64(i+1), "1", "c1"))
+		m0 = append(m0, capMark(int64(i+1), tc.in, mark.BasisLast, "c1"))
+		m1 = append(m1, capMark(int64(i+1), tc.in, mark.BasisLast, "c1"))
+	}
+	c, _ := moversConfig(map[string]dayData{
+		"2026-11-09": {net: "99000.00", pos: pos0, marks: m0},
+		"2026-11-10": {net: "100000.00", pos: pos1, marks: m1},
+	})
+	m, _ := buildOn(t, c, "2026-11-10")
+	stocks := moversOf(m)["stocks"].([]any)
+	if len(stocks) != len(cases) {
+		t.Fatalf("stocks = %v", stocks)
+	}
+	for i, tc := range cases {
+		row := stocks[i].(map[string]any)
+		for _, k := range []string{"previous", "current"} {
+			cell := row[k].(map[string]any)
+			if cell["text"] != tc.want {
+				t.Fatalf("%s %s = %v, want text %q", row["name"], k, cell, tc.want)
+			}
+		}
+	}
+}
