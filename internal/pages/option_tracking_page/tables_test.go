@@ -155,8 +155,8 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 	o.KeptPercent, o.Delta, o.Commissions, o.RealizedPnL = "62.98765", "-0.2512345", "1.3", "12.345678"
 	o.Iv = "0.31254"
 	c := openTable([]opt{o}).Rows[0].Cells
-	want := map[string]string{"spot": "394.82", "mid": "3.33", "kept": "201.50", "kept_percent": "62.99",
-		"delta": "-0.25", "iv": "0.3125"}
+	want := map[string]string{"spot": "394.82", "mid": "3.33", "kept": "$201.50", "kept_percent": "62.99",
+		"delta": "−0.25", "iv": "31.3%"}
 	for k, w := range want {
 		if v := asValue(t, c[k]); v.Text != w {
 			t.Errorf("%s = %q, want %q", k, v.Text, w)
@@ -168,5 +168,25 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 	}
 	if v := asValue(t, r["realized"]); v.Text != "12.35" {
 		t.Errorf("realized = %q", v.Text)
+	}
+}
+
+func TestOpenTableDeltaIvFormat(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ delta, iv, wantDelta, wantIv string }{
+		{"-0.0912", "0.4511", "−0.09", "45.1%"},
+		{"0.25", "0.31254", "0.25", "31.3%"},
+		{"-0.001", "0.6955", "0.00", "69.6%"},
+	}
+	for _, tc := range cases {
+		o := sampleOpen("p")
+		o.Delta, o.Iv = tc.delta, tc.iv
+		c := openTable([]opt{o}).Rows[0].Cells
+		if v := asValue(t, c["delta"]); v.Text != tc.wantDelta || string(*v.Value) != tc.delta {
+			t.Errorf("delta %s = %q (%v), want %q", tc.delta, v.Text, v.Value, tc.wantDelta)
+		}
+		if v := asValue(t, c["iv"]); v.Text != tc.wantIv || string(*v.Value) != tc.iv {
+			t.Errorf("iv %s = %q (%v), want %q", tc.iv, v.Text, v.Value, tc.wantIv)
+		}
 	}
 }
