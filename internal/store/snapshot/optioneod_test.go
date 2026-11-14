@@ -13,6 +13,7 @@ import (
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/shared"
 )
 
 type ctxKey struct{}
@@ -109,8 +110,9 @@ func newStore(f *fakeDB) *optionEodStore { return &optionEodStore{db: f} }
 
 func TestInsertSQL(t *testing.T) {
 	t.Parallel()
-	if !strings.HasSuffix(insertOptionEodSQL, "ON CONFLICT DO NOTHING") {
-		t.Fatalf("insert does not end ON CONFLICT DO NOTHING: %s", insertOptionEodSQL)
+	if !strings.Contains(insertOptionEodSQL, "ON CONFLICT (session_day, capture_id, instrument_id) DO UPDATE SET ") ||
+		strings.Contains(insertOptionEodSQL, "DO NOTHING") {
+		t.Fatalf("insert is not the upsert on the key: %s", insertOptionEodSQL)
 	}
 	if strings.Contains(insertOptionEodSQL, "*") || strings.Contains(selectOptionEodSQL, "*") {
 		t.Fatal("SQL contains *")
@@ -386,5 +388,62 @@ func TestOptionEodPick(t *testing.T) {
 				t.Fatalf("got %v, want %v", have, c.want)
 			}
 		})
+	}
+}
+
+func TestOptionEodGuardSQL(t *testing.T) {
+	t.Parallel()
+	if n := strings.Count(insertOptionEodSQL, " WHERE "); n != 1 {
+		t.Fatalf("%d WHERE in the statement, want 1: %s", n, insertOptionEodSQL)
+	}
+	_, guard, _ := strings.Cut(insertOptionEodSQL, " WHERE ")
+	for _, want := range []string{
+		"snapshot_kind = 'session'", "status = 1", "THEN 3", "THEN 2", "ELSE 1",
+		"IS DISTINCT FROM", "(EXCLUDED.bid IS NULL AND option_eod.bid IS NOT NULL)",
+		"(EXCLUDED.vega_per_vol_point IS NULL AND option_eod.vega_per_vol_point IS NOT NULL)",
+	} {
+		if !strings.Contains(guard, want) {
+			t.Errorf("guard lacks %q: %s", want, guard)
+		}
+	}
+	if strings.Contains(guard, "received_at") {
+		t.Errorf("received_at is not compared: %s", guard)
+	}
+}
+
+func TestOptionEodArgsUnchanged(t *testing.T) {
+	t.Parallel()
+	r := baseRow(t)
+	r.Bid = fp(-1)
+	args := optionEodArgs(r)
+	want := []any{
+		r.SessionDay.Time, r.CaptureID, 9, 8, 1, 2, r.ReceivedAt, r.EventTs, 4, r.ErrorCode, "USD", "eod", r.TermsVersionID,
+		(*float64)(nil), r.Ask, r.BidSize, r.AskSize, r.Last, r.Volume, r.OpenInterest, &r.OiAsofDate.Time,
+		r.UnderlyingPrice, "USD", r.UnderlyingEventTs, r.IvBidDecimal, r.IvMidDecimal, r.IvAskDecimal, r.IvDecimal,
+		r.Delta, r.Gamma, r.ThetaPerCalendarDay, r.VegaPerVolPoint,
+	}
+	if !reflect.DeepEqual(args, want) {
+		t.Fatalf("arguments\n got %v\nwant %v", args, want)
+	}
+}
+
+func TestOptionEodWritesDayRowAfterCaptureRows(t *testing.T) {
+	t.Parallel()
+	good, thin := baseRow(t), baseRow(t)
+	good.Status, good.SnapshotKind, good.ErrorCode = 1, "session", nil
+	thin.Status, thin.SnapshotKind, thin.InstrumentID = 1, "off_session", 10
+	f := &fakeDB{}
+	if err := newStore(f).InsertOptionEod(context.Background(), []contracts.OptionEod{good, thin}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{insertOptionEodSQL, insertOptionEodSQL, shared.UpsertDaySQL}
+	if !reflect.DeepEqual(f.execSQL, want) {
+		t.Fatalf("statements %d, want capture, capture, day", len(f.execSQL))
+	}
+	if n := len(f.execs[2]); n != shared.DayArgCount {
+		t.Fatalf("day row has %d arguments, want %d", n, shared.DayArgCount)
+	}
+	if f.execs[2][0] != 9 || f.execs[2][3] != "option_eod" {
+		t.Fatalf("day row arguments %v", f.execs[2])
 	}
 }
