@@ -48,13 +48,13 @@ ALTER TABLE obs.option_eod SET (
     timescaledb.compress_segmentby = 'underlying_id',
     timescaledb.compress_orderby = 'session_day DESC, capture_id, instrument_id'
 );
-SELECT public.add_compression_policy('obs.option_eod', INTERVAL '7 days');
+SELECT public.add_compression_policy('obs.option_eod', INTERVAL '7 days', initial_start => now() + INTERVAL '1 day');
 ALTER TABLE obs.quote_snapshot SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'instrument_id',
     timescaledb.compress_orderby = 'session_day DESC, slot, capture_id'
 );
-SELECT public.add_compression_policy('obs.quote_snapshot', INTERVAL '7 days');
+SELECT public.add_compression_policy('obs.quote_snapshot', INTERVAL '7 days', initial_start => now() + INTERVAL '1 day');
 
 GRANT USAGE ON SCHEMA master TO ot_w_master;
 GRANT SELECT, INSERT ON master.instrument TO ot_w_master;
