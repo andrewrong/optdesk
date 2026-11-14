@@ -69,6 +69,7 @@ func newDatabase(t *testing.T) string {
 	name := newBaseDatabase(t)
 	applyUp(t, name, "0039_fx_rate_repair.sql")
 	applyUp(t, name, "0041_price_bar_repair.sql")
+	applyUp(t, name, "0050_fx_rate_source.sql")
 	return name
 }
 
