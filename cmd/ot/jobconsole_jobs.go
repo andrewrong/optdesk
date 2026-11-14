@@ -71,12 +71,14 @@ func listedOnly(id, reason, text, needs string) jobRow {
 	return jobRow{ID: id, Kind: kindListedOnly, Reason: reason, Text: text, Needs: needs}
 }
 
-// jobTable is the table of the 31 jobs, in the order of the page.
+// jobTable is the table of the 32 jobs, in the order of the page.
 var jobTable = []jobRow{
 	{ID: "fred_series", Kind: kindAnyDay, Force: true},
 	{ID: "fundamentals", Kind: kindAnyDay, Force: true},
 	{ID: "compute_figures", Kind: kindAnyDay, Force: true},
 	{ID: "option_candidates", Kind: kindAnyDay, Force: true},
+	// book_risk is insert-only under a new run id and a rerun's run id is the newest one readers take, as option_candidates.
+	{ID: "book_risk", Kind: kindAnyDay, Force: true},
 	todayOnly("account_capture", "append_only", textAppendOnly),
 	anyDay("statement_capture", "insert_only", textInsertOnly),
 	todayOnly("position_marks", "attempt_rows", textAttemptRows),
