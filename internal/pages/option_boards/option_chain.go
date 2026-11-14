@@ -89,7 +89,7 @@ func bidCell(bids map[pairKey]string, k pairKey) any {
 	if !ok {
 		return mkGap("no_data", gapText)
 	}
-	return usdAmount{Value: n, Text: "$" + bid, Unit: "usd"}
+	return usdAmount{Value: n, Text: moneyText(bid), Unit: "usd"}
 }
 
 // sortedUnique is the distinct keys of the rows, ascending as text (dates sort as text; strikes are re-sorted

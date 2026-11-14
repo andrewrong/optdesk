@@ -190,3 +190,17 @@ func TestGroupThousands(t *testing.T) {
 		}
 	}
 }
+
+func TestPercentOneDecimal(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{
+		"0.6955": "69.6%", "0.5086": "50.9%", "0.3109": "31.1%", "0.38": "38.0%",
+	} {
+		if got, err := percentOneDecimal(in); err != nil || got != want {
+			t.Errorf("percentOneDecimal(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	if got, err := percentOneDecimal("abc"); err == nil {
+		t.Errorf("percentOneDecimal(abc) = %q, want an error", got)
+	}
+}

@@ -97,11 +97,11 @@ func moneyText(price string) string {
 	return "$" + groupThousands(text)
 }
 
-// ivLine is "IV 38% · HV30 n/a · IVP n/a": HV30 and IVP have no producer and are always n/a.
+// ivLine is "IV 38.0% · HV30 n/a · IVP n/a": HV30 and IVP have no producer and are always n/a.
 func ivLine(iv *string) string {
 	pct := gapText
 	if iv != nil {
-		if s, err := shiftPercent(*iv); err == nil {
+		if s, err := percentOneDecimal(*iv); err == nil {
 			pct = s
 		}
 	}
