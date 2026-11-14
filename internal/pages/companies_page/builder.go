@@ -236,12 +236,6 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	if err := cfg.fillBlocks(ctx, &vm, today); err != nil {
 		return nil, err
 	}
-	if cfg.pepbOn() {
-		var err error
-		if vm.Pepb, err = cfg.pepbBlockOf(ctx, today); err != nil {
-			return nil, err
-		}
-	}
 	if err := cfg.fillStatus(&vm, today, generatedAt); err != nil {
 		return nil, err
 	}
@@ -274,6 +268,12 @@ func isGap(block any) bool {
 // fillBlocks builds the core, diagnosis and questions blocks; they stay gaps while a reader or
 // function the band needs is not set.
 func (c Config) fillBlocks(ctx context.Context, vm *viewModel, today contracts.Day) error {
+	if c.pepbOn() {
+		var err error
+		if vm.Pepb, err = c.pepbBlockOf(ctx, today); err != nil {
+			return err
+		}
+	}
 	if !c.bandReady() {
 		return nil
 	}

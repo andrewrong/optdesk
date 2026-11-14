@@ -148,38 +148,9 @@ func TestPepbRowsAndGaps(t *testing.T) {
 	if p := full["percentile"].(map[string]any); p["text"] != "34" || p["value"] != 34.0 {
 		t.Errorf("percentile = %v", p)
 	}
-	at := full["at_percentile"].([]any)
-	if len(at) != 2 {
-		t.Fatalf("at_percentile = %v", at)
-	}
-	a0 := at[0].(map[string]any)
-	if a0["percentile"] != 20.0 || a0["text"] != fullReading("pe").At[0].Text ||
-		a0["ratio"].(map[string]any)["text"] != "15.1" || a0["price"].(map[string]any)["text"] != "41.20" {
-		t.Errorf("at_percentile[0] = %v", a0)
-	}
-	hist := full["history"].([]any)
-	if len(hist) != 2 || hist[1].(map[string]any)["day"] != "2026-11-09" || hist[1].(map[string]any)["value"] != 18.2 {
-		t.Errorf("history = %v", hist)
-	}
-	if full["shares"] != "1520000000" || full["shares_filed"] != "2026-10-28" || full["window_days"] != 1210.0 || full["window_from"] != "2021-11-15" || full["basis_end"] != "2026-09-30" {
-		t.Errorf("line = %v", full)
-	}
-	if g := rows[1].PE; g["reason"] != "missing_input" || !bytes.Contains([]byte(g["text"].(string)), []byte("loss, no PE")) {
-		t.Errorf("loss pe = %v", g)
-	}
-	if rows[1].PB["ratio"] == nil {
-		t.Errorf("loss company pb = %v, want a line", rows[1].PB)
-	}
-	for _, g := range []map[string]any{rows[2].PE, rows[2].PB} {
-		if g["reason"] != "jp_slice_missing" {
-			t.Errorf("edinet gap = %v", g)
-		}
-	}
-	for _, r := range rows {
-		if r.Forward["reason"] == nil || r.Forward["text"] == nil || len(r.Forward) != 2 {
-			t.Errorf("%s forward = %v, want a Gap", r.Symbol, r.Forward)
-		}
-	}
+	checkAtAndHistory(t, full)
+	checkLineFields(t, full)
+	checkGapRows(t, rows)
 }
 
 func TestPepbShortWindowGivesPercentileGap(t *testing.T) {
@@ -270,6 +241,61 @@ func TestPepbValidatesAgainstSchema(t *testing.T) {
 		}
 		if err := s.Validate(doc); err != nil {
 			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+func checkLineFields(t *testing.T, line map[string]any) {
+	t.Helper()
+	want := map[string]any{
+		"shares": "1520000000", "shares_filed": "2026-10-28", "window_days": 1210.0,
+		"window_from": "2021-11-15", "basis_end": "2026-09-30",
+	}
+	for k, v := range want {
+		if line[k] != v {
+			t.Errorf("%s = %v, want %v", k, line[k], v)
+		}
+	}
+}
+
+func checkAtAndHistory(t *testing.T, line map[string]any) {
+	t.Helper()
+	at := line["at_percentile"].([]any)
+	if len(at) != 2 {
+		t.Fatalf("at_percentile = %v", at)
+	}
+	a0 := at[0].(map[string]any)
+	if a0["percentile"] != 20.0 || a0["text"] != fullReading("pe").At[0].Text ||
+		a0["ratio"].(map[string]any)["text"] != "15.1" || a0["price"].(map[string]any)["text"] != "41.20" {
+		t.Errorf("at_percentile[0] = %v", a0)
+	}
+	hist := line["history"].([]any)
+	if len(hist) != 2 || hist[1].(map[string]any)["day"] != "2026-11-09" || hist[1].(map[string]any)["value"] != 18.2 {
+		t.Errorf("history = %v", hist)
+	}
+}
+
+func checkGapRows(t *testing.T, rows []struct {
+	Symbol  string         `json:"symbol"`
+	PE      map[string]any `json:"pe"`
+	PB      map[string]any `json:"pb"`
+	Forward map[string]any `json:"forward"`
+}) {
+	t.Helper()
+	if g := rows[1].PE; g["reason"] != "missing_input" || !bytes.Contains([]byte(g["text"].(string)), []byte("loss, no PE")) {
+		t.Errorf("loss pe = %v", g)
+	}
+	if rows[1].PB["ratio"] == nil {
+		t.Errorf("loss company pb = %v, want a line", rows[1].PB)
+	}
+	for _, g := range []map[string]any{rows[2].PE, rows[2].PB} {
+		if g["reason"] != "jp_slice_missing" {
+			t.Errorf("edinet gap = %v", g)
+		}
+	}
+	for _, r := range rows {
+		if r.Forward["reason"] == nil || r.Forward["text"] == nil || len(r.Forward) != 2 {
+			t.Errorf("%s forward = %v, want a Gap", r.Symbol, r.Forward)
 		}
 	}
 }

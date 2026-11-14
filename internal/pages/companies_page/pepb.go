@@ -14,9 +14,10 @@ import (
 // pepbapi.BuildFunc gave into the page block; every figure is the text it wrote.
 
 const (
-	pepbBasisNote = "Close times the filed share count over trailing-twelve-month net income (PE) or equity (PB), each as filed on or before the day. History, not a buy price."
-	pepbForward   = "forward PE: no estimates source"
-	pepbJPText    = "no filings source for Japanese names"
+	pepbBasisNote = "Close times the filed share count over trailing-twelve-month net income (PE) or equity (PB), " +
+		"each as filed on or before the day. History, not a buy price."
+	pepbForward = "forward PE: no estimates source"
+	pepbJPText  = "no filings source for Japanese names"
 	// pepbSpanFrom is before any stored bar: bars are read for the whole stored span.
 	pepbSpanFrom = contracts.Day("1900-01-01")
 )
