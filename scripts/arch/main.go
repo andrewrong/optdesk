@@ -180,12 +180,12 @@ func classify(abs, rel string) (k kind, ok bool, err error) {
 	return kindImpl, true, nil
 }
 
-// discover classifies every internal/<a>/<b> directory of dirs (as goDirs lists them).
+// discover classifies every internal/<a>/<b>[/...] directory, at any depth, of dirs (as goDirs lists them).
 func discover(root string, dirs []string, rows []row) ([]pkg, error) {
 	var out []pkg
 	for _, d := range dirs {
 		parts := strings.Split(d, "/")
-		if len(parts) != 3 || parts[0] != "internal" {
+		if len(parts) < 3 || parts[0] != "internal" {
 			continue
 		}
 		k, ok, err := classify(filepath.Join(root, filepath.FromSlash(d)), d)
