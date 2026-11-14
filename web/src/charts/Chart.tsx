@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
 import type { ChartSpec } from './spec'
-import { unitSuffix } from './unitSuffix'
+import { unitPrefix, unitSuffix } from './unitSuffix'
 
 type Row = Record<string, string | number | number[] | null>
 
@@ -86,8 +86,15 @@ export function Chart({
     axisLine: false,
     tick: { fontSize: 12, fill: 'var(--muted-foreground)' },
   } as const
-  const unit = unitSuffix(spec.unit ?? '')
-  const yAxis = { tickFormatter: (tick: string | number) => `${tick}${unit}` }
+  const prefix = unitPrefix(spec.unit ?? '')
+  const suffix = unitSuffix(spec.unit ?? '')
+  const yAxis = {
+    tickFormatter: (tick: string | number) => {
+      const text = String(tick)
+      const sign = text.startsWith('-') ? '-' : ''
+      return `${sign}${prefix}${sign ? text.slice(1) : text}${suffix}`
+    },
+  }
   const common = {
     data: rows,
     margin: { left: 8, right: spec.kind === 'line' ? 56 : 8, top: 8, bottom: 8 },
