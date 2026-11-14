@@ -211,3 +211,19 @@ func TestDecimalCellRounds(t *testing.T) {
 		t.Fatalf("abc = %+v", g)
 	}
 }
+
+func TestMoneyHalfUp(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{"201.5000": "$201.50", "12345.675": "$12,345.68", "-3.005": "−$3.01", "-0.001": "$0.00"} {
+		c, ok := moneyHalfUp(in, "USD", codeNoValue).(valueCell)
+		if !ok || c.Text != want || string(*c.Value) != in {
+			t.Errorf("moneyHalfUp(%q) = %+v, want %q", in, c, want)
+		}
+	}
+	if _, ok := moneyHalfUp("", "USD", codeNoValue).(gap); !ok {
+		t.Error("empty text is not a gap")
+	}
+	if _, ok := moneyHalfUp("x", "USD", codeNoValue).(gap); !ok {
+		t.Error("unreadable text is not a gap")
+	}
+}
