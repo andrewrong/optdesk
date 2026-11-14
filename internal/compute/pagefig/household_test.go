@@ -176,7 +176,9 @@ func TestObligationNoteShowsPremiumAsMoney(t *testing.T) {
 	jpy.Currency = "JPY"
 	in := blockapi.HouseholdInput{
 		UsdJpy:      "150",
-		Obligations: []blockapi.ObligationIn{put("100", "100", "1", "647.0000"), put("100", "100", "1", "0.125"), jpy, put("100", "100", "1", "x"), put("100", "100", "1", "")},
+		Obligations: []blockapi.ObligationIn{
+			put("100", "100", "1", "647.0000"), put("100", "100", "1", "0.125"), jpy, put("100", "100", "1", "x"), put("100", "100", "1", ""),
+		},
 	}
 	got := obligations(in)
 	want := []string{"premium $647.00", "premium $0.13", "≈USD 6667 premium JPY 5000.00", "premium x", ""}
