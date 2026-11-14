@@ -1672,7 +1672,7 @@ func (j *FundamentalFact) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// obs.fx_rate r1: the midpoint rate of one currency pair on one day; insert only.
+// obs.fx_rate r1: the midpoint rate of one currency pair on one day.
 type FxRate struct {
 	// Currency pair as six capitals, base then quote, for example USDJPY.
 	Pair string `json:"pair" yaml:"pair" mapstructure:"pair"`
@@ -1693,10 +1693,12 @@ type FxRate struct {
 
 type FxRateSource string
 
+const FxRateSourceFredH10 FxRateSource = "fred_h10"
 const FxRateSourceIbkrMidpoint FxRateSource = "ibkr_midpoint"
 
 var enumValues_FxRateSource = []interface{}{
 	"ibkr_midpoint",
+	"fred_h10",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -3488,6 +3490,7 @@ type SeriesUnit string
 const SeriesUnitCcyAmount SeriesUnit = "ccy_amount"
 const SeriesUnitCount SeriesUnit = "count"
 const SeriesUnitIndexPoints SeriesUnit = "index_points"
+const SeriesUnitJpyPerUsd SeriesUnit = "jpy_per_usd"
 const SeriesUnitPercent SeriesUnit = "percent"
 const SeriesUnitRatio SeriesUnit = "ratio"
 
@@ -3497,6 +3500,7 @@ var enumValues_SeriesUnit = []interface{}{
 	"ccy_amount",
 	"count",
 	"index_points",
+	"jpy_per_usd",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

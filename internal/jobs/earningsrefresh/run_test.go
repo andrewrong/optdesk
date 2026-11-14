@@ -13,6 +13,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -22,10 +24,54 @@ func (fixedClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 30, 0, 0, 
 
 // memStore is a writer and a reader over one slice; a key that exists is left as it is.
 type memStore struct {
-	mu       sync.Mutex
-	rows     []contracts.EarningsDate
-	readErr  error
-	writeErr error
+	mu        sync.Mutex
+	rows      []contracts.EarningsDate
+	readErr   error
+	writeErr  error
+	upserts   int
+	replays   int
+	writtenBy string
+}
+
+// upsert replaces the row of the same issuer and observed day, as the store does for an answer row.
+func (m *memStore) upsert(rows []contracts.EarningsDate, by string, replay bool) (fundkey.WriteCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.writeErr != nil {
+		return fundkey.WriteCount{}, m.writeErr
+	}
+	m.writtenBy = by
+	if replay {
+		m.replays++
+	} else {
+		m.upserts++
+	}
+	var n fundkey.WriteCount
+	for _, r := range rows {
+		put := true
+		for i, x := range m.rows {
+			if x.Issuer == r.Issuer && x.ObservedOn.Equal(r.ObservedOn.Time) {
+				if replay || r.Status == "error" {
+					put = false
+				} else {
+					m.rows[i], put = r, false
+				}
+			}
+		}
+		if put {
+			m.rows = append(m.rows, r)
+		}
+		n.Written++
+	}
+	return n, nil
+}
+
+func (m *memStore) UpsertEarnings(_ context.Context, rows []contracts.EarningsDate, by string) (fundkey.WriteCount, error) {
+	return m.upsert(rows, by, false)
+}
+
+func (m *memStore) ReplayEarnings(_ context.Context, rows []contracts.EarningsDate, by string) (fundkey.WriteCount, error) {
+	return m.upsert(rows, by, true)
 }
 
 func (m *memStore) InsertEarningsDate(_ context.Context, r contracts.EarningsDate) error {
@@ -213,30 +259,6 @@ func TestSecondRunSameDayMakesNoCall(t *testing.T) {
 	}
 }
 
-func TestErrorRowIsFetchedAgain(t *testing.T) {
-	t.Parallel()
-	src := &fakeSource{err: codedErr{"network"}}
-	st := &memStore{}
-	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
-	if res := j.Run(context.Background(), day, nil); res.Err == nil {
-		t.Fatal("first run must fail")
-	}
-	if r := byIssuer(st, "cik:1"); len(r) != 1 || r[0].Status != "error" || r[0].Attempt != 1 {
-		t.Fatalf("first rows %+v", r)
-	}
-	src.err, src.listings, src.calls = nil, []sources.EarningsListing{{Symbol: "A", ReportDate: "2026-11-12"}}, 0
-	if res := j.Run(context.Background(), day, nil); res.Err != nil {
-		t.Fatalf("second run: %v", res.Err)
-	}
-	if src.calls != 1 {
-		t.Fatalf("calls %d", src.calls)
-	}
-	r := byIssuer(st, "cik:1")
-	if len(r) != 2 || r[1].Status != "listed" || r[1].Attempt != 2 {
-		t.Fatalf("rows %+v", r)
-	}
-}
-
 func TestRateLimitedRecordedAsError(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: codedErr{"rate_limited"}}
@@ -245,37 +267,6 @@ func TestRateLimitedRecordedAsError(t *testing.T) {
 	res := j.Run(context.Background(), day, nil)
 	if res.Err == nil || src.calls != 1 || len(st.rows) != 1 || st.rows[0].ErrorCode != "rate_limited" || st.rows[0].Status != "error" {
 		t.Fatalf("calls %d rows %+v err %v", src.calls, st.rows, res.Err)
-	}
-}
-
-func TestSecondRunWritesNoRow(t *testing.T) {
-	t.Parallel()
-	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: "A", ReportDate: "2026-11-12"}}}
-	st := &memStore{}
-	own := us("cik:2", "B")
-	own.ReportDateOverride = "2026-12-01"
-	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"), own, jp("edinet:E1", "1111"))
-	if res := j.Run(context.Background(), day, nil); res.Err != nil || len(st.rows) != 3 {
-		t.Fatalf("first: %v rows %d", res.Err, len(st.rows))
-	}
-	if res := j.Run(context.Background(), day, nil); res.Err != nil || len(st.rows) != 3 || res.Returned != 0 {
-		t.Fatalf("second: %v rows %d", res.Err, len(st.rows))
-	}
-}
-
-func TestSecondRunStillFailingStoresNextAttempt(t *testing.T) {
-	t.Parallel()
-	src := &fakeSource{err: errors.New("down")}
-	st := &memStore{}
-	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
-	first := j.Run(context.Background(), day, nil)
-	second := j.Run(context.Background(), day, nil)
-	if first.Err == nil || second.Err == nil || second.Err.Kind() != contracts.Permanent {
-		t.Fatalf("first %v second %v", first.Err, second.Err)
-	}
-	r := byIssuer(st, "cik:1")
-	if src.calls != 2 || len(r) != 2 || r[0].Attempt != 1 || r[1].Attempt != 2 || r[1].Status != "error" {
-		t.Fatalf("calls %d rows %+v", src.calls, r)
 	}
 }
 
@@ -461,7 +452,6 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 		setup            func(st *memStore)
 	}{
 		{"bad_day", "bad_day", "permanent", "not-a-day", good(), us("cik:1", "AAPL"), func(*memStore) {}},
-		{"read_day", "read_day", "retryable", day, good(), us("cik:1", "AAPL"), func(st *memStore) { st.readErr = leakyErr{} }},
 		{"override_date", "override_date", "permanent", day, good(), func() jobs.WatchEntry {
 			e := us("cik:1", "AAPL")
 			e.ReportDateOverride = "nope"
@@ -502,20 +492,6 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestPastDayRunsClockDay(t *testing.T) {
-	t.Parallel()
-	usSrc := &fakeSource{}
-	st := &memStore{}
-	j := build(t, map[string]sources.EarningsSource{"US": usSrc}, st, us("cik:1", "A"))
-	res := j.Run(context.Background(), "2026-11-06", nil)
-	if res.Err != nil || usSrc.calls != 1 || len(st.rows) != 1 {
-		t.Fatalf("past day: err %v calls %d rows %d", res.Err, usSrc.calls, len(st.rows))
-	}
-	if got := st.rows[0].ObservedOn.Format(dayLayout); got != string(day) {
-		t.Fatalf("ObservedOn = %s, want the clock's date %s", got, day)
 	}
 }
 
@@ -586,5 +562,106 @@ func TestPerMarketBothFail(t *testing.T) {
 		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != c.want {
 			t.Fatalf("keys %v: err %v, want %q", c.keys, res.Err, c.want)
 		}
+	}
+}
+
+func TestRunWithoutUpserterIsRetryable(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{}
+	st := &memStore{}
+	j, err := New(map[string]sources.EarningsSource{"US": src}, struct {
+		store.EarningsDateWriter
+	}{st}, st, []jobs.WatchEntry{us("cik:1", "A")}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), day, nil)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "UpsertEarnings") || src.calls != 0 {
+		t.Fatalf("err %v calls %d", res.Err, src.calls)
+	}
+}
+
+func TestPastDayIsAnswerDayAndUsesReplay(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{
+		{Symbol: "A", ReportDate: "2026-11-05"}, {Symbol: "A", ReportDate: "2026-11-12"}}}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
+	past := contracts.Day("2026-11-06")
+	if res := j.Run(context.Background(), past, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if st.replays != 1 || st.upserts != 0 || st.writtenBy != "earnings_refresh:2026-11-06" || len(st.rows) != 1 {
+		t.Fatalf("replays %d upserts %d by %q rows %d", st.replays, st.upserts, st.writtenBy, len(st.rows))
+	}
+	r := st.rows[0]
+	if r.ObservedOn.Format(dayLayout) != "2026-11-06" || r.ReportDate.Format(dayLayout) != "2026-11-12" {
+		t.Fatalf("row %+v", r)
+	}
+	// The clock's own day is an upsert, in one call for all rows.
+	st2 := &memStore{}
+	j = build(t, map[string]sources.EarningsSource{"US": &fakeSource{}}, st2, us("cik:1", "A"), us("cik:2", "B"))
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if st2.upserts != 1 || st2.replays != 0 || st2.writtenBy != "earnings_refresh:2026-11-09" || len(st2.rows) != 2 {
+		t.Fatalf("upserts %d replays %d by %q rows %d", st2.upserts, st2.replays, st2.writtenBy, len(st2.rows))
+	}
+}
+
+func TestSecondKeyOfOneInstanceDoesNotFetch(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: "A", ReportDate: "2026-11-12"}}}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"), us("cik:2", "B"))
+	first := j.Run(context.Background(), day, keyOf("cik:1"))
+	second := j.Run(context.Background(), day, keyOf("cik:2"))
+	if first.Err != nil || second.Err != nil || src.calls != 1 || st.upserts != 1 || second.Returned != first.Returned {
+		t.Fatalf("calls %d upserts %d first %+v second %+v", src.calls, st.upserts, first, second)
+	}
+}
+
+func TestNewInstanceFetchesAgain(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{}
+	st := &memStore{}
+	srcs := map[string]sources.EarningsSource{"US": src}
+	build(t, srcs, st, us("cik:1", "A")).Run(context.Background(), day, nil)
+	build(t, srcs, st, us("cik:1", "A")).Run(context.Background(), day, nil)
+	if src.calls != 2 || st.upserts != 2 {
+		t.Fatalf("calls %d upserts %d", src.calls, st.upserts)
+	}
+}
+
+func TestErrorAnswerForFailedMarketAsBefore(t *testing.T) {
+	t.Parallel()
+	usSrc := &fakeSource{err: codedErr{"http_status"}}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": usSrc}, st, us("cik:1", "A"))
+	for i := 0; i < 2; i++ {
+		res := j.Run(context.Background(), day, keyOf("cik:1"))
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "earningsrefresh: us: http_status" {
+			t.Fatalf("run %d: err %v", i, res.Err)
+		}
+	}
+	r := byIssuer(st, "cik:1")
+	if usSrc.calls != 1 || len(r) != 1 || r[0].Status != "error" || r[0].ErrorCode != "http_status" || r[0].Attempt != 1 {
+		t.Fatalf("calls %d rows %+v", usSrc.calls, r)
+	}
+}
+
+func TestFailedFirstKeyIsMemoised(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{}
+	st := &memStore{writeErr: leakyErr{}}
+	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"), us("cik:2", "B"))
+	first := j.Run(context.Background(), day, keyOf("cik:1"))
+	if first.Err == nil || first.Err.Kind() != contracts.Retryable {
+		t.Fatalf("first %v", first.Err)
+	}
+	st.writeErr = nil
+	second := j.Run(context.Background(), day, keyOf("cik:2"))
+	if second.Err == nil || second.Err.Kind() != contracts.Retryable || second.Err.Error() != first.Err.Error() || src.calls != 1 {
+		t.Fatalf("second %v calls %d", second.Err, src.calls)
 	}
 }

@@ -134,3 +134,60 @@ func TestStrategyPackageImportsNoStoreJobsPages(t *testing.T) {
 		t.Fatal("no non-test file found")
 	}
 }
+
+// riskFake implements both risk interfaces; it echoes what it is given so a caller can read it back.
+type riskFake struct{}
+
+func (riskFake) Stress(b strategy.RiskBook) strategy.RiskOutcome {
+	worst := strategy.RiskPoint{Move: "-0.08", PnL: "-800.00", AssignmentCash: "5000.00"}
+	return strategy.RiskOutcome{
+		Alias: b.Alias,
+		Classes: []strategy.RiskClassResult{{
+			Class: strategy.RiskClass("broad_high"), Currency: b.Currency,
+			Ladder: []strategy.RiskPoint{worst}, Worst: worst, OldestSpotDay: b.RunDay,
+		}},
+		Totals:      []strategy.RiskTotal{{Currency: b.Currency, WorstLoss: "800.00"}},
+		Excluded:    []strategy.RiskExcluded{{Underlying: "ZZZ", Currency: b.Currency, Reason: "no_class"}},
+		NotStressed: map[string]int{"JPY": 1},
+	}
+}
+
+func (riskFake) Fit(b strategy.RiskBook, o strategy.RiskOutcome, c strategy.RiskCandidate) strategy.RiskFit {
+	return strategy.RiskFit{
+		Check: strategy.Check{Name: "fit_capital", Status: "pass"},
+		Facts: map[string]string{"capital": c.Legs[0].Option.Strike, "alias": b.Alias, "worst": o.Totals[0].WorstLoss},
+	}
+}
+
+func TestRiskAPINewFakeSatisfiesStresserAndFitter(t *testing.T) {
+	t.Parallel()
+	var _ strategy.RiskStresser = riskFake{}
+	var _ strategy.RiskFitter = riskFake{}
+}
+
+func TestRiskAPINewCallerUsesOnlyTheInterface(t *testing.T) {
+	t.Parallel()
+	var st strategy.RiskStresser = riskFake{}
+	var ft strategy.RiskFitter = riskFake{}
+	book := strategy.RiskBook{
+		Alias: "mine", Currency: "USD", RunDay: "2026-11-13", Rate: "0.04", HasCapture: true,
+		Holdings: []strategy.RiskHolding{{
+			Underlying: "SPX", Currency: "USD", Class: "broad_high",
+			Option:   &strategy.RiskLeg{Right: "P", Strike: "50", Expiry: "2026-12-18", QuoteIV: "0.2", CashSettled: true},
+			Quantity: "-1", Multiplier: "100", Spot: "55", Mark: "1.2", MarkDay: "2026-11-13", SpotDay: "2026-11-13", MarkUsable: true,
+		}},
+		Funds:       &strategy.RiskFunds{Currency: "USD", NetLiquidation: "1", Available: "9", ExcessLiquidity: "2"},
+		SessionsOld: func(contracts.Day) int { return 0 },
+	}
+	out := st.Stress(book)
+	if out.Alias != "mine" || len(out.Classes) != 1 || out.Classes[0].Worst.PnL != "-800.00" ||
+		out.Classes[0].OldestSpotDay != "2026-11-13" || out.Totals[0] != (strategy.RiskTotal{Currency: "USD", WorstLoss: "800.00"}) ||
+		out.Excluded[0].Reason != "no_class" || out.NotStressed["JPY"] != 1 {
+		t.Fatalf("outcome: %+v", out)
+	}
+	fit := ft.Fit(book, out, strategy.RiskCandidate{Key: "7", Class: "equity", Legs: book.Holdings})
+	if fit.Check.Name != "fit_capital" || fit.Check.Status != "pass" ||
+		fit.Facts["capital"] != "50" || fit.Facts["alias"] != "mine" || fit.Facts["worst"] != "800.00" {
+		t.Fatalf("fit: %+v", fit)
+	}
+}
