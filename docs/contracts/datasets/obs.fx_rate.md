@@ -2,14 +2,14 @@
 
 # obs.fx_rate r1
 
-obs.fx_rate r1: the midpoint rate of one currency pair on one day; insert only.
+obs.fx_rate r1: the midpoint rate of one currency pair on one day.
 
 | column | type | nullable | meaning |
 |---|---|---|---|
 | pair | string | no | Currency pair as six capitals, base then quote, for example USDJPY. |
 | rate_day | string (date) | no | Day the rate is for. |
 | rate | string | no | Positive rate as decimal text: units of the quote currency for one unit of the base. |
-| source | enum(ibkr_midpoint) | no | Where the rate came from. |
+| source | enum(ibkr_midpoint, fred_h10) | no | Where the rate came from. |
 | received_at | string (date-time) | no | Instant the row was received, UTC. |
 
 Primary key: (pair, rate_day)

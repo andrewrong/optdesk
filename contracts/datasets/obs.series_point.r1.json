@@ -28,7 +28,7 @@
     "series_unit": {
       "title": "SeriesUnit",
       "type": "string",
-      "enum": ["percent", "ratio", "ccy_amount", "count", "index_points"],
+      "enum": ["percent", "ratio", "ccy_amount", "count", "index_points", "jpy_per_usd"],
       "description": "Unit of a series value."
     }
   }
