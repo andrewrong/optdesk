@@ -3,13 +3,11 @@ import type { Payload } from '@/types/market_state_page'
 
 type Sectors = Payload['sectors']
 type Row = Sectors['rows'][number]
-type Cell = { text: string }
 
 const rank = (r: Row['rank_21']) => ('kind' in r ? r.text : `${r.at} of ${r.of}`)
 const day = (d: Sectors['end_day']) => (typeof d === 'string' ? d : d.text)
 
 export function SectorTable({ block }: { block: Sectors }) {
-  const figure = (c: Cell) => c.text
   return (
     <section aria-label="Sectors" data-sector-table>
       <p className="text-sm text-muted-foreground" data-sector-caption>
@@ -37,8 +35,8 @@ export function SectorTable({ block }: { block: Sectors }) {
                 <td>{row.symbol}</td>
                 <td>{row.label}</td>
                 <td>{row.group}</td>
-                <td>{figure(row.gap_21)}</td>
-                <td>{figure(row.gap_63)}</td>
+                <td>{row.gap_21.text}</td>
+                <td>{row.gap_63.text}</td>
                 <td>{rank(row.rank_21)}</td>
                 <td>{rank(row.rank_63)}</td>
               </tr>

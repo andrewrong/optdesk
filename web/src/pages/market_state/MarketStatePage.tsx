@@ -1,5 +1,5 @@
 // The market state page: title, freshness text, the five rows, the sector table, the rotation map and the bars.
-// Python supplies every figure and sentence; the browser shows them and computes nothing.
+// The page builder supplies every figure and sentence; the browser shows them and computes nothing.
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/market_state_page'
 import { ExcessBars } from './ExcessBars'

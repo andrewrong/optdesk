@@ -19,7 +19,12 @@ const fixture = (name: string) =>
 
 vi.mock('@/charts/Chart', () => ({
   Chart: ({ spec }: { spec: ChartSpec }) => (
-    <div data-chart-spec data-points={spec.series[0]!.points.length} data-categories={spec.categories.length} />
+    <div
+      data-chart-spec
+      data-points={spec.series[0]!.points.length}
+      data-categories={spec.categories.length}
+      data-spec={JSON.stringify(spec)}
+    />
   ),
 }))
 vi.mock('@/components/ui/chart', async (importOriginal) => {
@@ -33,7 +38,7 @@ vi.mock('recharts', async (importOriginal) => {
     ...actual,
     ScatterChart: ({ children }: { children?: React.ReactNode }) => <svg data-scatter-chart>{children}</svg>,
     Scatter: ({ data, name }: { data: unknown[]; name: string }) => (
-      <g data-scatter={name} data-points={data.length} />
+      <g data-scatter={name} data-points={data.length} data-data={JSON.stringify(data)} />
     ),
     BarChart: ({ data, layout }: { data: unknown[]; layout: string }) => (
       <svg data-bar-chart data-bars={data.length} data-layout={layout} />
@@ -105,6 +110,12 @@ describe('market state page', () => {
     expect(chart.getAttribute('data-points')).toBe(String(vix.history.points.length))
     expect(chart.getAttribute('data-categories')).toBe(String(vix.history.points.length))
     expect(rowOf('vix')!.querySelector('[data-history-caption]')?.textContent).toBe(vix.history.caption)
+    const spec = JSON.parse(chart.getAttribute('data-spec')!)
+    expect(spec.kind).toBe('line')
+    expect(spec.categories).toEqual(vix.history.points.map((pt: { day: string }) => pt.day))
+    expect(spec.series[0].points).toEqual(
+      vix.history.points.map((pt: { value: number; text: string }) => ({ value: pt.value, text: pt.text })),
+    )
     await click(button)
     expect(button.getAttribute('aria-expanded')).toBe('false')
     expect(rowOf('vix')!.querySelector('[data-chart-spec]')).toBeNull()
@@ -170,6 +181,10 @@ describe('market state page', () => {
     const smh = host.querySelector('[data-scatter^=SMH]')!
     expect(smh.getAttribute('data-points')).toBe('5')
     expect(smh.getAttribute('data-scatter')).toContain('not ranked')
+    for (const row of withRotation) {
+      const drawn = JSON.parse(host.querySelector(`[data-scatter^=${row.symbol}]`)!.getAttribute('data-data')!)
+      expect(drawn.map((pt: { text: string }) => pt.text)).toEqual(row.rotation.map((pt: { text: string }) => pt.text))
+    }
     for (const q of p.sectors.rotation_axes.quadrants) {
       expect(host.querySelector(`[data-quadrant=${q.id}]`)?.textContent).toBe(q.text)
     }
