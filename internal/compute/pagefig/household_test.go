@@ -169,3 +169,42 @@ func TestIncomeWithUnreadablePremiumIsGap(t *testing.T) {
 		t.Fatalf("income with an unreadable premium must be a gap, got %+v", got)
 	}
 }
+
+func TestObligationNoteShowsPremiumAsMoney(t *testing.T) {
+	t.Parallel()
+	jpy := put("10000", "100", "1", "5000")
+	jpy.Currency = "JPY"
+	in := blockapi.HouseholdInput{
+		UsdJpy:      "150",
+		Obligations: []blockapi.ObligationIn{
+			put("100", "100", "1", "647.0000"), put("100", "100", "1", "0.125"), jpy, put("100", "100", "1", "x"), put("100", "100", "1", ""),
+		},
+	}
+	got := obligations(in)
+	want := []string{"premium $647.00", "premium $0.13", "≈USD 6667 premium JPY 5000.00", "premium x", ""}
+	if len(got) != len(want) {
+		t.Fatalf("rows: %+v", got)
+	}
+	for i, w := range want {
+		if got[i].Note != w {
+			t.Errorf("row %d note = %q, want %q", i, got[i].Note, w)
+		}
+	}
+}
+
+func TestPremiumTextRoundsHalfAwayFromZero(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ cur, in, want string }{
+		{"USD", "647.0000", "$647.00"},
+		{"USD", "0.125", "$0.13"},
+		{"USD", "-0.125", "-$0.13"},
+		{"USD", "1.005", "$1.01"},
+		{"USD", "-0.001", "$0.00"},
+		{"JPY", "5000", "JPY 5000.00"},
+	}
+	for _, c := range cases {
+		if got := premiumText(c.cur, c.in); got != c.want {
+			t.Errorf("premiumText(%s, %s) = %q, want %q", c.cur, c.in, got, c.want)
+		}
+	}
+}
