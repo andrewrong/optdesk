@@ -8,6 +8,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/jonboulle/clockwork"
 )
@@ -35,6 +36,7 @@ const (
 type consoleHost struct {
 	q      jobrequest.Consumer
 	syncer runner.KeyGapSyncer
+	ledger store.OpsLedger
 	clk    clockwork.Clock
 	log    *slog.Logger
 
@@ -45,10 +47,11 @@ type consoleHost struct {
 	bf       runner.ForceBackfiller
 }
 
-// newConsoleHost returns a host over the queue, the gap syncer and the clock. Nothing runs until Start has
-// succeeded and set has been called.
-func newConsoleHost(q jobrequest.Consumer, syncer runner.KeyGapSyncer, clk clockwork.Clock, log *slog.Logger) *consoleHost {
-	return &consoleHost{q: q, syncer: syncer, clk: clk, log: log}
+// newConsoleHost returns a host over the queue, the gap syncer, the ops ledger and the clock. The ledger tells
+// whether a day has a plan (docs/design/single-runner.md Decision 7). Nothing runs until Start has succeeded and
+// set has been called.
+func newConsoleHost(q jobrequest.Consumer, syncer runner.KeyGapSyncer, ledger store.OpsLedger, clk clockwork.Clock, log *slog.Logger) *consoleHost {
+	return &consoleHost{q: q, syncer: syncer, ledger: ledger, clk: clk, log: log}
 }
 
 // Start ends every request a dead process left running as failed with the reason restart. The fence makes

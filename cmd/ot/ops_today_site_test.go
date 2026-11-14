@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 	"github.com/andrewrong/optdesk/internal/store/runview"
 )
@@ -135,5 +136,64 @@ func TestOpsTodaySiteIsReadOnly(t *testing.T) {
 	}
 	if !strings.Contains(p.Meta.Schema, "ops_today_page") {
 		t.Fatalf("schema %q", p.Meta.Schema)
+	}
+}
+
+// closeLedger is an opened ledger that closes runs: it records the call and answers a count.
+type closeLedger struct {
+	store.OpsLedger
+	reason string
+	now    time.Time
+}
+
+func (c *closeLedger) CloseRunning(_ context.Context, now time.Time, reason string) (int, error) {
+	c.reason, c.now = reason, now
+	return 2, nil
+}
+func (c *closeLedger) Close() error { return nil }
+
+// plainLedger is an opened ledger that is no store.RunCloser.
+type plainLedger struct{ store.OpsLedger }
+
+func (plainLedger) Close() error { return nil }
+
+func TestOpenLedgerWithReasonsForwardsCloseRunning(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	inner := &closeLedger{}
+	a.deps.openLedger = func(context.Context, string) (store.OpsLedger, error) { return inner, nil }
+	a.deps.openRuns = func(context.Context, string) (ops.RunStore, error) { return &fakeRunStore{}, nil }
+	l, closeFn, err := openLedgerWithReasons(t.Context(), a.deps, "dsn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	rc, ok := l.(store.RunCloser)
+	if !ok {
+		t.Fatalf("%T is no store.RunCloser", l)
+	}
+	now := time.Date(2026, 11, 13, 12, 0, 0, 0, time.UTC)
+	n, err := rc.CloseRunning(t.Context(), now, "crashed")
+	if err != nil || n != 2 || inner.reason != "crashed" || !inner.now.Equal(now) {
+		t.Fatalf("n=%d err=%v inner=%+v", n, err, inner)
+	}
+}
+
+func TestOpenLedgerWithReasonsCloseRunningErrorsWithoutRunCloser(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.deps.openLedger = func(context.Context, string) (store.OpsLedger, error) { return plainLedger{}, nil }
+	a.deps.openRuns = func(context.Context, string) (ops.RunStore, error) { return &fakeRunStore{}, nil }
+	l, closeFn, err := openLedgerWithReasons(t.Context(), a.deps, "dsn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	rc, ok := l.(store.RunCloser)
+	if !ok {
+		t.Fatalf("%T is no store.RunCloser", l)
+	}
+	if _, err := rc.CloseRunning(t.Context(), time.Date(2026, 11, 13, 12, 0, 0, 0, time.UTC), "crashed"); err == nil {
+		t.Fatal("CloseRunning of a ledger without it returned no error")
 	}
 }

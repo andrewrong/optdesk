@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
@@ -171,12 +172,39 @@ func (h *consoleHost) execute(ctx context.Context, req jobrequest.Request, jobs 
 	if len(datasets) == 0 {
 		return refused(reasonNoKey)
 	}
+	if !h.planned(ctx, req, day, bf) {
+		if interrupted(ctx) {
+			return outcome{state: jobrequest.StateInterrupted, reason: reasonStopped}
+		}
+		return outcome{state: jobrequest.StateFailed, reason: reasonPlanFailed}
+	}
 	res, err := bf.BackfillWith(ctx, day, datasets, runner.BackfillOptions{Force: req.Force, Job: req.JobID})
 	out := classify(ctx, res, err)
 	if out.reason == reasonError {
 		h.logFailed(req, err)
 	}
 	return out
+}
+
+// planned makes sure day has a plan before the one job runs (Decision 7 of docs/design/single-runner.md): a day with
+// no expected key and after the cursor (an empty cursor is before every day) is planned by the backfiller's
+// PlanDay, which runs no job and moves no cursor. A day at or before the cursor, or a backfiller without PlanDay,
+// is left as it is, so BackfillWith refuses it no_plan. It returns false when the ledger or PlanDay failed.
+func (h *consoleHost) planned(ctx context.Context, req jobrequest.Request, day contracts.Day, bf runner.ForceBackfiller) bool {
+	keys, _, err := h.ledger.Expected(ctx, day)
+	if err == nil && len(keys) == 0 {
+		var cur store.Cursor
+		if cur, err = h.ledger.Cursor(ctx); err == nil && (cur.Day == "" || day > cur.Day) {
+			if p, ok := bf.(runner.DayPlanner); ok {
+				err = p.PlanDay(ctx, day)
+			}
+		}
+	}
+	if err != nil {
+		h.logFailed(req, err)
+		return false
+	}
+	return true
 }
 
 // logFailed writes the one ERROR line of a request that ends failed with the text of its error.

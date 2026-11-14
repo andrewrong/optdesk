@@ -20,6 +20,14 @@ async function show(payload: unknown) {
     root.render(<MacroPage payload={payload as never} />)
   })
 }
+async function openEase() {
+  await act(async () => {
+    host.querySelector<HTMLElement>('[data-ease-fold] [data-slot=accordion-trigger]')!.click()
+  })
+}
+const v2dir = path.resolve(import.meta.dirname, '../../../../contracts/fixtures')
+const v2 = (name: string) =>
+  JSON.parse(readFileSync(path.join(v2dir, `page.macro_page.v2.${name}.json`), 'utf8'))
 // jsdom has no ResizeObserver, which the Radix slider measures its thumb with.
 vi.stubGlobal(
   'ResizeObserver',
@@ -47,6 +55,7 @@ it('validates fixtures and registers the macro page', () => {
 it('renders the Python gauge and every event and indicator with its label', async () => {
   const payload = fixture('ok.json')
   await show(payload)
+  await openEase()
   expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe('56')
   expect(host.textContent).toContain('Neutral, −0.2 from last week.')
   const events = host.querySelectorAll('[data-events] tbody tr')
@@ -81,6 +90,7 @@ it('renders the Python gauge and every event and indicator with its label', asyn
 it('draws the 0 to 100 scale, every status text, the detail links and the missing cause once', async () => {
   const payload = fixture('ok.json')
   await show(payload)
+  await openEase()
   const ticks = [...host.querySelectorAll('[data-ticks] span')].map((n) => n.textContent)
   expect(ticks[0]).toBe('0')
   expect(ticks.at(-1)).toBe('100')
@@ -104,6 +114,7 @@ it('draws the 0 to 100 scale, every status text, the detail links and the missin
 it('shows the ease gap once without a gauge and keeps the missing indicator reason', async () => {
   const payload = fixture('gap.json')
   await show(payload)
+  await openEase()
   expect(host.querySelector('[role=slider]')).toBeNull()
   expect(host.textContent?.split(payload.ease.text)).toHaveLength(2)
   const row = [...host.querySelectorAll('[data-indicators] tbody tr')].find((row) =>
@@ -137,7 +148,63 @@ it('colours each indicator source badge by the status Python sent', async () => 
 
 it('uses the gauge', async () => {
   await show(fixture('ok.json'))
+  await openEase()
   expect(host.querySelectorAll('[role=slider]')).toHaveLength(1)
   expect(host.querySelectorAll('[data-ease-gauge]')).toHaveLength(1)
   expect(host.querySelector('[role=progressbar]')).toBeNull()
+})
+
+it('shows the Ease only inside a closed fold: the closed page has no figure, the opened one has it', async () => {
+  const payload = fixture('ok.json')
+  await show(payload)
+  expect(host.querySelector('[data-ease-fold] [data-slot=accordion-trigger]')?.textContent).toBe(
+    payload.ease_title,
+  )
+  expect(host.querySelector('[data-ease-figure]')).toBeNull()
+  expect(host.querySelector('[data-ease-gauge]')).toBeNull()
+  expect(host.querySelector('[data-neutral-band]')).toBeNull()
+  await openEase()
+  expect(host.querySelector('[data-ease-figure]')?.textContent).toBe(payload.ease.figure.text)
+})
+
+it('renders a version 1 payload without the liquidity block', async () => {
+  await show(fixture('ok.json'))
+  expect(host.querySelector('[data-liquidity]')).toBeNull()
+})
+
+it('renders the liquidity block of the v2 golden before the events', async () => {
+  const payload = v2('golden')
+  expect(validateMacroPage(payload).ok).toBe(true)
+  await show(payload)
+  const block = host.querySelector('[data-liquidity]')!
+  expect(block.textContent).toContain(payload.liquidity_title)
+  for (const line of payload.liquidity.lines) expect(block.textContent).toContain(line.sentence)
+  expect(
+    block.compareDocumentPosition(host.querySelector('[data-events]')!) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+  expect(host.querySelector('[data-ease-figure]')).toBeNull()
+  await openEase()
+  expect(host.querySelector('[data-ease-figure]')?.textContent).toBe(payload.ease.figure.text)
+})
+
+it('renders the v2 gap fixture and shows its gap text', async () => {
+  const payload = v2('gap')
+  expect(validateMacroPage(payload).ok).toBe(true)
+  await show(payload)
+  const text = 'reason' in payload.liquidity ? payload.liquidity.text : payload.ease.text
+  if (!('reason' in payload.liquidity)) await openEase()
+  expect(host.textContent).toContain(text)
+})
+
+it('shows the stale label of the v2 stale fixture', async () => {
+  const payload = v2('stale')
+  expect(validateMacroPage(payload).ok).toBe(true)
+  await show(payload)
+  const alerts = [...host.querySelectorAll('[role=alert]')].map((node) => node.textContent)
+  expect(alerts).toContain(payload.stale.text)
+})
+
+it('refuses the v2 bad-version fixture', () => {
+  expect(validateMacroPage(v2('bad-version')).ok).toBe(false)
 })

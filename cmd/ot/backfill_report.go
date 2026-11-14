@@ -238,7 +238,12 @@ func statusLine(day contracts.Day, c keyCounts) string {
 
 // installKeyReport makes a keyReport over the current default handler the slog default and returns it with
 // the function that puts the previous default back.
+//
+// The slog default and the log writer are process-wide, so the install holds keyReportMu until the returned
+// function runs: two installs at once would read each other's handler as the previous one and make the log
+// package and slog call each other forever.
 func installKeyReport() (*keyReport, func()) {
+	keyReportMu.Lock()
 	prev := slog.Default()
 	report := newKeyReport(prev.Handler())
 	// slog.SetDefault also points the log package at the new handler; the default handler of slog writes
@@ -251,5 +256,8 @@ func installKeyReport() (*keyReport, func()) {
 		slog.SetDefault(prev)
 		log.SetOutput(logOut)
 		log.SetFlags(logFlags)
+		keyReportMu.Unlock()
 	}
 }
+
+var keyReportMu sync.Mutex

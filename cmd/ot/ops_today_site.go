@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -135,11 +136,24 @@ func openLedgerWithReasons(ctx context.Context, d deps, dsn string) (store.OpsLe
 		_ = l.Close()
 		return nil, nil, openRunsFailed(store.DSNEnvRunner)
 	}
-	both := struct {
-		store.OpsLedger
-		runview.ReasonWriter
-	}{l, s}
+	both := reasonLedger{l, s}
 	return both, func() { _ = s.Close(); _ = l.Close() }, nil
+}
+
+// reasonLedger is the ledger of a wiring with the reason writer of the run store beside it. It forwards CloseRunning, which
+// the embedded interface would hide: the scheduler asserts its ledger to store.RunCloser.
+type reasonLedger struct {
+	store.OpsLedger
+	runview.ReasonWriter
+}
+
+// CloseRunning calls the inner ledger's when it is a store.RunCloser, else it is an error.
+func (r reasonLedger) CloseRunning(ctx context.Context, now time.Time, reason string) (int, error) {
+	c, ok := r.OpsLedger.(store.RunCloser)
+	if !ok {
+		return 0, errors.New("the ledger cannot close running runs")
+	}
+	return c.CloseRunning(ctx, now, reason)
 }
 
 func openRunsFailed(line string) error { return fmt.Errorf("open run store with %s failed", line) }
