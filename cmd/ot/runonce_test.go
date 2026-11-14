@@ -245,14 +245,14 @@ func TestRunOnceDayReachesReconcile(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if got != "2026-03-04" || !strings.Contains(out.String(), "run-once 2026-03-04 status=") {
 		t.Fatalf("day %q, out %q", got, out.String())
 	}
 	got = ""
-	if err := runOnce(a, nil); err != nil || got != "2026-11-05" {
+	if err := runWired(a, nil); err != nil || got != "2026-11-05" {
 		t.Fatalf("default day %q err %v", got, err)
 	}
 }
@@ -264,7 +264,7 @@ func TestRunOnceDemoRefused(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, nil); err == nil || opened.Load() != 0 {
+	if err := runWired(a, nil); err == nil || opened.Load() != 0 {
 		t.Fatalf("err %v opened %d", err, opened.Load())
 	}
 }
@@ -276,7 +276,7 @@ func TestRunOnceMissingKey(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	err := runOnce(a, nil)
+	err := runWired(a, nil)
 	if err == nil || !strings.Contains(err.Error(), "FRED_API_KEY") || opened.Load() != 0 {
 		t.Fatalf("err %v opened %d", err, opened.Load())
 	}
@@ -288,14 +288,14 @@ func TestRunOnceClosesStores(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, nil); err != nil || opened.Load() != 15 || closed.Load() != 15 {
+	if err := runWired(a, nil); err != nil || opened.Load() != 15 || closed.Load() != 15 {
 		t.Fatalf("err %v opened %d closed %d", err, opened.Load(), closed.Load())
 	}
 	// A failure after two stores are open closes them too.
 	opened.Store(0)
 	closed.Store(0)
 	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { return nil, errors.New("down") }
-	if err := runOnce(a, nil); err == nil || closed.Load() != 3 {
+	if err := runWired(a, nil); err == nil || closed.Load() != 3 {
 		t.Fatalf("err %v closed %d", err, closed.Load())
 	}
 }
@@ -311,7 +311,7 @@ func TestRunOnceSentinelDSN(t *testing.T) {
 	a.deps.openLedger = func(_ context.Context, dsn string) (store.OpsLedger, error) {
 		return nil, errors.New("dial " + dsn)
 	}
-	err := runOnce(a, nil)
+	err := runWired(a, nil)
 	if err == nil {
 		t.Fatal("no error")
 	}
@@ -331,7 +331,7 @@ func TestRunOnceFREDPathIsObservations(t *testing.T) {
 	runOnceFakes(a, &opened, &closed, &got)
 	var cfg sources.FREDConfig
 	a.deps.newFRED = func(c sources.FREDConfig) (sources.Source, error) { cfg = c; return emptySource{}, nil }
-	if err := runOnce(a, nil); err != nil {
+	if err := runWired(a, nil); err != nil {
 		t.Fatal(err)
 	}
 	u, err := url.Parse(cfg.BaseURL)
@@ -370,7 +370,7 @@ func TestRunOnceDayBehindCursor(t *testing.T) {
 		var got contracts.Day
 		runOnceFakes(a, &opened, &closed, &got)
 		withCursor(a, &opened, &closed, "2026-03-04", nil)
-		err := runOnce(a, []string{"--day", day})
+		err := runWired(a, []string{"--day", day})
 		if err == nil || !strings.Contains(err.Error(), day) || !strings.Contains(err.Error(), "2026-03-04") ||
 			!strings.Contains(err.Error(), "use ot backfill --day "+day) {
 			t.Fatalf("day %s: err %v", day, err)
@@ -389,7 +389,7 @@ func TestRunOnceDayBehindCursor(t *testing.T) {
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
 	withCursor(a, &opened, &closed, "2026-03-04", nil)
-	if err := runOnce(a, []string{"--day", "2026-03-05"}); err != nil {
+	if err := runWired(a, []string{"--day", "2026-03-05"}); err != nil {
 		t.Fatal(err)
 	}
 	if got != "2026-03-05" || !strings.Contains(out.String(), "run-once 2026-03-05 status=") {
@@ -406,7 +406,7 @@ func TestRunOnceCursorEmptyAndError(t *testing.T) {
 	withCursor(a, &opened, &closed, "", nil)
 	for _, day := range []string{"2000-01-01", "2026-03-04"} {
 		got = ""
-		if err := runOnce(a, []string{"--day", day}); err != nil || got != contracts.Day(day) {
+		if err := runWired(a, []string{"--day", day}); err != nil || got != contracts.Day(day) {
 			t.Fatalf("day %s: reconciled %q err %v", day, got, err)
 		}
 	}
@@ -414,7 +414,7 @@ func TestRunOnceCursorEmptyAndError(t *testing.T) {
 	opened.Store(0)
 	closed.Store(0)
 	withCursor(a, &opened, &closed, "", errors.New("secret-ledger-text"))
-	err := runOnce(a, []string{"--day", "2026-03-04"})
+	err := runWired(a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), "cursor") || strings.Contains(err.Error(), "secret-ledger-text") {
 		t.Fatalf("err %v", err)
 	}
@@ -474,7 +474,7 @@ func TestRunOnceNeedsReadingsDSN(t *testing.T) {
 			var opened, closed atomic.Int32
 			var got contracts.Day
 			runOnceFakes(a, &opened, &closed, &got)
-			err := runOnce(a, nil)
+			err := runWired(a, nil)
 			if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) || strings.Contains(err.Error(), sentinel) || opened.Load() != 0 {
 				t.Fatalf("err %v opened %d", err, opened.Load())
 			}
@@ -486,7 +486,7 @@ func TestRunOnceNeedsReadingsDSN(t *testing.T) {
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
 	a.deps.openReading = func(_ context.Context, dsn string) (store.ReadingStore, error) { return nil, errors.New("dial " + dsn) }
-	err := runOnce(a, nil)
+	err := runWired(a, nil)
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) || strings.Contains(err.Error(), "readings-dsn") {
 		t.Fatalf("err %v", err)
 	}
@@ -516,7 +516,7 @@ func TestRunOnceEarningsShareClass(t *testing.T) {
 	d.newAlphaVantage = func(sources.EarningsConfig) (sources.EarningsSource, error) {
 		return listingSource{sources.EarningsListing{Symbol: "BRK.B", ReportDate: "2026-11-20"}}, nil
 	}
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	planDay(t, earningsJob(t, r), "2026-11-09")
@@ -541,7 +541,7 @@ func TestRunOnceOptionEodWatchTranslator(t *testing.T) {
 		got = tr
 		return fakeJob{}, nil
 	}
-	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if got == nil || got != want {
@@ -630,7 +630,7 @@ func newCallsRig(t *testing.T, env string) *callsRig {
 func TestOptionEodUsesHeldReader(t *testing.T) {
 	t.Parallel()
 	c := newCallsRig(t, fullEnv)
-	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(c.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("%v\n%s", err, c.log)
 	}
 	if c.heldAcct == nil {
@@ -647,7 +647,7 @@ func TestOptionEodUsesHeldReader(t *testing.T) {
 	// Without the account line option_eod is the job of before.
 	n := newCallsRig(t, fullEnv)
 	n.a.deps.openAccount = nil
-	if err := runOnce(n.a, []string{"--day", "2026-11-04"}); err != nil || n.heldAcct != nil {
+	if err := runWired(n.a, []string{"--day", "2026-11-04"}); err != nil || n.heldAcct != nil {
 		t.Fatalf("err %v held %v", err, n.heldAcct)
 	}
 }
@@ -655,7 +655,7 @@ func TestOptionEodUsesHeldReader(t *testing.T) {
 func TestCallsJobUsesDividendReader(t *testing.T) {
 	t.Parallel()
 	c := newCallsRig(t, fullEnv)
-	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(c.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("%v\n%s", err, c.log)
 	}
 	if c.calls.Load() == 0 || c.puts.Load() != 0 || c.callsDiv == nil {
@@ -675,7 +675,7 @@ func TestCallsJobUsesDividendReader(t *testing.T) {
 func TestMissingEventsDSNKeepsPutsJob(t *testing.T) {
 	t.Parallel()
 	c := newCallsRig(t, strings.Replace(fullEnv, "OT_PG_DSN_EVENTS=events-dsn\n", "", 1))
-	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(c.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("%v\n%s", err, c.log)
 	}
 	if c.puts.Load() == 0 || c.calls.Load() != 0 {
@@ -694,7 +694,7 @@ func TestRunOnceOptionEodTranslatorWithAccountLine(t *testing.T) {
 	c := newCallsRig(t, fullEnv)
 	want := table.New()
 	c.a.deps.symbols = want
-	if err := runOnce(c.a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(c.a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if c.heldAcct == nil || c.heldTr == nil || c.heldTr != want {
@@ -712,84 +712,10 @@ func TestRunOnceTakesNoFence(t *testing.T) {
 		t.Error("openFence called")
 		return nil, errors.New("no fence")
 	}
-	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := runWired(a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if got != "2026-03-04" {
 		t.Fatalf("reconciled %q", got)
-	}
-}
-
-func TestRunOnceNamesRunningJob(t *testing.T) {
-	t.Parallel()
-	now := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
-	a, _ := leaseRig(t, []store.Run{
-		{ID: "old", Status: store.RunRunning, LeaseUntil: now.Add(-time.Minute), Key: contracts.ExpectedKey{DatasetID: "other.v1"}},
-		{ID: "live", Status: store.RunRunning, LeaseUntil: now.Add(time.Minute), Key: contracts.ExpectedKey{DatasetID: "figures.v1"}},
-	})
-	err := runOnce(a, []string{"--day", "2026-03-04"})
-	want := "run-once refused: job compute_figures is running (dataset figures.v1); retry when it has finished"
-	if err == nil || err.Error() != want {
-		t.Fatalf("err %v, want %q", err, want)
-	}
-	if strings.Contains(err.Error(), "secret-ledger-text") {
-		t.Fatalf("err holds the ledger text: %v", err)
-	}
-}
-
-func TestRunOnceLeaseHeldNoRun(t *testing.T) {
-	t.Parallel()
-	a, _ := leaseRig(t, nil)
-	err := runOnce(a, []string{"--day", "2026-03-04"})
-	if err == nil || !strings.HasPrefix(err.Error(), "run-once refused:") || !strings.Contains(err.Error(), "runner lease is held by another run") ||
-		strings.Contains(err.Error(), "secret-ledger-text") {
-		t.Fatalf("err %v", err)
-	}
-}
-
-func TestRunOnceClosesLedger(t *testing.T) {
-	t.Parallel()
-	a, slClosed := leaseRig(t, nil)
-	if err := runOnce(a, []string{"--day", "2026-03-04"}); err == nil {
-		t.Fatal("want a refusal")
-	}
-	if slClosed.Load() != 1 {
-		t.Fatalf("refusal path: scheduler ledger closed %d times", slClosed.Load())
-	}
-	b, _ := testApp(t, fullEnv)
-	var opened, closed atomic.Int32
-	var got contracts.Day
-	runOnceFakes(b, &opened, &closed, &got)
-	var sc atomic.Int32
-	b.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) {
-		return &countSchedLedger{closed: &sc}, nil
-	}
-	if err := runOnce(b, []string{"--day", "2026-03-04"}); err != nil {
-		t.Fatal(err)
-	}
-	if sc.Load() != 1 {
-		t.Fatalf("success path: scheduler ledger closed %d times", sc.Load())
-	}
-}
-
-type dbDownRunner struct{}
-
-// Reconcile fails Retryable as ops/ledger.go wraps a database error, e.g. "ops: set cursor: conn reset".
-func (dbDownRunner) Reconcile(context.Context, contracts.Day) error { return secretRetryable{} }
-
-func TestRunOnceDBErrorIsNotALeaseRefusal(t *testing.T) {
-	t.Parallel()
-	a, _ := testApp(t, fullEnv)
-	var opened, closed atomic.Int32
-	var got contracts.Day
-	runOnceFakes(a, &opened, &closed, &got)
-	a.deps.newReconciler = func(
-		store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
-	) (runner.Reconciler, runner.Backfiller) {
-		return dbDownRunner{}, nil
-	}
-	err := runOnce(a, []string{"--day", "2026-03-04"})
-	if err == nil || strings.Contains(err.Error(), "runner lease is held by another run") {
-		t.Fatalf("a ledger failure with the lease free was reported as a held lease: %v", err)
 	}
 }

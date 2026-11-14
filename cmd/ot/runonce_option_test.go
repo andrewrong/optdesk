@@ -368,7 +368,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 		"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
 		"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n" + eventsEnv
 	r := newRig(t, env)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]string{"sd": "run-dsn", "ledger": "run-dsn", "series": "ser-dsn", "eod": "eod-dsn", "snap": "snap-dsn", "instr": "master-dsn",
@@ -401,10 +401,10 @@ func TestRunOnceRule(t *testing.T) {
 	r := newRig(t, fullEnv)
 	r.rule = runner.WindowRule{CalendarID: "unset"}
 	r.backRule = runner.WindowRule{CalendarID: "unset"}
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 7 {
@@ -435,7 +435,7 @@ func TestRunOnceCloses(t *testing.T) {
 			if tc.fail != "" {
 				r.fail[tc.fail] = boom
 			}
-			_ = runOnce(r.a, nil)
+			_ = runWired(r.a, nil)
 			var opened, closed []string
 			for _, e := range r.ev.list() {
 				switch {
@@ -473,7 +473,7 @@ func TestRunOnceErrors(t *testing.T) {
 				}
 			}
 			r := newRig(t, strings.Join(kept, "\n"))
-			err := runOnce(r.a, nil)
+			err := runWired(r.a, nil)
 			if err == nil || !strings.Contains(err.Error(), line) || strings.Contains(err.Error(), sentinel) || len(r.ev.list()) != 0 {
 				t.Fatalf("err %v events %v", err, r.ev.list())
 			}
@@ -486,7 +486,7 @@ func TestRunOnceErrors(t *testing.T) {
 		t.Run("open "+tc.step, func(t *testing.T) {
 			r := newRig(t, env)
 			r.fail[tc.step] = errors.New("pgx dial " + sentinel + " " + r.a.getenv("OT_HOME"))
-			err := runOnce(r.a, nil)
+			err := runWired(r.a, nil)
 			if err == nil || !strings.Contains(err.Error(), tc.line) || strings.Contains(err.Error(), sentinel) ||
 				strings.Contains(err.Error(), r.a.getenv("OT_HOME")) || r.reconciled != 0 {
 				t.Fatalf("err %v", err)
@@ -501,14 +501,14 @@ func TestRunOnceErrorsRefused(t *testing.T) {
 	env := fullEnv
 	t.Run("bad day", func(t *testing.T) {
 		r := newRig(t, env)
-		if err := runOnce(r.a, []string{"--day", "04/11/2026"}); err == nil || len(r.ev.list()) != 0 {
+		if err := runWired(r.a, []string{"--day", "04/11/2026"}); err == nil || len(r.ev.list()) != 0 {
 			t.Fatalf("err %v events %v", err, r.ev.list())
 		}
 	})
 	t.Run("demo", func(t *testing.T) {
 		r := newRig(t, env)
 		r.a.profile.Name = "demo"
-		if err := runOnce(r.a, nil); err == nil || len(r.ev.list()) != 0 {
+		if err := runWired(r.a, nil); err == nil || len(r.ev.list()) != 0 {
 			t.Fatalf("err %v events %v", err, r.ev.list())
 		}
 	})
@@ -516,7 +516,7 @@ func TestRunOnceErrorsRefused(t *testing.T) {
 		t.Run("cursor "+day, func(t *testing.T) {
 			r := newRig(t, env)
 			r.cursor = "2026-11-04"
-			err := runOnce(r.a, []string{"--day", day})
+			err := runWired(r.a, []string{"--day", day})
 			if err == nil || !strings.Contains(err.Error(), "2026-11-04") || r.reconciled != 0 || strings.Contains(err.Error(), sentinel) {
 				t.Fatalf("err %v", err)
 			}
@@ -529,7 +529,7 @@ func TestRunOnceDialFails(t *testing.T) {
 	r := newRig(t, fullEnv)
 	r.fail["broker"] = errors.New("dial unix secret-dial-text")
 	r.fail["reconcile"] = errors.New("from reconcile")
-	err := runOnce(r.a, []string{"--day", "2026-11-04"})
+	err := runWired(r.a, []string{"--day", "2026-11-04"})
 	if err == nil || !strings.Contains(err.Error(), "from reconcile") {
 		t.Fatalf("err %v, want what Reconcile returned", err)
 	}
@@ -576,7 +576,7 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 				"OT_PG_DSN_PAGES": "a", "OT_PG_DSN_READINGS": "a", "OT_PG_DSN_LOADER": "a",
 			}, nil
 		}
-		err := runOnce(r.a, nil)
+		err := runWired(r.a, nil)
 		if tc.ok {
 			// the home is a path that does not exist, so the book cannot load: the run stops after the dial
 			if (err != nil && !errors.Is(err, errAccountsBook)) || len(r.socket) != tc.n {
@@ -593,7 +593,7 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 func TestRunOnceWiresFourJobs(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	var ids []string
@@ -612,7 +612,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	}
 	// backfill hands the runner the same four jobs.
 	r.jobs = nil
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 7 {
+	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 7 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }

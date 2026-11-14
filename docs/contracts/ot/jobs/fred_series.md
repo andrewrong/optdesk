@@ -10,7 +10,7 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 
 ## Lines it reads
 
-- `FRED_API_KEY` (required by `ot run-once` and `ot backfill`; `ot scheduler` lets it be empty).
+- `FRED_API_KEY` (required by `ot scheduler` only; `ot run-once` and `ot backfill` load no key; the scheduler lets it be empty).
 - `OT_PG_DSN_SERIES_FRED`: the series store (required).
 
 ## Left out
