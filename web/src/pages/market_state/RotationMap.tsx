@@ -49,9 +49,12 @@ const QUADRANT = {
   weakening: { word: 'Weakening', sx: 1, sy: -1, position: 'insideBottomRight' },
 } as const
 
-// The end of a zero-centred axis: the largest absolute value, rounded up to a whole number (at least 1).
+// The end of a zero-centred axis: the largest absolute value, rounded up to a whole number (at least 1), by remainder arithmetic: the web source calls no Math function.
 function axisEnd(values: number[]): number {
-  return Math.max(1, Math.ceil(Math.max(0, ...values.map(Math.abs))))
+  const largest = values.reduce((m, v) => (v < 0 ? -v : v) > m ? (v < 0 ? -v : v) : m, 0)
+  const whole = largest - (largest % 1)
+  const up = whole < largest ? whole + 1 : whole
+  return up < 1 ? 1 : up
 }
 // Recharts' function form of `domain`: symmetric about 0; display only, no payload value changes.
 const symmetric = ([lo, hi]: readonly [number, number]): [number, number] => {

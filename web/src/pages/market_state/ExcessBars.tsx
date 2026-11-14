@@ -8,10 +8,15 @@ const STEP = 5
 const ROOM = 8
 
 // A fixed step: the axis runs from the extreme bars plus room, outward to whole steps, ticks one step apart.
+// Remainder arithmetic only: the web source calls no Math function.
 function axisTicks(values: number[]): number[] | undefined {
   if (values.length === 0) return undefined
-  const lo = Math.floor((Math.min(...values) - ROOM) / STEP) * STEP
-  const hi = Math.ceil((Math.max(...values) + ROOM) / STEP) * STEP
+  const least = values.reduce((m, v) => (v < m ? v : m)) - ROOM
+  const most = values.reduce((m, v) => (v > m ? v : m)) + ROOM
+  const below = (least % STEP) + STEP
+  const lo = least - (below % STEP)
+  const above = ((most % STEP) + STEP) % STEP
+  const hi = above === 0 ? most : most + STEP - above
   return Array.from({ length: (hi - lo) / STEP + 1 }, (_, i) => lo + i * STEP)
 }
 
