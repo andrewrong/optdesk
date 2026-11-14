@@ -197,7 +197,7 @@ func checkMSMarketRow(t *testing.T, row map[string]any, id string) {
 	if row["id"] != id {
 		t.Fatalf("row id %v, want %s", row["id"], id)
 	}
-	if row["window"] == "" || row["day"] == nil {
+	if msText(row["window"]) == "" || row["day"] == nil {
 		t.Fatalf("row %s lacks window or day", id)
 	}
 	if _, has := row["percentile"]; has != (id == "vix" || id == "hy_spread") {
@@ -211,7 +211,7 @@ func checkMSMarketRow(t *testing.T, row map[string]any, id string) {
 		return
 	}
 	hm := h.(map[string]any)
-	if len(hm["points"].([]any)) < 3 || hm["caption"] == "" {
+	if len(hm["points"].([]any)) < 3 || msText(hm["caption"]) == "" {
 		t.Fatalf("row %s history has fewer than 3 points or no caption", id)
 	}
 }
@@ -313,4 +313,10 @@ func TestMSSectorGroupEnum(t *testing.T) {
 	if pageV1Valid(t, marketStatePageV1, inst) {
 		t.Fatal("an unknown group validates")
 	}
+}
+
+// msText returns v as a string, or "" when v is absent or not a string.
+func msText(v any) string {
+	s, _ := v.(string)
+	return s
 }
