@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChartSpec } from '@/charts/spec'
 import { ChartTooltip } from '@/components/ui/chart'
+import { placeLabels } from '@/pages/market_state/RotationMap'
 import { MarketStatePage, registration } from '@/pages/market_state/MarketStatePage'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -32,6 +33,7 @@ vi.mock('@/components/ui/chart', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/components/ui/chart')>()
   return {
     ...actual,
+    ChartLegend: () => <div data-chart-legend />,
     ChartContainer: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     // The tooltip content is shown as if the pointer rested on a point of the unranked fund.
     ChartTooltip: ({ content }: { content: React.ReactElement }) =>
@@ -48,17 +50,17 @@ vi.mock('recharts', async (importOriginal) => {
     ...actual,
     ScatterChart: ({ children }: { children?: React.ReactNode }) => <svg data-scatter-chart>{children}</svg>,
     // A series draws its shape per point and the content of its label list per point, as recharts does.
-    Scatter: ({ data, name, shape, children }: { data: unknown[]; name: string; shape: React.ReactElement; children?: React.ReactElement<{ content: React.ReactElement }> }) => (
-      <g data-scatter={name} data-points={data.length} data-data={JSON.stringify(data)}>
+    Scatter: ({ data, name, shape, children, line }: { data: unknown[]; name: string; shape: React.ReactElement; children?: React.ReactElement<{ content: React.ReactElement }>; line?: { strokeDasharray?: string } }) => (
+      <g data-scatter={name} data-dash={line?.strokeDasharray} data-points={data.length} data-data={JSON.stringify(data)}>
         {data.map((_, i) => React.cloneElement(shape, { key: i, cx: 10 * i, cy: 5, index: i } as object))}
-        {data.map((_, i) => React.cloneElement(children!.props.content, { key: i, x: 10 * i, y: 5, index: i } as object))}
+        {data.map((_, i) => React.cloneElement(children!.props.content, { key: i, x: (data[i] as { x: number }).x * 50, y: -(data[i] as { y: number }).y * 50, index: i } as object))}
       </g>
     ),
     // Outside a real chart there is no scale: a fixed one stands in, so the arrow can be drawn.
     // Only the axes of the rotation map carry a title; the bar chart's axes are the real ones.
     XAxis: (props: React.ComponentProps<typeof actual.XAxis>) =>
       props.label ? (
-        <g data-axis="x" data-padding={JSON.stringify(props.padding)}>
+        <g data-axis="x" data-padding={JSON.stringify(props.padding)} data-domain={JSON.stringify(typeof props.domain === 'function' ? props.domain([-6.86, 9.1] as never, false) : null)}>
           <text>{(props.label as { value: string }).value}</text>
         </g>
       ) : (
@@ -66,15 +68,22 @@ vi.mock('recharts', async (importOriginal) => {
       ),
     YAxis: (props: React.ComponentProps<typeof actual.YAxis>) =>
       props.label ? (
-        <g data-axis="y" data-padding-top={(props.padding as { top: number }).top}>
+        <g
+          data-axis="y"
+          data-padding-top={(props.padding as { top: number }).top}
+          data-domain={JSON.stringify(typeof props.domain === 'function' ? props.domain([-1.27, 2.81] as never, false) : null)}
+          data-tick={props.tickFormatter?.(2, 0)}
+        >
           <text>{(props.label as { value: string }).value}</text>
         </g>
       ) : (
         <actual.YAxis {...props} />
       ),
     useCartesianScale: (pt: { x: number; y: number }) => ({ x: pt.x, y: pt.y }),
+    useXAxisScale: () => (v: number) => v * 50,
+    useYAxisScale: () => (v: number) => -v * 50,
     ReferenceArea: ({ x1, x2, y1, y2, label }: { x1?: number; x2?: number; y1?: number; y2?: number; label: { value: string; position: string } }) => (
-      <g data-quadrant-area={`${x1 === undefined ? 'left' : 'right'}-${y1 === undefined ? 'bottom' : 'top'}`} data-corner={label.position} data-y2={y2} data-x2={x2}>
+      <g data-quadrant-area data-box={JSON.stringify([x1, x2, y1, y2])} data-corner={label.position}>
         <text>{label.value}</text>
       </g>
     ),
@@ -347,6 +356,78 @@ describe('market state page', () => {
     const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => t.textContent ?? '')
     expect(ticks.length).toBeGreaterThan(1)
     for (const t of ticks) expect(t).toMatch(/^-?\d+ pp$/)
+  })
+
+  it('draws no legend and names the four quadrants (rotation map, from the ok fixture)', async () => {
+    await show(fixture('ok'))
+    expect(host.querySelector('[data-rotation-map] [data-chart-legend]')).toBeNull()
+    const names = [...host.querySelectorAll('[data-quadrant-area]')].map((e) => e.textContent).sort()
+    expect(names).toEqual(['Improving', 'Lagging', 'Leading', 'Weakening'])
+  })
+
+  it('bounds each quadrant on both axes so its name sits in its own plot corner', async () => {
+    await show(fixture('ok'))
+    const box = (corner: string) => JSON.parse(host.querySelector(`[data-corner=${corner}]`)!.getAttribute('data-box')!)
+    // [x1, x2, y1, y2]: the fixture's largest |x| is 9.1 (end 10) and largest |y| is 2.81 (end 3).
+    expect(box('insideTopRight')).toEqual([0, 10, 0, 3])
+    expect(box('insideTopLeft')).toEqual([-10, 0, 0, 3])
+    expect(box('insideBottomLeft')).toEqual([-10, 0, -3, 0])
+    expect(box('insideBottomRight')).toEqual([0, 10, -3, 0])
+  })
+
+  it('centres both axes on zero with the largest absolute value rounded up, and writes y ticks in pp', async () => {
+    await show(fixture('ok'))
+    expect(JSON.parse(host.querySelector('[data-axis=x]')!.getAttribute('data-domain')!)).toEqual([-10, 10])
+    expect(JSON.parse(host.querySelector('[data-axis=y]')!.getAttribute('data-domain')!)).toEqual([-3, 3])
+    expect(host.querySelector('[data-axis=y]')!.getAttribute('data-tick')).toBe('2 pp')
+  })
+
+  it('draws SMH with a dashed tail and the funds with a solid one', async () => {
+    await show(fixture('ok'))
+    expect(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-dash')).toBeTruthy()
+    expect(host.querySelector('[data-scatter=XLK]')!.getAttribute('data-dash')).toBeNull()
+  })
+
+  it('fades the tail: the older the point, the lower its opacity', async () => {
+    await show(fixture('ok'))
+    const o = [...host.querySelectorAll('[data-scatter=XLK] [data-tail-point]')].map((e) => Number(e.getAttribute('opacity')))
+    for (let i = 1; i < o.length; i++) expect(o[i]!).toBeGreaterThan(o[i - 1]!)
+  })
+
+  it('moves a label that would print over an earlier one', () => {
+    const anchors = [
+      { id: 'A', x: 100, y: 100, width: 30 },
+      { id: 'B', x: 102, y: 101, width: 30 },
+      { id: 'C', x: 104, y: 99, width: 30 },
+    ]
+    const placed = placeLabels(anchors, 13)
+    expect(placed).toHaveLength(3)
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        const a = placed[i]!
+        const b = placed[j]!
+        const apart = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top
+        expect(apart).toBe(true)
+      }
+    }
+    expect(placed[0]!.anchor).toBe('start')
+  })
+
+  it('keeps the ok fixture labels apart in the drawn map', async () => {
+    await show(fixture('ok'))
+    const spots = [...host.querySelectorAll('[data-today-label]')].map(
+      (e) => `${e.getAttribute('x')},${e.getAttribute('y')},${e.getAttribute('text-anchor')}`,
+    )
+    expect(spots.length).toBeGreaterThan(5)
+    expect(new Set(spots).size).toBe(spots.length)
+  })
+
+  it('spaces the bar axis ticks by one fixed step', async () => {
+    await show(fixture('ok'))
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => parseFloat(t.textContent ?? ''))
+    const steps = new Set(ticks.slice(1).map((t, i) => t - ticks[i]!))
+    expect(steps.size).toBe(1)
+    expect([...steps][0]!).toBeGreaterThanOrEqual(5)
   })
 
   it('the gap fixture draws no rotation series', async () => {
