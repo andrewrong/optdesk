@@ -526,14 +526,15 @@ func TestFxRateSourceFredH10Accepted(t *testing.T) {
 	if err := s.Validate(bad); err == nil {
 		t.Fatal("stooq must be refused")
 	}
+	const fxRow = `{"pair":"USDJPY","rate_day":"2026-11-05","rate":"153.41","source":"%s","received_at":"2026-11-06T22:15:00Z"}`
 	var g gen.FxRate
-	if err := json.Unmarshal([]byte(`{"pair":"USDJPY","rate_day":"2026-11-05","rate":"153.41","source":"fred_h10","received_at":"2026-11-06T22:15:00Z"}`), &g); err != nil {
+	if err := json.Unmarshal([]byte(fmt.Sprintf(fxRow, "fred_h10")), &g); err != nil {
 		t.Fatalf("generated record must accept fred_h10: %v", err)
 	}
 	if g.Source != gen.FxRateSourceFredH10 {
 		t.Fatalf("source: %v", g.Source)
 	}
-	if err := json.Unmarshal([]byte(`{"pair":"USDJPY","rate_day":"2026-11-05","rate":"153.41","source":"stooq","received_at":"2026-11-06T22:15:00Z"}`), &g); err == nil {
+	if err := json.Unmarshal([]byte(fmt.Sprintf(fxRow, "stooq")), &g); err == nil {
 		t.Fatal("generated record must refuse stooq")
 	}
 }
@@ -551,7 +552,9 @@ func TestSeriesUnitJpyPerUsdAccepted(t *testing.T) {
 		t.Fatal("eur_per_usd must be refused")
 	}
 	var g gen.SeriesPoint
-	row := `{"series_id":"DEXJPUS","observation_date":"2026-11-05","realtime_start":"2026-11-06","realtime_end":"9999-12-31","value":153.41,"status":"present","unit":"%s","currency":"","published_at":"2026-11-06T21:15:00Z","source":"fred","source_revision":"r1"}`
+	row := `{"series_id":"DEXJPUS","observation_date":"2026-11-05","realtime_start":"2026-11-06","realtime_end":"9999-12-31",` +
+		`"value":153.41,"status":"present","unit":"%s","currency":"","published_at":"2026-11-06T21:15:00Z",` +
+		`"source":"fred","source_revision":"r1"}`
 	if err := json.Unmarshal([]byte(fmt.Sprintf(row, "jpy_per_usd")), &g); err != nil || g.Unit != gen.SeriesUnitJpyPerUsd {
 		t.Fatalf("generated record must accept jpy_per_usd: %v %v", err, g.Unit)
 	}
