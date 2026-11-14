@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
@@ -19,9 +21,9 @@ func fredRow(d, rate string) contracts.FxRate {
 	return r
 }
 
-func storedSource(ctx context.Context, t *testing.T, name string) (source, rate string) {
+func storedSource(ctx context.Context, t *testing.T, admin *pgx.Conn) (source, rate string) {
 	t.Helper()
-	err := pgxAs(t, name).QueryRow(ctx, `SELECT source, rate::text FROM obs.fx_rate`).Scan(&source, &rate)
+	err := admin.QueryRow(ctx, `SELECT source, rate::text FROM obs.fx_rate`).Scan(&source, &rate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +39,7 @@ func TestInsertFredRateForMissingKey(t *testing.T) {
 	if err != nil || n != 1 {
 		t.Fatalf("insert = %d, %v", n, err)
 	}
-	if src, rate := storedSource(ctx, t, name); src != "fred_h10" || rate != "153.42" {
+	if src, rate := storedSource(ctx, t, pgxAs(t, name)); src != "fred_h10" || rate != "153.42" {
 		t.Errorf("stored %s %s", src, rate)
 	}
 }
@@ -54,7 +56,7 @@ func TestInsertNeverReplacesIbkrRate(t *testing.T) {
 	if err != nil || n != 0 {
 		t.Fatalf("fill insert = %d, %v", n, err)
 	}
-	if src, rate := storedSource(ctx, t, name); src != "ibkr_midpoint" || rate != "153.425" {
+	if src, rate := storedSource(ctx, t, pgxAs(t, name)); src != "ibkr_midpoint" || rate != "153.425" {
 		t.Errorf("stored %s %s", src, rate)
 	}
 }
@@ -86,7 +88,7 @@ func TestUpsertReplacesFredRate(t *testing.T) {
 	if err != nil || c != (bar.FxWriteCount{Written: 1}) {
 		t.Fatalf("upsert over fred = %+v, %v", c, err)
 	}
-	if src, _ := storedSource(ctx, t, name); src != "ibkr_midpoint" {
+	if src, _ := storedSource(ctx, t, pgxAs(t, name)); src != "ibkr_midpoint" {
 		t.Errorf("source = %s", src)
 	}
 	c, err = st.UpsertFxRates(ctx, []contracts.FxRate{fxRow("2026-11-05", "153.425")}, "run2")
@@ -121,7 +123,7 @@ func TestMigrationDownRefusesFredRows(t *testing.T) {
 	if _, err := admin.Exec(ctx, downPart(t)); err == nil {
 		t.Fatal("Down ran over a fred_h10 row")
 	}
-	if src, _ := storedSource(ctx, t, name); src != "fred_h10" {
+	if src, _ := storedSource(ctx, t, pgxAs(t, name)); src != "fred_h10" {
 		t.Errorf("source = %s", src)
 	}
 	if _, err := admin.Exec(ctx, `DELETE FROM obs.fx_rate`); err != nil {
