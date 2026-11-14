@@ -156,7 +156,8 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 		Tags:           tags,
 		SizeLine:       fmt.Sprintf("1 contract · Strike %s · Multiplier %d", r.Strike, r.Multiplier),
 		IvLine:         ivLine(r.Iv),
-		PremiumLine:    fmt.Sprintf("Premium %s (close bid est.) · Breakeven %s · in-the-money probability at expiry n/a · above cash n/a", moneyText(r.BidEod), moneyText(r.BreakEven)),
+		PremiumLine: fmt.Sprintf("Premium %s (close bid est.) · Breakeven %s · in-the-money probability at expiry n/a · above cash n/a",
+			moneyText(r.BidEod), moneyText(r.BreakEven)),
 	}
 }
 
