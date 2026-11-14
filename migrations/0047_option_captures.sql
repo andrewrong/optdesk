@@ -11,6 +11,7 @@ SET LOCAL lock_timeout = '5s';
 -- first run there failed with SQLSTATE 42703, column "underlying_id" of "_compressed_hypertable_11"). When compression
 -- is on, drop the policy, decompress every chunk and turn compression off, which drops the stale twin. A no-op on a
 -- fresh database, where compression is off.
+-- +goose StatementBegin
 DO $reset$
 DECLARE
     c regclass;
@@ -27,6 +28,7 @@ BEGIN
     END IF;
 END
 $reset$;
+-- +goose StatementEnd
 
 -- 1. Compression of obs.option_open (never compressed; the orderby holds the whole key).
 ALTER TABLE obs.option_open SET (
