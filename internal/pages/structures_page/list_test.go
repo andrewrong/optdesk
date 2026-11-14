@@ -64,7 +64,7 @@ func TestRowFieldsFromFigures(t *testing.T) {
 		t.Fatalf("moneyness = %v, ex_dividend = %v", r["moneyness"], r["ex_dividend"])
 	}
 	loss := r["max_loss"].(map[string]any)
-	if loss["value"] != -14750.0 || loss["text"] != "-14750.00" || loss["unit"] != "usd" {
+	if loss["value"] != -14750.0 || loss["text"] != "−$14,750.00" || loss["unit"] != "usd" {
 		t.Fatalf("max_loss = %v", loss)
 	}
 	if m["scope"] != "main" || m["generated_at"] != "2026-11-09T09:00:00+08:00" {
@@ -79,7 +79,7 @@ func TestRowMoneyTextsHaveTwoDecimals(t *testing.T) {
 	for key, want := range map[string]struct {
 		value float64
 		text  string
-	}{"max_gain": {250, "250.00"}, "pnl": {130, "130.00"}} {
+	}{"max_gain": {250, "$250.00"}, "pnl": {130, "$130.00"}} {
 		c := r[key].(map[string]any)
 		if c["value"] != want.value || c["text"] != want.text {
 			t.Fatalf("%s = %v, want value %v text %s", key, c, want.value, want.text)
