@@ -16,15 +16,8 @@ import (
 
 var _ dividend.OpenFunc = OpenDividend
 
-// No conflict target, as for earnings: the primary key is the only unique index, so DO NOTHING acts on
-// (session_day, instrument_id, attempt). Dates travel as text and are cast in SQL.
+// Dates travel as text and are cast in SQL.
 const (
-	insertDividendSQL = `INSERT INTO obs.dividend_expectation
- (session_day, instrument_id, attempt, issuer, status, past_12m, next_12m, next_amount, next_ex_date, currency,
-  error_code, source, received_at)
-VALUES ($1::text::date, $2, $3, $4, $5, $6, $7, $8, $9::text::date, $10, $11, $12, $13)
-ON CONFLICT DO NOTHING`
-
 	selectDividendSQL = `SELECT session_day, instrument_id, attempt, issuer, status, past_12m, next_12m, next_amount,
  next_ex_date, currency, error_code, source, received_at
 FROM rd.dividend_expectation_r1 WHERE instrument_id = $1 AND session_day >= $2::text::date AND session_day <= $3::text::date
@@ -50,25 +43,16 @@ func OpenDividend(ctx context.Context, dsn string) (dividend.Store, error) {
 // Close releases the connections.
 func (s *dividendStore) Close() error { return s.db.Close() }
 
-// InsertDividend inserts the row; a row whose key exists stays as it is and is no error. A constraint
-// violation (SQLSTATE class 23: not null, foreign key, check) is a Permanent error, since the database repeats
-// it on every attempt; every other error of the insert is Retryable.
+// InsertDividend is the upsert of one row with an empty writtenBy: a present row whose key exists is replaced when it
+// differs (docs/design/fundamentals-keys.md Decision 10). Attempt is not stored. A constraint violation (SQLSTATE class
+// 23: not null, foreign key, check) is a Permanent error, since the database repeats it on every attempt; every other
+// error of the write is Retryable.
 func (s *dividendStore) InsertDividend(ctx context.Context, r contracts.DividendExpectation) error {
 	if r.InstrumentID == 0 || r.Attempt < 1 {
 		return permanent(fmt.Errorf("events: a dividend row needs an instrument id and an attempt from 1"))
 	}
-	err := s.db.Exec(ctx, insertDividendSQL,
-		r.SessionDay.Format(time.DateOnly), r.InstrumentID, r.Attempt, r.Issuer, string(r.Status),
-		r.Past12M, r.Next12M, r.NextAmount, dayText(r.NextExDate), r.Currency, r.ErrorCode, string(r.Source),
-		r.ReceivedAt.UTC())
-	if err != nil {
-		wrapped := fmt.Errorf("events: insert dividend: %w", err)
-		if isConstraintViolation(err) {
-			return permanent(wrapped)
-		}
-		return retryable(wrapped)
-	}
-	return nil
+	_, err := s.UpsertDividends(ctx, []contracts.DividendExpectation{r}, "")
+	return err
 }
 
 // Dividends returns the rows of the instrument from from to to, inclusive, ascending by day, the highest attempt
