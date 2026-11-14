@@ -93,7 +93,7 @@ func TestMacroPageRealBuild(t *testing.T) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		t.Fatalf("not JSON: %v", err)
 	}
-	if m["schema"] != "macro_page" || m["schema_version"] != float64(1) || p.Meta.Schema != "page.macro_page.v1" ||
+	if m["schema"] != "macro_page" || m["schema_version"] != float64(2) || p.Meta.Schema != "page.macro_page.v2" ||
 		m["run_id"] != "ot-page" || m["scope"] != "macro" || m["build_id"] != "dev" {
 		t.Fatalf("meta %+v page %s", p.Meta, b)
 	}
