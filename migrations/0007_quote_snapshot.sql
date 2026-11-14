@@ -45,7 +45,7 @@ ALTER TABLE obs.quote_snapshot SET (
     timescaledb.compress_segmentby = 'instrument_id',
     timescaledb.compress_orderby = 'session_day DESC, slot, capture_id'
 );
-SELECT public.add_compression_policy('obs.quote_snapshot', INTERVAL '7 days');
+SELECT public.add_compression_policy('obs.quote_snapshot', INTERVAL '7 days', initial_start => now() + INTERVAL '1 day');
 
 -- Every row passes through, every column named.
 CREATE VIEW rd.quote_snapshot_r1 AS
