@@ -86,10 +86,11 @@ func TestMinutesAre21DaysAfter(t *testing.T) {
 			t.Errorf("%s: %s, want %s", in, got, want)
 		}
 	}
-	evs, err := fileEvents()
+	srcs, err := parseHand(handBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
+	evs := fileEvents(srcs)
 	if len(evs["fomc_minutes"]) != len(evs["fomc"]) || evs["fomc_minutes"][0].Date != "2026-02-18" {
 		t.Fatalf("minutes = %v", evs["fomc_minutes"])
 	}

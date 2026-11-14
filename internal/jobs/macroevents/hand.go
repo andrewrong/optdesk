@@ -34,7 +34,10 @@ const (
 
 var handKinds = []string{kindFOMC, kindBOJ, kindQuarterEnd, kindUSTax}
 
-const minutesLag = 21
+const (
+	minutesLag = 21
+	dateLayout = "2006-01-02"
+)
 
 func parseHand(data []byte) ([]handSource, error) {
 	var doc struct {
@@ -50,11 +53,11 @@ func parseHand(data []byte) ([]handSource, error) {
 		if s.URL == "" {
 			return nil, fmt.Errorf("macroevents: hand file: source %d (%s %d) has no url", i, s.Kind, s.Year)
 		}
-		if _, err := time.Parse("2006-01-02", s.ReadDay); err != nil {
+		if _, err := time.Parse(dateLayout, s.ReadDay); err != nil {
 			return nil, fmt.Errorf("macroevents: hand file: source %d (%s %d) has no read_day", i, s.Kind, s.Year)
 		}
 		for _, d := range s.Dates {
-			if _, err := time.Parse("2006-01-02", d); err != nil {
+			if _, err := time.Parse(dateLayout, d); err != nil {
 				return nil, fmt.Errorf("macroevents: hand file: source %d (%s %d) has a date that is not YYYY-MM-DD", i, s.Kind, s.Year)
 			}
 		}
@@ -64,9 +67,9 @@ func parseHand(data []byte) ([]handSource, error) {
 
 // minutesDay is the day the minutes of a meeting ending on end are published: end + 21 days.
 func minutesDay(end contracts.Day) contracts.Day {
-	t, err := time.Parse("2006-01-02", string(end))
+	t, err := time.Parse(dateLayout, string(end))
 	if err != nil {
 		return end
 	}
-	return contracts.Day(t.AddDate(0, 0, minutesLag).Format("2006-01-02"))
+	return contracts.Day(t.AddDate(0, 0, minutesLag).Format(dateLayout))
 }

@@ -38,10 +38,11 @@ type call struct {
 // fakeWriter keeps the stored dates per kind and applies the first two delete rules of the store contract
 // enough to report Written, Deleted and Held.
 type fakeWriter struct {
-	mu     sync.Mutex
-	calls  []call
-	stored map[string]map[contracts.Day]bool
-	fail   map[string]error
+	mu      sync.Mutex
+	calls   []call
+	stored  map[string]map[contracts.Day]bool
+	fail    map[string]error
+	deleted int
 }
 
 func (w *fakeWriter) ReplaceFuture(_ context.Context, kind, source string, runDay contracts.Day, evs []macroevent.Event) (macroevent.Outcome, error) {
@@ -81,6 +82,7 @@ func (w *fakeWriter) ReplaceFuture(_ context.Context, kind, source string, runDa
 		if d > runDay && !in[d] {
 			delete(have, d)
 			out.Deleted++
+			w.deleted++
 		}
 	}
 	return out, nil
@@ -240,32 +242,38 @@ func TestRunOneKindFails(t *testing.T) {
 
 func TestRunTwiceChangesNothing(t *testing.T) {
 	t.Parallel()
-	src := &fakeSource{dates: map[string][]contracts.Day{"10": {"2026-12-10", "2027-01-13"}, "20": {"2026-11-19", "2026-11-26"}}}
+	// Every FRED kind has an answer, so a repeated run has nothing to hold.
+	src := &fakeSource{dates: map[string][]contracts.Day{}}
+	for _, id := range []string{"10", "50", "54", "53", "46", "9", "192", "20"} {
+		src.dates[id] = []contracts.Day{"2026-11-19", "2026-12-10", "2027-01-13"}
+	}
 	w := &fakeWriter{}
 	j, sink := newJob(t, src, w)
 	first := runAll(j, "2026-11-14")
-	if first.Usable == 0 {
-		t.Fatal("first run wrote nothing")
+	if first.Err != nil || first.Usable == 0 {
+		t.Fatalf("first run %+v", first)
 	}
-	n := len(w.calls)
+	before := map[string]int{}
+	for k, v := range w.stored {
+		before[k] = len(v)
+	}
+	sink.text = nil
 	second := runAll(j, "2026-11-14")
 	if second.Err != nil || second.Usable != 0 || second.Returned != first.Returned {
 		t.Fatalf("second %+v first %+v", second, first)
 	}
-	for _, c := range w.calls[n:] {
-		if c.runDay != "2026-11-14" {
-			t.Fatalf("runDay %s", c.runDay)
+	if w.deleted != 0 {
+		t.Fatalf("deleted %d rows", w.deleted)
+	}
+	for k, n := range before {
+		if len(w.stored[k]) != n {
+			t.Errorf("%s: %d rows, was %d", k, len(w.stored[k]), n)
 		}
 	}
-	// Kinds with an empty answer are held on both runs by the fake (nothing stored); the answered kinds are not.
-	for _, line := range sink.text[len(sink.text)/2:] {
-		if strings.Contains(line, "kept stored rows of cpi") || strings.Contains(line, "kept stored rows of h41") ||
-			strings.Contains(line, "kept stored rows of fomc") {
-			t.Fatalf("held: %s", line)
-		}
+	if strings.Contains(strings.Join(sink.text, ""), "kept stored rows") {
+		t.Fatalf("second run held: %v", sink.text)
 	}
 }
-
 func checkFileKinds(t *testing.T, w *fakeWriter) {
 	t.Helper()
 	fomc := w.callOf("fomc")

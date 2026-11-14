@@ -82,7 +82,7 @@ func (c *releaseClient) Dates(ctx context.Context, releaseID string, from contra
 	}
 	var out []contracts.Day
 	for _, r := range doc.ReleaseDates {
-		if _, err := time.Parse("2006-01-02", r.Date); err != nil {
+		if _, err := time.Parse(dateLayout, r.Date); err != nil {
 			return nil, fail(contracts.Permanent, "macroevents: a release date is not YYYY-MM-DD")
 		}
 		if r.Date < string(from) {

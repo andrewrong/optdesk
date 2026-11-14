@@ -20,11 +20,12 @@ const (
 )
 
 type job struct {
-	m   manifest
-	src ReleaseSource
-	w   macroevent.Writer
-	clk clock.Clock
-	log *slog.Logger
+	m    manifest
+	hand []handSource
+	src  ReleaseSource
+	w    macroevent.Writer
+	clk  clock.Clock
+	log  *slog.Logger
 }
 
 // New builds the macro_events job from the embedded job.toml.
@@ -33,10 +34,11 @@ func New(src ReleaseSource, w macroevent.Writer, clk clock.Clock) (contracts.Job
 	if err != nil {
 		return nil, err
 	}
-	if _, err := parseHand(handBytes); err != nil {
+	hand, err := parseHand(handBytes)
+	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, src: src, w: w, clk: clk, log: slog.Default()}, nil
+	return &job{m: m, hand: hand, src: src, w: w, clk: clk, log: slog.Default()}, nil
 }
 
 // ID is the job id of the manifest.
@@ -102,10 +104,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		}
 		j.replace(ctx, rep, day, rl.kind, sourceFRED, evs)
 	}
-	files, err := fileEvents()
-	if err != nil {
-		rep.fail("file", err)
-	}
+	files := fileEvents(j.hand)
 	for _, kind := range fileKinds {
 		if wanted(kind) && len(files[kind]) > 0 {
 			j.replace(ctx, rep, day, kind, sourceFile, files[kind])
@@ -128,11 +127,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 
 // fileEvents are the rows of the hand-kept file by kind, with RunDay the read_day of the row and the minutes
 // derived from the fomc dates.
-func fileEvents() (map[string][]macroevent.Event, error) {
-	srcs, err := parseHand(handBytes)
-	if err != nil {
-		return nil, err
-	}
+func fileEvents(srcs []handSource) map[string][]macroevent.Event {
 	out := map[string][]macroevent.Event{}
 	add := func(kind string, s handSource, d contracts.Day) {
 		out[kind] = append(out[kind], macroevent.Event{
@@ -147,7 +142,7 @@ func fileEvents() (map[string][]macroevent.Event, error) {
 			}
 		}
 	}
-	return out, nil
+	return out
 }
 
 // asTyped wraps err as a TypedError; a TypedError found inside err keeps its own kind, else kind is used.
