@@ -1,0 +1,528 @@
+{
+  "schema": "companies_page",
+  "schema_version": 2,
+  "run_id": "run_1",
+  "build_id": "build_1",
+  "scope": "companies_1",
+  "generated_at": "2026-11-06T22:30:00+08:00",
+  "data_times": [
+    {
+      "source": "valuation",
+      "data_time": "2026-11-05T22:00:00Z"
+    },
+    {
+      "source": "quote_snapshot",
+      "data_time": "2026-11-06T15:00:00Z"
+    },
+    {
+      "source": "fred",
+      "data_time": "2026-11-06T21:15:00Z"
+    }
+  ],
+  "run_status": "ok",
+  "title": "Companies",
+  "header": {
+    "title": "Companies",
+    "data_day": "2026-11-06",
+    "line": "11-06 · watching 2 companies",
+    "held_count": null
+  },
+  "changes": {
+    "title": "Changes",
+    "lines": [],
+    "sentence": "No change in the last 7 days",
+    "note": null
+  },
+  "glance": {
+    "title": "At a glance",
+    "tiles": [
+      {
+        "label": "Watching",
+        "text": "2"
+      },
+      {
+        "label": "With a band",
+        "text": "1"
+      }
+    ],
+    "note": null
+  },
+  "holdings": null,
+  "unvalued": "SYN2: unvalued, cyclical",
+  "watch_list": {
+    "title": "Watch list",
+    "columns": [
+      {
+        "text": "Company",
+        "numeric": false
+      },
+      {
+        "text": "Price line",
+        "numeric": true
+      },
+      {
+        "text": "Last",
+        "numeric": true
+      }
+    ],
+    "rows": [
+      {
+        "cells": [
+          {
+            "text": "SYN1"
+          },
+          {
+            "text": "114.00 to 142.50",
+            "price_state": "band",
+            "hand_price": "150"
+          },
+          {
+            "text": "128.40"
+          }
+        ]
+      },
+      {
+        "cells": [
+          {
+            "text": "SYN2"
+          },
+          {
+            "text": "unvalued: cyclical"
+          },
+          {
+            "text": "2595"
+          }
+        ]
+      }
+    ],
+    "sentence": null
+  },
+  "notes": [
+    "Synthetic fixture."
+  ],
+  "gaps": [],
+  "stale": {
+    "data_time": "2026-11-06T22:00:00+08:00",
+    "stale_after": "2026-11-07T22:00:00+08:00",
+    "text": "Data of 11-06"
+  },
+  "core": {
+    "basis_note": "Return at the bare strike of each shown put, four named cases.",
+    "low_text": "0%",
+    "high_text": "10%",
+    "treasury": {
+      "text": "US 10-year 4.15%",
+      "marker_percent": 41.5
+    },
+    "jp_rate": {
+      "reason": "no_data",
+      "text": "No Japan 10-year yield source"
+    },
+    "rows": [
+      {
+        "symbol": "SYN1",
+        "price_text": "120",
+        "cyclical": false,
+        "flag": null,
+        "returns": [
+          {
+            "assumption": "Spending stays",
+            "text": "6.2% a year",
+            "marker_percent": 31.0
+          },
+          {
+            "assumption": "Spending earns",
+            "text": "8.4% a year",
+            "marker_percent": 42.0
+          },
+          {
+            "assumption": "Analyst path",
+            "text": "left out: no analyst input",
+            "marker_percent": 0.0
+          },
+          {
+            "assumption": "Spending earns, analyst path",
+            "text": "left out: no analyst input",
+            "marker_percent": 0.0
+          }
+        ]
+      },
+      {
+        "symbol": "SYN2",
+        "price_text": "2500",
+        "cyclical": true,
+        "flag": null,
+        "returns": {
+          "reason": "missing_input",
+          "text": "no diluted share count"
+        }
+      }
+    ],
+    "legend": [
+      "Growth the price needs at 8%: 4.1%; at 10%: 2.7%; at 12%: 1.4% (SYN1)."
+    ],
+    "snapshot_text": "Quotes of 11-06"
+  },
+  "diagnosis": {
+    "basis_note": "Context for cyclical and financial names; not a band.",
+    "groups": [
+      {
+        "key": "cyclical",
+        "title": "Cyclical",
+        "columns": [
+          "Company",
+          "Latest FY",
+          "Margin",
+          "Rank"
+        ],
+        "rows": [
+          {
+            "symbol": "SYN2",
+            "latest_fy": "FY2025",
+            "latest": "7.2%",
+            "rank_text": "3 of 10 years",
+            "extra": "inventory 18% of revenue",
+            "usual": "6.0% to 9.0%",
+            "years": [
+              {
+                "fy": "FY2025",
+                "revenue": "1,200,000",
+                "margin": "7.2%",
+                "extra": "18%",
+                "bar_percent": 72.0
+              },
+              {
+                "fy": "FY2024",
+                "revenue": "1,100,000",
+                "margin": "6.1%",
+                "extra": "16%",
+                "bar_percent": 61.0
+              }
+            ]
+          }
+        ],
+        "legend": [
+          "Margin is operating margin."
+        ]
+      }
+    ]
+  },
+  "questions": {
+    "basis_note": "Q1 to Q4 from filings; the fifth is the owner's text.",
+    "rows": [
+      {
+        "symbol": "SYN1",
+        "q1": {
+          "value": 18.2,
+          "text": "18.2%",
+          "unit": "percent"
+        },
+        "q2": {
+          "value": 0.41,
+          "text": "0.41",
+          "unit": "ratio"
+        },
+        "q3": {
+          "value": 6.5,
+          "text": "6.5%",
+          "unit": "percent"
+        },
+        "q4": {
+          "value": 1.12,
+          "text": "1.12",
+          "unit": "ratio"
+        },
+        "fifth": "Management has repaid debt every year since 2019."
+      },
+      {
+        "symbol": "SYN2",
+        "q1": {
+          "reason": "missing_input",
+          "text": "no tangible capital"
+        },
+        "q2": {
+          "reason": "missing_input",
+          "text": "no tangible capital"
+        },
+        "q3": {
+          "reason": "missing_input",
+          "text": "no gross margin"
+        },
+        "q4": {
+          "reason": "missing_input",
+          "text": "no operating cash flow"
+        },
+        "fifth": {
+          "reason": "no_data",
+          "text": "not entered"
+        }
+      }
+    ]
+  },
+  "pepb": {
+    "basis_note": "PE and PB from filed facts and stored closes, 2026-11-05; history, not a verdict",
+    "rows": [
+      {
+        "symbol": "SYN1",
+        "pe": {
+          "text": "PE 24.3 on 2026-11-05, 34th percentile of 300 stored days since 2025-08-20",
+          "ratio": {
+            "value": 24.3,
+            "text": "24.3",
+            "unit": "ratio"
+          },
+          "day": "2026-11-05",
+          "basis_end": "2026-09-30",
+          "percentile": {
+            "value": 34,
+            "text": "34",
+            "unit": "percent"
+          },
+          "at_percentile": [
+            {
+              "percentile": 20,
+              "ratio": {
+                "value": 21.0,
+                "text": "21.0",
+                "unit": "ratio"
+              },
+              "price": {
+                "value": 103.7,
+                "text": "103.70",
+                "unit": "price"
+              },
+              "text": "20th percentile of 300 stored days since 2025-08-20: PE 21.0 is a price of 103.70 (history, not a buy price)"
+            },
+            {
+              "percentile": 50,
+              "ratio": {
+                "value": 26.5,
+                "text": "26.5",
+                "unit": "ratio"
+              },
+              "price": {
+                "value": 130.9,
+                "text": "130.90",
+                "unit": "price"
+              },
+              "text": "50th percentile of 300 stored days since 2025-08-20: PE 26.5 is a price of 130.90 (history, not a buy price)"
+            }
+          ],
+          "shares": "15,200,000,000",
+          "shares_filed": "2026-10-30",
+          "window_days": 300,
+          "window_from": "2025-08-20",
+          "history": [
+            {
+              "day": "2026-11-01",
+              "value": 20.0,
+              "text": "20.0"
+            },
+            {
+              "day": "2026-11-02",
+              "value": 21.0,
+              "text": "21.0"
+            },
+            {
+              "day": "2026-11-03",
+              "value": 22.0,
+              "text": "22.0"
+            },
+            {
+              "day": "2026-11-04",
+              "value": 23.0,
+              "text": "23.0"
+            },
+            {
+              "day": "2026-11-05",
+              "value": 24.0,
+              "text": "24.0"
+            }
+          ]
+        },
+        "pb": {
+          "text": "PB 6.1 on 2026-11-05, 34th percentile of 300 stored days since 2025-08-20",
+          "ratio": {
+            "value": 6.1,
+            "text": "6.1",
+            "unit": "ratio"
+          },
+          "day": "2026-11-05",
+          "basis_end": "2026-09-30",
+          "percentile": {
+            "value": 34,
+            "text": "34",
+            "unit": "percent"
+          },
+          "at_percentile": [
+            {
+              "percentile": 20,
+              "ratio": {
+                "value": 5.2,
+                "text": "5.2",
+                "unit": "ratio"
+              },
+              "price": {
+                "value": 102.2,
+                "text": "102.20",
+                "unit": "price"
+              },
+              "text": "20th percentile of 300 stored days since 2025-08-20: PB 5.2 is a price of 102.20 (history, not a buy price)"
+            },
+            {
+              "percentile": 50,
+              "ratio": {
+                "value": 7.4,
+                "text": "7.4",
+                "unit": "ratio"
+              },
+              "price": {
+                "value": 145.4,
+                "text": "145.40",
+                "unit": "price"
+              },
+              "text": "50th percentile of 300 stored days since 2025-08-20: PB 7.4 is a price of 145.40 (history, not a buy price)"
+            }
+          ],
+          "shares": "15,200,000,000",
+          "shares_filed": "2026-10-30",
+          "window_days": 300,
+          "window_from": "2025-08-20",
+          "history": [
+            {
+              "day": "2026-11-01",
+              "value": 20.0,
+              "text": "20.0"
+            },
+            {
+              "day": "2026-11-02",
+              "value": 21.0,
+              "text": "21.0"
+            },
+            {
+              "day": "2026-11-03",
+              "value": 22.0,
+              "text": "22.0"
+            },
+            {
+              "day": "2026-11-04",
+              "value": 23.0,
+              "text": "23.0"
+            },
+            {
+              "day": "2026-11-05",
+              "value": 24.0,
+              "text": "24.0"
+            }
+          ]
+        },
+        "forward": {
+          "reason": "no_data",
+          "text": "forward PE: no estimates source"
+        }
+      },
+      {
+        "symbol": "SYN2",
+        "pe": {
+          "reason": "missing_input",
+          "text": "loss, no PE"
+        },
+        "pb": {
+          "text": "PB 2.4 on 2026-11-05, 34th percentile of 300 stored days since 2025-08-20",
+          "ratio": {
+            "value": 2.4,
+            "text": "2.4",
+            "unit": "ratio"
+          },
+          "day": "2026-11-05",
+          "basis_end": "2026-09-30",
+          "percentile": {
+            "value": 34,
+            "text": "34",
+            "unit": "percent"
+          },
+          "at_percentile": [
+            {
+              "percentile": 20,
+              "ratio": {
+                "value": 2.0,
+                "text": "2.0",
+                "unit": "ratio"
+              },
+              "price": {
+                "value": 41.7,
+                "text": "41.70",
+                "unit": "price"
+              },
+              "text": "20th percentile of 300 stored days since 2025-08-20: PB 2.0 is a price of 41.70 (history, not a buy price)"
+            },
+            {
+              "percentile": 50,
+              "ratio": {
+                "value": 2.9,
+                "text": "2.9",
+                "unit": "ratio"
+              },
+              "price": {
+                "value": 60.4,
+                "text": "60.40",
+                "unit": "price"
+              },
+              "text": "50th percentile of 300 stored days since 2025-08-20: PB 2.9 is a price of 60.40 (history, not a buy price)"
+            }
+          ],
+          "shares": "480,000,000",
+          "shares_filed": "2026-10-30",
+          "window_days": 300,
+          "window_from": "2025-08-20",
+          "history": [
+            {
+              "day": "2026-11-01",
+              "value": 20.0,
+              "text": "20.0"
+            },
+            {
+              "day": "2026-11-02",
+              "value": 21.0,
+              "text": "21.0"
+            },
+            {
+              "day": "2026-11-03",
+              "value": 22.0,
+              "text": "22.0"
+            },
+            {
+              "day": "2026-11-04",
+              "value": 23.0,
+              "text": "23.0"
+            },
+            {
+              "day": "2026-11-05",
+              "value": 24.0,
+              "text": "24.0"
+            }
+          ]
+        },
+        "forward": {
+          "reason": "no_data",
+          "text": "forward PE: no estimates source"
+        }
+      },
+      {
+        "symbol": "edinet:SYN3",
+        "pe": {
+          "reason": "jp_slice_missing",
+          "text": "no filings source for Japanese names"
+        },
+        "pb": {
+          "reason": "jp_slice_missing",
+          "text": "no filings source for Japanese names"
+        },
+        "forward": {
+          "reason": "no_data",
+          "text": "forward PE: no estimates source"
+        }
+      }
+    ]
+  }
+}
