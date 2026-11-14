@@ -46,8 +46,8 @@ var openColumns = []colDef[opt]{
 	col("qty", "Quantity", "right", qty),
 	col("dte", "DTE", "right", dteCell),
 	col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent distance from the strike, positive is out of the money"),
-	col("spot", "Stock close", "right", func(o opt) any { return decimalCell(o.Spot, markCode(o), 2) }),
-	col("mid", "Mid price", "right", func(o opt) any { return decimalCell(o.Mid, markCode(o), 2) }).hinted(markNote),
+	col("spot", "Stock close", "right", func(o opt) any { return moneyHalfUp(o.Spot, o.Currency, markCode(o)) }),
+	col("mid", "Mid price", "right", func(o opt) any { return moneyHalfUp(o.Mid, o.Currency, markCode(o)) }).hinted(markNote),
 	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
 	col("kept", "Kept", "right", func(o opt) any { return moneyHalfUp(o.Kept, o.Currency, markCode(o)) }),
 	col("kept_percent", "Kept %", "right", func(o opt) any { return decimalCell(o.KeptPercent, markCode(o), 2) }),
@@ -65,8 +65,8 @@ var recentColumns = []colDef[opt]{
 	col("status", "Status", "left", statusCell),
 	col("closed_day", "Closed day", "left", closedDayCell),
 	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
-	col("commissions", "Commissions", "right", func(o opt) any { return decimalCell(o.Commissions, codeNoValue, 2) }),
-	col("realized", "Realized P&L", "right", func(o opt) any { return decimalCell(o.RealizedPnL, codeNoValue, 2) }),
+	col("commissions", "Commissions", "right", func(o opt) any { return moneyHalfUp(o.Commissions, o.Currency, codeNoValue) }),
+	col("realized", "Realized P&L", "right", func(o opt) any { return moneyHalfUp(o.RealizedPnL, o.Currency, codeNoValue) }),
 }
 
 var reconColumns = []colDef[trackapi.TrackRecon]{
