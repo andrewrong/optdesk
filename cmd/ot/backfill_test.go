@@ -79,7 +79,7 @@ func TestBackfillFlags(t *testing.T) {
 			if tc.demo {
 				a.profile.Name = "demo"
 			}
-			err := backfill(a, tc.args)
+			err := backfillWired(a, tc.args)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err %v, want text %q", err, tc.want)
 			}
@@ -98,7 +98,7 @@ func TestBackfillCallsRunner(t *testing.T) {
 		a, opened, closed, errb := backfillApp(t, fullEnv, f)
 		var stdout bytes.Buffer
 		a.stdout = &stdout
-		if err := backfill(a, []string{"--day", "2026-11-04"}); err != nil {
+		if err := backfillWired(a, []string{"--day", "2026-11-04"}); err != nil {
 			t.Fatal(err)
 		}
 		if len(f.days) != 1 || f.days[0] != "2026-11-04" || f.datasets[0] != nil {
@@ -120,7 +120,7 @@ func TestBackfillCallsRunner(t *testing.T) {
 	t.Run("dataset", func(t *testing.T) {
 		f := &fakeBackfiller{}
 		a, _, _, _ := backfillApp(t, fullEnv, f)
-		if err := backfill(a, []string{"--day", "2026-11-04", "--dataset", "fred_series"}); err != nil {
+		if err := backfillWired(a, []string{"--day", "2026-11-04", "--dataset", "fred_series"}); err != nil {
 			t.Fatal(err)
 		}
 		if len(f.datasets) != 1 || len(f.datasets[0]) != 1 || f.datasets[0][0] != "fred_series" {
@@ -133,7 +133,7 @@ func TestBackfillCallsRunner(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			a, opened, closed, _ := backfillApp(t, fullEnv, f)
-			if err := backfill(a, []string{"--day", "2026-11-04"}); err == nil {
+			if err := backfillWired(a, []string{"--day", "2026-11-04"}); err == nil {
 				t.Fatal("want an error")
 			}
 			if opened.Load() == 0 || opened.Load() != closed.Load() {
@@ -158,7 +158,7 @@ func TestBackfillErrors(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: tc.res})
-			err := backfill(a, []string{"--day", "2026-11-04"})
+			err := backfillWired(a, []string{"--day", "2026-11-04"})
 			if tc.wantErr == nil {
 				if err != nil {
 					t.Fatalf("err %v", err)
@@ -183,7 +183,7 @@ func TestBackfillNoSecretInErrors(t *testing.T) {
 	env := "OT_PG_DSN_RUNNER=" + dsn + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=" + fredKey + "\n" +
 		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n"
 	check := func(t *testing.T, a *app, errb interface{ String() string }, hidePgx bool) {
-		err := backfill(a, []string{"--day", "2026-11-04"})
+		err := backfillWired(a, []string{"--day", "2026-11-04"})
 		if err == nil {
 			t.Fatal("want an error")
 		}
@@ -220,7 +220,7 @@ func TestBackfillAheadDay(t *testing.T) {
 	a, _, _, errb := backfillApp(t, fullEnv, f)
 	var opened, closed atomic.Int32
 	withCursor(a, &opened, &closed, "2026-03-03", nil)
-	if err := backfill(a, []string{"--day", "2026-03-09"}); err != nil {
+	if err := backfillWired(a, []string{"--day", "2026-03-09"}); err != nil {
 		t.Fatalf("a day past the fake cursor: %v", err)
 	}
 	if len(f.days) != 1 || f.days[0] != "2026-03-09" {
@@ -237,7 +237,7 @@ func TestBackfillSyncsGaps(t *testing.T) {
 	a, _, _, _ := backfillApp(t, fullEnv, f)
 	g := &fakeKeySyncer{}
 	fakeBackfillDeps(a, f, g)
-	if err := backfill(a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := backfillWired(a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if len(g.days) != 1 || g.days[0] != "2026-03-04" {
@@ -245,7 +245,7 @@ func TestBackfillSyncsGaps(t *testing.T) {
 	}
 	g2 := &fakeKeySyncer{err: errors.New("sentinel-pw")}
 	fakeBackfillDeps(a, f, g2)
-	err := backfill(a, []string{"--day", "2026-03-04"})
+	err := backfillWired(a, []string{"--day", "2026-03-04"})
 	if err == nil || strings.Contains(err.Error(), "sentinel-pw") {
 		t.Fatalf("sync error %v", err)
 	}
@@ -257,7 +257,7 @@ func TestBackfillLeaseHeld(t *testing.T) {
 	a, _, closed, _ := backfillApp(t, fullEnv, f)
 	g := &fakeKeySyncer{}
 	fakeBackfillDeps(a, f, g)
-	err := backfill(a, []string{"--day", "2026-03-04"})
+	err := backfillWired(a, []string{"--day", "2026-03-04"})
 	if err == nil || !strings.Contains(err.Error(), "the runner lease is held, retry in a minute") {
 		t.Fatalf("err %v", err)
 	}
@@ -274,7 +274,7 @@ func TestBackfillNoFence(t *testing.T) {
 		t.Error("openFence called")
 		return nil, errors.New("no fence")
 	}
-	if err := backfill(a, []string{"--day", "2026-03-04"}); err != nil {
+	if err := backfillWired(a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.days) != 1 {
@@ -296,7 +296,7 @@ func TestBackfillFailedRunPrintsKeyLinesThenError(t *testing.T) {
 	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys}, err: errors.New("plain failure")})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
-	err := backfill(a, []string{"--day", "2026-11-04"})
+	err := backfillWired(a, []string{"--day", "2026-11-04"})
 	if err == nil || err.Error() != "backfill 2026-11-04 failed: plain failure" {
 		t.Fatalf("err %v", err)
 	}
@@ -315,7 +315,7 @@ func TestBackfillRefusalPrintsKeyLines(t *testing.T) {
 	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: res})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
-	if err := backfill(a, []string{"--day", "2026-11-04"}); err == nil {
+	if err := backfillWired(a, []string{"--day", "2026-11-04"}); err == nil {
 		t.Fatal("want an error")
 	}
 	if want := "key day=2026-11-04 dataset=d subject=s outcome=present rows=0\n"; stdout.String() != want {
@@ -329,7 +329,7 @@ func TestBackfillMissingKeysAreFailedLinesAndAnError(t *testing.T) {
 	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys, Missing: missingKeys()[:1]}})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
-	err := backfill(a, []string{"--day", "2026-11-04"})
+	err := backfillWired(a, []string{"--day", "2026-11-04"})
 	if err == nil || err.Error() != "backfill 2026-11-04: 1 key(s) are still missing" {
 		t.Fatalf("err %v", err)
 	}
@@ -344,7 +344,7 @@ func TestBackfillNoValueDayIsNothingWritten(t *testing.T) {
 	a, _, _, errb := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys, InWindow: missingKeys()[1:]}})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
-	if err := backfill(a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := backfillWired(a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("err %v", err)
 	}
 	out := stdout.String()
@@ -396,7 +396,7 @@ func TestBackfillJob(t *testing.T) {
 	t.Run("datasets of the plan in plan order", func(t *testing.T) {
 		f := &fakeBackfiller{}
 		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
-		if err := backfill(a, append(day, "--job", "twoset")); err != nil {
+		if err := backfillWired(a, append(day, "--job", "twoset")); err != nil {
 			t.Fatal(err)
 		}
 		if len(f.datasets) != 1 || strings.Join(f.datasets[0], ",") != "ds_b,ds_a" {
@@ -406,7 +406,7 @@ func TestBackfillJob(t *testing.T) {
 	t.Run("no job leaves datasets nil", func(t *testing.T) {
 		f := &fakeBackfiller{}
 		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
-		if err := backfill(a, day); err != nil {
+		if err := backfillWired(a, day); err != nil {
 			t.Fatal(err)
 		}
 		if len(f.datasets) != 1 || f.datasets[0] != nil {
@@ -416,7 +416,7 @@ func TestBackfillJob(t *testing.T) {
 	t.Run("job and dataset of the job", func(t *testing.T) {
 		f := &fakeBackfiller{}
 		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
-		if err := backfill(a, append(day, "--job", "twoset", "--dataset", "ds_a")); err != nil {
+		if err := backfillWired(a, append(day, "--job", "twoset", "--dataset", "ds_a")); err != nil {
 			t.Fatal(err)
 		}
 		if len(f.datasets) != 1 || strings.Join(f.datasets[0], ",") != "ds_a" {
@@ -444,7 +444,7 @@ func TestBackfillJob(t *testing.T) {
 				tc.job.id = "fred_series"
 			}
 			a := jobBackfillApp(t, tc.job, f, g)
-			err := backfill(a, append(append([]string{}, day...), tc.args...))
+			err := backfillWired(a, append(append([]string{}, day...), tc.args...))
 			if err == nil {
 				t.Fatal("want an error")
 			}
@@ -471,7 +471,7 @@ func TestBackfillJobRunnerError(t *testing.T) {
 	{
 		f := &fakeBackfiller{err: errors.New("boom")}
 		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
-		err := backfill(a, append(day, "--job", "twoset"))
+		err := backfillWired(a, append(day, "--job", "twoset"))
 		if err == nil || !strings.Contains(err.Error(), "backfill 2026-11-04 job twoset failed") {
 			t.Fatalf("err %v", err)
 		}

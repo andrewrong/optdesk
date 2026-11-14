@@ -13,6 +13,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/jonboulle/clockwork"
 )
@@ -151,11 +152,44 @@ type jcTyped struct{ kind contracts.ErrorKind }
 func (e jcTyped) Error() string             { return "typed" }
 func (e jcTyped) Kind() contracts.ErrorKind { return e.kind }
 
+// jcLedger is the ops ledger of the host: the expected keys of a day and the cursor, nothing else.
+type jcLedger struct {
+	store.OpsLedger
+	log    *jcLog
+	keys   map[contracts.Day][]contracts.ExpectedKey
+	cursor contracts.Day
+}
+
+func (l *jcLedger) Expected(_ context.Context, day contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	l.log.add("expected:%s", day)
+	return l.keys[day], "h", nil
+}
+
+func (l *jcLedger) Cursor(context.Context) (store.Cursor, error) {
+	return store.Cursor{Day: l.cursor}, nil
+}
+
+// jcPlanner is a backfiller that also plans a day: PlanDay stores the plan in the ledger and records the call.
+type jcPlanner struct {
+	*jcBackfill
+	led *jcLedger
+	err error
+}
+
+func (p *jcPlanner) PlanDay(_ context.Context, day contracts.Day) error {
+	p.log.add("plan:%s", day)
+	if p.err == nil {
+		p.led.keys[day] = jcKey
+	}
+	return p.err
+}
+
 type jcRig struct {
 	t    *testing.T
 	log  *jcLog
 	q    *jcQueue
 	bf   *jcBackfill
+	led  *jcLedger
 	fc   *clockwork.FakeClock
 	out  *bytes.Buffer
 	host *consoleHost
@@ -167,9 +201,10 @@ var jcKey = []contracts.ExpectedKey{{DatasetID: "ds.a", SubjectKey: "s1"}, {Data
 func newJCRig(t *testing.T, ids ...string) *jcRig {
 	t.Helper()
 	l := &jcLog{}
-	r := &jcRig{t: t, log: l, q: &jcQueue{log: l}, bf: &jcBackfill{log: l},
+	led := &jcLedger{log: l, keys: map[contracts.Day][]contracts.ExpectedKey{jcDay: jcKey}}
+	r := &jcRig{t: t, log: l, q: &jcQueue{log: l}, bf: &jcBackfill{log: l}, led: led,
 		fc: clockwork.NewFakeClockAt(time.Date(2026, 11, 12, 15, 0, 0, 0, time.UTC)), out: &bytes.Buffer{}}
-	r.host = newConsoleHost(r.q, l, r.fc, slog.New(slog.NewTextHandler(r.out, nil)))
+	r.host = newConsoleHost(r.q, l, led, r.fc, slog.New(slog.NewTextHandler(r.out, nil)))
 	var jobs []contracts.Job
 	for _, id := range ids {
 		jobs = append(jobs, jcJob{id: id, keys: jcKey})
@@ -244,7 +279,7 @@ func TestOrderOfTurn(t *testing.T) {
 		t.Fatal("took false")
 	}
 	want := []string{jcStart, "queued", "finish:1:withdrawn:withdrawn",
-		"claim:2", "backfill", "finish:2:done:completed", "sync:" + jcDay}
+		"claim:2", "expected:" + jcDay, "backfill", "finish:2:done:completed", "sync:" + jcDay}
 	if got := r.log.items; !slices.Equal(got, want) {
 		t.Fatalf("order %v, want %v", got, want)
 	}
@@ -657,5 +692,65 @@ func TestClaimConsoleEmptyQueueReturnsNone(t *testing.T) {
 	r := newJCRig(t, "fred_series")
 	if runs, err := r.host.ClaimConsole(t.Context()); err != nil || len(runs) != 0 {
 		t.Fatalf("runs %d, err %v", len(runs), err)
+	}
+}
+
+// jcUnplanned is a rig whose day jcDay has no stored plan, with a planner as the backfiller.
+func jcUnplanned(t *testing.T, cursor contracts.Day) (*jcRig, *jcPlanner) {
+	r := jcOne(t, "fred_series")
+	delete(r.led.keys, jcDay)
+	r.led.cursor = cursor
+	p := &jcPlanner{jcBackfill: r.bf, led: r.led}
+	r.host.set([]contracts.Job{jcJob{id: "fred_series", keys: jcKey}}, p)
+	r.bf.res = jcLines(runner.GroupRan)
+	return r, p
+}
+
+func TestUnplannedDayAfterCursorIsPlannedThenRunsOnlyTheJob(t *testing.T) {
+	t.Parallel()
+	for _, cursor := range []contracts.Day{"2026-11-11", ""} { // an empty cursor counts as before the day
+		r, _ := jcUnplanned(t, cursor)
+		r.turn(jcNever)
+		r.wantEnd(jobrequest.StateDone, "completed")
+		want := []string{jcStart, "queued", "claim:1", "expected:" + jcDay, "plan:" + jcDay, "backfill", "finish:1:done:completed", "sync:" + jcDay}
+		if got := r.log.items; !slices.Equal(got, want) {
+			t.Fatalf("cursor %q: calls %v, want %v", cursor, got, want)
+		}
+		if len(r.led.keys[jcDay]) != len(jcKey) || len(r.bf.opts) != 1 || r.bf.opts[0].Job != "fred_series" {
+			t.Fatalf("plan stored %v, backfills %+v", r.led.keys[jcDay], r.bf.opts)
+		}
+	}
+}
+
+func TestUnplannedDayAtOrBeforeCursorIsRefusedNoPlanWithoutPlanning(t *testing.T) {
+	t.Parallel()
+	for _, cursor := range []contracts.Day{jcDay, "2026-11-13"} {
+		r, _ := jcUnplanned(t, cursor)
+		r.bf.res = runner.BackfillResult{Refused: runner.RefusedNoPlan}
+		r.turn(jcNever)
+		r.wantEnd(jobrequest.StateRefused, "no_plan")
+		if n := r.log.count("plan:"); n != 0 {
+			t.Fatalf("cursor %q: PlanDay called %d times", cursor, n)
+		}
+	}
+}
+
+func TestUnplannedDayWithoutPlannerIsRefusedNoPlan(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	delete(r.led.keys, jcDay)
+	r.bf.res = runner.BackfillResult{Refused: runner.RefusedNoPlan}
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateRefused, "no_plan")
+}
+
+func TestPlanDayFailureEndsFailedPlanFailed(t *testing.T) {
+	t.Parallel()
+	r, p := jcUnplanned(t, "")
+	p.err = errors.New("calendar down")
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "plan_failed")
+	if r.log.count("backfill") != 0 {
+		t.Fatalf("backfill ran after a failed plan: %v", r.log.items)
 	}
 }

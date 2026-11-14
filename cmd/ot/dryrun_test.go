@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -227,11 +229,22 @@ func TestDryRunRejectsOtherJobs(t *testing.T) {
 			t.Errorf("error %q does not name %s", err, n)
 		}
 	}
-	if err := runOnce(a, []string{"--job", "option_eod"}); err == nil {
-		t.Error("--job without --dry-run accepted")
-	}
 	if out.Len() != 0 || len(ran) != 0 {
 		t.Errorf("something ran: %q %v", out.String(), ran)
+	}
+}
+
+func TestRunOnceJobWithoutDryRunPostsOneRequest(t *testing.T) {
+	t.Parallel()
+	for _, job := range []string{"option_eod", "earnings_refresh"} { // the second is no dry-run job
+		p := &enqPoster{}
+		a, _, _ := enqueueApp(t, p)
+		if err := runOnce(a, []string{"--day", "2026-11-05", "--job", job}); err != nil {
+			t.Fatal(err)
+		}
+		if want := []jobrequest.Request{{JobID: job, Day: "2026-11-05"}}; !slices.Equal(p.reqs, want) {
+			t.Errorf("requests %+v, want %+v", p.reqs, want)
+		}
 	}
 }
 

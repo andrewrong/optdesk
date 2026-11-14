@@ -70,5 +70,5 @@ func openConsoleHost(
 		consoleOff(a, "open failed")
 		return nil, noop
 	}
-	return newConsoleHost(q, newSyncer(ops, sl, clk), clk, a.log), func() { _ = q.Close() }
+	return newConsoleHost(q, newSyncer(ops, sl, clk), ops, clk, a.log), func() { _ = q.Close() }
 }

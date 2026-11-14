@@ -124,7 +124,7 @@ func TestOptionLedgerJobRefusedWithoutBook(t *testing.T) {
 	t.Parallel()
 	l := newLedgerRig(t, fullEnv+ledgerDSNLine+"TOK_MAIN=x\nTOK_SECOND=y\n", false)
 	removeBook(t, l.a)
-	err := runOnce(l.a, []string{"--day", "2026-11-04"})
+	err := runWired(l.a, []string{"--day", "2026-11-04"})
 	if !errors.Is(err, errAccountsBook) {
 		t.Fatalf("option_ledger without accounts.toml gave %v", err)
 	}
@@ -253,7 +253,7 @@ func TestRunOnceRefusedWithoutBookBeforeAnyJobIsWired(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	removeBook(t, r.a)
-	err := runOnce(r.a, []string{"--day", "2026-11-04"})
+	err := runWired(r.a, []string{"--day", "2026-11-04"})
 	if !errors.Is(err, errAccountsBook) {
 		t.Fatalf("run-once without accounts.toml gave %v", err)
 	}
