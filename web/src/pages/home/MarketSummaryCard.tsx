@@ -61,7 +61,6 @@ export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; ti
     rv20: cellOf(row.rv20),
     diff: cellOf(row.iv_minus_rv20),
   }))
-  const [first, last] = card.chart.end_labels
   return (
     <Card data-card="market-summary">
       <CardHeader>
@@ -77,10 +76,6 @@ export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; ti
         <StaleNotice text={card.stale.text} isStale={card.stale.is_stale} />
         <div data-chart-block>
           <Chart spec={specOf(card.chart)} ariaText={card.chart.aria_text} name="market-summary" />
-          <div className="flex justify-between text-xs text-muted-foreground" data-end-labels>
-            <span>{first}</span>
-            <span>{last}</span>
-          </div>
         </div>
         <div data-index-table>
           <DataTable columns={columnsOf(card.index_table.columns)} rows={rows} />

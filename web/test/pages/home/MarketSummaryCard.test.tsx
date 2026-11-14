@@ -94,9 +94,16 @@ describe('MarketSummaryCard', () => {
     expect(host.querySelector('[role=img]')?.getAttribute('aria-label')).toBe(
       payload.card.chart.aria_text,
     )
-    for (const label of payload.card.chart.end_labels) {
-      expect(host.querySelector('[data-end-labels]')?.textContent).toContain(label)
-    }
+  })
+
+  it('prints the end dates once: no end-labels row, the chart axis carries every point label', async () => {
+    const payload = fixture('ok.json')
+    drawn.length = 0
+    await show(<MarketSummaryCard payload={payload} />)
+    expect(host.querySelector('[data-end-labels]')).toBeNull()
+    expect(drawn[drawn.length - 1]!.categories).toEqual(
+      payload.card.chart.points.map((point: { label: string }) => point.label),
+    )
   })
 
   it('shows the text of a Gap figure and invents no digit', async () => {
