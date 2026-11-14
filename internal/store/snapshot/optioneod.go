@@ -4,29 +4,81 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/shared"
 )
 
 var _ store.OpenOptionEodFunc = OpenOptionEod
 
-// insertOptionEodSQL appends one row; a retry of the same capture is a conflict on the primary key and adds no row.
+// optionEodQuoteColumns are the quote columns of obs.option_eod: a thinner row (one with a NULL where the stored row
+// has a value) never replaces a fuller one of the same rank 3 or 2.
+var optionEodQuoteColumns = []string{
+	"bid", "ask", "bid_size", "ask_size", "last", "volume", "open_interest", "oi_asof_date", "underlying_price",
+	"iv_bid_decimal", "iv_mid_decimal", "iv_ask_decimal", "iv_decimal", "delta", "gamma", "theta_per_calendar_day",
+	"vega_per_vol_point",
+}
+
+// optionEodComparedColumns are the non-key columns a rewrite is judged by: every column except the key and received_at.
+var optionEodComparedColumns = append([]string{
+	"underlying_id", "generation", "market_data_type", "event_ts", "status", "error_code", "currency", "snapshot_kind",
+	"terms_version_id",
+}, append(append([]string{}, optionEodQuoteColumns...), "underlying_ccy", "underlying_event_ts")...)
+
+// optionEodRank is the rank of a row of table t (docs/design/option-captures.md Decision 4): 3 a good session row,
+// 2 a status 1 row of another snapshot_kind (off_session, a delayed quote), 1 any other status (2 no quote, 5 error).
+func optionEodRank(t string) string {
+	return "(CASE WHEN " + t + ".status = 1 AND " + t + ".snapshot_kind = 'session' THEN 3 " +
+		"WHEN " + t + ".status = 1 THEN 2 ELSE 1 END)"
+}
+
+// optionEodGuard is the one WHERE of the upsert: a new row replaces the stored one only when it ranks higher, or when
+// it ranks the same, differs in a compared column and, for rank 3 and 2, has no quote column NULL where the stored row
+// has a value.
+func optionEodGuard() string {
+	var newV, oldV, thinner []string
+	for _, c := range optionEodComparedColumns {
+		newV = append(newV, "EXCLUDED."+c)
+		oldV = append(oldV, "option_eod."+c)
+	}
+	for _, c := range optionEodQuoteColumns {
+		thinner = append(thinner, "(EXCLUDED."+c+" IS NULL AND option_eod."+c+" IS NOT NULL)")
+	}
+	nr, or := optionEodRank("EXCLUDED"), optionEodRank("option_eod")
+	return nr + " > " + or + " OR (" + nr + " = " + or + " AND (" + strings.Join(newV, ", ") +
+		") IS DISTINCT FROM (" + strings.Join(oldV, ", ") + ") AND (" + nr + " = 1 OR NOT (" +
+		strings.Join(thinner, " OR ") + ")))"
+}
+
+func optionEodUpsertSQL() string {
+	sets := []string{"received_at = EXCLUDED.received_at"}
+	for _, c := range optionEodComparedColumns {
+		sets = append(sets, c+" = EXCLUDED."+c)
+	}
+	return `INSERT INTO obs.option_eod (session_day, capture_id, instrument_id, underlying_id, ` +
+		`generation, market_data_type, received_at, event_ts, status, error_code, currency, snapshot_kind, ` +
+		`terms_version_id, bid, ask, bid_size, ask_size, last, volume, open_interest, oi_asof_date, ` +
+		`underlying_price, underlying_ccy, underlying_event_ts, iv_bid_decimal, iv_mid_decimal, iv_ask_decimal, ` +
+		`iv_decimal, delta, gamma, theta_per_calendar_day, vega_per_vol_point) ` +
+		`VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, ` +
+		`$21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32) ` +
+		`ON CONFLICT (session_day, capture_id, instrument_id) DO UPDATE SET ` + strings.Join(sets, ", ") +
+		` WHERE ` + optionEodGuard()
+}
+
+// insertOptionEodSQL upserts one row; a re-run of the same capture meets the key and, when the guard allows, replaces
+// the stored row (see optionEodGuard).
 // Arguments, in order: session_day, capture_id, instrument_id, underlying_id, generation, market_data_type,
 // received_at, event_ts, status, error_code, currency, snapshot_kind, terms_version_id, bid, ask, bid_size,
 // ask_size, last, volume, open_interest, oi_asof_date, underlying_price, underlying_ccy, underlying_event_ts,
 // iv_bid_decimal, iv_mid_decimal, iv_ask_decimal, iv_decimal, delta, gamma, theta_per_calendar_day,
 // vega_per_vol_point.
-const insertOptionEodSQL = `INSERT INTO obs.option_eod (session_day, capture_id, instrument_id, underlying_id, ` +
-	`generation, market_data_type, received_at, event_ts, status, error_code, currency, snapshot_kind, ` +
-	`terms_version_id, bid, ask, bid_size, ask_size, last, volume, open_interest, oi_asof_date, ` +
-	`underlying_price, underlying_ccy, underlying_event_ts, iv_bid_decimal, iv_mid_decimal, iv_ask_decimal, ` +
-	`iv_decimal, delta, gamma, theta_per_calendar_day, vega_per_vol_point) ` +
-	`VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, ` +
-	`$21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32) ON CONFLICT DO NOTHING`
+var insertOptionEodSQL = optionEodUpsertSQL()
 
 // selectOptionEodSQL reads the view of the table. Arguments: underlying_id, first day, last day.
 const selectOptionEodSQL = `SELECT session_day, capture_id::text, instrument_id, underlying_id, generation, ` +
@@ -50,9 +102,10 @@ func OpenOptionEod(ctx context.Context, dsn string) (store.OptionEodStore, error
 	return &optionEodStore{db: db}, nil
 }
 
-// InsertOptionEod appends the rows in one transaction; a row whose key (session_day, capture_id, instrument_id)
-// exists is left as it is. A -1, NaN or infinity in any numeric column is stored as NULL; the status of the row
-// and the other columns are kept. An empty input makes no database call.
+// InsertOptionEod upserts the rows in one transaction; a row whose key (session_day, capture_id, instrument_id)
+// exists replaces the stored one only when the guard allows (see optionEodGuard). After the capture rows, each usable
+// row (status 1, snapshot_kind session) writes obs.option_day in the same transaction. A -1, NaN or infinity in any numeric column is stored as
+// NULL; the status of the row and the other columns are kept. An empty input makes no database call.
 func (s *optionEodStore) InsertOptionEod(ctx context.Context, rows []contracts.OptionEod) error {
 	if len(rows) == 0 {
 		return nil
@@ -60,6 +113,14 @@ func (s *optionEodStore) InsertOptionEod(ctx context.Context, rows []contracts.O
 	err := s.db.InTx(ctx, func(tx execer) error {
 		for _, r := range rows {
 			if err := tx.Exec(ctx, insertOptionEodSQL, optionEodArgs(r)...); err != nil {
+				return err
+			}
+		}
+		for _, r := range rows {
+			if !optionDayUsable(r) {
+				continue
+			}
+			if err := tx.Exec(ctx, shared.UpsertDaySQL, optionDayArgs(r)...); err != nil {
 				return err
 			}
 		}

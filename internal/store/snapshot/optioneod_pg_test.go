@@ -66,7 +66,7 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
 		t.Fatal(err)
 	}
-	for _, r := range []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages", "ot_w_option_eod"} {
+	for _, r := range []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages", "ot_w_option_eod", "ot_w_option_open"} {
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
@@ -82,8 +82,15 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 }
 
 // newDatabase creates a database with a random name, the Timescale extension and the roles, applies 0002, 0003
-// and 0006 there, and drops the database in t.Cleanup. It returns its name.
+// and 0006 there, a master.instrument stub (ids 1..100 and those of the fixture), and 0029, 0047 and 0049,
+// and drops the database in t.Cleanup. It returns its name.
 func newDatabase(t *testing.T) string {
+	t.Helper()
+	return newDatabaseAt(t, true)
+}
+
+// newDatabaseAt is newDatabase; captures false leaves out 0029, 0047 and 0049, so the database holds the earlier migrations only.
+func newDatabaseAt(t *testing.T, captures bool) string {
 	t.Helper()
 	ctx := context.Background()
 	admin, err := pgx.Connect(ctx, connURL(t, pgEnv("PGDATABASE"), ""))
@@ -121,6 +128,17 @@ func newDatabase(t *testing.T) string {
 	}
 	for _, f := range []string{"0002_series.sql", "0003_ops_ledger.sql", "0006_option_eod.sql"} {
 		applyMigration(t, connURL(t, name, ""), f)
+	}
+	prep := connectAs(t, name, "")
+	if _, err := prep.Exec(ctx, `CREATE SCHEMA master; CREATE TABLE master.instrument (instrument_id bigint PRIMARY KEY); `+
+		`INSERT INTO master.instrument SELECT generate_series(1, 100); `+
+		`INSERT INTO master.instrument VALUES (800001), (900001), (900002), (900003)`); err != nil {
+		t.Fatalf("master stub: %v", err)
+	}
+	if captures {
+		for _, f := range []string{"0029_option_open.sql", "0047_option_captures.sql", "0049_option_day_select.sql"} {
+			applyMigration(t, connURL(t, name, ""), f)
+		}
 	}
 	for _, r := range []string{"ot_runner", "ot_ro_pages", "ot_w_option_eod"} {
 		if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO `+r); err != nil {
@@ -312,7 +330,7 @@ func TestOptionEodRetryPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := readAll(t, r, []contracts.OptionEod{first})
-	assertEqualRows(t, []contracts.OptionEod{first}, got)
+	assertEqualRows(t, []contracts.OptionEod{other}, got)
 
 	second := other
 	second.CaptureID = "00000000-0000-4000-8000-0000000000ff"
@@ -367,14 +385,17 @@ func TestOptionEodCompressPG(t *testing.T) {
 
 func TestOptionEodGrantsPG(t *testing.T) {
 	t.Parallel()
-	name := newDatabase(t)
-	rows := loadFixture(t)
-	if err := openAs(t, name, "ot_w_option_eod").InsertOptionEod(context.Background(), rows); err != nil {
+	// This database applies the earlier migrations only (0006 alone): the table-level UPDATE of 0047 would allow a
+	// key-column UPDATE, and the grants of 0047 are checked by TestMig47GrantsPG in internal/store/setup/migrate_0047_pg_test.go.
+	name := newDatabaseAt(t, false)
+	if _, err := connectAs(t, name, "").Exec(context.Background(), `INSERT INTO obs.option_eod (session_day, capture_id, `+
+		`instrument_id, underlying_id, generation, market_data_type, received_at, status, currency, snapshot_kind, `+
+		`underlying_ccy) VALUES ('2026-11-06', gen_random_uuid(), 1, 1, 1, 1, now(), 1, 'USD', 'eod', 'USD')`); err != nil {
 		t.Fatal(err)
 	}
+	const wantRows = 1
 	w := connectAs(t, name, "ot_w_option_eod")
-	// DELETE, TRUNCATE and an UPDATE of a key column are refused (this database applies the earlier migrations only, 0006
-	// alone; the table-level grants of 0047 are checked by TestMig47GrantsPG in internal/store/setup/migrate_0047_pg_test.go).
+	// DELETE, TRUNCATE and an UPDATE of a key column are refused.
 	mustFail(t, w, `UPDATE obs.option_eod SET capture_id = gen_random_uuid()`)
 	mustFail(t, w, `UPDATE obs.option_eod SET instrument_id = instrument_id + 1`)
 	mustFail(t, w, `DELETE FROM obs.option_eod`)
@@ -386,8 +407,8 @@ func TestOptionEodGrantsPG(t *testing.T) {
 	if err := p.QueryRow(context.Background(), `SELECT count(*) FROM rd.option_eod_r1`).Scan(&n); err != nil {
 		t.Fatalf("view not readable: %v", err)
 	}
-	if n != len(rows) {
-		t.Fatalf("view has %d rows, want %d", n, len(rows))
+	if n != wantRows {
+		t.Fatalf("view has %d rows, want %d", n, wantRows)
 	}
 	rn := connectAs(t, name, "ot_runner")
 	mustFail(t, rn, `UPDATE obs.option_eod SET bid = 1`)
@@ -414,4 +435,185 @@ func TestOptionEodChecksPG(t *testing.T) {
 func pgEnv(key string) string {
 	v, _ := os.LookupEnv(key)
 	return v
+}
+
+const (
+	capA = "00000000-0000-4000-8000-0000000000a1"
+	capB = "00000000-0000-4000-8000-0000000000a2"
+)
+
+// sessionRow is a good session row of instrument 9 under capture, received m minutes after baseRow, with bid b.
+func sessionRow(t *testing.T, capture string, m int, bid *float64) contracts.OptionEod {
+	t.Helper()
+	r := baseRow(t)
+	r.CaptureID, r.Status, r.SnapshotKind, r.ErrorCode, r.TermsVersionID = capture, 1, "session", nil, nil
+	r.ReceivedAt = r.ReceivedAt.Add(time.Duration(m) * time.Minute)
+	r.Bid = bid
+	return r
+}
+
+// storedEod is what obs.option_eod holds for one key.
+type storedEod struct {
+	bid    *string
+	status int
+	kind   string
+	xmin   string
+}
+
+func readStoredEod(t *testing.T, name, capture string) storedEod {
+	t.Helper()
+	var s storedEod
+	err := connectAs(t, name, "").QueryRow(context.Background(), `SELECT bid::text, status, snapshot_kind, xmin::text `+
+		`FROM obs.option_eod WHERE capture_id = $1::uuid AND instrument_id = 9`, capture).Scan(&s.bid, &s.status, &s.kind, &s.xmin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+func insertEod(t *testing.T, name string, rows ...contracts.OptionEod) {
+	t.Helper()
+	if err := openAs(t, name, "ot_w_option_eod").InsertOptionEod(context.Background(), rows); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func wantBid(t *testing.T, got storedEod, want string) {
+	t.Helper()
+	if got.bid == nil || *got.bid != want {
+		t.Fatalf("stored bid %v, want %s", got.bid, want)
+	}
+}
+
+func TestOptionEodRerunReplacesRows(t *testing.T) {
+	t.Parallel()
+	name := newDatabase(t)
+	insertEod(t, name, sessionRow(t, capA, 0, fp(1.25)))
+	insertEod(t, name, sessionRow(t, capA, 1, fp(1.5)))
+	got := readStoredEod(t, name, capA)
+	wantBid(t, got, "1.5")
+	var n int
+	if err := connectAs(t, name, "").QueryRow(context.Background(), `SELECT count(*) FROM obs.option_eod`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("rows %d, err %v", n, err)
+	}
+	// An equal row (only received_at differs) is not rewritten.
+	insertEod(t, name, sessionRow(t, capA, 2, fp(1.5)))
+	if again := readStoredEod(t, name, capA); again.xmin != got.xmin {
+		t.Fatalf("xmin moved from %s to %s: an equal row was rewritten", got.xmin, again.xmin)
+	}
+}
+
+func TestOptionEodForcedAfterCloseKeepsSessionRow(t *testing.T) {
+	t.Parallel()
+	name := newDatabase(t)
+	insertEod(t, name, sessionRow(t, capA, 0, fp(1.25)))
+	late := sessionRow(t, capA, 5, fp(2.5))
+	late.SnapshotKind = "off_session"
+	insertEod(t, name, late)
+	got := readStoredEod(t, name, capA)
+	wantBid(t, got, "1.25")
+	if got.kind != "session" {
+		t.Fatalf("kind %s", got.kind)
+	}
+}
+
+func TestOptionEodTimeoutKeepsStoredQuote(t *testing.T) {
+	t.Parallel()
+	for _, status := range []int{5, 2} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			t.Parallel()
+			name := newDatabase(t)
+			insertEod(t, name, sessionRow(t, capA, 0, fp(1.25)))
+			bad := sessionRow(t, capA, 5, nil)
+			bad.Status = status
+			insertEod(t, name, bad)
+			got := readStoredEod(t, name, capA)
+			wantBid(t, got, "1.25")
+			if got.status != 1 {
+				t.Fatalf("status %d", got.status)
+			}
+			if d := readDay(t, name, 9); d.bid == nil || *d.bid != "1.25" || d.status != 1 {
+				t.Fatalf("day row %+v", d)
+			}
+		})
+	}
+	// A status 5 row with no stored row writes no day row. Its own subtest: the parent holds no database, because
+	// newDatabase keeps an advisory lock that the parallel subtests above need.
+	t.Run("no stored row", func(t *testing.T) {
+		t.Parallel()
+		name := newDatabase(t)
+		bad := sessionRow(t, capA, 0, nil)
+		bad.Status = 5
+		insertEod(t, name, bad)
+		var n int
+		if err := connectAs(t, name, "").QueryRow(context.Background(), `SELECT count(*) FROM obs.option_day`).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("day rows %d, err %v", n, err)
+		}
+	})
+}
+
+func TestOptionEodFullerSessionRowKept(t *testing.T) {
+	t.Parallel()
+	name := newDatabase(t)
+	insertEod(t, name, sessionRow(t, capA, 0, fp(1.25)))
+	thin := sessionRow(t, capA, 5, nil)
+	thin.Ask = fp(7)
+	insertEod(t, name, thin)
+	wantBid(t, readStoredEod(t, name, capA), "1.25")
+}
+
+func TestOptionEodOffSessionOverErrorRows(t *testing.T) {
+	t.Parallel()
+	name := newDatabase(t)
+	off := sessionRow(t, capA, 0, fp(1.25))
+	off.SnapshotKind = "off_session"
+	insertEod(t, name, off)
+	for _, status := range []int{2, 5} {
+		bad := sessionRow(t, capA, 5, nil)
+		bad.Status = status
+		insertEod(t, name, bad)
+		got := readStoredEod(t, name, capA)
+		wantBid(t, got, "1.25")
+		if got.status != 1 || got.kind != "off_session" {
+			t.Fatalf("after status %d: %+v", status, got)
+		}
+	}
+	insertEod(t, name, sessionRow(t, capA, 10, fp(1.75)))
+	got := readStoredEod(t, name, capA)
+	wantBid(t, got, "1.75")
+	if got.kind != "session" {
+		t.Fatalf("kind %s", got.kind)
+	}
+}
+
+// TestOptionEodConflictOnCompressedChunk records what an upsert into a compressed chunk does (Decision 11): it logs
+// the outcome and asserts nothing about it.
+func TestOptionEodConflictOnCompressedChunk(t *testing.T) {
+	t.Parallel()
+	name := newDatabase(t)
+	insertEod(t, name, sessionRow(t, capA, 0, fp(1.25)))
+	ctx := context.Background()
+	admin := connectAs(t, name, "")
+	rs, err := admin.Query(ctx, `SELECT c::text FROM show_chunks('obs.option_eod') AS c`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var chunks []string
+	for rs.Next() {
+		var c string
+		if err := rs.Scan(&c); err != nil {
+			t.Fatal(err)
+		}
+		chunks = append(chunks, c)
+	}
+	rs.Close()
+	for _, c := range chunks {
+		if _, err := admin.Exec(ctx, `SELECT compress_chunk($1::regclass)`, c); err != nil {
+			t.Fatalf("compress %s: %v", c, err)
+		}
+	}
+	err = openAs(t, name, "ot_w_option_eod").InsertOptionEod(ctx, []contracts.OptionEod{sessionRow(t, capA, 1, fp(1.5))})
+	var bid *string
+	qerr := admin.QueryRow(ctx, `SELECT bid::text FROM obs.option_eod WHERE capture_id = $1::uuid`, capA).Scan(&bid)
+	t.Logf("upsert into a compressed chunk: error %v; read error %v; bid %v", err, qerr, bid)
 }
