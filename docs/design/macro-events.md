@@ -96,7 +96,7 @@ Acceptance:
 ### 2 macro-events-job
 
 Module: jobs. Size: L.
-Order: after macro-events-store.
+Order: after 1.
 Files: `internal/jobs/macroevents/job.toml`, `internal/jobs/macroevents/types.go`, `internal/jobs/macroevents/plan.go`, `internal/jobs/macroevents/run.go`, `internal/jobs/macroevents/release.go`, `internal/jobs/macroevents/hand.go`, `internal/jobs/macroevents/hand_events.toml`, `internal/jobs/macroevents/run_test.go`, `internal/jobs/macroevents/plan_test.go`, `internal/jobs/macroevents/release_test.go`, `internal/jobs/macroevents/hand_test.go`, `internal/jobs/macroevents/testdata/release_dates.json`, `internal/jobs/macroevents/testdata/release_dates_empty.json`, `internal/jobs/macroevents/testdata/hand_bad_no_url.toml`, `docs/contracts/jobs/macro_events.md`
 Design: docs/design/macro-events.md#Decisions
 Acceptance:
@@ -111,7 +111,7 @@ Acceptance:
 ### 3 macro-events-page
 
 Module: pages. Size: M.
-Order: after macro-events-store.
+Order: after 1.
 Files: `internal/pages/macro_page/builder.go`, `internal/pages/macro_page/events.go`, `internal/pages/macro_page/events_test.go`, `internal/pages/macro_page/builder_test.go`, `cmd/ot/testdata/macro_page_demo.golden.json`
 Design: docs/design/macro-events.md#Decisions (Decisions 2, 3, 8 and 9)
 `builder.go` is 276 lines; the logic goes in `events.go`.
@@ -125,7 +125,7 @@ Acceptance:
 ### 4 macro-events-wire
 
 Module: ot. Size: M.
-Order: after macro-events-job, macro-events-page.
+Order: after 2, 3.
 Files: `cmd/ot/wire_macro_events.go`, `cmd/ot/macro_events_page.go`, `cmd/ot/macro_events_wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/jobconsole_jobs.go`, `cmd/ot/jobconsole_jobs_test.go`, `cmd/ot/jobreg_test.go`
 Design: docs/design/macro-events.md#Decisions (Decision 11)
 `cmd/ot/wire.go` (796 lines) is not edited. Another open design (strategy-risk, PR 2321) adds `book_risk` to the same table, so every result below is stated relative to main at the time this entry is registered, not as a fixed number: whichever entry lands second states the count and lists of main as they stand.
