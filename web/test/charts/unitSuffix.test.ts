@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { unitSuffix } from '@/charts/unitSuffix'
+import { unitPrefix, unitSuffix } from '@/charts/unitSuffix'
 
 describe('unitSuffix', () => {
   it.each([
@@ -25,5 +25,17 @@ describe('unitSuffix', () => {
   it('never returns an id for an inherited object key', () => {
     expect(unitSuffix('constructor')).toBe('')
     expect(unitSuffix('toString')).toBe('')
+  })
+})
+
+describe('unitPrefix', () => {
+  it.each([
+    ['usd', '$'],
+    ['usd_signed', '$'],
+    ['percent', ''],
+    ['no_such_unit', ''],
+    ['constructor', ''],
+  ])('%s gives %j', (id, prefix) => {
+    expect(unitPrefix(id)).toBe(prefix)
   })
 })

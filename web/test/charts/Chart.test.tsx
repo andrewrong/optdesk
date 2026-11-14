@@ -107,6 +107,14 @@ describe('Chart', () => {
     expect(host.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick')).toHaveLength(5)
   })
 
+  it('writes a money tick with the dollar sign after the minus', async () => {
+    yAxes.length = 0
+    await show({ ...SPEC, unit: 'usd_signed' })
+    const format = yAxes[yAxes.length - 1]!.tickFormatter as (tick: number) => string
+    expect(format(5400)).toBe('$5400')
+    expect(format(-300)).toBe('-$300')
+  })
+
   it('keeps the first and last points inside the plot with a padding on the x axis', async () => {
     xAxes.length = 0
     await show(SPEC)
