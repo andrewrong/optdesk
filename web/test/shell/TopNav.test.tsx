@@ -86,6 +86,16 @@ describe('TopNav', () => {
     expect(marked.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['Job console', '/job-console']])
   })
 
+  it('the desktop bar wraps onto further rows and holds the Job console link', async () => {
+    await showAt('/home')
+    const bar = host.querySelector('nav > div')
+    expect(bar?.className).toContain('flex-wrap')
+    expect(bar?.className).toContain('gap-y-1')
+    const job = links().find((a) => a.textContent === 'Job console')
+    expect(job).toBeDefined()
+    expect(bar?.contains(job ?? null)).toBe(true)
+  })
+
   it('TopNav lists Price lines', async () => {
     await showAt('/plan/price-lines')
     const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')

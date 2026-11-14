@@ -80,7 +80,7 @@ export function TopNav() {
           </ul>
         </SheetContent>
       </Sheet>
-      <div className="hidden md:flex gap-1">
+      <div className="hidden md:flex flex-wrap gap-1 gap-y-1">
         {ITEMS.map(({ label, path, prefix, icon: Icon }) => {
           const active = isActive(path, prefix)
           return (
