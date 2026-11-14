@@ -158,6 +158,16 @@ func (f fxFakeTerms) OptionTerms(_ context.Context, ids []int64) ([]store.Option
 	return out, nil
 }
 
+// fxFakeBars returns one trades bar for every instrument id.
+type fxFakeBars struct{}
+
+func (fxFakeBars) PriceBars(_ context.Context, _ int64, basis string, from, to contracts.Day) ([]contracts.PriceBar, error) {
+	if basis != "trades" || from > to {
+		return nil, nil
+	}
+	return []contracts.PriceBar{{Close: "10"}}, nil
+}
+
 type fxFakeQuotes []contracts.QuoteSnapshot
 
 func (f fxFakeQuotes) QuoteSnapshots(_ context.Context, id int64, _, _ contracts.Day) ([]contracts.QuoteSnapshot, error) {
@@ -211,6 +221,7 @@ func fixtureStores(t *testing.T, in fixtureInput) (view fxFakeView, inputs compa
 	}
 	return view, companiesInputs{
 		Facts: fxFakeFacts(in.Facts), Series: fxFakePoints(in.Series), Catalog: catalog, Names: names, Eod: eod, Terms: terms, Quotes: quotes,
+		Bars: fxFakeBars{},
 	}
 }
 

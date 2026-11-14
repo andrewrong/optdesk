@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 // Design: docs/design/valuation.md#valuation-wire-us (Decision 13).
@@ -37,6 +38,7 @@ type companiesInputs struct {
 	Eod     store.OptionEodReader
 	Terms   store.OptionTermsReader
 	Quotes  store.QuoteSnapshotReader
+	Bars    bar.PriceBarReader
 }
 
 // quoteLookbackDays is how far before the page day a quote or an option_eod row is looked for.
