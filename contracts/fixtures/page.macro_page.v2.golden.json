@@ -1,0 +1,208 @@
+{
+  "build_id": "build-demo-0001",
+  "data_times": [
+    {
+      "data_time": "2026-10-23T00:00:00+08:00",
+      "source": "macro_ease"
+    }
+  ],
+  "ease": {
+    "aria_text": "Ease 56, neutral, −0.2 from last week; fixed scale 0 to 100, neutral band 33.5 to 66.5.",
+    "figure": {
+      "text": "56",
+      "unit": "index_points",
+      "value": 56.0
+    },
+    "marker_percent": {
+      "text": "56",
+      "unit": "percent_of_track",
+      "value": 56.0
+    },
+    "neutral_band": {
+      "high": {
+        "text": "66.5%",
+        "unit": "percent_of_track",
+        "value": 66.5
+      },
+      "low": {
+        "text": "33.5%",
+        "unit": "percent_of_track",
+        "value": 33.5
+      }
+    },
+    "reading_text": "Neutral, −0.2 from last week.",
+    "ticks": [
+      "0",
+      "25",
+      "50",
+      "75",
+      "100"
+    ],
+    "week_change": {
+      "text": "−0.2",
+      "unit": "index_points",
+      "value": -0.2
+    }
+  },
+  "ease_title": "Ease",
+  "events": [
+    {
+      "date": "2026-10-28",
+      "name_text": "US CPI",
+      "previous": {
+        "reason": "no_data",
+        "text": "no data yet"
+      },
+      "when_text": "Wed 10-28"
+    },
+    {
+      "date": "2026-11-06",
+      "name_text": "US nonfarm payrolls",
+      "previous": {
+        "reason": "no_data",
+        "text": "no data yet"
+      },
+      "when_text": "Fri 11-06"
+    }
+  ],
+  "events_title": "This week and next",
+  "gaps": [],
+  "generated_at": "2026-10-26T09:30:00+08:00",
+  "indicators": [
+    {
+      "detail_href": "/indicator/cpiaucsl",
+      "label": "On time",
+      "latest": {
+        "text": "2.9%",
+        "unit": "percent",
+        "value": 2.9
+      },
+      "name": "US CPI year on year",
+      "source_text": "Demo source · 10-23",
+      "status": "good"
+    },
+    {
+      "detail_href": null,
+      "label": "n/a",
+      "latest": {
+        "reason": "no_data",
+        "text": "data source not connected"
+      },
+      "name": "China PMI",
+      "source_text": "no source yet",
+      "status": "missing"
+    },
+    {
+      "detail_href": "/indicator/unrate",
+      "label": "Late",
+      "latest": {
+        "text": "4.1%",
+        "unit": "percent",
+        "value": 4.1
+      },
+      "name": "US unemployment rate",
+      "source_text": "Demo source · 09-04",
+      "status": "late"
+    }
+  ],
+  "indicators_title": "Indicators and timeliness",
+  "liquidity": {
+    "background_text": "Background only: nothing here changes a put decision.",
+    "lines": [
+      {
+        "key": "reserves",
+        "label": "Reserves",
+        "sentence": "Bank reserves are $3.0tn, 4 weeks −$40bn (2026-10-21).",
+        "source_text": "FRED WRESBAL, RRPONTSYD"
+      },
+      {
+        "key": "money_market",
+        "label": "Money market",
+        "sentence": "SOFR is 2.1 bp above IORB; the reverse repo facility holds $50bn (2026-10-23).",
+        "source_text": "FRED SOFR, IORB, RRPONTSYD"
+      },
+      {
+        "key": "credit",
+        "label": "Credit",
+        "sentence": "High-yield spread is 3.1%, above 41% of its stored days (2026-10-22).",
+        "source_text": "FRED BAMLH0A0HYM2"
+      },
+      {
+        "key": "conditions",
+        "label": "Conditions",
+        "sentence": "The St. Louis stress index is −0.6, below its zero line (2026-10-16).",
+        "source_text": "FRED STLFSI4"
+      }
+    ],
+    "taps": [
+      {
+        "key": "stlfsi",
+        "label": "Financial stress index",
+        "note": null,
+        "rows": [
+          {
+            "data_day": "2026-10-16",
+            "label": "STLFSI4",
+            "text": "−0.6"
+          }
+        ]
+      },
+      {
+        "key": "reserves_over_assets",
+        "label": "Reserves over bank assets",
+        "note": null,
+        "rows": [
+          {
+            "data_day": "2026-10-21",
+            "label": "WRESBAL over TLAACBW027SBOG",
+            "text": "13.20%"
+          }
+        ]
+      },
+      {
+        "key": "discount_window",
+        "label": "Discount window",
+        "note": null,
+        "rows": [
+          {
+            "data_day": "2026-10-21",
+            "label": "Primary credit",
+            "text": "$2.0bn"
+          }
+        ]
+      },
+      {
+        "key": "net_liquidity",
+        "label": "Net liquidity",
+        "note": "Practitioner construct, no evidence it leads prices.",
+        "rows": [
+          {
+            "data_day": "2026-10-21",
+            "label": "WALCL minus WDTGAL minus RRPONTSYD",
+            "text": "$5.6tn"
+          }
+        ]
+      }
+    ]
+  },
+  "liquidity_title": "Funding and credit background",
+  "notes": [
+    "No gaps.",
+    "All data is fictional demo data, not for trading decisions.",
+    "Dates come from the FRED release calendar and central bank schedules; dates only, no release times.",
+    "The previous value is the latest stored period of the series, with its month; one that is not stored or has no series is marked no data yet."
+  ],
+  "notes_title": "Notes",
+  "run_id": "run-demo-0001",
+  "run_status": "partial",
+  "schema": "macro_page",
+  "schema_version": 2,
+  "scope": "macro-page",
+  "sentence": "Watch US CPI this week and US nonfarm payrolls next week.",
+  "stale": {
+    "data_time": "2026-10-23T00:00:00+08:00",
+    "stale_after": "2026-10-27T09:30:00+08:00",
+    "text": "Data day 10-23"
+  },
+  "title": "Macro"
+}
