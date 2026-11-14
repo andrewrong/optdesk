@@ -11,7 +11,7 @@ import type { Payload } from '@/types/job_console'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const SCROLLBAR = ['overflow-x-auto', '[&::-webkit-scrollbar]:h-2', '[&::-webkit-scrollbar-thumb]:bg-border']
+const SCROLLBAR = ['overflow-x-auto', '[&::-webkit-scrollbar]:h-2', '[&::-webkit-scrollbar-thumb]:rounded-full', '[&::-webkit-scrollbar-thumb]:bg-border']
 
 let root: Root | null = null
 let host: HTMLElement | null = null
@@ -51,6 +51,22 @@ describe('table container scrollbar', () => {
     const box = h.querySelector('[data-slot="table-container"]')
     expectScrollbar(box)
     expect(box?.querySelector('table')).not.toBeNull()
+  })
+
+  it('container sets a scrollbar style that Firefox honours (thin width, border-colour thumb)', async () => {
+    const h = await show(
+      <Table>
+        <TableBody>
+          <TableRow>
+            <TableCell>x</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    )
+    const box = h.querySelector('[data-slot="table-container"]')!
+    const cls = [...box.classList]
+    expect(cls.some((c) => c.includes('scrollbar-width') || c === 'scrollbar-thin')).toBe(true)
+    expect(cls.some((c) => c.includes('scrollbar-color'))).toBe(true)
   })
 
   it('DataTable renders inside that container', async () => {
