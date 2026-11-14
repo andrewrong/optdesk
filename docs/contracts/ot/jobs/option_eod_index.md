@@ -18,6 +18,10 @@ Family file: `cmd/ot/wire_optioneodindex.go`; registered with `registerJob` in a
 
 The family takes the constructor `optioneod.NewOptionEodIndexFunc` as an argument and is given `optioneod.NewIndex`; the job is wrapped with the reason writer as `option_eod` is.
 
+## Forced run
+
+A forced run (`ot backfill --force`, or the force box of the job console) replaces the rows of today's slot: the store entries of `docs/design/option-captures.md` (Decision 4) write the new rows over the stored ones. It is offered only for today; a past day is refused as before. It never replaces a stored good quote with a worse one: a later row that is an error, a timeout or off-session leaves the stored quote in place.
+
 ## Version
 
 v1: wired at order 75.

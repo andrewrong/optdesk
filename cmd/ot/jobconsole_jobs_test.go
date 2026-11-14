@@ -59,7 +59,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesListsMacroEvents(t *testing.T) {
+func TestForceYesAreFredFundamentalsComputeCandidatesBookRiskEarningsDividendOptionEodThreeCalendarFxBarsMacro(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -68,7 +68,7 @@ func TestForceYesListsMacroEvents(t *testing.T) {
 		}
 	}
 	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "book_risk", "earnings_refresh",
-		"dividend_capture", "calendar_refresh", "fx_refresh", "bars_refresh", "macro_events"}) {
+		"dividend_capture", "option_eod", "option_eod_jp", "option_eod_index", "calendar_refresh", "fx_refresh", "bars_refresh", "macro_events"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
@@ -89,8 +89,29 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 14 {
-		t.Fatalf("%d force-no jobs, want 14", n)
+	if n != 11 {
+		t.Fatalf("%d force-no jobs, want 11", n)
+	}
+}
+
+func TestOptionEodRowsForce(t *testing.T) {
+	t.Parallel()
+	byID := map[string]jobRow{}
+	for _, r := range jobTable {
+		byID[r.ID] = r
+	}
+	for _, id := range []string{"option_eod", "option_eod_jp", "option_eod_index"} {
+		r := byID[id]
+		if !r.runnable() || r.Kind != kindTodayOnly || !r.Force {
+			t.Errorf("%s: runnable %v kind %v force %v", id, r.runnable(), r.Kind, r.Force)
+		}
+		if r.ForceReason != "" || r.ForceText != "" {
+			t.Errorf("%s carries a force reason it needs not: %q %q", id, r.ForceReason, r.ForceText)
+		}
+	}
+	q := byID["quote_snapshot"]
+	if !q.runnable() || q.Force || q.ForceReason != "moment_mix" || q.ForceText == "" {
+		t.Errorf("quote_snapshot: %+v", q)
 	}
 }
 
