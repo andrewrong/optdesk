@@ -1,6 +1,8 @@
-// Package macro_page builds the page.macro_page.v1 view model from stored series points.
-// The ease and the events are named gaps, so the page is always partial. It only formats
-// stored values; it computes nothing, reads no clock and makes no request.
+// Package macro_page builds the page.macro_page.v1 view model from stored series points, and
+// page.macro_page.v2 when its Config has a Liquidity function. The ease and the events are
+// named gaps, so the page is always partial. The page formats stored values and the figures
+// its Liquidity function returns and computes nothing itself (rounding for display aside); it
+// reads no clock and makes no request.
 package macro_page
 
 import (
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/macroevent"
@@ -72,6 +75,13 @@ type Config struct {
 	// With it, Build lists the stored events of the next 60 days and the gaps in them (events.go); an
 	// error of Events is an error of Build, never a gap.
 	Events macroevent.Reader
+	// Liquidity is optional. Nil keeps the page as it is (page.macro_page.v1, no liquidity field, no series read
+	// for the block). With it, Build reads the fourteen series of liquidityapi.Input, calls it once and writes
+	// page.macro_page.v2 with the funding and credit block (liquidity.go). LiquidityParams and Net go into its
+	// Input. An error of a read is an error of Build, never a gap.
+	Liquidity       liquidityapi.Func
+	LiquidityParams liquidityapi.Params
+	Net             liquidityapi.NetFunc
 }
 
 type gap struct {
@@ -126,6 +136,9 @@ type viewModel struct {
 	Notes           []string       `json:"notes"`
 	Gaps            []gap          `json:"gaps"`
 	Stale           staleLabel     `json:"stale"`
+	// Written only with a Liquidity function (version 2).
+	LiquidityTitle string          `json:"liquidity_title,omitempty"`
+	Liquidity      *liquidityBlock `json:"liquidity,omitempty"`
 }
 
 func validate(c Config) error {
@@ -151,7 +164,7 @@ func validate(c Config) error {
 	return nil
 }
 
-// Build returns the page.macro_page.v1 JSON for day, read from r. The page is partial: the
+// Build returns the page.macro_page.v1 JSON (v2 with c.Liquidity) for day, read from r. The page is partial: the
 // events are a no_data gap, and so is the ease unless c.Read returns a stored macro.ease
 // reading with a value. generatedAt is written in c.Zone.
 func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Day, generatedAt time.Time) ([]byte, error) {
@@ -207,6 +220,9 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		}
 	}
 	vm.Gaps = append(vm.Gaps, eventGaps...)
+	if err := withLiquidity(ctx, r, c, d, &vm); err != nil {
+		return nil, err
+	}
 	var oldest *time.Time
 	for _, ind := range c.Indicators {
 		rows, err := r.SeriesPoints(ctx, ind.SeriesID, from, day)
@@ -224,16 +240,21 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 			}
 		}
 	}
+	vm.Stale = staleOf(d, oldest, c.Zone)
+	return json.Marshal(vm)
+}
+
+// staleOf is the stale label: the oldest latest observation of the indicators, else the page day.
+func staleOf(d time.Time, oldest *time.Time, zone *time.Location) staleLabel {
 	base, text := d, "No data day"
 	if oldest != nil {
 		base, text = *oldest, "Data day "+oldest.Format("01-02")
 	}
-	vm.Stale = staleLabel{
-		DataTime:   midnight(base, c.Zone),
-		StaleAfter: time.Date(base.Year(), base.Month(), base.Day()+freshnessLimitDays, 9, 30, 0, 0, c.Zone).Format(timeLayout),
+	return staleLabel{
+		DataTime:   midnight(base, zone),
+		StaleAfter: time.Date(base.Year(), base.Month(), base.Day()+freshnessLimitDays, 9, 30, 0, 0, zone).Format(timeLayout),
 		Text:       text,
 	}
-	return json.Marshal(vm)
 }
 
 func midnight(t time.Time, zone *time.Location) string {
