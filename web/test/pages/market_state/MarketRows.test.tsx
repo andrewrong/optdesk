@@ -1,4 +1,4 @@
-// A value figure is followed by the display suffix of its unit, never by the unit id; an empty suffix prints nothing.
+// A value figure prints its payload text alone: the text already carries its unit, so nothing follows it.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -35,10 +35,11 @@ async function figureOf(unit: string): Promise<{ text: string; span: Element | n
 }
 
 describe('MarketRows figure unit', () => {
-  it('prints % after the figure of a percent unit, never the id', async () => {
+  it('prints the figure text alone for a percent unit, with no suffix or id after it', async () => {
     const { text, span } = await figureOf('percent')
-    expect(span?.textContent).toBe('%')
-    expect(text).toContain('7.2%')
+    expect(span).toBeNull()
+    expect(text).toContain('7.2')
+    expect(text).not.toContain('7.2%')
     expect(text).not.toContain('percent')
   })
 

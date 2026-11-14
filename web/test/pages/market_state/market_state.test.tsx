@@ -318,7 +318,7 @@ describe('market state page', () => {
     const values = rows.map((r) => r.gap_63.value)
     const negative = rows.find((r) => r.gap_63.value < 0)!
     const positive = rows.find((r) => r.gap_63.value > 0)!
-    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => Number(t.textContent))
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => parseFloat(t.textContent ?? ''))
     // The ends of the axis (its first and last tick) lie at least 4 points beyond the extreme bars.
     expect(Math.min(...ticks)).toBeLessThanOrEqual(Math.min(...values) - 4)
     expect(Math.max(...ticks)).toBeGreaterThanOrEqual(Math.max(...values) + 4)
@@ -330,6 +330,23 @@ describe('market state page', () => {
     const tickX = Number(host.querySelector('text.recharts-cartesian-axis-tick-value[orientation=left]')!.getAttribute('x'))
     const textRight = Number(label(negative.gap_63.text).getAttribute('x'))
     expect(textRight).toBeGreaterThan(tickX)
+  })
+
+  it('a market row text ends with the figure text, with no stray unit after it', async () => {
+    const p = fixture('ok')
+    await show(p)
+    for (const row of p.market.rows) {
+      const first = rowOf(row.id)!.querySelector('span > span:nth-child(2)')!
+      expect(first.textContent).toBe(row.figure.text)
+      expect(first.textContent).not.toMatch(/% %$/)
+    }
+  })
+
+  it('writes the bar axis ticks as whole numbers in pp', async () => {
+    await show(fixture('ok'))
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => t.textContent ?? '')
+    expect(ticks.length).toBeGreaterThan(1)
+    for (const t of ticks) expect(t).toMatch(/^-?\d+ pp$/)
   })
 
   it('the gap fixture draws no rotation series', async () => {
