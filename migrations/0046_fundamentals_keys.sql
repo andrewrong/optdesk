@@ -22,11 +22,13 @@ SET period_key = CASE WHEN source = 'alphavantage' AND fiscal_period_end IS NOT 
 WHERE status = 'listed';
 
 ALTER TABLE obs.dividend_expectation
+    ADD COLUMN instrument_key bigint,
     ADD COLUMN ex_date date,
     ADD COLUMN amount text,
     ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now(),
     ADD COLUMN written_by text NOT NULL DEFAULT '';
-UPDATE obs.dividend_expectation SET updated_at = received_at, ex_date = next_ex_date, amount = next_amount;
+UPDATE obs.dividend_expectation SET updated_at = received_at, instrument_key = instrument_id, ex_date = next_ex_date,
+    amount = next_amount;
 
 ALTER TABLE obs.fundamental_fact
     ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now(),
@@ -128,7 +130,7 @@ SELECT c.session_day, c.instrument_id::integer AS instrument_id, 1 AS attempt, c
        c.next_12m, d.amount AS next_amount, d.ex_date AS next_ex_date, c.currency, c.error_code, c.source,
        c.updated_at AS received_at
 FROM obs.dividend_check c
-LEFT JOIN obs.dividend_expectation d ON d.instrument_id = c.instrument_id AND d.ex_date = c.ex_date;
+LEFT JOIN obs.dividend_expectation d ON d.instrument_key = c.instrument_id AND d.ex_date = c.ex_date;
 
 -- 5. Only now, with the views off them, the old keys, checks and columns go.
 ALTER TABLE obs.earnings_date DROP CONSTRAINT earnings_date_pkey;
@@ -153,18 +155,10 @@ ALTER TABLE obs.earnings_date ALTER COLUMN period_key SET NOT NULL;
 ALTER TABLE obs.earnings_date ALTER COLUMN report_date SET NOT NULL;
 ALTER TABLE obs.earnings_date ADD CONSTRAINT earnings_date_pk PRIMARY KEY (issuer, period_key);
 
--- The view joins on the column, so it is dropped around the type change and made again with its owner and grants.
-DROP VIEW rd.dividend_expectation_r1;
-ALTER TABLE obs.dividend_expectation ALTER COLUMN instrument_id TYPE bigint;
-CREATE VIEW rd.dividend_expectation_r1 AS
-SELECT c.session_day, c.instrument_id::integer AS instrument_id, 1 AS attempt, c.issuer, c.status, c.past_12m,
-       c.next_12m, d.amount AS next_amount, d.ex_date AS next_ex_date, c.currency, c.error_code, c.source,
-       c.updated_at AS received_at
-FROM obs.dividend_check c
-LEFT JOIN obs.dividend_expectation d ON d.instrument_id = c.instrument_id AND d.ex_date = c.ex_date;
-ALTER VIEW rd.dividend_expectation_r1 OWNER TO ot_owner;
-GRANT SELECT ON rd.dividend_expectation_r1 TO ot_w_events;
-GRANT SELECT ON rd.dividend_expectation_r1 TO ot_ro_pages;
+-- The bigint column was built beside the old one (instrument_key) so no view had to be dropped; it takes the name now.
+ALTER TABLE obs.dividend_expectation DROP COLUMN instrument_id;
+ALTER TABLE obs.dividend_expectation RENAME COLUMN instrument_key TO instrument_id;
+ALTER TABLE obs.dividend_expectation ALTER COLUMN instrument_id SET NOT NULL;
 ALTER TABLE obs.dividend_expectation ALTER COLUMN ex_date SET NOT NULL;
 ALTER TABLE obs.dividend_expectation ALTER COLUMN amount SET NOT NULL;
 ALTER TABLE obs.dividend_expectation
