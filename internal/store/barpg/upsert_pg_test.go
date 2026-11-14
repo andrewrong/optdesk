@@ -117,6 +117,7 @@ func TestPriceBarMigrationKeepsWinners(t *testing.T) {
 	}
 	applyUp(t, name, "0039_fx_rate_repair.sql")
 	applyUp(t, name, "0041_price_bar_repair.sql")
+	applyUp(t, name, "0050_fx_rate_source.sql")
 	rows, err := admin.Query(ctx, `SELECT v.session_day::text, v.basis, v.close, v.adjust_epoch, t.status, t.received_at = t.updated_at
 		FROM rd.price_bar_r1 v JOIN obs.price_bar t USING (instrument_id, basis, session_day) ORDER BY 2, 1`)
 	if err != nil {
