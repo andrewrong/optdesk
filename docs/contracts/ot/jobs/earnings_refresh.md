@@ -24,6 +24,8 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 
 J-Quants is fetched at most once per day, one call per JP entry, with no second call and no retry after an `error` (Decision 12 of `docs/design/event-sources.md`).
 
+On the job console the row is an any-day row with Force. A forced run is one more Plan and so one more fetch: one more Alpha Vantage request and one more J-Quants call per JP entry. The "at most once per day" line above holds for a scheduled day.
+
 ## Version
 
 v11: introduced; v12: the J-Quants source; moved to its own document with the job registry (no behaviour change).

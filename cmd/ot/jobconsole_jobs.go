@@ -42,7 +42,6 @@ const (
 	textAppendOnly     = "a forced run adds executions by (alias, exec_id) and never replaces the day's capture"
 	textInsertOnly     = "a stored capture of a statement day is never replaced, so a forced run writes nothing new"
 	textAttemptRows    = "a re-run adds one row under the next attempt, which replaces nothing"
-	textQuota          = "the Alpha Vantage quota is 25 a day"
 	textNotProved      = "nothing read proves that a second run equals the first"
 	textNoLowerBound   = "a run before its slot would store pre-open prices as the open"
 	needsLowerBound    = "its Run must have a lower bound at the slot instant"
@@ -75,14 +74,14 @@ func listedOnly(id, reason, text, needs string) jobRow {
 // jobTable is the table of the 31 jobs, in the order of the page.
 var jobTable = []jobRow{
 	{ID: "fred_series", Kind: kindAnyDay, Force: true},
-	anyDay("fundamentals", "quota", textQuota),
+	{ID: "fundamentals", Kind: kindAnyDay, Force: true},
 	{ID: "compute_figures", Kind: kindAnyDay, Force: true},
 	{ID: "option_candidates", Kind: kindAnyDay, Force: true},
 	todayOnly("account_capture", "append_only", textAppendOnly),
 	anyDay("statement_capture", "insert_only", textInsertOnly),
 	todayOnly("position_marks", "attempt_rows", textAttemptRows),
-	todayOnly("earnings_refresh", "attempt_rows", textAttemptRows),
-	todayOnly("dividend_capture", "attempt_rows", textAttemptRows),
+	{ID: "earnings_refresh", Kind: kindAnyDay, Force: true},
+	{ID: "dividend_capture", Kind: kindAnyDay, Force: true},
 	todayOnly("option_eod", "moment_mix", textMomentMix),
 	{ID: "option_eod_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "moment_mix", ForceText: textMomentMix},
 	todayOnly("option_eod_index", "moment_mix", textMomentMix),

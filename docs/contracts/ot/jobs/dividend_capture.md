@@ -26,6 +26,8 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 
 It follows `option_eod` and `option_eod_jp`. What it opens goes to the closer set that `withWiring` closes.
 
+On the job console the row is an any-day row with Force. A forced run is one more Plan and so one more fetch from the reference source.
+
 ## Version
 
 v20: wired after `option_eod`; moved to its own document with the job registry (no behaviour change).
