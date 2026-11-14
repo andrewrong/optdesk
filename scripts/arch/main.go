@@ -199,6 +199,9 @@ func discover(root string, dirs []string, rows []row) ([]pkg, error) {
 	return out, nil
 }
 
+// isTwoLevel reports whether dir is internal/<a>/<b>, not a nested package.
+func isTwoLevel(dir string) bool { return strings.Count(dir, "/") == 2 }
+
 // owned gives the components (without "internal/") of the packages of a row of one of the kinds.
 func owned(pkgs []pkg, rowName string, kinds ...kind) []string {
 	var out []string
@@ -256,7 +259,7 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 	}
 	dirs := slices.Clone(generated)
 	for _, p := range pkgs {
-		if strings.Count(p.dir, "/") == 2 { // nested packages are components of the yml only, see deriveTree
+		if isTwoLevel(p.dir) { // nested packages are components of the yml only, see deriveTree
 			dirs = append(dirs, p.dir)
 		}
 	}

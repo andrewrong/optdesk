@@ -89,6 +89,9 @@ func TestTreeNestedPackageIsImportableByOT(t *testing.T) {
 		{"x/y/z", "x/y/decl", true},
 		{"x/y/z", "x", true},
 		{"x/shared", "x/y/z", false},
+		{"x/y/z", "x/shared", false}, // item 4: no edge to the shared of its row
+		{"x/y/decl", "x/shared", false},
+		{"x/y/sub", "x/shared", false},
 		{"v/q/r", "x/y/kit", true},
 		{"ot", "x/y/kit", false},
 		{"x/y/sub", "x/y/kit", false},
