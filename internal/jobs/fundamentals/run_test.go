@@ -168,13 +168,41 @@ func TestRunTwiceSendsTheSameFactsAgain(t *testing.T) {
 	if res.Err != nil || res.Returned != 2 || res.Usable != 2 || len(w.rows) != 2 {
 		t.Fatalf("result %+v rows %d", res, len(w.rows))
 	}
-	if len(src.plans) != 1 || src.plans[0].From != "2026-10-22" || src.plans[0].To != "2026-11-05" ||
+	if len(src.plans) != 1 || src.plans[0].From != "" || src.plans[0].To != "2026-11-05" ||
 		!reflect.DeepEqual(src.plans[0].Subjects, []string{"cik:0000320193"}) {
 		t.Fatalf("plan = %+v", src.plans)
 	}
 	j.Run(ctx, "2026-11-05", keys)
 	if len(w.rows) != 2 || w.calls != 2 || !reflect.DeepEqual(w.batches[0], w.batches[1]) {
 		t.Fatalf("second run left %d rows after %d calls, batches %v", len(w.rows), w.calls, w.batches)
+	}
+}
+
+func TestRunFetchesWithNoFromBound(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{facts: []contracts.FundamentalFact{fact("cik:0000320193", "Revenues")}}
+	j := build(t, src, &fakeWriter{}, entry("cik:0000320193", "US", "AAPL"))
+	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
+	j.Run(context.Background(), "2026-11-05", keys)
+	if len(src.plans) != 1 || src.plans[0].From != "" || src.plans[0].To != "2026-11-05" {
+		t.Fatalf("plans = %+v", src.plans)
+	}
+}
+
+func TestRunTwiceSameRowsNoDuplicate(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{facts: []contracts.FundamentalFact{fact("cik:0000320193", "Revenues"), fact("cik:0000320193", "Assets")}}
+	w := &fakeWriter{}
+	j := build(t, src, w, entry("cik:0000320193", "US", "AAPL"))
+	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
+	j.Run(context.Background(), "2026-11-05", keys)
+	first := map[string]contracts.FundamentalFact{}
+	for k, v := range w.rows {
+		first[k] = v
+	}
+	j.Run(context.Background(), "2026-11-05", keys)
+	if len(w.rows) != 2 || !reflect.DeepEqual(w.rows, first) {
+		t.Fatalf("rows after second run = %v, first %v", w.rows, first)
 	}
 }
 
