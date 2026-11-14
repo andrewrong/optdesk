@@ -232,23 +232,24 @@ func TestSeriesWithoutFigureKeepsGap(t *testing.T) {
 	}
 }
 
-// The card text states the counting rule.
+// The caption states the counting rule, the notes the closed P/L explanation; the series names stay short.
 func TestSeriesCardTextStatesRule(t *testing.T) {
 	t.Parallel()
 	c := card(t, okCfg(sold("1.0000", "", "")))
-	for _, k := range []string{"premium_series_text", "premium_series_caption"} {
-		s := c[k].(string)
-		for _, w := range []string{
-			"by closing month", "expiry", "exercise", "assignment", "buy-back", "fees are not deducted",
-			"year and month of the closing day", "no time zone conversion", "by account alias", "not merged",
-		} {
-			if k == "premium_series_caption" && w == "not merged" {
-				w = "never merged"
-			}
-			if !strings.Contains(s, w) {
-				t.Fatalf("%s lacks %q: %s", k, w, s)
-			}
+	if c["premium_series_text"] != "Settled premium" || c["closed_series_text"] != "Closed P/L" {
+		t.Fatalf("names = %v, %v", c["premium_series_text"], c["closed_series_text"])
+	}
+	s := c["premium_series_caption"].(string)
+	for _, w := range []string{
+		"by closing month", "expiry, exercise, assignment and buy-back", "fees are not deducted",
+		"year and month of the closing day", "no time zone conversion", "by account alias, never merged",
+	} {
+		if !strings.Contains(s, w) {
+			t.Fatalf("caption lacks %q: %s", w, s)
 		}
+	}
+	if !strings.Contains(string(mustJSON(t, c["notes"])), "monthly closed P/L is not given on this page") {
+		t.Fatalf("notes = %v", c["notes"])
 	}
 }
 
@@ -361,14 +362,33 @@ func TestBadConfigIsError(t *testing.T) {
 	}
 }
 
-func TestSeriesTextAndCaptionShareNoSentence(t *testing.T) {
+func TestSeriesNamesAreShortAndCaptionHoldsExplanation(t *testing.T) {
 	t.Parallel()
-	c := card(t, okCfg(sold("1.0000", "", "")))
-	text := c["premium_series_text"].(string)
-	caption := c["premium_series_caption"].(string)
-	for _, seg := range strings.FieldsFunc(text, func(r rune) bool { return r == ';' || r == '.' }) {
-		if strings.Contains(caption, seg) {
-			t.Fatalf("caption repeats sentence %q", seg)
+	cards := map[string]map[string]any{
+		"ok":      card(t, okCfg(sold("1.0000", "", ""))),
+		"no sold": card(t, okCfg()),
+	}
+	for name, c := range cards {
+		if c["premium_series_text"] != "Settled premium" || c["closed_series_text"] != "Closed P/L" {
+			t.Errorf("%s: names = %v, %v", name, c["premium_series_text"], c["closed_series_text"])
+		}
+		for _, k := range []string{"premium_series_text", "closed_series_text"} {
+			if strings.ContainsAny(c[k].(string), ";:") {
+				t.Errorf("%s: %s holds a sentence: %s", name, k, c[k])
+			}
+		}
+		caption := c["premium_series_caption"].(string)
+		for _, w := range []string{
+			"by closing month", "expiry, exercise, assignment and buy-back", "fees are not deducted",
+			"year and month of the closing day", "no time zone conversion", "by account alias, never merged",
+		} {
+			if !strings.Contains(caption, w) {
+				t.Errorf("%s: caption lacks %q: %s", name, w, caption)
+			}
+		}
+		notes := c["notes"].([]any)
+		if len(notes) != 3 || notes[2] != "Closed P/L has no data yet: monthly closed P/L is not given on this page." {
+			t.Errorf("%s: notes = %v", name, notes)
 		}
 	}
 }

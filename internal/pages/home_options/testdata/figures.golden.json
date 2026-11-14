@@ -149,12 +149,13 @@
         }
       }
     ],
-    "premium_series_text": "Settled premium by closing month; expiry, exercise, assignment and buy-back count, fees are not deducted; year and month of the closing day, no time zone conversion; by account alias, not merged",
-    "closed_series_text": "Closed P/L, last six months: no data yet, monthly closed P/L is not given on this page",
+    "premium_series_text": "Settled premium",
+    "closed_series_text": "Closed P/L",
     "premium_series_caption": "USD, by closing month: expiry, exercise, assignment and buy-back included, fees are not deducted; the year and month of the closing day; no time zone conversion; by account alias, never merged",
     "notes": [
       "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative.",
-      "Premium and realised P/L count only closed sold positions, all accounts combined."
+      "Premium and realised P/L count only closed sold positions, all accounts combined.",
+      "Closed P/L has no data yet: monthly closed P/L is not given on this page."
     ],
     "gaps": [
       {
