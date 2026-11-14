@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/pepbapi"
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -67,6 +68,11 @@ type Config struct {
 
 	Text     OwnerText
 	Override PriceOverride
+
+	// Pepb and Bars switch on the pepb block (docs/design/company-pepb.md); either nil leaves the
+	// property out. Bars reads the stored `trades` bars of a symbol, oldest first.
+	Pepb pepbapi.BuildFunc
+	Bars func(ctx context.Context, symbol string, from, to contracts.Day) ([]contracts.PriceBar, error)
 }
 
 type cell struct {
@@ -146,6 +152,7 @@ type viewModel struct {
 	Core          any            `json:"core"`
 	Diagnosis     any            `json:"diagnosis"`
 	Questions     any            `json:"questions"`
+	Pepb          any            `json:"pepb,omitempty"`
 }
 
 var zoneOwner = time.FixedZone("+08:00", 8*3600)
@@ -228,6 +235,12 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	}
 	if err := cfg.fillBlocks(ctx, &vm, today); err != nil {
 		return nil, err
+	}
+	if cfg.pepbOn() {
+		var err error
+		if vm.Pepb, err = cfg.pepbBlockOf(ctx, today); err != nil {
+			return nil, err
+		}
 	}
 	if err := cfg.fillStatus(&vm, today, generatedAt); err != nil {
 		return nil, err
