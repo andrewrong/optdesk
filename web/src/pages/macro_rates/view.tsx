@@ -15,6 +15,7 @@ type Series = Payload['series'][number]
 export function chartSpecOf(series: Series): ChartSpec {
   return {
     kind: 'line',
+    unit: series.unit,
     categories: series.points.map((point) => point.date),
     series: [
       {

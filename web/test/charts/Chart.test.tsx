@@ -11,10 +11,15 @@ import type { ChartSpec } from '@/charts/spec'
 
 // jsdom measures every element as 0 × 0, so the responsive container gets a fixed size.
 const yAxes: Record<string, unknown>[] = []
+const xAxes: Record<string, unknown>[] = []
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('recharts')>()
   return {
     ...actual,
+    XAxis: (props: Record<string, unknown>) => {
+      xAxes.push(props)
+      return createElement(actual.XAxis, props)
+    },
     YAxis: (props: Record<string, unknown>) => {
       yAxes.push(props)
       return createElement(actual.YAxis, props)
@@ -100,6 +105,14 @@ describe('Chart', () => {
     expect(axis.hide).toBeUndefined()
     expect((axis.tickFormatter as (tick: number) => string)(5400)).toBe('5400%')
     expect(host.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick')).toHaveLength(5)
+  })
+
+  it('keeps the first and last points inside the plot with a padding on the x axis', async () => {
+    xAxes.length = 0
+    await show(SPEC)
+    const padding = xAxes[xAxes.length - 1]!.padding as { left: number; right: number }
+    expect(padding.left).toBeGreaterThan(0)
+    expect(padding.right).toBeGreaterThan(0)
   })
 
   it('labels the last point of each line with its text', async () => {

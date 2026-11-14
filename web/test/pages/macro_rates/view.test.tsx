@@ -94,6 +94,12 @@ describe('macro_rates view', () => {
     expect(spec.series[0]!.points.map((p) => p.text)).toEqual(['4.10%', 'no value', '4.20%'])
   })
 
+  it('passes the unit of a percent series to the chart spec', () => {
+    const payload = fixture('golden') as Payload
+    const series = { ...payload.series[0]!, unit: 'percent' as const }
+    expect(chartSpecOf(series).unit).toBe('percent')
+  })
+
   it('refuses bad-version with reason unsupported_version', () => {
     const checked = validate(fixture('bad-version'))
     expect(checked.ok).toBe(false)
