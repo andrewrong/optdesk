@@ -90,6 +90,21 @@ func TestSiteBuildsPageFromTable(t *testing.T) {
 	}
 }
 
+func TestSiteOffersForceOnEventAndFundamentalRows(t *testing.T) {
+	t.Parallel()
+	h, _, _ := jobConsoleSite(t, false, postNow)
+	vm := decodeJobConsole(t, settingsGet(t, h, http.MethodGet, "/job-console"))
+	by := map[string]int{}
+	for i, j := range vm.Jobs {
+		by[j.ID] = i
+	}
+	for _, id := range []string{"earnings_refresh", "dividend_capture", "fundamentals"} {
+		if j := vm.Jobs[by[id]]; j.Kind != "any_day" || !j.Force || j.ForceWhy != "" {
+			t.Errorf("%s %+v", id, j)
+		}
+	}
+}
+
 func TestReaderErrorGivesUnavailableGap(t *testing.T) {
 	t.Parallel()
 	h, fp, _ := jobConsoleSite(t, false, postNow)

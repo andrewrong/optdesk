@@ -9,13 +9,11 @@ import (
 	"time"
 )
 
-// wantTwelve is the test's own list of the today-only jobs with their zones (Decision 6); no zone is read
+// wantFourteen is the test's own list of the today-only jobs with their zones (Decision 6); no zone is read
 // out of a job, because most jobs carry none in Schedule().
-var wantTwelve = map[string]string{
+var wantFourteen = map[string]string{
 	"account_capture":        "America/New_York",
 	"position_marks":         "America/New_York",
-	"earnings_refresh":       "America/New_York",
-	"dividend_capture":       "America/New_York",
 	"option_eod":             "America/New_York",
 	"option_eod_index":       "America/New_York",
 	"option_eod_jp":          "Asia/Tokyo",
@@ -61,7 +59,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesIsSixJobs(t *testing.T) {
+func TestForceYesIsNineJobs(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -69,14 +67,15 @@ func TestForceYesIsSixJobs(t *testing.T) {
 			yes = append(yes, r.ID)
 		}
 	}
-	if !slices.Equal(yes, []string{"fred_series", "compute_figures", "option_candidates", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
+	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "earnings_refresh",
+		"dividend_capture", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
 
 func TestEveryForceNoJobHasReason(t *testing.T) {
 	t.Parallel()
-	codes := []string{"moment_mix", "append_only", "attempt_rows", "quota", "not_proved", "insert_only"}
+	codes := []string{"moment_mix", "append_only", "attempt_rows", "not_proved", "insert_only"}
 	n := 0
 	for _, r := range jobTable {
 		if !r.runnable() || r.Force {
@@ -90,8 +89,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 17 {
-		t.Fatalf("%d force-no jobs, want 17", n)
+	if n != 14 {
+		t.Fatalf("%d force-no jobs, want 14", n)
 	}
 }
 
@@ -103,19 +102,20 @@ func TestZoneOfEachTodayOnlyJobIsTheJobsOwn(t *testing.T) {
 			got[r.ID] = r.Zone
 		}
 	}
-	if !maps.Equal(got, wantTwelve) {
-		t.Fatalf("table zones %v, want %v", got, wantTwelve)
+	if !maps.Equal(got, wantFourteen) {
+		t.Fatalf("table zones %v, want %v", got, wantFourteen)
 	}
-	for id, z := range wantTwelve {
+	for id, z := range wantFourteen {
 		if _, err := time.LoadLocation(z); err != nil {
 			t.Errorf("%s: zone %s: %v", id, z, err)
 		}
 	}
 }
 
-func TestAnyDayIsExactlyTheSeven(t *testing.T) {
+func TestAnyDayIsExactlyTheNine(t *testing.T) {
 	t.Parallel()
-	want := []string{"bars_refresh", "compute_figures", "fred_series", "fundamentals", "fx_refresh", "option_candidates", "statement_capture"}
+	want := []string{"bars_refresh", "compute_figures", "dividend_capture", "earnings_refresh", "fred_series", "fundamentals",
+		"fx_refresh", "option_candidates", "statement_capture"}
 	if got := idsOfKind(kindAnyDay); !slices.Equal(got, want) {
 		t.Fatalf("any_day %v", got)
 	}
@@ -126,9 +126,9 @@ func TestAnyDayIsExactlyTheSeven(t *testing.T) {
 	}
 }
 
-func TestTodayOnlyIsExactlyTheFourteen(t *testing.T) {
+func TestTodayOnlyIsExactlyTheFourteenZoned(t *testing.T) {
 	t.Parallel()
-	want := slices.Sorted(maps.Keys(wantTwelve))
+	want := slices.Sorted(maps.Keys(wantFourteen))
 	if got := idsOfKind(kindTodayOnly); !slices.Equal(got, want) {
 		t.Fatalf("today_only %v", got)
 	}
@@ -203,6 +203,22 @@ func TestBarsRefreshRunValidatesPastDayWithForce(t *testing.T) {
 	}
 	run, ok := post("2026-11-10")
 	if !ok || !run.force || run.day != "2026-11-10" || run.job.ID != "bars_refresh" {
+		t.Fatalf("past day with force: %+v %v", run, ok)
+	}
+	if _, ok := post("2026-11-14"); ok {
+		t.Error("a day after today was accepted")
+	}
+}
+
+func TestEarningsRefreshRunValidatesPastDayWithForce(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 13, 15, 0, 0, 0, time.UTC)
+	post := func(day string) (jobRun, bool) {
+		r := &http.Request{PostForm: url.Values{"job": {"earnings_refresh"}, "day": {day}, "force": {"on"}}}
+		return readJobRun(r, now)
+	}
+	run, ok := post("2026-11-10")
+	if !ok || !run.force || run.day != "2026-11-10" || run.job.ID != "earnings_refresh" {
 		t.Fatalf("past day with force: %+v %v", run, ok)
 	}
 	if _, ok := post("2026-11-14"); ok {
