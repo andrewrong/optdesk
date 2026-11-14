@@ -47,6 +47,12 @@ func connURL(t *testing.T, dbname, user string) string {
 	return u.String()
 }
 
+// migrationLockKey is the advisory lock, on the admin database, that every test-side application of a migration
+// file holds while it runs: the migrations write the roles, which every database of the server shares.
+// Lock order: key 54 (role passwords), where a test takes it, is taken before 8008; 8008 is held only while a
+// migration runs and nothing requests 54 or any other key while it is held, so the two cannot form a cycle.
+const migrationLockKey = 8008
+
 func applyMigration(t *testing.T, dsn, file string) {
 	t.Helper()
 	raw, err := os.ReadFile("../../../migrations/" + file)
@@ -61,6 +67,15 @@ func applyMigration(t *testing.T, dsn, file string) {
 		t.Fatalf("connect: %v", err)
 	}
 	defer func() { _ = c.Close(ctx) }()
+	lock, err := pgx.Connect(ctx, connURL(t, pgEnv("PGDATABASE"), ""))
+	if err != nil {
+		t.Fatalf("connect admin: %v", err)
+	}
+	defer func() { _ = lock.Close(ctx) }()
+	if _, err := lock.Exec(ctx, `SELECT pg_advisory_lock($1)`, migrationLockKey); err != nil {
+		t.Fatalf("migration lock: %v", err)
+	}
+	defer func() { _, _ = lock.Exec(ctx, `SELECT pg_advisory_unlock($1)`, migrationLockKey) }()
 	if _, err := c.Exec(ctx, up); err != nil {
 		t.Fatalf("apply %s: %v", file, err)
 	}
