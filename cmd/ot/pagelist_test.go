@@ -41,6 +41,7 @@ func TestPageNamedUnknown(t *testing.T) {
 	a.deps.pageList = []pages.Page{fakePage("alpha", "a"), fakePage("beta", "b")}
 	_, _, err := pageNamed(a, "nosuch")
 	want := `unknown page "nosuch"; known pages: advice_page, alpha, beta, companies_page, home_page, household_page, household_risk, macro_page, market_page, ` +
+		`market_state_page, ` +
 		`ops_today_page, ` +
 		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page`
 	if err == nil || err.Error() != want {
@@ -105,6 +106,7 @@ func TestUnknownPageListsReports(t *testing.T) {
 	a.deps.pageList = []pages.Page{fakePage("alpha", "a")}
 	_, _, err := pageNamed(a, "nosuch")
 	want := `unknown page "nosuch"; known pages: advice_page, alpha, companies_page, home_page, household_page, household_risk, macro_page, market_page, ` +
+		`market_state_page, ` +
 		`ops_today_page, ` +
 		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page`
 	if err == nil || err.Error() != want {
