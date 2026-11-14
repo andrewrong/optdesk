@@ -39,7 +39,7 @@ const (
 	// deleteSQL arguments: kind, source, run_day, the dates of the answer. Only rows after the run day and not in the
 	// answer.
 	deleteSQL = `DELETE FROM obs.macro_event WHERE kind = $1 AND source = $2 AND event_date > $3::date ` +
-		`AND event_date <> ALL($4::date[])`
+		`AND event_date::text <> ALL($4::text[])`
 
 	// holdSQL arguments: kind, run_day. Marks the stored rows of the kind after the run day as kept.
 	holdSQL = `UPDATE obs.macro_event SET held_day = $2::date WHERE kind = $1 AND event_date > $2::date ` +

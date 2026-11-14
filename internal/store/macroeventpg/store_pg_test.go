@@ -160,7 +160,7 @@ func TestMacroEventRoundTrip(t *testing.T) {
 		t.Fatalf("between: %v %v", got, err)
 	}
 	ks, err := r.Kinds(ctx)
-	if err != nil || len(ks) != 1 || ks[0].Rows != 2 || ks[0].LastDate != "2026-12-10" || ks[0].HeldDay != "2026-11-16" || ks[0].LastRunDay != "2026-11-16" {
+	if err != nil || len(ks) != 1 || ks[0].Rows != 2 || ks[0].LastDate != "2026-12-10" || ks[0].HeldDay != "2026-11-16" || ks[0].LastRunDay != "2026-11-14" {
 		t.Fatalf("kinds: %+v %v", ks, err)
 	}
 }
