@@ -24,22 +24,37 @@ type fakeDB struct {
 	keys   [][3]string
 	failed error
 	execs  int
+	stmts  []stmt
 }
 
 func newFake() *fakeDB { return &fakeDB{rows: map[[3]string][]any{}} }
 
-func (f *fakeDB) Exec(_ context.Context, _ string, args ...any) error {
+// Upsert reads the argument lists of the statements of one call (the data row, when there is one, then the answer)
+// and stores the row in the argument order of the view, attempt 1; a later call of one key replaces the row.
+func (f *fakeDB) Upsert(_ context.Context, stmts []stmt) ([]int, error) {
 	if f.failed != nil {
-		return f.failed
+		return nil, f.failed
 	}
 	f.execs++
+	f.stmts = append(f.stmts, stmts...)
+	ans := stmts[len(stmts)-1].args
+	var report, fiscal, estimate *string
+	tod := ""
+	if len(stmts) == 2 {
+		d := stmts[0].args
+		r := d[4].(string)
+		report, fiscal, estimate, tod = &r, d[5].(*string), d[7].(*string), d[6].(string)
+	}
+	f.put([]any{ans[1], ans[0], 1, ans[3], ans[2], ans[4], report, fiscal, tod, estimate, ans[5], ans[6], ans[8]})
+	return make([]int, len(stmts)), nil
+}
+
+func (f *fakeDB) put(args []any) {
 	k := [3]string{args[0].(string), args[1].(string), itoa(args[2].(int))}
-	if _, ok := f.rows[k]; ok {
-		return nil
+	if _, ok := f.rows[k]; !ok {
+		f.keys = append(f.keys, k)
 	}
 	f.rows[k] = args
-	f.keys = append(f.keys, k)
-	return nil
 }
 
 func itoa(n int) string { return string(rune('0' + n)) }
@@ -121,26 +136,31 @@ func row(day string, attempt int, status string) contracts.EarningsDate {
 	return r
 }
 
-func TestWriterKeepsExistingKey(t *testing.T) {
+func TestInsertEarningsDateSendsTheUpsertOfOneRow(t *testing.T) {
 	t.Parallel()
 	db := newFake()
 	s := &earningsStore{db: db}
-	ctx := context.Background()
-	if err := s.InsertEarningsDate(ctx, row("2026-11-09", 1, "error")); err != nil {
+	if err := s.InsertEarningsDate(context.Background(), row("2026-11-09", 1, "listed")); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.InsertEarningsDate(ctx, row("2026-11-09", 1, "absent")); err != nil {
-		t.Fatalf("second insert of one key: %v", err)
+	if db.execs != 1 || len(db.stmts) != 2 {
+		t.Fatalf("%d calls, %d statements; want one call of the data row and the answer", db.execs, len(db.stmts))
 	}
-	got, err := s.EarningsDates(ctx, issuer, "2026-11-09", "2026-11-09")
-	if err != nil || len(got) != 1 || got[0].Status != "error" || got[0].ErrorCode != "rate_limited" {
-		t.Fatalf("rows = %+v, %v; want the first row only", got, err)
+	if !strings.Contains(db.stmts[0].sql, "ON CONFLICT (issuer, period_key) DO UPDATE") ||
+		!strings.Contains(db.stmts[1].sql, "ON CONFLICT (issuer, observed_on) DO UPDATE") {
+		t.Errorf("statements are not the upserts of one row: %q, %q", db.stmts[0].sql, db.stmts[1].sql)
+	}
+	for _, st := range db.stmts {
+		if last := st.args[len(st.args)-1]; last != "" {
+			t.Errorf("writtenBy = %v, want empty", last)
+		}
 	}
 }
 
 func TestReaderTakesHighestAttempt(t *testing.T) {
 	t.Parallel()
-	s := &earningsStore{db: newFake()}
+	db := newFake()
+	s := &earningsStore{db: db}
 	ctx := context.Background()
 	for _, r := range []contracts.EarningsDate{
 		row("2026-11-10", 1, "absent"),
@@ -148,9 +168,8 @@ func TestReaderTakesHighestAttempt(t *testing.T) {
 		row("2026-11-09", 1, "error"),
 		row("2026-11-12", 1, "absent"),
 	} {
-		if err := s.InsertEarningsDate(ctx, r); err != nil {
-			t.Fatal(err)
-		}
+		db.put([]any{r.ObservedOn.Format(time.DateOnly), r.Issuer, r.Attempt, r.Symbol, string(r.Market), string(r.Status),
+			dayText(r.ReportDate), dayText(r.FiscalPeriodEnd), r.TimeOfDay, r.Estimate, r.ErrorCode, string(r.Source), r.ReceivedAt})
 	}
 	got, err := s.EarningsDates(ctx, issuer, "2026-11-09", "2026-11-10")
 	if err != nil || len(got) != 2 {
@@ -268,7 +287,7 @@ func TestInsertEarningsConstraintViolationIsPermanent(t *testing.T) {
 			if !errors.As(err, &te) || te.Kind() != c.want {
 				t.Fatalf("got %v, want kind %s", err, c.want)
 			}
-			if !errors.Is(err, c.err) || !strings.HasPrefix(err.Error(), "events: insert: ") {
+			if !errors.Is(err, c.err) || !strings.HasPrefix(err.Error(), "events: upsert earnings: ") {
 				t.Errorf("cause or text lost: %v", err)
 			}
 		})
