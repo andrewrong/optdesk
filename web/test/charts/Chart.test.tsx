@@ -111,8 +111,14 @@ describe('Chart', () => {
     xAxes.length = 0
     await show(SPEC)
     const padding = xAxes[xAxes.length - 1]!.padding as { left: number; right: number }
-    expect(padding.left).toBeGreaterThan(0)
+    expect(padding.left).toBeGreaterThanOrEqual(40)
     expect(padding.right).toBeGreaterThan(0)
+  })
+
+  it('sits the x axis labels below the lowest y tick with a tick margin', async () => {
+    xAxes.length = 0
+    await show(SPEC)
+    expect(xAxes[xAxes.length - 1]!.tickMargin as number).toBeGreaterThanOrEqual(8)
   })
 
   it('labels the last point of each line with its text', async () => {

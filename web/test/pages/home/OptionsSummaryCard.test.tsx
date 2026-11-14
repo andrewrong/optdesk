@@ -132,10 +132,21 @@ describe('OptionsSummaryCard', () => {
     }
   })
 
-  it('shows the premium series text, its caption and a chart', async () => {
+  it('names the premium series only in the legend: no data-series-text line, spec keeps both names and legend', async () => {
     const ok = os('ok.json')
     await showCard(ok)
-    expect(host.querySelector('[data-series-text]')?.textContent).toBe(ok.card.premium_series_text)
+    expect(host.querySelector('[data-series-text]')).toBeNull()
+    const spec = drawn.at(-1)!.spec
+    expect(spec.series.map((s) => s.name)).toEqual([
+      ok.card.premium_series_text,
+      ok.card.closed_series_text,
+    ])
+    expect(spec.legend).toBe(true)
+  })
+
+  it('shows the premium series caption and a chart labelled by the premium series text', async () => {
+    const ok = os('ok.json')
+    await showCard(ok)
     expect(host.querySelector('[data-series-caption]')?.textContent).toBe(
       ok.card.premium_series_caption,
     )

@@ -4,12 +4,29 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { unitSuffix } from '@/charts/unitSuffix'
 import type { Payload } from '@/types/market_state_page'
 
+const STEP = 5
+const ROOM = 8
+
+// A fixed step: the axis runs from the extreme bars plus room, outward to whole steps, ticks one step apart.
+// Remainder arithmetic only: the web source calls no Math function.
+function axisTicks(values: number[]): number[] | undefined {
+  if (values.length === 0) return undefined
+  const least = values.reduce((m, v) => (v < m ? v : m)) - ROOM
+  const most = values.reduce((m, v) => (v > m ? v : m)) + ROOM
+  const below = (least % STEP) + STEP
+  const lo = least - (below % STEP)
+  const above = ((most % STEP) + STEP) % STEP
+  const hi = above === 0 ? most : most + STEP - above
+  return Array.from({ length: (hi - lo) / STEP + 1 }, (_, i) => lo + i * STEP)
+}
+
 const config: ChartConfig = { value: { label: 'Gap', color: 'var(--chart-1)' } }
 
 export function ExcessBars({ block }: { block: Payload['sectors'] }) {
   const data = block.rows.flatMap((row) =>
     row.gap_63.kind === 'value' ? [{ label: row.symbol, value: row.gap_63.value, text: row.gap_63.text }] : [],
   )
+  const ticks = axisTicks(data.map((d) => d.value))
   return (
     <section aria-label="Gap bars" data-excess-bars>
       <p className="mb-2 text-sm text-muted-foreground" data-bars-caption>
@@ -18,10 +35,11 @@ export function ExcessBars({ block }: { block: Payload['sectors'] }) {
       <ChartContainer config={config} className="h-[360px] w-full">
         <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 8, bottom: 8 }}>
           <CartesianGrid horizontal={false} stroke="var(--border)" />
-          {/* Recharts' own domain expressions: 8 points beyond the extreme bars, room for the label at the end of every bar. */}
+          {/* 8 points beyond the extreme bars, rounded out to whole steps of 5: room for the label at the end of every bar. */}
           <XAxis
             type="number"
-            domain={['dataMin - 8', 'dataMax + 8']}
+            domain={ticks ? [ticks[0]!, ticks[ticks.length - 1]!] : undefined}
+            ticks={ticks}
             allowDecimals={false}
             tickFormatter={(tick: number) => `${tick}${unitSuffix('percentage_points')}`}
             tickLine={false}

@@ -65,6 +65,30 @@ describe('DataTable sharp mark', () => {
   })
 })
 
+describe('DataTable unnamed column', () => {
+  it('draws no sort button for a column with an empty label and keeps it for a labelled one', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    const columns = [
+      { id: 'name', label: '' },
+      { id: 'amount', label: 'Amount' },
+    ]
+    const rows: Record<string, Cell>[] = [
+      { name: { text: 'a', value: 1 }, amount: { text: '1', value: 1 } },
+      { name: { text: 'b', value: 2 }, amount: { text: '2', value: 2 } },
+    ]
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<DataTable columns={columns} rows={rows} />)
+    })
+    const heads = host.querySelectorAll('thead th')
+    expect(heads[0]?.querySelector('button')).toBeNull()
+    expect(heads[0]?.querySelector('svg')).toBeNull()
+    expect(heads[0]?.textContent).toBe('')
+    expect(heads[1]?.querySelector('button')).not.toBeNull()
+  })
+})
+
 describe('DataTable', () => {
   it('sorts a column by value and not by text', async () => {
     await show()

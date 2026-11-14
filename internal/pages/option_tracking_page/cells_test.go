@@ -191,3 +191,23 @@ func TestPremiumCellUnknownCurrency(t *testing.T) {
 		t.Fatalf("gap = %+v", g)
 	}
 }
+
+func TestDecimalCellRounds(t *testing.T) {
+	t.Parallel()
+	c := asValue(t, decimalCell("394.8229675292969", codeNoValue, 2))
+	if c.Text != "394.82" || c.Value == nil || *c.Value != "394.8229675292969" {
+		t.Fatalf("cell = %+v", c)
+	}
+	if c := asValue(t, decimalCell("3.3250", codeNoValue, 2)); c.Text != "3.33" {
+		t.Fatalf("3.3250 = %+v", c)
+	}
+	if c := asValue(t, decimalCell("0.31254", codeNoValue, 4)); c.Text != "0.3125" {
+		t.Fatalf("iv = %+v", c)
+	}
+	if g := asGap(t, decimalCell("", codeNoMark, 2)); g.Reason != "missing_quote" {
+		t.Fatalf("empty = %+v", g)
+	}
+	if g := asGap(t, decimalCell("abc", codeNoValue, 2)); g.Text != "Unreadable" {
+		t.Fatalf("abc = %+v", g)
+	}
+}
