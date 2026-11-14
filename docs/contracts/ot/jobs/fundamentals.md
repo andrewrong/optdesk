@@ -23,7 +23,7 @@ The job fetches the SEC company facts of the `cik:` entries of Market `US` in `w
 
 With the fact store open, `compute_figures` is built through `computefigures.NewWithValuation` (`ValuationDeps`: the fact store, the watch list as `Entries`, and the compute functions of `internal/compute/valuation`); that constructor has no ease figure, so `ot` joins the job it builds with the ease job `compute_figures` has without the fact store: the plan is the union of the two and a run hands each key to the job that planned it, so the ease reading `macro.ease|market|WALCL` is still stored. Its wiring order is 160, after `compute_figures` (70): the figures job reads the facts the job wrote on an earlier run.
 
-On the job console the row is an any-day row with Force. A forced run is one more Plan and so one more fetch of the fundamentals source (one more Alpha Vantage request per key).
+On the job console the row is an any-day row with Force. A forced run is one more Plan and so one more fetch of the SEC company facts (no Alpha Vantage request: the job does not use it).
 
 ## Version
 

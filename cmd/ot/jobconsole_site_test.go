@@ -99,7 +99,12 @@ func TestSiteOffersForceOnEventAndFundamentalRows(t *testing.T) {
 		by[j.ID] = i
 	}
 	for _, id := range []string{"earnings_refresh", "dividend_capture", "fundamentals"} {
-		if j := vm.Jobs[by[id]]; j.Kind != "any_day" || !j.Force || j.ForceWhy != "" {
+		idx, ok := by[id]
+		if !ok {
+			t.Errorf("%s is not on the page", id)
+			continue
+		}
+		if j := vm.Jobs[idx]; j.Kind != "any_day" || !j.Force || j.ForceWhy != "" {
 			t.Errorf("%s %+v", id, j)
 		}
 	}
