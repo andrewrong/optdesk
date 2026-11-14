@@ -102,8 +102,11 @@ func TestTreeNestedPackageIsImportableByOT(t *testing.T) {
 			t.Errorf("yml: %s imports %s = %v, want %v", e.from, e.to, got, e.want)
 		}
 		// arch.toml lists no test kit: the tree adds those edges to the lint file only.
-		if e.from == "ot" && e.to != "x/y/kit" && tomlHas(e.from, e.to) != e.want {
-			t.Errorf("toml: %s imports %s = %v, want %v", e.from, e.to, !e.want, e.want)
+		if e.from != "ot" || e.to == "x/y/kit" {
+			continue
+		}
+		if got := tomlHas(e.from, e.to); got != e.want {
+			t.Errorf("toml: %s imports %s = %v, want %v", e.from, e.to, got, e.want)
 		}
 	}
 
