@@ -29,7 +29,16 @@ vi.mock('@/charts/Chart', () => ({
 }))
 vi.mock('@/components/ui/chart', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/components/ui/chart')>()
-  return { ...actual, ChartContainer: ({ children }: { children?: React.ReactNode }) => <div>{children}</div> }
+  return {
+    ...actual,
+    ChartContainer: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    // The tooltip content is shown as if the pointer rested on a point of the unranked fund.
+    ChartTooltip: ({ content }: { content: React.ReactElement }) =>
+      React.cloneElement(content, {
+        active: true,
+        payload: [{ payload: { fund: 'SMH', note: 'not ranked', day: 'Nov 6', text: 'x +1.0, y -0.5' } }],
+      } as object),
+  }
 })
 // recharts draws nothing in jsdom (no size): the parts that carry the data are replaced by markers of it.
 vi.mock('recharts', async (importOriginal) => {
@@ -45,6 +54,16 @@ vi.mock('recharts', async (importOriginal) => {
       </g>
     ),
     // Outside a real chart there is no scale: a fixed one stands in, so the arrow can be drawn.
+    XAxis: ({ label, padding }: { label: { value: string }; padding: object }) => (
+      <g data-axis="x" data-padding={JSON.stringify(padding)}>
+        <text>{label.value}</text>
+      </g>
+    ),
+    YAxis: ({ label, padding }: { label: { value: string }; padding: { top: number } }) => (
+      <g data-axis="y" data-padding-top={padding.top}>
+        <text>{label.value}</text>
+      </g>
+    ),
     useCartesianScale: (pt: { x: number; y: number }) => ({ x: pt.x, y: pt.y }),
     ReferenceArea: ({ x1, x2, y1, y2, label }: { x1?: number; x2?: number; y1?: number; y2?: number; label: { value: string; position: string } }) => (
       <g data-quadrant-area={`${x1 === undefined ? 'left' : 'right'}-${y1 === undefined ? 'bottom' : 'top'}`} data-corner={label.position} data-y2={y2} data-x2={x2}>
@@ -205,14 +224,35 @@ describe('market state page', () => {
     }
   })
 
-  it('draws each fund in its own colour and SMH as a hollow ring', async () => {
+  it('draws each fund in its own fixed colour and SMH as a hollow neutral ring', async () => {
     await show(fixture('ok'))
-    const colours = [...host.querySelectorAll('[data-scatter]')]
-      .filter((s) => s.getAttribute('data-scatter') !== 'SMH')
-      .map((s) => s.querySelector('[data-tail-point]')!.getAttribute('stroke'))
+    const stroke = (symbol: string) => host.querySelector(`[data-scatter=${symbol}] [data-tail-point]`)!.getAttribute('stroke')
+    const colours = ['XLK', 'XLC', 'XLY', 'XLF', 'XLI', 'XLE', 'XLV', 'XLB', 'XLU', 'XLP'].map(stroke)
     expect(new Set(colours).size).toBe(colours.length)
+    expect(colours).not.toContain(stroke('SMH'))
+    expect(stroke('SMH')).toBe('#6b7280')
     const ring = host.querySelector('[data-scatter=SMH] [data-tail-point]')!
     expect(ring.getAttribute('fill')).toBe('var(--background)')
+  })
+
+  it('gives XLC the eleventh hue whatever its rank', async () => {
+    await show(fixture('ok'))
+    const xlc = host.querySelector('[data-scatter=XLC] [data-tail-point]')!
+    expect(xlc.getAttribute('stroke')).toBe('#38b6e8')
+  })
+
+  it('titles the axes with the captions and leaves room above the top tick', async () => {
+    const p = fixture('ok')
+    await show(p)
+    expect(host.querySelector('[data-axis=x]')?.textContent).toBe(p.sectors.rotation_axes.x_caption)
+    expect(host.querySelector('[data-axis=y]')?.textContent).toBe(p.sectors.rotation_axes.y_caption)
+    expect(Number(host.querySelector('[data-axis=y]')!.getAttribute('data-padding-top'))).toBeGreaterThan(0)
+  })
+
+  it('the tooltip shows the fund with its rank note, the day and the point text', async () => {
+    await show(fixture('ok'))
+    const tip = host.querySelector('[data-rotation-tip]')!
+    expect(tip.textContent).toBe('SMH (not ranked)Nov 6x +1.0, y -0.5')
   })
 
   it('names the quadrants by fixed words at the four corners and shows no producer sentence', async () => {
@@ -233,7 +273,11 @@ describe('market state page', () => {
   it('keeps "not ranked" out of the legend names and in the SMH points for the tooltip', async () => {
     await show(fixture('ok'))
     expect(host.querySelector('[data-scatter=SMH]')).not.toBeNull()
-    expect(host.querySelector('[data-rotation-map]')!.textContent).not.toContain('not ranked')
+    const outsideTip = [...host.querySelectorAll('[data-rotation-map] *')]
+      .filter((e) => e.children.length === 0 && !e.closest('[data-rotation-tip]'))
+      .map((e) => e.textContent)
+      .join(' ')
+    expect(outsideTip).not.toContain('not ranked')
     const smh = JSON.parse(host.querySelector('[data-scatter=SMH]')!.getAttribute('data-data')!)
     expect(smh[0].note).toContain('not ranked')
     const xlk = JSON.parse(host.querySelector('[data-scatter=XLK]')!.getAttribute('data-data')!)

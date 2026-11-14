@@ -20,20 +20,21 @@ type Sectors = Payload['sectors']
 type Spot = { day: string; x: number; y: number; text: string }
 type Point = Spot & { fund: string; note: string }
 
-// Eleven sector funds, eleven hues; SMH is a hollow ring in a neutral colour.
-export const FUND_PALETTE = [
-  '#4e79a7',
-  '#f28e2b',
-  '#59a14f',
-  '#b07aa1',
-  '#3d9a94',
-  '#c9a227',
-  '#9c755f',
-  '#e377a0',
-  '#e15759',
-  '#1f4e79',
-  '#38b6e8',
-] as const
+// One fixed hue per sector fund (the mockup's ten plus a light blue for XLC), whatever the fund's rank today.
+// SMH is a hollow ring in a neutral colour.
+export const FUND_COLOR: Record<string, string> = {
+  XLK: '#4e79a7',
+  XLY: '#f28e2b',
+  XLV: '#59a14f',
+  XLI: '#b07aa1',
+  XLB: '#3d9a94',
+  XLP: '#c9a227',
+  XLU: '#9c755f',
+  XLRE: '#e377a0',
+  XLE: '#e15759',
+  XLF: '#1f4e79',
+  XLC: '#38b6e8',
+}
 const RING_COLOR = '#6b7280'
 const RING_SYMBOL = 'SMH'
 
@@ -112,13 +113,13 @@ function Tip({ active, payload }: { active?: boolean; payload?: { payload?: Poin
 
 export function RotationMap({ block }: { block: Sectors }) {
   const { rotation_axes: axes } = block
-  const drawn = block.rows.flatMap((row, index) =>
+  const drawn = block.rows.flatMap((row) =>
     'kind' in row.rotation
       ? []
       : [
           {
             symbol: row.symbol,
-            tone: row.symbol === RING_SYMBOL ? RING_COLOR : (FUND_PALETTE[index % FUND_PALETTE.length] ?? RING_COLOR),
+            tone: FUND_COLOR[row.symbol] ?? RING_COLOR,
             ring: row.symbol === RING_SYMBOL,
             // The unranked row says so in its tooltip, with the producer's rank text.
             points: (row.rotation as Spot[]).map((p): Point => ({
