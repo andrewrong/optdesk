@@ -449,3 +449,14 @@ it('draws only the risk link when only risk_link is set', async () => {
   expect(risk?.querySelector('svg')).not.toBeNull()
   expect(header.querySelector('a[href="/positions"]')).toBeNull()
 })
+
+it('draws no header link when risk_link and positions_link are absent', async () => {
+  const payload = fixture('ok.json')
+  delete payload.risk_link
+  delete payload.positions_link
+  await show(<HouseholdPage payload={payload} />)
+  const header = host.querySelector('header')!
+  expect(header.querySelector('a[href="/risk"]')).toBeNull()
+  expect(header.querySelector('a[href="/positions"]')).toBeNull()
+  expect(header.querySelector('svg.lucide-chevron-right')).toBeNull()
+})
