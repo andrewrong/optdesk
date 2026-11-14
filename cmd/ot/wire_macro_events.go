@@ -46,9 +46,7 @@ func init() {
 			}
 			return ""
 		},
-		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
-			return macroEventsJob(ctx, a, jc)
-		},
+		build: macroEventsJob,
 	})
 }
 

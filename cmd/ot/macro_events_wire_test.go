@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"slices"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/macroevents"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
 
@@ -103,23 +105,62 @@ func TestMacroPageEventsNilWithoutDSN(t *testing.T) {
 	}
 }
 
+// recordingEvents is a reader that records the window the page asks for.
+type recordingEvents struct {
+	macroevent.Reader
+	between atomic.Int32
+}
+
+func (r *recordingEvents) Between(context.Context, contracts.Day, contracts.Day) ([]macroevent.Event, error) {
+	r.between.Add(1)
+	return []macroevent.Event{}, nil
+}
+
+func (r *recordingEvents) Kinds(context.Context) ([]macroevent.Kind, error) {
+	return []macroevent.Kind{}, nil
+}
+
 func TestMacroPageEventsUsedWithReader(t *testing.T) {
 	t.Parallel()
-	var opens int
+	rec := &recordingEvents{}
+	var closed atomic.Int32
+	md := macroDeps(new(int))
+	md.openReader = func(_ context.Context, dsn string) (macroevent.Reader, io.Closer, error) {
+		if dsn != "pages-dsn" {
+			t.Errorf("reader opened with %q", dsn)
+		}
+		return rec, countCloser{&closed}, nil
+	}
 	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
-	a.deps.ext = map[string]any{extMacroEvents: macroDeps(&opens)}
-	a.deps.openReadingView = nil
+	a.deps.ext = map[string]any{extMacroEvents: md}
+	a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) { return emptyView{}, nil }
 	a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page {
 		t.Error("macroPage called with a reader")
 		return pages.Page{}
 	}
-	r, closeFn, err := openMacroEvents(context.Background(), a)
-	if err != nil || r == nil {
-		t.Fatalf("reader %v err %v", r, err)
+	p, closeFn, err := builtPages()[macroPageName].build(context.Background(), a, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Build(context.Background(), noSeries{}, "2026-11-06", time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	if rec.between.Load() == 0 {
+		t.Fatal("the reader never reached the page")
 	}
 	closeFn()
-	p := newMacroPageEvents(time.UTC, "dev", nil, r)
-	if p.Meta.Name != macroPageName {
-		t.Fatalf("page %q", p.Meta.Name)
+	if closed.Load() != 1 {
+		t.Fatalf("reader closed %d times, want 1", closed.Load())
 	}
 }
+
+type countCloser struct{ n *atomic.Int32 }
+
+func (c countCloser) Close() error { c.n.Add(1); return nil }
+
+type emptyView struct{}
+
+func (emptyView) WinnerReadings(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+	return nil, nil
+}
+func (emptyView) Close() error { return nil }

@@ -18,7 +18,15 @@ import (
 // newMacroPageEvents builds the macro page as newMacroPage does, with events as the reader of the stored dates;
 // a test passes a fake and opens no store.
 func newMacroPageEvents(zone *time.Location, buildID string, read compute.ReadingFunc, events macroevent.Reader) pages.Page {
-	return macro_page.NewPage(macro_page.Config{
+	cfg := macroPageConfig(zone, buildID, read)
+	cfg.Events = events
+	return macro_page.NewPage(cfg)
+}
+
+// macroPageConfig is the config of the macro page without events: the one place newMacroPageEvents takes it from.
+// newMacroPage of wire.go (not edited) holds the same literal for the page without a reader.
+func macroPageConfig(zone *time.Location, buildID string, read compute.ReadingFunc) macro_page.Config {
+	return macro_page.Config{
 		RunID:   "ot-page",
 		BuildID: buildID,
 		Scope:   "macro",
@@ -27,8 +35,7 @@ func newMacroPageEvents(zone *time.Location, buildID string, read compute.Readin
 		Indicators: []macro_page.Indicator{
 			{SeriesID: "DGS10", Name: "10-year Treasury yield", SourceText: "FRED"},
 		},
-		Events: events,
-	})
+	}
 }
 
 // openMacroEvents opens the reader-only store on store.DSNEnvPages. The reader is nil, with a no-op close, for the
