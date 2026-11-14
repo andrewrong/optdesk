@@ -175,3 +175,18 @@ func TestFixedDecimals(t *testing.T) {
 		}
 	}
 }
+
+func TestGroupThousands(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{
+		"1940.00":    "1,940.00",
+		"999.50":     "999.50",
+		"1234567.10": "1,234,567.10",
+		"-1105.75":   "-1,105.75",
+		"1000":       "1,000",
+	} {
+		if got := groupThousands(in); got != want {
+			t.Errorf("groupThousands(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

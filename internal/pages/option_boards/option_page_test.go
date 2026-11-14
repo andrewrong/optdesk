@@ -477,9 +477,9 @@ func TestCardReasonNamesMarks(t *testing.T) {
 
 func TestItmNoBuyPriceLabel(t *testing.T) {
 	t.Parallel()
-	for name, tc := range map[string]struct{ marks, want string }{
-		"both marks": {`["itm","no_buy_price"]`, "In the money, no buy price"},
-		"itm only":   {`["itm"]`, "Worth a look"},
+	for name, tc := range map[string]struct{ marks, want, tone string }{
+		"both marks": {`["itm","no_buy_price"]`, "In the money, no buy price", "warn"},
+		"itm only":   {`["itm"]`, "Worth a look", "good"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -490,10 +490,38 @@ func TestItmNoBuyPriceLabel(t *testing.T) {
 			if card["label"] != tc.want || card["key"] != "worth" {
 				t.Errorf("card verdict = %v, want label %q key worth", card, tc.want)
 			}
+			if card["tone"] != tc.tone {
+				t.Errorf("card verdict tone = %v, want %q", card["tone"], tc.tone)
+			}
 			if c := cellOf(t, tableRowsOf(m)[0], "verdict"); c["text"] != tc.want {
 				t.Errorf("table verdict = %v, want %q", c, tc.want)
 			}
 		})
+	}
+}
+
+func TestCardPremiumLineThousands(t *testing.T) {
+	t.Parallel()
+	r := okRow(1, issuerApple, 1, 1, 1)
+	r.BidEod, r.BreakEven = "1940", "1105.75"
+	got := buildCard(r, nil, displayNames{}).PremiumLine
+	if !strings.HasPrefix(got, "Premium $1,940.00 (close bid est.) · Breakeven $1,105.75 · ") {
+		t.Errorf("premium line = %q", got)
+	}
+}
+
+func TestMoneyText(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{
+		"1940":    "$1,940.00",
+		"1105.75": "$1,105.75",
+		"65.6":    "$65.60",
+		"-1234.5": "−$1,234.50",
+		"abc":     "n/a",
+	} {
+		if got := moneyText(in); got != want {
+			t.Errorf("moneyText(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

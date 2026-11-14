@@ -36,7 +36,7 @@ func verdictOf(status string) verdict {
 func labelOf(r store.Candidate) verdict {
 	v := verdictOf(r.Status)
 	if v.Key == "worth" && itmNoBuyPrice(r) {
-		v.Label = verdictItmNoBuy
+		v.Label, v.Tone = verdictItmNoBuy, "warn"
 	}
 	return v
 }
@@ -85,13 +85,16 @@ func optionDeltaText(delta *string) string {
 	return signedText(text)
 }
 
-// moneyText is "$" and a stored price at two decimals, "n/a" when it is not a decimal.
+// moneyText is "$", thousands separators and a stored price at two decimals ("−$" when negative), "n/a" when it is not a decimal.
 func moneyText(price string) string {
 	text, ok := fixedDecimals(price, 2)
 	if !ok {
 		return gapText
 	}
-	return "$" + text
+	if rest, neg := strings.CutPrefix(text, minus); neg {
+		return minusSign + "$" + groupThousands(rest)
+	}
+	return "$" + groupThousands(text)
 }
 
 // ivLine is "IV 38% · HV30 n/a · IVP n/a": HV30 and IVP have no producer and are always n/a.
