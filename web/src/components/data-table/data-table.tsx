@@ -92,7 +92,9 @@ export function DataTable({
   const hintOf = (id: string) => columns.find((c) => c.id === id)?.hint
   const defs: ColumnDef<Row>[] = columns.map(({ id, label }) => ({
     id,
-    enableSorting: rows.some((row) => {
+    enableSorting:
+      label !== '' &&
+      rows.some((row) => {
       const cell = row[id]
       return cell !== undefined && !isGap(cell) && cell.value != null
     }),
