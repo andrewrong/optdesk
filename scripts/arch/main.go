@@ -180,12 +180,12 @@ func classify(abs, rel string) (k kind, ok bool, err error) {
 	return kindImpl, true, nil
 }
 
-// discover classifies every internal/<a>/<b> directory of dirs (as goDirs lists them).
+// discover classifies every internal/<a>/<b>[/...] directory, at any depth, of dirs (as goDirs lists them).
 func discover(root string, dirs []string, rows []row) ([]pkg, error) {
 	var out []pkg
 	for _, d := range dirs {
 		parts := strings.Split(d, "/")
-		if len(parts) != 3 || parts[0] != "internal" {
+		if len(parts) < 3 || parts[0] != "internal" {
 			continue
 		}
 		k, ok, err := classify(filepath.Join(root, filepath.FromSlash(d)), d)
@@ -198,6 +198,9 @@ func discover(root string, dirs []string, rows []row) ([]pkg, error) {
 	}
 	return out, nil
 }
+
+// isTwoLevel reports whether dir is internal/<a>/<b>, not a nested package.
+func isTwoLevel(dir string) bool { return strings.Count(dir, "/") == 2 }
 
 // owned gives the components (without "internal/") of the packages of a row of one of the kinds.
 func owned(pkgs []pkg, rowName string, kinds ...kind) []string {
@@ -256,7 +259,9 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 	}
 	dirs := slices.Clone(generated)
 	for _, p := range pkgs {
-		dirs = append(dirs, p.dir)
+		if isTwoLevel(p.dir) { // nested packages are components of the yml only, see deriveTree
+			dirs = append(dirs, p.dir)
+		}
 	}
 	var out []component
 	for _, r := range rows {
