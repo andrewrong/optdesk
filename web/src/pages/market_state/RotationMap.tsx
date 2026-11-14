@@ -1,7 +1,9 @@
-// The rotation map (docs/design/market-state.md Decision 15, mockup v7): one series per row with a rotation, its
-// points in payload order (today's last) joined by a line, faded toward the old end, today's point large with the
-// fund's symbol beside it and an arrowhead on the last segment. A Gap rotation is not drawn. The four quadrants are
+// The rotation map (docs/design/market-state.md Decision 15, mockup v7): one series per row with a rotation. By
+// default a series is only today's point (the last of its payload rotation) large with the fund's symbol beside it;
+// the fund the user clicked also gets its earlier points (faded toward the old end), the line through them and an
+// arrowhead on the last segment; one fund at a time. A Gap rotation is not drawn. The four quadrants are
 // named by fixed words at the plot's corners by id; the producer's quadrant sentences are not shown.
+import { useState } from 'react'
 import {
   CartesianGrid,
   LabelList,
@@ -43,10 +45,10 @@ const RING_SYMBOL = 'SMH'
 
 // Each quadrant is bounded on both axes (0 to the axis end) so its name is drawn in its own plot corner.
 const QUADRANT = {
-  leading: { word: 'Leading', sx: 1, sy: 1, position: 'insideTopRight' },
-  improving: { word: 'Improving', sx: -1, sy: 1, position: 'insideTopLeft' },
-  lagging: { word: 'Lagging', sx: -1, sy: -1, position: 'insideBottomLeft' },
-  weakening: { word: 'Weakening', sx: 1, sy: -1, position: 'insideBottomRight' },
+  leading: { word: 'Leading — ahead of SPY over 3 months and still gaining', sx: 1, sy: 1, position: 'insideTopRight' },
+  improving: { word: 'Improving — behind SPY over 3 months but gaining pace', sx: -1, sy: 1, position: 'insideTopLeft' },
+  lagging: { word: 'Lagging — behind SPY over 3 months and still losing', sx: -1, sy: -1, position: 'insideBottomLeft' },
+  weakening: { word: 'Weakening — ahead of SPY over 3 months but losing pace', sx: 1, sy: -1, position: 'insideBottomRight' },
 } as const
 
 // The end of a zero-centred axis: the largest absolute value rounded up to a multiple of 10 (at least 10), by remainder arithmetic: the web source calls no Math function.
@@ -175,6 +177,8 @@ function Tip({ active, payload }: { active?: boolean; payload?: { payload?: Poin
 }
 
 export function RotationMap({ block }: { block: Sectors }) {
+  // The fund whose tail is drawn (none at first): a click on its today dot clears it, a click on another moves it.
+  const [selected, setSelected] = useState<string | null>(null)
   const { rotation_axes: axes } = block
   const drawn = block.rows.flatMap((row) =>
     'kind' in row.rotation
@@ -249,21 +253,27 @@ export function RotationMap({ block }: { block: Sectors }) {
             <ReferenceLine x={0} stroke="var(--foreground)" />
             <ReferenceLine y={0} stroke="var(--foreground)" />
             <ChartTooltip content={<Tip />} />
-            {drawn.map((item) => (
-              <Scatter
-                key={item.symbol}
-                name={item.symbol}
-                data={item.points}
-                line={{ stroke: item.tone, strokeWidth: 1.5, ...(item.ring ? { strokeDasharray: '4 3' } : {}) }}
-                fill={item.tone}
-                stroke={item.tone}
-                shape={<TailPoint count={item.points.length} tone={item.tone} ring={item.ring} />}
-                isAnimationActive={false}
-              >
-                <LabelList content={<TodayLabel count={item.points.length} symbol={item.symbol} tone={item.tone} todays={todays} />} />
-              </Scatter>
-            ))}
-            {drawn.map((item) => (
+            {drawn.map((item) => {
+              const open = item.symbol === selected
+              const shown = open ? item.points : item.points.slice(-1)
+              return (
+                <Scatter
+                  key={item.symbol}
+                  name={item.symbol}
+                  data={shown}
+                  line={open ? { stroke: item.tone, strokeWidth: 1.5, ...(item.ring ? { strokeDasharray: '4 3' } : {}) } : undefined}
+                  fill={item.tone}
+                  stroke={item.tone}
+                  shape={<TailPoint count={shown.length} tone={item.tone} ring={item.ring} />}
+                  isAnimationActive={false}
+                  cursor="pointer"
+                  onClick={() => setSelected(open ? null : item.symbol)}
+                >
+                  <LabelList content={<TodayLabel count={shown.length} symbol={item.symbol} tone={item.tone} todays={todays} />} />
+                </Scatter>
+              )
+            })}
+            {drawn.filter((item) => item.symbol === selected).map((item) => (
               <TailArrow key={item.symbol} points={item.points} symbol={item.symbol} tone={item.tone} />
             ))}
           </ScatterChart>
