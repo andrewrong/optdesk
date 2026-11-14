@@ -193,13 +193,15 @@ func TestOptionOpenRoundTripAndGrants(t *testing.T) {
 	if _, err := r.Plan(ctx, "2026-11-11", "0945"); err != nil {
 		t.Errorf("the pages role must read the plan view: %v", err)
 	}
-	// A writer cannot update, delete or read the base table.
+	// A writer cannot delete, truncate or update a key column (migration 0047 widens UPDATE of non-key columns and SELECT
+	// of compared ones; this database applies 0029 to 0032 only).
 	wc, err := pgx.Connect(ctx, connURL(t, name, "ot_w_option_open"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = wc.Close(ctx) }()
-	mustFail(t, wc, `UPDATE obs.option_open SET skew = true`, `DELETE FROM obs.option_open`, `SELECT 1 FROM obs.option_open`,
+	mustFail(t, wc, `UPDATE obs.option_open SET slot = '0000'`, `UPDATE obs.option_open SET capture_id = gen_random_uuid()`,
+		`DELETE FROM obs.option_open`, `TRUNCATE obs.option_open`,
 		`DELETE FROM plan.option_open_item`, `DELETE FROM master.option_contract`)
 	bad := openRow("refresh", 2, t0, 1)
 	if err := w.InsertOptionOpen(ctx, []contracts.OptionOpen{bad}); err == nil {

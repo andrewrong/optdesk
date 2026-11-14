@@ -373,9 +373,11 @@ func TestOptionEodGrantsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := connectAs(t, name, "ot_w_option_eod")
-	mustFail(t, w, `UPDATE obs.option_eod SET bid = 1`)
+	// DELETE, TRUNCATE and an UPDATE of a key column are refused (migration 0047 widens only UPDATE of non-key columns and
+	// SELECT of compared ones; this database applies 0006 alone, so the widened grants are checked by the setup tests).
+	mustFail(t, w, `UPDATE obs.option_eod SET capture_id = gen_random_uuid()`)
+	mustFail(t, w, `UPDATE obs.option_eod SET instrument_id = instrument_id + 1`)
 	mustFail(t, w, `DELETE FROM obs.option_eod`)
-	mustFail(t, w, `SELECT count(*) FROM obs.option_eod`)
 	mustFail(t, w, `TRUNCATE obs.option_eod`)
 
 	p := connectAs(t, name, "ot_ro_pages")
