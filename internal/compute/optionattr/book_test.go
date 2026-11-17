@@ -114,7 +114,7 @@ func TestLotTotalsSumToBook(t *testing.T) {
 // TestBookerContractReal runs the cases of the contract test of optionattrapi against the real Booker.
 func TestBookerContractReal(t *testing.T) {
 	t.Parallel()
-	var b optionattrapi.Booker = NewBooker()
+	b := NewBooker()
 	got := b.Combine([]optionattrapi.Result{{Currency: "USD"}, {Currency: "JPY"}})
 	require.Len(t, got, 2)
 	assert.Equal(t, "USD", got[0].Currency)
