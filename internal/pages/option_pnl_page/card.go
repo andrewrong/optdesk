@@ -91,7 +91,7 @@ func lotTitle(o outcome) string {
 
 func lotSummary(o outcome) string {
 	p := o.lot.pos
-	s := "short " + strings.TrimPrefix(p.Quantity, "-") + " opened " + string(p.OpenedOn) + " at " + p.OpenPrice + "   "
+	s := "short " + strings.TrimPrefix(p.Quantity, "-") + " opened " + string(p.OpenedOn) + " at " + money(p.OpenPrice, p.Currency) + "   "
 	if p.Status != statusOpen {
 		return s + p.Status + " " + string(p.ClosedOn)
 	}

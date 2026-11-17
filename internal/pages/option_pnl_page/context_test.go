@@ -248,7 +248,7 @@ func lotPos(id, und, contract, strike, status string) compute.LedgerPosition {
 	p := compute.LedgerPosition{PositionID: id, Alias: "main", Underlying: und, Contract: contract, Status: status,
 		Right: "P", Expiry: "2026-12-18", Strike: strike, OpenedOn: "2026-11-03", OpenPrice: "1.80", Quantity: "-2",
 		Multiplier: "100", Currency: "USD", Commissions: "1.30",
-		Fills: []compute.LedgerFill{{Day: "2026-11-03", Action: "open", Quantity: "2", Price: "1.80", Commission: "1.30"}}}
+		Fills: []compute.LedgerFill{{Day: "2026-11-03", Action: "open", Quantity: "-2", Price: "1.80", Commission: "1.30"}}}
 	if status == "open" {
 		p.UnrealizedPnL = "100"
 	} else {
