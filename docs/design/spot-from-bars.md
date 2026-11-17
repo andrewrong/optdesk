@@ -81,14 +81,14 @@ Acceptance:
 
 ### 3 positions-bars-wiring
 
-Module: ot. Size: S.
+Module: ot. Size: S. This is the composition-root step of the design: it only wires readers that issue 2 adds to `positions_page.Config`, so it is ordered after issue 2 and is written against main once issue 2 has merged; no module issue waits for it.
 Order: after 2.
 Files: `cmd/ot/positions_site.go`, `cmd/ot/positions_site_test.go`
 Contracts: unchanged
 Design: docs/design/spot-from-bars.md#Decisions (Decisions 2, 6)
 Acceptance:
 1. `positionsPageConfig` sets `Bars` from `rd.bars` and `StockIDs` from `siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)`, each only when non-nil; the named path `positionsPageNamedOf` uses the same function, so it gets both when its readers open.
-2. New test `TestPositionsPageGetsBarsAndStockIDs` (new): a site with a fake bar reader and a fake stock reader builds a stock row priced from the bar with a money-cell day result; the same through `positionsPageNamedOf`; a site with neither builds the page as before.
+2. New test `TestPositionsPageGetsBarsAndStockIDs` (new): a site with a fake bar reader and a fake stock reader yields a `positions_page.Config` whose `Bars` and `StockIDs` are those readers, the same through `positionsPageNamedOf`; a site with neither yields a `Config` with both nil. The page behaviour itself is checked in issue 2.
 
 ## Checked by CI
 
