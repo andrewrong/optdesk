@@ -297,7 +297,8 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
 		if unread > 0 {
 			// Items not asked because the broker answered nothing at the moment: the key is run again.
-			return withErr(res, newErr(contracts.Retryable, "%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot of the stock was not read or the broker was unavailable",
+			return withErr(res, newErr(contracts.Retryable,
+				"%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot was not read or the broker was unavailable",
 				ok, planned, p.m.MinOKShare, unread))
 		}
 		return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, p.m.MinOKShare))
