@@ -1,7 +1,6 @@
 package data_health_page
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -42,7 +41,11 @@ func TestRepairVerdicts(t *testing.T) {
 		{"no_value", "no_value", past, anyDay, testForm, RepairNone, ""},
 		{"missing any_day", "missing", past, anyDay, testForm, RepairButton, ""},
 		{"expired any_day", "expired", past, anyDay, testForm, RepairButton, ""},
-		{"not_run", StateNotRun, past, anyDay, testForm, RepairNotRefetchable, notPlanText},
+		{"not_run any_day", StateNotRun, past, anyDay, testForm, RepairButton, ""},
+		{"not_run today_only past", StateNotRun, past, todayOnly, testForm, RepairNotRefetchable, todayOnly.WhyText},
+		{"not_run today_only today", StateNotRun, today, todayOnly, testForm, RepairButton, ""},
+		{"not_run no job", StateNotRun, past, nil, testForm, RepairNotRefetchable, lostText},
+		{"not_run no form", StateNotRun, past, anyDay, nil, RepairNone, ""},
 		{"today_only today", "missing", today, todayOnly, testForm, RepairButton, ""},
 		{"today_only past", "missing", past, todayOnly, testForm, RepairNotRefetchable, todayOnly.WhyText},
 		{"listed_only", "missing", today, listed, testForm, RepairNotRefetchable, listed.WhyText},
@@ -65,15 +68,58 @@ func TestRepairVerdicts(t *testing.T) {
 	}
 }
 
-func TestNotRunNeverButton(t *testing.T) {
+func TestNotRunFollowsTheVerdictOfMissing(t *testing.T) {
 	t.Parallel()
-	job := &Job{ID: "fred_series", Kind: KindAnyDay}
 	now := utc("2026-03-10", 18, 0)
-	for _, day := range []contracts.Day{"2026-03-05", "2026-03-10"} {
-		c := one(StateNotRun, day, job, testForm, now, "2026-03-10")
-		if c.Repair != RepairNotRefetchable || c.WhyText != notPlanText || strings.Contains(c.WhyText, "lost") {
-			t.Fatalf("%s: %+v", day, c)
+	today := contracts.Day("2026-03-10")
+	jobs := map[string]*Job{
+		"any_day":      {ID: "a", Kind: KindAnyDay},
+		"today_only":   {ID: "t", Kind: KindTodayOnly, Zone: "America/New_York", WhyText: "present only", DueAt: "09:00"},
+		"before slot":  {ID: "b", Kind: KindTodayOnly, Zone: "America/New_York", DueAt: "23:00"},
+		"listed_only":  {ID: "l", Kind: KindListedOnly, WhyText: "never run"},
+		"present_only": {ID: "p", Kind: KindAnyDay, PresentOnly: true},
+		"no job":       nil,
+	}
+	for name, job := range jobs {
+		for _, day := range []contracts.Day{"2026-03-05", today} {
+			t.Run(name+" "+string(day), func(t *testing.T) {
+				t.Parallel()
+				m := one("missing", day, job, testForm, now, today)
+				n := one(StateNotRun, day, job, testForm, now, today)
+				if m.Repair != n.Repair || m.WhyText != n.WhyText || m.DueText != n.DueText {
+					t.Fatalf("missing %+v, not_run %+v", m, n)
+				}
+			})
 		}
+	}
+}
+
+func TestGapDaysCountsNotRun(t *testing.T) {
+	t.Parallel()
+	now := utc("2026-03-10", 18, 0)
+	cells := func(job *Job) []Cell {
+		cs := []Cell{{Day: "2026-03-05", State: StateNotRun, MissingKeys: []string{}}}
+		Apply(cs, job, testForm, now, "2026-03-10")
+		return cs
+	}
+	if g := GapDays(cells(&Job{ID: "a", Kind: KindAnyDay})); len(g) != 1 || g[0] != "2026-03-05" {
+		t.Fatalf("any_day: %v", g)
+	}
+	todayOnly := &Job{ID: "t", Kind: KindTodayOnly, Zone: "America/New_York", WhyText: "present only"}
+	if g := GapDays(cells(todayOnly)); len(g) != 0 {
+		t.Fatalf("today_only past: %v", g)
+	}
+	if g := GapDays(cells(&Job{ID: "l", Kind: KindListedOnly, WhyText: "never"})); len(g) != 0 {
+		t.Fatalf("listed_only: %v", g)
+	}
+}
+
+func TestRepairAllCountsNotRunDays(t *testing.T) {
+	t.Parallel()
+	cells := []Cell{{Day: "2026-03-05", State: StateNotRun, MissingKeys: []string{}}}
+	Apply(cells, &Job{ID: "a", Kind: KindAnyDay}, testForm, utc("2026-03-10", 18, 0), "2026-03-10")
+	if RepairAll(GapDays(cells), testForm) != RepairButton {
+		t.Fatal("repair_all is not button")
 	}
 }
 
@@ -122,7 +168,7 @@ func TestGapDaysAndRepairAll(t *testing.T) {
 	}
 	Apply(cells, job, testForm, now, "2026-03-10")
 	gaps := GapDays(cells)
-	if len(gaps) != 2 || gaps[0] != "2026-03-03" || gaps[1] != "2026-03-04" {
+	if len(gaps) != 3 || gaps[0] != "2026-03-03" || gaps[1] != "2026-03-04" || gaps[2] != "2026-03-07" {
 		t.Fatalf("gaps %v", gaps)
 	}
 	if RepairAll(gaps, testForm) != RepairButton || RepairAll(gaps, nil) != RepairNone || RepairAll(nil, testForm) != RepairNone {

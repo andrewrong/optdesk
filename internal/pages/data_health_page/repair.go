@@ -23,7 +23,6 @@ const (
 
 const (
 	lostText     = "lost: the source gives only the present"
-	notPlanText  = "not planned: repair of an unplanned day is not built yet"
 	slotLayout   = "15:04"
 	dayLayout    = "2006-01-02"
 	zoneAbbrev   = "MST"
@@ -59,15 +58,7 @@ func verdict(c *Cell, job *Job, form *Form, now time.Time, today contracts.Day) 
 		return
 	}
 	localDay, local, haveZone := jobToday(job, now, today)
-	if c.State == StateNotRun {
-		if due, before := beforeSlot(c, job, localDay, local, haveZone); before {
-			c.DueText = due
-			return
-		}
-		c.Repair, c.WhyText = RepairNotRefetchable, notPlanText
-		return
-	}
-	if c.State == "missing" {
+	if c.State == "missing" || c.State == StateNotRun {
 		if due, before := beforeSlot(c, job, localDay, local, haveZone); before {
 			c.DueText = due
 			return
@@ -117,12 +108,12 @@ func beforeSlot(c *Cell, job *Job, localDay contracts.Day, local time.Time, have
 	return dueTextFirst + job.DueAt + " " + local.Format(zoneAbbrev), true
 }
 
-// GapDays returns the days of the cells in state missing or expired whose verdict is a button, oldest first.
+// GapDays returns the days of the cells in state not_run, missing or expired whose verdict is a button, oldest first.
 // The page prints len of it as gap_days and the repair queues one request per day of it.
 func GapDays(cells []Cell) []contracts.Day {
 	days := []contracts.Day{}
 	for _, c := range cells {
-		if (c.State == "missing" || c.State == "expired") && c.Repair == RepairButton {
+		if (c.State == StateNotRun || c.State == "missing" || c.State == "expired") && c.Repair == RepairButton {
 			days = append(days, c.Day)
 		}
 	}
