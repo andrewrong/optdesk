@@ -170,15 +170,32 @@ func dueAtOfSlot(slot string) string {
 	return slot[:2] + ":" + slot[2:]
 }
 
+// dataHealthTimeSlot is the slot ("HHMM") and zone of a time-anchored job whose jobTable row is any-day.
+type dataHealthTimeSlot struct{ slot, zone string }
+
+// dataHealthTimeSlots is by job id; the slots match the anchor offsets of the job.toml of each job.
+var dataHealthTimeSlots = map[string]dataHealthTimeSlot{
+	"fred_series":  {"0730", "America/New_York"},
+	"fundamentals": {"0800", "America/New_York"},
+	"macro_events": {"0600", "America/New_York"},
+}
+
 // dataHealthJobs builds the jobs of the page from jobTable, one per row in its order, and the manifests.
 func dataHealthJobs() []data_health_page.Job {
 	out := make([]data_health_page.Job, 0, len(jobTable))
 	for _, r := range jobTable {
 		m := dataHealthManifests[r.ID]
+		zone, dueAt := r.Zone, dueAtOfSlot(m.slot)
+		if ts, ok := dataHealthTimeSlots[r.ID]; ok {
+			dueAt = dueAtOfSlot(ts.slot)
+			if zone == "" {
+				zone = ts.zone
+			}
+		}
 		out = append(out, data_health_page.Job{
-			ID: r.ID, Kind: r.Kind, Zone: r.Zone, WhyText: r.Text,
+			ID: r.ID, Kind: r.Kind, Zone: zone, WhyText: r.Text,
 			Datasets: slices.Clone(m.datasets), Calendar: m.calendar,
-			PresentOnly: slices.Contains(dataHealthPresentOnly, r.ID), DueAt: dueAtOfSlot(m.slot),
+			PresentOnly: slices.Contains(dataHealthPresentOnly, r.ID), DueAt: dueAt,
 		})
 	}
 	return out
