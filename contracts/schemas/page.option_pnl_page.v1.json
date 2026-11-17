@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.option_pnl_page.v1.json",
+  "title": "OptionPnlPage",
+  "description": "The options P&L page: per account and currency a book, and per short put lot its profit split into time, move cost, direction and IV re-marking. All money and percent figures are final text; nothing is computed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "notes",
+    "gaps",
+    "as_of",
+    "accounts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "option_pnl_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "as_of": {
+      "description": "Date text of the page.",
+      "$ref": "#/$defs/Text"
+    },
+    "accounts": {
+      "description": "One to four accounts.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/Account"
+      }
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400
+    },
+    "OptText": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "OptGap": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "OptLine": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Line"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Account": {
+      "description": "One account: its books (one per currency), its lots, the sample note and a gap when the account could not be built.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "books",
+        "lots",
+        "sample_note",
+        "gap"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]{1,16}$"
+        },
+        "books": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Book"
+          }
+        },
+        "lots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Lot"
+          }
+        },
+        "sample_note": {
+          "$ref": "#/$defs/Text"
+        },
+        "gap": {
+          "$ref": "#/$defs/OptGap"
+        }
+      }
+    },
+    "Book": {
+      "description": "The sum of the lots of one currency. left_out is the line naming the lots left out of the sums, or null when none.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "currency",
+        "counts",
+        "left_out",
+        "headline",
+        "lines"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^book-[A-Za-z0-9:_-]{1,96}$"
+        },
+        "currency": {
+          "$ref": "#/$defs/Text"
+        },
+        "counts": {
+          "$ref": "#/$defs/Text"
+        },
+        "left_out": {
+          "$ref": "#/$defs/OptText"
+        },
+        "headline": {
+          "$ref": "#/$defs/Line"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Line"
+          }
+        }
+      }
+    },
+    "Lot": {
+      "description": "One short put lot. gap is set when the lot could not be split, with lines empty.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "lines",
+        "days_line",
+        "iv_line",
+        "end_line",
+        "recon",
+        "badges",
+        "gap"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^lot-[A-Za-z0-9:_-]{1,96}$"
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "summary": {
+          "$ref": "#/$defs/Text"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Line"
+          }
+        },
+        "days_line": {
+          "$ref": "#/$defs/Line"
+        },
+        "iv_line": {
+          "$ref": "#/$defs/OptLine"
+        },
+        "end_line": {
+          "$ref": "#/$defs/OptLine"
+        },
+        "recon": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Line"
+          }
+        },
+        "badges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "gap": {
+          "$ref": "#/$defs/OptGap"
+        }
+      }
+    },
+    "Line": {
+      "description": "One labelled line of final text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "text",
+        "hint",
+        "tone"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.v2.json#/$defs/Id"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "hint": {
+          "$ref": "#/$defs/OptText"
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "none",
+            "good",
+            "bad",
+            "muted"
+          ]
+        }
+      }
+    }
+  }
+}
