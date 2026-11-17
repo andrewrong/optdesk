@@ -82,11 +82,6 @@ func TestZoneFlagsJudgedAlone(t *testing.T) {
 	if !l.Flags.AtTrim || !l.Flags.AtClear || !l.Flags.AtCore || l.Zone != "core" {
 		t.Errorf("above all: %+v zone %s", l.Flags, l.Zone)
 	}
-	in.Margin[0].S = "2" // trim 300, close 160 above clear and core only
-	l, _ = New().Lines(in)
-	if l.Flags.AtTrim || !l.Flags.AtClear || l.Zone != "core" {
-		t.Errorf("trim above core: %+v zone %s", l.Flags, l.Zone)
-	}
 	in.Margin[0].S = "0.1"
 	in.Close = "115" // trim only (110), clear 120 not reached
 	l, _ = New().Lines(in)
@@ -97,6 +92,20 @@ func TestZoneFlagsJudgedAlone(t *testing.T) {
 	l, _ = New().Lines(in)
 	if l.Zone != "fair" || !l.Flags.InFair {
 		t.Errorf("fair: %+v zone %s", l.Flags, l.Zone)
+	}
+}
+
+func TestZoneTrimAboveCore(t *testing.T) {
+	t.Parallel()
+	in := baseInput("160")
+	in.R.US = "1"
+	in.Margin = []valuelinesapi.MarginRow{{PFrom: "1", M: "0.2", W: "0.1", H: "0.3", S: "2"}}
+	l, err := New().Lines(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Flags.AtTrim || !l.Flags.AtClear || l.Zone != "core" {
+		t.Errorf("trim above core: %+v zone %s", l.Flags, l.Zone)
 	}
 }
 

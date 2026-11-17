@@ -43,7 +43,8 @@ func (Calc) Check(in valuelinesapi.CheckInput) []valuelinesapi.Problem {
 			case !ok:
 				add("margin", fmt.Sprintf("margin table has no row for P %s", p))
 			case !row.m.GreaterThan(row.w):
-				add("margin", fmt.Sprintf("margin row from P %s: buy zone upper line is not below the fair zone lower line (margin %s is not above fair half width %s)", row.pFrom, row.m, row.w))
+				add("margin", fmt.Sprintf("margin row from P %s: buy zone upper line is not below the fair zone lower line "+
+					"(margin %s is not above fair half width %s)", row.pFrom, row.m, row.w))
 			}
 		}
 	}
