@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/valuation_params_page'
-import { MarginTableView, OwnerForm, OwnerForms, RHistoryView, RTableView } from './ParamTables'
+import { AI_GLOSS, Gloss, HKCN_GLOSS, MarginTableView, OwnerForm, OwnerForms, RHistoryView, RTableView } from './ParamTables'
 
 function Warnings({ lines }: { lines: string[] }) {
   return lines.length === 0 ? null : (
@@ -67,9 +67,12 @@ export function ValuationParamsPage({ payload }: { payload: Payload }) {
     <div className="min-w-0 space-y-6" data-page="valuation_params">
       <header>
         <h1 className="text-2xl font-semibold">Valuation parameters</h1>
-        <p className="mt-2 text-sm">
+        <p className="mt-2 flex gap-4 text-sm">
           <a href="/valuation" className="underline">
-            Valuation table
+            Table
+          </a>
+          <a href="/valuation-params" aria-current="page" className="font-medium">
+            Parameters
           </a>
         </p>
       </header>
@@ -95,6 +98,8 @@ export function ValuationParamsPage({ payload }: { payload: Payload }) {
               US {current.r.us}, JP {current.r.jp}, HKCN {current.r.hkcn}; AI switch {current.ai_switch ? 'on' : 'off'}
               {current.ai_expiry ? `, ${current.ai_expiry}` : ''}
             </p>
+            <Gloss text={HKCN_GLOSS} />
+            <Gloss text={AI_GLOSS} />
             <Warnings lines={current.step_warnings} />
           </CardContent>
         </Card>
