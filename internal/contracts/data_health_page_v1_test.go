@@ -51,3 +51,22 @@ func TestDataHealthRepairEnum(t *testing.T) {
 		t.Fatal(`repair "button_until" accepted`)
 	}
 }
+
+// TestDataHealthOkHasFredRow: the ok fixture has a FRED row with newest, and newest sits only on it.
+func TestDataHealthOkHasFredRow(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "ok")
+	fred := false
+	for _, d := range m["datasets"].([]any) {
+		ds := d.(map[string]any)
+		if len(ds["newest"].([]any)) > 0 {
+			if ds["dataset_id"] != "obs.series_point" {
+				t.Fatalf("newest on non-FRED dataset %v", ds["dataset_id"])
+			}
+			fred = true
+		}
+	}
+	if !fred {
+		t.Fatal("no FRED dataset with a newest row")
+	}
+}
