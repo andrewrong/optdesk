@@ -174,7 +174,7 @@ func (f fxFakeBars) PriceBars(_ context.Context, id int64, basis string, from, t
 		}
 	}
 	if len(out) == 0 {
-		return []contracts.PriceBar{{Close: "10"}}, nil
+		return []contracts.PriceBar{{SessionDay: fixtureDaySimple("2026-11-09"), Close: "10"}}, nil
 	}
 	return out, nil
 }
@@ -374,8 +374,8 @@ func TestSymbolResolvedViaCatalog(t *testing.T) {
 	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
 	day := contracts.Day(in.Today)
 	spot, ok, err := cfg.Spot(t.Context(), "SYN1", day)
-	if err != nil || !ok || spot != "128.4" {
-		t.Errorf("spot %q %v %v", spot, ok, err)
+	if err != nil || !ok || spot.Price != "128.4" {
+		t.Errorf("spot %+v %v %v", spot, ok, err)
 	}
 	offers, err := cfg.Offers(t.Context(), "SYN1", day)
 	if err != nil || len(offers) != 1 || offers[0] != "120" {
@@ -393,8 +393,8 @@ func TestUnknownSymbolGivesGap(t *testing.T) {
 	_, inputs := fixtureStores(t, in)
 	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
 	spot, ok, err := cfg.Spot(t.Context(), "NOPE", contracts.Day(in.Today))
-	if err != nil || ok || spot != "" {
-		t.Errorf("spot %q %v %v", spot, ok, err)
+	if err != nil || ok || spot.Price != "" {
+		t.Errorf("spot %+v %v %v", spot, ok, err)
 	}
 	if offers, err := cfg.Offers(t.Context(), "NOPE", contracts.Day(in.Today)); err != nil || offers != nil {
 		t.Errorf("offers %v %v", offers, err)
@@ -418,8 +418,8 @@ func TestSymbolResolvedViaStockReader(t *testing.T) {
 	}}
 	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
 	spot, ok, err := cfg.Spot(t.Context(), "7203", contracts.Day(in.Today))
-	if err != nil || !ok || spot != "2512.5" {
-		t.Errorf("spot %q %v %v", spot, ok, err)
+	if err != nil || !ok || spot.Price != "2512.5" {
+		t.Errorf("spot %+v %v %v", spot, ok, err)
 	}
 }
 
@@ -433,7 +433,31 @@ func TestSharedSymbolStaysAGap(t *testing.T) {
 	}
 	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
 	spot, ok, err := cfg.Spot(t.Context(), "DUP", contracts.Day(in.Today))
-	if err != nil || ok || spot != "" {
+	if err != nil || ok || spot.Price != "" {
 		t.Errorf("two stock rows must stay a gap: %q %v %v", spot, ok, err)
 	}
+}
+
+func TestSpotCarriesBarDay(t *testing.T) {
+	t.Parallel()
+	in := loadFixtureInput(t)
+	_, inputs := fixtureStores(t, in)
+	inputs.Stocks = fxFakeStocks{{InstrumentID: 7203, Type: "stock", Name: "7203"}}
+	inputs.Bars = fxFakeBars{quotes: []contracts.QuoteSnapshot{
+		{SessionDay: fixtureDay(t, "2026-11-04"), InstrumentID: 7203, Last: ptr(2500.5)},
+		{SessionDay: fixtureDay(t, "2026-11-06"), InstrumentID: 7203, Last: ptr(2512.5)},
+	}}
+	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
+	spot, ok, err := cfg.Spot(t.Context(), "7203", contracts.Day(in.Today))
+	if err != nil || !ok || spot.Price != "2512.5" || spot.Day != "2026-11-06" {
+		t.Errorf("spot %+v %v %v, want 2512.5 on 2026-11-06 (page day %s)", spot, ok, err, in.Today)
+	}
+}
+
+func fixtureDaySimple(s string) types.SerializableDate {
+	d, err := time.Parse(dayLayout, s)
+	if err != nil {
+		panic(err)
+	}
+	return types.SerializableDate{Time: d}
 }
