@@ -230,3 +230,17 @@ func TestOverwriteNote(t *testing.T) {
 		t.Fatalf("%q", d.Overwrite)
 	}
 }
+
+func TestBuildLateTextValidatesSchema(t *testing.T) {
+	t.Parallel()
+	r := &fakeReader{sessions: weekdays("XNYS"),
+		cells:  []coverage.Cell{{Day: "2026-03-10", Dataset: fredDataset, Keys: 1, Missing: 1, MissingKeys: []string{"VIXCLS"}}},
+		newest: []coverage.Newest{{SeriesID: "VIXCLS", Day: "2026-03-09"}}}
+	jobs := []Job{{ID: "fred_series", Kind: KindAnyDay, Calendar: "XNYS", Datasets: []string{fredDataset}}}
+	d := build(t, input(r, jobs, testForm))
+	cells := d.Datasets[0].Cells
+	last := cells[len(cells)-1]
+	if last.Day != "2026-03-10" || last.DueText != lateText || last.State != "missing" {
+		t.Fatalf("%+v", last)
+	}
+}
