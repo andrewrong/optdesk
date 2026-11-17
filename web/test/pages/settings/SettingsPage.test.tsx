@@ -36,6 +36,7 @@ afterEach(async () => {
   await act(async () => root?.unmount())
   root = undefined
   host?.remove()
+  document.body.querySelectorAll('[role=dialog]').forEach((d) => d.remove())
 })
 const hidden = (scope: ParentNode, name: string) =>
   [...scope.querySelectorAll<HTMLInputElement>(`input[type=hidden][name="${name}"]`)].map((i) => i.value)
@@ -99,7 +100,8 @@ describe('SettingsPage', () => {
   })
 
   it('shows the confirm table and a second form with confirm=1 and the token of confirm.form', async () => {
-    const page = await show(confirmStep)
+    await show(confirmStep)
+    const page = document.body
     const rows = [...page.querySelectorAll('[data-confirm-row]')].map((r) => [...r.children].map((c) => c.textContent))
     expect(rows).toEqual(confirmStep.confirm!.rows.map((r) => [r.label, r.old, r.new]))
     const form = page.querySelector<HTMLFormElement>('form[data-confirm-form]')!
@@ -110,11 +112,52 @@ describe('SettingsPage', () => {
     expect(hidden(form, 'param.min_dte')).toEqual(['25'])
     expect(hidden(form, 'row')).toEqual(['9001', '9002', '9003'])
     expect(hidden(form, 'excluded')).toEqual(['9001'])
-    expect(page.querySelector('[data-cancel]')!.getAttribute('href')).toBe('/settings')
   })
 
   it('is registered under settings_page and found by the shell', () => {
     expect(registration.schema).toBe('settings_page')
     expect(pages.settings_page).toBe(registration.page)
+  })
+})
+
+const dialogOf = () => document.body.querySelector<HTMLElement>('[role=dialog]')
+
+describe('SettingsPage confirm dialog', () => {
+  it('TestSettingsConfirmDialogFlow', async () => {
+    await show(confirmStep)
+    const dialog = dialogOf()!
+    expect(dialog).not.toBeNull()
+    expect(dialog.getAttribute('data-state')).toBe('open')
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    const form = dialog.querySelector<HTMLFormElement>('form[data-confirm-form]')!
+    const c = confirmStep.confirm!
+    expect(form.getAttribute('action')).toBe(c.form.post_path)
+    expect(hidden(form, 'expires')).toEqual([c.form.expires])
+    expect(hidden(form, 'mac')).toEqual([c.form.mac])
+    expect(hidden(form, 'confirm')).toEqual(['1'])
+    for (const p of confirmStep.params) expect(hidden(form, `param.${p.key}`)).toEqual([p.value])
+    expect(hidden(form, 'row')).toEqual(confirmStep.rows.map((r) => String(r.instrument_id)))
+    expect(hidden(form, 'excluded')).toEqual(confirmStep.rows.filter((r) => r.excluded).map((r) => String(r.instrument_id)))
+    expect(form.querySelector('button[type=submit]')!.textContent).toBe('Confirm and save')
+  })
+
+  it('TestSettingsConfirmDialogCancel', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const submitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit').mockImplementation(() => {})
+    const page = await show(confirmStep)
+    const cancel = [...dialogOf()!.querySelectorAll('button')].find((b) => b.textContent === 'Cancel')!
+    expect(cancel.getAttribute('type')).toBe('button')
+    await act(async () => cancel.click())
+    expect(dialogOf()).toBeNull()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(submitSpy).not.toHaveBeenCalled()
+    expect(page.querySelector('form[data-edit-form]')).not.toBeNull()
+    submitSpy.mockRestore()
+  })
+
+  it('TestSettingsConfirmDialogAbsent', async () => {
+    await show(editable)
+    expect(document.body.querySelector('[role=dialog]')).toBeNull()
   })
 })
