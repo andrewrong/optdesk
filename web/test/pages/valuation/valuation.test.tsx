@@ -4,6 +4,7 @@ import path from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { GLOSS } from '@/pages/valuation/CompanyView'
 import * as module from '@/pages/valuation/ValuationPage'
 import type { Payload } from '@/types/valuation_page'
 
@@ -101,6 +102,11 @@ describe('table view', () => {
     expect(v?.textContent).toBe('V')
     expect(v?.querySelectorAll('[aria-label]')).toHaveLength(1)
     expect(heads.find((h) => h.textContent === 'Name')?.querySelectorAll('[aria-label]')).toHaveLength(0)
+    for (const term of ['V', 'P', 'Version date', 'R', 'C', 'Heavy', 'Trim', 'Clear', 'Core']) {
+      expect(GLOSS[term]).toBeTruthy()
+      const th = heads.find((h) => h.textContent === term)
+      expect(th?.querySelectorAll('[aria-label]')).toHaveLength(1)
+    }
     for (const h of heads) expect(h.querySelectorAll('[aria-label]').length).toBeLessThanOrEqual(1)
   })
 
