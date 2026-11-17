@@ -301,23 +301,31 @@ func marketWorld(holiday bool) *fx {
 	return f
 }
 
-func TestMarketInputBehindCalendarIsRetryable(t *testing.T) {
+func TestMarketPointBehindIsOk(t *testing.T) {
 	t.Parallel()
 	f := marketWorld(false)
 	f.addPoint("VIXCLS", shiftDay(dayD, -1), 20)
-	res := runAll(t, newJob(t, f, newFigs()))
-	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
-		t.Fatalf("Err %v, want Retryable", res.Err)
-	}
-	msg := res.Err.Error()
-	for _, want := range []string{"VIXCLS", string(shiftDay(dayD, -1)), string(dayD), "waits for"} {
-		if !strings.Contains(msg, want) {
-			t.Fatalf("error %q lacks %q", msg, want)
-		}
+	res := runAll(t, rvJob(t, f, newFigs()))
+	if res.Err != nil {
+		t.Fatalf("Err %v, want none", res.Err)
 	}
 	r := reading(t, f, "market.vix_pctile_3y", "market", "VIXCLS")
 	if r.State != "ok" || tagOf(r, "data_day") != string(shiftDay(dayD, -1)) {
 		t.Fatalf("reading %+v, want stored ok with the older data_day", r)
+	}
+}
+
+func TestMarketOldPointMissing(t *testing.T) {
+	t.Parallel()
+	f := marketWorld(false)
+	f.addPoint("VIXCLS", shiftDay(dayD, -9), 20) // older than the rule's MaxAgeDays, see TestFredLagStaysOk
+	res := runAll(t, rvJob(t, f, newFigs()))
+	if res.Err != nil && strings.Contains(res.Err.Error(), "waits for") {
+		t.Fatalf("Err %v, want no waits-for error", res.Err)
+	}
+	r := reading(t, f, "market.vix_pctile_3y", "market", "VIXCLS")
+	if r.State != "missing_input" || r.ReasonCode == nil || *r.ReasonCode != 3 {
+		t.Fatalf("reading %+v, want missing_input code 3", r)
 	}
 }
 

@@ -101,10 +101,7 @@ func TestRv20StoresHandWorkedValue(t *testing.T) {
 	b.addFor(11, "trades", dayD, alternating(21))
 	b.addFor(11, "adjusted_last", dayD, []float64{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25})
 	f, res := runRv(t, b)
-	// the world has no FRED point of the session day: the three iv_rv20 keys are Retryable (Decision 10)
-	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "market.iv_rv20") {
-		t.Fatalf("result %+v, want the Retryable error of the iv_rv20 keys", res)
-	}
+	wantNoRunErr(t, res)
 	// ln(1.01) x sqrt(20/19) x sqrt(252), at 6 places, from the trades rows and not the adjusted_last ones.
 	rec := rvReading(t, f)
 	if rec.State != "ok" || rec.Value == nil || *rec.Value != "0.162060" {

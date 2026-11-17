@@ -34,12 +34,9 @@ func (j *job) ivRv20Names() []string {
 // a point and an rv20 reading is stored; the rv20 part counts only when that newest-rev reading is ok and its
 // data_day is D'. No such day, a part that does not count or a D' too old is a stored missing reading.
 //
-// The key ends Retryable whenever the newest session day S is known and the stored figure's data_day is before S,
-// whether or not a point or an rv20 reading exists: keys run alone, so the key cannot know if the rv20 key has run.
+// A data_day before the session day is no failure: FRED publishes a day late and the figure carries its data_day.
 func (r *runState) runIvRv20(names []string) {
 	rule := r.j.rule[r.j.m.IvRv20]
-	var sessionDay contracts.Day
-	sessionsRead := false
 	for _, name := range names {
 		if r.ctx.Err() != nil {
 			r.failStore(r.ctx.Err())
@@ -59,19 +56,6 @@ func (r *runState) runIvRv20(names []string) {
 			r.failStore(fmt.Errorf("computefigures: %s readings: %w", r.j.m.Rv20, err))
 			continue
 		}
-		if !sessionsRead {
-			days, err := r.j.stores.SessionDays.SessionDays(r.ctx, calendarID, shiftDay(r.day, -sessionLookbackDays), r.day)
-			if err != nil {
-				r.failStore(fmt.Errorf("computefigures: session days: %w", err))
-				continue
-			}
-			for _, d := range days {
-				if dd := dayOf(d.SessionDay); d.IsSession && dd > sessionDay {
-					sessionDay = dd
-				}
-			}
-			sessionsRead = true
-		}
 		var lines []string
 		for _, p := range series {
 			lines = append(lines, seriesID+"|"+string(p.Day)+"|"+fnum(p.Value))
@@ -90,10 +74,7 @@ func (r *runState) runIvRv20(names []string) {
 		in := []input{{table: tableSeriesPoint, keys: []string{seriesID}},
 			{table: tableReadings, keys: []string{r.j.m.Rv20 + "|" + kindUnderlying + "|" + name}}}
 		r.store(t, f, hashLines(lines), in, volParams(rule, nil))
-		if sessionDay != "" && f.DataDay < sessionDay {
-			r.fail(contracts.Retryable, fmt.Errorf("computefigures: %s of %s: newest common day %q, waits for %s",
-				rule.ID, name, f.DataDay, sessionDay))
-		}
+
 	}
 }
 
