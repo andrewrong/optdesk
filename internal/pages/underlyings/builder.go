@@ -1,4 +1,4 @@
-// Package underlyings builds the page.underlyings.v1 view model from the stored rows of the underlying store. It
+// Package underlyings builds the page.underlyings.v2 view model from the stored rows of the underlying store. It
 // reads no store and writes nothing: the caller passes the rows, the held symbols, the history, the form token, the
 // confirm block, the notice, the clock value and the owner zone. Every visible string is English and written by text.go.
 // Design: docs/design/underlyings.md#4 underlyings-builder.
@@ -6,9 +6,11 @@ package underlyings
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
+	"unicode/utf8"
 
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -22,6 +24,8 @@ const (
 	gapKind      = "gap"
 	gapNoReader  = "no_reader"
 	gapNoData    = "no_data"
+	fieldsMax    = 15
+	fieldMaxLen  = 300
 	editableBase = "status name issuer options fundamentals buy_price sale_price report_date_override note"
 )
 
@@ -38,10 +42,15 @@ type Stop struct {
 	Stopped, Held bool
 }
 
-// Confirm is the preview of a change; the stops lines are written by text.go.
+// Field is one posted name and value of the preview; the second post sends them back.
+type Field struct{ Name, Value string }
+
+// Confirm is the preview of a change; the stops lines are written by text.go. Fields are the posted pairs, at most
+// fieldsMax, each value at most fieldMaxChars characters; Build fails rather than clips.
 type Confirm struct {
 	Changes []Change
 	Stops   []Stop
+	Fields  []Field
 }
 
 // Input is everything Build reads.
@@ -117,6 +126,12 @@ type changeJSON struct {
 type confirmJSON struct {
 	Changes []changeJSON `json:"changes"`
 	Stops   []string     `json:"stops"`
+	Fields  []fieldJSON  `json:"fields"`
+}
+
+type fieldJSON struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type historyJSON struct {
@@ -131,7 +146,7 @@ type gapJSON struct {
 	Text   string `json:"text"`
 }
 
-// Build returns the JSON of page.underlyings.v1 for in. Rows are sorted by key, a nil Rows gives rows [] and the
+// Build returns the JSON of page.underlyings.v2 for in. Rows are sorted by key, a nil Rows gives rows [] and the
 // sentence "0 names."; with a nil Form every editable list is empty, form is null and one no_reader gap is added.
 func Build(in Input) ([]byte, error) {
 	zone := in.Zone
@@ -144,7 +159,7 @@ func Build(in Input) ([]byte, error) {
 	}
 	p := pageJSON{
 		Schema:        "underlyings",
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		GeneratedAt:   in.Now.UTC().Format(time.RFC3339),
 		SessionDay:    day,
 		Title:         titleText,
@@ -176,7 +191,14 @@ func Build(in Input) ([]byte, error) {
 	}
 	p.Gaps = append(p.Gaps, heldGaps(in, rows)...)
 	if in.Confirm != nil {
-		p.Confirm = buildConfirm(*in.Confirm)
+		if in.Form == nil {
+			return nil, errors.New("underlyings: confirm without form")
+		}
+		c, err := buildConfirm(*in.Confirm)
+		if err != nil {
+			return nil, err
+		}
+		p.Confirm = c
 	}
 	for i, h := range in.History {
 		if i == historyMax {
@@ -230,8 +252,20 @@ func editable(status string, form bool) []string {
 	return out
 }
 
-func buildConfirm(c Confirm) *confirmJSON {
-	out := &confirmJSON{Changes: make([]changeJSON, 0, len(c.Changes)), Stops: make([]string, 0, len(c.Stops)+1)}
+func buildConfirm(c Confirm) (*confirmJSON, error) {
+	if len(c.Fields) > fieldsMax {
+		return nil, fmt.Errorf("underlyings: %d confirm fields, at most %d", len(c.Fields), fieldsMax)
+	}
+	out := &confirmJSON{
+		Changes: make([]changeJSON, 0, len(c.Changes)), Stops: make([]string, 0, len(c.Stops)+1),
+		Fields: make([]fieldJSON, 0, len(c.Fields)),
+	}
+	for _, f := range c.Fields {
+		if n := utf8.RuneCountInString(f.Name); n < 1 || n > fieldMaxLen || utf8.RuneCountInString(f.Value) > fieldMaxLen {
+			return nil, fmt.Errorf("underlyings: confirm field %q: name 1 to %d and value at most %d characters", f.Name, fieldMaxLen, fieldMaxLen)
+		}
+		out.Fields = append(out.Fields, fieldJSON(f))
+	}
 	for _, ch := range c.Changes {
 		out.Changes = append(out.Changes, changeJSON(ch))
 	}
@@ -243,7 +277,7 @@ func buildConfirm(c Confirm) *confirmJSON {
 	if stopped {
 		out.Stops = append(out.Stops, refillText)
 	}
-	return out
+	return out, nil
 }
 
 // heldGaps names every held symbol (shares or options) that is not followed, sorted by symbol; with HeldError it is

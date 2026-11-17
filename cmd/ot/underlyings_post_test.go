@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // invalidErr is an underlying.InvalidError.
@@ -166,5 +169,141 @@ func TestPostUnderlyingsMethodIs405(t *testing.T) {
 	rec := settingsGet(t, h, http.MethodGet, "/owner-underlyings")
 	if rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != http.MethodPost || st.calls() != 0 {
 		t.Fatalf("%d", rec.Code)
+	}
+}
+
+// confirmPayload is the part of the first answer the second post is made from.
+type confirmPayload struct {
+	Form *struct {
+		PostPath string `json:"post_path"`
+		Expires  string `json:"expires"`
+		MAC      string `json:"mac"`
+	} `json:"form"`
+	Confirm *struct {
+		Fields []struct{ Name, Value string } `json:"fields"`
+	} `json:"confirm"`
+}
+
+func TestPostUnderlyingsConfirmRoundTripFromPayload(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		prep   func(rows []underlying.Row)
+		first  url.Values
+		verify func(t *testing.T, c underlying.Change)
+	}{
+		"text": {
+			first: url.Values{"key": {"US:BBB"}, "name": {"BBB Corp"}, "options": {"on"}},
+			verify: func(t *testing.T, c underlying.Change) {
+				if e := c.Edits[0]; e.Name == nil || *e.Name != "BBB Corp" || e.Options != nil {
+					t.Errorf("edit %+v", e)
+				}
+			},
+		},
+		"number": {
+			first: url.Values{"key": {"US:BBB"}, "buy_price": {"12.5"}, "options": {"on"}},
+			verify: func(t *testing.T, c underlying.Change) {
+				if e := c.Edits[0]; e.BuyPrice == nil || *e.BuyPrice != "12.5" {
+					t.Errorf("edit %+v", e)
+				}
+			},
+		},
+		"emptied": {
+			prep:  func(rows []underlying.Row) { rows[1].Note = "old note" },
+			first: url.Values{"key": {"US:BBB"}, "note": {""}, "options": {"on"}},
+			verify: func(t *testing.T, c underlying.Change) {
+				if e := c.Edits[0]; e.Note == nil || *e.Note != "" {
+					t.Errorf("edit %+v", e)
+				}
+			},
+		},
+		"switch on": {
+			prep:  func(rows []underlying.Row) { rows[1].Options = false },
+			first: url.Values{"key": {"US:BBB"}, "options": {"on"}},
+			verify: func(t *testing.T, c underlying.Change) {
+				if e := c.Edits[0]; e.Options == nil || !*e.Options {
+					t.Errorf("edit %+v", e)
+				}
+			},
+		},
+		"switch off": {
+			first: url.Values{"key": {"US:BBB"}, "name": {"BBB"}},
+			verify: func(t *testing.T, c underlying.Change) {
+				if e := c.Edits[0]; e.Options == nil || *e.Options {
+					t.Errorf("options must be off: %+v", e)
+				}
+			},
+		},
+		"add": {
+			first: url.Values{"symbol": {"CCC"}, "market": {"US"}, "kind": {"stock"}},
+			verify: func(t *testing.T, c underlying.Change) {
+				a := c.Adds[0]
+				if len(c.Adds) != 1 || a.Symbol != "CCC" || a.Market != "US" || a.Kind != "stock" || a.Options {
+					t.Errorf("add %+v", c.Adds)
+				}
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h, st, _ := underlyingsSite(t, true)
+			if tc.prep != nil {
+				tc.prep(st.rows)
+			}
+			rec := serve(h, underlyingsPost(t, tc.first))
+			if rec.Code != http.StatusOK || st.calls() != 0 {
+				t.Fatalf("first post: %d, %d applies, %.300q", rec.Code, st.calls(), rec.Body)
+			}
+			var p confirmPayload
+			if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || p.Form == nil || p.Confirm == nil {
+				t.Fatalf("payload: %v %.300q", err, rec.Body)
+			}
+			second := url.Values{"expires": {p.Form.Expires}, "mac": {p.Form.MAC}, "confirm": {"1"}}
+			for _, f := range p.Confirm.Fields {
+				second.Add(f.Name, f.Value)
+			}
+			r := postRequest(t, second)
+			r.URL.Path = p.Form.PostPath
+			rec = serve(h, r)
+			if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/underlyings?saved=1" {
+				t.Fatalf("second post: %d %q %.300q", rec.Code, rec.Header().Get("Location"), rec.Body)
+			}
+			if st.calls() != 1 {
+				t.Fatalf("%d applies, want 1", st.calls())
+			}
+			tc.verify(t, st.applied[0])
+		})
+	}
+}
+
+func TestPostUnderlyingsFirstPostEchoesTheWhitelistInOrder(t *testing.T) {
+	t.Parallel()
+	h, st, _ := underlyingsSite(t, true)
+	rec := serve(h, underlyingsPost(t, url.Values{
+		"note": {"n1", "n2"}, "name": {"BBB Corp"}, "key": {"US:BBB"}, "extra": {"x"}, "expires": {"e"}, "mac": {"m"},
+		"options": {"on"},
+	}))
+	var p confirmPayload
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || p.Confirm == nil {
+		t.Fatalf("%v %.300q", err, rec.Body)
+	}
+	var got []string
+	for _, f := range p.Confirm.Fields {
+		got = append(got, f.Name+"="+f.Value)
+	}
+	if want := "key=US:BBB name=BBB Corp note=n1 options=on"; strings.Join(got, " ") != want {
+		t.Errorf("fields %q, want %q", got, want)
+	}
+	if st.calls() != 0 {
+		t.Errorf("%d applies", st.calls())
+	}
+}
+
+func TestPostUnderlyingsLongValueIs422AtTheFirstPost(t *testing.T) {
+	t.Parallel()
+	h, st, _ := underlyingsSite(t, true)
+	rec := serve(h, underlyingsPost(t, url.Values{"key": {"US:BBB"}, "note": {strings.Repeat("x", 301)}, "options": {"on"}}))
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(decodeUnderlyings(t, rec).Notice, "Refused note: longer than 300 characters") || st.calls() != 0 {
+		t.Fatalf("%d %d applies %.300q", rec.Code, st.calls(), rec.Body)
 	}
 }

@@ -11,7 +11,7 @@ import (
 func TestPage(t *testing.T) {
 	t.Parallel()
 	p := Page()
-	if want := (pages.Meta{Name: "underlyings", Schema: "page.underlyings.v1"}); p.Meta != want {
+	if want := (pages.Meta{Name: "underlyings", Schema: "page.underlyings.v2"}); p.Meta != want {
 		t.Fatalf("meta = %+v", p.Meta)
 	}
 	out, err := p.Build(t.Context(), nil, "2026-11-04", time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))

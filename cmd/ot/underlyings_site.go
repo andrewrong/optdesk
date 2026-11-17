@@ -61,7 +61,7 @@ func openUnderlyingReader(ctx context.Context, a *app, dsn string, track func(io
 	return st, true
 }
 
-// buildUnderlyingsPage builds page.underlyings.v1 per request over the reader of the site (a nil reader gives no
+// buildUnderlyingsPage builds page.underlyings.v2 per request over the reader of the site (a nil reader gives no
 // rows). With rd.edit the page carries the token of the form. A nil zone is an error.
 func buildUnderlyingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders, x underlyingsExtras) ([]byte, error) {
 	if a.profile.Zone == nil {
