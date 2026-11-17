@@ -29,6 +29,7 @@ export const ok = {
           { id: 'moneyness', label: 'Moneyness col', align: 'left', hint: null },
           { id: 'dte', label: 'Dte col', align: 'right', hint: null },
           { id: 'guard', label: 'Guard col', align: 'left', hint: null },
+          { id: 'coverage', label: 'Quote coverage', align: 'left', hint: 'Days with a stored quote of the days held' },
         ],
         rows: [
           {
@@ -38,6 +39,7 @@ export const ok = {
               moneyness: { text: 'Row two money', value: null, badges: ['Out of the money'], tone: 'none' },
               dte: { text: '45 days', value: 45, badges: [], tone: 'none' },
               guard: { text: 'Row two guard', value: null, badges: ['Unconfirmed'], tone: 'none' },
+              coverage: { text: '9 of 10 days', value: null, badges: ['Gap 2026-11-12: no quote stored'], tone: 'none' },
             },
           },
           {
@@ -47,6 +49,7 @@ export const ok = {
               moneyness: { text: 'Row one money', value: null, badges: ['In the money', 'within term'], tone: 'down' },
               dte: { text: '9 days', value: 9, badges: [], tone: 'none' },
               guard: { text: 'Row one guard', value: null, badges: ['Blocked'], tone: 'none' },
+              coverage: { text: '9 of 10 days', value: null, badges: ['Gap 2026-11-12: no quote stored'], tone: 'none' },
             },
           },
         ],
