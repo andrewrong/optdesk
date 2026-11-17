@@ -16,20 +16,20 @@ import (
 // repairCoverage serves fixed sessions (the five weekdays of the week of postNow) and cells.
 type repairCoverage struct{ cells []coverage.Cell }
 
-// A dataset the test gave no cell for gets an ok cell for every session day, so none of its days is not_run.
+// Every (dataset, session day) the test gave no cell for gets an ok cell, so none of those days is not_run.
 func (f repairCoverage) Cells(context.Context, contracts.Day, contracts.Day) ([]coverage.Cell, error) {
 	out := append([]coverage.Cell{}, f.cells...)
 	given := map[string]bool{}
 	for _, c := range f.cells {
-		given[c.Dataset] = true
+		given[c.Dataset+"|"+string(c.Day)] = true
 	}
 	for _, j := range dataHealthJobs() {
 		for _, ds := range j.Datasets {
-			if given[ds] {
-				continue
-			}
-			given[ds] = true
 			for _, d := range []contracts.Day{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"} {
+				if given[ds+"|"+string(d)] {
+					continue
+				}
+				given[ds+"|"+string(d)] = true
 				out = append(out, repairCellOf(ds, d, coverage.StateOK))
 			}
 		}
@@ -105,7 +105,7 @@ func TestRepairQueuesOldestFirst(t *testing.T) {
 func TestRepairSkipsOkAndNoValue(t *testing.T) {
 	t.Parallel()
 	const ds = "obs.fx_rate"
-	// 11-06 has no cell at all: not_run.
+	// The days without a given cell (11-02, 11-05, 11-06) are ok through the fixture.
 	fp, first, _, err := repairOver(t, ds, repairCellOf(ds, "2026-11-03", coverage.StateOK), repairCellOf(ds, "2026-11-04", coverage.StateNoValue))
 	if err != nil || len(fp.enqueued) != 0 || first != 0 {
 		t.Fatalf("%v %v %d", err, fp.enqueued, first)
