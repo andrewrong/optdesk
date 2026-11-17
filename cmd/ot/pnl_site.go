@@ -63,7 +63,7 @@ func pnlConfigOf(a *app, runID, scope string, r pnlReaders) option_pnl_page.Conf
 	return option_pnl_page.Config{
 		RunID: runID, BuildID: buildIDOf(version), Scope: scope, Zone: a.profile.Zone,
 		Ledger: r.Ledger, Sessions: r.Sessions, Days: r.Days, StockIDs: r.StockIDs, Bars: r.Bars,
-		Replay: optionledger.New(), Attributor: optionattr.New(bsmPricer{p: bsm.New()}), Booker: optionattr.NewBooker(),
+		Replay: optionledger.New(), Attributor: optionattr.New(newBSMPricer()), Booker: optionattr.NewBooker(),
 		MarkMaxAgeSessions: 3, RecentDays: 30, MaxRateAgeDays: pnlMaxRateAgeDays, CalendarID: "XNYS",
 	}
 }
@@ -73,6 +73,10 @@ func pnlConfigOf(a *app, runID, scope string, r pnlReaders) option_pnl_page.Conf
 type bsmPricer struct{ p bsm.Pricer }
 
 var _ optionattrapi.Pricer = bsmPricer{}
+
+// newBSMPricer returns the adapter as the interface, so the argument of optionattr.New has the static type
+// optionattrapi.Pricer.
+func newBSMPricer() optionattrapi.Pricer { return bsmPricer{p: bsm.New()} }
 
 // Value delegates to the held pricer; its error, with NoSolution, is returned unchanged.
 func (b bsmPricer) Value(right, spot, strike, years, rate, vol string) (string, error) {
