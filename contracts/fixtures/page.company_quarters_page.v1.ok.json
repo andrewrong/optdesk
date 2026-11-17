@@ -1,0 +1,40 @@
+{
+  "schema": "company_quarters_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "company": {"key": "US:ACME", "symbol": "ACME", "name": "Acme Widgets Inc.", "issuer": "cik:0000999001", "fiscal_year_end": "September"},
+  "choices": [
+    {"key": "US:ACME", "label": "ACME", "path": "/company-quarters?c=US:ACME"},
+    {"key": "US:BOLT", "label": "BOLT", "path": "/company-quarters?c=US:BOLT"}
+  ],
+  "columns": [
+    {"key": "revenue", "label": "Revenue", "gloss": "Revenue of the quarter, in USD."},
+    {"key": "eps_diluted", "label": "Diluted EPS", "gloss": "Diluted earnings per share of the quarter, in USD."},
+    {"key": "buybacks", "label": "Buybacks", "gloss": "Cash paid to buy back shares, in USD."}
+  ],
+  "quarters": [
+    {
+      "label": "FY2025 Q4",
+      "period_end": "2025-09-27",
+      "filing_date": "2025-11-01",
+      "cells": {
+        "revenue": {"text": "1,234,500,000", "missing": false, "derived": true, "restated": false, "concept": "Revenues", "why_text": ""},
+        "eps_diluted": {"text": "1.07", "missing": false, "derived": true, "restated": false, "concept": "EarningsPerShareDiluted", "why_text": ""},
+        "buybacks": {"text": "", "missing": true, "derived": false, "restated": false, "concept": "", "why_text": "No filing reported it."}
+      }
+    },
+    {
+      "label": "FY2025 Q3",
+      "period_end": "2025-06-28",
+      "filing_date": "2025-08-02",
+      "cells": {
+        "revenue": {"text": "1,101,250,000", "missing": false, "derived": false, "restated": true, "concept": "Revenues", "why_text": ""},
+        "eps_diluted": {"text": "0.98", "missing": false, "derived": false, "restated": false, "concept": "EarningsPerShareDiluted", "why_text": ""},
+        "buybacks": {"text": "55,000,000", "missing": false, "derived": false, "restated": false, "concept": "PaymentsForRepurchaseOfCommonStock", "why_text": ""}
+      }
+    }
+  ],
+  "notes": ["Every number on this page is invented for the contract fixture."],
+  "gaps": []
+}

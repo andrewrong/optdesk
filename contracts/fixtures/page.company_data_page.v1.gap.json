@@ -1,0 +1,13 @@
+{
+  "schema": "company_data_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0004",
+  "built_at": "2026-11-17T09:30:00Z",
+  "data_health_path": "/data-health",
+  "columns": [],
+  "companies": [],
+  "glossary": [],
+  "gaps": [
+    {"kind": "gap", "reason": "companies_unavailable", "text": "The list of companies could not be read."}
+  ]
+}

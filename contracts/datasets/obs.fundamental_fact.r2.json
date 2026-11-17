@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://optdesk.invalid/datasets/obs.fundamental_fact.r1.json",
+  "$id": "https://optdesk.invalid/datasets/obs.fundamental_fact.r2.json",
   "title": "FundamentalFact",
-  "description": "obs.fundamental_fact r1: one filed value of one concept of one issuer, as a filing reported it; append only.",
+  "description": "obs.fundamental_fact r2: one filed value of one concept of one issuer, as a filing reported it; append only. r2 adds the optional fy, fp and frame.",
   "type": "object",
   "additionalProperties": false,
   "required": ["source", "subject", "taxonomy", "concept", "unit", "currency", "period_start", "period_end", "value", "form", "doc_id", "filed", "retrieved_at", "raw_sha256"],
   "x-dataset": "obs.fundamental_fact",
-  "x-revision": "r1",
+  "x-revision": "r2",
   "x-primary-key": ["source", "subject", "doc_id", "taxonomy", "concept", "unit", "period_start", "period_end"],
   "properties": {
     "source": {"type": "string", "enum": ["sec", "edinet"], "description": "Where the fact came from; a later source extends the enum additively."},
@@ -23,6 +23,9 @@
     "doc_id": {"type": "string", "minLength": 1, "description": "Identifier of the filing document: the accession number or the EDINET document id."},
     "filed": {"type": "string", "format": "date", "description": "Day the filing was filed."},
     "retrieved_at": {"type": "string", "format": "date-time", "description": "Instant the fact was retrieved, UTC."},
-    "raw_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the raw source document, lower-case hex."}
+    "raw_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the raw source document, lower-case hex."},
+    "fy": {"type": ["integer", "null"], "description": "Fiscal year of the filing that reported the fact; fy and fp are those of the filing that reported the fact, not of the period of the fact. Null when the source has none."},
+    "fp": {"type": "string", "default": "", "description": "Fiscal period of the filing that reported the fact (Q1, Q2, Q3 or FY); empty when absent."},
+    "frame": {"type": "string", "default": "", "description": "Calendar frame SEC assigned to the fact, for example CY2025Q2, or CY2025Q2I for an instant; empty when absent."}
   }
 }

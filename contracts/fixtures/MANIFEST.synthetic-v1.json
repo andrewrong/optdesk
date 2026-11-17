@@ -23,7 +23,7 @@
     {"path": "page.macro_rates.v2.gap.json", "sha256": "93a55508c79ccf2ba49b05899388c046e786c95c033152f3f838269a74a95dc9"},
     {"path": "page.macro_rates.v2.stale.json", "sha256": "d9b224f2632c152d16b0b8cfc6b1db2a56407c79e6577567fc7302524399f38a"},
     {"path": "page.macro_rates.v2.bad-version.json", "sha256": "ed7612d72cef4ce597363f1fdc90fa9ecc4f85b883290245ded88c20b5c04fa8"},
-    {"path": "obs.fundamental_fact.r1.json", "sha256": "df087f55331ee71d52a3f549fa81fb03e5cd1adab3043f21fa82aab46a0e5031"},
+    {"path": "obs.fundamental_fact.r2.json", "sha256": "df087f55331ee71d52a3f549fa81fb03e5cd1adab3043f21fa82aab46a0e5031"},
     {"path": "readings.reading.r1.json", "sha256": "b27b8c195ab3977601feafecb6caa71f2082b622688ba6b8441a338134b41239"},
     {"path": "page.options_summary.v4.ok.json", "sha256": "bfcc929661aa81521ea54ddd5db1289ac4e9dc62b364ab6c878a6ffacefebe4f"},
     {"path": "page.options_summary.v4.gap.json", "sha256": "471b3d4208a7991f11b62de1666e812255482716a57c789f57941e96bf0da7cd"},
@@ -68,6 +68,10 @@
     {"path": "page.valuation_page.v1.table.json", "sha256": "73a2de27189b48a7d4f36abe7fe6e6beff764d601c9e9a0cfb898fbaa288c407"},
     {"path": "page.valuation_page.v1.company.json", "sha256": "9eec0d9f1de664f7fbac0286e4ed2e04f7e61d9c4265babd24f040c0fa873c9e"},
     {"path": "page.valuation_page.v1.hkcn.json", "sha256": "2db8e98654b3b33bba28831a55957f6f9bae16852959606ef37e802db1f0cb96"},
-    {"path": "page.valuation_page.v1.form.json", "sha256": "29ba07caae5e556cae4b178062dea944b488decc01f2744ff2cd3d9d2ed2ebb5"}
+    {"path": "page.valuation_page.v1.form.json", "sha256": "29ba07caae5e556cae4b178062dea944b488decc01f2744ff2cd3d9d2ed2ebb5"},
+    {"path": "page.company_quarters_page.v1.ok.json", "sha256": "bd14b1180976cc42a3751beda8381901ce4bb32ac000cebdc19a55915b8578c6"},
+    {"path": "page.company_quarters_page.v1.gap.json", "sha256": "c97969f6725f064c1c96a33a153e002a9c60d90beff54ce137c4d75271d58b34"},
+    {"path": "page.company_data_page.v1.ok.json", "sha256": "2b90994a2508c9aa8257b2bea83151421472b890c11683e9897d52e79db05624"},
+    {"path": "page.company_data_page.v1.gap.json", "sha256": "ade7cb4511537d75c07cca22e728d0c792e1b631c3cdba4c913a2853259fe2f5"}
   ]
 }
