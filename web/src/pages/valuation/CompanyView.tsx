@@ -25,6 +25,33 @@ const NOTE_TEXT: Record<Lines['zone_note'], string> = {
   no_zone_market: 'This market has no price source, so there is no zone.',
 }
 
+// Static labels of the codes the profile and the review print; an unknown code prints as given.
+const CURRENCY_TEXT: Record<string, string> = { USD: 'US dollar', JPY: 'Japanese yen', HKD: 'Hong Kong dollar', CNY: 'Chinese yuan' }
+const R_MARKET_TEXT: Record<string, string> = { US: 'United States', JP: 'Japan', HKCN: 'Hong Kong and China' }
+const POOL_TEXT: Record<string, string> = { in_pool: 'in pool', watch: 'watch', removed: 'removed' }
+export const TYPE_TEXT: Record<string, string> = {
+  first: 'First valuation',
+  post_earnings: 'After earnings',
+  event: 'Event',
+  backfill: 'Backfill',
+}
+const label = (map: Record<string, string>, code: string) => map[code] ?? code
+
+// One gloss per term of the lines, static text; the source is docs/design/valuation-structure.md: R and C line 75,
+// Heavy line 99, Trim, Clear and Core line 78, M, W, H and S line 61.
+const GLOSS: Record<string, string> = {
+  C: 'C: fair price, V x R',
+  R: 'R: the multiple of the valuation that sets the fair price (C = V x R)',
+  Heavy: 'Heavy: the heavy point, C x (1 - H)',
+  Trim: 'Trim: C x (1 + S)',
+  Clear: 'Clear: V x 1.2',
+  Core: 'Core: V x 1.5',
+  M: 'M: safety margin',
+  W: 'W: fair half width',
+  H: 'H: heavy discount',
+  S: 'S: trim premium',
+}
+
 // Every flag that is true is a mark of its own; none is dropped for another.
 export function FlagBadges({ flags }: { flags: Flags | null }) {
   if (flags === null) return null
@@ -59,10 +86,11 @@ export function LinesView({ lines }: { lines: Lines }) {
   return (
     <div data-lines className="space-y-2">
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
-        {prices.map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-sm text-muted-foreground">{label}</dt>
+        {prices.map(([name, value]) => (
+          <div key={name}>
+            <dt className="text-sm text-muted-foreground">{name}</dt>
             <dd>{value}</dd>
+            {GLOSS[name] ? <dd className="text-xs text-muted-foreground">{GLOSS[name]}</dd> : null}
           </div>
         ))}
       </dl>
@@ -87,8 +115,9 @@ export function CompanyView({ payload }: { payload: Payload }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>
-            {company.symbol} {company.currency}, R market {company.r_market}, pool {company.pool} {company.pool_date}
+          <p data-profile>
+            {company.symbol}, {label(CURRENCY_TEXT, company.currency)}, R market: {label(R_MARKET_TEXT, company.r_market)}, pool:{' '}
+            {label(POOL_TEXT, company.pool)}, {company.pool_date}
           </p>
           {company.note !== '' ? <p>{company.note}</p> : null}
           {close ? (
@@ -123,7 +152,7 @@ export function CompanyView({ payload }: { payload: Payload }) {
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm">
-              {current.type} {current.version_date} {current.status} {current.trigger} {current.change_memo}
+              {label(TYPE_TEXT, current.type)} {current.version_date} {current.status} {current.trigger} {current.change_memo}
             </p>
             <DetailView detail={current.detail} />
           </CardContent>

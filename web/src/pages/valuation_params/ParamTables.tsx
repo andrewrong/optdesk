@@ -10,6 +10,12 @@ import type { Payload } from '@/types/valuation_params_page'
 
 type Form = NonNullable<Payload['form']>
 
+// One line of static English text beside a term; none is a payload text and none computes. The source of each
+// gloss is docs/design/valuation-structure.md: HKCN line 24, AI switch line 32, margin letters line 61, yield line 106.
+export function Gloss({ text }: { text: string }) {
+  return <p className="text-xs font-normal whitespace-normal text-muted-foreground">{text}</p>
+}
+
 export function OwnerForm({
   form,
   action,
@@ -44,7 +50,8 @@ export function RTableView({ table }: { table: NonNullable<Payload['r_table']> }
       <CardHeader>
         <CardTitle>R table, effective {table.effective_date}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
+        <Gloss text="HKCN: Hong Kong and China names" />
         <Table>
           <TableHeader>
             <TableRow>
@@ -76,7 +83,8 @@ export function MarginTableView({ table }: { table: NonNullable<Payload['margin_
       <CardHeader>
         <CardTitle>Margin table, effective {table.effective_date}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
+        <Gloss text="P from: lowest P of the row; M: safety margin; W: fair half width; H: heavy discount; S: trim premium" />
         <Table>
           <TableHeader>
             <TableRow>
@@ -110,7 +118,9 @@ export function RHistoryView({ history }: { history: Payload['r_history'] }) {
       <CardHeader>
         <CardTitle>R history</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
+        <Gloss text="Yield used: the 10-year yield the R was proposed from" />
+        <Gloss text="AI switch: stored with the R version, changes no price yet" />
         <Table>
           <TableHeader>
             <TableRow>

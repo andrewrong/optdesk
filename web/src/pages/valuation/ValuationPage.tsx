@@ -9,6 +9,18 @@ import { CompanyView } from './CompanyView'
 import { ReviewForm } from './ReviewForm'
 import { ValuationTable } from './ValuationTable'
 
+// The H1 names the view, not the nav label.
+function title(payload: Payload): string {
+  switch (payload.view) {
+    case 'table':
+      return 'Valuation table'
+    case 'company':
+      return payload.company?.name ?? 'Company'
+    case 'form':
+      return 'Enter a valuation'
+  }
+}
+
 function Body({ payload }: { payload: Payload }) {
   switch (payload.view) {
     case 'table':
@@ -33,9 +45,9 @@ export function ValuationPage({ payload }: { payload: Payload }) {
   return (
     <div className="min-w-0 space-y-6" data-page="valuation">
       <header>
-        <h1 className="text-2xl font-semibold">Valuation</h1>
+        <h1 className="text-2xl font-semibold">{title(payload)}</h1>
         <p className="mt-2 flex gap-4 text-sm">
-          <a href="/valuation" className="underline">
+          <a href="/valuation" aria-current="page" className="font-medium">
             Table
           </a>
           <a href="/valuation-params" className="underline">
