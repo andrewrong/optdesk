@@ -211,7 +211,7 @@ func TestStockRowsOfAnOpenQuoteShowItsPrices(t *testing.T) {
 			line = l
 		}
 	}
-	want := []string{"1.5", "1.6", "−0.2", "31%", "-0.0300", "0.0400", "0.0600", "77"}
+	want := []string{"1.5", "1.6", "−0.2", "31%", "−0.0300", "0.0400", "0.0600", "77"}
 	for i, w := range want {
 		if got := line.Cells[2+i]; got != w {
 			t.Errorf("contract cell %d = %q, want %q", 2+i, got, w)
@@ -249,7 +249,7 @@ func TestLiveGreeksFourDecimals(t *testing.T) {
 		if l.Quote.Source != "open_pull" {
 			continue
 		}
-		for i, w := range map[int]string{6: "-0.0300", 7: "0.0400", 9: "77"} {
+		for i, w := range map[int]string{6: "−0.0300", 7: "0.0400", 9: "77"} {
 			if l.Cells[i] != w {
 				t.Errorf("cell %d = %q, want %q", i, l.Cells[i], w)
 			}
