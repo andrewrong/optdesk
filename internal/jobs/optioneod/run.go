@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -231,7 +232,8 @@ func (r *runState) writeReasons(ctx context.Context, k contracts.ExpectedKey, tl
 	}
 }
 
-// price is Last of the underlying's snapshot, else Close, else UndPrice; none is Retryable.
+// price is Last of the underlying's snapshot, else Close, else UndPrice, else the stored spot of an index row, else the
+// mid of a positive Bid and Ask; none is Retryable and its text names the quote status and the absent fields.
 func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.TypedError) {
 	if terr := r.checkBudget(); terr != nil {
 		return 0, terr
@@ -240,8 +242,10 @@ func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.
 	if err != nil {
 		return 0, asTyped(err, contracts.Permanent)
 	}
+	var q *broker.Quote
 	if len(qs) > 0 {
-		for _, p := range []*float64{qs[0].Last, qs[0].Close, qs[0].UndPrice} {
+		q = &qs[0]
+		for _, p := range []*float64{q.Last, q.Close, q.UndPrice} {
 			if p != nil && *p > 0 {
 				return *p, nil
 			}
@@ -252,8 +256,26 @@ func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.
 			return v, nil
 		}
 	}
-	return 0, newErr(contracts.Retryable, "no price of %s", u.Symbol)
+	if q != nil && positive(q.Bid) && positive(q.Ask) {
+		return (*q.Bid + *q.Ask) / 2, nil
+	}
+	if q == nil {
+		return 0, newErr(contracts.Retryable, "no price of %s: no quote returned", u.Symbol)
+	}
+	var absent []string
+	for _, f := range []struct {
+		name string
+		v    *float64
+	}{{"Last", q.Last}, {"Close", q.Close}, {"UndPrice", q.UndPrice}, {"Bid", q.Bid}, {"Ask", q.Ask}} {
+		if !positive(f.v) {
+			absent = append(absent, f.name)
+		}
+	}
+	return 0, newErr(contracts.Retryable, "no price of %s: quote status %d, absent %s", u.Symbol, q.Status,
+		strings.Join(absent, ","))
 }
+
+func positive(p *float64) bool { return p != nil && *p > 0 }
 
 // pairs lists the chains and selects from the chain chainOf picks; no such chain is a Permanent failure.
 func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]broker.Contract, contracts.TypedError) {
