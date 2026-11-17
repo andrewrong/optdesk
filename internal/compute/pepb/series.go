@@ -112,8 +112,8 @@ func fill(r *pepbapi.Reading, stats compute.Stats, days []day, num, shares decim
 			Percentile: p,
 			Ratio:      ratio.StringFixed(1),
 			Price:      price.StringFixed(2),
-			Text: fmt.Sprintf("%s at the %s percentile of %d days since %s: price %s (history, not a buy price)",
-				kind, ordinal(p), r.WindowDays, r.WindowFrom, price.StringFixed(2)),
+			Text: fmt.Sprintf("%s at the %s percentile of %d days since %s: price %s as of %s (history, not a buy price)",
+				kind, ordinal(p), r.WindowDays, r.WindowFrom, price.StringFixed(2), fmtDay(today.d)),
 		})
 	}
 }
