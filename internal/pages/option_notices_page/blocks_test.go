@@ -42,8 +42,8 @@ func TestCashByDateText(t *testing.T) {
 	}}}
 	p := buildPage(t, testConfig(oneCapture(), rule))
 	got := p.Accounts[0].CashByDate
-	if len(got) != 2 || got[0] != (cashRow{Day: "2026-11-13", Currency: "USD", AmountText: "9500 USD"}) ||
-		got[1].AmountText != "1200000.50 JPY" {
+	if len(got) != 2 || got[0] != (cashRow{Day: "2026-11-13", Currency: "USD", AmountText: "$9,500.00"}) ||
+		got[1].AmountText != "¥1,200,000.50" {
 		t.Errorf("cash = %+v", got)
 	}
 }
