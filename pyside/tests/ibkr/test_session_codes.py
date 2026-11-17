@@ -109,6 +109,35 @@ def test_1102_revives_the_session_on_the_same_generation_without_new_lines() -> 
     assert connected and after == first and subscribed == []
 
 
+def test_status_reports_soft_lost_after_1100_and_clears_on_1102() -> None:
+    async def run() -> list[tuple[bool, bool, int]]:
+        gateway, fake = await _opened(FakeClock())
+        seen = []
+
+        async def note() -> None:
+            state = await gateway.status()
+            seen.append((state.soft_lost, state.connected, state.generation))
+
+        await note()
+        fake.errorEvent.emit(-1, 1100, "lost", None)
+        await note()
+        fake.errorEvent.emit(-1, 1102, "restored, data kept", None)
+        await note()
+        for handler in list(fake.client.apiEnd.handlers):
+            handler()
+        await note()
+        return seen
+
+    first = asyncio.run(run())
+    generation = first[0][2]
+    assert first == [
+        (False, True, generation),
+        (True, False, generation),
+        (False, True, generation),
+        (False, False, generation),
+    ]
+
+
 def test_1101_does_not_revive_a_session_the_socket_ended() -> None:
     async def run() -> bool:
         gateway, fake = await _opened(FakeClock())

@@ -24,6 +24,7 @@ from optdesk.ibkr.model import AccountRows, AccountValueRow, Gateway, SessionSta
 from optdesk.ibkr.server import (
     BACKOFF_CAP_S,
     BACKOFF_FIRST_S,
+    RESTORE_WAIT_S,
     STABLE_SESSION_S,
     Config,
     gateway_factory,
@@ -263,6 +264,44 @@ def test_supervisor_waits_after_a_1100_then_lost_session() -> None:
     gateway = ScriptedGateway(clock, [5.0, 0.0])
     asyncio.run(run_supervised(gateway, clock, 30.0))
     assert gateway.opened_at[:5] == [0.0, 6.0, 8.0, 12.0, 20.0]
+
+
+class SoftLostGateway:
+    """open_session succeeds; the session is soft_lost for `soft_for` s, then connected (or never)."""
+
+    def __init__(self, clock: FakeClock, soft_for: float | None) -> None:
+        self.clock = clock
+        self.soft_for = soft_for
+        self.opened_at: list[float] = []
+
+    async def open_session(self) -> None:
+        self.opened_at.append(self.clock.monotonic())
+
+    async def status(self) -> SessionState:
+        elapsed = self.clock.monotonic() - self.opened_at[-1]
+        soft = self.soft_for is None or elapsed < self.soft_for
+        return SessionState(not soft, 1, 1, soft_lost=soft)
+
+
+def test_supervisor_keeps_a_soft_lost_session_until_the_restore(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger="optdesk.ibkr.server")
+    clock = FakeClock()
+    gateway = SoftLostGateway(clock, 45.0)
+    asyncio.run(run_supervised(cast(Any, gateway), clock, 200.0))
+    assert gateway.opened_at == [0.0]
+    assert "session_lost" not in caplog.text
+    assert "connect_ok" in caplog.text
+
+
+def test_supervisor_reconnects_when_the_restore_never_comes() -> None:
+    clock = FakeClock()
+    gateway = SoftLostGateway(clock, None)
+    asyncio.run(run_supervised(cast(Any, gateway), clock, RESTORE_WAIT_S + 10.0))
+    assert gateway.opened_at[0] == 0.0
+    assert len(gateway.opened_at) == 2
+    assert gateway.opened_at[1] == RESTORE_WAIT_S + BACKOFF_FIRST_S
 
 
 class FakeGateway:
