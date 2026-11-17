@@ -255,7 +255,9 @@ func TestSecondAccountFailureLeavesMainAlone(t *testing.T) {
 func TestMarkBlocksAreMissingQuoteGaps(t *testing.T) {
 	t.Parallel()
 	var got blockapi.HouseholdInput
-	m, _ := build(t, config(account(), &got), "main")
+	acc := account()
+	acc.stored = []store.Position{{Symbol: "AAA", SecType: "option", Right: "put", Quantity: "-2", Strike: "50"}} // the default ledger put
+	m, _ := build(t, config(acc, &got), "main")
 	for blk, reason := range map[string]string{"composition": "missing_quote", "allocation": "missing_quote",
 		"concentration": "missing_quote", "movers": "no_data"} {
 		if g := gapOf(t, m, blk); g["reason"] != reason {
@@ -709,4 +711,47 @@ func TestHeaderLinksCarryWords(t *testing.T) {
 		}
 		validate(t, b)
 	}
+}
+
+func TestLedgerPutNotInSnapshotIsFlagged(t *testing.T) {
+	t.Parallel()
+	nvda := func() compute.OptionLedger { return ledgerOf{"NVDA", "185", "20261120"} }
+	acc := account() // stored positions without the put
+	var got blockapi.HouseholdInput
+	c := config(acc, &got)
+	c.Ledgers = nvda
+	m, b := build(t, c, "main")
+	if rows := m["obligations"].(map[string]any)["rows"].([]any); len(rows) != 1 {
+		t.Fatalf("obligations rows = %v, want the row kept beside the gap", rows)
+	}
+	for _, blk := range []string{"obligations", "income", "cash_after"} {
+		g := gapOf(t, m, blk)
+		text, _ := g["text"].(string)
+		if g["reason"] != "no_data" || !strings.Contains(text, "NVDA") || !strings.Contains(text, "185") ||
+			!strings.Contains(text, "position snapshot") {
+			t.Fatalf("%s gap = %v", blk, g)
+		}
+	}
+	validate(t, b)
+
+	stored := account()
+	stored.stored = []store.Position{{Symbol: "NVDA", SecType: "option", Right: "put", Quantity: "-1", Currency: "USD",
+		Strike: "185", Expiry: "2026-11-20"}}
+	c = config(stored, &got)
+	c.Ledgers = nvda
+	m, _ = build(t, c, "main")
+	ledgerBlocks(t, m, false)
+}
+
+func TestBothDirectionsShareOneGapText(t *testing.T) {
+	t.Parallel()
+	acc := account()
+	acc.stored = []store.Position{shortPut("7974", "7250")}
+	var got blockapi.HouseholdInput
+	m, b := build(t, config(acc, &got), "main") // the default ledger holds AAA 50
+	text := gapOf(t, m, "obligations")["text"].(string)
+	if !strings.Contains(text, "7974") || !strings.Contains(text, "AAA") || len([]rune(text)) > 170 {
+		t.Fatalf("gap text = %q", text)
+	}
+	validate(t, b)
 }
