@@ -102,6 +102,15 @@ func currencyOf(unit string) string {
 	return unit
 }
 
+// fiscalYear copies fy when it is within 1990 to 2100, else nil.
+func fiscalYear(fy *int) *int {
+	if fy == nil || *fy < 1990 || *fy > 2100 {
+		return nil
+	}
+	v := *fy
+	return &v
+}
+
 // mapCompanyFacts maps the kept concepts of a companyfacts document whose filing day is within
 // [from, to] (an empty bound is open). Facts come out in a fixed order.
 func mapCompanyFacts(subject string, body []byte, retrieved time.Time, from, to contracts.Day) ([]contracts.FundamentalFact, error) {
@@ -136,11 +145,7 @@ func mapCompanyFacts(subject string, body []byte, retrieved time.Time, from, to 
 						Taxonomy: tax, Concept: concept, Unit: unit, Currency: currencyOf(unit),
 						PeriodEnd: end, Value: e.Val.String(), Form: e.Form, DocID: e.Accn,
 						Filed: filed, RetrievedAt: retrieved, RawSha256: digest,
-						Fp: e.Fp, Frame: e.Frame,
-					}
-					if e.Fy != nil && *e.Fy >= 1990 && *e.Fy <= 2100 {
-						fy := *e.Fy
-						f.Fy = &fy
+						Fp: e.Fp, Frame: e.Frame, Fy: fiscalYear(e.Fy),
 					}
 					if e.Start != nil {
 						s, err := parseDay(*e.Start)
