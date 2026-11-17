@@ -170,9 +170,38 @@ func (l *listedJob) Run(ctx context.Context, day contracts.Day, keys []contracts
 	}
 	l.mu.Unlock()
 	if inner == nil {
-		return contracts.JobResult{Err: &listedError{kind: contracts.Permanent, msg: "no plan for these keys"}}
+		var terr contracts.TypedError
+		if inner, terr = l.replan(ctx, day, keys); terr != nil {
+			return contracts.JobResult{Err: terr}
+		}
 	}
 	return inner.Run(ctx, day, keys)
+}
+
+// replan builds an inner job from the list now and returns it when its plan for day holds all keys; the
+// snapshots are not touched. A plan that lacks a key is a Permanent "no plan for these keys".
+func (l *listedJob) replan(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) (contracts.Job, contracts.TypedError) {
+	noPlan := &listedError{kind: contracts.Permanent, msg: "no plan for these keys"}
+	entries, _, err := l.entries(ctx)
+	if err != nil {
+		return nil, err.(contracts.TypedError)
+	}
+	inner, err := l.buildInner(entries)
+	if err != nil {
+		return nil, err.(contracts.TypedError)
+	}
+	planned, _, err := inner.Plan(ctx, day)
+	if err != nil {
+		return nil, noPlan
+	}
+	set := make(map[contracts.ExpectedKey]bool, len(planned))
+	for _, k := range planned {
+		set[k] = true
+	}
+	if !(planSnap{keys: set}).holds(keys) {
+		return nil, noPlan
+	}
+	return inner, nil
 }
 
 func (s planSnap) holds(keys []contracts.ExpectedKey) bool {

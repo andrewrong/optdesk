@@ -172,9 +172,9 @@ func TestListedKeepsDaysBounded(t *testing.T) {
 		days, keys = append(days, d), k
 		jobsOf[d] = h.job.current()
 	}
-	res := h.job.Run(ctx, days[0], keys)
-	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "no plan for these keys" {
-		t.Fatalf("oldest day: %v", res.Err)
+	h.runs = nil
+	if res := h.job.Run(ctx, days[0], keys); res.Err != nil || len(h.runs) != 1 {
+		t.Fatalf("oldest day: %v, ran %d", res.Err, len(h.runs))
 	}
 	for _, d := range days[1:] {
 		h.runs = nil
@@ -225,15 +225,52 @@ func TestListedEvictsOldestPlanned(t *testing.T) {
 		keys = k
 	}
 	for i := listedKeepDays + 1; i > listedKeepDays-1; i-- {
-		res := h.job.Run(ctx, listedDay(i), keys)
-		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "no plan for these keys" {
-			t.Fatalf("day %d: %v", i, res.Err)
+		h.runs = nil
+		if res := h.job.Run(ctx, listedDay(i), keys); res.Err != nil || len(h.runs) != 1 {
+			t.Fatalf("day %d: %v, ran %d", i, res.Err, len(h.runs))
 		}
 	}
 	for i := listedKeepDays - 1; i >= 0; i-- {
 		if res := h.job.Run(ctx, listedDay(i), keys); res.Err != nil {
 			t.Fatalf("day %d: %v", i, res.Err)
 		}
+	}
+}
+
+func TestListedRunReplansOnMiss(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness(t, groupBars, activeRow("AAA"))
+	keys, _, err := h.job.Plan(ctx, listedDay(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i <= listedKeepDays; i++ {
+		if _, _, err := h.job.Plan(ctx, listedDay(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.runs = nil
+	if res := h.job.Run(ctx, listedDay(0), keys); res.Err != nil || len(h.runs) != 1 {
+		t.Fatalf("evicted day: %v, ran %d", res.Err, len(h.runs))
+	}
+	// a fresh listedJob, as after a restart, holds no snapshot
+	fresh := newHarness(t, groupBars, activeRow("AAA"))
+	if res := fresh.job.Run(ctx, listedDay(0), keys); res.Err != nil || len(fresh.runs) != 1 {
+		t.Fatalf("fresh job: %v, ran %d", res.Err, len(fresh.runs))
+	}
+}
+
+func TestListedRunPlanLacksKeyStaysPermanent(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, groupBars, activeRow("AAA"))
+	keys := []contracts.ExpectedKey{{DatasetID: "d", SubjectKey: "AAA"}, {DatasetID: "d", SubjectKey: "ZZZ"}}
+	res := h.job.Run(context.Background(), listedDay(0), keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "no plan for these keys" {
+		t.Fatalf("got %v", res.Err)
+	}
+	if len(h.runs) != 0 {
+		t.Fatalf("ran %d", len(h.runs))
 	}
 }
 
