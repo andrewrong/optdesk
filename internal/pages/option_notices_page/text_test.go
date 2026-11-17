@@ -15,10 +15,7 @@ func TestNoticeIDWithinPattern(t *testing.T) {
 
 func TestAmountTextAndClip(t *testing.T) {
 	t.Parallel()
-	if got := amountText("95000", "USD"); got != "95000 USD" {
-		t.Errorf("amount = %q", got)
-	}
-	if got := amountText("5", ""); got != "5" {
+	if got := amountText("95000", "USD"); got != "$95,000.00" {
 		t.Errorf("amount = %q", got)
 	}
 	if got := clip(""); got != noContract {
@@ -39,5 +36,36 @@ func TestPercentText(t *testing.T) {
 		if got := percentText(in); got != want {
 			t.Errorf("percentText(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestAmountTextMoney(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ amount, currency, want string }{
+		{"9500", "USD", "$9,500.00"},
+		{"1000000", "USD", "$1,000,000.00"},
+		{"1200000.50", "JPY", "¥1,200,000.50"},
+		{"1200", "EUR", "1,200.00 EUR"},
+		{"5", "", "5.00"},
+		{"0.125", "USD", "$0.12"},
+		{"0.135", "USD", "$0.14"},
+		{"-1234.5", "USD", "-$1,234.50"},
+	}
+	for _, c := range cases {
+		if got := amountText(c.amount, c.currency); got != c.want {
+			t.Errorf("amountText(%q, %q) = %q, want %q", c.amount, c.currency, got, c.want)
+		}
+	}
+}
+
+func TestAmountTextUnreadable(t *testing.T) {
+	t.Parallel()
+	for _, in := range []string{"abc", "", "1/2", "1e3", "NaN"} {
+		if got := amountText(in, "EUR"); got != in+" EUR" {
+			t.Errorf("amountText(%q, EUR) = %q", in, got)
+		}
+	}
+	if got := amountText("abc", ""); got != "abc" {
+		t.Errorf("amountText(abc, empty) = %q", got)
 	}
 }

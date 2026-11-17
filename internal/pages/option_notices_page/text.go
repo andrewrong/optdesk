@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -82,12 +83,73 @@ func reasonText(code string) string {
 	return code
 }
 
-// amountText is the decimal text of an amount followed by its currency.
+// amountText is a cash amount by the site money rule: two places, half to even, thousands
+// grouped, the symbol before the amount for USD and JPY and the code after it for other
+// currencies. A text that is not a plain decimal is returned as stored, the code after it.
 func amountText(amount, currency string) string {
-	if currency == "" {
-		return amount
+	body, ok := moneyBody(amount)
+	if !ok {
+		body = amount
+		if currency != "" {
+			body += " " + currency
+		}
+		return body
 	}
-	return amount + " " + currency
+	switch currency {
+	case "USD":
+		return signed(body, "$")
+	case "JPY":
+		return signed(body, "¥")
+	case "":
+		return body
+	}
+	return body + " " + currency
+}
+
+func signed(body, sym string) string {
+	if rest, neg := strings.CutPrefix(body, "-"); neg {
+		return "-" + sym + rest
+	}
+	return sym + body
+}
+
+// moneyBody is the amount with two places and grouped thousands, without symbol.
+func moneyBody(amount string) (string, bool) {
+	if !decimalText.MatchString(amount) {
+		return "", false
+	}
+	r, ok := new(big.Rat).SetString(amount)
+	if !ok {
+		return "", false
+	}
+	v := new(big.Rat).Mul(r, big.NewRat(100, 1))
+	q, m := new(big.Int).DivMod(v.Num(), v.Denom(), new(big.Int))
+	switch new(big.Int).Lsh(m, 1).Cmp(v.Denom()) {
+	case 1:
+		q.Add(q, big.NewInt(1))
+	case 0:
+		if q.Bit(0) == 1 {
+			q.Add(q, big.NewInt(1))
+		}
+	}
+	s := q.String()
+	neg := strings.HasPrefix(s, "-")
+	s = strings.TrimPrefix(s, "-")
+	for len(s) < 3 {
+		s = "0" + s
+	}
+	whole, frac := s[:len(s)-2], s[len(s)-2:]
+	var b strings.Builder
+	if neg && s != "000" {
+		b.WriteByte('-')
+	}
+	for i, c := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	return b.String() + "." + frac, true
 }
 
 // clip keeps text within the schema limit and never empty.

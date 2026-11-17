@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -109,6 +110,20 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 	return json.Marshal(vm)
 }
 
+// attachCoverage sets the coverage cell of each open row of a and returns the account's note.
+func attachCoverage(ctx context.Context, c Config, in trackapi.TrackInput, open []opt, a *account) (string, error) {
+	cov, note, err := coverageOf(ctx, c, in, open)
+	if err != nil {
+		return "", err
+	}
+	if a.Open != nil {
+		for i, o := range open {
+			a.Open.Rows[i].Cells[coverageID] = cov[o.PositionID]
+		}
+	}
+	return note, nil
+}
+
 func gapAccount(alias string, g gap) account {
 	return account{Alias: alias, Title: accountTitle(alias), Gap: &g}
 }
@@ -157,14 +172,9 @@ func buildAccounts(ctx context.Context, c Config, day contracts.Day, vm *viewMod
 		}
 		res := c.Tracker.Track(in, c.Params)
 		a, stale := formatAccount(alias, res, in.HeldKnown)
-		cov, covNote, err := coverageOf(ctx, c, in, res.Open)
+		covNote, err := attachCoverage(ctx, c, in, res.Open, &a)
 		if err != nil {
 			return err
-		}
-		if a.Open != nil {
-			for i, o := range res.Open {
-				a.Open.Rows[i].Cells[coverageID] = cov[o.PositionID]
-			}
 		}
 		if covNote != "" {
 			vm.Notes = append(vm.Notes, covNote)

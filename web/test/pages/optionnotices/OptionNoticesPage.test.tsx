@@ -76,6 +76,26 @@ describe('OptionNoticesPage', () => {
     expect(page.querySelector('[data-alias=ok-second] table')).toBeNull()
   })
 
+  it('new: the cash title, its gloss and the empty line', async () => {
+    const page = await show(ok)
+    const first = page.querySelector('[data-alias=ok-main]')!
+    expect(first.querySelector('h3[data-cash-title]')!.textContent).toBe('Cash due if assigned')
+    expect(first.querySelector('p[data-cash-gloss]')!.textContent).toBe(
+      "If every short put that expires on that day were assigned, this is the cash you would need to pay for the shares (strike × multiplier × quantity). 'Assigned' = the buyer of your put makes you buy the stock at the strike.",
+    )
+    expect(first.querySelector('[data-cash]')).not.toBeNull()
+    expect(first.querySelector('[data-cash-empty]')).toBeNull()
+    const second = page.querySelector('[data-alias=ok-second]')!
+    expect(second.querySelector('[data-cash-empty]')!.textContent).toBe('No short put is open: no cash is due.')
+    expect(second.querySelector('[data-cash]')).toBeNull()
+    await act(async () => root?.unmount())
+    host.remove()
+    const missing = await show(secondMissing)
+    const block = missing.querySelector('[data-alias=miss-second]')!
+    for (const sel of ['[data-cash-title]', '[data-cash-gloss]', '[data-cash]', '[data-cash-empty]'])
+      expect(block.querySelector(sel)).toBeNull()
+  })
+
   it('shows a no_capture block with its note and no table', async () => {
     const page = await show(secondMissing)
     const block = page.querySelector('[data-alias=miss-second]')!

@@ -86,35 +86,12 @@ func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []op
 	if err != nil {
 		return nil, "", err
 	}
-	var eod map[dayKey]bool
-	loadEod := func() error {
-		if eod != nil {
-			return nil
-		}
-		var err error
-		eod, err = eodSides(ctx, c, symbols, from, in.AsOf)
-		return err
-	}
+	eod := &eodLoader{ctx: ctx, c: c, symbols: symbols, from: from, to: in.AsOf}
 	var gapTotal, dayTotal int
 	for _, l := range lots {
-		lc := lotCoverage{days: len(l.span)}
-		for _, d := range l.span {
-			k := dayKey{l.id, d}
-			if row, ok := stored[k]; ok {
-				if r := sideReason(deref(row.Bid), deref(row.Ask)); r != "" {
-					lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, r)
-				}
-				continue
-			}
-			if err := loadEod(); err != nil {
-				return nil, "", err
-			}
-			switch sides, ok := eod[k]; {
-			case !ok:
-				lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, reasonNoQuote)
-			case !sides:
-				lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, reasonOneSide)
-			}
+		lc, err := classify(l.id, l.span, stored, eod)
+		if err != nil {
+			return nil, "", err
 		}
 		cells[l.o.PositionID] = lc.cell()
 		gapTotal += len(lc.gapDays)
@@ -123,6 +100,52 @@ func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []op
 	note := in.Alias + noteSep + " " + strconv.Itoa(gapTotal) + " of " + strconv.Itoa(dayTotal) +
 		" lot-days have no two-sided quote since opening"
 	return cells, note, nil
+}
+
+// eodLoader reads the option_eod sides once, and only when a day has no option_day row.
+type eodLoader struct {
+	ctx      context.Context
+	c        Config
+	symbols  map[string]bool
+	from, to contracts.Day
+	sides    map[dayKey]bool
+}
+
+func (e *eodLoader) get() (map[dayKey]bool, error) {
+	if e.sides != nil {
+		return e.sides, nil
+	}
+	var err error
+	e.sides, err = eodSides(e.ctx, e.c, e.symbols, e.from, e.to)
+	return e.sides, err
+}
+
+// classify counts the days of one lot and names its gap days.
+func classify(id int64, span []contracts.Day, stored map[dayKey]optionday.Day, eod *eodLoader) (lotCoverage, error) {
+	lc := lotCoverage{days: len(span)}
+	gap := func(d contracts.Day, reason string) {
+		lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, reason)
+	}
+	for _, d := range span {
+		k := dayKey{id, d}
+		if row, ok := stored[k]; ok {
+			if r := sideReason(deref(row.Bid), deref(row.Ask)); r != "" {
+				gap(d, r)
+			}
+			continue
+		}
+		m, err := eod.get()
+		if err != nil {
+			return lc, err
+		}
+		switch sides, ok := m[k]; {
+		case !ok:
+			gap(d, reasonNoQuote)
+		case !sides:
+			gap(d, reasonOneSide)
+		}
+	}
+	return lc, nil
 }
 
 // sessionsFrom is the session days not before opened, in the order given.
