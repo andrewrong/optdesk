@@ -16,7 +16,7 @@
   "run_status": "partial",
   "card": {
     "title": "Options overview",
-    "say": "Ledger: no closed sold records yet.",
+    "say": "Premium from closed sold options totals +$1,234.50.",
     "subtitle": "From the trade ledger",
     "stale": {
       "data_time": "2026-11-04T00:00:00+08:00",
@@ -37,10 +37,13 @@
       "premium_month_usd": {
         "label": "Closed premium",
         "figure": {
-          "kind": "gap",
-          "reason": "no_data",
-          "text": "Ledger: no closed sold records"
-        }
+          "kind": "value",
+          "value": 1234.50,
+          "text": "+$1,234.50",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "caption": "Opening cash of closed sold positions totals; realised −$15.25; kept share 32.4%"
       },
       "open_premium_usd": {
         "label": "Open premium",

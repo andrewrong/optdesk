@@ -168,7 +168,7 @@ func TestPremiumCellShowsCurrency(t *testing.T) {
 		{"13000.0000", "JPY", "¥13,000.00"},
 		{"5550.0000", "JPY", "¥5,550.00"},
 		{"250.5", "USD", "$250.50"},
-		{"-1234567.891", "USD", "-$1,234,567.89"},
+		{"-1234567.891", "USD", "−$1,234,567.89"},
 	} {
 		v := asValue(t, moneyCell(c.in, c.cur))
 		if v.Text != c.text || v.Value == nil {
@@ -259,4 +259,17 @@ func TestQtyTypographicMinus(t *testing.T) {
 		}
 	}
 	asGap(t, qty(trackapi.TrackedOption{}))
+}
+
+func TestPremiumCellRoundsHalfAwayFromZero(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ in, text string }{
+		{"2.125", "$2.13"},
+		{"-2.125", "−$2.13"},
+		{"-0.001", "$0.00"},
+	} {
+		if v := asValue(t, moneyCell(c.in, "USD")); v.Text != c.text {
+			t.Errorf("%s: text = %q, want %q", c.in, v.Text, c.text)
+		}
+	}
 }
