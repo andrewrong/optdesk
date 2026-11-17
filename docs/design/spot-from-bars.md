@@ -46,6 +46,8 @@ Issue 1 edits one module; issue 2 spans pages and ot. No row of `docs/design/mod
 
 ## Interface
 
+Landed in #2709
+
 `internal/compute/blockapi/api.go`: `HoldingIn` gains the field `Prev string`; `HoldingLine` gains the field `Day compute.FigureValue`. Additions only, no existing field changes. `positions_page.Config` (`internal/pages/positions_page/page.go`, not an interface file) gains `Bars bar.PriceBarReader` and `StockIDs` (a reader with `StockIDs(ctx, names []string) ([]store.InstrumentName, error)`, the same method as `market_state_page.StockIDReader`; a page cannot import another page, so the page declares its own); both nil keeps today's page. Nothing else.
 
 ## Issues
