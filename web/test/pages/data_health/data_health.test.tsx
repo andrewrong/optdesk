@@ -144,7 +144,21 @@ describe('data health page', () => {
     expect(el.querySelector('[role="alert"][data-gap="coverage_unavailable"]')?.textContent).toBe('The ledger could not be read.')
   })
 
-  it('TestNoLogicInWeb: the page folder exports only components and the registration', () => {
+  it('TestDatasetIdPrintedOnceWhenEqualToLabel', async () => {
+    const p = ok()
+    const first = p.datasets[0]!
+    first.label = first.dataset_id
+    const second = p.datasets[1]!
+    const h = await render(p)
+    const count = (text: string, sub: string) => text.split(sub).length - 1
+    const firstCell = h.querySelector(`[data-dataset="${first.dataset_id}"] td`)!.textContent ?? ''
+    expect(count(firstCell, first.dataset_id)).toBe(1)
+    const secondCell = h.querySelector(`[data-dataset="${second.dataset_id}"] td`)!.textContent ?? ''
+    expect(secondCell).toContain(second.label)
+    expect(secondCell).toContain(second.dataset_id)
+  })
+
+  it('TestNoLogicInWeb:the page folder exports only components and the registration', () => {
     const names = [pageFolder, grid, repair].flatMap((m) => Object.keys(m)).sort()
     expect(names).toEqual(['CellRepair', 'CoverageGrid', 'DataHealthView', 'RepairAllForm', 'registration'].sort())
   })
