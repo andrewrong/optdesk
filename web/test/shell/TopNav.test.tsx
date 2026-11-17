@@ -111,6 +111,12 @@ describe('TestTopNavMarksGroup', () => {
     const marked = [...host.querySelectorAll('nav > div [aria-current]')].filter((e) => e.matches('button, a'))
     expect(marked.map((e) => [e.textContent, e.getAttribute('aria-current')])).toEqual([[label, value]])
   })
+
+  it('at /structure the bar marks nothing among its buttons and links', async () => {
+    await showAt('/structure')
+    const marked = [...host.querySelectorAll('nav > div [aria-current]')].filter((e) => e.matches('button, a'))
+    expect(marked).toHaveLength(0)
+  })
 })
 
 describe('TopNav', () => {
