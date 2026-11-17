@@ -187,6 +187,56 @@ func TestListedKeepsDaysBounded(t *testing.T) {
 	}
 }
 
+func listedDay(i int) contracts.Day {
+	return contracts.Day(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, i).Format("2006-01-02"))
+}
+
+func TestListedRunOldDay(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness(t, groupBars, activeRow("AAA"))
+	for i := 1; i <= listedKeepDays+1; i++ {
+		if _, _, err := h.job.Plan(ctx, listedDay(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := listedDay(-30)
+	keys, _, err := h.job.Plan(ctx, old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := h.job.Run(ctx, old, keys)
+	if res.Err != nil || res.Returned != 1 {
+		t.Fatalf("old day run: %+v", res)
+	}
+}
+
+func TestListedEvictsOldestPlanned(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness(t, groupBars, activeRow("AAA"))
+	var keys []contracts.ExpectedKey
+	// planned newest date first, so the order planned differs from the date order
+	for i := listedKeepDays + 1; i >= 0; i-- {
+		k, _, err := h.job.Plan(ctx, listedDay(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		keys = k
+	}
+	for i := listedKeepDays + 1; i > listedKeepDays-1; i-- {
+		res := h.job.Run(ctx, listedDay(i), keys)
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "no plan for these keys" {
+			t.Fatalf("day %d: %v", i, res.Err)
+		}
+	}
+	for i := listedKeepDays - 1; i >= 0; i-- {
+		if res := h.job.Run(ctx, listedDay(i), keys); res.Err != nil {
+			t.Fatalf("day %d: %v", i, res.Err)
+		}
+	}
+}
+
 func TestListedForwardsOptionalMethods(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
