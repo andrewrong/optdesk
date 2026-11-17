@@ -23,3 +23,14 @@ The current valuation of a company (`Entry.Current`) is the review row with stat
 ## Empty answers
 
 `Current`, `Reviews` and `RVersions` return non-nil slices when there is nothing to return; the newest R version and the two table versions of `State` are nil when none exists.
+
+## PostgreSQL implementation
+
+`internal/store/valuationpg` implements `Reader` and `Writer` over migration `0052_valuation.sql`.
+
+- Schema `valuation` (owner `ot_owner`, `USAGE` to `ot_w_settings`) holds the five tables; `ot_w_settings` has `INSERT` and `SELECT` on them and nobody has `UPDATE` or `DELETE`. The writer reads the tables only to learn whether a `review_id` is closed.
+- The pages read the views `rd.valuation_company_profile_r1`, `rd.valuation_review_r1`, `rd.valuation_r_version_r1`, `rd.valuation_r_table_r1` and `rd.valuation_margin_table_r1` (`SELECT` to `ot_ro_pages` and `ot_w_settings`). `read.go` names no table; the newest-row and current-valuation rules are applied in Go over the rows the views return.
+- `valuationpg.Open(dsn)` is the `OpenFunc` (one pool, both interfaces; the role of the dsn decides what works). `valuationpg.OpenReader(ctx, dsn)` opens the reader alone with the pages dsn.
+- `review` carries the CHECKs of Decision 12 (`status = 'draft'` or `type`, `version_date`, `v` and `p` present), of `status` (`draft`, `effective`, `void`) and of `source` (`owner`, `program`); two unique partial indexes allow one effective and one void row per `review_id`. `effective_at` is set by a `BEFORE INSERT` trigger to `now()` on an effective row and is null on every other row.
+- `PutReview` reads the status of the `review_id` and inserts in one transaction; a unique violation of either partial index (a concurrent writer) is also `ErrClosed`. A `Put*` of a table version inserts all its rows in one transaction, so they share `set_at`.
+- The Down part raises when any of the five tables holds a row and drops the views, tables, trigger function and schema only when all five are empty.
