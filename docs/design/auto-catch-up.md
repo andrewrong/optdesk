@@ -136,7 +136,7 @@ Owner case: a change of who may act or with what permission
 Acceptance:
 1. The new migration `migrations/0054_runner_enqueue_grant.sql` grants `INSERT (job_id, session_day, force)` on `settings.job_request` to `ot_runner` and nothing else (no table, view, sequence or column more); its Down revokes exactly that grant.
 2. `TestRunnerRoleUpdatesJobRequestColumns` is changed: its `INSERT INTO settings.job_request (job_id, session_day, force) VALUES ('x', '2026-11-11', false)` line leaves its list of denied statements (`TestSettingsRolesCannotUpdate` is unchanged); `TestRunnerCanInsertRequestColumns` (new, tag `pg`, runs in GitHub CI) shows `ot_runner` inserts a row with those three columns and still gets a permission error for an insert that sets `state` or `keys`, for an update of `job_id` or `force`, for a delete, and for an insert into `settings.job_request_withdraw`.
-3. The diff changes only `migrations/0054_runner_enqueue_grant.sql` and `internal/store/setup/settings_pg_test.go`.
+3. The diff changes only `migrations/0054_runner_enqueue_grant.sql` (new) and `internal/store/setup/settings_pg_test.go`.
 
 ## Checked by CI
 
