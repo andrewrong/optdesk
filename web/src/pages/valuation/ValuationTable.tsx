@@ -2,10 +2,11 @@
 // cell of an unvalued row. Every cell is a payload text; the glosses of the heads are static text. A word cell wraps,
 // a figure cell stays on one line.
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table'
-import { Plus } from 'lucide-react'
+import { Info, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Payload } from '@/types/valuation_page'
 import { FlagBadges, GLOSS } from './CompanyView'
 
@@ -15,12 +16,25 @@ type Row = NonNullable<Payload['rows']>[number]
 const WRAP_CELL = new Set(['version_date', 'status', 'zone'])
 const WRAP_HEAD = new Set(['buy_price', 'version_date'])
 
-const Head = ({ label, gloss }: { label: string; gloss?: string }) => (
-  <>
-    {label}
-    {gloss ? <span className="block max-w-40 text-xs font-normal whitespace-normal text-muted-foreground">{gloss}</span> : null}
-  </>
-)
+// The gloss reads "<term>: <text>"; the tooltip shows the text without the leading term.
+const Head = ({ label, gloss }: { label: string; gloss?: string }) => {
+  const explain = gloss ? gloss.replace(`${label}: `, '') : ''
+  return (
+    <>
+      {label}
+      {explain ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" aria-label={explain} className="ml-1 inline-flex align-middle text-muted-foreground">
+              <Info className="size-3" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{explain}</TooltipContent>
+        </Tooltip>
+      ) : null}
+    </>
+  )
+}
 
 const text = (key: keyof Row, header: string, gloss?: string): ColumnDef<Row> => ({
   id: key,
@@ -79,29 +93,31 @@ const COLUMNS: ColumnDef<Row>[] = [
 export function ValuationTable({ rows }: { rows: Row[] }) {
   const table = useReactTable({ data: rows, columns: COLUMNS, getCoreRowModel: getCoreRowModel() })
   return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((group) => (
-          <TableRow key={group.id}>
-            {group.headers.map((h) => (
-              <TableHead key={h.id} className={WRAP_HEAD.has(h.column.id) ? 'whitespace-normal' : undefined}>
-                {flexRender(h.column.columnDef.header, h.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id} data-company={row.original.company_key}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id} className={WRAP_CELL.has(cell.column.id) ? 'whitespace-normal' : undefined}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <TooltipProvider>
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((group) => (
+            <TableRow key={group.id}>
+              {group.headers.map((h) => (
+                <TableHead key={h.id} className={WRAP_HEAD.has(h.column.id) ? 'whitespace-normal' : undefined}>
+                  {flexRender(h.column.columnDef.header, h.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id} data-company={row.original.company_key}>
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id} className={WRAP_CELL.has(cell.column.id) ? 'whitespace-normal' : undefined}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TooltipProvider>
   )
 }
