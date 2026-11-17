@@ -140,15 +140,26 @@ it('lets the results, ex and guard cells of the open table wrap and no other col
 })
 
 it('open table wraps contract and moneyness cells', async () => {
-  const ids = ['contract', 'moneyness', 'delta', 'iv']
+  // The ok fixture has no delta and iv column; they are added to its open table to show they do not wrap.
   const account = ok.accounts[0]
-  const cell = { text: 'put 250 2026-12-18', value: null, badges: [], tone: 'none' as const }
+  const figure = { text: '0.31', value: null, badges: [], tone: 'none' as const }
   const open = {
-    columns: ids.map((id) => ({ id, label: `${id} col`, align: 'left' as const, hint: null })),
-    rows: [{ id: 'pos-x', cells: Object.fromEntries(ids.map((id) => [id, cell])) }],
+    columns: [
+      ...account.open.columns,
+      { id: 'delta', label: 'Delta col', align: 'right' as const, hint: null },
+      { id: 'iv', label: 'Iv col', align: 'right' as const, hint: null },
+    ],
+    rows: account.open.rows.map((row) => ({ ...row, cells: { ...row.cells, delta: figure, iv: figure } })),
   }
   await show({ ...ok, accounts: [{ ...account, open }] })
-  const tds = [...host.querySelectorAll('[data-table="open"] tbody tr:first-child td')]
-  const wraps = Object.fromEntries(ids.map((id, i) => [id, tds[i]?.classList.contains('whitespace-normal')]))
-  expect(wraps).toEqual({ contract: true, moneyness: true, delta: false, iv: false })
+  const ids = open.columns.map((c) => c.id)
+  const wrapOf = (id: string) =>
+    [...host.querySelectorAll('[data-table="open"] tbody tr')].map((tr) =>
+      tr.children[ids.indexOf(id)]?.classList.contains('whitespace-normal'),
+    )
+  const rows = account.open.rows.length
+  expect(wrapOf('contract')).toEqual(Array(rows).fill(true))
+  expect(wrapOf('moneyness')).toEqual(Array(rows).fill(true))
+  expect(wrapOf('delta')).toEqual(Array(rows).fill(false))
+  expect(wrapOf('iv')).toEqual(Array(rows).fill(false))
 })
