@@ -137,7 +137,7 @@
           "iv_minus_rv20": {
             "kind": "value",
             "value": -1.4,
-            "text": "-1.4",
+            "text": "−1.4",
             "unit": "vol_points"
           },
           "source_text": "IBKR implied volatility"

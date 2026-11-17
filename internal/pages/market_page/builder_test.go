@@ -576,7 +576,7 @@ func TestIvRvGapsLeaveRunStatusOk(t *testing.T) {
 		t.Errorf("SPX iv_minus_rv20 = %v", g)
 	}
 	c := at(t, allOK().page(t), "indices", "rows", 2, "iv_minus_rv20").(map[string]any)
-	if c["kind"] != "value" || c["text"] != "-1.4" {
+	if c["kind"] != "value" || c["text"] != "−1.4" {
 		t.Errorf("RUT iv_minus_rv20 = %v", c)
 	}
 }

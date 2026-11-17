@@ -36,7 +36,9 @@ func ivRvCell(name string, r *contracts.ReadingRecord, d time.Time) any {
 		return mkGap("missing_input", name+" "+ivRvMissing)
 	}
 	shown := text
-	if !strings.HasPrefix(text, "-") && strings.Trim(text, "0.") != "" {
+	if strings.HasPrefix(text, "-") {
+		shown = "−" + text[1:]
+	} else if strings.Trim(text, "0.") != "" {
 		shown = "+" + text
 	}
 	if !day.Equal(d) {
