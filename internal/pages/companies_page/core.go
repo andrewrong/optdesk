@@ -239,10 +239,10 @@ func (c Config) coreRowsOf(ctx context.Context, f subjectFigs, today contracts.D
 	}
 	var legend []string
 	if c.ImpliedGrowth != nil {
-		if spot, ok, err := c.Spot(ctx, f.sub.Symbol, today); err != nil {
-			return nil, nil, fmt.Errorf("companies_page: spot of %s: %w", f.sub.Symbol, err)
-		} else if ok && spot != "" {
-			if line := impliedLine(f.sub.Symbol, c.ImpliedGrowth(f.fr.Filings, spot)); line != "" {
+		if spot, ok, err := c.spotAt(ctx, f.sub.Symbol, today); err != nil {
+			return nil, nil, err
+		} else if ok {
+			if line := impliedLine(f.sub.Symbol, c.ImpliedGrowth(f.fr.Filings, spot.Price)); line != "" {
 				legend = append(legend, line)
 			}
 		}

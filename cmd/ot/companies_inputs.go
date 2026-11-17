@@ -9,6 +9,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/companies_page"
 	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
@@ -143,22 +144,24 @@ func dayBefore(day contracts.Day, n int) (contracts.Day, error) {
 }
 
 // spotOf returns the Spot function: the newest daily close (basis trades) in the two weeks up to the day, as the
-// decimal text the bar stores. A symbol with no instrument or no bar gives ok false, a gap.
-func spotOf(res *symbolIDs, bars bar.PriceBarReader) func(context.Context, string, contracts.Day) (string, bool, error) {
-	return func(ctx context.Context, symbol string, day contracts.Day) (string, bool, error) {
+// decimal text the bar stores, with the session day of that bar. A symbol with no instrument or no bar gives ok
+// false, a gap.
+func spotOf(res *symbolIDs, bars bar.PriceBarReader) func(context.Context, string, contracts.Day) (companies_page.Spot, bool, error) {
+	return func(ctx context.Context, symbol string, day contracts.Day) (companies_page.Spot, bool, error) {
 		id, ok, err := res.ID(ctx, symbol)
 		if err != nil || !ok {
-			return "", false, err
+			return companies_page.Spot{}, false, err
 		}
 		from, err := dayBefore(day, spotLookbackDays)
 		if err != nil {
-			return "", false, err
+			return companies_page.Spot{}, false, err
 		}
 		rows, err := bars.PriceBars(ctx, id, "trades", from, day)
 		if err != nil || len(rows) == 0 {
-			return "", false, err
+			return companies_page.Spot{}, false, err
 		}
-		return rows[len(rows)-1].Close, true, nil
+		last := rows[len(rows)-1]
+		return companies_page.Spot{Price: last.Close, Day: contracts.Day(last.SessionDay.Format(dayLayout))}, true, nil
 	}
 }
 
