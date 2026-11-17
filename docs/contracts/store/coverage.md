@@ -27,3 +27,7 @@ Package `internal/store/coverage` declares the read-only view of the runner's le
 ## Meaning of ok
 
 ok means the runner recorded the key as stored. It is the runner's record that the data was written in that turn, not a count of data rows; a table restored or pruned outside the runner leaves the ledger green.
+
+## Implementation
+
+`internal/store/ops` implements `Reader` (`OpenCoverage`, opened with the pages DSN like `OpenGapReader`). `Cells` reads `rd.coverage_day_r1` (migration `0051_coverage_view.sql`: one row per session day and dataset, columns `session_day, dataset_id, keys, ok, no_value, expired, missing, missing_keys`, owner `ot_owner`, `SELECT` for `ot_ro_pages`); `Sessions` reads `rd.session_day_r1`; `NewestObservations` reads `rd.series_point_r1`. The view counts in SQL, so no per-key row reaches Go. For a key marked `no_value` the newest `ops.capture_run` row (the one finished last, a row still running first) decides: `expired` when its status is not `done`, its `error_code` is not empty or its `reason_code` is `expired` or `crashed_repeatedly`; otherwise `no_value`. A `no_value` key with no run row at all counts as `no_value`.
