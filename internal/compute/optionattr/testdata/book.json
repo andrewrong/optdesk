@@ -1,0 +1,25 @@
+{"cases":[
+{"name":"sample","results":[
+{"Currency":"USD","Entry":"20","Exit":"","Commission":"-2.6","Direction":"0","MoveCost":"0","IVRemark":"280","Time":"80","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"377.4","Difference":"0","Steps":[{"Direction":"0","MoveCost":"0","IVRemark":"160","Time":"0","Unsplit":"0"},{"Direction":"0","MoveCost":"0","IVRemark":"120","Time":"80","Unsplit":"0"}]},
+{"Currency":"USD","Entry":"10","Exit":"-5","Commission":"-5.2","Direction":"-112","MoveCost":"-46.4","IVRemark":"118.4","Time":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"-40.2","Difference":"0","Steps":[{"Direction":"-112","MoveCost":"-46.4","IVRemark":"118.4","Time":"0","Unsplit":"0"}]},
+{"Currency":"USD","Entry":"30","Exit":"0","Commission":"-2.6","Direction":"100","MoveCost":"-186","IVRemark":"20","Time":"412","Unsplit":"5","AssignedIntrinsic":"150","LedgerPnL":"528.9","Difference":"0.5","Steps":[{"Direction":"100","MoveCost":"-186","IVRemark":"20","Time":"412","Unsplit":"5"}]}
+],"want":[{"Currency":"USD","Lots":3,"Entry":"60","Exit":"-5","Commission":"-10.4","Direction":"-12","MoveCost":"-232.4","IVRemark":"418.4","Time":"492","Unsplit":"5","RentMinusCost":"259.6","Total":"715.6","AssignedIntrinsic":"150","LedgerPnL":"866.1","Difference":"0.5","NoQuoteLedgerPnL":"0","UnreconciledLedgerPnL":"0"}]},
+{"name":"two-currencies","results":[
+{"Currency":"USD","Entry":"10","Commission":"-1","Time":"5","MoveCost":"-1","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"13","Difference":"0"},
+{"Currency":"JPY","Entry":"1000","Commission":"-100","Time":"50","MoveCost":"-20","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"930","Difference":"0"},
+{"Currency":"USD","Entry":"2","Commission":"-1","Time":"1","MoveCost":"0","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"2","Difference":"0"}
+],"want":[
+{"Currency":"USD","Lots":2,"Entry":"12","Commission":"-2","Time":"6","MoveCost":"-1","RentMinusCost":"5","Total":"15","LedgerPnL":"15","Difference":"0"},
+{"Currency":"JPY","Lots":1,"Entry":"1000","Commission":"-100","Time":"50","MoveCost":"-20","RentMinusCost":"30","Total":"930","LedgerPnL":"930","Difference":"0"}]},
+{"name":"no-quotes","results":[
+{"Currency":"USD","Entry":"10","Commission":"-1","Time":"5","MoveCost":"0","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"14","Difference":"0"},
+{"Currency":"USD","NoQuotes":true,"Commission":"-2.6","AssignedIntrinsic":"0","LedgerPnL":"357.4","Difference":"0","Reason":"no stored quotes"}
+],"want":[{"Currency":"USD","Lots":1,"NoQuoteLots":1,"Commission":"-1","Entry":"10","Time":"5","Total":"14","LedgerPnL":"14","Difference":"0","NoQuoteLedgerPnL":"357.4","UnreconciledLedgerPnL":"0"}]},
+{"name":"empty-diff","results":[
+{"Currency":"USD","Entry":"10","Commission":"-1","Time":"5","MoveCost":"0","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"14","Difference":"0"},
+{"Currency":"USD","Entry":"7","Commission":"-1","Time":"3","MoveCost":"-2","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"99","Difference":"","Reason":"ledger mark day differs"}
+],"want":[{"Currency":"USD","Lots":1,"UnreconciledLots":1,"Commission":"-1","Entry":"10","Time":"5","Total":"14","LedgerPnL":"14","Difference":"0","NoQuoteLedgerPnL":"0","UnreconciledLedgerPnL":"99"}]},
+{"name":"rent","results":[
+{"Currency":"USD","Entry":"0","Commission":"0","Time":"412","MoveCost":"-186","Direction":"0","IVRemark":"0","Unsplit":"0","AssignedIntrinsic":"0","LedgerPnL":"226","Difference":"0"}
+],"want":[{"Currency":"USD","Lots":1,"Time":"412","MoveCost":"-186","RentMinusCost":"226","Total":"226","LedgerPnL":"226"}]}
+]}

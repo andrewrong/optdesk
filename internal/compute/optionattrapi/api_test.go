@@ -137,3 +137,39 @@ func TestEveryListIsNonNil(t *testing.T) {
 		t.Fatalf("nil list in %+v", r)
 	}
 }
+
+// fakeBooker answers one Book per currency with made-up marked numbers.
+type fakeBooker struct{}
+
+func (fakeBooker) Combine(rs []optionattrapi.Result) []optionattrapi.Book {
+	out := []optionattrapi.Book{}
+	for _, r := range rs {
+		out = append(out, optionattrapi.Book{
+			Currency: r.Currency, Lots: 1, Time: "412", MoveCost: "-186", RentMinusCost: "226",
+			Total: "100", Difference: "0", NoQuoteLots: 0,
+		})
+	}
+	return out
+}
+
+// TestBookerContractFake: a caller reads the fields of a Book from a fake Booker.
+func TestBookerContractFake(t *testing.T) {
+	t.Parallel()
+	var b optionattrapi.Booker = fakeBooker{}
+	got := b.Combine([]optionattrapi.Result{{Currency: "USD"}, {Currency: "JPY"}})
+	if len(got) != 2 || got[0].Currency != "USD" || got[1].Currency != "JPY" {
+		t.Fatalf("books = %+v", got)
+	}
+	if got[0].RentMinusCost != "226" || got[0].Total != "100" || got[0].Difference != "0" || got[0].NoQuoteLots != 0 {
+		t.Fatalf("book = %+v", got[0])
+	}
+}
+
+// TestBookerEmptyIsNonNil: no results give a non-nil empty slice.
+func TestBookerEmptyIsNonNil(t *testing.T) {
+	t.Parallel()
+	got := fakeBooker{}.Combine(nil)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("got = %#v", got)
+	}
+}
