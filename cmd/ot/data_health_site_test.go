@@ -146,7 +146,7 @@ func TestDataHealthRouteNoPagesDSN(t *testing.T) {
 func TestPageListHasDataHealth(t *testing.T) {
 	t.Parallel()
 	names := registeredPageNames()
-	if len(names) == 0 || names[len(names)-1] != dataHealthName {
+	if !slices.Contains(names, dataHealthName) {
 		t.Fatalf("registered names %v", names)
 	}
 	f, ok := pageFamilyOfRoute(siteDataHealthRoute)
