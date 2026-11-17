@@ -100,3 +100,11 @@ it('TestPnlShowsTextUnchanged', async () => {
   const cell = host.querySelector('[data-line="rent"]')!.children[1]!
   expect(cell.textContent).toBe('−$1,234.50')
 })
+
+it('TestPnlLeftOutUnderHeadline', async () => {
+  await show(ok)
+  const book = host.querySelector('[data-book]')!
+  const headline = book.querySelector('[data-line="rent"]')!
+  const leftOut = book.querySelector('[data-left-out]')!
+  expect(headline.compareDocumentPosition(leftOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})

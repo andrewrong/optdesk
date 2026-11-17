@@ -52,8 +52,8 @@ export function OptionPnlView({ payload }: { payload: Payload }) {
               <AlertDescription>{payload.stale.text}</AlertDescription>
             </Alert>
           ) : null}
-          {payload.gaps.map((gap) => (
-            <Alert key={gap.reason} data-gap={gap.reason}>
+          {payload.gaps.map((gap, i) => (
+            <Alert key={`${i}-${gap.reason}`} data-gap={gap.reason}>
               <CircleAlert aria-hidden />
               <AlertDescription>{gap.text}</AlertDescription>
             </Alert>

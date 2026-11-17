@@ -46,12 +46,13 @@ export function BookCard({ book }: { book: Book }) {
         <CardDescription>{book.counts}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <LinesTable lines={[book.headline]} />
         {book.left_out ? (
           <p className="text-sm" data-left-out>
             {book.left_out}
           </p>
         ) : null}
-        <LinesTable lines={[book.headline, ...book.lines]} />
+        <LinesTable lines={book.lines} />
       </CardContent>
     </Card>
   )

@@ -9,7 +9,7 @@ import type { Lot } from '@/generated/option_pnl_page.v1'
 import { LinesTable } from './BookCard'
 
 export function LotCard({ lot }: { lot: Lot }) {
-  const main = [...lot.lines, ...(lot.iv_line ? [lot.iv_line] : []), ...(lot.end_line ? [lot.end_line] : [])]
+  const mainLines = [...lot.lines, ...(lot.iv_line ? [lot.iv_line] : []), ...(lot.end_line ? [lot.end_line] : [])]
   return (
     <Card data-lot={lot.id}>
       <CardHeader>
@@ -17,8 +17,8 @@ export function LotCard({ lot }: { lot: Lot }) {
         <CardDescription>{lot.summary}</CardDescription>
         {lot.badges.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {lot.badges.map((badge) => (
-              <Badge key={badge} variant="secondary">
+            {lot.badges.map((badge, i) => (
+              <Badge key={`${i}-${badge}`} variant="secondary">
                 {badge}
               </Badge>
             ))}
@@ -33,7 +33,7 @@ export function LotCard({ lot }: { lot: Lot }) {
           </Alert>
         ) : (
           <>
-            {main.length > 0 ? <LinesTable lines={main} /> : null}
+            {mainLines.length > 0 ? <LinesTable lines={mainLines} /> : null}
             <Accordion type="multiple">
               <AccordionItem value="days">
                 <AccordionTrigger>{lot.days_line.label}</AccordionTrigger>
