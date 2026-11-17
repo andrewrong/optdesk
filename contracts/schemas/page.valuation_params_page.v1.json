@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.valuation_params_page.v1.json",
+  "title": "ValuationParamsPage",
+  "description": "View model of the market parameters page of the valuation: the newest R version, the proposal of R for the latest 10-year yield, the two parameter tables and the R history. Every figure is a decimal text written by the builder; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "built_at", "latest_yield", "current_r", "proposal", "r_table", "margin_table", "r_history", "gaps", "error", "form"],
+  "properties": {
+    "schema": {"const": "valuation_params_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "run_id": {"$ref": "common.v2.json#/$defs/Id"},
+    "built_at": {"$ref": "common.v2.json#/$defs/Timestamp"},
+    "latest_yield": {"oneOf": [{"$ref": "#/$defs/Yield"}, {"type": "null"}]},
+    "current_r": {"oneOf": [{"$ref": "#/$defs/RVersion"}, {"type": "null"}]},
+    "proposal": {"oneOf": [{"$ref": "#/$defs/Proposal"}, {"type": "null"}]},
+    "r_table": {"oneOf": [{"$ref": "#/$defs/RTable"}, {"type": "null"}]},
+    "margin_table": {"oneOf": [{"$ref": "#/$defs/MarginTable"}, {"type": "null"}]},
+    "r_history": {"type": "array", "items": {"$ref": "#/$defs/RVersion"}},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "error": {"$ref": "#/$defs/Optional"},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Optional": {"type": "string", "maxLength": 600},
+    "Figure": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "Day": {"type": "string", "format": "date"},
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_path", "expires", "mac"],
+      "properties": {
+        "post_path": {"type": "string", "pattern": "^/[a-z0-9/_-]{1,80}$"},
+        "expires": {"type": "string", "pattern": "^[0-9]{1,12}$"},
+        "mac": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"enum": ["yield_unavailable", "store_unavailable"]},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "Yield": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "day"],
+      "properties": {
+        "value": {"$ref": "#/$defs/Figure"},
+        "day": {"$ref": "#/$defs/Day"}
+      }
+    },
+    "RValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["us", "jp", "hkcn"],
+      "properties": {
+        "us": {"$ref": "#/$defs/Figure"},
+        "jp": {"$ref": "#/$defs/Figure"},
+        "hkcn": {"$ref": "#/$defs/Figure"}
+      }
+    },
+    "RVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effective_date", "yield_used", "r", "ai_switch", "ai_expiry", "note", "step_warnings"],
+      "properties": {
+        "effective_date": {"$ref": "#/$defs/Day"},
+        "yield_used": {"$ref": "#/$defs/Optional"},
+        "r": {"$ref": "#/$defs/RValues"},
+        "ai_switch": {"type": "boolean"},
+        "ai_expiry": {"$ref": "#/$defs/Optional"},
+        "note": {"$ref": "#/$defs/Optional"},
+        "step_warnings": {"type": "array", "items": {"$ref": "#/$defs/Text"}}
+      }
+    },
+    "Proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["r", "step_warnings"],
+      "properties": {
+        "r": {"$ref": "#/$defs/RValues"},
+        "step_warnings": {"type": "array", "items": {"$ref": "#/$defs/Text"}}
+      }
+    },
+    "RTableRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["yield_up_to", "us", "jp", "hkcn"],
+      "properties": {
+        "yield_up_to": {"$ref": "#/$defs/Optional"},
+        "us": {"$ref": "#/$defs/Figure"},
+        "jp": {"$ref": "#/$defs/Figure"},
+        "hkcn": {"$ref": "#/$defs/Figure"}
+      }
+    },
+    "RTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effective_date", "rows"],
+      "properties": {
+        "effective_date": {"$ref": "#/$defs/Day"},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/RTableRow"}}
+      }
+    },
+    "MarginRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p_from", "m", "w", "h", "s"],
+      "properties": {
+        "p_from": {"$ref": "#/$defs/Figure"},
+        "m": {"$ref": "#/$defs/Figure"},
+        "w": {"$ref": "#/$defs/Figure"},
+        "h": {"$ref": "#/$defs/Figure"},
+        "s": {"$ref": "#/$defs/Figure"}
+      }
+    },
+    "MarginTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effective_date", "rows"],
+      "properties": {
+        "effective_date": {"$ref": "#/$defs/Day"},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/MarginRow"}}
+      }
+    }
+  }
+}

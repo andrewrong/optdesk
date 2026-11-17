@@ -1,0 +1,329 @@
+{
+  "schema": "valuation_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "view": "company",
+  "rows": null,
+  "unvalued_count": 0,
+  "company": {
+    "company_key": "US:AAA",
+    "name": "Alpha Widgets",
+    "symbol": "AAA",
+    "currency": "USD",
+    "r_market": "US",
+    "pool": "in_pool",
+    "pool_date": "2026-10-01",
+    "note": ""
+  },
+  "current": {
+    "review_id": "rev-0002",
+    "type": "post_earnings",
+    "version_date": "2026-11-05",
+    "status": "effective",
+    "v": "100",
+    "p": "3",
+    "trigger": "a",
+    "change_memo": "invented raise",
+    "detail": {
+      "source": "owner",
+      "fiscal_period_end": "2026-09-30",
+      "report_date": "2026-11-05",
+      "earnings_base": "5.00",
+      "base_basis": "invented trailing",
+      "forward_factor": "1.10",
+      "locked_multiple": "",
+      "method_results": [
+        "98",
+        "102"
+      ],
+      "adjustments": [
+        {
+          "percent": "-5",
+          "reason": "invented risk"
+        }
+      ],
+      "scenarios": [
+        {
+          "label": "base",
+          "probability": "60",
+          "eps": "5.5",
+          "multiple": "18"
+        }
+      ],
+      "reaction": "invented reaction",
+      "moat": "wide",
+      "understand": "high",
+      "management": "fair",
+      "financial": "strong",
+      "reasons": {
+        "p": "invented",
+        "moat": "",
+        "understand": "",
+        "management": "",
+        "financial": ""
+      },
+      "report_text": "Invented report text.",
+      "entered_at": "2026-11-06T08:00:00Z",
+      "effective_at": "2026-11-06T08:00:01Z"
+    }
+  },
+  "lines": {
+    "c": "90",
+    "r": "0.90",
+    "heavy": "63",
+    "buy_low": "67",
+    "buy_high": "72",
+    "fair_low": "81",
+    "fair_high": "99",
+    "trim": "112.5",
+    "clear": "120",
+    "core": "150",
+    "m": "0.20",
+    "w": "0.10",
+    "h": "0.30",
+    "s": "0.25",
+    "zone": "fair",
+    "zone_note": "",
+    "flags": {
+      "at_heavy": false,
+      "in_buy": false,
+      "in_fair": true,
+      "at_trim": false,
+      "at_clear": false,
+      "at_core": false
+    }
+  },
+  "band": {
+    "min": "50",
+    "max": "160",
+    "marks": [
+      {
+        "name": "heavy",
+        "value": "63",
+        "pos": "0.1182"
+      },
+      {
+        "name": "buy_high",
+        "value": "72",
+        "pos": "0.2"
+      },
+      {
+        "name": "fair_low",
+        "value": "81",
+        "pos": "0.2818"
+      },
+      {
+        "name": "c",
+        "value": "90",
+        "pos": "0.3636"
+      },
+      {
+        "name": "fair_high",
+        "value": "99",
+        "pos": "0.4455"
+      },
+      {
+        "name": "trim",
+        "value": "112.5",
+        "pos": "0.5682"
+      },
+      {
+        "name": "clear",
+        "value": "120",
+        "pos": "0.6364"
+      },
+      {
+        "name": "core",
+        "value": "150",
+        "pos": "0.9091"
+      },
+      {
+        "name": "close",
+        "value": "95",
+        "pos": "0.4091"
+      }
+    ]
+  },
+  "close": {
+    "value": "95",
+    "day": "2026-11-14"
+  },
+  "history": [
+    {
+      "review_id": "rev-0003",
+      "date": "2026-11-08",
+      "type": "event",
+      "v": "130",
+      "v_from": "100",
+      "v_to": "130",
+      "change_percent": "30",
+      "trigger": "b",
+      "memo": "invented typo",
+      "status": "void",
+      "void_reason": "V typed wrong",
+      "detail": {
+        "source": "owner",
+        "fiscal_period_end": "2026-09-30",
+        "report_date": "2026-11-05",
+        "earnings_base": "5.00",
+        "base_basis": "invented trailing",
+        "forward_factor": "1.10",
+        "locked_multiple": "",
+        "method_results": [
+          "98",
+          "102"
+        ],
+        "adjustments": [
+          {
+            "percent": "-5",
+            "reason": "invented risk"
+          }
+        ],
+        "scenarios": [
+          {
+            "label": "base",
+            "probability": "60",
+            "eps": "5.5",
+            "multiple": "18"
+          }
+        ],
+        "reaction": "invented reaction",
+        "moat": "wide",
+        "understand": "high",
+        "management": "fair",
+        "financial": "strong",
+        "reasons": {
+          "p": "invented",
+          "moat": "",
+          "understand": "",
+          "management": "",
+          "financial": ""
+        },
+        "report_text": "Invented report text.",
+        "entered_at": "2026-11-06T08:00:00Z",
+        "effective_at": "2026-11-08T08:00:01Z"
+      }
+    },
+    {
+      "review_id": "rev-0002",
+      "date": "2026-11-05",
+      "type": "post_earnings",
+      "v": "100",
+      "v_from": "80",
+      "v_to": "100",
+      "change_percent": "25",
+      "trigger": "a",
+      "memo": "invented raise",
+      "status": "effective",
+      "void_reason": "",
+      "detail": {
+        "source": "owner",
+        "fiscal_period_end": "2026-09-30",
+        "report_date": "2026-11-05",
+        "earnings_base": "5.00",
+        "base_basis": "invented trailing",
+        "forward_factor": "1.10",
+        "locked_multiple": "",
+        "method_results": [
+          "98",
+          "102"
+        ],
+        "adjustments": [
+          {
+            "percent": "-5",
+            "reason": "invented risk"
+          }
+        ],
+        "scenarios": [
+          {
+            "label": "base",
+            "probability": "60",
+            "eps": "5.5",
+            "multiple": "18"
+          }
+        ],
+        "reaction": "invented reaction",
+        "moat": "wide",
+        "understand": "high",
+        "management": "fair",
+        "financial": "strong",
+        "reasons": {
+          "p": "invented",
+          "moat": "",
+          "understand": "",
+          "management": "",
+          "financial": ""
+        },
+        "report_text": "Invented report text.",
+        "entered_at": "2026-11-06T08:00:00Z",
+        "effective_at": "2026-11-06T08:00:01Z"
+      }
+    },
+    {
+      "review_id": "rev-0001",
+      "date": "2026-05-01",
+      "type": "first",
+      "v": "80",
+      "v_from": "",
+      "v_to": "80",
+      "change_percent": "",
+      "trigger": "",
+      "memo": "",
+      "status": "effective",
+      "void_reason": "",
+      "detail": {
+        "source": "owner",
+        "fiscal_period_end": "2026-09-30",
+        "report_date": "2026-11-05",
+        "earnings_base": "5.00",
+        "base_basis": "invented trailing",
+        "forward_factor": "1.10",
+        "locked_multiple": "",
+        "method_results": [
+          "98",
+          "102"
+        ],
+        "adjustments": [
+          {
+            "percent": "-5",
+            "reason": "invented risk"
+          }
+        ],
+        "scenarios": [
+          {
+            "label": "base",
+            "probability": "60",
+            "eps": "5.5",
+            "multiple": "18"
+          }
+        ],
+        "reaction": "invented reaction",
+        "moat": "wide",
+        "understand": "high",
+        "management": "fair",
+        "financial": "strong",
+        "reasons": {
+          "p": "invented",
+          "moat": "",
+          "understand": "",
+          "management": "",
+          "financial": ""
+        },
+        "report_text": "Invented report text.",
+        "entered_at": "2026-11-06T08:00:00Z",
+        "effective_at": "2026-05-01T08:00:01Z"
+      }
+    }
+  ],
+  "required": [],
+  "problems": [],
+  "error": "",
+  "saved": "",
+  "gaps": [],
+  "form": {
+    "post_path": "/owner-valuation",
+    "expires": "1795000000",
+    "mac": "0000000000000000000000000000000000000000000000000000000000000001"
+  }
+}

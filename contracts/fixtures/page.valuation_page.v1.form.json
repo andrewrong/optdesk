@@ -1,0 +1,107 @@
+{
+  "schema": "valuation_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "view": "form",
+  "rows": null,
+  "unvalued_count": 0,
+  "company": {
+    "company_key": "US:CCC",
+    "name": "Gamma Tools",
+    "symbol": "CCC",
+    "currency": "USD",
+    "r_market": "US",
+    "pool": "in_pool",
+    "pool_date": "2026-10-01",
+    "note": ""
+  },
+  "current": null,
+  "lines": {
+    "c": "90",
+    "r": "0.90",
+    "heavy": "63",
+    "buy_low": "67",
+    "buy_high": "72",
+    "fair_low": "81",
+    "fair_high": "99",
+    "trim": "112.5",
+    "clear": "120",
+    "core": "150",
+    "m": "0.20",
+    "w": "0.10",
+    "h": "0.30",
+    "s": "0.25",
+    "zone": "",
+    "zone_note": "no_close",
+    "flags": null
+  },
+  "band": {
+    "min": "50",
+    "max": "160",
+    "marks": [
+      {
+        "name": "heavy",
+        "value": "63",
+        "pos": "0.1182"
+      },
+      {
+        "name": "buy_high",
+        "value": "72",
+        "pos": "0.2"
+      },
+      {
+        "name": "fair_low",
+        "value": "81",
+        "pos": "0.2818"
+      },
+      {
+        "name": "c",
+        "value": "90",
+        "pos": "0.3636"
+      },
+      {
+        "name": "fair_high",
+        "value": "99",
+        "pos": "0.4455"
+      },
+      {
+        "name": "trim",
+        "value": "112.5",
+        "pos": "0.5682"
+      },
+      {
+        "name": "clear",
+        "value": "120",
+        "pos": "0.6364"
+      },
+      {
+        "name": "core",
+        "value": "150",
+        "pos": "0.9091"
+      }
+    ]
+  },
+  "close": null,
+  "history": null,
+  "required": [
+    "type",
+    "version_date",
+    "v",
+    "p"
+  ],
+  "problems": [
+    {
+      "field": "p",
+      "text": "P must be between 1 and 5 in steps of 0.5"
+    }
+  ],
+  "error": "",
+  "saved": "",
+  "gaps": [],
+  "form": {
+    "post_path": "/owner-valuation",
+    "expires": "1795000000",
+    "mac": "0000000000000000000000000000000000000000000000000000000000000001"
+  }
+}
