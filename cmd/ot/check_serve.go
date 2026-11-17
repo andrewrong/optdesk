@@ -42,6 +42,7 @@ var serveRoutes = []serveRoute{
 	{"option_candidates_page", "/" + siteCandidatesRoute, "option_candidates_page"},
 	{"option_notices_page", "/" + siteNoticesRoute, "option_notices_page"},
 	{"option_tracking_page", "/" + siteTrackingRoute, "option_tracking_page"},
+	{"option_pnl_page", "/" + siteOptionPnlRoute, "option_pnl_page"},
 	{"option_data_page", "/options/data", "option_data_page"},
 	{"settings_page", "/" + siteSettingsRoute, "settings_page"},
 	{"underlyings", "/" + siteUnderlyingsRoute, "underlyings"},
@@ -114,6 +115,8 @@ func buildRoute(ctx context.Context, a *app, clk clock.Clock, rd siteReaders, rt
 		return buildNotices(ctx, a, clk, "", rd)
 	case "option_tracking_page":
 		return buildTracking(ctx, a, clk, "", rd)
+	case "option_pnl_page":
+		return buildPnl(ctx, a, clk, "", rd)
 	case "option_data_page":
 		return buildSite(ctx, a, clk, "", rd, 0, false)
 	case "settings_page":

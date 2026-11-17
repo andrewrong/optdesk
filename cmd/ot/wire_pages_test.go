@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/option_pnl_page"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 func TestNewOptionDataPageCarriesNotesAndSymbol(t *testing.T) {
@@ -81,5 +83,23 @@ func TestOptionNoticesPageWiresRule(t *testing.T) {
 	}
 	if !strings.Contains(string(b), `"scope":"notices"`) || !strings.Contains(string(b), `"no_reader"`) {
 		t.Fatalf("page %s", b)
+	}
+}
+
+type pnlWireLedger struct{ store.OptionLedgerReader }
+
+func TestPnlWiresAttributorBooker(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	led := pnlWireLedger{}
+	ids := pnlIDs{}
+	c := pnlConfigOf(a, "ot-page", "pnl", pnlReaders{Ledger: led, StockIDs: ids})
+	if c.Attributor == nil || c.Booker == nil || c.Replay == nil || c.Ledger != store.OptionLedgerReader(led) ||
+		c.StockIDs != option_pnl_page.StockIDReader(ids) {
+		t.Fatalf("config %+v", c)
+	}
+	p := newOptionPnlPage(c)
+	if p.Meta.Name != "option_pnl_page" || p.Meta.Schema != "page.option_pnl_page.v1" {
+		t.Fatalf("meta %+v", p.Meta)
 	}
 }
