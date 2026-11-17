@@ -175,6 +175,11 @@ func dataHealthJobOf(t *testing.T, jobs []data_health_page.Job, id string) data_
 	return data_health_page.Job{}
 }
 
+// dataHealthZoneCarried: the zone of the row, or the zone of the time table when the row has none.
+func dataHealthZoneCarried(zone string, r jobRow) bool {
+	return zone == r.Zone || (r.Zone == "" && zone == dataHealthTimeSlots[r.ID].zone)
+}
+
 func TestEveryJobHasRowOrReason(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
@@ -190,7 +195,7 @@ func TestEveryJobHasRowOrReason(t *testing.T) {
 		case noLedger && (reason == "" || len(j.Datasets) > 0):
 			t.Errorf("%s: reason %q, datasets %v", r.ID, reason, j.Datasets)
 		}
-		if j.Kind != r.Kind || (j.Zone != r.Zone && (r.Zone != "" || j.Zone != dataHealthTimeSlots[r.ID].zone)) || j.WhyText != r.Text {
+		if j.Kind != r.Kind || !dataHealthZoneCarried(j.Zone, r) || j.WhyText != r.Text {
 			t.Errorf("%s: row not carried: %+v", r.ID, j)
 		}
 	}
