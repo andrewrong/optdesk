@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -82,5 +83,30 @@ func TestConfigNamesField(t *testing.T) {
 				t.Fatalf("%s (names %T) = %q, %v", name, names, out, err)
 			}
 		}
+	}
+}
+
+type fakeEvaluator struct{}
+
+func (fakeEvaluator) Evaluate(optionevidenceapi.Row) (optionevidenceapi.Evidence, error) {
+	return optionevidenceapi.Evidence{}, nil
+}
+
+type fakeReadings struct{ store.ReadingViewReader }
+
+func TestConfigEvidenceFields(t *testing.T) {
+	t.Parallel()
+	c := option_candidates_page.Config{
+		RunID: "r", BuildID: "b", Scope: "s",
+		Zone: time.UTC, Candidates: fakeCandidates{},
+		Evidence: fakeEvaluator{},
+		ATMFor: func(context.Context, int, contracts.Day, contracts.Day, string) (string, string, error) {
+			return "0.294", "95.00", nil
+		},
+		Readings: fakeReadings{},
+	}
+	p := option_candidates_page.NewPage(c)
+	if p.Meta.Name != "option_candidates_page" || p.Meta.Schema != "page.option_candidates_page.v1" {
+		t.Fatalf("Meta = %+v", p.Meta)
 	}
 }
