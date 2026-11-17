@@ -126,6 +126,8 @@ func repairGapsFor(ctx context.Context, cells []data_health_page.Cell, job *data
 		case jobrequest.EnqueueExisting:
 		case jobrequest.EnqueueWithdrawing:
 			// The open request of this day is going away; the owner presses again when it shows withdrawn.
+		case jobrequest.EnqueueBusy:
+			return queued, false, errRepairUnavailable
 		default:
 			return queued, false, errRepairUnavailable
 		}
