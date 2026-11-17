@@ -311,7 +311,7 @@ func daysLeft(expiry string, day contracts.Day) any {
 
 // holdingsOf is the input of Holdings: one row per stock or option position, in order, and the index
 // of each position in it.
-func holdingsOf(ps []store.Position, price map[int64]string) blockapi.HoldingsIn {
+func holdingsOf(ps []store.Position, price, prev map[int64]string) blockapi.HoldingsIn {
 	in := blockapi.HoldingsIn{Rows: []blockapi.HoldingIn{}}
 	for _, p := range ps {
 		if p.SecType != typeStock && p.SecType != typeOption {
@@ -326,7 +326,7 @@ func holdingsOf(ps []store.Position, price map[int64]string) blockapi.HoldingsIn
 		}
 		in.Rows = append(in.Rows, blockapi.HoldingIn{
 			Underlying: p.Symbol, SecType: p.SecType, Currency: p.Currency, Quantity: p.Quantity,
-			Multiplier: mult, Cost: perShareCost(p), Mark: price[p.ConID],
+			Multiplier: mult, Cost: perShareCost(p), Mark: price[p.ConID], Prev: prev[p.ConID],
 		})
 	}
 	return in
@@ -357,9 +357,13 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 				skipped++
 				continue
 			}
+			var stockDay any = dayGap
+			if line.Day.Gap == "" {
+				stockDay = figure(line.Day, p.Currency, "amount_signed")
+			}
 			stocks = append(stocks, stockRow{
 				Code: text2(p.Symbol), Name: text2(p.Symbol), Role: role, Quantity: q,
-				Cost: cost, Price: pr, Day: dayGap, Unrealised: unreal,
+				Cost: cost, Price: pr, Day: stockDay, Unrealised: unreal,
 			})
 			continue
 		}
