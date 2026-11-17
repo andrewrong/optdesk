@@ -135,7 +135,7 @@ func TestATMDoesNotChangeChain(t *testing.T) {
 
 func TestATMPickerContractReal(t *testing.T) {
 	t.Parallel()
-	var p optionevidenceapi.ATMPicker = optionevidence.NewATMPicker()
+	p := optionevidence.NewATMPicker()
 	chain := atmChain(t)
 	iv, k := p.ATM(chain, "2026-12-18", "96.50", "option_eod")
 	wantPair(t, iv, k, "0.294", "95")
