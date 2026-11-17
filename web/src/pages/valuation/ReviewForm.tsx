@@ -8,12 +8,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Payload } from '@/types/valuation_page'
-import { LinesView } from './CompanyView'
+import { LinesView, TYPE_TEXT } from './CompanyView'
 
 type Form = NonNullable<Payload['form']>
 
 const TYPES = ['first', 'post_earnings', 'event', 'backfill'] as const
 const TRIGGERS = ['a', 'b', 'c', 'd'] as const
+// Labels of the trigger codes; the post body carries the code. The codes a to d are the trigger types of the review.
+const TRIGGER_TEXT: Record<(typeof TRIGGERS)[number], string> = {
+  a: 'Trigger type A',
+  b: 'Trigger type B',
+  c: 'Trigger type C',
+  d: 'Trigger type D',
+}
 const SCORES = ['moat', 'understand', 'management', 'financial'] as const
 const REASONS = ['p', ...SCORES] as const
 const ORIGIN = [
@@ -94,7 +101,7 @@ export function ReviewForm({ payload, form }: { payload: Payload; form: Form }) 
                 <SelectContent>
                   {TYPES.map((t) => (
                     <SelectItem key={t} value={t}>
-                      {t}
+                      {TYPE_TEXT[t]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -131,7 +138,7 @@ export function ReviewForm({ payload, form }: { payload: Payload; form: Form }) 
                   <SelectContent>
                     {TRIGGERS.map((t) => (
                       <SelectItem key={t} value={t}>
-                        {t}
+                        {TRIGGER_TEXT[t]}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -144,3 +144,71 @@ func TestNewConceptsKept(t *testing.T) {
 		}
 	}
 }
+
+func fiscalRows(t *testing.T) []contracts.FundamentalFact {
+	t.Helper()
+	got, err := mapCompanyFacts("cik:0009999999", readFile(t, "companyfacts_fiscal_sep.json"), retrieved, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return find(got, "us-gaap", "Revenues")
+}
+
+func TestMapFiscalFieldsKept(t *testing.T) {
+	t.Parallel()
+	rows := fiscalRows(t)
+	if len(rows) != 6 {
+		t.Fatalf("rows = %d, want 6", len(rows))
+	}
+	want := []struct {
+		fy    int
+		fp    string
+		frame string
+	}{{2026, "Q1", "CY2025Q4"}, {2026, "Q2", ""}, {2026, "Q3", ""}, {2026, "FY", "CY2026"}}
+	for i, w := range want {
+		r := rows[i]
+		if r.Fy == nil || *r.Fy != w.fy || r.Fp != w.fp || r.Frame != w.frame {
+			t.Errorf("row %d = fy %v fp %q frame %q, want %+v", i, r.Fy, r.Fp, r.Frame, w)
+		}
+	}
+}
+
+func TestMapFyOutOfRangeIsNil(t *testing.T) {
+	t.Parallel()
+	rows := fiscalRows(t)
+	if rows[4].Fy != nil || rows[4].Fp != "FY" {
+		t.Errorf("fy 1800: %+v", rows[4])
+	}
+	if rows[5].Fy != nil || rows[5].Fp != "" || rows[5].Frame != "" {
+		t.Errorf("absent fiscal fields: %+v", rows[5])
+	}
+}
+
+func TestMapNoFiscalFields(t *testing.T) {
+	t.Parallel()
+	got, err := mapCompanyFacts("cik:0000320193", readFile(t, "companyfacts_sample.json"), retrieved, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 12 {
+		t.Errorf("rows = %d, want %d", len(got), 12)
+	}
+}
+
+func TestMapFiscalFieldsKeyUnchanged(t *testing.T) {
+	t.Parallel()
+	a, b := fiscalRows(t), fiscalRows(t)
+	seen := map[[6]string]bool{}
+	for i := range a {
+		k := func(f contracts.FundamentalFact) [6]string {
+			return [6]string{string(f.Source), f.Subject, f.Taxonomy, f.Concept, f.Unit, f.PeriodEnd.Format("2006-01-02") + "|" + f.DocID}
+		}
+		if k(a[i]) != k(b[i]) {
+			t.Errorf("row %d key differs", i)
+		}
+		if seen[k(a[i])] {
+			t.Errorf("row %d key repeats", i)
+		}
+		seen[k(a[i])] = true
+	}
+}

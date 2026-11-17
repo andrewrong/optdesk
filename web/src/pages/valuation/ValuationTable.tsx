@@ -1,18 +1,30 @@
-// The table view: one row per company, the hand-typed buy price beside the buy zone, an entry button on an
-// unvalued row. Every cell is a payload text.
+// The table view: one row per company, the hand-typed buy price beside the buy zone, an entry button in the name
+// cell of an unvalued row. Every cell is a payload text; the glosses of the heads are static text. A word cell wraps,
+// a figure cell stays on one line.
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table'
 import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/valuation_page'
-import { FlagBadges } from './CompanyView'
+import { FlagBadges, GLOSS } from './CompanyView'
 
 type Row = NonNullable<Payload['rows']>[number]
 
-const text = (key: keyof Row, header: string): ColumnDef<Row> => ({
+// The cells that hold words wrap; the figure cells keep the whitespace-nowrap of the Table cell.
+const WRAP_CELL = new Set(['version_date', 'status', 'zone'])
+const WRAP_HEAD = new Set(['buy_price', 'version_date'])
+
+const Head = ({ label, gloss }: { label: string; gloss?: string }) => (
+  <>
+    {label}
+    {gloss ? <span className="block max-w-40 text-xs font-normal whitespace-normal text-muted-foreground">{gloss}</span> : null}
+  </>
+)
+
+const text = (key: keyof Row, header: string, gloss?: string): ColumnDef<Row> => ({
   id: key,
-  header,
+  header: () => <Head label={header} gloss={gloss} />,
   cell: ({ row }) => String(row.original[key]),
 })
 
@@ -27,21 +39,29 @@ const COLUMNS: ColumnDef<Row>[] = [
         </a>{' '}
         <span className="text-muted-foreground">{r.company_key}</span>
         {r.not_entered !== '' ? <Badge variant="secondary">{r.not_entered}</Badge> : null}
+        {r.valued ? null : (
+          <Button asChild size="sm" variant="outline" className="ml-2">
+            <a href={r.entry_link}>
+              <Plus aria-hidden />
+              Enter
+            </a>
+          </Button>
+        )}
       </div>
     ),
   },
-  text('v', 'V'),
-  text('p', 'P'),
-  text('version_date', 'Version date'),
-  text('r', 'R'),
-  text('c', 'C'),
-  text('heavy', 'Heavy'),
+  text('v', 'V', GLOSS['V'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('p', 'P', GLOSS['P'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('version_date', 'Version date', GLOSS['Version date'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('r', 'R', GLOSS['R'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('c', 'C', GLOSS['C'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('heavy', 'Heavy', GLOSS['Heavy'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('buy_zone', 'Buy zone'),
   text('buy_price', 'Hand-typed buy price'),
   text('fair_zone', 'Fair zone'),
-  text('trim', 'Trim'),
-  text('clear', 'Clear'),
-  text('core', 'Core'),
+  text('trim', 'Trim', GLOSS['Trim'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('clear', 'Clear', GLOSS['Clear'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('core', 'Core', GLOSS['Core'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('close', 'Close'),
   {
     id: 'zone',
@@ -54,19 +74,6 @@ const COLUMNS: ColumnDef<Row>[] = [
     ),
   },
   text('status', 'Status'),
-  {
-    id: 'entry',
-    header: '',
-    cell: ({ row: { original: r } }) =>
-      r.valued ? null : (
-        <Button asChild size="sm" variant="outline">
-          <a href={r.entry_link}>
-            <Plus aria-hidden />
-            Enter
-          </a>
-        </Button>
-      ),
-  },
 ]
 
 export function ValuationTable({ rows }: { rows: Row[] }) {
@@ -77,7 +84,9 @@ export function ValuationTable({ rows }: { rows: Row[] }) {
         {table.getHeaderGroups().map((group) => (
           <TableRow key={group.id}>
             {group.headers.map((h) => (
-              <TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
+              <TableHead key={h.id} className={WRAP_HEAD.has(h.column.id) ? 'whitespace-normal' : undefined}>
+                {flexRender(h.column.columnDef.header, h.getContext())}
+              </TableHead>
             ))}
           </TableRow>
         ))}
@@ -86,7 +95,9 @@ export function ValuationTable({ rows }: { rows: Row[] }) {
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id} data-company={row.original.company_key}>
             {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+              <TableCell key={cell.id} className={WRAP_CELL.has(cell.column.id) ? 'whitespace-normal' : undefined}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
             ))}
           </TableRow>
         ))}

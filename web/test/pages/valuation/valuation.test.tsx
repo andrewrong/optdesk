@@ -56,12 +56,38 @@ describe('table view', () => {
     const el = await render(fixture('table'))
     const rows = el.querySelectorAll('tbody tr')
     expect(rows).toHaveLength(3)
-    const entry = (key: string) => el.querySelector(`tr[data-company="${key}"] a[href^="/valuation/form"]`)
+    const entry = (key: string) => el.querySelector(`tr[data-company="${key}"] td:first-child a[href^="/valuation/form"]`)
     expect(entry('US:AAA')).toBeNull()
     expect(entry('HK:0001')?.getAttribute('href')).toBe('/valuation/form?key=HK%3A0001')
     expect(entry('US:CCC')?.textContent).toContain('Enter')
     expect(entry('US:CCC')?.querySelector('svg')).not.toBeNull()
     expect(el.textContent).toContain('not entered')
+  })
+
+  it('TestEnterButtonInNameCell: the Enter link sits in the name cell and there is no entry column', async () => {
+    const el = await render(fixture('table'))
+    const heads = [...el.querySelectorAll('thead th')]
+    expect(heads).toHaveLength(16)
+    expect(heads.map((h) => h.textContent)).not.toContain('')
+    const cell = el.querySelector('tr[data-company="HK:0001"] td') as HTMLElement
+    expect(cell.querySelector('a[href="/valuation/form?key=HK%3A0001"]')?.textContent).toContain('Enter')
+  })
+
+  it('TestFigureCellsNoWrap: figure cells stay on one line, word cells wrap', async () => {
+    const el = await render(fixture('table'))
+    const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent ?? '')
+    const cells = [...el.querySelectorAll('tr[data-company="US:AAA"] td')]
+    const at = (head: string) => cells[heads.findIndex((h) => h.startsWith(head))]
+    expect(at('V')?.className).not.toContain('whitespace-normal')
+    expect(at('Buy zone')?.className).not.toContain('whitespace-normal')
+    expect(at('Status')?.className).toContain('whitespace-normal')
+    expect(at('Zone')?.className).toContain('whitespace-normal')
+  })
+
+  it('TestGlossesPresent: the heads of the table carry a gloss', async () => {
+    const el = await render(fixture('table'))
+    expect(el.querySelector('thead')?.textContent).toContain('C: fair price, V x R')
+    expect(el.querySelector('thead')?.textContent).toContain('P: predictability, 1 to 5')
   })
 
   it('TestHandPriceColumn: the hand-typed buy price column sits right after the buy zone', async () => {
@@ -91,6 +117,38 @@ describe('company view', () => {
     expect(lines.querySelector('[data-flag="in_fair"]')).not.toBeNull()
     expect(lines.querySelector('[data-flag="at_core"]')).toBeNull()
     expect(lines.querySelector('[data-zone="fair"]')).not.toBeNull()
+  })
+
+  it('TestProfileLabels: the profile line prints labels, not codes', async () => {
+    const el = await render(fixture('company'))
+    const line = el.querySelector('[data-profile]') as HTMLElement
+    expect(line.textContent).not.toContain('in_pool')
+    expect(line.textContent).not.toContain('R market ')
+    expect(line.textContent).toBe('AAA, US dollar, R market: United States, pool: in pool, 2026-10-01')
+    const payload = fixture('company')
+    if (payload.company) payload.company.currency = 'XYZ'
+    await act(async () => root?.unmount())
+    host?.remove()
+    const el2 = await render(payload)
+    expect(el2.querySelector('[data-profile]')?.textContent).toContain('AAA, XYZ,')
+  })
+
+  it('TestGlossesPresent: the lines view has the glosses of its terms', async () => {
+    const el = await render(fixture('company'))
+    const lines = el.querySelector('[data-lines]') as HTMLElement
+    for (const g of [
+      'C: fair price, V x R',
+      'R: the multiple of the valuation that sets the fair price (C = V x R)',
+      'Heavy: the heavy point, C x (1 - H)',
+      'Trim: C x (1 + S)',
+      'Clear: V x 1.2',
+      'Core: V x 1.5',
+      'M: safety margin',
+      'W: fair half width',
+      'H: heavy discount',
+      'S: trim premium',
+    ])
+      expect(lines.textContent).toContain(g)
   })
 
   it('TestHKCNNoZoneText: an empty zone prints the zone note and the prices', async () => {
@@ -150,6 +208,17 @@ describe('form view', () => {
       ['Save draft', 'draft'],
       ['Make effective', 'effective'],
       ['Void', 'void'],
+    ])
+  })
+
+  it('TestReviewTypeLabels: the type options print labels and submit the codes', async () => {
+    const el = await render(fixture('form'))
+    const options = [...el.querySelectorAll('select[name="type"] option')].filter((o) => (o as HTMLOptionElement).value !== '')
+    expect(options.map((o) => [o.textContent, (o as HTMLOptionElement).value])).toEqual([
+      ['First valuation', 'first'],
+      ['After earnings', 'post_earnings'],
+      ['Event', 'event'],
+      ['Backfill', 'backfill'],
     ])
   })
 

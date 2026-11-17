@@ -41,6 +41,35 @@ describe('registration', () => {
   })
 })
 
+describe('header and glosses', () => {
+  it('TestParamsHeaderLinks: both links, Parameters marked current', async () => {
+    const el = await render(base())
+    const links = [...el.querySelectorAll('header a')]
+    expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['Table', '/valuation'],
+      ['Parameters', '/valuation-params'],
+    ])
+    expect(links[0]?.getAttribute('aria-current')).toBeNull()
+    expect(links[1]?.getAttribute('aria-current')).toBe('page')
+    expect(links[1]?.className).not.toContain('underline')
+  })
+
+  it('TestParamsGlosses: the terms have a gloss', async () => {
+    const el = await render(base())
+    for (const g of [
+      'HKCN: Hong Kong and China names',
+      'AI switch: stored with the R version, changes no price yet',
+      'Yield used: the 10-year yield the R was proposed from',
+      'P from: lowest P of the row',
+      'M: safety margin',
+      'W: fair half width',
+      'H: heavy discount',
+      'S: trim premium',
+    ])
+      expect(el.textContent).toContain(g)
+  })
+})
+
 describe('proposal and warnings', () => {
   it('TestProposalAndWarnings: the three R values and the warning sit next to the Update R form', async () => {
     const payload = base()

@@ -74,6 +74,9 @@ type companyFacts struct {
 			Accn  string      `json:"accn"`
 			Form  string      `json:"form"`
 			Filed string      `json:"filed"`
+			Fy    *int        `json:"fy"`
+			Fp    string      `json:"fp"`
+			Frame string      `json:"frame"`
 		} `json:"units"`
 	} `json:"facts"`
 }
@@ -97,6 +100,15 @@ func currencyOf(unit string) string {
 		return ""
 	}
 	return unit
+}
+
+// fiscalYear copies fy when it is within 1990 to 2100, else nil.
+func fiscalYear(fy *int) *int {
+	if fy == nil || *fy < 1990 || *fy > 2100 {
+		return nil
+	}
+	v := *fy
+	return &v
 }
 
 // mapCompanyFacts maps the kept concepts of a companyfacts document whose filing day is within
@@ -133,6 +145,7 @@ func mapCompanyFacts(subject string, body []byte, retrieved time.Time, from, to 
 						Taxonomy: tax, Concept: concept, Unit: unit, Currency: currencyOf(unit),
 						PeriodEnd: end, Value: e.Val.String(), Form: e.Form, DocID: e.Accn,
 						Filed: filed, RetrievedAt: retrieved, RawSha256: digest,
+						Fp: e.Fp, Frame: e.Frame, Fy: fiscalYear(e.Fy),
 					}
 					if e.Start != nil {
 						s, err := parseDay(*e.Start)
