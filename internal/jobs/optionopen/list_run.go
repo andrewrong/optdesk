@@ -26,7 +26,6 @@ const (
 	reasonMaxNew      = "list_max_new"
 	reasonAllShort    = "all_short"
 	reasonSomeShort   = "some_short"
-	reasonNoSpot      = "no_spot"
 )
 
 // The codes of the reason rows of ReasonWriter.
@@ -532,8 +531,6 @@ func (r *listRun) finish(ctx context.Context, n *listName) contracts.TypedError 
 	switch {
 	case n.listed >= len(n.expected):
 		return r.end(ctx, n, reasonNone)
-	case n.spotSt == spotNone:
-		return r.end(ctx, n, reasonNoSpot)
 	case n.listed == 0:
 		return r.end(ctx, n, reasonAllShort)
 	}
