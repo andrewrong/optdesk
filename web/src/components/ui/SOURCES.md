@@ -49,3 +49,9 @@ Added by #1336: `popover.tsx` and `sheet.tsx` are the registry's `radix-nova` Po
 | input | `input.tsx` | not retrieved (see above) | MIT |
 | label | `label.tsx` | not retrieved (see above) | MIT |
 | switch | `switch.tsx` | not retrieved (see above) | MIT |
+
+Added by #2641: `select.tsx` is the registry's `radix-nova` Select written by hand over `radix-ui`'s `Select` (`shadcn add select` could not run in the worker's sandbox: `ui.shadcn.com` answered "Request was cancelled", so no registry revision was recorded; a later issue retrieves the item and diffs it). No package is added. Licence: MIT (shadcn-ui/ui).
+
+| Component | File | Registry revision (SHA-256, 16 hex) | Licence |
+|---|---|---|---|
+| select | `select.tsx` | not retrieved (see above) | MIT |
