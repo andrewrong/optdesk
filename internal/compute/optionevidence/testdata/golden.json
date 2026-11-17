@@ -1,0 +1,11 @@
+[
+  {"name": "AAA below buy 31 days",
+   "row": {"ChainDay": "2026-11-17", "Expiry": "2026-12-18", "DTE": 31, "Spot": "96.50", "Strike": "90.00", "Bid": "0.94", "BuyPrice": "90.00", "IV": "0.312", "Delta": "-0.19", "Multiplier": "100"},
+   "want": {"BreakEven": "89.06", "BelowBuy": "0.94", "BelowBuyPct": "1.0444", "OneSigma": "8.7744", "BreakEvenInSigmas": "0.8479", "MoveWhy": "", "BelowBuyWhy": ""}},
+  {"name": "AAA break-even above buy price",
+   "row": {"ChainDay": "2026-11-17", "Expiry": "2026-12-18", "DTE": 31, "Spot": "96.50", "Strike": "92.00", "Bid": "0.94", "BuyPrice": "90.00", "IV": "0.312"},
+   "want": {"BreakEven": "91.06", "BelowBuy": "-1.06", "BelowBuyWhy": ""}},
+  {"name": "AAA no buy price",
+   "row": {"ChainDay": "2026-11-17", "Expiry": "2026-12-18", "DTE": 31, "Spot": "96.50", "Strike": "90.00", "Bid": "0.94", "IV": "0.312"},
+   "want": {"BreakEven": "89.06", "BelowBuy": "", "BelowBuyPct": "", "BelowBuyWhy": "no_buy_price", "OneSigma": "8.7744"}}
+]
