@@ -6,6 +6,7 @@
     "option_candidates_page": ["groups"],
     "option_notices_page": ["accounts"],
     "option_tracking_page": ["accounts"],
+    "option_pnl_page": ["accounts"],
     "option_data_page": ["chain", "quote_series"],
     "settings_page": ["params", "rows", "history"],
     "underlyings": ["rows", "history"],

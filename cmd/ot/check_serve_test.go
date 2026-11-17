@@ -104,7 +104,7 @@ func TestCheckServeRoutes(t *testing.T) {
 	if e.c.failed {
 		t.Fatalf("a good site failed:\n%s", out)
 	}
-	if len(calls) != len(serveRoutes) || len(serveRoutes) != 14 {
+	if len(calls) != len(serveRoutes) || len(serveRoutes) != 15 {
 		t.Fatalf("calls %v", calls)
 	}
 	fresh := 0

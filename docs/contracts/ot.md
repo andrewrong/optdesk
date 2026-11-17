@@ -66,6 +66,7 @@ With `--live-quotes` (off by default; refused, naming `--live-quotes`, with an `
 | `option_candidates_page` | `docs/contracts/ot/pages/option_candidates_page.md` |
 | `option_notices_page` | `docs/contracts/ot/pages/option_notices_page.md` |
 | `option_tracking_page` | `docs/contracts/ot/pages/option_tracking_page.md` |
+| `option_pnl_page` | `docs/contracts/ot/pages/option_pnl_page.md` |
 | `settings_page` (route only) | `docs/contracts/ot/pages/settings_page.md` |
 
 ## Inputs
@@ -80,7 +81,7 @@ Flags (each command parses its own; an unknown flag or a bad flag value is a fla
 | `--job` | backfill (`--job NAME`) | empty: one request per runnable job; else the id of one job |
 | `--force` | backfill | off; on: the requests carry `force` |
 | `--wait`, `--timeout` | run-once, backfill | off; `--timeout` default 120 s of the injected clock |
-| `--name` | page | `macro_rates`, `macro_page`, `report_page`, `market_page`, `option_candidates_page`, `option_notices_page` or `option_tracking_page` |
+| `--name` | page | `macro_rates`, `macro_page`, `report_page`, `market_page`, `option_candidates_page`, `option_notices_page`, `option_tracking_page` or `option_pnl_page` |
 | `--market`, `--slot` | page (`report_page` only; both required for it) | none; `us` or `jp`, `open` or `close` |
 | `--out` | page | empty: the page goes to standard output; else it is written to that file |
 | `--addr` | serve (with `--owner-edit`: a loopback IP literal only) | `127.0.0.1:8080` (the loopback host on port :8080) |
@@ -201,7 +202,7 @@ Exit codes, each tied to its condition:
 - `ot page --name market_page [--day DAY]` builds the page in the zone of the profile through `deps.marketPage` (run id `ot-page`, scope `market`; `cmd/ot/market.go`) from the winner readings of the reading view opened once per command with `OT_PG_DSN_PAGES` (role `ot_ro_pages`) and from the series store of `seriesReader`; a missing line is an error naming the line, a nil zone is an error before any store is opened; the demo profile opens no store and reads fixed demo readings carrying `data_day`.
 - `ot serve` serves the route `/health` (`cmd/ot/site.go`), before any page route: GET and HEAD only, another method 405 with `Allow: GET, HEAD`. It reads one range of series `DGS10` on today's market day from the series reader under a 2 second timeout of the request context. No error: 200, `Content-Type: application/json`, body `{"status":"ok"}`. Any error: 503, body `{"status":"unavailable"}`, and the log line `serve health failed` with `component=ot status=failed` and no error text. The demo profile answers 200. A container passes `--addr :8080` (all interfaces); the default of `--addr` stays the loopback `127.0.0.1:8080`.
 - `ot serve` serves the route `/market` (`cmd/ot/market_site.go`): GET and HEAD only, `/market/x` is 404, another method 405, a reader error 500 with the fixed text `internal error`. It builds `market_page` per request for the requested day through `deps.marketPage` (run id `ot-serve`, scope `market`) from the winner readings of the reading view and the series store opened once per process with `OT_PG_DSN_PAGES` (role `ot_ro_pages`); the route opens nothing itself. The demo profile opens no store and reads fixed demo readings carrying `data_day`. `/market` is not an item of the bar of eight: it is reached by its address, a named exception to `docs/design/unified-site.md`.
-- `--name` of `ot page` accepts `macro_rates` (default), `macro_page`, `report_page`, `market_page`, `option_candidates_page`, `option_notices_page` and `option_tracking_page`; `macro_page` is built in the zone of the profile (`pageNamed`, `cmd/ot/pagelist.go`), an unknown name is an error that lists all accepted names, sorted, and the run id `ot-page` reaches no ledger row. `ot serve` has no `--name`.
+- `--name` of `ot page` accepts `macro_rates` (default), `macro_page`, `report_page`, `market_page`, `option_candidates_page`, `option_notices_page`, `option_tracking_page` and `option_pnl_page`; `macro_page` is built in the zone of the profile (`pageNamed`, `cmd/ot/pagelist.go`), an unknown name is an error that lists all accepted names, sorted, and the run id `ot-page` reaches no ledger row. `ot serve` has no `--name`.
 - `cmd/ot` calls constructors through the `deps` struct, which a test fills with fakes; no test connects to a live broker or database.
 
 ## Version history

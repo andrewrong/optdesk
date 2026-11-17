@@ -185,6 +185,7 @@ type deps struct {
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page
 	optionNoticesPage       optionNoticesPageFunc
 	optionTrackingPage      func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page
+	optionPnlPage           pnlPageFunc
 	openOptionLedgerRO      store.OpenOptionLedgerFunc
 	newOptionNotices        compute.NewOptionNoticesFunc
 	noticeParams            compute.DefaultNoticeParamsFunc
@@ -329,6 +330,7 @@ func newBaseDeps() deps {
 		newOptionResults:        optionresult.New,
 		optionCandidatesPage:    newOptionCandidatesPage,
 		optionTrackingPage:      newOptionTrackingPage,
+		optionPnlPage:           newOptionPnlPage,
 		openFence:               ops.OpenFence,
 		openSchedulerLedger:     ops.OpenSchedulerLedger,
 		newScheduler:            sched.New,
