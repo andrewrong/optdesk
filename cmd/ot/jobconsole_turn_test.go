@@ -204,7 +204,7 @@ func newJCRig(t *testing.T, ids ...string) *jcRig {
 	led := &jcLedger{log: l, keys: map[contracts.Day][]contracts.ExpectedKey{jcDay: jcKey}}
 	r := &jcRig{t: t, log: l, q: &jcQueue{log: l}, bf: &jcBackfill{log: l}, led: led,
 		fc: clockwork.NewFakeClockAt(time.Date(2026, 11, 12, 15, 0, 0, 0, time.UTC)), out: &bytes.Buffer{}}
-	r.host = newConsoleHost(r.q, l, led, r.fc, slog.New(slog.NewTextHandler(r.out, nil)))
+	r.host = newConsoleHost(r.q, l, led, r.fc, slog.New(slog.NewTextHandler(r.out, nil)), nil, nil)
 	var jobs []contracts.Job
 	for _, id := range ids {
 		jobs = append(jobs, jcJob{id: id, keys: jcKey})
