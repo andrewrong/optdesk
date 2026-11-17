@@ -64,11 +64,24 @@ describe('data health page', () => {
     expect(el.querySelectorAll('[data-dataset]')).toHaveLength(3)
     const cell = el.querySelector('[data-dataset="account_statement"] [data-cell="2026-11-10"]')
     expect(cell?.getAttribute('data-state')).toBe('missing')
-    expect(cell?.textContent).toContain('1 of 3')
+    expect(cell?.textContent).toContain('1 ok, 2 missing')
     expect(cell?.textContent).toContain('AAA')
     expect(cell?.textContent).toContain('BBB')
     expect(el.textContent).toContain('DGS10')
     expect(el.textContent).toContain('3')
+  })
+
+  it('TestCellPrintsEveryNonZeroCount', async () => {
+    const mixed = await render(withCell({ state: 'expired', keys: 46, ok: 44, expired: 2, no_value: 0, missing: 0, missing_keys: [], repair: 'none' }))
+    const a = mixed.querySelector('[data-dataset="account_statement"] [data-cell="2026-11-10"]')?.textContent ?? ''
+    expect(a).toContain('44 ok, 2 expired')
+    expect(a).not.toContain('of')
+    await act(async () => root?.unmount())
+    host?.remove()
+    const none = await render(withCell({ state: 'no_value', keys: 35, ok: 0, expired: 0, no_value: 35, missing: 0, missing_keys: [], repair: 'none' }))
+    const b = none.querySelector('[data-dataset="account_statement"] [data-cell="2026-11-10"]')?.textContent ?? ''
+    expect(b).toContain('35 no_value')
+    expect(b).not.toContain('0 of')
   })
 
   it('a button cell posts action=run with job, day and the token and no force', async () => {
