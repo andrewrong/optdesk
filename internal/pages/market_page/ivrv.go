@@ -33,7 +33,9 @@ func ivRvCell(name string, r reading, d time.Time) any {
 		return mkGap(reasonMissingInput, name+" "+ivRvMissing)
 	}
 	shown := text
-	if !strings.HasPrefix(text, "-") && text != "0.0" {
+	if strings.HasPrefix(text, "-") {
+		shown = "−" + text[1:]
+	} else if text != "0.0" {
 		shown = "+" + text
 	}
 	if !r.dataDay.Equal(d) {
