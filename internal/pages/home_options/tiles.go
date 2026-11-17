@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 )
 
@@ -25,7 +27,7 @@ const (
 	textOtherCurrency = "%d non-USD structures not counted"
 	textUnreadable    = "%d structures with unreadable rows not counted"
 	textOnlyOtherCcy  = "Only non-USD structures are open (%d), not converted"
-	textUncovered     = "%d calls without assigned shares in the ledger; other structures at least $%s"
+	textUncovered     = "%d calls without assigned shares in the ledger; other structures at least %s"
 	textReview        = "%d ledger rows need review, figures may be incomplete"
 	captionBase       = "%s, all accounts combined"
 	captionSep        = "; "
@@ -104,23 +106,35 @@ func lossFigure(o blockapi.OptionTilesOut) any {
 	case o.MaxLossGap == reasonCurrency:
 		return gap{Kind: "gap", Reason: reasonCurrency, Text: fmt.Sprintf(textOnlyOtherCcy, o.OtherCurrency)}
 	case o.MaxLossGap != "" && o.Uncovered > 0:
-		rest := o.MaxLossUsd.Dollars
-		if rest == "" {
-			rest = "0"
-		}
-		return noData(fmt.Sprintf(textUncovered, o.Uncovered, group(rest)))
+		return noData(fmt.Sprintf(textUncovered, o.Uncovered, usdText(o.MaxLossUsd.Value)))
 	case o.MaxLossGap != "":
 		return noData(textNoFigure)
 	}
 	return usd2(o.MaxLossUsd)
 }
 
-// usd2 places one UsdText; an empty one is zero.
+// usd2 places one UsdText; an empty or unreadable one is zero.
 func usd2(u blockapi.UsdText) usdFigure {
-	if u.Value == "" || u.Dollars == "" {
-		u = blockapi.UsdText{Value: "0.00", Dollars: "0"}
+	if _, err := decimal.NewFromString(u.Value); err != nil {
+		u.Value = "0.00"
 	}
-	return usdFigure{Kind: "value", Value: json.Number(u.Value), Text: "$" + group(u.Dollars), Unit: "usd"}
+	return usdFigure{Kind: "value", Value: json.Number(u.Value), Text: usdText(u.Value), Unit: "usd"}
+}
+
+// usdText is the decimal text v as "$" with thousands grouped and two decimals, rounded half away from zero;
+// a negative gets U+2212 unless it rounds to zero. An empty or unreadable text is "$0.00".
+func usdText(v string) string {
+	d, err := decimal.NewFromString(v)
+	if err != nil {
+		return "$0.00"
+	}
+	r := d.Round(2)
+	whole, frac, _ := strings.Cut(r.Abs().StringFixed(2), ".")
+	out := "$" + group(whole) + "." + frac
+	if r.IsNegative() {
+		out = "−" + out
+	}
+	return out
 }
 
 // group puts a comma between the thousands of a digit text.

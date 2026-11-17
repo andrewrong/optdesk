@@ -47,7 +47,7 @@
         "figure": {
           "kind": "value",
           "value": 1234.50,
-          "text": "$1,235",
+          "text": "$1,234.50",
           "unit": "usd"
         },
         "caption": "Ledger as of 11-04, all accounts combined; remaining part of each lot"
@@ -57,7 +57,7 @@
         "figure": {
           "kind": "value",
           "value": 4000.00,
-          "text": "$4,000",
+          "text": "$4,000.00",
           "unit": "usd"
         },
         "caption": "Ledger as of 11-04, all accounts combined"
