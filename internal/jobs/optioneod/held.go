@@ -82,9 +82,9 @@ type heldOption struct {
 	right  string // "C" or "P"
 }
 
-// heldCalls lists the open short options of symbol, calls and puts (the name is kept for run.go): per alias the positions of the newest day that has any,
+// heldOptions lists the open short options of symbol, calls and puts: per alias the positions of the newest day that has any,
 // searching back from day.
-func (j *job) heldCalls(ctx context.Context, symbol string, day time.Time) ([]heldOption, error) {
+func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]heldOption, error) {
 	var out []heldOption
 	var aliases []string
 	if a, ok := j.acct.(aliasedAccount); ok {
