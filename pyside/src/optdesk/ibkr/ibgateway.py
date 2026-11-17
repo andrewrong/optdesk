@@ -239,7 +239,12 @@ class IbGateway:
         self._connected = not self._lost.is_set()  # a 1100 in the probe: a 1102 revives
 
     async def status(self) -> SessionState:
-        return SessionState(self._connected, self._generation, self._data_type)
+        return SessionState(
+            self._connected,
+            self._generation,
+            self._data_type,
+            soft_lost=self._soft_lost and not self._connected,
+        )
 
     def _on_end(self, ib: Any, *, soft: bool = False) -> None:
         if self._ib is not ib:
