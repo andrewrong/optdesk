@@ -39,7 +39,7 @@ Files: contracts/schemas/page.underlyings.v2.json, web/src/generated/underlyings
 Design: docs/design/owner-confirm-forms.md#interface
 Contracts: page.underlyings v2 (new); v1 stays frozen
 Order: first.
-Goal: the v2 schema, type, fixtures, builder and route carry `fields`, and a second post made from them saves. In `web/src/types/underlyings.ts` it adds v2 to the supported versions (`[1, 2]`), so the v1 fixtures of `web/test/pages/underlyings/view.test.tsx` still pass. The fixture `page.underlyings.v1.bad-version.json` holds `schema_version` 2, which is now supported, so the bad-version case of `view.test.tsx` reads `page.underlyings.v2.bad-version.json`, whose `schema_version` is 3; no other line of that test changes.
+Goal: the v2 schema, type, fixtures, builder and route carry `fields`, and a second post made from them saves. In `web/src/types/underlyings.ts` it adds v2 to the supported versions (`[1, 2]`), so the v1 fixtures of `web/test/pages/underlyings/view.test.tsx` still pass. The fixture `page.underlyings.v1.bad-version.json` holds `schema_version` 2, which is now supported, so the bad-version case of `view.test.tsx` reads `page.underlyings.v2.bad-version.json`, whose `schema_version` is 3 (through its own read of the v2 file, since `fixture()` reads the v1 prefix); no other test of that file changes.
 Acceptance: `TestUnderlyingsV2Fixtures` in `internal/contracts/underlyings_v2_test.go`, `TestBuildConfirmCarriesFields` in `internal/pages/underlyings/builder_test.go` and `TestPostUnderlyingsConfirmRoundTripFromPayload` in `cmd/ot/underlyings_post_test.go` pass (the draft lists every item).
 
 ### 2 underlyings-confirm-card
