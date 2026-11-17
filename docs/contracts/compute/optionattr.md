@@ -13,3 +13,15 @@ Source: `docs/design/option-attribution.md`, entry 1. Every number is decimal te
 **Not fills.** `Lot.Fills` holds only the ledger rows `open` (a sale) and `close` (a buy-back). The rows `expire`, `assign` and `exercise` are not fills: they are the `End` of the lot, with `EndDay` and `EndClose`.
 
 **One place.** The `Attributor` is the only place the split is computed. A page reads the `Result` and never adds, rounds or splits a figure of its own.
+
+**One book per currency.** `Booker.Combine` returns one `Book` per `Result.Currency`, in order of first appearance; for no results it returns a non-nil empty slice. `Book.Lots` counts the lots added.
+
+**Lots counted apart.** A result with `NoQuotes` is counted in `NoQuoteLots`, and one with an empty `Difference` (an open lot whose ledger mark day differs from its last quote day) in `UnreconciledLots`. Both add nothing to any sum field of the `Book`; their ledger P&L is added to `NoQuoteLedgerPnL` and `UnreconciledLedgerPnL`, and to no other field.
+
+**Rent minus cost.** `RentMinusCost` is `Time` plus `MoveCost` (seller amounts: `MoveCost` is negative).
+
+**Total and the book identity.** `Total` is `Entry` + `Exit` + `Direction` + `MoveCost` + `IVRemark` + `Time` + `Unsplit` + `Commission`, the option side; it excludes `AssignedIntrinsic`, which is its own field. For the lots added, `LedgerPnL` = `Total` + `AssignedIntrinsic` + `Difference`. An empty `Exit` counts as zero.
+
+**Exact sums, one place.** Sums are exact decimal addition and nothing is rounded; the page rounds for display. The `Booker` is the only place results are added; a page never adds figures of its own.
+
+**Lot card.** The card of one lot uses `Combine` of one result, so one rule makes the lot figures and the book figures.

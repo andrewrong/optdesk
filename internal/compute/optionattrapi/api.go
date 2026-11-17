@@ -100,3 +100,26 @@ type Attributor interface {
 
 // ErrBadInput: a lot with no open fill, a quantity, price or LedgerPnL that is not a number.
 var ErrBadInput = errors.New("optionattrapi: bad input")
+
+// Book is the sum of the lots of one currency. Lots counts the lots added; NoQuoteLots and
+// UnreconciledLots are counted apart and add nothing to any sum field; their ledger P&L is in
+// NoQuoteLedgerPnL and UnreconciledLedgerPnL. Total is the option side (Entry, Exit, the four step
+// blocks, Unsplit and Commission) and excludes AssignedIntrinsic; for the lots added,
+// LedgerPnL = Total + AssignedIntrinsic + Difference. RentMinusCost is Time + MoveCost.
+type Book struct {
+	Currency                                     string
+	Lots, NoQuoteLots, UnreconciledLots          int
+	Entry, Exit, Commission                      string
+	Direction, MoveCost, IVRemark, Time, Unsplit string
+	RentMinusCost, Total, AssignedIntrinsic      string
+	LedgerPnL, Difference                        string
+	// Ledger P&L of the lots counted apart; in no sum field above.
+	NoQuoteLedgerPnL, UnreconciledLedgerPnL string
+}
+
+// Booker is the only place results are added. One Book per currency, in order of first appearance.
+// The answer for no results is a non-nil empty slice. A result with NoQuotes, or with an empty
+// Difference, is counted apart; an empty Exit counts as zero; sums are exact, nothing is rounded.
+type Booker interface {
+	Combine(rs []Result) []Book
+}
