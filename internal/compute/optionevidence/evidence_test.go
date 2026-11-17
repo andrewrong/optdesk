@@ -195,3 +195,20 @@ func TestBadInput(t *testing.T) {
 		}
 	}
 }
+
+// A row expiring on its chain day has an IV; the move must not be reported as "no_iv" beside a value.
+func TestZeroDTEMoveHasNoFalseReason(t *testing.T) {
+	t.Parallel()
+	r := aaa()
+	r.DTE, r.Expiry = 0, r.ChainDay
+	ev := eval(t, "0.74", r)
+	if ev.MoveWhy == "no_iv" {
+		t.Errorf("MoveWhy = no_iv although IV is %s", r.IV)
+	}
+	if ev.OneSigma != "" && ev.MoveWhy != "" {
+		t.Errorf("OneSigma %q has a Why %q beside it", ev.OneSigma, ev.MoveWhy)
+	}
+	if ev.OneSigma == "" && ev.MoveWhy == "" {
+		t.Error("an empty 1-sigma has no Why")
+	}
+}

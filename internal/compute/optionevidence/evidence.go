@@ -21,6 +21,7 @@ const (
 	whyEarnings    = "earnings_before_expiry"
 	whyNoATM       = "no_atm"
 	whyNoBuyPrice  = "no_buy_price"
+	whyZeroDTE     = "zero_dte"
 )
 
 const (
@@ -110,13 +111,12 @@ func (e *evaluator) move(ev *optionevidenceapi.Evidence, r optionevidenceapi.Row
 		return
 	}
 	sigma := spot.Mul(iv).Mul(root)
-	ev.OneSigma = sigma.StringFixed(ratioPlaces)
-	ev.OneSigmaPct = sigma.Div(spot).Mul(hundred).StringFixed(ratioPlaces)
-	if !sigma.IsPositive() { // DTE 0: no spread to measure against
-		ev.BreakEvenInSigmas = ""
-		ev.MoveWhy = whyNoIV
+	if !sigma.IsPositive() { // DTE 0: the move is zero, so no figure of it has a meaning
+		ev.MoveWhy = whyZeroDTE
 		return
 	}
+	ev.OneSigma = sigma.StringFixed(ratioPlaces)
+	ev.OneSigmaPct = sigma.Div(spot).Mul(hundred).StringFixed(ratioPlaces)
 	ev.BreakEvenInSigmas = spot.Sub(breakEven).Div(sigma).StringFixed(ratioPlaces)
 }
 
