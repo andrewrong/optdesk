@@ -1,0 +1,17 @@
+{
+  "schema": "data_health_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "form": null,
+  "datasets": [],
+  "glossary": [],
+  "overwrite_note": "",
+  "gaps": [
+    {
+      "kind": "gap",
+      "reason": "coverage_unavailable",
+      "text": "The coverage view could not be read."
+    }
+  ]
+}

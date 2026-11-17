@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.data_health_page.v1.json",
+  "title": "DataHealthPage",
+  "description": "View model of the data health page: the coverage of each dataset over the window, cell by cell, and the repair each cell offers. The builder computes every state, count, age and text; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "built_at", "form", "datasets", "glossary", "overwrite_note", "gaps"],
+  "properties": {
+    "schema": {"const": "data_health_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "run_id": {"$ref": "common.v2.json#/$defs/Id"},
+    "built_at": {"$ref": "common.v2.json#/$defs/Timestamp"},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]},
+    "datasets": {"type": "array", "items": {"$ref": "#/$defs/Dataset"}},
+    "glossary": {"type": "array", "items": {"$ref": "#/$defs/GlossaryRow"}},
+    "overwrite_note": {"type": "string", "maxLength": 600},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Optional": {"type": "string", "maxLength": 600},
+    "Day": {"type": "string", "format": "date"},
+    "Count": {"type": "integer", "minimum": 0},
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_path", "expires", "mac"],
+      "properties": {
+        "post_path": {"const": "/owner-job-console"},
+        "expires": {"$ref": "#/$defs/Text"},
+        "mac": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"enum": ["coverage_unavailable"]},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "GlossaryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "text"],
+      "properties": {
+        "term": {"$ref": "#/$defs/Text"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Newest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["series_id", "day", "age_days"],
+      "properties": {
+        "series_id": {"$ref": "#/$defs/Text"},
+        "day": {"$ref": "#/$defs/Day"},
+        "age_days": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "Dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_id", "label", "job_id", "calendar", "gap_days", "repair_all", "newest", "cells"],
+      "properties": {
+        "dataset_id": {"$ref": "#/$defs/Text"},
+        "label": {"$ref": "#/$defs/Text"},
+        "job_id": {"type": ["string", "null"], "pattern": "^[a-z0-9_]{1,40}$"},
+        "calendar": {"$ref": "#/$defs/Text"},
+        "gap_days": {"$ref": "#/$defs/Count"},
+        "repair_all": {"enum": ["button", "none"]},
+        "newest": {"type": "array", "items": {"$ref": "#/$defs/Newest"}},
+        "cells": {"type": "array", "items": {"$ref": "#/$defs/Cell"}}
+      }
+    },
+    "Cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["day", "state", "keys", "ok", "no_value", "expired", "missing", "missing_keys", "repair", "why_text", "due_text"],
+      "properties": {
+        "day": {"$ref": "#/$defs/Day"},
+        "state": {"enum": ["ok", "no_value", "expired", "missing", "not_run"]},
+        "keys": {"$ref": "#/$defs/Count"},
+        "ok": {"$ref": "#/$defs/Count"},
+        "no_value": {"$ref": "#/$defs/Count"},
+        "expired": {"$ref": "#/$defs/Count"},
+        "missing": {"$ref": "#/$defs/Count"},
+        "missing_keys": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/Text"}},
+        "repair": {"enum": ["none", "button", "not_refetchable"]},
+        "why_text": {"$ref": "#/$defs/Optional"},
+        "due_text": {"$ref": "#/$defs/Optional"}
+      }
+    }
+  }
+}
