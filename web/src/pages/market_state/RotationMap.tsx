@@ -72,11 +72,15 @@ type Anchor = { id: string; x: number; y: number; width: number }
 export type Placed = { id: string; x: number; y: number; anchor: 'start' | 'end'; left: number; right: number; top: number; bottom: number }
 
 // Places each label beside its point in order: right of it, else left of it, else shifted by whole line heights;
-// the first position whose box clears every label already placed wins.
-export function placeLabels(anchors: Anchor[], lineHeight: number): Placed[] {
+// the first position whose box clears every label already placed, every dot (a box of LARGE around each anchor,
+// its own included) and the axis lines x = zero.x and y = zero.y wins.
+export function placeLabels(anchors: Anchor[], lineHeight: number, zero?: { x?: number; y?: number }): Placed[] {
   const placed: Placed[] = []
   const clear = (b: Placed) =>
-    placed.every((o) => b.right <= o.left || o.right <= b.left || b.bottom <= o.top || o.bottom <= b.top)
+    placed.every((o) => b.right <= o.left || o.right <= b.left || b.bottom <= o.top || o.bottom <= b.top) &&
+    anchors.every((a) => b.right <= a.x - LARGE || a.x + LARGE <= b.left || b.bottom <= a.y - LARGE || a.y + LARGE <= b.top) &&
+    !(zero?.x !== undefined && b.left < zero.x && zero.x < b.right) &&
+    !(zero?.y !== undefined && b.top < zero.y && zero.y < b.bottom)
   for (const a of anchors) {
     let pick: Placed | undefined
     const shifts = [0, 1, -1, 2, -2, 3, -3]
@@ -135,7 +139,7 @@ function TodayLabel({ x, y, index, count, symbol, tone, todays }: LabelProps) {
     y: t.symbol === symbol || !yScale ? y : (yScale(t.y) ?? y),
     width: CHAR_WIDTH * t.symbol.length,
   }))
-  const own = placeLabels(anchors, LINE_HEIGHT).find((p) => p.id === symbol)
+  const own = placeLabels(anchors, LINE_HEIGHT, { x: xScale?.(0), y: yScale?.(0) }).find((p) => p.id === symbol)
   const at = own ?? { x: x + LABEL_GAP, y, anchor: 'start' as const }
   return (
     <text x={at.x} y={at.y} dy="0.35em" textAnchor={at.anchor} fontSize={11} fontWeight={600} fill={tone} data-today-label={symbol}>
