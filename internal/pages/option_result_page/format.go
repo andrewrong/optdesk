@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // Texts of the page. Option terms stay English, other text is Chinese.
@@ -54,6 +56,40 @@ func percent(s string) (string, error) {
 		out += "." + rest
 	}
 	return out + "%", nil
+}
+
+// moneyText is the decimal text s as money of currency: "$" or "¥" (another currency its code and a space), the
+// integer part grouped by thousands, two decimals rounded half away from zero, a negative with U+2212 before the
+// symbol and no sign for a zero result. A text that is not a decimal is returned unchanged.
+func moneyText(s, currency string) string {
+	if !decPattern.MatchString(s) {
+		return s
+	}
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		return s
+	}
+	r := d.Round(2)
+	whole, frac, _ := strings.Cut(r.Abs().StringFixed(2), ".")
+	var b strings.Builder
+	for i, c := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	sym := currency + " "
+	switch currency {
+	case "USD":
+		sym = "$"
+	case "JPY":
+		sym = "¥"
+	}
+	out := sym + b.String() + "." + frac
+	if r.IsNegative() {
+		out = "−" + out
+	}
+	return out
 }
 
 // orGap is s, or the gap text when s is empty.

@@ -20,10 +20,10 @@ func TestMonthsSeries(t *testing.T) {
 	c, _ := testConfig(t, "result_ok.json")
 	s := seriesOf(sectionsOf(buildMap(t, c, "main"))[0], "months")
 	p := points(s)
-	if len(p) != 2 || p[0]["label"] != "2026-09" || p[0]["value"] != 150.0 || p[1]["value"] != -40.5 || p[1]["text"] != "-40.5000" {
+	if len(p) != 2 || p[0]["label"] != "2026-09" || p[0]["value"] != 150.0 || p[1]["value"] != -40.5 || p[1]["text"] != "−$40.50" {
 		t.Errorf("months = %v", p)
 	}
-	if s["summary"] != "2026-09 150.0000; 2026-10 -40.5000" || s["empty"] != nil {
+	if s["summary"] != "2026-09 $150.00; 2026-10 −$40.50" || s["empty"] != nil {
 		t.Errorf("summary = %v empty = %v", s["summary"], s["empty"])
 	}
 }
@@ -32,7 +32,7 @@ func TestRunningSeries(t *testing.T) {
 	t.Parallel()
 	c, _ := testConfig(t, "result_ok.json")
 	p := points(seriesOf(sectionsOf(buildMap(t, c, "main"))[0], "running"))
-	if len(p) != 2 || p[0]["value"] != 150.0 || p[1]["value"] != 109.5 || p[1]["text"] != "109.5000" {
+	if len(p) != 2 || p[0]["value"] != 150.0 || p[1]["value"] != 109.5 || p[1]["text"] != "$109.50" {
 		t.Errorf("running = %v", p)
 	}
 }
