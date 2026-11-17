@@ -403,3 +403,73 @@ func TestPullAfterIsThePlan(t *testing.T) {
 		t.Fatalf("After() = %v", got)
 	}
 }
+
+// unreadSpot is a fake broker whose underlying snapshot fails the first `bad` times (answer without a price, or the call error).
+func unreadSpot(b *fakeBroker, bad int, callErr error) {
+	b.under = func(n int) ([]broker.Quote, error) {
+		if n < bad {
+			if callErr != nil {
+				return nil, callErr
+			}
+			return []broker.Quote{{Status: broker.StatusNoData}}, nil
+		}
+		return []broker.Quote{{Last: f(100), ReceivedAt: b.clk.Now()}}, nil
+	}
+}
+
+func TestRunWithUnreadSpotIsRetryable(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		callErr error
+	}{
+		{"no price", nil},
+		{"call error", typedErr{contracts.Retryable}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s := seed(1, 8)
+			var buf bytes.Buffer
+			b := newFake(100)
+			unreadSpot(b, 1, tc.callErr)
+			j, err := NewPull(PullDeps{Broker: b, Plans: s, Contracts: s, Writer: s, Instruments: s, Clock: b.clk,
+				Log: slog.New(slog.NewTextHandler(&buf, nil))})
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := runAll(t, j)
+			if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+				t.Fatalf("err %v, want Retryable", res.Err)
+			}
+			if !strings.Contains(res.Err.Error(), "planned items ok, under the share") || !strings.Contains(res.Err.Error(), "8") {
+				t.Errorf("message %q", res.Err.Error())
+			}
+			if len(s.written) != 1 || len(s.written[0]) != 8 {
+				t.Fatalf("written %v, want the 8 rows once", s.written)
+			}
+			if !strings.Contains(buf.String(), "fault stage=option_open day=2026-11-11 key=batch-001 reason=") {
+				t.Errorf("log %q", buf.String())
+			}
+		})
+	}
+}
+
+func TestRunRetryOfAKeyWhoseSpotCameBack(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 8)
+	b := newFake(100)
+	unreadSpot(b, 1, nil)
+	j := newPull(t, s, b)
+	if res := runAll(t, j); res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("first run: %v", res.Err)
+	}
+	res := runAll(t, j)
+	if res.Err != nil || res.Usable != 8 || res.Returned != 8 {
+		t.Fatalf("second run: err %v usable %d returned %d", res.Err, res.Usable, res.Returned)
+	}
+	for _, r := range s.written[1] {
+		if r.Status != stOK {
+			t.Errorf("row %d status %d", r.InstrumentID, r.Status)
+		}
+	}
+}
