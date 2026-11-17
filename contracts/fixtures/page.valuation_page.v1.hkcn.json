@@ -1,0 +1,123 @@
+{
+  "schema": "valuation_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "view": "company",
+  "rows": null,
+  "unvalued_count": 0,
+  "company": {
+    "company_key": "HK:0001",
+    "name": "Beta Holdings",
+    "symbol": "",
+    "currency": "HKD",
+    "r_market": "HKCN",
+    "pool": "in_pool",
+    "pool_date": "2026-10-01",
+    "note": ""
+  },
+  "current": {
+    "review_id": "rev-0001",
+    "type": "first",
+    "version_date": "2026-11-01",
+    "status": "effective",
+    "v": "100",
+    "p": "3",
+    "trigger": "",
+    "change_memo": "",
+    "detail": {
+      "source": "owner",
+      "fiscal_period_end": "2026-09-30",
+      "report_date": "2026-11-05",
+      "earnings_base": "5.00",
+      "base_basis": "invented trailing",
+      "forward_factor": "1.10",
+      "locked_multiple": "",
+      "method_results": [
+        "98",
+        "102"
+      ],
+      "adjustments": [
+        {
+          "percent": "-5",
+          "reason": "invented risk"
+        }
+      ],
+      "scenarios": [
+        {
+          "label": "base",
+          "probability": "60",
+          "eps": "5.5",
+          "multiple": "18"
+        }
+      ],
+      "reaction": "invented reaction",
+      "moat": "wide",
+      "understand": "high",
+      "management": "fair",
+      "financial": "strong",
+      "reasons": {
+        "p": "invented",
+        "moat": "",
+        "understand": "",
+        "management": "",
+        "financial": ""
+      },
+      "report_text": "Invented report text.",
+      "entered_at": "2026-11-06T08:00:00Z",
+      "effective_at": "2026-11-06T08:00:01Z"
+    }
+  },
+  "lines": {
+    "c": "80",
+    "r": "0.80",
+    "heavy": "56",
+    "buy_low": "59",
+    "buy_high": "64",
+    "fair_low": "72",
+    "fair_high": "88",
+    "trim": "100",
+    "clear": "120",
+    "core": "150",
+    "m": "0.20",
+    "w": "0.10",
+    "h": "0.30",
+    "s": "0.25",
+    "zone": "",
+    "zone_note": "",
+    "flags": null
+  },
+  "band": {
+    "min": "40",
+    "max": "160",
+    "marks": [
+      {
+        "name": "heavy",
+        "value": "56",
+        "pos": "0.1333"
+      },
+      {
+        "name": "c",
+        "value": "80",
+        "pos": "0.3333"
+      },
+      {
+        "name": "core",
+        "value": "150",
+        "pos": "0.9167"
+      }
+    ]
+  },
+  "close": null,
+  "history": [],
+  "required": [],
+  "problems": [],
+  "error": "",
+  "saved": "",
+  "gaps": [],
+  "form": {
+    "post_path": "/owner-valuation",
+    "expires": "1795000000",
+    "mac": "0000000000000000000000000000000000000000000000000000000000000001"
+  }
+}

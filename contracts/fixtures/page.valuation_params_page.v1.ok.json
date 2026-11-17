@@ -1,0 +1,117 @@
+{
+  "schema": "valuation_params_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "latest_yield": {
+    "value": "4.20",
+    "day": "2026-11-14"
+  },
+  "current_r": {
+    "effective_date": "2026-09-01",
+    "yield_used": "3.90",
+    "r": {
+      "us": "0.90",
+      "jp": "1.10",
+      "hkcn": "0.80"
+    },
+    "ai_switch": true,
+    "ai_expiry": "until the invented chip cycle turns",
+    "note": "invented",
+    "step_warnings": []
+  },
+  "proposal": {
+    "r": {
+      "us": "0.95",
+      "jp": "1.10",
+      "hkcn": "0.80"
+    },
+    "step_warnings": [
+      "US R moves from 0.90 to 0.95, more than 0.05"
+    ]
+  },
+  "r_table": {
+    "effective_date": "2026-09-01",
+    "rows": [
+      {
+        "yield_up_to": "4.00",
+        "us": "1.00",
+        "jp": "1.20",
+        "hkcn": "0.85"
+      },
+      {
+        "yield_up_to": "4.50",
+        "us": "0.95",
+        "jp": "1.10",
+        "hkcn": "0.80"
+      },
+      {
+        "yield_up_to": "",
+        "us": "0.85",
+        "jp": "1.00",
+        "hkcn": "0.70"
+      }
+    ]
+  },
+  "margin_table": {
+    "effective_date": "2026-09-01",
+    "rows": [
+      {
+        "p_from": "1",
+        "m": "0.30",
+        "w": "0.15",
+        "h": "0.40",
+        "s": "0.20"
+      },
+      {
+        "p_from": "3",
+        "m": "0.20",
+        "w": "0.10",
+        "h": "0.30",
+        "s": "0.25"
+      },
+      {
+        "p_from": "4.5",
+        "m": "0.10",
+        "w": "0.05",
+        "h": "0.20",
+        "s": "0.30"
+      }
+    ]
+  },
+  "r_history": [
+    {
+      "effective_date": "2026-09-01",
+      "yield_used": "3.90",
+      "r": {
+        "us": "0.90",
+        "jp": "1.10",
+        "hkcn": "0.80"
+      },
+      "ai_switch": true,
+      "ai_expiry": "until the invented chip cycle turns",
+      "note": "invented",
+      "step_warnings": []
+    },
+    {
+      "effective_date": "2026-06-01",
+      "yield_used": "4.40",
+      "r": {
+        "us": "0.85",
+        "jp": "1.05",
+        "hkcn": "0.75"
+      },
+      "ai_switch": false,
+      "ai_expiry": "",
+      "note": "invented",
+      "step_warnings": []
+    }
+  ],
+  "gaps": [],
+  "error": "",
+  "form": {
+    "post_path": "/owner-valuation",
+    "expires": "1795000000",
+    "mac": "0000000000000000000000000000000000000000000000000000000000000001"
+  }
+}
