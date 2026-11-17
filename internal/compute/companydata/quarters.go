@@ -106,23 +106,39 @@ func (c *calc) continues(starts map[time.Time]bool, t time.Time) bool {
 	return false
 }
 
+// quarterOf says which quarter n of the year a duration fact ends, 0 when it is none of them,
+// and whether it is an odd long year instead.
+func quarterOf(y *year, k pkey) (n int, odd bool) {
+	ln := daysBetween(k.start, k.end)
+	n = bandOf(daysBetween(y.start, k.end))
+	switch {
+	case k.start.Equal(y.start) && bandOf(ln) == n && n > 0:
+		return n, false
+	case isQuarterLength(ln) && n > 1 && k.start.After(y.start) && bandOf(daysBetween(y.start, k.start)-1) == n-1:
+		return n, false
+	case k.start.Equal(y.start) && oddYear(ln):
+		return 0, true
+	}
+	return 0, false
+}
+
 // findEnds sets the end of each quarter: the end most facts of the year give.
 func (c *calc) findEnds(y *year) {
 	count := [5]map[time.Time]int{}
+	var oddEnd time.Time
 	for _, g := range c.idx {
 		for k := range g {
 			if k.start.IsZero() || k.start.Before(y.start) {
 				continue
 			}
-			ln := daysBetween(k.start, k.end)
-			n := bandOf(daysBetween(y.start, k.end))
-			switch {
-			case k.start.Equal(y.start) && bandOf(ln) == n && n > 0:
-			case isQuarterLength(ln) && n > 1 && k.start.After(y.start) && bandOf(daysBetween(y.start, k.start)-1) == n-1:
-			case k.start.Equal(y.start) && oddYear(ln):
+			n, odd := quarterOf(y, k)
+			if odd {
 				y.yearly = true
-				continue
-			default:
+				if oddEnd.IsZero() || k.end.Before(oddEnd) {
+					oddEnd = k.end
+				}
+			}
+			if n == 0 {
 				continue
 			}
 			if count[n] == nil {
@@ -139,13 +155,7 @@ func (c *calc) findEnds(y *year) {
 		}
 	}
 	if y.yearly && y.ends[4].IsZero() {
-		for _, g := range c.idx {
-			for k := range g {
-				if k.start.Equal(y.start) && oddYear(daysBetween(k.start, k.end)) && (y.ends[4].IsZero() || k.end.Before(y.ends[4])) {
-					y.ends[4] = k.end
-				}
-			}
-		}
+		y.ends[4] = oddEnd
 	}
 }
 
