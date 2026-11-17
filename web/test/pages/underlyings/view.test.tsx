@@ -11,7 +11,7 @@ import { validate, type Payload } from '@/types/underlyings'
 
 const fixture = (name: string): Payload =>
   JSON.parse(
-    readFileSync(path.resolve(import.meta.dirname, `../../../../contracts/fixtures/page.underlyings.v1.${name}.json`), 'utf8'),
+    readFileSync(path.resolve(import.meta.dirname, `../../../../contracts/fixtures/page.underlyings.v2.${name}.json`), 'utf8'),
   )
 
 let root: Root | null = null
@@ -139,6 +139,39 @@ describe('underlyings view', () => {
     for (const s of p.confirm!.stops) expect(text).toContain(s)
     expect(text).toContain(p.notice)
     expect(el.querySelectorAll('[data-stop]').length).toBe(p.confirm!.stops.length)
+  })
+
+  it('new: the confirm form posts the fields of the payload, the token and confirm=1', async () => {
+    const p = fixture('confirm')
+    const el = await render(p)
+    const f = el.querySelector('form[data-confirm-form]')!
+    expect(f.closest('[data-confirm]')).not.toBeNull()
+    expect(f.getAttribute('method')).toBe('post')
+    expect(f.getAttribute('action')).toBe(p.form!.post_path)
+    const pairs = [...f.querySelectorAll<HTMLInputElement>('input[name]')].map((i) => [i.name, i.value])
+    expect(pairs).toEqual([
+      ['expires', p.form!.expires],
+      ['mac', p.form!.mac],
+      ...p.confirm!.fields.map((x) => [x.name, x.value]),
+      ['confirm', '1'],
+    ])
+    const b = f.querySelector('button[type=submit]')!
+    expect(b.textContent).toBe('Confirm and save')
+  })
+
+  it('new: the confirm form keeps an unchecked switch off', async () => {
+    const p = fixture('confirm')
+    p.confirm!.fields = p.confirm!.fields.filter((x) => x.name !== 'options') as NonNullable<Payload['confirm']>['fields']
+    const el = await render(p)
+    const f = el.querySelector('form[data-confirm-form]')!
+    expect(f.querySelector('input[name=options]')).toBeNull()
+  })
+
+  it('new: the confirm card has no form without the page form', async () => {
+    const p = { ...fixture('confirm'), form: null }
+    const el = await render(p)
+    expect(el.querySelector('[data-confirm]')).not.toBeNull()
+    expect(el.querySelector('form[data-confirm-form]')).toBeNull()
   })
 
   it('refuses the bad-version payload', () => {

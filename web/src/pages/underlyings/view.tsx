@@ -2,7 +2,7 @@
 // form per row, the confirm step and the history, as plain HTML forms that post to the route of the payload. Every
 // visible value is a payload field; this file posts nothing by script and computes nothing.
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table'
-import type { Row as Name } from '@/generated/underlyings.v1'
+import type { Row as Name } from '@/generated/underlyings.v2'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -192,7 +192,7 @@ function EditForm({ row, form }: { row: Name; form: Form }) {
   )
 }
 
-function ConfirmCard({ confirm }: { confirm: NonNullable<Payload['confirm']> }) {
+function ConfirmCard({ confirm, form }: { confirm: NonNullable<Payload['confirm']>; form: Form | null }) {
   return (
     <Card data-confirm>
       <CardHeader>
@@ -217,6 +217,16 @@ function ConfirmCard({ confirm }: { confirm: NonNullable<Payload['confirm']> }) 
             <AlertDescription>{s}</AlertDescription>
           </Alert>
         ))}
+        {form ? (
+          <form method="post" action={form.post_path} data-confirm-form>
+            <Token form={form} />
+            {confirm.fields.map((f, i) => (
+              <input key={`${i}-${f.name}`} type="hidden" name={f.name} value={f.value} />
+            ))}
+            <input type="hidden" name="confirm" value="1" />
+            <Button type="submit">Confirm and save</Button>
+          </form>
+        ) : null}
       </CardContent>
     </Card>
   )
@@ -247,7 +257,7 @@ export function UnderlyingsView({ payload }: { payload: Payload }) {
           <NamesTable rows={payload.rows} editable={form !== null} />
         </CardContent>
       </Card>
-      {confirm ? <ConfirmCard confirm={confirm} /> : null}
+      {confirm ? <ConfirmCard confirm={confirm} form={form} /> : null}
       {form ? (
         <Card>
           <CardHeader>
