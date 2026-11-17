@@ -97,3 +97,57 @@ func TestOptionNoticesPageMainNoCaptureGapValid(t *testing.T) {
 		t.Fatal("a gap reason outside the pattern validates")
 	}
 }
+
+func noticesWith(t *testing.T, mutate func(b map[string]any)) bool {
+	t.Helper()
+	inst := noticesMinimal(t)
+	b := noticesBlock()
+	mutate(b)
+	inst["accounts"] = []any{b}
+	return pageV1Valid(t, optionNoticesPageV1, inst)
+}
+
+func cashPut() map[string]any {
+	return map[string]any{
+		"symbol": "AAPL", "expiry": "2026-11-20", "strike_text": "250",
+		"right": "P", "quantity_text": "2",
+	}
+}
+
+func cashRowWith(puts any) []any {
+	return []any{map[string]any{"day": "2026-11-07", "currency": "USD", "amount_text": "1,000", "puts": puts}}
+}
+
+func TestOptionNoticesPageCashPutsValid(t *testing.T) {
+	t.Parallel()
+	if !noticesWith(t, func(b map[string]any) {}) {
+		t.Fatal("cash row without puts is invalid")
+	}
+	if !noticesWith(t, func(b map[string]any) { b["cash_by_date"] = cashRowWith([]any{cashPut()}) }) {
+		t.Fatal("cash row with puts is invalid")
+	}
+	p := cashPut()
+	delete(p, "strike_text")
+	if noticesWith(t, func(b map[string]any) { b["cash_by_date"] = cashRowWith([]any{p}) }) {
+		t.Fatal("a put without strike_text validates")
+	}
+	p = cashPut()
+	p["amount_text"] = "1"
+	if noticesWith(t, func(b map[string]any) { b["cash_by_date"] = cashRowWith([]any{p}) }) {
+		t.Fatal("a put with an unknown property validates")
+	}
+}
+
+func TestOptionNoticesPageHintsValid(t *testing.T) {
+	t.Parallel()
+	for _, k := range []string{"cushion_hint", "note_hint"} {
+		for _, v := range []any{"why", nil} {
+			if !noticesWith(t, func(b map[string]any) { b[k] = v }) {
+				t.Fatalf("%s=%v is invalid", k, v)
+			}
+		}
+		if noticesWith(t, func(b map[string]any) { b[k] = 5 }) {
+			t.Fatalf("%s accepts a number", k)
+		}
+	}
+}

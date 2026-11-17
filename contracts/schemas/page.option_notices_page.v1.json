@@ -170,6 +170,12 @@
         },
         "note": {
           "$ref": "#/$defs/NullableText"
+        },
+        "cushion_hint": {
+          "$ref": "#/$defs/NullableText"
+        },
+        "note_hint": {
+          "$ref": "#/$defs/NullableText"
         }
       }
     },
@@ -259,6 +265,41 @@
           "$ref": "#/$defs/Text"
         },
         "amount_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "puts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CashPut"
+          }
+        }
+      }
+    },
+    "CashPut": {
+      "description": "One short put behind a cash amount; all text from the producer, no per-put figure.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "symbol",
+        "expiry",
+        "strike_text",
+        "right",
+        "quantity_text"
+      ],
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "expiry": {
+          "$ref": "#/$defs/Day"
+        },
+        "strike_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "right": {
+          "$ref": "#/$defs/Text"
+        },
+        "quantity_text": {
           "$ref": "#/$defs/Text"
         }
       }
