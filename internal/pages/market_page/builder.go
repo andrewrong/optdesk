@@ -132,12 +132,13 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		}
 	}
 	if !oldest.IsZero() {
+		staleAfter := time.Date(oldest.Year(), oldest.Month(), oldest.Day()+staleDisplayDays, 9, 30, 0, 0, c.Zone)
 		vm.Stale = &staleLabel{
 			DataTime: midnight(oldest, c.Zone),
-			IsStale:  daysBetween(oldest, d) > staleDisplayDays,
+			IsStale:  generatedAt.After(staleAfter),
 			Text:     staleLabelPrefix + oldest.Format("01-02"),
 		}
-		vm.StaleAfter = time.Date(oldest.Year(), oldest.Month(), oldest.Day()+staleDisplayDays, 9, 30, 0, 0, c.Zone).Format(timeLayout)
+		vm.StaleAfter = staleAfter.Format(timeLayout)
 	}
 	return json.Marshal(vm)
 }
