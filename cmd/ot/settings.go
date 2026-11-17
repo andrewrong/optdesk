@@ -197,6 +197,7 @@ func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, 
 		page(http.StatusUnprocessableEntity, settingsExtras{notice: &settings_page.Notice{Kind: "error", Text: err.Error()}})
 		return
 	}
+	ch.Params = dropDefaultNoops(a.deps.newRuleParams(), ch.Params, cur)
 	if len(ch.Params) == 0 && len(ch.Exclusions) == 0 {
 		if ch.Confirm {
 			http.Redirect(w, r, "/"+siteSettingsRoute+"?saved=0", http.StatusSeeOther)
@@ -211,6 +212,8 @@ func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, 
 			fail()
 			return
 		}
+		// the preview shows the posted values, so the confirm form posts them again.
+		rd.owner = overlayReader{Reader: rd.owner, ch: ch}
 		page(http.StatusOK, settingsExtras{confirm: &settings_page.Confirm{Rows: rows, Form: ownerDummyToken()}})
 		return
 	}
@@ -282,6 +285,15 @@ func currentSettings(ctx context.Context, a *app, rd siteReaders, now time.Time)
 	}
 	slices.Sort(shown)
 	return cur, slices.Compact(shown), nil
+}
+
+// dropDefaultNoops removes the fields whose text means the value already in force: Parse compares the canonical
+// text with the resolved one, so a blank field (the default) of a param in force at its default reads as a change.
+// The confirm form posts every param of the page, so without this every default param would be a change.
+func dropDefaultNoops(reg settingsapi.RuleParams, fields []settingsapi.FormField, cur settingsapi.FormState) []settingsapi.FormField {
+	return slices.DeleteFunc(slices.Clone(fields), func(f settingsapi.FormField) bool {
+		return reg.Resolve(map[string]string{f.Key: f.Text})[f.Key] == cur.Params[f.Key]
+	})
 }
 
 // confirmRows is the old-to-new table of a change, texts only.
