@@ -138,3 +138,17 @@ it('lets the results, ex and guard cells of the open table wrap and no other col
   const wraps = Object.fromEntries(ids.map((id, i) => [id, tds[i]?.classList.contains('whitespace-normal')]))
   expect(wraps).toEqual({ qty: false, results: true, ex: true, guard: true, dte: false, delta: false, iv: false })
 })
+
+it('open table wraps contract and moneyness cells', async () => {
+  const ids = ['contract', 'moneyness', 'delta', 'iv']
+  const account = ok.accounts[0]
+  const cell = { text: 'put 250 2026-12-18', value: null, badges: [], tone: 'none' as const }
+  const open = {
+    columns: ids.map((id) => ({ id, label: `${id} col`, align: 'left' as const, hint: null })),
+    rows: [{ id: 'pos-x', cells: Object.fromEntries(ids.map((id) => [id, cell])) }],
+  }
+  await show({ ...ok, accounts: [{ ...account, open }] })
+  const tds = [...host.querySelectorAll('[data-table="open"] tbody tr:first-child td')]
+  const wraps = Object.fromEntries(ids.map((id, i) => [id, tds[i]?.classList.contains('whitespace-normal')]))
+  expect(wraps).toEqual({ contract: true, moneyness: true, delta: false, iv: false })
+})
