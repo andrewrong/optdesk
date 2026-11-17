@@ -261,3 +261,46 @@ func TestIndexUnderlyingsCarryIncrementAndLotSize(t *testing.T) {
 		t.Errorf("index specs resolved for %v, want SPX, XSP and RUT", seen)
 	}
 }
+
+func TestIndexRunFindsTheChainOnAnotherExchange(t *testing.T) {
+	t.Parallel()
+	r := newIndexRig(t, nil)
+	r.b.chains[2].Exchange = "CBOE"
+	res := r.run("SPX", "XSP", "RUT")
+	if res.Err != nil || res.Returned == 0 {
+		t.Fatalf("result %+v", res)
+	}
+	if len(r.w.all()) != res.Returned {
+		t.Fatalf("%d rows for %d returned", len(r.w.all()), res.Returned)
+	}
+	classes := map[string]int{}
+	for _, c := range r.b.resolved {
+		classes[c.TradingClass]++
+	}
+	for _, class := range []string{"SPX", "XSP", "RUT"} {
+		if classes[class] == 0 {
+			t.Fatalf("no contract resolved for %s: %v", class, classes)
+		}
+	}
+	for _, c := range r.b.resolved {
+		if c.Exchange != "CBOE" {
+			t.Fatalf("contract %+v is not on CBOE", c)
+		}
+	}
+}
+
+func TestIndexRunNoChainOfTheClassNamesWhatIsListed(t *testing.T) {
+	t.Parallel()
+	r := newIndexRig(t, nil)
+	r.b.chains = r.b.chains[:2]
+	res := r.run("RUT")
+	if kindOf(res) != contracts.Permanent || res.Err == nil {
+		t.Fatalf("result %+v", res)
+	}
+	msg := res.Err.Error()
+	for _, want := range []string{"RUT", "SPX", "XSP"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("message %q lacks %s", msg, want)
+		}
+	}
+}
