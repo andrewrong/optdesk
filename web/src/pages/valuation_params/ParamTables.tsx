@@ -1,0 +1,235 @@
+// The read-only tables of the valuation params page (R table, margin table, R history) and the owner forms of the
+// two tables and of the R version. Every figure is a decimal text of the payload, printed as given.
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import type { Payload } from '@/types/valuation_params_page'
+
+type Form = NonNullable<Payload['form']>
+
+export function OwnerForm({
+  form,
+  action,
+  children,
+}: {
+  form: Form
+  action: string
+  children: React.ReactNode
+}) {
+  return (
+    <form method="post" action={form.post_path} data-form={action} className="space-y-3">
+      <input type="hidden" name="action" value={action} />
+      <input type="hidden" name="expires" value={form.expires} />
+      <input type="hidden" name="mac" value={form.mac} />
+      {children}
+    </form>
+  )
+}
+
+export function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+    </div>
+  )
+}
+
+export function RTableView({ table }: { table: NonNullable<Payload['r_table']> }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>R table, effective {table.effective_date}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Yield up to</TableHead>
+              <TableHead>US</TableHead>
+              <TableHead>JP</TableHead>
+              <TableHead>HKCN</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {table.rows.map((row, at) => (
+              <TableRow key={at}>
+                <TableCell>{row.yield_up_to}</TableCell>
+                <TableCell>{row.us}</TableCell>
+                <TableCell>{row.jp}</TableCell>
+                <TableCell>{row.hkcn}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function MarginTableView({ table }: { table: NonNullable<Payload['margin_table']> }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Margin table, effective {table.effective_date}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>P from</TableHead>
+              <TableHead>M</TableHead>
+              <TableHead>W</TableHead>
+              <TableHead>H</TableHead>
+              <TableHead>S</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {table.rows.map((row, at) => (
+              <TableRow key={at}>
+                <TableCell>{row.p_from}</TableCell>
+                <TableCell>{row.m}</TableCell>
+                <TableCell>{row.w}</TableCell>
+                <TableCell>{row.h}</TableCell>
+                <TableCell>{row.s}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function RHistoryView({ history }: { history: Payload['r_history'] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>R history</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Effective</TableHead>
+              <TableHead>Yield used</TableHead>
+              <TableHead>US</TableHead>
+              <TableHead>JP</TableHead>
+              <TableHead>HKCN</TableHead>
+              <TableHead>AI switch</TableHead>
+              <TableHead>AI expiry</TableHead>
+              <TableHead>Note</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.map((v, at) => (
+              <TableRow key={at}>
+                <TableCell>{v.effective_date}</TableCell>
+                <TableCell>{v.yield_used}</TableCell>
+                <TableCell>{v.r.us}</TableCell>
+                <TableCell>{v.r.jp}</TableCell>
+                <TableCell>{v.r.hkcn}</TableCell>
+                <TableCell>{v.ai_switch ? 'on' : 'off'}</TableCell>
+                <TableCell>{v.ai_expiry}</TableCell>
+                <TableCell>{v.note}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function TableVersionForm({ form, action, title, hint }: { form: Form; action: string; title: string; hint: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <OwnerForm form={form} action={action}>
+          <Field id={`${action}-date`} label="Effective date">
+            <Input id={`${action}-date`} name="effective_date" placeholder="YYYY-MM-DD" required />
+          </Field>
+          <Field id={`${action}-table`} label={hint}>
+            <textarea
+              id={`${action}-table`}
+              name="table"
+              rows={6}
+              required
+              className="w-full rounded-lg border border-input bg-transparent p-2 font-mono text-sm"
+            />
+          </Field>
+          <Button type="submit">Save table</Button>
+        </OwnerForm>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function OwnerForms({ form, latest }: { form: Form; latest: string }) {
+  return (
+    <>
+      <TableVersionForm
+        form={form}
+        action="r_table"
+        title="Add an R table version"
+        hint="One bucket per line: yield up to, US, JP, HKCN"
+      />
+      <TableVersionForm
+        form={form}
+        action="margin_table"
+        title="Add a margin table version"
+        hint="One bucket per line: P from, M, W, H, S"
+      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Add an R version</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OwnerForm form={form} action="r_version">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field id="rv-date" label="Effective date">
+                <Input id="rv-date" name="effective_date" placeholder="YYYY-MM-DD" required />
+              </Field>
+              <Field id="rv-us" label="R US">
+                <Input id="rv-us" name="r_us" required />
+              </Field>
+              <Field id="rv-jp" label="R JP">
+                <Input id="rv-jp" name="r_jp" required />
+              </Field>
+              <Field id="rv-hkcn" label="R HKCN">
+                <Input id="rv-hkcn" name="r_hkcn" required />
+              </Field>
+              <Field id="rv-yield" label="Yield used">
+                <Input id="rv-yield" name="yield_used" defaultValue={latest} />
+              </Field>
+              <Field id="rv-ai" label="AI switch">
+                <Select name="ai_switch" defaultValue="off">
+                  <SelectTrigger id="rv-ai">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="off">off</SelectItem>
+                    <SelectItem value="on">on</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field id="rv-expiry" label="AI expiry (required when on)">
+                <Input id="rv-expiry" name="ai_expiry" />
+              </Field>
+              <Field id="rv-note" label="Note">
+                <Input id="rv-note" name="note" />
+              </Field>
+            </div>
+            <Button type="submit">Save R version</Button>
+          </OwnerForm>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
