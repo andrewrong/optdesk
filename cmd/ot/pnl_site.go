@@ -7,6 +7,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/optionattr"
+	"github.com/andrewrong/optdesk/internal/compute/optionattrapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
@@ -62,9 +63,25 @@ func pnlConfigOf(a *app, runID, scope string, r pnlReaders) option_pnl_page.Conf
 	return option_pnl_page.Config{
 		RunID: runID, BuildID: buildIDOf(version), Scope: scope, Zone: a.profile.Zone,
 		Ledger: r.Ledger, Sessions: r.Sessions, Days: r.Days, StockIDs: r.StockIDs, Bars: r.Bars,
-		Replay: optionledger.New(), Attributor: optionattr.New(bsm.New()), Booker: optionattr.NewBooker(),
+		Replay: optionledger.New(), Attributor: optionattr.New(bsmPricer{p: bsm.New()}), Booker: optionattr.NewBooker(),
 		MarkMaxAgeSessions: 3, RecentDays: 30, MaxRateAgeDays: pnlMaxRateAgeDays, CalendarID: "XNYS",
 	}
+}
+
+// bsmPricer adapts the Black-Scholes pricer of the strategy module to optionattrapi.Pricer: it holds the pricer
+// and delegates each method, so cmd/ot is the only place that joins the two modules.
+type bsmPricer struct{ p bsm.Pricer }
+
+var _ optionattrapi.Pricer = bsmPricer{}
+
+// Value delegates to the held pricer; its error, with NoSolution, is returned unchanged.
+func (b bsmPricer) Value(right, spot, strike, years, rate, vol string) (string, error) {
+	return b.p.Value(right, spot, strike, years, rate, vol)
+}
+
+// Implied delegates to the held pricer; its error, with NoSolution, is returned unchanged.
+func (b bsmPricer) Implied(right, spot, strike, years, rate, price string) (string, error) {
+	return b.p.Implied(right, spot, strike, years, rate, price)
 }
 
 // newOptionPnlPage is the default of deps.optionPnlPage.
