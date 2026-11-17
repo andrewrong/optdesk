@@ -42,7 +42,7 @@
       "required": ["kind", "reason", "text"],
       "properties": {
         "kind": {"const": "gap"},
-        "reason": {"enum": ["yield_unavailable", "store_unavailable"]},
+        "reason": {"enum": ["yield_unavailable", "store_unavailable", "no_r_table", "no_margin_table"]},
         "text": {"type": "string", "minLength": 1, "maxLength": 200}
       }
     },

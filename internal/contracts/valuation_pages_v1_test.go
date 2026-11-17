@@ -65,3 +65,15 @@ func TestValuationViewEnum(t *testing.T) {
 		t.Fatal(`view "chart" accepted`)
 	}
 }
+
+// TestValuationParamsNoRTableGap: a page with no R table, no proposal and the gap no_r_table validates.
+func TestValuationParamsNoRTableGap(t *testing.T) {
+	t.Parallel()
+	p := valuationFixture(t, "page.valuation_params_page.v1.ok.json")
+	p["r_table"] = nil
+	p["proposal"] = nil
+	p["gaps"] = []any{map[string]any{"kind": "gap", "reason": "no_r_table", "text": "no R table stored"}}
+	if !pageV1Valid(t, valuationParamsPageV1, p) {
+		t.Fatal("the no_r_table gap that design entry 6 requires is refused")
+	}
+}

@@ -74,7 +74,7 @@ export interface MarginRow {
 }
 export interface Gap {
   kind: "gap";
-  reason: "yield_unavailable" | "store_unavailable";
+  reason: "yield_unavailable" | "store_unavailable" | "no_r_table" | "no_margin_table";
   text: string;
 }
 export interface Form {
