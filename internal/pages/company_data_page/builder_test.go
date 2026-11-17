@@ -309,3 +309,27 @@ func TestGlossaryCoversEveryTerm(t *testing.T) {
 		t.Errorf("glossary has %d terms, want %d", len(terms), len(want))
 	}
 }
+
+type windowEarnings struct{ rows []contracts.EarningsDate }
+
+func (f windowEarnings) EarningsDates(_ context.Context, _ string, from, to contracts.Day) ([]contracts.EarningsDate, error) {
+	out := []contracts.EarningsDate{}
+	for _, r := range f.rows {
+		d := contracts.Day(r.ObservedOn.Format("2006-01-02"))
+		if d >= from && d <= to {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func TestNextReportFromYesterdaysObservation(t *testing.T) {
+	t.Parallel()
+	in, _ := newInput([]underlying.Row{aapl}, &fakeCalc{sum: summary()})
+	r := listed("2026-12-01")
+	r.ObservedOn = day("2026-11-16") // the day before Today (2026-11-17)
+	in.Earnings = windowEarnings{rows: []contracts.EarningsDate{r}}
+	if got := companies(build(t, in))[0]["next_report"]; got != "2026-12-01" {
+		t.Fatalf("next_report = %v, want 2026-12-01", got)
+	}
+}

@@ -16,12 +16,14 @@ import (
 )
 
 const (
-	barBasis     = "trades"
-	barWindow    = 400 // days; the window the bars job keeps
-	reportAhead  = 400 // days ahead searched for a listed report
-	dayLayout    = "2006-01-02"
-	sourceSEC    = "sec"
-	statusListed = "listed"
+	barBasis  = "trades"
+	barWindow = 400 // days; the window the bars job keeps
+	// reportLookback is how far back an observation is searched: the bounds of EarningsDates filter on
+	// observed_on (a session day), so a report listed by the last run lies in the past of today.
+	reportLookback = 14 // days
+	dayLayout      = "2006-01-02"
+	sourceSEC      = "sec"
+	statusListed   = "listed"
 )
 
 // companyRow reads what is stored for one company and returns its row. An error is the failure of a read.
@@ -45,8 +47,8 @@ func companyRow(ctx context.Context, in Input, u underlying.Row) (Company, error
 		}
 	}
 	if u.Issuer != "" {
-		to := contracts.Day(today.AddDate(0, 0, reportAhead).Format(dayLayout))
-		rows, err := in.Earnings.EarningsDates(ctx, u.Issuer, in.Today, to)
+		from := contracts.Day(today.AddDate(0, 0, -reportLookback).Format(dayLayout))
+		rows, err := in.Earnings.EarningsDates(ctx, u.Issuer, from, in.Today)
 		if err != nil {
 			return Company{}, err
 		}
