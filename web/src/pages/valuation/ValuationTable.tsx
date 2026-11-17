@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/valuation_page'
-import { FlagBadges } from './CompanyView'
+import { FlagBadges, GLOSS } from './CompanyView'
 
 type Row = NonNullable<Payload['rows']>[number]
 
@@ -50,25 +50,18 @@ const COLUMNS: ColumnDef<Row>[] = [
       </div>
     ),
   },
-  // V: valuation-structure.md line 9
-  text('v', 'V', "V: the owner's valuation of one share"),
-  // P: lines 9 and 99
-  text('p', 'P', 'P: predictability, 1 to 5'),
-  // Version date: the date this valuation is valid from
-  text('version_date', 'Version date', 'Version date: the date this valuation is valid from'),
-  // R: line 75
-  text('r', 'R', 'R: the multiple of the valuation that sets the fair price (C = V x R)'),
-  // C: line 75
-  text('c', 'C', 'C: fair price, V x R'),
-  // Heavy: line 99
-  text('heavy', 'Heavy', 'Heavy: the heavy point, C x (1 - H)'),
+  text('v', 'V', GLOSS['V'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('p', 'P', GLOSS['P'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('version_date', 'Version date', GLOSS['Version date'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('r', 'R', GLOSS['R'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('c', 'C', GLOSS['C'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('heavy', 'Heavy', GLOSS['Heavy'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('buy_zone', 'Buy zone'),
   text('buy_price', 'Hand-typed buy price'),
   text('fair_zone', 'Fair zone'),
-  // Trim, Clear, Core: line 78
-  text('trim', 'Trim', 'Trim: C x (1 + S)'),
-  text('clear', 'Clear', 'Clear: V x 1.2'),
-  text('core', 'Core', 'Core: V x 1.5'),
+  text('trim', 'Trim', GLOSS['Trim'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('clear', 'Clear', GLOSS['Clear'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
+  text('core', 'Core', GLOSS['Core'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('close', 'Close'),
   {
     id: 'zone',

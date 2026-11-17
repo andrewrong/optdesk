@@ -10,8 +10,12 @@ import type { Payload } from '@/types/valuation_params_page'
 
 type Form = NonNullable<Payload['form']>
 
-// One line of static English text beside a term; none is a payload text and none computes. The source of each
-// gloss is docs/design/valuation-structure.md: HKCN line 24, AI switch line 32, margin letters line 61, yield line 106.
+// One line of static English text beside a term; none is a payload text and none computes.
+// The source of each gloss is on its line (docs/design/valuation-structure.md).
+export const HKCN_GLOSS = 'HKCN: Hong Kong and China names' // line 24
+export const AI_GLOSS = 'AI switch: stored with the R version, changes no price yet' // line 32
+const YIELD_GLOSS = 'Yield used: the 10-year yield the R was proposed from' // line 106
+const MARGIN_GLOSS = 'P from: lowest P of the row; M: safety margin; W: fair half width; H: heavy discount; S: trim premium' // line 61
 export function Gloss({ text }: { text: string }) {
   return <p className="text-xs font-normal whitespace-normal text-muted-foreground">{text}</p>
 }
@@ -51,7 +55,7 @@ export function RTableView({ table }: { table: NonNullable<Payload['r_table']> }
         <CardTitle>R table, effective {table.effective_date}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Gloss text="HKCN: Hong Kong and China names" />
+        <Gloss text={HKCN_GLOSS} />
         <Table>
           <TableHeader>
             <TableRow>
@@ -84,7 +88,7 @@ export function MarginTableView({ table }: { table: NonNullable<Payload['margin_
         <CardTitle>Margin table, effective {table.effective_date}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Gloss text="P from: lowest P of the row; M: safety margin; W: fair half width; H: heavy discount; S: trim premium" />
+        <Gloss text={MARGIN_GLOSS} />
         <Table>
           <TableHeader>
             <TableRow>
@@ -119,8 +123,8 @@ export function RHistoryView({ history }: { history: Payload['r_history'] }) {
         <CardTitle>R history</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Gloss text="Yield used: the 10-year yield the R was proposed from" />
-        <Gloss text="AI switch: stored with the R version, changes no price yet" />
+        <Gloss text={YIELD_GLOSS} />
+        <Gloss text={AI_GLOSS} />
         <Table>
           <TableHeader>
             <TableRow>

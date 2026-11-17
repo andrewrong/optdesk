@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/valuation_params_page'
-import { Gloss, MarginTableView, OwnerForm, OwnerForms, RHistoryView, RTableView } from './ParamTables'
+import { AI_GLOSS, Gloss, HKCN_GLOSS, MarginTableView, OwnerForm, OwnerForms, RHistoryView, RTableView } from './ParamTables'
 
 function Warnings({ lines }: { lines: string[] }) {
   return lines.length === 0 ? null : (
@@ -98,8 +98,8 @@ export function ValuationParamsPage({ payload }: { payload: Payload }) {
               US {current.r.us}, JP {current.r.jp}, HKCN {current.r.hkcn}; AI switch {current.ai_switch ? 'on' : 'off'}
               {current.ai_expiry ? `, ${current.ai_expiry}` : ''}
             </p>
-            <Gloss text="HKCN: Hong Kong and China names" />
-            <Gloss text="AI switch: stored with the R version, changes no price yet" />
+            <Gloss text={HKCN_GLOSS} />
+            <Gloss text={AI_GLOSS} />
             <Warnings lines={current.step_warnings} />
           </CardContent>
         </Card>

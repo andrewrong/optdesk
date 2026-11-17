@@ -37,19 +37,21 @@ export const TYPE_TEXT: Record<string, string> = {
 }
 const label = (map: Record<string, string>, code: string) => map[code] ?? code
 
-// One gloss per term of the lines, static text; the source is docs/design/valuation-structure.md: R and C line 75,
-// Heavy line 99, Trim, Clear and Core line 78, M, W, H and S line 61.
-const GLOSS: Record<string, string> = {
-  C: 'C: fair price, V x R',
-  R: 'R: the multiple of the valuation that sets the fair price (C = V x R)',
-  Heavy: 'Heavy: the heavy point, C x (1 - H)',
-  Trim: 'Trim: C x (1 + S)',
-  Clear: 'Clear: V x 1.2',
-  Core: 'Core: V x 1.5',
-  M: 'M: safety margin',
-  W: 'W: fair half width',
-  H: 'H: heavy discount',
-  S: 'S: trim premium',
+// One gloss per term, static text; the source of each is on its own line (docs/design/valuation-structure.md).
+export const GLOSS: Record<string, string> = {
+  C: 'C: fair price, V x R', // line 75
+  R: 'R: the multiple of the valuation that sets the fair price (C = V x R)', // line 75
+  Heavy: 'Heavy: the heavy point, C x (1 - H)', // line 99
+  Trim: 'Trim: C x (1 + S)', // line 78
+  Clear: 'Clear: V x 1.2', // line 78
+  Core: 'Core: V x 1.5', // line 78
+  M: 'M: safety margin', // line 61
+  W: 'W: fair half width', // line 61
+  H: 'H: heavy discount', // line 61
+  S: 'S: trim premium', // line 61
+  V: "V: the owner's valuation of one share", // line 9
+  P: 'P: predictability, 1 to 5', // lines 9 and 99
+  'Version date': 'Version date: the date this valuation is valid from', // issue #2654 item 4, no line of the doc
 }
 
 // Every flag that is true is a mark of its own; none is dropped for another.
