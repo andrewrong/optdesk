@@ -183,6 +183,8 @@ type pageJSON struct {
 	RunStatus     string          `json:"run_status"`
 	Title         string          `json:"title"`
 	Sentence      string          `json:"sentence"`
+	RiskLink      string          `json:"risk_link"`
+	PositionsLink string          `json:"positions_link"`
 	Overview      moneyBlock      `json:"overview"`
 	Composition   moneyBlock      `json:"composition"`
 	Movers        moversBlock     `json:"movers"`

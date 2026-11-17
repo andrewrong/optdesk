@@ -697,3 +697,16 @@ func TestStatementNoteFitsTheSchema(t *testing.T) {
 	}
 	validate(t, b)
 }
+
+func TestHeaderLinksCarryWords(t *testing.T) {
+	t.Parallel()
+	var got blockapi.HouseholdInput
+	c := config(account(), &got)
+	for name, alias := range map[string]string{"built page": "main", "gap page": "stranger"} {
+		m, b := build(t, c, alias)
+		if m["risk_link"] != "Household risk" || m["positions_link"] != "Positions" {
+			t.Fatalf("%s: risk_link=%v positions_link=%v", name, m["risk_link"], m["positions_link"])
+		}
+		validate(t, b)
+	}
+}
