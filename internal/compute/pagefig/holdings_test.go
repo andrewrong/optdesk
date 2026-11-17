@@ -120,3 +120,67 @@ func TestUnsupportedPairStaysGap(t *testing.T) {
 		t.Fatalf("matching row: %+v", m.Rows[0])
 	}
 }
+
+func holdPrev(cur, qty, mult, mark, prev string) blockapi.HoldingIn {
+	h := hold("AAA", cur, qty, mult, "1", mark)
+	h.Prev = prev
+	return h
+}
+
+func TestHoldingDayStock(t *testing.T) {
+	t.Parallel()
+	got := NewHoldings().Holdings(blockapi.HoldingsIn{
+		Currency: "USD", NetLiquidation: "1000",
+		Rows: []blockapi.HoldingIn{
+			holdPrev("USD", "10", "1", "12.345", "12"),
+			holdPrev("USD", "-3", "2", "9", "10"),
+		},
+	})
+	if got.Rows[0].Day != fv("3.45") || got.Rows[1].Day != fv("6.00") {
+		t.Fatalf("days: %+v %+v", got.Rows[0].Day, got.Rows[1].Day)
+	}
+}
+
+func TestHoldingDayJpyConverted(t *testing.T) {
+	t.Parallel()
+	got := NewHoldings().Holdings(blockapi.HoldingsIn{
+		Currency: "USD", NetLiquidation: "100000", UsdJpy: "150",
+		Rows: []blockapi.HoldingIn{holdPrev("JPY", "100", "1", "3000", "2850")},
+	})
+	if r := got.Rows[0]; r.Currency != "USD" || r.Day != fv("100.00") {
+		t.Fatalf("row: %+v", r)
+	}
+	got = NewHoldings().Holdings(blockapi.HoldingsIn{
+		Currency: "USD", NetLiquidation: "1000",
+		Rows: []blockapi.HoldingIn{holdPrev("JPY", "100", "1", "3000", "2850")},
+	})
+	if r := got.Rows[0]; r.Currency != "JPY" || r.Day != fv("15000.00") {
+		t.Fatalf("no rate: %+v", r)
+	}
+}
+
+func TestHoldingDayGaps(t *testing.T) {
+	t.Parallel()
+	opt := holdPrev("USD", "1", "100", "2", "1")
+	opt.SecType = "OPT"
+	optWord := opt
+	optWord.SecType = "option"
+	cases := []struct {
+		name string
+		row  blockapi.HoldingIn
+		want compute.FigureValue
+	}{
+		{"empty mark", holdPrev("USD", "1", "1", "", "5"), gap("missing_quote")},
+		{"empty mark and prev", holdPrev("USD", "1", "1", "", ""), gap("missing_quote")},
+		{"empty prev", holdPrev("USD", "1", "1", "5", ""), gap("no_data")},
+		{"unreadable prev", holdPrev("USD", "1", "1", "5", "abc"), gap("no_data")},
+		{"option", opt, gap("no_data")},
+		{"option word", optWord, gap("no_data")},
+	}
+	for _, c := range cases {
+		got := NewHoldings().Holdings(blockapi.HoldingsIn{Currency: "USD", NetLiquidation: "1000", Rows: []blockapi.HoldingIn{c.row}})
+		if got.Rows[0].Day != c.want {
+			t.Errorf("%s: Day = %+v, want %+v", c.name, got.Rows[0].Day, c.want)
+		}
+	}
+}
