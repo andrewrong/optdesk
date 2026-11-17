@@ -125,12 +125,27 @@ func (c Config) gather(ctx context.Context, today contracts.Day) ([]subjectFigs,
 
 func blockGap(reason, text string) gap { return gap{Reason: reason, Text: text} }
 
+// refusalWords turns the refusal codes of the valuation gate into plain phrases.
+var refusalWords = map[string]string{
+	"TOO_FEW_YEARS":     "too few years of filings",
+	"NOT_CONSECUTIVE":   "the filing years are not consecutive",
+	"STALE_FILING":      "the latest filing is too old",
+	"MISSING_FIGURE":    "a figure is missing from the filings",
+	"SHARE_JUMP":        "the share count jumps between years",
+	"BASE_NOT_POSITIVE": "the starting value is not positive",
+	"BAD_INPUT":         "an input is not valid",
+}
+
 // reasonText joins the reasons of a refusal, or says the figure is missing.
 func reasonText(reasons ...string) string {
 	var kept []string
 	for _, r := range reasons {
 		if r != "" {
-			kept = append(kept, strings.ReplaceAll(r, "_", " "))
+			if w, ok := refusalWords[r]; ok {
+				kept = append(kept, w)
+			} else {
+				kept = append(kept, strings.ReplaceAll(r, "_", " "))
+			}
 		}
 	}
 	if len(kept) == 0 {

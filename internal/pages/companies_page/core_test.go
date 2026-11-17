@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -510,5 +511,34 @@ func TestNoIssuerGivesOneRow(t *testing.T) {
 	rows := gapRows(t, cfg)
 	if len(rows) != 1 || rows[0].PriceText != "100, 95" || rows[0].Returns.Text != "no issuer id" {
 		t.Fatalf("rows = %+v, want one no-issuer row", rows)
+	}
+}
+
+func TestRefusalCodesReadAsWords(t *testing.T) {
+	t.Parallel()
+	codes := []string{"TOO_FEW_YEARS", "NOT_CONSECUTIVE", "STALE_FILING", "MISSING_FIGURE",
+		"SHARE_JUMP", "BASE_NOT_POSITIVE", "BAD_INPUT"}
+	seen := map[string]string{}
+	for _, c := range codes {
+		got := reasonText(c)
+		if got == c {
+			t.Errorf("%s: text is the code", c)
+		}
+		if strings.ToLower(got) != got {
+			t.Errorf("%s: %q has an upper-case letter", c, got)
+		}
+		if prev, dup := seen[got]; dup {
+			t.Errorf("%s and %s both read %q", c, prev, got)
+		}
+		seen[got] = c
+	}
+	if got := reasonText("no_data"); got != "no data" {
+		t.Errorf("no_data = %q", got)
+	}
+	if got := reasonText(); got != "missing input" {
+		t.Errorf("no argument = %q", got)
+	}
+	if got := reasonText("SHARE_JUMP", "STALE_FILING"); strings.Contains(got, "_") || !strings.Contains(got, ", ") {
+		t.Errorf("joined = %q", got)
 	}
 }
