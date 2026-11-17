@@ -487,6 +487,16 @@ describe('market state page', () => {
     }
   })
 
+  it('falls back to the plain right-hand spot when every spot is blocked', () => {
+    const anchors = Array.from({ length: 30 }, (_, i) => ({ id: `F${i}`, x: 300 + (i % 6) * 4, y: 100 + Math.floor(i / 6) * 4, width: 28 }))
+    const placed = placeLabels(anchors, 13, { x: 300, y: 100 })
+    expect(placed).toHaveLength(30)
+    const last = placed[29]!
+    expect(last.anchor).toBe('start')
+    expect(last.x).toBe(anchors[29]!.x + 10)
+    expect(last.y).toBe(anchors[29]!.y)
+  })
+
   it('keeps the ok fixture labels apart in the drawn map', async () => {
     await show(fixture('ok'))
     const spots = [...host.querySelectorAll('[data-today-label]')].map(
