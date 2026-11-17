@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
+	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 func TestRowsCarryWindowAndDay(t *testing.T) {
@@ -134,5 +136,25 @@ func TestHistoryCaptionWhenCapped(t *testing.T) {
 	}
 	if len(list(h["points"])) != 800 {
 		t.Errorf("%d points", len(list(h["points"])))
+	}
+}
+
+func TestHistoryPointTextUsesTypographicMinus(t *testing.T) {
+	t.Parallel()
+	l := marketstateapi.Line{Total: 2, Points: []marketstateapi.Point{
+		{Day: contracts.Day("2026-11-12"), Value: "-0.0209"},
+		{Day: contracts.Day("2026-11-13"), Value: "0.015"},
+	}}
+	h, ok := historyCell(l, "x", fmtPercentShift).(history)
+	if !ok || len(h.Points) != 2 {
+		t.Fatalf("historyCell = %#v", h)
+	}
+	if h.Points[0].Text != "−2.09%" || h.Points[1].Text != "1.50%" || string(h.Points[0].Value) != "-2.09" {
+		t.Errorf("points = %+v", h.Points)
+	}
+	l.Points[0].Value = "-0.00001"
+	h, _ = historyCell(l, "x", fmtPercentShift).(history)
+	if h.Points[0].Text != "0.00%" {
+		t.Errorf("zero text = %q", h.Points[0].Text)
 	}
 }

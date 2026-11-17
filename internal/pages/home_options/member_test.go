@@ -14,6 +14,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/home_options"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -25,8 +26,9 @@ var generated = time.Date(2026, 11, 6, 9, 30, 0, 0, zone)
 
 // ledger is a fake reader: one alias per key, a row per transaction (the attributes are not read by the fake replay).
 type ledger struct {
-	aliases map[string]int
-	err     error
+	aliases  map[string]int
+	err      error
+	recorded time.Time // RecordedAt of every row; zero when unset
 }
 
 func (l ledger) FlexTradeRows(_ context.Context, alias string) ([]store.FlexTradeRow, error) {
@@ -35,7 +37,7 @@ func (l ledger) FlexTradeRows(_ context.Context, alias string) ([]store.FlexTrad
 	}
 	rows := []store.FlexTradeRow{}
 	for i := 0; i < l.aliases[alias]; i++ {
-		rows = append(rows, store.FlexTradeRow{Alias: alias, TransactionID: string(rune('a' + i)), Revision: 1, Attributes: "{}"})
+		rows = append(rows, store.FlexTradeRow{Alias: alias, TransactionID: string(rune('a' + i)), Revision: 1, Attributes: "{}", RecordedAt: l.recorded})
 	}
 	return rows, nil
 }
@@ -170,7 +172,7 @@ func TestTilesEqualTheSectionFields(t *testing.T) {
 		t.Fatalf("figure = %v", f)
 	}
 	cap := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
-	if !strings.Contains(cap, "−$15.25") || !strings.Contains(cap, "-0.012355") {
+	if !strings.Contains(cap, "−$15.25") || !strings.Contains(cap, "kept share −1.2%") {
 		t.Fatalf("caption = %q", cap)
 	}
 	if !strings.Contains(c["say"].(string), "+$1,234.50") {
@@ -390,5 +392,56 @@ func TestSeriesNamesAreShortAndCaptionHoldsExplanation(t *testing.T) {
 		if len(notes) != 3 || notes[2] != "Closed P/L has no data yet: monthly closed P/L is not given on this page." {
 			t.Errorf("%s: notes = %v", name, notes)
 		}
+	}
+}
+
+func cardAt(t *testing.T, l ledger, d string, at time.Time) map[string]any {
+	t.Helper()
+	p := compute.LedgerPosition{Currency: "USD", Status: "closed", OpenedOn: "2026-11-02", ClosedOn: "2026-11-12"}
+	b, err := home_options.Build(context.Background(), cfg(l, results{sections: []compute.ResultSection{sold("1.0000", "", "")}}, p), contracts.Day(d), at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Card       map[string]any   `json:"card"`
+		DataTimes  []map[string]any `json:"data_times"`
+		StaleAfter string           `json:"stale_after"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	m.Card["data_times"] = m.DataTimes
+	return m.Card
+}
+
+func TestCardIsDatedByNewestRecord(t *testing.T) {
+	t.Parallel()
+	rec := time.Date(2026, 11, 17, 6, 0, 0, 0, zone)
+	c := cardAt(t, ledger{aliases: map[string]int{"main": 1}, recorded: rec}, "2026-11-17", time.Date(2026, 11, 17, 9, 30, 0, 0, zone))
+	st := c["stale"].(map[string]any)
+	if st["text"] != "Ledger as of 11-17" || st["is_stale"] != false {
+		t.Fatalf("stale = %v", st)
+	}
+	dt := c["data_times"].([]map[string]any)
+	if len(dt) != 1 || dt[0]["data_time"] != "2026-11-17T00:00:00+08:00" {
+		t.Fatalf("data_times = %v", dt)
+	}
+}
+
+func TestCardFallsBackToTradeDay(t *testing.T) {
+	t.Parallel()
+	c := cardAt(t, ledger{aliases: map[string]int{"main": 1}}, "2026-11-17", time.Date(2026, 11, 17, 9, 30, 0, 0, zone))
+	st := c["stale"].(map[string]any)
+	if st["text"] != "Ledger as of 11-12" {
+		t.Fatalf("stale = %v", st)
+	}
+}
+
+func TestKeptSharePercent(t *testing.T) {
+	t.Parallel()
+	c := card(t, okCfg(sold("1234.5000", "", "0.324170")))
+	cap := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
+	if !strings.HasSuffix(cap, "kept share 32.4%") {
+		t.Fatalf("caption = %q", cap)
 	}
 }

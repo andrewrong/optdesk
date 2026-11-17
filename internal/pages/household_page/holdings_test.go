@@ -14,6 +14,7 @@ import (
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -69,7 +70,7 @@ func holdingsConfig(positions []store.Position, marks *fakeMarks) (household_pag
 }
 
 func twoStocks() []store.Position {
-	opt := store.Position{Symbol: "AAA", SecType: "option", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-1"}
+	opt := store.Position{Symbol: "AAA", SecType: "option", Right: "put", Strike: "50", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-1"}
 	return []store.Position{stock("AAA", 1, "100", "200"), stock("BBB", 2, "50", "10"), opt}
 }
 
@@ -376,5 +377,42 @@ func TestConcentrationWithNoStockHasGap(t *testing.T) {
 	g := gapOf(t, m, "concentration")
 	if g["reason"] != "no_data" || !strings.Contains(g["text"].(string), "no stock is held") {
 		t.Fatalf("gap = %v", g)
+	}
+}
+
+// shareFigures is the real figures with the share of each row replaced, in row order.
+type shareFigures struct {
+	blockapi.HoldingFigures
+	shares []string
+}
+
+func (s shareFigures) Holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
+	res := s.HoldingFigures.Holdings(in)
+	for i := range res.Rows {
+		res.Rows[i].Share = compute.FigureValue{Value: s.shares[i]}
+	}
+	return res
+}
+
+func TestShareTextOneDecimal(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ stored, text string }{{"3.28", "3.3%"}, {"25.00", "25.0%"}, {"0.05", "0.1%"}, {"3.25", "3.3%"}, {"99.96", "100.0%"}}
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-10": {markOf(1, "250"), markOf(2, "100")}}}
+	for _, tc := range cases {
+		c, _ := holdingsConfig(twoStocks(), marks)
+		c.Holdings = func() blockapi.HoldingFigures {
+			return shareFigures{HoldingFigures: pagefig.NewHoldings(), shares: []string{tc.stored, tc.stored}}
+		}
+		m, _ := build(t, c, "main")
+		for _, blk := range []string{"composition", "concentration"} {
+			row := m[blk].(map[string]any)["rows"].([]any)[0].(map[string]any)
+			share := row["share"].(map[string]any)
+			if share["text"] != tc.text || share["unit"] != "share_percent" {
+				t.Fatalf("%s share %s: %v, want text %s", blk, tc.stored, share, tc.text)
+			}
+			if v, ok := share["value"].(float64); !ok || fmt.Sprint(v) != fmt.Sprint(mustFloat(t, tc.stored)) {
+				t.Fatalf("%s share value %v, want %s", blk, share["value"], tc.stored)
+			}
+		}
 	}
 }

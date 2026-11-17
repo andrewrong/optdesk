@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -76,7 +78,7 @@ func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (
 		return cell{}, "", aerr
 	}
 	out.PriceState = state
-	figure := band.Low + " to " + band.Value
+	figure := bandText(band)
 	switch state {
 	case stateBand:
 		out.Text = figure
@@ -133,3 +135,41 @@ func factSource(issuer string) (string, bool) {
 // unvaluedCell is the price cell of a company that cannot be valued; the reason is stated once, in
 // the unvalued line of the page.
 const unvaluedCell = "unvalued"
+
+// currencySigns are the currencies the page writes a sign for.
+var currencySigns = map[string]string{"USD": "$", "JPY": "¥"}
+
+// bandText is the figure of a band: low and value to two decimals, half away from zero, with
+// thousands separators and the currency sign. A currency with no sign, or a figure that is not a
+// decimal, gives the figures as stored, so none is hidden.
+func bandText(band valuationapi.BandFigure) string {
+	stored := band.Low + " to " + band.Value
+	sign, ok := currencySigns[band.Currency]
+	if !ok {
+		return stored
+	}
+	low, lerr := decimal.NewFromString(band.Low)
+	value, verr := decimal.NewFromString(band.Value)
+	if lerr != nil || verr != nil {
+		return stored
+	}
+	return signed(sign, low) + " to " + signed(sign, value)
+}
+
+// signed writes d with the sign, thousands separators and two decimals, half away from zero.
+func signed(sign string, d decimal.Decimal) string {
+	text := d.Round(2).Abs().StringFixed(2)
+	whole, frac, _ := strings.Cut(text, ".")
+	var b strings.Builder
+	for i, r := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	out := sign + b.String() + "." + frac
+	if d.Round(2).IsNegative() {
+		out = "-" + out
+	}
+	return out
+}

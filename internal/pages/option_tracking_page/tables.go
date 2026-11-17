@@ -6,6 +6,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 )
 
+// netPremiumHint explains the closed table's premium column.
+const netPremiumHint = "Cash of the opening trade plus the closing trade before commissions; " +
+	"negative when the option was bought back for more than it was sold for"
+
 type column struct {
 	ID    string  `json:"id"`
 	Label string  `json:"label"`
@@ -65,7 +69,7 @@ var recentColumns = []colDef[opt]{
 	col("qty", "Quantity", "right", qty),
 	col("status", "Status", "left", statusCell),
 	col("closed_day", "Closed day", "left", closedDayCell),
-	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
+	col("premium", "Net premium", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }).hinted(netPremiumHint),
 	col("commissions", "Commissions", "right", func(o opt) any { return moneyHalfUp(o.Commissions, o.Currency, codeNoValue) }),
 	col("realized", "Realized P&L", "right", func(o opt) any { return moneyHalfUp(o.RealizedPnL, o.Currency, codeNoValue) }),
 }

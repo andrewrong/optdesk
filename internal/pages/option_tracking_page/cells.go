@@ -98,8 +98,7 @@ func numCell(text, code string) any {
 	return c
 }
 
-// decimalCell is a numeric cell whose text is the stored decimal rounded half away from zero to places
-// (moneyCell rounds half to even; the two differ on exact halves);
+// decimalCell is a numeric cell whose text is the stored decimal rounded half away from zero to places;
 // the value stays the stored number. The empty text is the gap of code, an unreadable text the gap
 // unreadable, never a zero.
 func decimalCell(text, code string, places int32) any {
@@ -129,7 +128,8 @@ func groupThousands(whole string) string {
 	return b.String()
 }
 
-// moneyCell is the premium text with the currency symbol, grouped thousands and two decimals; the
+// moneyCell is the premium text with the currency symbol, grouped thousands and two decimals, rounded
+// half away from zero, with the typographic minus (none on a value that rounds to zero); the
 // value stays the stored number. An empty text is the gap no_value, a currency with no symbol or a
 // text that is not a number is the gap unreadable, never a bare number.
 func moneyCell(text, currency string) any {
@@ -141,12 +141,7 @@ func moneyCell(text, currency string) any {
 	if !ok || !known {
 		return codeGap(codeUnreadable)
 	}
-	neg := d.IsNegative()
-	whole, frac, _ := strings.Cut(d.Abs().RoundBank(2).StringFixed(2), ".")
-	c.Text = sym + groupThousands(whole) + "." + frac
-	if neg && c.Text != sym+"0.00" {
-		c.Text = "-" + c.Text
-	}
+	c.Text = signedText(d, 2, sym)
 	return c
 }
 

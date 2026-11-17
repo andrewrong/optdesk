@@ -127,7 +127,7 @@ func priceCellAndUnvalued(t *testing.T, cfg Config) (testCell, string) {
 func TestBandIsThePriceLine(t *testing.T) {
 	t.Parallel()
 	c := priceCell(t, testConfig(okBand, approval("2026-10-20", "142.50")))
-	if c.Text != "114.00 to 142.50" || c.PriceState != "band" {
+	if c.Text != "$114.00 to $142.50" || c.PriceState != "band" {
 		t.Fatalf("cell = %+v", c)
 	}
 }
@@ -158,7 +158,7 @@ func TestExpiredAfter90Days(t *testing.T) {
 func TestAwaitingWhenValueDiffers(t *testing.T) {
 	t.Parallel()
 	c := priceCell(t, testConfig(okBand, approval("2026-10-20", "130.00")))
-	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval: 114.00 to 142.50" {
+	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval: $114.00 to $142.50" {
 		t.Fatalf("different value: %+v", c)
 	}
 	c = priceCell(t, testConfig(okBand))
@@ -229,5 +229,47 @@ func TestOverrideTextNamedUnvaluedIsNotListed(t *testing.T) {
 	}
 	if !strings.HasSuffix(page.GeneratedAt, "+08:00") {
 		t.Fatalf("generated_at = %q", page.GeneratedAt)
+	}
+}
+
+func TestBandTextFormat(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		band valuationapi.BandFigure
+		want string
+	}{
+		{"usd thousands", valuationapi.BandFigure{Low: "1431.6650", Value: "1500", Currency: "USD"}, "$1,431.67 to $1,500.00"},
+		{"usd plain", valuationapi.BandFigure{Low: "114.00", Value: "142.50", Currency: "USD"}, "$114.00 to $142.50"},
+		{"jpy", valuationapi.BandFigure{Low: "1234567.8", Value: "2000000", Currency: "JPY"}, "¥1,234,567.80 to ¥2,000,000.00"},
+		{"half away from zero", valuationapi.BandFigure{Low: "2.125", Value: "3.5", Currency: "USD"}, "$2.13 to $3.50"},
+		{"no currency", valuationapi.BandFigure{Low: "77.3474", Value: "96.6842"}, "77.3474 to 96.6842"},
+		{"not a decimal", valuationapi.BandFigure{Low: "n/a", Value: "96.6842", Currency: "USD"}, "n/a to 96.6842"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := bandText(tc.band); got != tc.want {
+				t.Fatalf("bandText = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPriceLineShowsTheFormattedBandAndApprovesOnTheStoredValue(t *testing.T) {
+	t.Parallel()
+	band := valuationapi.BandFigure{ID: "valuation.buy_band", State: valuationapi.StateOK, Value: "1500", Low: "1431.6650", Currency: "USD"}
+	c := priceCell(t, testConfig(band, approval("2026-10-20", "1500")))
+	if c.Text != "$1,431.67 to $1,500.00" || c.PriceState != "band" {
+		t.Fatalf("approved cell = %q (%s)", c.Text, c.PriceState)
+	}
+	c = priceCell(t, testConfig(band, approval("2026-10-20", "1500.00")))
+	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval: $1,431.67 to $1,500.00" {
+		t.Fatalf("approval on shown text must not match: %q (%s)", c.Text, c.PriceState)
+	}
+	band.Currency = ""
+	c = priceCell(t, testConfig(band, approval("2026-10-20", "1500")))
+	if c.Text != "1431.6650 to 1500" {
+		t.Fatalf("no-sign cell = %q", c.Text)
 	}
 }

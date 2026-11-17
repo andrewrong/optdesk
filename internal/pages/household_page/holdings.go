@@ -175,11 +175,31 @@ func (x rowsCtx) rateGap(res blockapi.HoldingsResult) string {
 	return fmt.Sprintf(textNoRate, named(names), pair, x.day)
 }
 
+// shareLabel writes a decimal share as percent with one decimal, half away from zero; a negative
+// uses U+2212. It works on the digits of the text, so no float is involved.
+func shareLabel(v string) string {
+	neg := strings.HasPrefix(v, "-")
+	whole, frac, _ := strings.Cut(strings.TrimPrefix(v, "-"), ".")
+	frac += "00"
+	tenths, err := strconv.Atoi(whole + frac[:1])
+	if err != nil {
+		return v + "%"
+	}
+	if frac[1] >= '5' {
+		tenths++
+	}
+	out := strconv.Itoa(tenths/10) + "." + strconv.Itoa(tenths%10) + "%"
+	if neg && tenths != 0 {
+		out = "\u2212" + out
+	}
+	return out
+}
+
 func shareOf(f compute.FigureValue) *shareFigure {
 	if f.Gap != "" || !shareText.MatchString(f.Value) {
 		return nil
 	}
-	return &shareFigure{Value: json.Number(f.Value), Text: f.Value + "%", Unit: "share_percent"}
+	return &shareFigure{Value: json.Number(f.Value), Text: shareLabel(f.Value), Unit: "share_percent"}
 }
 
 // holdingRows is one row per stock with its value and share, each cell labelled by the currency of
