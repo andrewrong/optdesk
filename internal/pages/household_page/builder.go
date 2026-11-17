@@ -94,7 +94,8 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		History: snap.history, Obligations: obligations,
 		UsdJpy: h.usdJpy, Positions: h.positionsIn(), PositionsRead: c.Marks != nil,
 	})
-	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, c.holdings(alias, snap, h), mv, missingFromLedger(h.positions, ledgerPuts), notInSnapshot(h.positions, ledgerPuts), at))
+	missing, notStored := missingFromLedger(h.positions, ledgerPuts), notInSnapshot(h.positions, ledgerPuts)
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, c.holdings(alias, snap, h), mv, missing, notStored, at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
