@@ -12,16 +12,16 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/companydataapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 const (
-	barBasis    = "trades"
-	barWindow   = 400 // days; the window the bars job keeps
-	reportAhead = 400 // days ahead searched for a listed report
-	dayLayout   = "2006-01-02"
-	sourceSEC   = "sec"
+	barBasis     = "trades"
+	barWindow    = 400 // days; the window the bars job keeps
+	reportAhead  = 400 // days ahead searched for a listed report
+	dayLayout    = "2006-01-02"
+	sourceSEC    = "sec"
+	statusListed = "listed"
 )
 
 // companyRow reads what is stored for one company and returns its row. An error is the failure of a read.
@@ -78,7 +78,7 @@ func barDays(bars []contracts.PriceBar) []contracts.Day {
 func nextReport(rows []contracts.EarningsDate, today contracts.Day) *contracts.Day {
 	for i := len(rows) - 1; i >= 0; i-- {
 		r := rows[i]
-		if r.Status != gen.EarningsDateStatusListed || r.ReportDate == nil {
+		if string(r.Status) != statusListed || r.ReportDate == nil {
 			continue
 		}
 		d := contracts.Day(r.ReportDate.Format(dayLayout))
