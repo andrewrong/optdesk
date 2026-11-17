@@ -114,3 +114,33 @@ func TestSicFromSubmissions(t *testing.T) {
 		t.Errorf("empty sic gave %+v %v", none, err)
 	}
 }
+
+func TestNewConceptsKept(t *testing.T) {
+	t.Parallel()
+	got, err := mapCompanyFacts("cik:0000320193", readFile(t, "companyfacts_sample.json"), retrieved, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ concept, value, unit, currency string }{
+		{"EarningsPerShareDiluted", "1.25", "USD/shares", ""},
+		{"EarningsPerShareBasic", "1.30", "USD/shares", ""},
+		{"CashAndCashEquivalentsAtCarryingValue", "29943000000", "USD", "USD"},
+		{"PaymentsForRepurchaseOfCommonStock", "90711000000", "USD", "USD"},
+		{"PaymentsOfDividends", "15421000000", "USD", "USD"},
+		{"PaymentsOfDividendsCommonStock", "15234000000", "USD", "USD"},
+		{"DebtCurrent", "12350000000", "USD", "USD"},
+		{"LongTermDebtCurrent", "10912000000", "USD", "USD"},
+	}
+	for _, c := range cases {
+		fs := find(got, "us-gaap", c.concept)
+		if len(fs) != 1 {
+			t.Errorf("%s: %d facts, want 1", c.concept, len(fs))
+			continue
+		}
+		f := fs[0]
+		if f.Value != c.value || f.Unit != c.unit || f.Currency != c.currency ||
+			f.DocID != "0000320193-25-000079" || f.Form != "10-K" || f.Filed.Format("2006-01-02") != "2025-10-31" {
+			t.Errorf("%s: %+v", c.concept, f)
+		}
+	}
+}
