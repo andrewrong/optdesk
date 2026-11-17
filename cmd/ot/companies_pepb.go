@@ -37,6 +37,6 @@ func withCompaniesPepb(cfg companies_page.Config, in companiesInputs) companies_
 		return cfg
 	}
 	cfg.Pepb = pepb.New(gonumstats.New())
-	cfg.Bars = barsOf(&symbolIDs{catalog: in.Catalog, names: in.Names}, in.Bars)
+	cfg.Bars = barsOf(&symbolIDs{catalog: in.Catalog, names: in.Names, stocks: in.Stocks}, in.Bars)
 	return cfg
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/companies_page"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -136,9 +137,10 @@ func buildCompaniesAt(ctx context.Context, a *app, rd siteReaders, day contracts
 	}
 	if fd, ok := fundamentalsOf(a.deps); ok {
 		facts, _ := siteReaderOf[store.FactReader](rd, siteFactsKey)
+		stocks, _ := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)
 		in := companiesInputs{
-			Facts: facts, Series: rd.series, Catalog: rd.catalog, Names: rd.names, Eod: rd.eod, Terms: rd.terms, Quotes: rd.quotes,
-			Bars: rd.bars,
+			Facts: facts, Series: rd.series, Catalog: rd.catalog, Names: rd.names, Eod: rd.eod, Terms: rd.terms,
+			Bars: rd.bars, Stocks: stocks,
 		}
 		cfg = withCompaniesPepb(newCompaniesPage(cfg, in, fd.fn), in)
 	}

@@ -764,9 +764,9 @@ func newCompaniesPage(base companies_page.Config, in companiesInputs, fn valuati
 	cfg.StandardOf, cfg.BuildFilings, cfg.Band, cfg.ImpliedGrowth = fn.StandardOf, fn.BuildFilings, fn.Band, fn.ImpliedGrowth
 	cfg.ReturnAtPrice, cfg.Questions, cfg.Diagnosis = fn.ReturnAtPrice, fn.Questions, fn.Diagnosis
 	if in.Catalog != nil && in.Names != nil {
-		res := &symbolIDs{catalog: in.Catalog, names: in.Names}
-		if in.Quotes != nil {
-			cfg.Spot = spotOf(res, in.Quotes)
+		res := &symbolIDs{catalog: in.Catalog, names: in.Names, stocks: in.Stocks}
+		if in.Bars != nil {
+			cfg.Spot = spotOf(res, in.Bars)
 		}
 		if in.Eod != nil && in.Terms != nil {
 			cfg.Offers = offersOf(res, in.Eod, in.Terms)

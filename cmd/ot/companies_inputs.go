@@ -4,12 +4,12 @@ import (
 	"context"
 	"math/big"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
@@ -37,25 +37,32 @@ type companiesInputs struct {
 	Names   store.InstrumentNameReader
 	Eod     store.OptionEodReader
 	Terms   store.OptionTermsReader
-	Quotes  store.QuoteSnapshotReader
+	Stocks  market_state_page.StockIDReader
 	Bars    bar.PriceBarReader
 }
 
 // quoteLookbackDays is how far before the page day a quote or an option_eod row is looked for.
 const quoteLookbackDays = 7
 
+// spotLookbackDays is how far before the page day a daily close is looked for.
+const spotLookbackDays = 14
+
 // nameBatch is the most ids one InstrumentNames call takes.
 const nameBatch = 500
 
 // symbolIDs finds the instrument id of an underlying symbol: the catalog lists the ids with option_eod rows, the
-// name reader names them, the id whose name equals the symbol is kept (a stock before any other type). The
-// answer is read once per resolver.
+// name reader names them, the id whose name equals the symbol is kept (a stock before any other type). A symbol
+// the catalog does not give is asked of the optional stock reader by name, and its id is used only when exactly
+// one row answers. The catalog answer is read once per resolver; a stock answer is kept per symbol.
 type symbolIDs struct {
 	catalog store.OptionEodCatalog
 	names   store.InstrumentNameReader
+	stocks  market_state_page.StockIDReader
 	once    sync.Once
 	ids     map[string]int64
 	err     error
+	mu      sync.Mutex
+	byStock map[string]int64 // 0 is a symbol the stock reader did not give once
 }
 
 func (r *symbolIDs) load(ctx context.Context) {
@@ -99,8 +106,32 @@ func (r *symbolIDs) ID(ctx context.Context, symbol string) (id int64, ok bool, e
 	if r.err != nil {
 		return 0, false, r.err
 	}
-	id, ok = r.ids[symbol]
-	return id, ok, nil
+	if id, ok = r.ids[symbol]; ok || r.stocks == nil {
+		return id, ok, nil
+	}
+	return r.stockID(ctx, symbol)
+}
+
+// stockID asks the stock reader for symbol; only exactly one row gives an id.
+func (r *symbolIDs) stockID(ctx context.Context, symbol string) (int64, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if id, seen := r.byStock[symbol]; seen {
+		return id, id != 0, nil
+	}
+	got, err := r.stocks.StockIDs(ctx, []string{symbol})
+	if err != nil {
+		return 0, false, err
+	}
+	var id int64
+	if len(got) == 1 {
+		id = got[0].InstrumentID
+	}
+	if r.byStock == nil {
+		r.byStock = map[string]int64{}
+	}
+	r.byStock[symbol] = id
+	return id, id != 0, nil
 }
 
 func dayBefore(day contracts.Day, n int) (contracts.Day, error) {
@@ -111,28 +142,23 @@ func dayBefore(day contracts.Day, n int) (contracts.Day, error) {
 	return contracts.Day(t.AddDate(0, 0, -n).Format(dayLayout)), nil
 }
 
-// spotOf returns the Spot function: the newest last price in the week up to the day, as decimal text. A symbol
-// with no instrument or no price gives ok false, a gap.
-func spotOf(res *symbolIDs, quotes store.QuoteSnapshotReader) func(context.Context, string, contracts.Day) (string, bool, error) {
+// spotOf returns the Spot function: the newest daily close (basis trades) in the two weeks up to the day, as the
+// decimal text the bar stores. A symbol with no instrument or no bar gives ok false, a gap.
+func spotOf(res *symbolIDs, bars bar.PriceBarReader) func(context.Context, string, contracts.Day) (string, bool, error) {
 	return func(ctx context.Context, symbol string, day contracts.Day) (string, bool, error) {
 		id, ok, err := res.ID(ctx, symbol)
 		if err != nil || !ok {
 			return "", false, err
 		}
-		from, err := dayBefore(day, quoteLookbackDays)
+		from, err := dayBefore(day, spotLookbackDays)
 		if err != nil {
 			return "", false, err
 		}
-		rows, err := quotes.QuoteSnapshots(ctx, id, from, day)
-		if err != nil {
+		rows, err := bars.PriceBars(ctx, id, "trades", from, day)
+		if err != nil || len(rows) == 0 {
 			return "", false, err
 		}
-		for i := len(rows) - 1; i >= 0; i-- {
-			if rows[i].Last != nil {
-				return strconv.FormatFloat(*rows[i].Last, 'f', -1, 64), true, nil
-			}
-		}
-		return "", false, nil
+		return rows[len(rows)-1].Close, true, nil
 	}
 }
 

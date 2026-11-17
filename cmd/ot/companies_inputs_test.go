@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -158,23 +159,36 @@ func (f fxFakeTerms) OptionTerms(_ context.Context, ids []int64) ([]store.Option
 	return out, nil
 }
 
-// fxFakeBars returns one trades bar for every instrument id.
-type fxFakeBars struct{}
+// fxFakeBars returns the trades bars built from the quotes of the fixture, one per quote with its last as the close,
+// ascending by day; an instrument with no quote gets one bar with the close 10.
+type fxFakeBars struct{ quotes []contracts.QuoteSnapshot }
 
-func (fxFakeBars) PriceBars(_ context.Context, _ int64, basis string, from, to contracts.Day) ([]contracts.PriceBar, error) {
+func (f fxFakeBars) PriceBars(_ context.Context, id int64, basis string, from, to contracts.Day) ([]contracts.PriceBar, error) {
 	if basis != "trades" || from > to {
 		return nil, nil
 	}
-	return []contracts.PriceBar{{Close: "10"}}, nil
+	var out []contracts.PriceBar
+	for _, q := range f.quotes {
+		if q.InstrumentID == int(id) && q.Last != nil {
+			out = append(out, contracts.PriceBar{SessionDay: q.SessionDay, Close: strconv.FormatFloat(*q.Last, 'f', -1, 64)})
+		}
+	}
+	if len(out) == 0 {
+		return []contracts.PriceBar{{Close: "10"}}, nil
+	}
+	return out, nil
 }
 
-type fxFakeQuotes []contracts.QuoteSnapshot
+// fxFakeStocks answers StockIDs with the listed rows whose name is asked.
+type fxFakeStocks []store.InstrumentName
 
-func (f fxFakeQuotes) QuoteSnapshots(_ context.Context, id int64, _, _ contracts.Day) ([]contracts.QuoteSnapshot, error) {
-	var out []contracts.QuoteSnapshot
-	for _, q := range f {
-		if q.InstrumentID == int(id) {
-			out = append(out, q)
+func (f fxFakeStocks) StockIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, n := range f {
+		for _, w := range names {
+			if n.Name == w {
+				out = append(out, n)
+			}
 		}
 	}
 	return out, nil
@@ -214,14 +228,14 @@ func fixtureStores(t *testing.T, in fixtureInput) (view fxFakeView, inputs compa
 		eod.rows = append(eod.rows, contracts.OptionEod{SessionDay: fixtureDay(t, o.SessionDay), InstrumentID: o.InstrumentID, UnderlyingID: int(o.UnderlyingID)})
 		terms = append(terms, store.OptionTerms{InstrumentID: int64(o.InstrumentID), Right: o.Right, Strike: o.Strike, ExpirationDate: contracts.Day(o.Expiry)})
 	}
-	var quotes fxFakeQuotes
+	var quotes []contracts.QuoteSnapshot
 	for _, q := range in.Quotes {
 		last := q.Last
 		quotes = append(quotes, contracts.QuoteSnapshot{SessionDay: fixtureDay(t, q.SessionDay), InstrumentID: q.InstrumentID, Last: &last})
 	}
 	return view, companiesInputs{
-		Facts: fxFakeFacts(in.Facts), Series: fxFakePoints(in.Series), Catalog: catalog, Names: names, Eod: eod, Terms: terms, Quotes: quotes,
-		Bars: fxFakeBars{},
+		Facts: fxFakeFacts(in.Facts), Series: fxFakePoints(in.Series), Catalog: catalog, Names: names, Eod: eod, Terms: terms,
+		Bars: fxFakeBars{quotes: quotes},
 	}
 }
 
@@ -389,5 +403,37 @@ func TestUnknownSymbolGivesGap(t *testing.T) {
 	bare := newCompaniesPage(companies_page.Config{}, companiesInputs{}, valuationFuncs{})
 	if bare.Spot != nil || bare.Offers != nil || bare.Facts != nil || bare.Series != nil {
 		t.Error("a nil reader set a field")
+	}
+}
+
+func TestSymbolResolvedViaStockReader(t *testing.T) {
+	t.Parallel()
+	in := loadFixtureInput(t)
+	_, inputs := fixtureStores(t, in)
+	// 7203 has no option_eod row: only the stock reader knows it, and the bars of its id give the price.
+	inputs.Stocks = fxFakeStocks{{InstrumentID: 7203, Type: "stock", Name: "7203"}}
+	inputs.Bars = fxFakeBars{quotes: []contracts.QuoteSnapshot{
+		{SessionDay: fixtureDay(t, "2026-11-06"), InstrumentID: 7203, Last: ptr(2500.5)},
+		{SessionDay: fixtureDay(t, "2026-11-09"), InstrumentID: 7203, Last: ptr(2512.5)},
+	}}
+	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
+	spot, ok, err := cfg.Spot(t.Context(), "7203", contracts.Day(in.Today))
+	if err != nil || !ok || spot != "2512.5" {
+		t.Errorf("spot %q %v %v", spot, ok, err)
+	}
+}
+
+func TestSharedSymbolStaysAGap(t *testing.T) {
+	t.Parallel()
+	in := loadFixtureInput(t)
+	_, inputs := fixtureStores(t, in)
+	inputs.Stocks = fxFakeStocks{
+		{InstrumentID: 8001, Type: "stock", Name: "DUP"},
+		{InstrumentID: 8002, Type: "stock", Name: "DUP"},
+	}
+	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
+	spot, ok, err := cfg.Spot(t.Context(), "DUP", contracts.Day(in.Today))
+	if err != nil || ok || spot != "" {
+		t.Errorf("two stock rows must stay a gap: %q %v %v", spot, ok, err)
 	}
 }

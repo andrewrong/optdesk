@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/home_market"
 	"github.com/andrewrong/optdesk/internal/pages/home_options"
 	"github.com/andrewrong/optdesk/internal/pages/home_page"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 )
@@ -59,7 +60,8 @@ func homeResolver(a *app, rd siteReaders) *symbolIDs {
 	if a.profile.Name == "demo" || rd.catalog == nil || rd.names == nil {
 		return nil
 	}
-	return &symbolIDs{catalog: rd.catalog, names: rd.names}
+	stocks, _ := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)
+	return &symbolIDs{catalog: rd.catalog, names: rd.names, stocks: stocks}
 }
 
 // homeInstrumentID is the instrument of symbol, 0 with no resolver or no match.
