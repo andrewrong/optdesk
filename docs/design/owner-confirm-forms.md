@@ -18,17 +18,17 @@ Read at origin/main 4438c820.
 3. `ConfirmCard` renders `<form method="post" action={form.post_path}>` with `expires`, `mac`, one hidden input per field, `confirm=1` and a "Confirm and save" button. The page computes nothing.
 4. `/settings`: no schema change. The preview builds the page from the posted values: `cmd/ot` wraps `rd.owner` in a reader whose `Params` and `Exclusions` apply the parsed change (`ch.Params`, `ch.Exclusions`) over the stored rows, for the preview build only. The existing confirm form then posts the owner's values, `Parse` sees the same change, and the save follows. The edit table below the card shows the unsaved values, which is the preview.
 5. Contract version: `page.underlyings` goes v1 to v2 by `docs/design/week1.md:106` (an additive change after the first consumer bumps the version; `internal/pages/underlyings` and `view.tsx` are consumers). v1 stays frozen with its fixtures. `page.settings_page` keeps v2: its payload does not change.
-6. Tests follow the flow as the page makes it (Interface). Library: none new; own code, a few lines on each page (`/settings` already has the form shape).
+6. Tests follow the flow as the page makes it (Interface); the `/settings` test is in #2637 (Left out). Library: none new; own code, a few lines on each page (`/settings` already has the form shape).
 
 ## Modules
 
-No row of `docs/design/modules.md` changes. Entry 1 spans contracts (`contracts/**`, `internal/contracts/**`, `web/src/generated/**`, `docs/contracts/page-schemas.md`), pages (`internal/pages/**`, `docs/contracts/pages.md`), ot (`cmd/**`, `docs/contracts/ot/**`) and web (`web/src/types/underlyings.ts`). It is the judged cut: the builder emits v2 only when the schema, the type and the route agree, and it lists exactly its Files. Entry 2 is web only; entry 3 is ot only.
+No row of `docs/design/modules.md` changes. Entry 1 spans contracts (`contracts/**`, `internal/contracts/**`, `web/src/generated/**`, `docs/contracts/page-schemas.md`), pages (`internal/pages/**`, `docs/contracts/pages.md`), ot (`cmd/**`, `docs/contracts/ot/**`) and web (`web/src/types/underlyings.ts`). It is the judged cut: the builder emits v2 only when the schema, the type and the route agree, and it lists exactly its Files. Entry 2 is web only. The /settings half is not an entry of this design (Left out).
 
 ## Interface
 
 Owner of the schema: contracts; of the Go type: pages. `Confirm` of `page.underlyings.v2`: `changes`, `stops` as v1, and required `fields`: at most 15 objects of `name` (1 to 300 characters) and `value` (at most 300 characters), no extra property. Go: `type Field struct{ Name, Value string }`, `Confirm` gains `Fields []Field`. TypeScript: `Underlyings` of `underlyings.v2.ts`.
 
-Round-trip tests, one Go test per page, each builds the second post only from the payload of the first answer: the path from `form.post_path` (`confirm.form.post_path` is not read), `expires` and `mac` from the payload, the fields from the payload as the card makes them; `confirm=1` is the card's own constant. `/underlyings`: `TestPostUnderlyingsConfirmRoundTripFromPayload`, cases: a text (name), a number (buy_price), an emptied value (note), a switch turned on (options), a switch turned off (an absent switch on a row that has it on stays off after confirm, not on), and the add form (symbol, market, kind). `/settings`: `TestPostSettingsConfirmRoundTripFromPayload`, cases: an integer and a decimal param, an emptied param (reset to default), a row excluded, a row un-excluded (absent `excluded` stays off), and two rows with one excluded (repeated `row` and `excluded` survive). The settings test builds the hidden fields by the rule of `SettingsPage.tsx:78-85` (`param.<key>`, `row`, `excluded` of the payload); it cannot run the card.
+Round-trip tests, one Go test per page, each builds the second post only from the payload of the first answer: the path from `form.post_path` (`confirm.form.post_path` is not read), `expires` and `mac` from the payload, the fields from the payload as the card makes them; `confirm=1` is the card's own constant. `/underlyings`: `TestPostUnderlyingsConfirmRoundTripFromPayload`, cases: a text (name), a number (buy_price), an emptied value (note), a switch turned on (options), a switch turned off (an absent switch on a row that has it on stays off after confirm, not on), and the add form (symbol, market, kind). The `/settings` round-trip test belongs to the outside bug issue (Left out), not to this Interface.
 
 ## Issues
 
@@ -39,19 +39,22 @@ Files: contracts/schemas/page.underlyings.v2.json, web/src/generated/underlyings
 Design: docs/design/owner-confirm-forms.md#interface
 Contracts: page.underlyings v2 (new); v1 stays frozen
 Order: first.
-Goal: the v2 schema, type, fixtures, builder and route carry `fields`, and a second post made from them saves.
+Goal: the v2 schema, type, fixtures, builder and route carry `fields`, and a second post made from them saves. In `web/src/types/underlyings.ts` it adds v2 to the supported versions (`[1, 2]`), so the v1 fixtures of `web/test/pages/underlyings/view.test.tsx` still pass.
+Acceptance: `TestUnderlyingsV2Fixtures` in `internal/contracts/underlyings_v2_test.go`, `TestBuildConfirmCarriesFields` in `internal/pages/underlyings/builder_test.go` and `TestPostUnderlyingsConfirmRoundTripFromPayload` in `cmd/ot/underlyings_post_test.go` pass (the draft lists every item).
 
 ### 2 underlyings-confirm-card
 
 Module: web. Size: S.
 Files: web/src/pages/underlyings/view.tsx, web/test/pages/underlyings/view.test.tsx, web/src/types/underlyings.ts
 Design: docs/design/owner-confirm-forms.md#decisions
-Order: after 1, and after PR 2629 (it edits `view.tsx`).
+Order: after 1. PR 2629 (the Edit link and On/Off text in `view.tsx`) is already on main.
 Goal: `ConfirmCard` is the second form of the flow; the web type accepts v2 only.
+Acceptance: the `new:` tests of `web/test/pages/underlyings/view.test.tsx` (form posts the payload's fields, token and `confirm=1`; unchecked switch stays off; no form without the page `form`) pass on the v2 fixtures (the draft lists every item).
 
 ## Left out
 
-- The /settings half (Decision on settings above) is built as its own one-module bug issue, registered 2026-11-17 with `Design: none`, since it edits cmd/ot only; this design records the decision and lists no entry for it.
+- The /settings half (Decision 4) is built as its own one-module bug issue, #2637, with `Design: none`, since it edits cmd/ot only; this design lists no entry for it. Record for that issue: the test `TestPostSettingsConfirmRoundTripFromPayload` in `cmd/ot/settings_test.go`, cases: an integer and a decimal param, an emptied param (reset to default), a row excluded, a row un-excluded (absent `excluded` stays off), and two rows with one excluded (repeated `row` and `excluded` survive); it builds the hidden fields by the rule of `SettingsPage.tsx:78-85` (`param.<key>`, `row`, `excluded` of the payload), since it cannot run the card.
+- Rejected alternatives: keeping the pending change on the server and signing only its id (needs a store, an expiry and a cleanup for a two-post flow that has none, and the token already binds nothing, Doubts 2); echoing the whole post body (would carry `expires`, `mac` and unknown names into the payload); a cap that clips long values (a silent write of a changed value, Decision 2); splitting entry 1 by module (a window where the builder emits v2 and no route fills `fields`, Doubts 1).
 
 - A token the post checks: `ownerDummyToken` stays (Doubts). `/settings` schema and web card: unchanged (Decision 4).
 - Redesign of the preview, a cancel link, a result page beyond the `?saved=<n>` redirect.
