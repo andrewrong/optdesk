@@ -1,5 +1,5 @@
 // Package fundamental holds the fact store: Open (store.OpenFactStoreFunc) over the table
-// obs.fundamental_fact (insert) and the view rd.fundamental_fact_r1 (every read).
+// obs.fundamental_fact (insert) and the views rd.fundamental_fact_r1 and r2 (every read).
 package fundamental
 
 import (
@@ -30,13 +30,19 @@ const noStart = "0001-01-01"
 const (
 	insertFactSQL = `INSERT INTO obs.fundamental_fact
  (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end,
-  currency, value, form, filed, retrieved_at, raw_sha256)
-VALUES ($1, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $12::text::date, $13, $14)
+  currency, value, form, filed, retrieved_at, raw_sha256, fy, fp, frame)
+VALUES ($1, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $12::text::date, $13, $14, $15, $16, $17)
 ON CONFLICT DO NOTHING`
 
 	selectFactsSQL = `SELECT source, subject, doc_id, taxonomy, concept, unit, period_start, period_end,
  currency, value, form, filed, retrieved_at, raw_sha256
 FROM rd.fundamental_fact_r1 WHERE source = $1 AND subject = $2 AND filed <= $3::text::date
+ORDER BY filed, doc_id, taxonomy, concept, unit, period_start NULLS FIRST, period_end`
+
+	// selectFactsR2SQL is selectFactsSQL over the view r2: the same filter and order, fy, fp and frame appended.
+	selectFactsR2SQL = `SELECT source, subject, doc_id, taxonomy, concept, unit, period_start, period_end,
+ currency, value, form, filed, retrieved_at, raw_sha256, fy, fp, frame
+FROM rd.fundamental_fact_r2 WHERE source = $1 AND subject = $2 AND filed <= $3::text::date
 ORDER BY filed, doc_id, taxonomy, concept, unit, period_start NULLS FIRST, period_end`
 )
 
@@ -96,6 +102,7 @@ func (s *factStore) InsertFacts(ctx context.Context, rows []contracts.Fundamenta
 		stmts = append(stmts, stmt{insertFactSQL, []any{
 			string(r.Source), r.Subject, r.DocID, r.Taxonomy, r.Concept, r.Unit, start, r.PeriodEnd.Format(time.DateOnly),
 			r.Currency, r.Value, r.Form, r.Filed.Format(time.DateOnly), r.RetrievedAt.UTC(), r.RawSha256,
+			r.Fy, r.Fp, r.Frame,
 		}})
 	}
 	if len(stmts) == 0 {
@@ -111,19 +118,34 @@ func (s *factStore) InsertFacts(ctx context.Context, rows []contracts.Fundamenta
 	return nil
 }
 
-// FactsFiledBy returns every row of the source and subject filed on or before cutoff, read from the view only.
+// FactsFiledBy returns every row of the source and subject filed on or before cutoff, read from the view r1 only.
 func (s *factStore) FactsFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
+	return s.selectFacts(ctx, selectFactsSQL, false, source, subject, cutoff)
+}
+
+// FactsWithPeriodFiledBy is FactsFiledBy over the view rd.fundamental_fact_r2: the same rows in the same order,
+// with Fy, Fp and Frame filled.
+func (s *factStore) FactsWithPeriodFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
+	return s.selectFacts(ctx, selectFactsR2SQL, true, source, subject, cutoff)
+}
+
+func (s *factStore) selectFacts(ctx context.Context, sql string, withPeriod bool,
+	source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
 	if _, err := time.Parse(time.DateOnly, string(cutoff)); err != nil {
 		return nil, permanent(fmt.Errorf("fundamental: bad cutoff %q: %w", cutoff, err))
 	}
 	out := []contracts.FundamentalFact{}
-	err := s.db.Select(ctx, selectFactsSQL, []any{source, subject, string(cutoff)}, func(sc scanner) error {
+	err := s.db.Select(ctx, sql, []any{source, subject, string(cutoff)}, func(sc scanner) error {
 		var f contracts.FundamentalFact
 		var source string
 		var start *time.Time
 		var end, filed time.Time
-		if err := sc.Scan(&source, &f.Subject, &f.DocID, &f.Taxonomy, &f.Concept, &f.Unit, &start, &end,
-			&f.Currency, &f.Value, &f.Form, &filed, &f.RetrievedAt, &f.RawSha256); err != nil {
+		dest := []any{&source, &f.Subject, &f.DocID, &f.Taxonomy, &f.Concept, &f.Unit, &start, &end,
+			&f.Currency, &f.Value, &f.Form, &filed, &f.RetrievedAt, &f.RawSha256}
+		if withPeriod {
+			dest = append(dest, &f.Fy, &f.Fp, &f.Frame)
+		}
+		if err := sc.Scan(dest...); err != nil {
 			return err
 		}
 		// The enum type lives in the generated package, which this one does not import: its UnmarshalJSON

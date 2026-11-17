@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 // fakeRow is one stored row in the columns of the table.
@@ -20,15 +21,18 @@ type fakeRow struct {
 	startKey, end, filed                          string
 	currency, value, form, sha                    string
 	retrieved                                     time.Time
+	fy                                            *int
+	fp, frame                                     string
 }
 
 // fakeDB keeps the rows by the eight-column key, as the table with ON CONFLICT DO NOTHING would; its read is
 // the view: period_start_key 0001-01-01 comes back as NULL.
 type fakeDB struct {
-	rows   map[[8]string]fakeRow
-	order  [][8]string
-	execs  int
-	failed error
+	lastSQL string
+	rows    map[[8]string]fakeRow
+	order   [][8]string
+	execs   int
+	failed  error
 }
 
 func newFake() *fakeDB { return &fakeDB{rows: map[[8]string]fakeRow{}} }
@@ -44,16 +48,21 @@ func (f *fakeDB) ExecAll(_ context.Context, stmts []stmt) error {
 		if _, ok := f.rows[k]; ok {
 			continue
 		}
-		f.rows[k] = fakeRow{k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], "", a[8].(string), a[9].(string), a[10].(string), a[13].(string), a[12].(time.Time)}
+		f.rows[k] = fakeRow{k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], "", a[8].(string), a[9].(string), a[10].(string), a[13].(string),
+			a[12].(time.Time), nil, "", ""}
 		r := f.rows[k]
 		r.filed = a[11].(string)
+		if len(a) > 14 {
+			r.fy, r.fp, r.frame = a[14].(*int), a[15].(string), a[16].(string)
+		}
 		f.rows[k] = r
 		f.order = append(f.order, k)
 	}
 	return nil
 }
 
-func (f *fakeDB) Select(_ context.Context, _ string, args []any, scan func(scanner) error) error {
+func (f *fakeDB) Select(_ context.Context, sql string, args []any, scan func(scanner) error) error {
+	f.lastSQL = sql
 	if f.failed != nil {
 		return f.failed
 	}
@@ -95,6 +104,9 @@ func (s rowScanner) Scan(dest ...any) error {
 	*dest[11].(*time.Time) = day(r.filed)
 	*dest[12].(*time.Time) = r.retrieved
 	*dest[13].(*string) = r.sha
+	if len(dest) > 14 {
+		*dest[14].(**int), *dest[15].(*string), *dest[16].(*string) = r.fy, r.fp, r.frame
+	}
 	return nil
 }
 
@@ -258,4 +270,16 @@ func TestUnknownSourceInViewRefused(t *testing.T) {
 	if _, err := (&factStore{db: db}).FactsFiledBy(context.Background(), "fmp", "cik:1", "2025-01-02"); err == nil {
 		t.Error("a source outside the dataset enum was returned")
 	}
+}
+
+// periodReader is the method of companydataapi.PeriodFactReader, which this package does not import.
+type periodReader interface {
+	FactsWithPeriodFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error)
+}
+
+func TestOpenedStoreHasPeriodMethod(t *testing.T) {
+	t.Parallel()
+	// Open returns &factStore{...} as a store.FactStore; the assertion below is what a caller writes.
+	var _ periodReader = (*factStore)(nil)
+	var _ = func(s store.FactStore) bool { _, ok := s.(periodReader); return ok }
 }

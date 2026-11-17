@@ -17,14 +17,15 @@ var _ fundkey.FactUpserter = (*factStore)(nil)
 // replaced fact.
 const upsertFactSQL = `INSERT INTO obs.fundamental_fact AS f
  (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end,
-  currency, value, form, filed, retrieved_at, raw_sha256, written_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $12::text::date, $13, $14, $15)
+  currency, value, form, filed, retrieved_at, raw_sha256, fy, fp, frame, written_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $12::text::date, $13, $14, $15, $16, $17, $18)
 ON CONFLICT (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end) DO UPDATE SET
  currency = EXCLUDED.currency, value = EXCLUDED.value, form = EXCLUDED.form, filed = EXCLUDED.filed,
- retrieved_at = EXCLUDED.retrieved_at, raw_sha256 = EXCLUDED.raw_sha256, updated_at = now(),
- written_by = $15
-WHERE (f.currency, f.value, f.form, f.filed, f.raw_sha256)
- IS DISTINCT FROM (EXCLUDED.currency, EXCLUDED.value, EXCLUDED.form, EXCLUDED.filed, EXCLUDED.raw_sha256)
+ retrieved_at = EXCLUDED.retrieved_at, raw_sha256 = EXCLUDED.raw_sha256, fy = EXCLUDED.fy, fp = EXCLUDED.fp, frame = EXCLUDED.frame,
+ updated_at = now(), written_by = $18
+WHERE (f.currency, f.value, f.form, f.filed, f.raw_sha256, f.fy, f.fp, f.frame)
+ IS DISTINCT FROM (EXCLUDED.currency, EXCLUDED.value, EXCLUDED.form, EXCLUDED.filed, EXCLUDED.raw_sha256,
+  EXCLUDED.fy, EXCLUDED.fp, EXCLUDED.frame)
 RETURNING f.source`
 
 // returningDB is the optional seam of the upsert, next to database: it runs the statements in one transaction and
@@ -34,7 +35,7 @@ type returningDB interface {
 }
 
 // UpsertFacts stores the rows by their eight-column key in one transaction: a fact whose currency, value, form,
-// filed date or raw hash differs from the stored one replaces it, an equal fact is not rewritten. writtenBy names
+// filed date, raw hash, fy, fp or frame differs from the stored one replaces it, an equal fact is not rewritten. writtenBy names
 // the run. An empty list makes no call. A constraint violation is Permanent, every other database error Retryable.
 func (s *factStore) UpsertFacts(ctx context.Context, rows []contracts.FundamentalFact, writtenBy string) (fundkey.WriteCount, error) {
 	stmts := make([]stmt, 0, len(rows))
@@ -48,7 +49,8 @@ func (s *factStore) UpsertFacts(ctx context.Context, rows []contracts.Fundamenta
 		}
 		stmts = append(stmts, stmt{upsertFactSQL, []any{
 			string(r.Source), r.Subject, r.DocID, r.Taxonomy, r.Concept, r.Unit, start, r.PeriodEnd.Format(time.DateOnly),
-			r.Currency, r.Value, r.Form, r.Filed.Format(time.DateOnly), r.RetrievedAt.UTC(), r.RawSha256, writtenBy,
+			r.Currency, r.Value, r.Form, r.Filed.Format(time.DateOnly), r.RetrievedAt.UTC(), r.RawSha256,
+			r.Fy, r.Fp, r.Frame, writtenBy,
 		}})
 	}
 	if len(stmts) == 0 {

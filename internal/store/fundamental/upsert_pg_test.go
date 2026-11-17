@@ -5,12 +5,14 @@ package fundamental
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/fundkey"
 )
 
@@ -140,3 +142,117 @@ func TestFactsRoleCannotDelete(t *testing.T) {
 }
 
 func asTyped(err error, te *contracts.TypedError) bool { return errors.As(err, te) }
+
+// periodReaderPG is the method of companydataapi.PeriodFactReader.
+type periodReaderPG interface {
+	FactsWithPeriodFiledBy(context.Context, string, string, contracts.Day) ([]contracts.FundamentalFact, error)
+}
+
+func periodFactPG(fy *int, fp string) contracts.FundamentalFact {
+	f := fact("a1", "NetIncomeLoss", "2025-04-01", "2025-06-30", "2025-08-01")
+	f.Fy, f.Fp, f.Frame = fy, fp, "CY2025Q2"
+	return f
+}
+
+func TestUpsertFillsPeriodFieldsOfStoredRowPG(t *testing.T) { // new
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	u, r := openUpserter(t, name)
+	if got, err := u.UpsertFacts(ctx, []contracts.FundamentalFact{periodFactPG(nil, "")}, "w1"); err != nil || got.Written != 1 {
+		t.Fatalf("first = %+v, %v", got, err)
+	}
+	fy := 2025
+	got, err := u.UpsertFacts(ctx, []contracts.FundamentalFact{periodFactPG(&fy, "Q2")}, "w2")
+	if err != nil || got.Written != 1 || got.Unchanged != 0 {
+		t.Fatalf("second = %+v, %v; want 1 written", got, err)
+	}
+	rows, err := r.(periodReaderPG).FactsWithPeriodFiledBy(ctx, "sec", "cik:0000320193", "2025-12-31")
+	if err != nil || len(rows) != 1 || rows[0].Fy == nil || *rows[0].Fy != 2025 || rows[0].Fp != "Q2" || rows[0].Frame != "CY2025Q2" {
+		t.Errorf("rows = %+v, %v; want the filled row", rows, err)
+	}
+}
+
+func TestUpsertSamePeriodFieldsUnchangedPG(t *testing.T) { // new
+	t.Parallel()
+	ctx := context.Background()
+	u, _ := openUpserter(t, newDatabase(t))
+	fy := 2025
+	if _, err := u.UpsertFacts(ctx, []contracts.FundamentalFact{periodFactPG(&fy, "Q2")}, "w1"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := u.UpsertFacts(ctx, []contracts.FundamentalFact{periodFactPG(&fy, "Q2")}, "w2")
+	if err != nil || got.Written != 0 || got.Unchanged != 1 {
+		t.Errorf("second = %+v, %v; want 1 unchanged", got, err)
+	}
+}
+
+func TestFactsWithPeriodFiledByReturnsPeriodFieldsPG(t *testing.T) { // new
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	u, r := openUpserter(t, name)
+	fy := 2025
+	rows := []contracts.FundamentalFact{
+		periodFactPG(&fy, "Q2"),
+		fact("a1", "Assets", "", "2025-06-30", "2025-08-01"),
+	}
+	if err := r.(store.FactStore).InsertFacts(ctx, rows); err != nil {
+		t.Fatal(err)
+	}
+	_ = u
+	got, err := r.(periodReaderPG).FactsWithPeriodFiledBy(ctx, "sec", "cik:0000320193", "2025-12-31")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("rows = %+v, %v; want 2", got, err)
+	}
+	for _, g := range got {
+		switch g.Concept {
+		case "NetIncomeLoss":
+			if g.Fy == nil || *g.Fy != 2025 || g.Fp != "Q2" || g.Frame != "CY2025Q2" {
+				t.Errorf("duration fact = %+v", g)
+			}
+		case "Assets":
+			if g.Fy != nil || g.Fp != "" || g.Frame != "" {
+				t.Errorf("fact with no period = %+v, want fy nil, fp and frame empty", g)
+			}
+		}
+	}
+}
+
+func TestUpsertAsFundamentalRoleCanReadNewColumns(t *testing.T) { // new
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	u, _ := openUpserter(t, name) // connects as ot_w_fundamental, not the owner
+	fy := 2025
+	if _, err := u.UpsertFacts(ctx, []contracts.FundamentalFact{periodFactPG(&fy, "Q2")}, "w1"); err != nil {
+		t.Fatalf("first upsert: %v", err)
+	}
+	got, err := u.UpsertFacts(ctx, []contracts.FundamentalFact{periodFactPG(&fy, "FY")}, "w2")
+	if err != nil {
+		if strings.Contains(err.Error(), "permission denied for column") {
+			t.Fatalf("the role lacks a grant on the new columns: %v", err)
+		}
+		t.Fatalf("second upsert: %v", err)
+	}
+	if got.Written != 1 {
+		t.Errorf("count = %+v, want the changed fp written", got)
+	}
+}
+
+func TestRolesCanSelectFactViewR2(t *testing.T) { // new
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	for _, role := range []string{"ot_ro_pages", "ot_w_fundamental"} {
+		c, err := pgx.Connect(ctx, connURL(t, name, role))
+		if err != nil {
+			t.Fatalf("%s: connect: %v", role, err)
+		}
+		_, err = c.Exec(ctx, `SELECT fy, fp, frame FROM rd.fundamental_fact_r2`)
+		_ = c.Close(ctx)
+		if err != nil {
+			t.Errorf("%s: %v", role, err)
+		}
+	}
+}
