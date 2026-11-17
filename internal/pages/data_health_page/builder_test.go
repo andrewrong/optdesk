@@ -163,7 +163,7 @@ func TestDatasetRows(t *testing.T) {
 			t.Fatalf("orphan cell %+v", c)
 		}
 	}
-	if o.GapDays != 0 || o.RepairAll != RepairNone || a.GapDays != 0 {
+	if o.GapDays != 0 || o.RepairAll != RepairNone || a.GapDays != coverage.WindowSessions-1 {
 		t.Fatalf("%+v", o)
 	}
 	// from is the oldest day of the window: 30 sessions back from 2026-03-10.
@@ -179,7 +179,7 @@ func TestGapDaysOnRow(t *testing.T) {
 	}}
 	jobs := []Job{{ID: "j", Kind: KindAnyDay, Calendar: "XNYS", Datasets: []string{"obs.a"}}}
 	d := build(t, input(r, jobs, testForm))
-	if d.Datasets[0].GapDays != 1 || d.Datasets[0].RepairAll != RepairButton {
+	if d.Datasets[0].GapDays != coverage.WindowSessions || d.Datasets[0].RepairAll != RepairButton {
 		t.Fatalf("%+v", d.Datasets[0])
 	}
 }
