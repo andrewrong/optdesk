@@ -175,6 +175,11 @@ func dataHealthJobOf(t *testing.T, jobs []data_health_page.Job, id string) data_
 	return data_health_page.Job{}
 }
 
+// dataHealthZoneCarried: the zone of the row, or the zone of the time table when the row has none.
+func dataHealthZoneCarried(zone string, r jobRow) bool {
+	return zone == r.Zone || (r.Zone == "" && zone == dataHealthTimeSlots[r.ID].zone)
+}
+
 func TestEveryJobHasRowOrReason(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
@@ -190,7 +195,7 @@ func TestEveryJobHasRowOrReason(t *testing.T) {
 		case noLedger && (reason == "" || len(j.Datasets) > 0):
 			t.Errorf("%s: reason %q, datasets %v", r.ID, reason, j.Datasets)
 		}
-		if j.Kind != r.Kind || j.Zone != r.Zone || j.WhyText != r.Text {
+		if j.Kind != r.Kind || !dataHealthZoneCarried(j.Zone, r) || j.WhyText != r.Text {
 			t.Errorf("%s: row not carried: %+v", r.ID, j)
 		}
 	}
@@ -266,11 +271,44 @@ func TestDueAtFromSlot(t *testing.T) {
 		}
 	}
 	for _, j := range jobs {
-		if j.DueAt != "" && !slices.Contains([]string{"option_eod", "option_eod_index", "option_eod_jp"}, j.ID) {
+		if j.DueAt != "" && !slices.Contains([]string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events"}, j.ID) {
 			t.Errorf("%s carries DueAt %q", j.ID, j.DueAt)
 		}
 	}
 	if dueAtOfSlot("") != "" || dueAtOfSlot("9999") != "" {
 		t.Error("a bad slot gives a due time")
+	}
+}
+
+func TestDataHealthTimeSlots(t *testing.T) {
+	t.Parallel()
+	want := map[string]string{"fred_series": "07:30", "fundamentals": "08:00", "macro_events": "06:00", "option_eod": "11:00"}
+	got := map[string]data_health_page.Job{}
+	for _, j := range dataHealthJobs() {
+		got[j.ID] = j
+	}
+	for id, due := range want {
+		if got[id].DueAt != due {
+			t.Errorf("%s DueAt %q, want %q", id, got[id].DueAt, due)
+		}
+		if id != "option_eod" && got[id].Zone != "America/New_York" {
+			t.Errorf("%s Zone %q", id, got[id].Zone)
+		}
+	}
+
+	// 06:00 New York on a session day, before the slot of fred_series: the missing cell shows its due time.
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=postgres://pages\n")
+	cov := fakeCoverage{cells: []coverage.Cell{{Day: "2026-11-13", Dataset: "obs.series_point", Keys: 1, Missing: 1}}}
+	rd := siteReaders{ext: map[string]any{siteDataHealthKey: coverage.Reader(cov)}, edit: &ownerEdit{}}
+	early := time.Date(2026, 11, 13, 11, 0, 0, 0, time.UTC)
+	h := siteHandler(a, fakeClock{early}, "", rd, echoHandler, http.NotFoundHandler())
+	rec := settingsGet(t, h, http.MethodGet, "/"+siteDataHealthRoute)
+	body := rec.Body.String()
+	validateDataHealth(t, rec.Body.Bytes())
+	if !strings.Contains(body, `"due_text":"due`) {
+		t.Fatalf("no due text: %s", body)
+	}
+	if strings.Contains(body, `"repair":"button"`) {
+		t.Fatalf("button before the slot: %s", body)
 	}
 }
