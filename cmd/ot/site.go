@@ -398,6 +398,10 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			postOwnerPriceLines(a, clk, rd, newHandler, w, r)
 			return
 		}
+		if post := valuationPostOf(strings.TrimPrefix(r.URL.Path, "/")); post != nil && rd.edit != nil {
+			post(a, clk, rd, newHandler, w, r)
+			return
+		}
 		if strings.TrimPrefix(r.URL.Path, "/") == jobConsolePostRoute && rd.edit != nil {
 			postOwnerJobConsole(a, clk, rd, w, r)
 			return
