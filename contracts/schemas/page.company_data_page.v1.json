@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.company_data_page.v1.json",
+  "title": "CompanyDataPage",
+  "description": "View model of the company data page: one row per company with what is stored for it and what is missing and why. The builder computes every figure and text; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "built_at", "data_health_path", "columns", "companies", "glossary", "gaps"],
+  "properties": {
+    "schema": {"const": "company_data_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "run_id": {"$ref": "common.v2.json#/$defs/Id"},
+    "built_at": {"$ref": "common.v2.json#/$defs/Timestamp"},
+    "data_health_path": {"$ref": "#/$defs/Text"},
+    "columns": {"type": "array", "items": {"$ref": "#/$defs/Column"}},
+    "companies": {"type": "array", "items": {"$ref": "#/$defs/Company"}},
+    "glossary": {"type": "array", "items": {"$ref": "#/$defs/GlossaryRow"}},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Optional": {"type": "string", "maxLength": 600},
+    "Day": {"type": "string", "format": "date"},
+    "Column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "gloss"],
+      "properties": {
+        "key": {"$ref": "#/$defs/Text"},
+        "label": {"$ref": "#/$defs/Text"},
+        "gloss": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "Missing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "text"],
+      "properties": {
+        "code": {"enum": ["jp", "no_cik", "fundamentals_off", "no_statements", "annual_only", "no_instrument", "no_bars", "no_next_report"]},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "symbol", "name", "market", "issuer", "fiscal_year_end", "price_to", "bar_count", "statements", "latest_quarter", "eps_quarters", "next_report", "missing", "quarters_path"],
+      "properties": {
+        "key": {"$ref": "#/$defs/Text"},
+        "symbol": {"$ref": "#/$defs/Text"},
+        "name": {"$ref": "#/$defs/Optional"},
+        "market": {"$ref": "#/$defs/Text"},
+        "issuer": {"$ref": "#/$defs/Optional"},
+        "fiscal_year_end": {"$ref": "#/$defs/Optional"},
+        "price_to": {"oneOf": [{"$ref": "#/$defs/Day"}, {"type": "null"}]},
+        "bar_count": {"type": "string", "pattern": "^[0-9]+$"},
+        "statements": {"type": "boolean"},
+        "latest_quarter": {"$ref": "#/$defs/Optional"},
+        "eps_quarters": {"type": "string", "pattern": "^[0-9]+$"},
+        "next_report": {"oneOf": [{"$ref": "#/$defs/Day"}, {"type": "null"}]},
+        "missing": {"type": "array", "items": {"$ref": "#/$defs/Missing"}},
+        "quarters_path": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "GlossaryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "text"],
+      "properties": {
+        "term": {"$ref": "#/$defs/Text"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"type": "string", "pattern": "^[a-z_]{1,48}$"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    }
+  }
+}

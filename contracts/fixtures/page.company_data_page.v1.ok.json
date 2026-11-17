@@ -1,0 +1,49 @@
+{
+  "schema": "company_data_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0003",
+  "built_at": "2026-11-17T09:30:00Z",
+  "data_health_path": "/data-health",
+  "columns": [
+    {"key": "fiscal_year_end", "label": "Fiscal year end", "gloss": "The month the fiscal year ends."},
+    {"key": "price_to", "label": "Price up to", "gloss": "The newest day with a stored daily bar."},
+    {"key": "bar_count", "label": "Daily bars", "gloss": "Number of stored daily bars."},
+    {"key": "statements", "label": "Statements", "gloss": "Whether quarterly statements are stored."},
+    {"key": "latest_quarter", "label": "Latest quarter", "gloss": "Label and end of the newest quarter."},
+    {"key": "eps_quarters", "label": "EPS quarters", "gloss": "Quarters that have a diluted EPS."},
+    {"key": "next_report", "label": "Next report", "gloss": "The next listed report date."},
+    {"key": "missing", "label": "What is missing", "gloss": "What is missing and why."}
+  ],
+  "companies": [
+    {
+      "key": "US:ACME", "symbol": "ACME", "name": "Acme Widgets Inc.", "market": "US", "issuer": "cik:0000999001",
+      "fiscal_year_end": "September", "price_to": "2026-11-16", "bar_count": "271", "statements": true,
+      "latest_quarter": "FY2026 Q3 (2026-06-27)", "eps_quarters": "12", "next_report": "2027-01-29",
+      "missing": [], "quarters_path": "/company-quarters?c=US:ACME"
+    },
+    {
+      "key": "US:BOLT", "symbol": "BOLT", "name": "Bolt Foods Ltd.", "market": "US", "issuer": "cik:0000999002",
+      "fiscal_year_end": "", "price_to": "2026-11-16", "bar_count": "268", "statements": false,
+      "latest_quarter": "", "eps_quarters": "0", "next_report": null,
+      "missing": [
+        {"code": "no_statements", "text": "Either an IFRS filer, whose quarters are left out on purpose, or the daily run has not stored it yet."},
+        {"code": "no_next_report", "text": "No report date is listed."}
+      ],
+      "quarters_path": "/company-quarters?c=US:BOLT"
+    },
+    {
+      "key": "US:CRUX", "symbol": "CRUX", "name": "Crux Metals Corp.", "market": "US", "issuer": "",
+      "fiscal_year_end": "", "price_to": null, "bar_count": "0", "statements": false,
+      "latest_quarter": "", "eps_quarters": "0", "next_report": null,
+      "missing": [
+        {"code": "no_cik", "text": "Type the SEC number on the underlyings page."}
+      ],
+      "quarters_path": ""
+    }
+  ],
+  "glossary": [
+    {"term": "no_cik", "text": "The company has no SEC number yet."},
+    {"term": "no_statements", "text": "No quarterly statement is stored for the company."}
+  ],
+  "gaps": []
+}
