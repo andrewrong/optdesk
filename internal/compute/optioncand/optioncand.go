@@ -106,10 +106,15 @@ func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute
 		AnnualizedYield: formatFixed(yield, 6), Delta: q.Delta, IV: q.IV,
 		Status: status(gates), Gates: gates, Marks: marks, Fits: fits,
 	}
+	var margin *big.Rat
 	if hasBid {
-		row.BreakEven = formatTrim(new(big.Rat).Sub(strike, bid))
+		breakEven := new(big.Rat).Sub(strike, bid)
+		row.BreakEven = formatTrim(breakEven)
+		if buy, ok := parseDec(in.BuyPrice); ok && buy.Sign() > 0 {
+			margin = new(big.Rat).Quo(new(big.Rat).Sub(buy, breakEven), buy)
+		}
 	}
-	return scored{row: row, yield: yield, strike: strike}
+	return scored{row: row, yield: yield, strike: strike, margin: margin}
 }
 
 // status is blocked if any gate blocked, else unknown if any is unknown, else ok.
