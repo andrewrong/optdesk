@@ -52,25 +52,41 @@ func postRepair(ctx context.Context, a *app, st jobrequest.Poster, clk clock.Clo
 	}
 }
 
-// repairJobOf is the first job of the page's table that lists the dataset; nil when none does.
-func repairJobOf(dataset string) *data_health_page.Job {
-	jobs := dataHealthJobs()
-	for i := range jobs {
-		for _, d := range jobs[i].Datasets {
+// repairJobsOf is every job of the page's table that lists the dataset, in table order; empty when none does.
+func repairJobsOf(dataset string) []data_health_page.Job {
+	out := []data_health_page.Job{}
+	for _, j := range dataHealthJobs() {
+		for _, d := range j.Datasets {
 			if d == dataset {
-				return &jobs[i]
+				out = append(out, j)
+				break
 			}
 		}
 	}
-	return nil
+	return out
 }
 
-// repairGaps queues one plain request (Force false) for each day data_health_page.GapDays gives for the dataset,
-// oldest first, and returns the id of the first request (0 when nothing was queued). found is false for a dataset
-// no job writes. An open request of the same job and day is kept, not an error.
+// firstPoster remembers the id of the first request the wrapped poster created or kept.
+type firstPoster struct {
+	jobrequest.Poster
+	first int64
+}
+
+func (p *firstPoster) Enqueue(ctx context.Context, r jobrequest.Request) (jobrequest.Enqueued, error) {
+	res, err := p.Poster.Enqueue(ctx, r)
+	if err == nil && p.first == 0 && (res.Outcome == jobrequest.EnqueueCreated || res.Outcome == jobrequest.EnqueueExisting) {
+		p.first = res.Row.ID
+	}
+	return res, err
+}
+
+// repairGaps queues, for every job that lists the dataset, one plain request (Force false) for each day
+// data_health_page.GapDays gives for that job's verdict, oldest first, and returns the id of the first request
+// (0 when nothing was queued). found is false for a dataset no job writes. An open request of the same job and day
+// is kept, not an error.
 func repairGaps(ctx context.Context, cov coverage.Reader, st jobrequest.Poster, dataset string, clk clock.Clock) (first int64, found bool, err error) {
-	job := repairJobOf(dataset)
-	if job == nil {
+	jobs := repairJobsOf(dataset)
+	if len(jobs) == 0 {
 		return 0, false, nil
 	}
 	now := clk.Now().UTC()
@@ -78,29 +94,45 @@ func repairGaps(ctx context.Context, cov coverage.Reader, st jobrequest.Poster, 
 	if err != nil {
 		return 0, true, err
 	}
-	cells, err := repairCells(ctx, cov, job, dataset, now, today)
-	if err != nil {
-		return 0, true, err
+	fp := &firstPoster{Poster: st}
+	for i := range jobs {
+		cells, err := repairCells(ctx, cov, &jobs[i], dataset, now, today)
+		if err != nil {
+			return fp.first, true, err
+		}
+		if _, _, err := repairGapsFor(ctx, cells, &jobs[i], fp, 0); err != nil {
+			return fp.first, true, err
+		}
 	}
+	return fp.first, true, nil
+}
+
+// repairGapsFor queues one plain request for each gap day of the cells (already filtered by the caller and carrying
+// the job's verdicts), oldest first. cap is the number of new requests still allowed, 0 for no cap; capped is true
+// when a gap day was left because the cap was reached. An existing request is kept and does not count.
+func repairGapsFor(ctx context.Context, cells []data_health_page.Cell, job *data_health_page.Job, st jobrequest.Poster,
+	cap int) (queued int, capped bool, err error) {
 	for _, day := range data_health_page.GapDays(cells) {
+		if cap > 0 && queued >= cap {
+			return queued, true, nil
+		}
 		res, err := st.Enqueue(ctx, jobrequest.Request{JobID: job.ID, Day: string(day), Force: false})
 		if err != nil {
-			return first, true, err
+			return queued, false, err
 		}
 		switch res.Outcome {
-		case jobrequest.EnqueueCreated, jobrequest.EnqueueExisting:
-			if first == 0 {
-				first = res.Row.ID
-			}
+		case jobrequest.EnqueueCreated:
+			queued++
+		case jobrequest.EnqueueExisting:
 		case jobrequest.EnqueueWithdrawing:
 			// The open request of this day is going away; the owner presses again when it shows withdrawn.
 		case jobrequest.EnqueueBusy:
-			return first, true, errRepairUnavailable
+			return queued, false, errRepairUnavailable
 		default:
-			return first, true, errRepairUnavailable
+			return queued, false, errRepairUnavailable
 		}
 	}
-	return first, true, nil
+	return queued, false, nil
 }
 
 // repairCells reads the sessions and cells as the page does and applies the verdicts with a present form.

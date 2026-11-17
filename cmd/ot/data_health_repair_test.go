@@ -16,8 +16,25 @@ import (
 // repairCoverage serves fixed sessions (the five weekdays of the week of postNow) and cells.
 type repairCoverage struct{ cells []coverage.Cell }
 
+// A dataset the test gave no cell for gets an ok cell for every session day, so none of its days is not_run.
 func (f repairCoverage) Cells(context.Context, contracts.Day, contracts.Day) ([]coverage.Cell, error) {
-	return append([]coverage.Cell{}, f.cells...), nil
+	out := append([]coverage.Cell{}, f.cells...)
+	given := map[string]bool{}
+	for _, c := range f.cells {
+		given[c.Dataset] = true
+	}
+	for _, j := range dataHealthJobs() {
+		for _, ds := range j.Datasets {
+			if given[ds] {
+				continue
+			}
+			given[ds] = true
+			for _, d := range []contracts.Day{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"} {
+				out = append(out, repairCellOf(ds, d, coverage.StateOK))
+			}
+		}
+	}
+	return out, nil
 }
 
 func (repairCoverage) Sessions(context.Context, string, contracts.Day, contracts.Day) ([]coverage.Session, error) {
@@ -149,12 +166,13 @@ func TestRepairCountEqualsGapDays(t *testing.T) {
 	t.Parallel()
 	const ds = "obs.price_bar"
 	cells := []coverage.Cell{repairMissing(ds, "2026-11-02"), repairCellOf(ds, "2026-11-03", coverage.StateOK),
-		repairCellOf(ds, "2026-11-04", coverage.StateExpired), repairMissing(ds, "2026-11-05")}
+		repairCellOf(ds, "2026-11-04", coverage.StateExpired), repairMissing(ds, "2026-11-05"),
+		repairCellOf(ds, "2026-11-06", coverage.StateOK)}
 	fp, _, _, err := repairOver(t, ds, cells...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	job := repairJobOf(ds)
+	job := &repairJobsOf(ds)[0]
 	page := data_health_page.DatasetCells(cells, ds, []contracts.Day{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"})
 	data_health_page.Apply(page, job, &data_health_page.Form{}, postNow, "2026-11-06")
 	if gap := len(data_health_page.GapDays(page)); gap != 3 || len(fp.enqueued) != gap {
@@ -228,4 +246,56 @@ func TestRepairAnswerNeverSaysRepaired(t *testing.T) {
 			t.Fatalf("text %q", s)
 		}
 	}
+}
+
+func TestRepairReachesEveryJobOfDataset(t *testing.T) {
+	t.Parallel()
+	const acc = "account.capture"
+	fp, first, found, err := repairOver(t, acc, repairMissing(acc, "2026-11-04"))
+	if err != nil || !found {
+		t.Fatalf("%v %v", found, err)
+	}
+	wantRequests(t, fp, "statement_capture", "2026-11-04")
+	if first != 101 {
+		t.Fatalf("first id %d", first)
+	}
+	fp, _, _, err = repairOver(t, acc, repairMissing(acc, "2026-11-06"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fp.enqueued) != 2 {
+		t.Fatalf("enqueued %v", fp.enqueued)
+	}
+	got := map[string]bool{}
+	for _, r := range fp.enqueued {
+		if r.Day != "2026-11-06" {
+			t.Fatalf("request %+v", r)
+		}
+		got[r.JobID] = true
+	}
+	if !got["statement_capture"] || !got["account_capture"] {
+		t.Fatalf("jobs %v", got)
+	}
+	const rd = "readings.reading"
+	fp, _, _, err = repairOver(t, rd, repairMissing(rd, "2026-11-04"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRequests(t, fp, "compute_figures", "2026-11-04")
+}
+
+func TestRepairGapsForStopsAtCap(t *testing.T) {
+	t.Parallel()
+	const ds = "obs.fx_rate"
+	job := &repairJobsOf(ds)[0]
+	cells := []data_health_page.Cell{}
+	for _, d := range []contracts.Day{"2026-11-05", "2026-11-02", "2026-11-04", "2026-11-03", "2026-11-06"} {
+		cells = append(cells, data_health_page.Cell{Day: d, State: "missing", Repair: data_health_page.RepairButton})
+	}
+	fp := newFakePoster()
+	queued, capped, err := repairGapsFor(t.Context(), cells, job, fp, 2)
+	if err != nil || queued != 2 || !capped {
+		t.Fatalf("%d %v %v", queued, capped, err)
+	}
+	wantRequests(t, fp, "fx_refresh", "2026-11-02", "2026-11-03")
 }
