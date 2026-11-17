@@ -27,7 +27,7 @@ The top bar of `web/src/shell/TopNav.tsx` has 16 items today and wraps onto two 
    - Market: Macro `/macro`, Market state `/market-state`
    - Portfolio: Household `/household`, Positions `/positions`, Risk `/risk`
    - Options: Overview `/options`, Data `/options/data` (prefix match kept), Candidates `/options/candidates`, Held options (a label, not a link) with Structures `/options/structures`, Result `/options/result`, Notices `/options/notices`, Tracking `/options/tracking`, then Advice `/advice` (keeps its `Lightbulb` icon)
-   - Companies: Price lines `/plan/price-lines`, Company data `/company-data`
+   - Companies: Watch list `/underlyings` (the underlying list, served today but not in the nav; where the owner turns a name's options, fundamentals or status on and off, owner 2026-11-17), Price lines `/plan/price-lines`, Company data `/company-data`
    - System: Settings `/settings`, Job console `/job-console`, Data health `/data-health`
    The separate Option positions dropdown is removed; its four links keep their targets and move into the Options menu, under the label "Held options".
    Inside a menu a label does not repeat the menu name (owner, 2026-11-17: "不要重复"): in Options the links read Overview (`/options`), Data, Candidates and the label Held options; the page titles are unchanged.
