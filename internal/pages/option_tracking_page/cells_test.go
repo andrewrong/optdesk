@@ -49,7 +49,7 @@ func TestNumericCellsCarryValue(t *testing.T) {
 		t.Fatalf("gap = %+v", g)
 	}
 	m := asValue(t, moneynessCell(sampleOpen("p")))
-	if m.Text != "3.20%" || *m.Value != "3.20" || !hasBadge(m, "out of the money") {
+	if m.Text != "3.2%" || *m.Value != "3.20" || !hasBadge(m, "out of the money") {
 		t.Fatalf("moneyness = %+v", m)
 	}
 }
@@ -270,6 +270,22 @@ func TestPremiumCellRoundsHalfAwayFromZero(t *testing.T) {
 	} {
 		if v := asValue(t, moneyCell(c.in, "USD")); v.Text != c.text {
 			t.Errorf("%s: text = %q, want %q", c.in, v.Text, c.text)
+		}
+	}
+}
+
+func TestMoneynessTextOneDecimalMinus(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ stored, text string }{
+		{"-19.29", "−19.3%"},
+		{"3.20", "3.2%"},
+		{"-0.04", "0.0%"},
+	} {
+		o := sampleOpen("p")
+		o.OtmPercent = tc.stored
+		m := asValue(t, moneynessCell(o))
+		if m.Text != tc.text || m.Value == nil || string(*m.Value) != tc.stored {
+			t.Fatalf("%s: moneyness = %+v", tc.stored, m)
 		}
 	}
 }
