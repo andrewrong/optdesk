@@ -36,15 +36,10 @@ func ivRvReading(t *testing.T, f *fx, name string) contracts.ReadingRecord {
 	return reading(t, f, ivRvName, "underlying", name)
 }
 
-func wantRetryable(t *testing.T, res contracts.JobResult, contains ...string) {
+func wantNoRunErr(t *testing.T, res contracts.JobResult) {
 	t.Helper()
-	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
-		t.Fatalf("Err %v, want Retryable", res.Err)
-	}
-	for _, c := range contains {
-		if !strings.Contains(res.Err.Error(), c) {
-			t.Fatalf("error %q lacks %q", res.Err, c)
-		}
+	if res.Err != nil {
+		t.Fatalf("Err %v, want none", res.Err)
 	}
 }
 
@@ -93,15 +88,14 @@ func TestIvRv20SameDay(t *testing.T) {
 	}
 }
 
-func TestIvRv20WaitsForFred(t *testing.T) {
+func TestIvRv20UsesNewestCommonDay(t *testing.T) {
 	t.Parallel()
 	f := world()
 	prev := shiftDay(dayD, -1)
 	f.addPoint("VIXCLS", prev, 20)
 	f.addRv20("SPX", prev, "0.150000", string(prev))
 	f.addRv20("SPX", dayD, "0.160000", string(dayD))
-	res := runIvRvKey(t, f, "SPX")
-	wantRetryable(t, res, string(dayD))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
 	r := ivRvReading(t, f, "SPX")
 	if r.State != "ok" || *r.Value != "0.050000" || tagOf(r, "data_day") != string(prev) || r.Rev != 1 {
 		t.Fatalf("reading %+v, want 0.050000 of %s from the rv20 of that day", r, prev)
@@ -116,6 +110,19 @@ func TestIvRv20WaitsForFred(t *testing.T) {
 	}
 }
 
+func TestIvRv20OldPointMissing(t *testing.T) {
+	t.Parallel()
+	f := world()
+	d := shiftDay(dayD, -6) // the bound is 5 days, see TestIvRv20StaleIsMissing
+	f.addPoint("VIXCLS", d, 20)
+	f.addRv20("SPX", d, "0.150000", string(d))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
+	r := ivRvReading(t, f, "SPX")
+	if r.State != "missing_input" || r.ReasonCode == nil || *r.ReasonCode != 3 {
+		t.Fatalf("reading %+v, want missing_input code 3", r)
+	}
+}
+
 // The runner runs iv_rv20 before rv20 of the same day, so neither the rv20 nor the point of D exists yet.
 func TestIvRv20Rv20OfDayAbsent(t *testing.T) {
 	t.Parallel()
@@ -123,13 +130,13 @@ func TestIvRv20Rv20OfDayAbsent(t *testing.T) {
 	prev := shiftDay(dayD, -1)
 	f.addPoint("VIXCLS", prev, 20)
 	f.addRv20("SPX", prev, "0.150000", string(prev))
-	wantRetryable(t, runIvRvKey(t, f, "SPX"), string(dayD))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
 	if r := ivRvReading(t, f, "SPX"); r.State != "ok" || tagOf(r, "data_day") != string(prev) {
 		t.Fatalf("reading %+v, want the figure of %s", r, prev)
 	}
 	// a point of D without an rv20 of D gives the same figure and the same wait
 	f.addPoint("VIXCLS", dayD, 21)
-	wantRetryable(t, runIvRvKey(t, f, "SPX"), string(dayD))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
 	if r := ivRvReading(t, f, "SPX"); r.State != "ok" || tagOf(r, "data_day") != string(prev) {
 		t.Fatalf("reading %+v, want the figure of %s", r, prev)
 	}
@@ -157,7 +164,7 @@ func TestIvRv20NoValueDay(t *testing.T) {
 	last.Status, last.Value = "no_value", nil
 	f.addRv20("SPX", prev, "0.150000", string(prev))
 	f.addRv20("SPX", dayD, "0.160000", string(dayD))
-	wantRetryable(t, runIvRvKey(t, f, "SPX"), string(dayD))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
 	if r := ivRvReading(t, f, "SPX"); r.State != "ok" || tagOf(r, "data_day") != string(prev) || *r.Value != "0.050000" {
 		t.Fatalf("reading %+v, want the figure of %s: a no_value day has no point", r, prev)
 	}

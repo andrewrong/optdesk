@@ -90,8 +90,7 @@ func TestHv30StoredForSubject(t *testing.T) {
 	b.addCloses("trades", dayD, alternating(31))
 	j := hvJob(t, f, b, realFigs())
 	res := runAll(t, j)
-	// the world has no FRED point of the session day: the iv_rv20 keys are stored and end Retryable (Decision 10)
-	wantRetryable(t, res, "market.iv_rv20")
+	wantNoRunErr(t, res)
 	if res.Returned != res.Usable {
 		t.Fatalf("result %+v", res)
 	}
