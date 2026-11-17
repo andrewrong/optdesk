@@ -38,11 +38,16 @@ function Token({ form }: { form: Form }) {
   )
 }
 
-function Flag({ on, label }: { on: boolean; label: string }) {
-  return <Switch checked={on} disabled aria-label={label} />
+function Flag({ on }: { on: boolean }) {
+  return <span>{on ? 'On' : 'Off'}</span>
 }
 
-const columns: ColumnDef<Name>[] = [
+// The anchor id of the edit form of a row: the key with every character outside letters, digits, "_" and "-" as "-".
+function editId(key: string) {
+  return `edit-${key.replace(/[^A-Za-z0-9_-]/g, '-')}`
+}
+
+const baseColumns: ColumnDef<Name>[] = [
   {
     id: 'name',
     header: 'Name',
@@ -59,13 +64,13 @@ const columns: ColumnDef<Name>[] = [
     header: 'Status',
     cell: ({ row }) => <Badge variant="secondary">{row.original.status_text}</Badge>,
   },
-  { id: 'options', header: 'Options', cell: ({ row }) => <Flag on={row.original.options} label="options" /> },
+  { id: 'options', header: 'Options', cell: ({ row }) => <Flag on={row.original.options} /> },
   {
     id: 'fundamentals',
     header: 'Fundamentals',
-    cell: ({ row }) => <Flag on={row.original.fundamentals} label="fundamentals" />,
+    cell: ({ row }) => <Flag on={row.original.fundamentals} />,
   },
-  { id: 'held', header: 'Held', cell: ({ row }) => <Flag on={row.original.held} label="held" /> },
+  { id: 'held', header: 'Held', cell: ({ row }) => <Flag on={row.original.held} /> },
   { id: 'buy', header: 'Buy', cell: ({ row }) => row.original.buy_price },
   { id: 'sale', header: 'Sale', cell: ({ row }) => row.original.sale_price },
   {
@@ -85,7 +90,18 @@ const columns: ColumnDef<Name>[] = [
   { id: 'note', header: 'Note', cell: ({ row }) => row.original.note },
 ]
 
-function NamesTable({ rows }: { rows: Name[] }) {
+const editColumn: ColumnDef<Name> = {
+  id: 'edit',
+  header: '',
+  cell: ({ row }) => (
+    <Button asChild variant="link" size="sm">
+      <a href={`#${editId(row.original.key)}`}>Edit</a>
+    </Button>
+  ),
+}
+
+function NamesTable({ rows, editable }: { rows: Name[]; editable: boolean }) {
+  const columns = editable ? [...baseColumns, editColumn] : baseColumns
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
   return (
     <Table data-names>
@@ -152,6 +168,8 @@ function EditForm({ row, form }: { row: Name; form: Form }) {
     <form
       method="post"
       action="/owner-underlyings"
+      id={editId(row.key)}
+      tabIndex={-1}
       data-row={row.key}
       className="grid gap-3 border-t pt-3 sm:grid-cols-3"
     >
@@ -226,7 +244,7 @@ export function UnderlyingsView({ payload }: { payload: Payload }) {
               <AlertDescription>{g.text}</AlertDescription>
             </Alert>
           ))}
-          <NamesTable rows={payload.rows} />
+          <NamesTable rows={payload.rows} editable={form !== null} />
         </CardContent>
       </Card>
       {confirm ? <ConfirmCard confirm={confirm} /> : null}
