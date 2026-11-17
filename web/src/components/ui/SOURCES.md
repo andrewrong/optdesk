@@ -29,6 +29,7 @@ from `@/lib/utils` instead (ADR 0034: `clsx` and `tailwind-merge` are the design
 | dropdown-menu | `dropdown-menu.tsx` | not retrieved (see below) | MIT |
 | popover | `popover.tsx` | not retrieved (see below) | MIT |
 | sheet | `sheet.tsx` | not retrieved (see below) | MIT |
+| dialog | `dialog.tsx` | not retrieved (see below) | MIT |
 
 Not copied (owner-only, they add packages or pull a second library): chart, calendar, sonner, drawer, command, carousel, form, input-otp.
 
@@ -57,3 +58,5 @@ Added by #2641: `select.tsx` is the registry's `radix-nova` Select written by ha
 | Component | File | Registry revision (SHA-256, 16 hex) | Licence |
 |---|---|---|---|
 | select | `select.tsx` | not retrieved (see above) | MIT |
+
+Added by #2672: `dialog.tsx` is the registry's `radix-nova` Dialog written by hand over `radix-ui`'s `Dialog` (no registry revision was recorded; a later issue retrieves the item and diffs it). No package is added. Licence: MIT (shadcn-ui/ui). Local edits: `animate-in` and `animate-out` carry the `motion-safe:` prefix, as in `sheet.tsx`.
