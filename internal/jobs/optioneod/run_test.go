@@ -654,3 +654,76 @@ func TestRootNilTranslator(t *testing.T) {
 		t.Fatalf("translator: got %q", got)
 	}
 }
+
+// quoteOnly answers the underlying snapshot with one fixed quote.
+type quoteOnly struct {
+	*fakeBroker
+	q broker.Quote
+}
+
+func (c *quoteOnly) Snapshot(ctx context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
+	if kind == broker.KindSnapshot {
+		c.snaps = append(c.snaps, snapCall{kind, cs})
+		return []broker.Quote{c.q}, nil
+	}
+	return c.fakeBroker.Snapshot(ctx, kind, cs)
+}
+
+func TestUnderlyingPriceFromBidAsk(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, "2026-11-06 17:00")
+	r.b.noUndPrice = true
+	r.job.b = &quoteOnly{fakeBroker: r.b, q: broker.Quote{Bid: num(99), Ask: num(101)}}
+	if res := r.run(testDay, testKey); res.Err != nil || res.Returned != 4 {
+		t.Fatalf("%+v", res)
+	}
+	rows := r.w.all()
+	if len(rows) == 0 {
+		t.Fatal("no rows stored")
+	}
+	for i, row := range rows {
+		if row.UnderlyingPrice == nil || *row.UnderlyingPrice != 100 {
+			t.Fatalf("row %d underlying_price %v, want 100", i, row.UnderlyingPrice)
+		}
+	}
+}
+
+func TestUnderlyingNoPriceNamesQuote(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		q    []broker.Quote
+		want []string
+	}{
+		{"bid without ask", []broker.Quote{{Status: broker.StatusPartial, Bid: num(99)}},
+			[]string{"no price of ", "status 1", "Last", "Close", "UndPrice", "Ask"}},
+		{"no quote", nil, []string{"no price of ", "no quote"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := newRig(t, "2026-11-06 17:00")
+			r.job.b = &emptyQuote{fakeBroker: r.b, qs: tc.q}
+			res := r.run(testDay, testKey)
+			if kindOf(res) != contracts.Retryable || len(r.w.calls) != 0 {
+				t.Fatalf("result %+v, writes %d", res, len(r.w.calls))
+			}
+			for _, w := range tc.want {
+				if !strings.Contains(res.Err.Error(), w) {
+					t.Fatalf("error %q lacks %q", res.Err.Error(), w)
+				}
+			}
+		})
+	}
+}
+
+type emptyQuote struct {
+	*fakeBroker
+	qs []broker.Quote
+}
+
+func (c *emptyQuote) Snapshot(ctx context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
+	if kind == broker.KindSnapshot {
+		return c.qs, nil
+	}
+	return c.fakeBroker.Snapshot(ctx, kind, cs)
+}
