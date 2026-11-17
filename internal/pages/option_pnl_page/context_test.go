@@ -44,12 +44,24 @@ type fakeReplay struct {
 	ins       []compute.LedgerInput
 }
 
-func (f *fakeReplay) Replay(in compute.LedgerInput, _ compute.LedgerParams) compute.LedgerResult {
+func (f *fakeReplay) Replay(in compute.LedgerInput, params compute.LedgerParams) compute.LedgerResult {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.ins = append(f.ins, in)
 	marks := map[string]compute.LedgerMark{}
+	at := func(d contracts.Day) int {
+		for i, s := range in.SessionDays {
+			if s == d {
+				return i
+			}
+		}
+		return -1
+	}
 	for _, m := range in.Marks {
+		// a mark older than MarkMaxAgeSessions sessions is not used, as the real replay does
+		if i, a := at(m.Day), at(in.AsOf); i >= 0 && a >= 0 && a-i > params.MarkMaxAgeSessions {
+			continue
+		}
 		marks[m.Contract] = m
 	}
 	var out []compute.LedgerPosition
@@ -95,7 +107,7 @@ type fakeSessions struct{}
 
 func (fakeSessions) SessionDays(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SessionDay, error) {
 	var out []contracts.SessionDay
-	for _, s := range []string{"2026-11-13", "2026-11-16", "2026-11-17"} {
+	for _, s := range []string{"2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-16", "2026-11-17"} {
 		d, _ := time.Parse(dayLayout, s)
 		out = append(out, contracts.SessionDay{SessionDay: types.SerializableDate{Time: d}, IsSession: true})
 	}

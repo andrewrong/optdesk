@@ -56,11 +56,11 @@ func TestRowsPassedUnfiltered(t *testing.T) {
 	}
 }
 
-func TestStaleMarkIsLotGap(t *testing.T) {
+func TestRuleFailingRowIsLotGap(t *testing.T) {
 	t.Parallel()
 	r := newRig()
 	r.replay.positions = []compute.LedgerPosition{lotPos("p1", "AAA", "101", "90.00", "open")}
-	// the last passing row is old: the replay (here: no mark given) answers no_mark
+	// the only row has ask 0: no mark is made, the replay answers no_mark
 	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-17", "1.20", "0", "95")}
 	vm := r.build(t)
 	g := vm.Accounts[0].Lots[0].Gap
@@ -69,6 +69,32 @@ func TestStaleMarkIsLotGap(t *testing.T) {
 	}
 	if len(r.attr.ins) != 0 {
 		t.Fatal("Attribute must not be called for a lot with a reason")
+	}
+}
+
+func TestStaleValidRowIsLotGap(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	r.replay.positions = []compute.LedgerPosition{lotPos("p1", "AAA", "101", "90.00", "open")}
+	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-10", "1.20", "1.30", "95")} // valid, 5 sessions old
+	vm := r.build(t)
+	if g := vm.Accounts[0].Lots[0].Gap; g == nil || g.Text != "no stored quote of AAA within 3 sessions: no split" {
+		t.Fatalf("stale valid row must give the no_mark gap; lot = %+v", vm.Accounts[0].Lots[0])
+	}
+	if len(r.attr.ins) != 0 {
+		t.Fatal("Attribute must not be called for a lot with a reason")
+	}
+}
+
+func TestFreshValidRowIsNotLotGap(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	r.replay.positions = []compute.LedgerPosition{lotPos("p1", "AAA", "101", "90.00", "open")}
+	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-13", "1.20", "1.30", "95")} // 2 sessions old
+	r.attr.results["90.00"] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: "100"}
+	vm := r.build(t)
+	if g := vm.Accounts[0].Lots[0].Gap; g != nil {
+		t.Fatalf("a row within 3 sessions must give a mark; gap = %+v", g)
 	}
 }
 
