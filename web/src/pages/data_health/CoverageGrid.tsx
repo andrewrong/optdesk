@@ -41,7 +41,7 @@ export function CoverageGrid({ datasets, form }: { datasets: Dataset[]; form: Fo
         return (
           <div className="min-w-40 space-y-1">
             <div className="font-medium">{d.label}</div>
-            <div className="text-xs text-muted-foreground">{d.dataset_id}</div>
+            {d.label !== d.dataset_id ? <div className="text-xs text-muted-foreground">{d.dataset_id}</div> : null}
             {d.newest.map((n) => (
               <div key={n.series_id} data-newest={n.series_id} className="text-xs">
                 {n.series_id}: {n.day}, {n.age_days} days old
