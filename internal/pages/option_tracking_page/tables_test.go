@@ -238,8 +238,10 @@ func TestRecentMoneyColumnsRoundingAndGap(t *testing.T) {
 func TestRecentTableLabelsNetPremium(t *testing.T) {
 	t.Parallel()
 	o := sampleClosed("z")
-	o.Currency, o.PremiumIncome = "USD", "-3541.0000"
-	label := func(tb *table, id string) column {
+	o.Right, o.Status, o.Currency, o.PremiumIncome = "P", "closed", "USD", "-3541.0000"
+	res := trackapi.TrackResult{Open: []opt{sampleOpen("p1")}, Recent: []opt{o}}
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main")).Accounts[0]
+	find := func(tb *table, id string) column {
 		for _, c := range tb.Columns {
 			if c.ID == id {
 				return c
@@ -248,15 +250,14 @@ func TestRecentTableLabelsNetPremium(t *testing.T) {
 		t.Fatalf("no column %s", id)
 		return column{}
 	}
-	recent := recentTable([]opt{o})
-	c := label(recent, "premium")
+	c := find(a.Recent, "premium")
 	if c.Label != "Net premium" || c.Hint == nil || *c.Hint == "" {
-		t.Fatalf("recent premium column = %+v", c)
+		t.Fatalf("closed premium column = %+v", c)
 	}
-	if v := asValue(t, recent.Rows[0].Cells["premium"]); v.Text != "−$3,541.00" {
-		t.Fatalf("premium = %+v", v)
+	if got := cellMap(t, a.Recent.Rows[0], "premium")["text"]; got != "−$3,541.00" {
+		t.Fatalf("premium text = %v", got)
 	}
-	if c := label(openTable([]opt{o}), "premium"); c.Label != "Premium collected" {
+	if c := find(a.Open, "premium"); c.Label != "Premium collected" {
 		t.Fatalf("open premium label = %q", c.Label)
 	}
 }
