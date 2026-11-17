@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.valuation_page.v1.json",
+  "title": "ValuationPage",
+  "description": "View model of the valuation pages: the table of every name, the page of one company and the entry form, told apart by view. Every figure is a decimal text written by the builder from the function's result; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "built_at", "view", "rows", "unvalued_count", "company", "current", "lines", "band", "close", "history", "required", "problems", "error", "saved", "gaps", "form"],
+  "properties": {
+    "schema": {"const": "valuation_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "run_id": {"$ref": "common.v2.json#/$defs/Id"},
+    "built_at": {"$ref": "common.v2.json#/$defs/Timestamp"},
+    "view": {"enum": ["table", "company", "form"]},
+    "rows": {"oneOf": [{"type": "array", "items": {"$ref": "#/$defs/Row"}}, {"type": "null"}]},
+    "unvalued_count": {"type": "integer", "minimum": 0},
+    "company": {"oneOf": [{"$ref": "#/$defs/Company"}, {"type": "null"}]},
+    "current": {"oneOf": [{"$ref": "#/$defs/Current"}, {"type": "null"}]},
+    "lines": {"oneOf": [{"$ref": "#/$defs/Lines"}, {"type": "null"}]},
+    "band": {"oneOf": [{"$ref": "#/$defs/Band"}, {"type": "null"}]},
+    "close": {"oneOf": [{"$ref": "#/$defs/Close"}, {"type": "null"}]},
+    "history": {"oneOf": [{"type": "array", "items": {"$ref": "#/$defs/HistoryRow"}}, {"type": "null"}]},
+    "required": {"type": "array", "items": {"$ref": "#/$defs/Text"}},
+    "problems": {"type": "array", "items": {"$ref": "#/$defs/Problem"}},
+    "error": {"$ref": "#/$defs/Optional"},
+    "saved": {"$ref": "#/$defs/Optional"},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Optional": {"type": "string", "maxLength": 600},
+    "Long": {"type": "string", "maxLength": 20000},
+    "Figure": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "OptFigure": {"type": "string", "pattern": "^(-?[0-9]+(\\.[0-9]+)?)?$"},
+    "Day": {"type": "string", "format": "date"},
+    "OptDay": {"type": "string", "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"},
+    "Market": {"enum": ["US", "JP", "HKCN"]},
+    "Zone": {"enum": ["", "core", "clear", "trim", "fair", "heavy", "buy", "between"]},
+    "ZoneNote": {"enum": ["", "no_close", "no_zone_market"]},
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_path", "expires", "mac"],
+      "properties": {
+        "post_path": {"type": "string", "pattern": "^/[a-z0-9/_-]{1,80}$"},
+        "expires": {"type": "string", "pattern": "^[0-9]{1,12}$"},
+        "mac": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"enum": ["store_unavailable", "tables_missing", "close_unavailable"]},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "Problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "text"],
+      "properties": {
+        "field": {"$ref": "#/$defs/Optional"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_heavy", "in_buy", "in_fair", "at_trim", "at_clear", "at_core"],
+      "properties": {
+        "at_heavy": {"type": "boolean"},
+        "in_buy": {"type": "boolean"},
+        "in_fair": {"type": "boolean"},
+        "at_trim": {"type": "boolean"},
+        "at_clear": {"type": "boolean"},
+        "at_core": {"type": "boolean"}
+      }
+    },
+    "Lines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["c", "r", "heavy", "buy_low", "buy_high", "fair_low", "fair_high", "trim", "clear", "core", "m", "w", "h", "s", "zone", "zone_note", "flags"],
+      "properties": {
+        "c": {"$ref": "#/$defs/Figure"},
+        "r": {"$ref": "#/$defs/Figure"},
+        "heavy": {"$ref": "#/$defs/Figure"},
+        "buy_low": {"$ref": "#/$defs/Figure"},
+        "buy_high": {"$ref": "#/$defs/Figure"},
+        "fair_low": {"$ref": "#/$defs/Figure"},
+        "fair_high": {"$ref": "#/$defs/Figure"},
+        "trim": {"$ref": "#/$defs/Figure"},
+        "clear": {"$ref": "#/$defs/Figure"},
+        "core": {"$ref": "#/$defs/Figure"},
+        "m": {"$ref": "#/$defs/Figure"},
+        "w": {"$ref": "#/$defs/Figure"},
+        "h": {"$ref": "#/$defs/Figure"},
+        "s": {"$ref": "#/$defs/Figure"},
+        "zone": {"$ref": "#/$defs/Zone"},
+        "zone_note": {"$ref": "#/$defs/ZoneNote"},
+        "flags": {"oneOf": [{"$ref": "#/$defs/Flags"}, {"type": "null"}]}
+      }
+    },
+    "Mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "pos"],
+      "properties": {
+        "name": {"$ref": "#/$defs/Text"},
+        "value": {"$ref": "#/$defs/Figure"},
+        "pos": {"$ref": "#/$defs/Figure"}
+      }
+    },
+    "Band": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max", "marks"],
+      "properties": {
+        "min": {"$ref": "#/$defs/Figure"},
+        "max": {"$ref": "#/$defs/Figure"},
+        "marks": {"type": "array", "items": {"$ref": "#/$defs/Mark"}}
+      }
+    },
+    "Close": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "day"],
+      "properties": {
+        "value": {"$ref": "#/$defs/Figure"},
+        "day": {"$ref": "#/$defs/Day"}
+      }
+    },
+    "Company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_key", "name", "symbol", "currency", "r_market", "pool", "pool_date", "note"],
+      "properties": {
+        "company_key": {"$ref": "#/$defs/Text"},
+        "name": {"$ref": "#/$defs/Text"},
+        "symbol": {"$ref": "#/$defs/Optional"},
+        "currency": {"$ref": "#/$defs/Text"},
+        "r_market": {"$ref": "#/$defs/Market"},
+        "pool": {"enum": ["in_pool", "watch", "removed"]},
+        "pool_date": {"$ref": "#/$defs/OptDay"},
+        "note": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "Adjustment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["percent", "reason"],
+      "properties": {
+        "percent": {"$ref": "#/$defs/OptFigure"},
+        "reason": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "Scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "probability", "eps", "multiple"],
+      "properties": {
+        "label": {"enum": ["bear", "base", "bull", "tail"]},
+        "probability": {"$ref": "#/$defs/OptFigure"},
+        "eps": {"$ref": "#/$defs/OptFigure"},
+        "multiple": {"$ref": "#/$defs/OptFigure"}
+      }
+    },
+    "Reasons": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p", "moat", "understand", "management", "financial"],
+      "properties": {
+        "p": {"$ref": "#/$defs/Long"},
+        "moat": {"$ref": "#/$defs/Long"},
+        "understand": {"$ref": "#/$defs/Long"},
+        "management": {"$ref": "#/$defs/Long"},
+        "financial": {"$ref": "#/$defs/Long"}
+      }
+    },
+    "Detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "fiscal_period_end", "report_date", "earnings_base", "base_basis", "forward_factor", "locked_multiple", "method_results", "adjustments", "scenarios", "reaction", "moat", "understand", "management", "financial", "reasons", "report_text", "entered_at", "effective_at"],
+      "properties": {
+        "source": {"enum": ["owner", "program"]},
+        "fiscal_period_end": {"$ref": "#/$defs/OptDay"},
+        "report_date": {"$ref": "#/$defs/OptDay"},
+        "earnings_base": {"$ref": "#/$defs/OptFigure"},
+        "base_basis": {"$ref": "#/$defs/Optional"},
+        "forward_factor": {"$ref": "#/$defs/OptFigure"},
+        "locked_multiple": {"$ref": "#/$defs/OptFigure"},
+        "method_results": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/OptFigure"}},
+        "adjustments": {"type": "array", "items": {"$ref": "#/$defs/Adjustment"}},
+        "scenarios": {"type": "array", "items": {"$ref": "#/$defs/Scenario"}},
+        "reaction": {"$ref": "#/$defs/Long"},
+        "moat": {"$ref": "#/$defs/Optional"},
+        "understand": {"$ref": "#/$defs/Optional"},
+        "management": {"$ref": "#/$defs/Optional"},
+        "financial": {"$ref": "#/$defs/Optional"},
+        "reasons": {"$ref": "#/$defs/Reasons"},
+        "report_text": {"$ref": "#/$defs/Long"},
+        "entered_at": {"$ref": "common.v2.json#/$defs/Timestamp"},
+        "effective_at": {"oneOf": [{"$ref": "common.v2.json#/$defs/Timestamp"}, {"type": "null"}]}
+      }
+    },
+    "Current": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_id", "type", "version_date", "status", "v", "p", "trigger", "change_memo", "detail"],
+      "properties": {
+        "review_id": {"$ref": "#/$defs/Text"},
+        "type": {"enum": ["first", "post_earnings", "event", "backfill"]},
+        "version_date": {"$ref": "#/$defs/Day"},
+        "status": {"enum": ["draft", "effective", "void"]},
+        "v": {"$ref": "#/$defs/OptFigure"},
+        "p": {"$ref": "#/$defs/OptFigure"},
+        "trigger": {"enum": ["", "a", "b", "c", "d"]},
+        "change_memo": {"$ref": "#/$defs/Long"},
+        "detail": {"$ref": "#/$defs/Detail"}
+      }
+    },
+    "HistoryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_id", "date", "type", "v", "v_from", "v_to", "change_percent", "trigger", "memo", "status", "void_reason", "detail"],
+      "properties": {
+        "review_id": {"$ref": "#/$defs/Text"},
+        "date": {"$ref": "#/$defs/Day"},
+        "type": {"enum": ["first", "post_earnings", "event", "backfill"]},
+        "v": {"$ref": "#/$defs/OptFigure"},
+        "v_from": {"$ref": "#/$defs/OptFigure"},
+        "v_to": {"$ref": "#/$defs/OptFigure"},
+        "change_percent": {"$ref": "#/$defs/OptFigure"},
+        "trigger": {"enum": ["", "a", "b", "c", "d"]},
+        "memo": {"$ref": "#/$defs/Long"},
+        "status": {"enum": ["draft", "effective", "void"]},
+        "void_reason": {"$ref": "#/$defs/Optional"},
+        "detail": {"$ref": "#/$defs/Detail"}
+      }
+    },
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_key", "name", "valued", "not_entered", "entry_link", "v", "version_date", "r", "c", "heavy", "buy_zone", "fair_zone", "trim", "clear", "core", "close", "zone", "flags", "p", "buy_price", "status"],
+      "properties": {
+        "company_key": {"$ref": "#/$defs/Text"},
+        "name": {"$ref": "#/$defs/Text"},
+        "valued": {"type": "boolean"},
+        "not_entered": {"enum": ["", "not entered"]},
+        "entry_link": {"$ref": "#/$defs/Optional"},
+        "v": {"$ref": "#/$defs/OptFigure"},
+        "version_date": {"$ref": "#/$defs/OptDay"},
+        "r": {"$ref": "#/$defs/OptFigure"},
+        "c": {"$ref": "#/$defs/OptFigure"},
+        "heavy": {"$ref": "#/$defs/OptFigure"},
+        "buy_zone": {"$ref": "#/$defs/Optional"},
+        "fair_zone": {"$ref": "#/$defs/Optional"},
+        "trim": {"$ref": "#/$defs/OptFigure"},
+        "clear": {"$ref": "#/$defs/OptFigure"},
+        "core": {"$ref": "#/$defs/OptFigure"},
+        "close": {"$ref": "#/$defs/OptFigure"},
+        "zone": {"$ref": "#/$defs/Zone"},
+        "flags": {"oneOf": [{"$ref": "#/$defs/Flags"}, {"type": "null"}]},
+        "p": {"$ref": "#/$defs/OptFigure"},
+        "buy_price": {"$ref": "#/$defs/OptFigure"},
+        "status": {"enum": ["", "draft", "effective"]}
+      }
+    }
+  }
+}

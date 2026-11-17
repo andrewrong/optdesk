@@ -63,6 +63,11 @@
     {"path": "page.market_state_page.v1.ok.json", "sha256": "3dbd4d4bc3aa8618321a8cbce9c0bba9ca1bd1b45f0e7d22a1b5df93f1bf5281"},
     {"path": "page.market_state_page.v1.gap.json", "sha256": "028bf5e44589f7603e31887275f4cb78c3d5a74c8c878f212541a2261cefd92b"},
     {"path": "page.data_health_page.v1.ok.json", "sha256": "a80fbceaa2ca8a76192284128292a7bdbb0b7b061354b6b893be040851512708"},
-    {"path": "page.data_health_page.v1.gap.json", "sha256": "d69193da9f3a19596015f4e644725d048a41ba54ad95929b9a70d0fd59e23dc3"}
+    {"path": "page.data_health_page.v1.gap.json", "sha256": "d69193da9f3a19596015f4e644725d048a41ba54ad95929b9a70d0fd59e23dc3"},
+    {"path": "page.valuation_params_page.v1.ok.json", "sha256": "c464ee885fd6d336d84cbc419c9540d5c764a4f97977e576e768748eba72343f"},
+    {"path": "page.valuation_page.v1.table.json", "sha256": "73a2de27189b48a7d4f36abe7fe6e6beff764d601c9e9a0cfb898fbaa288c407"},
+    {"path": "page.valuation_page.v1.company.json", "sha256": "9eec0d9f1de664f7fbac0286e4ed2e04f7e61d9c4265babd24f040c0fa873c9e"},
+    {"path": "page.valuation_page.v1.hkcn.json", "sha256": "2db8e98654b3b33bba28831a55957f6f9bae16852959606ef37e802db1f0cb96"},
+    {"path": "page.valuation_page.v1.form.json", "sha256": "29ba07caae5e556cae4b178062dea944b488decc01f2744ff2cd3d9d2ed2ebb5"}
   ]
 }
