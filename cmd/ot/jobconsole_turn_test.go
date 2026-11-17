@@ -722,16 +722,39 @@ func TestUnplannedDayAfterCursorIsPlannedThenRunsOnlyTheJob(t *testing.T) {
 	}
 }
 
-func TestUnplannedDayAtOrBeforeCursorIsRefusedNoPlanWithoutPlanning(t *testing.T) {
+func TestUnplannedDayAtOrBeforeCursorIsPlannedThenRuns(t *testing.T) {
 	t.Parallel()
 	for _, cursor := range []contracts.Day{jcDay, "2026-11-13"} {
 		r, _ := jcUnplanned(t, cursor)
-		r.bf.res = runner.BackfillResult{Refused: runner.RefusedNoPlan}
 		r.turn(jcNever)
-		r.wantEnd(jobrequest.StateRefused, "no_plan")
-		if n := r.log.count("plan:"); n != 0 {
-			t.Fatalf("cursor %q: PlanDay called %d times", cursor, n)
+		r.wantEnd(jobrequest.StateDone, "completed")
+		want := []string{jcStart, "queued", "claim:1", "expected:" + jcDay, "plan:" + jcDay, "backfill", "finish:1:done:completed", "sync:" + jcDay}
+		if got := r.log.items; !slices.Equal(got, want) {
+			t.Fatalf("cursor %q: calls %v, want %v", cursor, got, want)
 		}
+		if len(r.led.keys[jcDay]) != len(jcKey) || len(r.bf.opts) != 1 || r.bf.opts[0].Job != "fred_series" {
+			t.Fatalf("cursor %q: plan stored %v, backfills %+v", cursor, r.led.keys[jcDay], r.bf.opts)
+		}
+	}
+}
+
+// jcNoSession is a planner whose PlanDay succeeds and stores no key: the day is no session of any calendar.
+type jcNoSession struct{ *jcPlanner }
+
+func (p jcNoSession) PlanDay(_ context.Context, day contracts.Day) error {
+	p.log.add("plan:%s", day)
+	return nil
+}
+
+func TestUnplannedPastDayWithNoSessionIsRefusedNoPlan(t *testing.T) {
+	t.Parallel()
+	r, p := jcUnplanned(t, "2026-11-13")
+	r.host.set([]contracts.Job{jcJob{id: "fred_series", keys: jcKey}}, jcNoSession{p})
+	r.bf.res = runner.BackfillResult{Refused: runner.RefusedNoPlan}
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateRefused, "no_plan")
+	if n := r.log.count("plan:"); n != 1 {
+		t.Fatalf("PlanDay called %d times", n)
 	}
 }
 
