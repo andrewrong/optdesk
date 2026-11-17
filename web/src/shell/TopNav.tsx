@@ -46,6 +46,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
           { label: 'Result', path: '/options/result' },
           { label: 'Notices', path: '/options/notices' },
           { label: 'Tracking', path: '/options/tracking' },
+          { label: 'P&L split', path: '/options/pnl' },
         ],
       },
       { label: 'Advice', path: '/advice', icon: Lightbulb },
