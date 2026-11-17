@@ -142,7 +142,10 @@ describe('underlyings view', () => {
   })
 
   it('refuses the bad-version payload', () => {
-    const r = validate(fixture('bad-version'))
+    const bad: Payload = JSON.parse(
+      readFileSync(path.resolve(import.meta.dirname, '../../../../contracts/fixtures/page.underlyings.v2.bad-version.json'), 'utf8'),
+    )
+    const r = validate(bad)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.gap.reason).toBe('unsupported_version')
   })
