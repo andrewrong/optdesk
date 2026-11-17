@@ -327,7 +327,7 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 		out = selectContracts(chain, u, string(r.day), price, sel)
 	}
 	if r.j.acct != nil {
-		held, err := r.j.heldOptions(ctx, u.Symbol, r.dayTime)
+		held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
 		if err != nil {
 			return nil, asTyped(err, contracts.Retryable)
 		}

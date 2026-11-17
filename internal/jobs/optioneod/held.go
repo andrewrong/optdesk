@@ -76,16 +76,16 @@ func NewWithHeldSymbols(b broker.Broker, res store.InstrumentResolver, w store.O
 	return jb, nil
 }
 
-type heldCall struct {
+type heldOption struct {
 	expiry string // YYYYMMDD
 	strike string // as the position gave it
 	right  string // "C" or "P"
 }
 
-// heldOptions lists the open short options of symbol, calls and puts: per alias the positions of the newest day that has any,
+// heldCalls lists the open short options of symbol, calls and puts (the name is kept for run.go): per alias the positions of the newest day that has any,
 // searching back from day.
-func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]heldCall, error) {
-	var out []heldCall
+func (j *job) heldCalls(ctx context.Context, symbol string, day time.Time) ([]heldOption, error) {
+	var out []heldOption
 	var aliases []string
 	if a, ok := j.acct.(aliasedAccount); ok {
 		aliases = a.aliases
@@ -116,7 +116,7 @@ func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]
 				if q, ok := new(big.Rat).SetString(p.Quantity); !ok || q.Sign() >= 0 {
 					continue
 				}
-				out = append(out, heldCall{expiry: strings.ReplaceAll(p.Expiry, "-", ""), strike: p.Strike, right: right})
+				out = append(out, heldOption{expiry: strings.ReplaceAll(p.Expiry, "-", ""), strike: p.Strike, right: right})
 			}
 			break
 		}
@@ -125,7 +125,7 @@ func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]
 }
 
 // addHeld appends to pairs the call of every held entry that pairs does not hold yet; a strike compares by value.
-func addHeld(pairs []broker.Contract, chain broker.Chain, u underlying, held []heldCall) []broker.Contract {
+func addHeld(pairs []broker.Contract, chain broker.Chain, u underlying, held []heldOption) []broker.Contract {
 	seen := map[string]bool{}
 	for _, p := range pairs {
 		seen[pairKey(p.Expiry, p.Strike, p.Right)] = true
