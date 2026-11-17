@@ -63,18 +63,19 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 		out.FigureNotes = append(out.FigureNotes, "Realized or premium has no value")
 	}
 	out.Figures = []pair{
-		{"Realized", orGap(s.Realized)}, {"Premium", orGap(s.Premium)}, {"Retained ratio", kept},
+		{"Realized", orGap(moneyText(s.Realized, s.Currency))}, {"Premium", orGap(moneyText(s.Premium, s.Currency))}, {"Retained ratio", kept},
 		{"Closed trades", count(ends, "closed")}, {"Assigned trades", count(ends, "assigned")}, {"Expired trades", count(ends, "expired")},
 	}
 	var err error
-	if out.Months, out.Running, err = monthSeries(s.Months); err != nil {
+	if out.Months, out.Running, err = monthSeries(s.Months, s.Currency); err != nil {
 		return out, err
 	}
-	if out.Endings, out.EndingsLines, err = endingSeries(s.Endings); err != nil {
+	if out.Endings, out.EndingsLines, err = endingSeries(s.Endings, s.Currency); err != nil {
 		return out, err
 	}
 	if count(ends, "assigned") != "0" {
-		t := "Assigned premium " + orGap(s.AssignedPremium) + ", shares " + orGap(s.AssignedShares) + "; cost is still the strike, premium not deducted"
+		prem := orGap(moneyText(s.AssignedPremium, s.Currency))
+		t := "Assigned premium " + prem + ", shares " + orGap(s.AssignedShares) + "; cost is still the strike, premium not deducted"
 		out.Assignment = &t
 	} else {
 		out.FigureNotes = append(out.FigureNotes, "Assigned note is empty: this section has no assignment ending")

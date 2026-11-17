@@ -42,8 +42,8 @@ function cellOf(cell: PayloadCell): Cell {
   }
 }
 
-// Columns whose cells hold sentences; they wrap so the table fits the page.
-const WRAP_COLUMNS: readonly string[] = ['results', 'ex', 'guard']
+// Columns whose cells hold sentences or a text with a badge; they wrap so the table fits the card.
+const WRAP_COLUMNS: readonly string[] = ['results', 'ex', 'guard', 'contract', 'moneyness']
 
 function PayloadTable({ name, table }: { name: string; table: Table }) {
   const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({

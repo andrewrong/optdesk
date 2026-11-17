@@ -420,8 +420,28 @@ func TestChangeFigures(t *testing.T) {
 		t.Errorf("day_change = %v", d1)
 	}
 	d5 := row["five_day_change"].(map[string]any)
-	if d5["text"] != "-5.00%" || d5["unit"] != "percent" {
+	if d5["text"] != "−5.00%" || d5["unit"] != "percent" {
 		t.Errorf("five_day_change = %v", d5)
+	}
+}
+
+func TestChangeNegativeUsesTypographicMinus(t *testing.T) {
+	t.Parallel()
+	row := changeRow(t, &fakeBars{bars: sixBars()}, fakeFiguresFunc(
+		compute.FigureValue{Value: "-1.44"}, compute.FigureValue{Value: "-5.32"}), 7)
+	for _, c := range []struct {
+		key, text string
+		value     float64
+	}{{"day_change", "\u22121.44%", -1.44}, {"five_day_change", "\u22125.32%", -5.32}} {
+		f := row[c.key].(map[string]any)
+		if f["text"] != c.text || f["value"] != c.value || f["unit"] != "percent" || f["tone"] != "none" {
+			t.Errorf("%s = %v", c.key, f)
+		}
+	}
+	zero := changeRow(t, &fakeBars{bars: sixBars()}, fakeFiguresFunc(
+		compute.FigureValue{Value: "0.00"}, compute.FigureValue{Value: "0.00"}), 7)
+	if z := zero["day_change"].(map[string]any); z["text"] != "0.00%" {
+		t.Errorf("zero day_change = %v", z)
 	}
 }
 

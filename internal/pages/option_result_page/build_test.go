@@ -287,7 +287,7 @@ func TestJPYSectionSeparate(t *testing.T) {
 			t.Errorf("jpy figure %q holds a USD figure", v)
 		}
 	}
-	if jpy["figures"].([]any)[0].(map[string]any)["value"] != "5000.0000" {
+	if jpy["figures"].([]any)[0].(map[string]any)["value"] != "¥5,000.00" {
 		t.Errorf("jpy figures = %v", jpy["figures"])
 	}
 }

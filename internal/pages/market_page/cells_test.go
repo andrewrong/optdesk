@@ -85,7 +85,7 @@ func TestN225RvStaysNotBuilt(t *testing.T) {
 	if g["kind"] != "gap" || g["reason"] != "not_built" || g["text"] != "N225 implied minus realised: not built yet" {
 		t.Errorf("N225 iv_minus_rv20 = %v", g)
 	}
-	for i, want := range []string{"+3.2", "+7.2", "-1.4"} {
+	for i, want := range []string{"+3.2", "+7.2", "−1.4"} {
 		c := at(t, m, "indices", "rows", i, "iv_minus_rv20").(map[string]any)
 		if c["kind"] != "value" || c["text"] != want || c["unit"] != "vol_points" {
 			t.Errorf("row %d iv_minus_rv20 = %v", i, c)

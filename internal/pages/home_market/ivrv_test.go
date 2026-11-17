@@ -44,7 +44,7 @@ func wantGap(t *testing.T, c any, reason, text string) {
 func TestIvRvCellSigned(t *testing.T) {
 	t.Parallel()
 	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "0.032000", "2026-11-13", nil), pageDay), "3.2", "+3.2")
-	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "-0.014000", "2026-11-13", nil), pageDay), "-1.4", "-1.4")
+	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "-0.014000", "2026-11-13", nil), pageDay), "-1.4", "−1.4")
 	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "0.000000", "2026-11-13", nil), pageDay), "0.0", "0.0")
 }
 
@@ -82,4 +82,10 @@ func TestIvRvCellMissingIsMissingInput(t *testing.T) {
 	wantGap(t, ivRvCell("RUT", ivrvReading("missing_input", "", "2026-11-13", &one), pageDay), "missing_input", want)
 	wantGap(t, ivRvCell("RUT", ivrvReading("ok", "0.032000", "", nil), pageDay), "missing_input", want)
 	wantGap(t, ivRvCell("RUT", ivrvReading("ok", "0.032000", "garbage", nil), pageDay), "missing_input", want)
+}
+
+func TestIvRvCellNegativeUsesTypographicMinus(t *testing.T) {
+	t.Parallel()
+	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "-0.014000", "2026-11-13", nil), pageDay), "-1.4", "−1.4")
+	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "-0.014000", "2026-11-12", nil), pageDay), "-1.4", "−1.4 (11-12)")
 }

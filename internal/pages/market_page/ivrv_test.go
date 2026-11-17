@@ -36,7 +36,7 @@ func TestIvRvCellSigned(t *testing.T) {
 	t.Parallel()
 	page := date("2026-11-13")
 	for in, want := range map[string]struct{ value, text string }{
-		"0.032000": {"3.2", "+3.2"}, "-0.014000": {"-1.4", "-1.4"}, "0.000000": {"0.0", "0.0"},
+		"0.032000": {"3.2", "+3.2"}, "-0.014000": {"-1.4", "−1.4"}, "0.000000": {"0.0", "0.0"},
 	} {
 		f := asFigure(t, ivRvCell("SPX", ivrvRec("ok", in, nil, "2026-11-13"), page))
 		if f.Value.String() != want.value || f.Text != want.text || f.Unit != "vol_points" {
@@ -129,5 +129,18 @@ func TestIvRvCellHasNoThreshold(t *testing.T) {
 				t.Errorf("%s: has %s", in, k)
 			}
 		}
+	}
+}
+
+func TestIvRvCellNegativeUsesTypographicMinus(t *testing.T) {
+	t.Parallel()
+	page := date("2026-11-13")
+	f := asFigure(t, ivRvCell("SPX", ivrvRec("ok", "-0.014000", nil, "2026-11-13"), page))
+	if f.Text != "−1.4" || f.Value.String() != "-1.4" || f.Unit != "vol_points" {
+		t.Errorf("page day: %+v", f)
+	}
+	f = asFigure(t, ivRvCell("SPX", ivrvRec("ok", "-0.014000", nil, "2026-11-12"), page))
+	if f.Text != "−1.4 (11-12)" || f.Value.String() != "-1.4" {
+		t.Errorf("D-1: %+v", f)
 	}
 }
