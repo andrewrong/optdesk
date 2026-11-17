@@ -107,6 +107,55 @@ func TestHeldCallDeduplicated(t *testing.T) {
 	}
 }
 
+func shortPut(expiry, strike string) store.Position {
+	return store.Position{Symbol: "TEST", SecType: "option", Right: "put", Expiry: expiry, Strike: strike, Quantity: "-1", Multiplier: "100"}
+}
+
+func TestHeldPutAddedAtTenDTE(t *testing.T) {
+	t.Parallel()
+	long := shortPut("2026-11-16", "105")
+	long.Quantity = "1"
+	acct := &fakeAccount{positions: map[string][]store.Position{
+		"A 2026-11-06": {shortPut("2026-11-16", "100"), long},
+	}}
+	got := heldContracts(t, acct)
+	if n := count(got, "20261116", "100", "P"); n != 1 {
+		t.Fatalf("held short put at 10 DTE asked %d times, want 1", n)
+	}
+	if n := count(got, "20261116", "105", "P"); n != 0 {
+		t.Fatal("a long put must not be captured")
+	}
+}
+
+func TestHeldPutAndCallSameStrikeAreTwo(t *testing.T) {
+	t.Parallel()
+	acct := &fakeAccount{positions: map[string][]store.Position{
+		"A 2026-11-06": {shortPut("2026-11-16", "100"), shortCall("2026-11-16", "100")},
+	}}
+	got := heldContracts(t, acct)
+	if n := count(got, "20261116", "100", "P"); n != 1 {
+		t.Fatalf("held put asked %d times, want 1", n)
+	}
+	if n := count(got, "20261116", "100", "C"); n != 1 {
+		t.Fatalf("held call asked %d times, want 1", n)
+	}
+}
+
+func TestHeldPutDeduplicated(t *testing.T) {
+	t.Parallel()
+	acct := &fakeAccount{positions: map[string][]store.Position{
+		"A 2026-11-06": {shortPut("2026-12-04", "100.0")},
+		"B 2026-11-05": {shortPut("2026-12-04", "100")},
+	}}
+	got := heldContracts(t, acct)
+	if n := count(got, "20261204", "100", "P"); n != 1 {
+		t.Fatalf("put in the window and held twice asked %d times, want 1", n)
+	}
+	if n := count(got, "20261204", "100.0", "P"); n != 0 {
+		t.Fatal("the held strike text duplicated a selected contract")
+	}
+}
+
 func TestNilAccountReaderUnchanged(t *testing.T) {
 	t.Parallel()
 	got := heldContracts(t, nil)

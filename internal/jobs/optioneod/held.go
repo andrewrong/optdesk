@@ -79,11 +79,12 @@ func NewWithHeldSymbols(b broker.Broker, res store.InstrumentResolver, w store.O
 type heldCall struct {
 	expiry string // YYYYMMDD
 	strike string // as the position gave it
+	right  string // "C" or "P"
 }
 
-// heldCalls lists the open short calls of symbol: per alias the positions of the newest day that has any,
+// heldOptions lists the open short options of symbol, calls and puts: per alias the positions of the newest day that has any,
 // searching back from day.
-func (j *job) heldCalls(ctx context.Context, symbol string, day time.Time) ([]heldCall, error) {
+func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]heldCall, error) {
 	var out []heldCall
 	var aliases []string
 	if a, ok := j.acct.(aliasedAccount); ok {
@@ -100,13 +101,22 @@ func (j *job) heldCalls(ctx context.Context, symbol string, day time.Time) ([]he
 				continue
 			}
 			for _, p := range rows {
-				if p.SecType != "option" || p.Symbol != symbol || !strings.EqualFold(p.Right, "call") || p.Strike == "" || p.Expiry == "" {
+				if p.SecType != "option" || p.Symbol != symbol || p.Strike == "" || p.Expiry == "" {
+					continue
+				}
+				var right string
+				switch {
+				case strings.EqualFold(p.Right, "call"):
+					right = "C"
+				case strings.EqualFold(p.Right, "put"):
+					right = "P"
+				default:
 					continue
 				}
 				if q, ok := new(big.Rat).SetString(p.Quantity); !ok || q.Sign() >= 0 {
 					continue
 				}
-				out = append(out, heldCall{expiry: strings.ReplaceAll(p.Expiry, "-", ""), strike: p.Strike})
+				out = append(out, heldCall{expiry: strings.ReplaceAll(p.Expiry, "-", ""), strike: p.Strike, right: right})
 			}
 			break
 		}
@@ -121,13 +131,13 @@ func addHeld(pairs []broker.Contract, chain broker.Chain, u underlying, held []h
 		seen[pairKey(p.Expiry, p.Strike, p.Right)] = true
 	}
 	for _, h := range held {
-		k := pairKey(h.expiry, h.strike, "C")
+		k := pairKey(h.expiry, h.strike, h.right)
 		if seen[k] {
 			continue
 		}
 		seen[k] = true
 		pairs = append(pairs, broker.Contract{SecType: "OPT", Symbol: u.Symbol, Exchange: chain.Exchange, Currency: u.Currency,
-			Expiry: h.expiry, Strike: h.strike, Right: "C", Multiplier: chain.Multiplier, TradingClass: chain.TradingClass})
+			Expiry: h.expiry, Strike: h.strike, Right: h.right, Multiplier: chain.Multiplier, TradingClass: chain.TradingClass})
 	}
 	return pairs
 }
