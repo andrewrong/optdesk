@@ -6,6 +6,10 @@ const (
 	pageSentence = "Net value, cash and option obligations come from the latest capture; position values need " +
 		"prices, and positions without a price show no data yet."
 
+	// The words of the two header links, to /risk and /positions; the page draws them as given.
+	linkRisk      = "Household risk"
+	linkPositions = "Positions"
+
 	titleOverview      = "Overview"
 	titleComposition   = "Holdings composition"
 	titleMovers        = "What moved today"
