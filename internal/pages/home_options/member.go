@@ -202,7 +202,8 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 }
 
 // replay replays every stored alias as of day; the positions, unresolved and review ids of all of
-// them are one ResultInput. The third result is the newest RecordedAt of the stored rows (zero when none is set). With Structures and Tiles set, Evaluate runs once per alias and the structures
+// them are one ResultInput. The third result is the newest RecordedAt of the stored rows (zero when none is set).
+// With Structures and Tiles set, Evaluate runs once per alias and the structures
 // (Structures and Other) of every alias are returned.
 func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInput, []compute.Structure, time.Time, error) {
 	in := compute.ResultInput{AsOf: day}
