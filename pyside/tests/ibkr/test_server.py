@@ -183,9 +183,9 @@ def test_supervisor_reconnects_with_backoff() -> None:
         return clock.asked, gateway.generation
 
     asked, generation = asyncio.run(run())
-    doubling = [BACKOFF_FIRST_S * 2**i for i in range(9)]
-    assert asked[:11] == [*doubling, BACKOFF_CAP_S, BACKOFF_CAP_S]
-    assert asked[:9] == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0, 256.0]
+    doubling = [BACKOFF_FIRST_S * 2**i for i in range(6)]
+    assert asked[:8] == [*doubling, BACKOFF_CAP_S, BACKOFF_CAP_S]
+    assert asked[:9] == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 60.0, 60.0, 60.0]
     assert max(asked) <= BACKOFF_CAP_S
     assert generation == 1
 
@@ -229,16 +229,13 @@ def test_supervisor_backs_off_when_the_session_is_lost_at_once() -> None:
     clock = RecordingClock()
     gateway = ScriptedGateway(clock, [0.0])
     asyncio.run(run_supervised(gateway, clock, 2000.0))
-    assert clock.asked[:11] == [
+    assert clock.asked[:8] == [
         1,
         2,
         4,
         8,
         16,
         32,
-        64,
-        128,
-        256,
         BACKOFF_CAP_S,
         BACKOFF_CAP_S,
     ]

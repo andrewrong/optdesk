@@ -45,7 +45,7 @@ from optdesk.ibkr.transport import (
 _LOG = logging.getLogger("optdesk.ibkr.server")
 
 BACKOFF_FIRST_S = 1.0
-BACKOFF_CAP_S = 300.0
+BACKOFF_CAP_S = 60.0
 STABLE_SESSION_S = 60.0
 POLL_S = 1.0
 
