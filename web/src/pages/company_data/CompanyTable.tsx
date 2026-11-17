@@ -2,7 +2,7 @@
 // on bar_count, eps_quarters and missing; a sort changes the order of rows, never a figure. A header with a sort is a
 // focusable cell (the page holds no button). Counts are payload text: they are ordered by their digits, not parsed.
 import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type Row } from '@tanstack/react-table'
-import { Info } from 'lucide-react'
+import { GlossHeader } from '@/components/gloss-header'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/company_data_page'
@@ -85,17 +85,7 @@ export function CompanyTable({ columns: spec, companies }: Pick<Payload, 'column
         accessorFn: SORTABLE.has(c.key) ? (row: Company) => (c.key === 'missing' ? row.missing : row[c.key as 'bar_count']) : undefined,
         enableSorting: SORTABLE.has(c.key),
         sortingFn: SORTABLE.has(c.key) ? sortingFor(c.key) : undefined,
-        header: () => (
-          <div className="space-y-1">
-            <div>{c.label}</div>
-            {c.gloss !== '' ? (
-              <div data-gloss={c.key} className="flex items-start gap-1 text-xs font-normal text-muted-foreground">
-                <Info aria-hidden className="mt-0.5 size-3 shrink-0" />
-                <span>{c.gloss}</span>
-              </div>
-            ) : null}
-          </div>
-        ),
+        header: () => <GlossHeader id={c.key} label={c.label} gloss={c.gloss} />,
         cell: ({ row }) => value(row.original, c.key),
       }),
     ),

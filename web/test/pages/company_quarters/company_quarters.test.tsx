@@ -34,7 +34,9 @@ const row = (el: HTMLElement, periodEnd: string) => el.querySelector(`tr[data-pe
 
 describe('company quarters page', () => {
   it('TestQuartersFixtureOkRenders', async () => {
-    const el = await render(ok())
+    const p = ok()
+    p.columns.unshift({ key: 'filing_date', label: 'Filing date', gloss: 'the day the report was filed with the SEC' })
+    const el = await render(p)
     expect(pageModule.registration.schema).toBe('company_quarters_page')
     const rows = [...el.querySelectorAll('tbody tr')]
     expect(rows.map((r) => r.getAttribute('data-period-end'))).toEqual(['2025-09-27', '2025-06-28'])
@@ -47,6 +49,17 @@ describe('company quarters page', () => {
     ])
     expect(el.querySelector('[data-gloss="revenue"]')?.querySelector('svg')).not.toBeNull()
     expect(el.textContent).toContain('Revenue of the quarter, in USD.')
+  })
+
+  it('prints Filing date once, filled from the row, when columns[] carries filing_date as the builder sends it', async () => {
+    const p = ok()
+    p.columns.unshift({ key: 'filing_date', label: 'Filing date', gloss: 'the day the report was filed with the SEC' })
+    p.quarters[0]!.filing_date = '2025-11-01'
+    const el = await render(p)
+    const heads = [...el.querySelectorAll('thead th')].filter((th) => th.textContent?.startsWith('Filing date'))
+    expect(heads).toHaveLength(1)
+    expect(el.querySelector('[data-gloss="filing_date"]')).not.toBeNull()
+    expect(row(el, p.quarters[0]!.period_end).textContent).toContain('2025-11-01')
   })
 
   it('TestQuartersGapFixtureRenders', async () => {

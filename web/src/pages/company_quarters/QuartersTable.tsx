@@ -1,7 +1,7 @@
 // The quarterly table of one company, a @tanstack/react-table table: one row per `quarters[]` as given (newest first, no
 // sort), one column per `columns[]`. A missing cell prints its `why_text` and no number; every text is the payload's.
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table'
-import { Info } from 'lucide-react'
+import { GlossHeader } from '@/components/gloss-header'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/company_quarters_page'
@@ -38,22 +38,13 @@ export function QuartersTable({ company, columns: spec, quarters }: Pick<Payload
         </div>
       ),
     },
-    { id: 'filing_date', header: 'Filing date', cell: ({ row }) => row.original.filing_date ?? '' },
     ...spec.map(
       (c): ColumnDef<Quarter> => ({
         id: c.key,
-        header: () => (
-          <div className="space-y-1">
-            <div>{c.label}</div>
-            {c.gloss !== '' ? (
-              <div data-gloss={c.key} className="flex items-start gap-1 text-xs font-normal text-muted-foreground">
-                <Info aria-hidden className="mt-0.5 size-3 shrink-0" />
-                <span>{c.gloss}</span>
-              </div>
-            ) : null}
-          </div>
-        ),
-        cell: ({ row }) => <FigureCell cell={row.original.cells[c.key]} />,
+        header: () => <GlossHeader id={c.key} label={c.label} gloss={c.gloss} />,
+        cell: ({ row }) =>
+          // The builder sends the filing date as the column `filing_date`; it has no cell, the date is on the quarter.
+          c.key === 'filing_date' ? row.original.filing_date : <FigureCell cell={row.original.cells[c.key]} />,
       }),
     ),
   ]
