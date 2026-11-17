@@ -230,7 +230,7 @@ func TestIndexManifestRefusesBadRows(t *testing.T) {
 		"spot_index":      replace(`spot_index = "RUT"`, `spot_index = ""`),
 		"band_k":          replace("band_k = 1.8 ", "band_k = 0 "),
 		"sigma_fallback":  replace("sigma_fallback = 0.20 ", "sigma_fallback = 0 "),
-		"price_increment": replace("symbol = \"SPX\"\nsec_type = \"IND\"\nexchange = \"CBOE\"\ncurrency = \"USD\"\ncon_id = 416904\nmic = \"XCBO\"\ncalendar_id = \"XNYS\"\nprice_increment = \"0.01\"\n", "symbol = \"SPX\"\nsec_type = \"IND\"\nexchange = \"CBOE\"\ncurrency = \"USD\"\ncon_id = 416904\nmic = \"XCBO\"\ncalendar_id = \"XNYS\"\n"),
+		"price_increment": replace("calendar_id = \"XNYS\"\nprice_increment = \"0.01\"\n", "calendar_id = \"XNYS\"\n"),
 		"lot_size":        replace("lot_size = \"1\"\n", "lot_size = \"x\"\n"),
 		"matching":        replace("symbol = \"RUT\"\ntrading_class", "symbol = \"NDX\"\ntrading_class"),
 	}

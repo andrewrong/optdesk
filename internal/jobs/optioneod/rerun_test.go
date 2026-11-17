@@ -164,7 +164,7 @@ lot_size = "1"
 func TestSlotMustBeFourDigits(t *testing.T) {
 	t.Parallel()
 	parse := func(slot string) error {
-		_, err := parseManifest([]byte("id = \"x\"\nslot = \"" + slot + "\"\n[[underlying]]\nsymbol = \"A\"\ncon_id = 1\ncurrency = \"USD\"\nprice_increment = \"0.01\"\nlot_size = \"1\"\n"))
+		_, err := parseManifest([]byte("id = \"x\"\nslot = \"" + slot + "\"\n[[underlying]]\nsymbol = \"A\"\ncon_id = 1\ncurrency = \"USD\"\n" + keys))
 		return err
 	}
 	if err := parse("1100"); err != nil {
