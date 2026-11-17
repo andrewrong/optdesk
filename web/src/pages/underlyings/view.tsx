@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -194,41 +195,56 @@ function EditForm({ row, form }: { row: Name; form: Form }) {
 
 function ConfirmCard({ confirm, form }: { confirm: NonNullable<Payload['confirm']>; form: Form | null }) {
   return (
-    <Card data-confirm>
-      <CardHeader>
-        <CardTitle>
-          <h2 className="text-lg font-semibold">Confirm changes</h2>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Table>
-          <TableBody>
-            {confirm.changes.map((c, i) => (
-              <TableRow key={`${i}-${c.label}`} data-change>
-                <TableCell>{c.label}</TableCell>
-                <TableCell>{c.old}</TableCell>
-                <TableCell>{c.new}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {confirm.stops.map((s, i) => (
-          <Alert key={`${i}-${s}`} variant="warn" data-stop>
-            <AlertDescription>{s}</AlertDescription>
-          </Alert>
-        ))}
-        {form ? (
-          <form method="post" action={form.post_path} data-confirm-form>
-            <Token form={form} />
-            {confirm.fields.map((f, i) => (
-              <input key={`${i}-${f.name}`} type="hidden" name={f.name} value={f.value} />
-            ))}
-            <input type="hidden" name="confirm" value="1" />
-            <Button type="submit">Confirm and save</Button>
-          </form>
-        ) : null}
-      </CardContent>
-    </Card>
+    <Dialog defaultOpen>
+      <DialogContent data-confirm showCloseButton={false} aria-describedby={undefined} className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle asChild>
+            <h2 className="text-lg font-semibold">Confirm changes</h2>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Table>
+            <TableBody>
+              {confirm.changes.map((c, i) => (
+                <TableRow key={`${i}-${c.label}`} data-change>
+                  <TableCell>{c.label}</TableCell>
+                  <TableCell>{c.old}</TableCell>
+                  <TableCell>{c.new}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {confirm.stops.map((s, i) => (
+            <Alert key={`${i}-${s}`} variant="warn" data-stop>
+              <AlertDescription>{s}</AlertDescription>
+            </Alert>
+          ))}
+          {form ? (
+            <form method="post" action={form.post_path} data-confirm-form className="flex gap-2">
+              <Token form={form} />
+              {confirm.fields.map((f, i) => (
+                <input key={`${i}-${f.name}`} type="hidden" name={f.name} value={f.value} />
+              ))}
+              <input type="hidden" name="confirm" value="1" />
+              <Button type="submit">Confirm and save</Button>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+            </form>
+          ) : (
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -37,6 +37,7 @@ async function render(payload: Payload) {
 afterEach(async () => {
   await act(async () => root?.unmount())
   host?.remove()
+  document.body.querySelectorAll('[role=dialog]').forEach((d) => d.remove())
   vi.unstubAllGlobals()
 })
 
@@ -133,18 +134,18 @@ describe('underlyings view', () => {
 
   it('shows the changes, the stops and the notice of the confirm payload', async () => {
     const p = fixture('confirm')
-    const el = await render(p)
-    const text = el.textContent ?? ''
+    await render(p)
+    const text = document.body.textContent ?? ''
     for (const c of p.confirm!.changes) for (const s of [c.label, c.old, c.new]) expect(text).toContain(s)
     for (const s of p.confirm!.stops) expect(text).toContain(s)
     expect(text).toContain(p.notice)
-    expect(el.querySelectorAll('[data-stop]').length).toBe(p.confirm!.stops.length)
+    expect(document.body.querySelectorAll('[data-stop]').length).toBe(p.confirm!.stops.length)
   })
 
   it('new: the confirm form posts the fields of the payload, the token and confirm=1', async () => {
     const p = fixture('confirm')
-    const el = await render(p)
-    const f = el.querySelector('form[data-confirm-form]')!
+    await render(p)
+    const f = document.body.querySelector('form[data-confirm-form]')!
     expect(f.closest('[data-confirm]')).not.toBeNull()
     expect(f.getAttribute('method')).toBe('post')
     expect(f.getAttribute('action')).toBe(p.form!.post_path)
@@ -162,16 +163,59 @@ describe('underlyings view', () => {
   it('new: the confirm form keeps an unchecked switch off', async () => {
     const p = fixture('confirm')
     p.confirm!.fields = p.confirm!.fields.filter((x) => x.name !== 'options') as NonNullable<Payload['confirm']>['fields']
-    const el = await render(p)
-    const f = el.querySelector('form[data-confirm-form]')!
+    await render(p)
+    const f = document.body.querySelector('form[data-confirm-form]')!
     expect(f.querySelector('input[name=options]')).toBeNull()
   })
 
   it('new: the confirm card has no form without the page form', async () => {
     const p = { ...fixture('confirm'), form: null }
-    const el = await render(p)
-    expect(el.querySelector('[data-confirm]')).not.toBeNull()
-    expect(el.querySelector('form[data-confirm-form]')).toBeNull()
+    await render(p)
+    expect(document.body.querySelector('[data-confirm]')).not.toBeNull()
+    expect(document.body.querySelector('form[data-confirm-form]')).toBeNull()
+  })
+
+  it('TestUnderlyingsConfirmDialogFlow', async () => {
+    const p = fixture('confirm')
+    await render(p)
+    const dlg = document.body.querySelector<HTMLElement>('[role=dialog]')!
+    expect(dlg).not.toBeNull()
+    expect(dlg.getAttribute('data-state')).toBe('open')
+    expect(dlg.contains(document.activeElement)).toBe(true)
+    const f = dlg.querySelector('form[data-confirm-form]')!
+    expect(f).not.toBeNull()
+    const pairs = [...f.querySelectorAll<HTMLInputElement>('input[name]')].map((i) => [i.name, i.value])
+    expect(pairs).toEqual([
+      ['expires', p.form!.expires],
+      ['mac', p.form!.mac],
+      ...p.confirm!.fields.map((x) => [x.name, x.value]),
+      ['confirm', '1'],
+    ])
+    expect(f.getAttribute('action')).toBe(p.form!.post_path)
+    expect(f.querySelector('button[type=submit]')!.textContent).toBe('Confirm and save')
+  })
+
+  it('TestUnderlyingsConfirmDialogCancel', async () => {
+    const p = fixture('confirm')
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const submitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit')
+    await render(p)
+    const cancel = [...document.body.querySelectorAll<HTMLButtonElement>('[role=dialog] button')].find(
+      (b) => b.textContent === 'Cancel',
+    )!
+    expect(cancel.type).toBe('button')
+    await act(async () => cancel.click())
+    expect(document.body.querySelector('[role=dialog]')).toBeNull()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(submitSpy).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain(p.title)
+    submitSpy.mockRestore()
+  })
+
+  it('TestUnderlyingsConfirmDialogAbsent', async () => {
+    await render(fixture('golden'))
+    expect(document.body.querySelector('[role=dialog]')).toBeNull()
   })
 
   it('refuses the bad-version payload', () => {
