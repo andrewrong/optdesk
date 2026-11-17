@@ -32,7 +32,7 @@ func (e *listedError) Unwrap() error             { return e.err }
 // listedBuild builds the inner job of one job family from the entries of its group.
 type listedBuild func([]jobs.WatchEntry) (contracts.Job, error)
 
-// listedKeepDays is the number of newest planned days whose snapshots a listedJob keeps.
+// listedKeepDays is the number of most recently planned days whose snapshots a listedJob keeps.
 const listedKeepDays = 7
 
 // planSnap is one Plan of a day: its key set and the inner job that planned it.
@@ -53,6 +53,7 @@ type listedJob struct {
 	mu     sync.Mutex
 	newest contracts.Job                // answers ID and the optional methods
 	snaps  map[contracts.Day][]planSnap // per day, oldest first; at most listedKeepDays days
+	order  []contracts.Day              // the days of snaps, the day planned longest ago first
 }
 
 // newListedJob builds the inner job once from the list at start, so that the schedule and the optional methods
@@ -142,15 +143,16 @@ func (l *listedJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.Ex
 		l.snaps = map[contracts.Day][]planSnap{}
 	}
 	l.snaps[day] = append(l.snaps[day], planSnap{keys: set, inner: inner})
+	if i := slices.Index(l.order, day); i >= 0 {
+		l.order = slices.Delete(l.order, i, i+1)
+	}
+	l.order = append(l.order, day) // most recently planned last
 	if len(l.snaps) > listedKeepDays {
-		all := make([]contracts.Day, 0, len(l.snaps))
-		for d := range l.snaps {
-			all = append(all, d)
-		}
-		slices.Sort(all) // ISO days sort by date
-		for _, d := range all[:len(all)-listedKeepDays] {
+		// the day planned longest ago goes first; the day just planned is last in order and stays
+		for _, d := range l.order[:len(l.order)-listedKeepDays] {
 			delete(l.snaps, d)
 		}
+		l.order = slices.Clone(l.order[len(l.order)-listedKeepDays:])
 	}
 	l.newest = inner
 	return keys, hash, nil
