@@ -1,0 +1,163 @@
+{
+  "schema": "option_pnl_page",
+  "schema_version": 1,
+  "run_id": "r1",
+  "build_id": "b1",
+  "scope": "s1",
+  "generated_at": "2026-11-17T12:00:00+00:00",
+  "data_times": [],
+  "run_status": "ok",
+  "stale": null,
+  "title": "P\u0026L split",
+  "notes": [
+    "model: European Black-Scholes, 365-day year, no dividends; an ex-dividend drop lands in the solved IV; the early-exercise premium is not modelled",
+    "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
+  ],
+  "gaps": [],
+  "as_of": "2026-11-17",
+  "accounts": [
+    {
+      "alias": "main",
+      "books": [
+        {
+          "id": "book-main-USD",
+          "currency": "USD",
+          "counts": "USD book, 0 lots counted",
+          "left_out": "1 of 1 lots left out of the sums: 1 with no stored quotes (ledger $50.00)",
+          "headline": {
+            "id": "b0-main-head",
+            "label": "Rent minus move cost",
+            "text": "$0.00",
+            "hint": "what you earned for selling insurance: time minus move cost",
+            "tone": "none"
+          },
+          "lines": [
+            {
+              "id": "b0-main-time",
+              "label": "Time (theta)",
+              "text": "$0.00",
+              "hint": "the option loses value as days pass; the seller keeps it",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-move",
+              "label": "Move cost (gamma)",
+              "text": "$0.00",
+              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-dir",
+              "label": "Direction (delta)",
+              "text": "$0.00",
+              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-iv",
+              "label": "IV re-marking (vega)",
+              "text": "$0.00",
+              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-unsplit",
+              "label": "Not split",
+              "text": "$0.00",
+              "hint": "steps whose IV could not be solved; reason on the lot",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-entry",
+              "label": "Entry vs mid",
+              "text": "$0.00",
+              "hint": "fill price against the stored mid of bid and ask",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-exit",
+              "label": "Exit vs mid",
+              "text": "$0.00",
+              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-comm",
+              "label": "Commissions",
+              "text": "$0.00",
+              "hint": null,
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-total",
+              "label": "Total options P\u0026L",
+              "text": "$0.00",
+              "hint": "the option side; the assignment intrinsic below is not in it",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-assigned",
+              "label": "Assignment intrinsic",
+              "text": "$0.00",
+              "hint": "value moved to the shares when a put is assigned",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-ledger",
+              "label": "Ledger says",
+              "text": "$0.00 = total + assignment intrinsic + difference ($0.00)",
+              "hint": "the ledger's figure for this lot",
+              "tone": "none"
+            }
+          ]
+        }
+      ],
+      "lots": [
+        {
+          "id": "lot-main-p2",
+          "title": "BBB put 38.00 exp 2026-12-18",
+          "summary": "short 2 opened 2026-11-03 at 1.80   expired 2026-11-13",
+          "lines": [
+            {
+              "id": "a0l0-ledger",
+              "label": "Ledger says",
+              "text": "$50.00",
+              "hint": "the ledger's figure for this lot",
+              "tone": "none"
+            },
+            {
+              "id": "a0l0-comm",
+              "label": "Commissions",
+              "text": "−$1.30",
+              "hint": null,
+              "tone": "none"
+            },
+            {
+              "id": "a0l0-reason",
+              "label": "Reason",
+              "text": "no stored quotes: no split",
+              "hint": null,
+              "tone": "none"
+            }
+          ],
+          "days_line": {
+            "id": "a0l0-days",
+            "label": "Days",
+            "text": "no stored quote days",
+            "hint": null,
+            "tone": "muted"
+          },
+          "iv_line": null,
+          "end_line": null,
+          "recon": [],
+          "badges": [
+            "no quotes"
+          ],
+          "gap": null
+        }
+      ],
+      "sample_note": "1 ended lots: fewer than 20 ended lots: no conclusion about what pays",
+      "gap": null
+    }
+  ]
+}

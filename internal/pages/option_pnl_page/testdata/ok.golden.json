@@ -1,0 +1,492 @@
+{
+  "schema": "option_pnl_page",
+  "schema_version": 1,
+  "run_id": "r1",
+  "build_id": "b1",
+  "scope": "s1",
+  "generated_at": "2026-11-17T12:00:00+00:00",
+  "data_times": [],
+  "run_status": "ok",
+  "stale": null,
+  "title": "P\u0026L split",
+  "notes": [
+    "model: European Black-Scholes, 365-day year, no dividends; an ex-dividend drop lands in the solved IV; the early-exercise premium is not modelled",
+    "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
+  ],
+  "gaps": [],
+  "as_of": "2026-11-17",
+  "accounts": [
+    {
+      "alias": "main",
+      "books": [
+        {
+          "id": "book-main-USD",
+          "currency": "USD",
+          "counts": "USD book, 3 lots counted (2 open, 1 assigned)",
+          "left_out": "1 of 4 lots left out of the sums: 1 with no stored close (DDD, ledger $12.00)",
+          "headline": {
+            "id": "b0-main-head",
+            "label": "Rent minus move cost",
+            "text": "$226.00",
+            "hint": "what you earned for selling insurance: time minus move cost",
+            "tone": "good"
+          },
+          "lines": [
+            {
+              "id": "b0-main-time",
+              "label": "Time (theta)",
+              "text": "$412.00",
+              "hint": "the option loses value as days pass; the seller keeps it",
+              "tone": "good"
+            },
+            {
+              "id": "b0-main-move",
+              "label": "Move cost (gamma)",
+              "text": "−$186.00",
+              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "tone": "bad"
+            },
+            {
+              "id": "b0-main-dir",
+              "label": "Direction (delta)",
+              "text": "$95.00",
+              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "tone": "good"
+            },
+            {
+              "id": "b0-main-iv",
+              "label": "IV re-marking (vega)",
+              "text": "$64.00",
+              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "tone": "good"
+            },
+            {
+              "id": "b0-main-unsplit",
+              "label": "Not split",
+              "text": "$0.00",
+              "hint": "steps whose IV could not be solved; reason on the lot",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-entry",
+              "label": "Entry vs mid",
+              "text": "$10.00",
+              "hint": "fill price against the stored mid of bid and ask",
+              "tone": "good"
+            },
+            {
+              "id": "b0-main-exit",
+              "label": "Exit vs mid",
+              "text": "−$35.00",
+              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "tone": "bad"
+            },
+            {
+              "id": "b0-main-comm",
+              "label": "Commissions",
+              "text": "−$24.20",
+              "hint": null,
+              "tone": "bad"
+            },
+            {
+              "id": "b0-main-total",
+              "label": "Total options P\u0026L",
+              "text": "$335.80",
+              "hint": "the option side; the assignment intrinsic below is not in it",
+              "tone": "good"
+            },
+            {
+              "id": "b0-main-assigned",
+              "label": "Assignment intrinsic",
+              "text": "$190.00",
+              "hint": "value moved to the shares when a put is assigned",
+              "tone": "none"
+            },
+            {
+              "id": "b0-main-ledger",
+              "label": "Ledger says",
+              "text": "$525.80 = total + assignment intrinsic + difference ($0.00)",
+              "hint": "the ledger's figure for this lot",
+              "tone": "none"
+            }
+          ]
+        }
+      ],
+      "lots": [
+        {
+          "id": "lot-main-p1",
+          "title": "AAA put 90.00 exp 2026-12-18",
+          "summary": "short 2 opened 2026-11-03 at 1.80   open (marked at the stored mid of 2026-11-17)",
+          "lines": [
+            {
+              "id": "a0l0-time",
+              "label": "Time (theta)",
+              "text": "$150.00",
+              "hint": "the option loses value as days pass; the seller keeps it",
+              "tone": "good"
+            },
+            {
+              "id": "a0l0-move",
+              "label": "Move cost (gamma)",
+              "text": "−$60.00",
+              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "tone": "bad"
+            },
+            {
+              "id": "a0l0-dir",
+              "label": "Direction (delta)",
+              "text": "$30.00",
+              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "tone": "good"
+            },
+            {
+              "id": "a0l0-iv",
+              "label": "IV re-marking (vega)",
+              "text": "$40.00",
+              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "tone": "good"
+            },
+            {
+              "id": "a0l0-unsplit",
+              "label": "Not split",
+              "text": "$0.00",
+              "hint": "steps whose IV could not be solved; reason on the lot",
+              "tone": "none"
+            },
+            {
+              "id": "a0l0-entry",
+              "label": "Entry vs mid",
+              "text": "−$10.00",
+              "hint": "fill price against the stored mid of bid and ask",
+              "tone": "bad"
+            },
+            {
+              "id": "a0l0-exit",
+              "label": "Exit vs mid",
+              "text": "$0.00",
+              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "tone": "none"
+            },
+            {
+              "id": "a0l0-comm",
+              "label": "Commissions",
+              "text": "−$2.60",
+              "hint": null,
+              "tone": "bad"
+            },
+            {
+              "id": "a0l0-total",
+              "label": "Total options P\u0026L",
+              "text": "$147.40",
+              "hint": "the option side; the assignment intrinsic below is not in it",
+              "tone": "good"
+            },
+            {
+              "id": "a0l0-ledger",
+              "label": "Ledger says",
+              "text": "$147.40",
+              "hint": "the ledger's figure for this lot",
+              "tone": "none"
+            }
+          ],
+          "days_line": {
+            "id": "a0l0-days",
+            "label": "Days",
+            "text": "3 with a quote",
+            "hint": null,
+            "tone": "muted"
+          },
+          "iv_line": {
+            "id": "a0l0-ivline",
+            "label": "IV",
+            "text": "IV from mid 30.9% to 28.6% (ours, solved from the stored mid)   stored IBKR IV 28.9% (comparison only)",
+            "hint": null,
+            "tone": "muted"
+          },
+          "end_line": null,
+          "recon": [
+            {
+              "id": "a0l0-diff",
+              "label": "Ours vs ledger",
+              "text": "difference $0.00",
+              "hint": "ledger minus total minus assignment intrinsic",
+              "tone": "none"
+            },
+            {
+              "id": "a0l0-circ",
+              "label": "Open-lot check",
+              "text": "The open-lot check is circular: our stored mid is on both sides, so it checks fills, commissions and the charge, not the market value",
+              "hint": null,
+              "tone": "muted"
+            }
+          ],
+          "badges": [
+            "2-day step"
+          ],
+          "gap": null
+        },
+        {
+          "id": "lot-main-p2",
+          "title": "BBB put 38.00 exp 2026-12-18",
+          "summary": "short 2 opened 2026-11-03 at 1.80   assigned 2026-11-13",
+          "lines": [
+            {
+              "id": "a0l1-time",
+              "label": "Time (theta)",
+              "text": "$200.00",
+              "hint": "the option loses value as days pass; the seller keeps it",
+              "tone": "good"
+            },
+            {
+              "id": "a0l1-move",
+              "label": "Move cost (gamma)",
+              "text": "−$90.00",
+              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "tone": "bad"
+            },
+            {
+              "id": "a0l1-dir",
+              "label": "Direction (delta)",
+              "text": "$40.00",
+              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "tone": "good"
+            },
+            {
+              "id": "a0l1-iv",
+              "label": "IV re-marking (vega)",
+              "text": "$0.00",
+              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "tone": "none"
+            },
+            {
+              "id": "a0l1-unsplit",
+              "label": "Not split",
+              "text": "$0.00",
+              "hint": "steps whose IV could not be solved; reason on the lot",
+              "tone": "none"
+            },
+            {
+              "id": "a0l1-entry",
+              "label": "Entry vs mid",
+              "text": "−$20.00",
+              "hint": "fill price against the stored mid of bid and ask",
+              "tone": "bad"
+            },
+            {
+              "id": "a0l1-exit",
+              "label": "Exit vs mid",
+              "text": "−$35.00",
+              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "tone": "bad"
+            },
+            {
+              "id": "a0l1-comm",
+              "label": "Commissions",
+              "text": "−$16.80",
+              "hint": null,
+              "tone": "bad"
+            },
+            {
+              "id": "a0l1-total",
+              "label": "Total options P\u0026L",
+              "text": "$78.20",
+              "hint": "the option side; the assignment intrinsic below is not in it",
+              "tone": "good"
+            },
+            {
+              "id": "a0l1-assigned",
+              "label": "Assignment intrinsic",
+              "text": "$190.00",
+              "hint": "value moved to the shares when a put is assigned",
+              "tone": "none"
+            },
+            {
+              "id": "a0l1-ledger",
+              "label": "Ledger says",
+              "text": "total $78.20 + assignment intrinsic $190.00 = $268.20",
+              "hint": "total + assignment intrinsic = ledger",
+              "tone": "none"
+            }
+          ],
+          "days_line": {
+            "id": "a0l1-days",
+            "label": "Days",
+            "text": "3 with a quote",
+            "hint": null,
+            "tone": "muted"
+          },
+          "iv_line": {
+            "id": "a0l1-ivline",
+            "label": "IV",
+            "text": "IV from mid 30.9% to 28.6% (ours, solved from the stored mid)   stored IBKR IV 28.9% (comparison only)",
+            "hint": null,
+            "tone": "muted"
+          },
+          "end_line": {
+            "id": "a0l1-end",
+            "label": "Assignment",
+            "text": "shares bought at 38.00; the close that day was 36.10, so intrinsic value $190.00 moved to the shares",
+            "hint": "value moved to the shares when a put is assigned",
+            "tone": "none"
+          },
+          "recon": [
+            {
+              "id": "a0l1-diff",
+              "label": "Ours vs ledger",
+              "text": "difference $0.00",
+              "hint": "ledger minus total minus assignment intrinsic",
+              "tone": "none"
+            },
+            {
+              "id": "a0l1-broker",
+              "label": "Ledger realised vs broker",
+              "text": "Ledger $268.20, broker $268.20",
+              "hint": null,
+              "tone": "muted"
+            }
+          ],
+          "badges": [
+            "2-day step"
+          ],
+          "gap": null
+        },
+        {
+          "id": "lot-main-p3",
+          "title": "CCC put 55.00 exp 2026-12-18",
+          "summary": "short 2 opened 2026-11-03 at 1.80   open (marked at the stored mid of 2026-11-17)",
+          "lines": [
+            {
+              "id": "a0l2-time",
+              "label": "Time (theta)",
+              "text": "$62.00",
+              "hint": "the option loses value as days pass; the seller keeps it",
+              "tone": "good"
+            },
+            {
+              "id": "a0l2-move",
+              "label": "Move cost (gamma)",
+              "text": "−$36.00",
+              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "tone": "bad"
+            },
+            {
+              "id": "a0l2-dir",
+              "label": "Direction (delta)",
+              "text": "$25.00",
+              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "tone": "good"
+            },
+            {
+              "id": "a0l2-iv",
+              "label": "IV re-marking (vega)",
+              "text": "$24.00",
+              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "tone": "good"
+            },
+            {
+              "id": "a0l2-unsplit",
+              "label": "Not split",
+              "text": "$0.00",
+              "hint": "steps whose IV could not be solved; reason on the lot",
+              "tone": "none"
+            },
+            {
+              "id": "a0l2-entry",
+              "label": "Entry vs mid",
+              "text": "$40.00",
+              "hint": "fill price against the stored mid of bid and ask",
+              "tone": "good"
+            },
+            {
+              "id": "a0l2-exit",
+              "label": "Exit vs mid",
+              "text": "$0.00",
+              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "tone": "none"
+            },
+            {
+              "id": "a0l2-comm",
+              "label": "Commissions",
+              "text": "−$4.80",
+              "hint": null,
+              "tone": "bad"
+            },
+            {
+              "id": "a0l2-total",
+              "label": "Total options P\u0026L",
+              "text": "$110.20",
+              "hint": "the option side; the assignment intrinsic below is not in it",
+              "tone": "good"
+            },
+            {
+              "id": "a0l2-ledger",
+              "label": "Ledger says",
+              "text": "$110.20",
+              "hint": "the ledger's figure for this lot",
+              "tone": "none"
+            }
+          ],
+          "days_line": {
+            "id": "a0l2-days",
+            "label": "Days",
+            "text": "3 with a quote",
+            "hint": null,
+            "tone": "muted"
+          },
+          "iv_line": {
+            "id": "a0l2-ivline",
+            "label": "IV",
+            "text": "IV from mid 30.9% to 28.6% (ours, solved from the stored mid)   stored IBKR IV 28.9% (comparison only)",
+            "hint": null,
+            "tone": "muted"
+          },
+          "end_line": null,
+          "recon": [
+            {
+              "id": "a0l2-diff",
+              "label": "Ours vs ledger",
+              "text": "difference $0.00",
+              "hint": "ledger minus total minus assignment intrinsic",
+              "tone": "none"
+            },
+            {
+              "id": "a0l2-circ",
+              "label": "Open-lot check",
+              "text": "The open-lot check is circular: our stored mid is on both sides, so it checks fills, commissions and the charge, not the market value",
+              "hint": null,
+              "tone": "muted"
+            }
+          ],
+          "badges": [
+            "2-day step"
+          ],
+          "gap": null
+        },
+        {
+          "id": "lot-main-p4",
+          "title": "DDD put 70.00 exp 2026-12-18",
+          "summary": "short 2 opened 2026-11-03 at 1.80   expired 2026-11-13 · Ledger says $12.00, commission $1.30",
+          "lines": [],
+          "days_line": {
+            "id": "a0l3-days",
+            "label": "Days",
+            "text": "not computed",
+            "hint": null,
+            "tone": "none"
+          },
+          "iv_line": null,
+          "end_line": null,
+          "recon": [],
+          "badges": [],
+          "gap": {
+            "kind": "gap",
+            "reason": "missing_quote",
+            "text": "no stored close of DDD on 2026-11-13: no split"
+          }
+        }
+      ],
+      "sample_note": "2 ended lots: fewer than 20 ended lots: no conclusion about what pays",
+      "gap": null
+    }
+  ]
+}
