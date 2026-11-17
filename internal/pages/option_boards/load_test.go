@@ -189,6 +189,8 @@ func TestEodTextGreeks(t *testing.T) {
 	}{
 		{"rounds to four decimals", 0.1234567, "0.1235"},
 		{"tiny negative has no sign", -0.00001, "0.0000"},
+		{"negative rounding to one unit keeps its sign", -0.00006, "−0.0001"},
+		{"negative zero has no sign", math.Copysign(0, -1), "0.0000"},
 		{"large value", 1500, "1500.0000"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
