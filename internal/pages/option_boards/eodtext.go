@@ -29,6 +29,7 @@ func greekText(v *float64) string {
 	}
 	t := strconv.FormatFloat(*v, 'f', 4, 64)
 	if strings.HasPrefix(t, "-") {
+		// "-0.0000": the value rounds to zero at four places, so it carries no sign
 		if strings.Trim(t, "-0.") == "" {
 			return t[1:]
 		}
