@@ -302,13 +302,19 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	} else {
 		cm := r.j.m
 		if row, isIdx := cm.indexOf(u.Symbol); isIdx {
-			cm.TradingClass = row.TradingClass
+			c, ok := indexChain(chains, u, row.TradingClass)
+			if !ok {
+				return nil, newErr(contracts.Permanent, "no chain of trading class %s for %s: the gateway lists classes %s",
+					row.TradingClass, u.Symbol, listedClasses(chains))
+			}
+			chain = c
+		} else {
+			c, class, ok := cm.chainOfRoot(chains, u, r.j.root(u.Symbol))
+			if !ok {
+				return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
+			}
+			chain = c
 		}
-		c, class, ok := cm.chainOfRoot(chains, u, r.j.root(u.Symbol))
-		if !ok {
-			return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
-		}
-		chain = c
 	}
 	sel := r.j.m
 	if stock {
@@ -455,4 +461,44 @@ func (m manifest) chainOfRoot(chains []broker.Chain, u underlying, root string) 
 		}
 	}
 	return broker.Chain{}, class, false
+}
+
+// indexChain picks the chain of an [[index]] row: the first of the class on the underlying's exchange, else the first
+// of the class on any exchange. The gateway lists some index options (RUT) under the exchange of the options, not of
+// the index. It is one more lookup in the same list.
+func indexChain(chains []broker.Chain, u underlying, class string) (broker.Chain, bool) {
+	var other *broker.Chain
+	for i, c := range chains {
+		if c.TradingClass != class {
+			continue
+		}
+		if c.Exchange == u.Exchange {
+			return c, true
+		}
+		if other == nil {
+			other = &chains[i]
+		}
+	}
+	if other != nil {
+		return *other, true
+	}
+	return broker.Chain{}, false
+}
+
+// listedClasses names the distinct trading classes of the chains in listing order, at most ten.
+func listedClasses(chains []broker.Chain) string {
+	var out []string
+	seen := map[string]bool{}
+	for _, c := range chains {
+		if seen[c.TradingClass] {
+			continue
+		}
+		seen[c.TradingClass] = true
+		if len(out) == 10 {
+			out = append(out, "...")
+			break
+		}
+		out = append(out, c.TradingClass)
+	}
+	return strings.Join(out, ",")
 }
