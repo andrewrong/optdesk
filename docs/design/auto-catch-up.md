@@ -134,16 +134,17 @@ Contracts: unchanged
 Design: docs/design/auto-catch-up.md#Decisions (Decision 9)
 Owner case: a change of who may act or with what permission
 Acceptance:
-1. The new migration (the number is the next free one after `0053` at the time of the pull request) grants `INSERT (job_id, session_day, force)` on `settings.job_request` to `ot_runner` and nothing else (no table, view, sequence or column more); its Down revokes exactly that grant.
-2. `TestSettingsRolesCannotUpdate` is changed: the `INSERT INTO settings.job_request (job_id, session_day, force)` line leaves its list of denied statements; `TestRunnerCanInsertRequestColumns` (new, tag `pg`, runs in GitHub CI) shows `ot_runner` inserts a row with those three columns and still gets a permission error for an insert that sets `state` or `keys`, for an update of `job_id` or `force`, for a delete, and for an insert into `settings.job_request_withdraw`.
-3. The owner merges this pull request. A migration holds the deploy for the owner (rebuild `ot`, setup pg, migrate, setup pg); entry 4 does not merge before this migration is applied.
-4. No file outside the Files line is in the diff.
+1. The new migration `migrations/0054_runner_enqueue_grant.sql` grants `INSERT (job_id, session_day, force)` on `settings.job_request` to `ot_runner` and nothing else (no table, view, sequence or column more); its Down revokes exactly that grant.
+2. `TestRunnerRoleUpdatesJobRequestColumns` is changed: its `INSERT INTO settings.job_request (job_id, session_day, force) VALUES ('x', '2026-11-11', false)` line leaves its list of denied statements (`TestSettingsRolesCannotUpdate` is unchanged); `TestRunnerCanInsertRequestColumns` (new, tag `pg`, runs in GitHub CI) shows `ot_runner` inserts a row with those three columns and still gets a permission error for an insert that sets `state` or `keys`, for an update of `job_id` or `force`, for a delete, and for an insert into `settings.job_request_withdraw`.
+3. The diff changes only `migrations/0054_runner_enqueue_grant.sql` and `internal/store/setup/settings_pg_test.go`.
 
 ## Checked by CI
 
 `ci-go`: `go test ./cmd/ot/... ./internal/pages/...` and `scripts/arch` (entries 1-4); the PostgreSQL job with tag `pg` for entry 5.
 
 ## Checked by owner
+
+Entry 5: the owner merges its pull request; the migration holds the deploy for the owner (rebuild `ot`, setup pg, migrate, setup pg), and entry 4 is not merged before the migration is applied to the deployed database.
 
 After deploy: the scheduler log has a "catch-up" line each 30 minutes; `/job-console` shows requests of every repairable dataset; `not_run` cells of `obs.price_bar` turn `ok` or `no_value`; no cell on `/data-health` prints "not planned". That the grey cells of each dataset turn green or say why they cannot, and that the number of auto requests per pass (40, newest gap only for bars, fx and FRED) does not crowd out the scheduled jobs (they share the one console worker).
 
