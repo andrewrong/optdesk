@@ -16,7 +16,10 @@ function CellView({ cell, dataset, form }: { cell: Cell; dataset: Dataset; form:
       <Badge variant={cell.state === 'missing' || cell.state === 'expired' ? 'destructive' : 'secondary'}>{cell.state}</Badge>
       {cell.state !== 'ok' && cell.state !== 'not_run' ? (
         <div>
-          {cell.ok} of {cell.keys}
+          {(['ok', 'no_value', 'expired', 'missing'] as const)
+            .filter((word) => cell[word] > 0)
+            .map((word) => `${cell[word]} ${word}`)
+            .join(', ')}
         </div>
       ) : null}
       {cell.missing_keys.length > 0 ? <div className="break-words text-muted-foreground">{cell.missing_keys.join(', ')}</div> : null}
