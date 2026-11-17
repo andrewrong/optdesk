@@ -151,6 +151,15 @@ var inserts = map[string]string{
 	"margin_table":    `INSERT INTO valuation.margin_table (effective_date, p_from, m, w, h, s) VALUES ('2026-01-02', '1', '0.3', '0.1', '0.2', '0.4')`,
 }
 
+// updateColumn is a column that is not an identity column, so the statement reaches the privilege check.
+var updateColumn = map[string]string{
+	"company_profile": "name",
+	"review":          "review_id",
+	"r_version":       "r_us",
+	"r_table":         "us",
+	"margin_table":    "m",
+}
+
 var viewOf = map[string]string{
 	"company_profile": "rd.valuation_company_profile_r1",
 	"review":          "rd.valuation_review_r1",
@@ -169,7 +178,7 @@ func TestValuationTablesAsRoles(t *testing.T) {
 		if _, err := w.Exec(ctx, ins); err != nil {
 			t.Errorf("INSERT into %s as ot_w_settings: %v", table, err)
 		}
-		if _, err := w.Exec(ctx, `UPDATE valuation.`+table+` SET id = id`); sqlState(err) != "42501" {
+		if _, err := w.Exec(ctx, `UPDATE valuation.`+table+` SET `+updateColumn[table]+` = `+updateColumn[table]); sqlState(err) != "42501" {
 			t.Errorf("UPDATE %s as ot_w_settings: err = %v, want permission denied", table, err)
 		}
 		if _, err := w.Exec(ctx, `DELETE FROM valuation.`+table); sqlState(err) != "42501" {
