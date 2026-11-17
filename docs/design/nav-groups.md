@@ -52,7 +52,7 @@ None. `TopNav` keeps its name and its props (none); no generated type, JSON sche
 ### 1 nav-groups-web
 
 Module: web. Size: S.
-Order: after entry 8 of docs/design/valuation-structure.md
+Cut after: this entry is written as an issue only once entry 8 of `docs/design/valuation-structure.md` has merged (a cross-design wait; crew's `Order:` line names entries of this file only).
 Files: `web/src/shell/TopNav.tsx`, `web/test/shell/TopNav.test.tsx`, `web/src/components/ui/dropdown-menu.tsx`, `web/src/components/ui/SOURCES.md`
 Contracts: unchanged
 Design: docs/design/nav-groups.md#Decisions (Decisions 1 to 7)
@@ -95,7 +95,7 @@ The adversarial read is `<runner home>/state/optdesk-drafts/designs/nav/adversar
 
 1. Gap, one row not pinned: adopted. `flex-wrap` is removed (Decision 7) and a test pins that the class is absent; the fit from 768 px is no longer claimed and moves to Checked by owner and Doubts 2. A bound on a group's size is not adopted: no rule is invented before a group has more than ten rows; a group that grows past that is a design change like a seventh group.
 2. Companies held two links and Valuation was a guess: adopted by order. Valuation goes first (Decision 6): entry 1 is ordered after entry 8 of `docs/design/valuation-structure.md`, so Companies holds three links at the first deploy. It stays an owner check.
-3. Cross-design order unenforceable: partly. `Order: after entry 8 of docs/design/valuation-structure.md` is now a named dependency with the only syntax the repo has; with `navGroups.ts` dropped, entry 9 of data-collection keeps `TopNav.tsx` in its Files and the valuation design needs no edit, so only the test sentences of entry 9 change, when it is cut, through a design PR (Left out). A missed edit shows as a failing `TestTopNavHasCompanyData` before merge, not as a wrong page.
+3. Cross-design order unenforceable: partly. the wait on entry 8 of `docs/design/valuation-structure.md` is stated as a cut rule of entry 1 (crew's `Order:` line takes entries of the same file only), and the dispatcher cuts entry 1 after that entry merges; with `navGroups.ts` dropped, entry 9 of data-collection keeps `TopNav.tsx` in its Files and the valuation design needs no edit, so only the test sentences of entry 9 change, when it is cut, through a design PR (Left out). A missed edit shows as a failing `TestTopNavHasCompanyData` before merge, not as a wrong page.
 4. Simpler way, keep the list in `TopNav.tsx`: adopted (Decision 5). `navGroups.ts` is dropped: one file fewer in the Files, and with Valuation first the edits to the other designs fall from eight lines to three. A `group` field on the flat list was not taken, because the "Held options" label needs its own structure.
 5. "Held options" as a `div role="presentation"`: adopted the other way. It is a `DropdownMenuLabel`; entry 1 adds that part to `dropdown-menu.tsx` and its note to `SOURCES.md` (Decision 2, Files).
 6. Lock-in of the names and of the `/options/*` prefix: not changed. The names are the owner's (Decision 1); a path in no group marks nothing (Decision 3), and the Valuation routes that are not under `/valuation/` are named in Decision 6.
