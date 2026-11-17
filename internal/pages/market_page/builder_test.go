@@ -81,6 +81,7 @@ type env struct {
 	rerr     error
 	serr     error
 	zone     *time.Location
+	at       time.Time // generation time; zero means 2026-11-06 12:00 UTC
 }
 
 func (e env) config(t *testing.T) Config {
@@ -124,7 +125,10 @@ func (e env) build(t *testing.T) ([]byte, error) {
 	if day == "" {
 		day = "2026-11-06"
 	}
-	at := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	at := e.at
+	if at.IsZero() {
+		at = time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	}
 	return Build(context.Background(), e.config(t), fakeSeries{points: e.series, err: e.serr}, contracts.Day(day), at)
 }
 
@@ -341,6 +345,30 @@ func TestStaleLabelOldestDataDay(t *testing.T) {
 	}
 	if _, has := none["stale_after"]; has {
 		t.Error("stale_after without a data day")
+	}
+}
+
+func TestStaleFlagAfterStaleAfterOnTheFourthDay(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	for _, m := range []map[string][]contracts.ReadingRecord{e.readings, e.iv, e.rv, e.ivrv} {
+		for name := range m {
+			m[name] = []contracts.ReadingRecord{rec("2026-11-16", "ok", "0.5", nil, "2026-11-13")}
+		}
+	}
+	e.day = "2026-11-17"
+	e.series = map[string][]contracts.SeriesPoint{seriesVIX: {pt("2026-11-16", 21)}, seriesVXV: {pt("2026-11-16", 22)}}
+	e.at = time.Date(2026, 11, 17, 13, 35, 0, 0, time.UTC)
+	m := e.page(t)
+	if s := at(t, m, "stale").(map[string]any); s["is_stale"] != true {
+		t.Errorf("21:35 stale = %v", s)
+	}
+	if m["stale_after"] != "2026-11-17T09:30:00+08:00" {
+		t.Errorf("stale_after = %v", m["stale_after"])
+	}
+	e.at = time.Date(2026, 11, 17, 0, 30, 0, 0, time.UTC)
+	if s := at(t, e.page(t), "stale").(map[string]any); s["is_stale"] != false {
+		t.Errorf("08:30 stale = %v", s)
 	}
 }
 
