@@ -53,8 +53,8 @@ Per dataset on `/data-health` (28 datasets x 30 session days; "gaps" is `missing
 
 1. **The pass is the owner's repair, run by the scheduler.** For every dataset the pass runs the core of `repairGaps` (new `repairGapsFor`, shared by the page's POST and the pass), so the rule of "repairable" is the page's own verdict (an `any_day` job that is not present-only gets a button; a `today_only` job only for today), the days are `GapDays` over the page's 30 session days, and the requests are ordinary console requests (`Force: false`, visible on `/job-console`, run one job at a time by the existing per-job lock). No manifest field, no table, no new interface in `runner`, no change to any job.
 2. **A dataset maps to all its jobs.** `repairJobOf` (first job) is replaced by `repairJobsOf` (every job that lists the dataset, in table order), and the owner's POST and the pass queue each job's own button days: `statement_capture` for `account.capture`, `compute_figures` (and, for today, `iv_history`) for `readings.reading`. `Enqueue` keeps an open request of the same job and day, so two jobs never double a request.
-3. **The pass is bounded and has no memory of its own.** One pass runs under `clockTimeout` of 2 minutes (trial value) and enqueues at most 40 requests (trial value), oldest gap first across datasets in table order; a pass that stops at the cap or the timeout is continued by the next one. A (job, day) is not enqueued when the queue shows a request of that job and day that is queued or running, or that ended `failed` or `refused` today (UTC date of the injected clock), read from `jobrequest.Reader.Recent(ctx, 200)`; no in-memory map and no time throttle, and a restart changes nothing. A request that ended `done` and left the day a gap (the source gave nothing) is taken again by the next pass; the cap bounds that, and Doubt 1 names it.
-4. **Trigger and wiring.** `claimNext` (`jobconsole_turn.go:53`) runs one pass when it finds no request to claim and 30 minutes of the injected clock have passed since the last pass, and once after start (trial value 30 minutes: pacing of a scan, not a refusal to run; the owner's button is never held back by it). A pass only enqueues; it runs no job. The host gains a `jobrequest.Poster` (which also reads) and a `coverage.Reader`, opened in `openConsoleHost` from the existing openers and the pages DSN; with either missing the pass is off and one warn line says so, as `consoleOff` does for the console.
+3. **The pass is bounded and has no memory of its own.** One pass runs under `clockTimeout` of 2 minutes (trial value) and enqueues at most 40 requests (trial value), oldest gap first across datasets in table order; a pass that stops at the cap or the timeout is continued by the next one. A (job, day) is not enqueued when the queue shows a request of that job and day that is queued or running, or that ended `failed` or `refused` today (UTC date of the injected clock), read from `jobrequest.Reader.Recent(ctx, 200)` (declared at `internal/store/jobrequest/api.go:90`; `Poster` embeds `Reader`, `api.go:98-99`, so the Poster reads it); no in-memory map and no time throttle, and a restart changes nothing. A request that ended `done` and left the day a gap (the source gave nothing) is taken again by the next pass; the cap bounds that, and Doubt 1 names it.
+4. **Trigger and wiring.** `claimNext` (`jobconsole_turn.go:53`) runs one pass when it finds no request to claim and 30 minutes of the injected clock have passed since the last pass, and once after start (trial value 30 minutes: pacing of a scan, not a refusal to run; the owner's button is never held back by it). A pass only enqueues; it runs no job. The host gains a `jobrequest.Poster` (which also reads) and a `coverage.Reader`, opened in `openConsoleHost` from the existing openers; `openConsoleHost` gains the two DSNs as parameters and its one caller, `scheduler.go:184`, passes them; with either missing the pass is off and one warn line says so, as `consoleOff` does for the console.
 5. **The page.** A `not_run` cell goes through the verdict of a `missing` cell, `GapDays` counts `not_run` cells that have a button, and the text "not planned" is gone, so the owner's "repair N days" is the same set the pass takes. A `today_only` past cell keeps the job's own WhyText; this design does not rename it to "lost".
 6. **Derived jobs plan the day again on a miss** (part A of `late-data-recovery.md`, Decision 2): `listedJob.Run` builds the inner job's plan again when no snapshot holds the keys (`cmd/ot/listedjob.go:36,145-172`; `compute_figures` is wrapped at `wire_computefigures.go:40`), so a gap older than the 7 newest days of snapshots runs.
 7. **Late sources.** An `expired` day is a gap like any other, so the pass takes it again; a day whose cell is `no_value` is not taken (the source said it has nothing). The newest day itself, late today, is the normal runner's (retries every 10 minutes while empty before the close).
@@ -62,7 +62,7 @@ Per dataset on `/data-health` (28 datasets x 30 session days; "gaps" is `missing
 
 ## Modules
 
-No row of `docs/design/modules.md` changes. Entries 1, 2 and 4 edit ot (`cmd/**`), entry 3 edits pages (`internal/pages/**`).
+No row of `docs/design/modules.md` changes. Entries 1, 2 and 4 edit ot (`cmd/**`), entry 3 edits pages (`internal/pages/**`). Every `cmd/ot` test that entry 3 would turn red is fixed in entry 1, which lands first and makes each day of its fixtures `ok` unless a test sets it, so no entry breaks a test of another module.
 
 ## Interface
 
@@ -70,7 +70,7 @@ None. No `api.go`, `api.py`, JSON schema or generated type is edited; `runner.Po
 
 ## Issues
 
-Order: 1 and 2 first (independent, ot), 3 after 1 (3 turns `not_run` days into gaps; 1 first makes `TestRepairSkipsOkAndNoValue` independent of them), 4 after 1, 2 and 3. Every entry compiles and keeps main green on its own.
+Order: 1 and 2 first (independent, ot), 3 after 1 (3 turns `not_run` days into gaps; 1 first pads every fixture day with an `ok` cell, so the `cmd/ot` repair tests no longer depend on `not_run` days), 4 after 1, 2 and 3. Every entry compiles and keeps main green on its own.
 
 ### 1 repair-all-jobs-of-dataset
 
@@ -79,9 +79,9 @@ Files: `cmd/ot/data_health_repair.go`, `cmd/ot/data_health_repair_test.go`
 Contracts: unchanged
 Design: docs/design/auto-catch-up.md#Decisions (Decisions 1 and 2)
 Acceptance:
-1. `repairJobOf` is replaced by `repairJobsOf`, which returns every job of `dataHealthJobs()` that lists the dataset, in table order; `repairGaps` queues, for each of them, the days that job's verdict gives a button, and returns the id of the first request queued: `TestRepairReachesEveryJobOfDataset` (new: for `account.capture` a past gap day queues `statement_capture` and not `account_capture`, today's gap queues `account_capture` too; for `readings.reading` a past gap day queues `compute_figures` and not `iv_history`).
+1. `repairJobOf` is replaced by `repairJobsOf` (`TestRepairCountEqualsGapDays`, which calls it, is changed to `repairJobsOf(ds)[0]`), which returns every job of `dataHealthJobs()` that lists the dataset, in table order; `repairGaps` queues, for each of them, the days that job's verdict gives a button, and returns the id of the first request queued: `TestRepairReachesEveryJobOfDataset` (new: for `account.capture` a past gap day queues `statement_capture` and not `account_capture`, today's gap queues `account_capture` too; for `readings.reading` a past gap day queues `compute_figures` and not `iv_history`).
 2. The enqueue loop is one function `repairGapsFor` shared by the owner's POST path and later callers, taking the cells, the job, the poster and a request cap (0 = no cap): `TestRepairGapsForStopsAtCap` (new: five gap days and a cap of 2 queue two requests, oldest first, and the call returns capped = true).
-3. `TestRepairSkipsOkAndNoValue` is changed so that every session day of its window has an `ok` or `no_value` cell (the test no longer relies on a day with no cell being `not_run` and unrepaired), and it still shows zero requests; the other `repairGaps` tests pass unchanged.
+3. The helper `repairOver` adds an `ok` cell for every session day of `repairCoverage` (2026-11-02 .. 11-06) that the test gave no cell for, so the days without a cell are no longer `not_run`; the tests that use it stay in force with that padding: `TestRepairQueuesOldestFirst`, `TestRepairSkipsOkAndNoValue`, `TestRepairWindowJobOnePerDay`, `TestRepairTodayOnlyPastDay`, `TestRepairPresentOnlyPastDay`, `TestRepairExistingRequestIsKept`, `TestRepairIgnoresFormDays` and `TestRepairNothingQueued` (changed to give no cell for its dataset and expect zero requests only because every day is padded `ok`); `TestRepairCountEqualsGapDays` also adds an `ok` cell for 2026-11-06 to its own `cells` so its gap stays 3; the other tests of the file pass unchanged.
 4. No file outside the Files line is in the diff; each new test calls `t.Parallel()` and never sleeps.
 
 ### 2 listed-job-replan
@@ -93,7 +93,7 @@ Design: docs/design/auto-catch-up.md#Decisions (Decision 6)
 Acceptance:
 1. When no snapshot holds the keys, `listedJob.Run` builds the inner job's plan for the day and runs the keys when that plan holds them; the snapshot map and its 7-day eviction are unchanged: `TestListedRunReplansOnMiss` (new: a day older than the 7 newest, and a fresh `listedJob` as after a restart, both run the keys).
 2. A plan that lacks a key still ends Permanent "no plan for these keys": `TestListedRunPlanLacksKeyStaysPermanent` (new).
-3. The existing tests of `listedjob_test.go` pass unchanged; `cmd/ot/listedjob.go` grows by at most 40 lines; no file outside the Files line is in the diff.
+3. `TestListedKeepsDaysBounded` and `TestListedEvictsOldestPlanned` are changed: an evicted day now runs through the new plan and the test asserts the keys ran (not Permanent "no plan for these keys"); the other existing tests of `listedjob_test.go` pass unchanged; `cmd/ot/listedjob.go` grows by at most 40 lines; no file outside the Files line is in the diff.
 
 ### 3 catch-up-page-verdict
 
@@ -102,32 +102,32 @@ Files: `internal/pages/data_health_page/repair.go`, `internal/pages/data_health_
 Contracts: unchanged
 Design: docs/design/auto-catch-up.md#Decisions (Decision 5)
 Acceptance:
-1. `verdict` has no branch of its own for `StateNotRun` beyond `beforeSlot`; a `not_run` cell and a `missing` cell of the same day get the same `Repair`, `WhyText` and `DueText`, and the constant `notPlanText` is gone, so `git grep -n "notPlanText\|not planned" -- internal/pages` prints nothing: `TestNotRunFollowsTheVerdictOfMissing` (new: any-day, today-only past and today, listed-only, present-only, no job).
+1. `verdict` has no branch of its own for `StateNotRun` beyond `beforeSlot`; a `not_run` cell and a `missing` cell of the same day get the same `Repair`, `WhyText` and `DueText`, and the constant `notPlanText` is gone, so `git grep -n "notPlanText\|not planned" -- internal/pages/data_health_page/repair.go internal/pages/data_health_page/repair_test.go` prints nothing (the glossary line in `strings.go` is wording only and is left): `TestNotRunFollowsTheVerdictOfMissing` (new: any-day, today-only past and today, listed-only, present-only, no job).
 2. `GapDays` lists `not_run`, `missing` and `expired` cells that have a button, oldest first: `TestGapDaysCountsNotRun` (new: a `not_run` day of an any-day job is listed; of a today-only past day and of a listed-only job is not).
 3. `TestRepairVerdicts` has the cases "not_run any_day" (button), "not_run today_only past" (the job's `WhyText`), "not_run today_only today" (button), "not_run no job" (`lostText`), "not_run no form" (none); `TestNotRunNeverButton` is removed.
-4. `TestGapDaysOnRow` in `builder_test.go` and the enum test, and the `not_run` cases of `cells_test.go`, are updated to the new count and verdict, and `TestRepairAllCountsNotRunDays` (new, `repair_test.go`) shows `RepairAll` is `button` when the only gap days are `not_run`.
+4. `TestDatasetRows` in `builder_test.go` (its `GapDays == 0` with 29 `not_run` any-day cells becomes the new count), `TestGapDaysAndRepairAll` in `repair_test.go` (its 2 gaps become the new count) and the `not_run` cases of `cells_test.go` are updated to the new count and verdict, and `TestRepairAllCountsNotRunDays` (new, `repair_test.go`) shows `RepairAll` is `button` when the only gap days are `not_run`.
 5. `contracts/` and `web/` are unchanged; no file outside the Files line is in the diff.
 
 ### 4 catch-up-pass
 
 Module: ot. Order: after 1, 2 and 3.
-Files: `cmd/ot/catchup.go`, `cmd/ot/catchup_test.go`, `cmd/ot/jobconsole_turn.go`, `cmd/ot/jobconsole_turn_test.go`, `cmd/ot/jobconsole_sched.go`, `cmd/ot/jobconsole_host.go`
+Files: `cmd/ot/catchup.go`, `cmd/ot/catchup_test.go`, `cmd/ot/jobconsole_turn.go`, `cmd/ot/jobconsole_turn_test.go`, `cmd/ot/jobconsole_sched.go`, `cmd/ot/jobconsole_host.go`, `cmd/ot/scheduler.go`
 Contracts: unchanged
 Design: docs/design/auto-catch-up.md#Decisions (Decisions 1, 3, 4 and 7)
 Acceptance:
 1. `catchup.go` declares `catchUpPass(ctx)` that, for every dataset of `dataHealthJobs()`, reads the cells as the page does, and calls `repairGapsFor` for each job of the dataset with a cap of 40 requests in all and under `clockTimeout` of 2 minutes: `TestCatchUpPassEnqueuesGapsOldestFirst` (new, fake poster and cells), `TestCatchUpPassStopsAtCap` (new: 45 gap days enqueue 40 and the next pass the rest), `TestCatchUpPassStopsAtTimeout` (new, fake clock).
 2. A (job, day) with a queued or running request, or one that ended `failed` or `refused` on the UTC date of the clock, is not enqueued, read from `Recent`; a `done` one does not block, and `no_value` cells are never taken: `TestCatchUpPassSkipsOpenAndFailedToday` (new, table over the states) and `TestCatchUpPassNeverTakesNoValue` (new).
-3. `claimNext` calls the pass when no request was claimed and 30 minutes of the fake clock passed since the last pass, and once after start; the pass runs no job: `TestClaimNextRunsCatchUpEveryThirtyMinutes` (new, fake clock, no sleep).
-4. `openConsoleHost` builds the host with a `jobrequest.Poster` from the opener and a `coverage.Reader` from `ops.OpenCoverage` on the pages DSN; with either missing the pass is off and one warn line is written, and the console still works: `TestOpenConsoleHostWithoutCoverageKeepsConsole` (new). `newConsoleHost` and its call in `jobconsole_turn_test.go` are updated together.
-5. The pass logs one "catch-up" line per pass with `requested`, `skipped_open`, `skipped_failed_today`; each new test calls `t.Parallel()`; no file outside the Files line is in the diff; `jobconsole_turn.go` and `jobconsole_host.go` stay under 600 lines.
+3. `claimNext` calls the pass when no request was claimed and 30 minutes of the fake clock passed since the last pass, and once after start; the pass runs no job: `TestClaimNextRunsCatchUpEveryThirtyMinutes` (new, in `catchup_test.go`, fake clock, no sleep).
+4. `openConsoleHost` builds the host with a `jobrequest.Poster` from the opener and a `coverage.Reader` from `ops.OpenCoverage` on the pages DSN; with either missing the pass is off and one warn line is written, and the console still works: `TestOpenConsoleHostWithoutCoverageKeepsConsole` (new). `newConsoleHost` and its call in `jobconsole_turn_test.go:207`, and `openConsoleHost` (new DSN parameters) and its only caller `scheduler.go:184`, are updated together.
+5. The pass logs one "catch-up" line per pass with `requested`, `skipped_open`, `skipped_failed_today`: `TestCatchUpPassLogsCounts` (new, in `catchup_test.go`, reads the log buffer); each new test calls `t.Parallel()`; no file outside the Files line is in the diff; `jobconsole_turn.go` and `jobconsole_host.go` stay under 600 lines.
 
 ## Checked by CI
 
-`ci-go`: `go test ./cmd/ot/... ./internal/pages/...` and `scripts/arch` (entries 1-4). After deploy the window reads the scheduler log and `/data-health`: a "catch-up" line each 30 minutes, requests of every repairable dataset on `/job-console`, `not_run` cells of `obs.price_bar` turning `ok` or `no_value`, no cell printing "not planned".
+`ci-go`: `go test ./cmd/ot/... ./internal/pages/...` and `scripts/arch` (entries 1-4).
 
 ## Checked by owner
 
-That the grey cells of each dataset turn green or say why they cannot, and that the number of auto requests per pass (40) does not crowd out the scheduled jobs (they share the one console worker).
+After deploy: the scheduler log has a "catch-up" line each 30 minutes; `/job-console` shows requests of every repairable dataset; `not_run` cells of `obs.price_bar` turn `ok` or `no_value`; no cell on `/data-health` prints "not planned". That the grey cells of each dataset turn green or say why they cannot, and that the number of auto requests per pass (40) does not crowd out the scheduled jobs (they share the one console worker).
 
 ## Left out
 
@@ -159,7 +159,7 @@ The read is the window's file `adversarial-auto-catch-up-2026-11-17.md` (kept ou
 3. Simpler way: adopted entirely. `Stored` and entries 1-3 are gone; the pass calls the core of `repairGaps`; `Postcondition` is named only as a later optimisation (Decision 8).
 4. Lock-in: adopted. No new interface, no `present` mark without a run row, the 6-hour in-memory map is replaced by queue state; the page-verdict-as-policy lock-in remains and is Left out 5.
 5. Claim most likely false: adopted in all six parts: the bars cap (Today, Left out 3); the console plans past days since #2676 (the dependency and the old Decision 8 are deleted); fx has a reader and fundamentals and FRED do not (Left out 4); the idempotence claims kept; `claimNext` is in `jobconsole_turn.go:53`; FRED weekly and monthly series and fundamentals without per-day rows are described in Today and Left out 4.
-6. Likeliest cause of a slip: adopted. Files lists are complete (`jobconsole_turn.go`, `jobconsole_turn_test.go`, `jobconsole_sched.go`, `jobconsole_host.go`, `data_health_repair_test.go`, `builder_test.go`, `cells_test.go`), each entry stays in one module, `TestRepairSkipsOkAndNoValue` is changed in entry 1 before entry 3 makes `not_run` a gap, no entry waits on an unmerged work outside this file, the contracts fixture and its test are left alone as sample data.
+6. Likeliest cause of a slip: adopted. Files lists are complete (`jobconsole_turn.go`, `jobconsole_turn_test.go`, `jobconsole_sched.go`, `jobconsole_host.go`, `data_health_repair_test.go`, `builder_test.go`, `cells_test.go`), each entry stays in one module, the `cmd/ot` repair tests are padded with `ok` days in entry 1 before entry 3 makes `not_run` a gap, `scheduler.go` is on entry 4's Files, no entry waits on an unmerged work outside this file, the contracts fixture and its test are left alone as sample data.
 (a) `MarkPresent` without a run row: moot, the design never does it.
 (b) Readers: fx yes, bars yes, fundamentals and FRED no: no reader is needed now (Left out 4).
 (c) Same-job guard and "no time guards": adopted. The pass only enqueues, `Enqueue` keeps an open request, the console's per-job lock stays; the 30-minute interval is pacing of a scan and the 6-hour throttle is gone; the pass has its own timeout.
