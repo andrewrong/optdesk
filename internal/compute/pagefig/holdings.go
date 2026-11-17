@@ -44,6 +44,7 @@ func holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 			value.Add(value, v)
 			unreal.Add(unreal, u)
 		}
+		l.Day = holdingDay(r, l.Currency == "USD" && r.Currency == "JPY", in.UsdJpy)
 		out.Rows = append(out.Rows, l)
 	}
 	out.TotalValue = total(value, valueGap)
@@ -86,6 +87,33 @@ func holdingRow(r blockapi.HoldingIn) (value, unrealised *big.Rat, g string) {
 	value = new(big.Rat).Mul(qm, mark)
 	unrealised = new(big.Rat).Sub(value, new(big.Rat).Mul(qm, c))
 	return value, unrealised, ""
+}
+
+// holdingDay is the day result of a stock row: quantity x multiplier x (mark - prev) with the rounding of money,
+// divided by the rate when the row was converted to USD. Gaps: missing_quote for an empty mark, no_data for an
+// option row or an empty or unreadable prev, missing_input for another unreadable number; never a zero.
+func holdingDay(r blockapi.HoldingIn, converted bool, usdJpy string) compute.FigureValue {
+	if r.SecType == "option" || r.SecType == "OPT" {
+		return gap("no_data")
+	}
+	if r.Mark == "" {
+		return gap("missing_quote")
+	}
+	q, ok1 := parse(r.Quantity)
+	m, ok2 := parse(r.Multiplier)
+	mark, ok3 := parse(r.Mark)
+	if !ok1 || !ok2 || !ok3 {
+		return gap("missing_input")
+	}
+	prev, ok := parse(r.Prev)
+	if !ok {
+		return gap("no_data")
+	}
+	d := new(big.Rat).Mul(new(big.Rat).Mul(q, m), new(big.Rat).Sub(mark, prev))
+	if converted {
+		d.Quo(d, rate(usdJpy))
+	}
+	return compute.FigureValue{Value: money(d)}
 }
 
 func firstGap(have, g string) string {

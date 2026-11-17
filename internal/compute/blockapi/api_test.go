@@ -169,6 +169,7 @@ func (fakeHoldings) Holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 		} else {
 			l.Value, l.Unrealised, l.Share = fv(r.Quantity+r.Multiplier+r.Mark), fv(r.Cost+r.Currency), fv("1")
 		}
+		l.Day = fv(r.Prev)
 		out.Rows = append(out.Rows, l)
 	}
 	return out
@@ -224,6 +225,16 @@ func TestHoldingsContract(t *testing.T) {
 	}
 	if h.TotalValue != fv("1000") || h.TotalUnrealised != fv("USD") {
 		t.Fatalf("totals = %+v %+v", h.TotalValue, h.TotalUnrealised)
+	}
+}
+
+func TestHoldingDayContract(t *testing.T) {
+	t.Parallel()
+	h := newHoldings().Holdings(blockapi.HoldingsIn{Currency: "USD", Rows: []blockapi.HoldingIn{
+		{Underlying: "AAA", SecType: "STK", Currency: "USD", Quantity: "2", Multiplier: "1", Cost: "5", Mark: "6", Prev: "5.5"},
+	}})
+	if len(h.Rows) != 1 || h.Rows[0].Day != fv("5.5") {
+		t.Fatalf("Rows = %+v", h.Rows)
 	}
 }
 

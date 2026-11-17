@@ -114,7 +114,11 @@ type NewPageFiguresFunc func() PageFigures
 
 // HoldingIn is one held position, all numbers decimal text. Cost is the average cost per unit and Mark the price
 // of the capture; Mark is empty when the position has no price. Multiplier is 1 for a stock.
-type HoldingIn struct{ Underlying, SecType, Currency, Quantity, Multiplier, Cost, Mark string }
+type HoldingIn struct {
+	Underlying, SecType, Currency, Quantity, Multiplier, Cost, Mark string
+	// Prev is the previous close per unit, decimal text, empty when there is none. Only a stock row reads it.
+	Prev string
+}
 
 // HoldingsIn is the held positions of one account in one currency. NetLiquidation is the NetLiquidation tag of the
 // capture values in Currency, the denominator of every share; empty gives the gap no_data for shares.
@@ -130,6 +134,10 @@ type HoldingsIn struct {
 type HoldingLine struct {
 	Underlying, SecType, Currency string
 	Value, Unrealised, Share      compute.FigureValue
+	// Day is the day result of a stock row: quantity x multiplier x (Mark - Prev), in Currency. The gap is
+	// missing_quote without a Mark and no_data without a readable Prev; an option row always has no_data. Never a zero
+	// for a missing figure.
+	Day compute.FigureValue
 }
 
 // HoldingsResult holds one line per input row, in input order. A total that left a position out carries a gap.
