@@ -12,6 +12,9 @@ type Block = Payload['accounts'][number]
 
 const STATUS_LABEL: Record<string, string> = { ok: 'Current', stale: 'Stale', no_capture: 'No capture' }
 
+const CASH_GLOSS =
+  "If every short put that expires on that day were assigned, this is the cash you would need to pay for the shares (strike × multiplier × quantity). 'Assigned' = the buyer of your put makes you buy the stock at the strike."
+
 export function AliasBlock({ block }: { block: Block }) {
   return (
     <Card data-alias={block.alias} className="min-w-0">
@@ -34,7 +37,17 @@ export function AliasBlock({ block }: { block: Block }) {
         {block.status === 'no_capture' ? null : (
           <>
             <NoticeList notices={block.notices} />
-            {block.cash_by_date.length > 0 ? (
+            <h3 data-cash-title className="text-base font-semibold">
+              Cash due if assigned
+            </h3>
+            <p data-cash-gloss className="text-sm text-muted-foreground">
+              {CASH_GLOSS}
+            </p>
+            {block.cash_by_date.length === 0 ? (
+              <Alert data-cash-empty>
+                <AlertDescription>No short put is open: no cash is due.</AlertDescription>
+              </Alert>
+            ) : (
               <Table data-cash>
                 <TableHeader>
                   <TableRow>
@@ -53,7 +66,7 @@ export function AliasBlock({ block }: { block: Block }) {
                   ))}
                 </TableBody>
               </Table>
-            ) : null}
+            )}
             {block.cushion_text ? (
               <p className="text-sm" data-cushion>
                 {block.cushion_text}
