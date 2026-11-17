@@ -1,8 +1,10 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
@@ -33,15 +35,7 @@ func (o overlayReader) Params(ctx context.Context, at time.Time) ([]ownerset.Par
 		}
 		rows = append(rows, ownerset.Param{Key: f.Key, Value: f.Text})
 	}
-	slices.SortFunc(rows, func(a, b ownerset.Param) int {
-		switch {
-		case a.Key < b.Key:
-			return -1
-		case a.Key > b.Key:
-			return 1
-		}
-		return 0
-	})
+	slices.SortFunc(rows, func(a, b ownerset.Param) int { return strings.Compare(a.Key, b.Key) })
 	return rows, nil
 }
 
@@ -61,14 +55,6 @@ func (o overlayReader) Exclusions(ctx context.Context, at time.Time) ([]ownerset
 		}
 		rows = append(rows, ownerset.Exclusion{InstrumentID: id, Excluded: excluded})
 	}
-	slices.SortFunc(rows, func(a, b ownerset.Exclusion) int {
-		switch {
-		case a.InstrumentID < b.InstrumentID:
-			return -1
-		case a.InstrumentID > b.InstrumentID:
-			return 1
-		}
-		return 0
-	})
+	slices.SortFunc(rows, func(a, b ownerset.Exclusion) int { return cmp.Compare(a.InstrumentID, b.InstrumentID) })
 	return rows, nil
 }
