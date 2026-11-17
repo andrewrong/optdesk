@@ -59,18 +59,43 @@ describe('underlyings view', () => {
     expect(el.querySelector('[data-confirm]')).toBeNull()
   })
 
-  it('shows the flags of each row as switches and its followed_by groups as badges', async () => {
+  it('shows the flags of each row as On or Off text and its followed_by groups as badges', async () => {
     const p = fixture('golden')
     const el = await render(p)
     for (const r of p.rows) {
       const tr = el.querySelector(`tr[data-name="${r.key}"]`)!
       for (const f of ['options', 'fundamentals', 'held'] as const) {
-        const sw = tr.querySelector(`button[role=switch][aria-label=${f}]`)!
-        expect(sw.getAttribute('aria-checked')).toBe(String(r[f]))
+        const col = ['options', 'fundamentals', 'held'].indexOf(f) + 3
+        expect(tr.children[col]!.textContent).toBe(r[f] ? 'On' : 'Off')
       }
       const badges = [...tr.querySelectorAll('[data-slot=badge]')].map((b) => b.textContent)
       expect(badges).toEqual([r.status_text, ...r.followed_by])
     }
+  })
+
+  it('new: each row has an Edit link to the id of its edit form', async () => {
+    const p = fixture('golden')
+    const el = await render(p)
+    expect(p.rows.some((r) => r.key.includes(':'))).toBe(true)
+    for (const r of p.rows) {
+      const id = `edit-${r.key.replace(/[^A-Za-z0-9_-]/g, '-')}`
+      const a = el.querySelector(`tr[data-name="${r.key}"] a`)!
+      expect(a.textContent).toBe('Edit')
+      expect(a.getAttribute('href')).toBe(`#${id}`)
+      const forms = el.querySelectorAll(`form[id="${id}"]`)
+      expect(forms.length).toBe(1)
+      expect(forms[0]!.getAttribute('tabindex')).toBe('-1')
+      expect(forms[0]!.getAttribute('data-row')).toBe(r.key)
+    }
+  })
+
+  it('new: the table has no switch and no Edit link without a form', async () => {
+    const golden = await render(fixture('golden'))
+    expect(golden.querySelector('[data-names] button[role=switch]')).toBeNull()
+    await act(async () => root?.unmount())
+    golden.remove()
+    const el = await render(fixture('readonly'))
+    expect(el.querySelector('a[href^="#edit-"]')).toBeNull()
   })
 
   it('shows the status text of a pending row', async () => {

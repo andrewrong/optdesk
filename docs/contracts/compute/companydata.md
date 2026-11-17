@@ -1,0 +1,17 @@
+# Company data (`internal/compute/companydataapi`)
+
+Source: `docs/design/data-collection.md`, entry 2 (Decisions 3 to 7). Every number is decimal text; the interface has no float, no clock and no I/O.
+
+**Single quarters.** Facts of one (taxonomy, concept, unit) are grouped by period start, and a duration is one of four lengths: 3M is 84 to 98 days, 6M 175 to 189, 9M 266 to 280 and 12M 364 to 371 days (the bands cover 52 and 53 week years). Q1 is the 3M fact; Q2 is the 3M fact that starts the day after the Q1 end, else 6M minus 3M; Q3 likewise from 9M minus 6M; Q4 is a 3M fact ending on the year end, else 12M minus 9M. Flows are subtracted exactly. A quarter that cannot be found or derived is a missing cell with a `Why`, never a wrong number.
+
+**Instants.** An instant concept (cash, long-term debt, short-term debt) takes the instant fact whose date is the quarter end; nothing is subtracted.
+
+**EPS and shares.** EPS and shares are not subtracted, with one exception: Q1 to Q3 diluted EPS are the 3M facts, and Q4 diluted EPS is the 3M fact when the 10-K tags one, else annual EPS minus the first three quarters, marked `Derived`. Q4 is missing if a quarter is missing, and `share_basis_changed` when the diluted share counts of Q1 to Q3 and the year differ by more than one band (a split). Diluted shares are a weighted average and are shown only when a 3M fact is tagged.
+
+**Restatement.** Among facts with the same concept, unit, period start and period end, the latest restatement wins: the largest `filed`, ties by the larger `doc_id`. The old row stays in the table. A cell whose group holds two different values has `Restated` true, and a derived value is restated when either operand is. When an operand differs from its first-filed value, every other operand must come from a filing filed on or after it, else the cell is `cannot_derive`.
+
+**Filing date.** The `FilingDate` of a quarter is the earliest `filed` of the facts whose period end is the quarter end, the original filing; for a derived Q4 it is the filing of the year's 10-K. It is the SEC filing date, not the owner's report date.
+
+**Concept order.** Within a column the first concept that has a value (for a derived cell, all operands) is used, and `Cell.Concept` names it. Revenue: `RevenueFromContractWithCustomerExcludingAssessedTax`, `Revenues`, `SalesRevenueNet`, `RevenueFromContractWithCustomerIncludingAssessedTax`, `SalesRevenueGoodsNet`. Operating income: `OperatingIncomeLoss`. Net income: `NetIncomeLoss`. Diluted EPS: `EarningsPerShareDiluted`. Diluted shares: `WeightedAverageNumberOfDilutedSharesOutstanding`, `WeightedAverageNumberOfShareOutstandingBasicAndDiluted`. Operating cash flow: `NetCashProvidedByUsedInOperatingActivities`, then the `ContinuingOperations` variant. Capex: `PaymentsToAcquirePropertyPlantAndEquipment`, `PaymentsToAcquireProductiveAssets`, `PaymentsToAcquireOtherPropertyPlantAndEquipment`, `PaymentsForCapitalImprovements`. Buybacks: `PaymentsForRepurchaseOfCommonStock`. Dividends: `PaymentsOfDividendsCommonStock`, `PaymentsOfDividends`. Cash: `CashAndCashEquivalentsAtCarryingValue`. Long-term debt: `LongTermDebtNoncurrent`, `LongTermDebt`. Short-term debt: `DebtCurrent`, `LongTermDebtCurrent`.
+
+**Free cash flow.** `FreeCash` is operating cash flow minus capex, computed here by `Calculator.Quarters` as exact decimal text and stored nowhere; it is missing when either operand is, and its `Concept` is the two concept names joined by " - ". The page builder calls it per request and the web prints it.

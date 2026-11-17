@@ -101,9 +101,7 @@ func TestVolIndexRv20Once(t *testing.T) {
 		t.Fatalf("SPX keys %v, want one market.rv20, one market.iv_rv20 and twelve ids", n)
 	}
 	res := j.Run(t.Context(), dayD, keys)
-	// no FRED point of the session day: the iv_rv20 keys are stored and end Retryable (Decision 10), nothing else fails
-	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "market.iv_rv20") ||
-		res.Returned != res.Usable {
+	if res.Err != nil || res.Returned != res.Usable {
 		t.Fatalf("result %+v", res)
 	}
 	count := map[string]int{}
