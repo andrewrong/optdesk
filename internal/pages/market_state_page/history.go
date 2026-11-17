@@ -3,6 +3,7 @@ package market_state_page
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
 )
@@ -48,7 +49,7 @@ func historyCell(l marketstateapi.Line, label string, f pointFormat) any {
 		if err != nil {
 			return mkGap(reasonMissingInput, reasonText(reasonMissingInput, what))
 		}
-		pts = append(pts, historyPoint{Day: string(p.Day), Value: json.Number(v), Text: v + f.suffix})
+		pts = append(pts, historyPoint{Day: string(p.Day), Value: json.Number(v), Text: strings.Replace(v, "-", "−", 1) + f.suffix})
 	}
 	first, last := pts[0].Day, pts[len(pts)-1].Day
 	caption := fmt.Sprintf("%d days, %s to %s", len(pts), first, last)
