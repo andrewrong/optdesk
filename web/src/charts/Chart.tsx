@@ -26,6 +26,12 @@ import { cn } from '@/lib/utils'
 import type { ChartSpec } from './spec'
 import { unitPrefix, unitSuffix } from './unitSuffix'
 
+function groupThousands(digits: string): string {
+  const [whole = '', fraction] = digits.split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, ',')
+  return fraction === undefined ? grouped : `${grouped}.${fraction}`
+}
+
 type Row = Record<string, string | number | number[] | null>
 
 const keyOf = (index: number) => `s${index}`
@@ -91,8 +97,10 @@ export function Chart({
   const yAxis = {
     tickFormatter: (tick: string | number) => {
       const text = String(tick)
-      const sign = text.startsWith('-') ? '-' : ''
-      return `${sign}${prefix}${sign ? text.slice(1) : text}${suffix}`
+      const negative = text.startsWith('-')
+      const digits = negative ? text.slice(1) : text
+      const body = prefix === '$' ? groupThousands(digits) : digits
+      return `${negative ? (prefix === '$' ? '\u2212' : '-') : ''}${prefix}${body}${suffix}`
     },
   }
   const common = {

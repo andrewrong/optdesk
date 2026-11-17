@@ -72,10 +72,10 @@ func TestFiguresFromTheFakeTiles(t *testing.T) {
 	if f := tileFigure(c, "sold_count_month"); f["value"] != float64(2) || f["unit"] != "structures" || f["text"] != "2" {
 		t.Fatalf("sold = %v", f)
 	}
-	if f := tileFigure(c, "open_premium_usd"); f["text"] != "$1,235" || f["value"] != 1234.5 || f["unit"] != "usd" {
+	if f := tileFigure(c, "open_premium_usd"); f["text"] != "$1,234.50" || f["value"] != 1234.5 || f["unit"] != "usd" {
 		t.Fatalf("open = %v", f)
 	}
-	if f := tileFigure(c, "max_loss_usd"); f["text"] != "$2,000" || f["value"] != float64(2000) {
+	if f := tileFigure(c, "max_loss_usd"); f["text"] != "$2,000.00" || f["value"] != float64(2000) {
 		t.Fatalf("loss = %v", f)
 	}
 	checkCaptions(t, c)
@@ -119,7 +119,7 @@ func TestUncoveredCallIsTheMaxLossGap(t *testing.T) {
 	}
 	c := card(t, figCfg(&p, compute.StructureResult{}, out))
 	g := tileFigure(c, "max_loss_usd")
-	want := "1 calls without assigned shares in the ledger; other structures at least $12,346"
+	want := "1 calls without assigned shares in the ledger; other structures at least $12,345.67"
 	if g["kind"] != "gap" || g["reason"] != "no_data" || g["text"] != want {
 		t.Fatalf("gap = %v", g)
 	}
@@ -131,12 +131,12 @@ func TestUncoveredCallWithUnnumberedStructure(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{MaxLossUsd: usd("300.00", "300"), MaxLossGap: "no_data", Uncovered: 1, Unnumbered: 1, OpenCount: 3}
 	g := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
-	if g["text"] != "1 calls without assigned shares in the ledger; other structures at least $300" {
+	if g["text"] != "1 calls without assigned shares in the ledger; other structures at least $300.00" {
 		t.Fatalf("gap = %v", g)
 	}
 	out.MaxLossUsd = blockapi.UsdText{}
 	g = tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
-	if g["text"] != "1 calls without assigned shares in the ledger; other structures at least $0" {
+	if g["text"] != "1 calls without assigned shares in the ledger; other structures at least $0.00" {
 		t.Fatalf("gap = %v", g)
 	}
 }
@@ -174,7 +174,7 @@ func TestNoOpenStructureIsZeroWithItsCaption(t *testing.T) {
 	c := card(t, figCfg(&p, compute.StructureResult{}, out))
 	for _, k := range []string{"open_premium_usd", "max_loss_usd"} {
 		f := tileFigure(c, k)
-		if f["kind"] != "value" || f["text"] != "$0" || f["value"] != float64(0) {
+		if f["kind"] != "value" || f["text"] != "$0.00" || f["value"] != float64(0) {
 			t.Fatalf("%s = %v", k, f)
 		}
 		got := tileOf(c, k)["caption"].(string)
@@ -328,5 +328,30 @@ func TestGoldenFigures(t *testing.T) {
 	}
 	if strings.Contains(pretty.String(), "the ledger summary gives no") {
 		t.Fatal("a tile still carries the old gap text")
+	}
+}
+
+func TestUsd2TwoDecimals(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		in   blockapi.UsdText
+		want string
+	}{
+		{usd("1234.5", "1235"), "$1,234.50"},
+		{usd("211575.00", "211575"), "$211,575.00"},
+		{usd("", ""), "$0.00"},
+	} {
+		var p probe
+		out := blockapi.OptionTilesOut{OpenPremium: tc.in, MaxLossUsd: usd("1.00", "1"), OpenCount: 1}
+		f := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "open_premium_usd")
+		if f["text"] != tc.want {
+			t.Errorf("%q = %v, want %q", tc.in.Value, f["text"], tc.want)
+		}
+	}
+	var p probe
+	out := blockapi.OptionTilesOut{MaxLossUsd: usd("100000.5", "100001"), MaxLossGap: "no_data", Uncovered: 2, OpenCount: 1}
+	g := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
+	if want := "2 calls without assigned shares in the ledger; other structures at least $100,000.50"; g["text"] != want {
+		t.Errorf("caption = %v", g["text"])
 	}
 }

@@ -37,7 +37,7 @@ func TestSixFiguresPerSection(t *testing.T) {
 	}
 	v := figureValues(secs[0])
 	want := map[string]string{
-		"Realized": "$109.50", "Premium": "$200.00", "Retained ratio": "75.0000%",
+		"Realized": "$109.50", "Premium": "$200.00", "Retained ratio": "75.0%",
 		"Closed trades": "2", "Assigned trades": "1", "Expired trades": "1",
 	}
 	for k, w := range want {
@@ -48,7 +48,7 @@ func TestSixFiguresPerSection(t *testing.T) {
 	if v := figureValues(secs[1]); v["Retained ratio"] != "—" || v["Assigned trades"] != "0" || v["Expired trades"] != "0" {
 		t.Errorf("bought figures = %v", v)
 	}
-	if v := figureValues(secs[2]); v["Retained ratio"] != "100.0000%" {
+	if v := figureValues(secs[2]); v["Retained ratio"] != "100.0%" {
 		t.Errorf("jpy kept = %q", v["Retained ratio"])
 	}
 }
@@ -127,6 +127,22 @@ func TestMoneyTextGroupsAndSigns(t *testing.T) {
 		v := figureValues(sectionsOf(buildMap(t, cfg, "main"))[0])
 		if v["Realized"] != c.want || v["Premium"] != c.want {
 			t.Errorf("%s %q: realized %q premium %q, want %q", c.cur, c.in, v["Realized"], v["Premium"], c.want)
+		}
+	}
+}
+
+func TestPercentOneDecimal(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ share, want string }{
+		{"0.949400", "94.9%"}, {"0.123450", "12.3%"}, {"0.123550", "12.4%"}, {"0.000000", "0.0%"}, {"1", "100.0%"}, {"-0.123450", "−12.3%"},
+	} {
+		c, _ := testConfig(t, "result_ok.json")
+		f := loadFixture(t, "result_ok.json")
+		f.Summary.Sections[0].KeptShare = tc.share
+		c.Results = func() compute.OptionResults { return fakeResults{sum: f.Summary, in: &compute.ResultInput{}} }
+		v := figureValues(sectionsOf(buildMap(t, c, "main"))[0])
+		if v["Retained ratio"] != tc.want {
+			t.Errorf("%s = %q, want %q", tc.share, v["Retained ratio"], tc.want)
 		}
 	}
 }

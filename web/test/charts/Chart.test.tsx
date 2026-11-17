@@ -111,8 +111,22 @@ describe('Chart', () => {
     yAxes.length = 0
     await show({ ...SPEC, unit: 'usd_signed' })
     const format = yAxes[yAxes.length - 1]!.tickFormatter as (tick: number) => string
-    expect(format(5400)).toBe('$5400')
-    expect(format(-300)).toBe('-$300')
+    expect(format(5400)).toBe('$5,400')
+    expect(format(-300)).toBe('−$300')
+  })
+
+  it('TestMoneyTickGroupsThousands', async () => {
+    yAxes.length = 0
+    await show({ ...SPEC, unit: 'usd' })
+    const money = yAxes[yAxes.length - 1]!.tickFormatter as (tick: number) => string
+    expect(money(12000)).toBe('$12,000')
+    expect(money(-1300)).toBe('\u2212$1,300')
+    expect(money(950)).toBe('$950')
+    expect(money(1234.5)).toBe('$1,234.5')
+    yAxes.length = 0
+    await show({ ...SPEC, unit: 'percent' })
+    const percent = yAxes[yAxes.length - 1]!.tickFormatter as (tick: number) => string
+    expect(percent(5400)).toBe('5400%')
   })
 
   it('keeps the first and last points inside the plot with a padding on the x axis', async () => {

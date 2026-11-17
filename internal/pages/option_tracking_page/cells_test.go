@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 )
 
 func asGap(t *testing.T, c any) gap {
@@ -242,4 +244,19 @@ func TestKeptPercentCell(t *testing.T) {
 	if g := asGap(t, keptPercentCell("abc", codeNoValue)); g.Text != "Unreadable" {
 		t.Errorf("abc = %+v", g)
 	}
+}
+
+func TestQtyTypographicMinus(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ stored, text string }{{"-1", "−1"}, {"-12.5", "−12.5"}, {"3", "3"}, {"0", "0"}} {
+		o := trackapi.TrackedOption{Quantity: tc.stored}
+		r := trackapi.TrackRecon{Quantity: tc.stored}
+		for name, cell := range map[string]any{"option": qty(o), "recon": reconQty(r)} {
+			v := asValue(t, cell)
+			if v.Text != tc.text || v.Value == nil || string(*v.Value) != tc.stored {
+				t.Errorf("%s %q = %q / %v, want %q / %q", name, tc.stored, v.Text, v.Value, tc.text, tc.stored)
+			}
+		}
+	}
+	asGap(t, qty(trackapi.TrackedOption{}))
 }
