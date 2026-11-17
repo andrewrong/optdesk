@@ -42,6 +42,8 @@ sec_type = "STK"
 exchange = "SMART"
 currency = "USD"
 con_id = 1000002
+price_increment = "0.01"
+lot_size = "1"
 `
 
 var testKey = contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "TEST"}

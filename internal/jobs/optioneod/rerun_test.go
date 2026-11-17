@@ -146,6 +146,8 @@ sec_type = "STK"
 exchange = "SMART"
 currency = "USD"
 con_id = 1000001
+price_increment = "0.01"
+lot_size = "1"
 `), r.b, r.res, r.w, clk)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +164,7 @@ con_id = 1000001
 func TestSlotMustBeFourDigits(t *testing.T) {
 	t.Parallel()
 	parse := func(slot string) error {
-		_, err := parseManifest([]byte("id = \"x\"\nslot = \"" + slot + "\"\n[[underlying]]\nsymbol = \"A\"\ncon_id = 1\ncurrency = \"USD\"\n"))
+		_, err := parseManifest([]byte("id = \"x\"\nslot = \"" + slot + "\"\n[[underlying]]\nsymbol = \"A\"\ncon_id = 1\ncurrency = \"USD\"\nprice_increment = \"0.01\"\nlot_size = \"1\"\n"))
 		return err
 	}
 	if err := parse("1100"); err != nil {

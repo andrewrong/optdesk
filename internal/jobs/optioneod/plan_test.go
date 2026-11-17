@@ -15,6 +15,8 @@ version = 1
 symbol = "TEST"
 con_id = 1
 currency = "USD"
+price_increment = "0.01"
+lot_size = "1"
 `
 
 const twoToml = `
@@ -24,10 +26,14 @@ version = 1
 symbol = "ZZZ"
 con_id = 2
 currency = "USD"
+price_increment = "0.01"
+lot_size = "1"
 [[underlying]]
 symbol = "AAA"
 con_id = 1
 currency = "USD"
+price_increment = "0.01"
+lot_size = "1"
 `
 
 func TestManifestDefaults(t *testing.T) {
@@ -54,7 +60,7 @@ func TestManifestErrors(t *testing.T) {
 	for name, data := range map[string]string{
 		"no underlying": "id = \"x\"\n",
 		"bad freeze":    minimalToml + "\n",
-		"bad rule":      "id = \"x\"\n[window]\nrule = \"other\"\n[[underlying]]\nsymbol=\"A\"\ncon_id=1\ncurrency=\"USD\"\n",
+		"bad rule":      "id = \"x\"\n[window]\nrule = \"other\"\n[[underlying]]\nsymbol=\"A\"\ncon_id=1\ncurrency=\"USD\"\nprice_increment=\"0.01\"\nlot_size=\"1\"\n",
 	} {
 		if name == "bad freeze" {
 			data = "freeze_after = \"9999\"\n" + data

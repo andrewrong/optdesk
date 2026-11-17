@@ -231,7 +231,7 @@ func buyKeyManifest(low, high string) string {
 	if high != "" {
 		s += "buy_high = \"" + high + "\"\n"
 	}
-	return s + "[[underlying]]\nsymbol = \"SPY\"\ncon_id = 1\ncurrency = \"USD\"\n"
+	return s + "[[underlying]]\nsymbol = \"SPY\"\ncon_id = 1\ncurrency = \"USD\"\nprice_increment = \"0.01\"\nlot_size = \"1\"\n"
 }
 
 func TestSelectBuyPriceWithoutKeysKeepsBand(t *testing.T) {

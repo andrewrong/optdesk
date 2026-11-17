@@ -3,6 +3,7 @@ package optioneod
 import (
 	"context"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -229,6 +230,8 @@ func TestIndexManifestRefusesBadRows(t *testing.T) {
 		"spot_index":      replace(`spot_index = "RUT"`, `spot_index = ""`),
 		"band_k":          replace("band_k = 1.8 ", "band_k = 0 "),
 		"sigma_fallback":  replace("sigma_fallback = 0.20 ", "sigma_fallback = 0 "),
+		"price_increment": replace("symbol = \"SPX\"\nsec_type = \"IND\"\nexchange = \"CBOE\"\ncurrency = \"USD\"\ncon_id = 416904\nmic = \"XCBO\"\ncalendar_id = \"XNYS\"\nprice_increment = \"0.01\"\n", "symbol = \"SPX\"\nsec_type = \"IND\"\nexchange = \"CBOE\"\ncurrency = \"USD\"\ncon_id = 416904\nmic = \"XCBO\"\ncalendar_id = \"XNYS\"\n"),
+		"lot_size":        replace("lot_size = \"1\"\n", "lot_size = \"x\"\n"),
 		"matching":        replace("symbol = \"RUT\"\ntrading_class", "symbol = \"NDX\"\ntrading_class"),
 	}
 	for key, text := range cases {
@@ -236,5 +239,25 @@ func TestIndexManifestRefusesBadRows(t *testing.T) {
 		if err == nil || (key != "matching" && !strings.Contains(err.Error(), key)) {
 			t.Errorf("%s: err %v", key, err)
 		}
+	}
+}
+
+func TestIndexUnderlyingsCarryIncrementAndLotSize(t *testing.T) {
+	t.Parallel()
+	r := newIndexRig(t, nil)
+	r.run("SPX", "XSP", "RUT")
+	re := regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
+	seen := map[string]bool{}
+	for _, c := range r.res.calls {
+		if c.spec.Type != "index" {
+			continue
+		}
+		seen[c.spec.Name] = true
+		if !re.MatchString(c.spec.PriceIncrement) || !re.MatchString(c.spec.LotSize) {
+			t.Errorf("%s: price increment %q lot size %q", c.spec.Name, c.spec.PriceIncrement, c.spec.LotSize)
+		}
+	}
+	if len(seen) != 3 {
+		t.Errorf("index specs resolved for %v, want SPX, XSP and RUT", seen)
 	}
 }

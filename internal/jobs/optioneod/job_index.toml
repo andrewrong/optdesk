@@ -29,6 +29,8 @@ currency = "USD"
 con_id = 416904
 mic = "XCBO"
 calendar_id = "XNYS"
+price_increment = "0.01"
+lot_size = "1"
 
 [[underlying]]
 symbol = "XSP"
@@ -38,6 +40,8 @@ currency = "USD"
 con_id = 137851301
 mic = "XCBO"
 calendar_id = "XNYS"
+price_increment = "0.01"
+lot_size = "1"
 
 # The MIC is the one of the SPX row; the selection does not read it.
 [[underlying]]
@@ -48,6 +52,8 @@ currency = "USD"
 con_id = 416888
 mic = "XCBO"
 calendar_id = "XNYS"
+price_increment = "0.01"
+lot_size = "1"
 
 [[index]]
 symbol = "SPX"
