@@ -84,7 +84,7 @@ func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (
 		out.Text = figure
 	case stateAwaiting:
 		// The owner sees the figure he is asked to approve.
-		out.Text = stateAwaiting + ": " + figure
+		out.Text = figure
 	default:
 		out.Text = state
 	}
@@ -154,6 +154,20 @@ func bandText(band valuationapi.BandFigure) string {
 		return stored
 	}
 	return signed(sign, low) + " to " + signed(sign, value)
+}
+
+// lastText is the "Last" cell: the price with the sign of the market's currency, then the close
+// day. A price that is not a decimal is written as stored.
+func lastText(market string, q Spot) string {
+	currency := "USD"
+	if market == "JP" {
+		currency = "JPY"
+	}
+	price := q.Price
+	if d, err := decimal.NewFromString(q.Price); err == nil {
+		price = signed(currencySigns[currency], d)
+	}
+	return price + " · close " + string(q.Day)
 }
 
 // signed writes d with the sign, thousands separators and two decimals, half away from zero.

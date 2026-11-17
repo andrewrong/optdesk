@@ -158,7 +158,7 @@ func TestExpiredAfter90Days(t *testing.T) {
 func TestAwaitingWhenValueDiffers(t *testing.T) {
 	t.Parallel()
 	c := priceCell(t, testConfig(okBand, approval("2026-10-20", "130.00")))
-	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval: $114.00 to $142.50" {
+	if c.PriceState != "awaiting approval" || c.Text != "$114.00 to $142.50" {
 		t.Fatalf("different value: %+v", c)
 	}
 	c = priceCell(t, testConfig(okBand))
@@ -264,7 +264,7 @@ func TestPriceLineShowsTheFormattedBandAndApprovesOnTheStoredValue(t *testing.T)
 		t.Fatalf("approved cell = %q (%s)", c.Text, c.PriceState)
 	}
 	c = priceCell(t, testConfig(band, approval("2026-10-20", "1500.00")))
-	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval: $1,431.67 to $1,500.00" {
+	if c.PriceState != "awaiting approval" || c.Text != "$1,431.67 to $1,500.00" {
 		t.Fatalf("approval on shown text must not match: %q (%s)", c.Text, c.PriceState)
 	}
 	band.Currency = ""
