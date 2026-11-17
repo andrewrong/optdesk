@@ -159,7 +159,7 @@ describe('form view', () => {
     expect(item?.textContent).toBe('p: P must be between 1 and 5 in steps of 0.5')
   })
 
-  it('Calculate posts the preview action to the form path, without the required check', async () => {
+  it('TestPreviewPostsAction: Calculate posts the preview action to the form path, without the required check', async () => {
     const payload = fixture('form')
     const el = await render(payload)
     const form = el.querySelector('form') as HTMLFormElement
