@@ -38,6 +38,9 @@ const (
 	sentenceNothing   = "No positions."
 	textStatementNote = "; this account has no live gateway."
 	textStatementFrom = "From the broker statement of "
+	textBarStart      = "Last price of "
+	textBarMid        = " is the last stored close (last trading price of the day) of "
+	textBarEnd        = "; a day still open may change"
 	textNoHeld        = "No positions"
 
 	actionSellOpen  = "Sell to open"

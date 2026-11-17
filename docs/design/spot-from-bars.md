@@ -46,6 +46,8 @@ Issue 1 edits one module; issue 2 spans pages and ot. No row of `docs/design/mod
 
 ## Interface
 
+Landed in #2709
+
 `internal/compute/blockapi/api.go`: `HoldingIn` gains the field `Prev string`; `HoldingLine` gains the field `Day compute.FigureValue`. Additions only, no existing field changes. `positions_page.Config` (`internal/pages/positions_page/page.go`, not an interface file) gains `Bars bar.PriceBarReader` and `StockIDs` (a reader with `StockIDs(ctx, names []string) ([]store.InstrumentName, error)`, the same method as `market_state_page.StockIDReader`; a page cannot import another page, so the page declares its own); both nil keeps today's page. Nothing else.
 
 ## Issues
@@ -54,14 +56,14 @@ Issue 1 edits one module; issue 2 spans pages and ot. No row of `docs/design/mod
 
 Module: compute. Size: S.
 Order: first.
-Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `internal/compute/pagefig/holdings.go`, `internal/compute/pagefig/holdings_new.go`, `internal/compute/pagefig/holdings_test.go`
+Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `internal/compute/pagefig/holdings.go`, `internal/compute/pagefig/holdings_test.go`
 Contracts: unchanged
 Design: docs/design/spot-from-bars.md#Decisions (Decision 4)
 Acceptance:
 1. `HoldingIn.Prev` and `HoldingLine.Day` are declared in `blockapi/api.go` with doc comments; `api_test.go` has the new test `TestHoldingDayContract` (new) with a fake on one side and a caller on the other.
 2. `holdings.go` gives a stock row `Day` = quantity x multiplier x (Mark - Prev) with the rounding of money, in USD with the rate for a converted JPY row; new tests `TestHoldingDayStock` (new) and `TestHoldingDayJpyConverted` (new).
 3. New test `TestHoldingDayGaps` (new): empty Mark gives `missing_quote`, empty or unreadable Prev gives `no_data`, an option row gives `no_data` even with a Prev, never a zero.
-4. `Value`, `Unrealised`, `Share` and both totals are unchanged: the tests of today pass without edit; `holdings_new.go` changes only if the constructor needs it.
+4. `Value`, `Unrealised`, `Share` and both totals are unchanged: the tests of today pass without edit; `holdings_new.go` did not change (merged as #2709).
 
 ### 2 positions-day-from-bars
 

@@ -8,7 +8,10 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
+	"github.com/andrewrong/optdesk/internal/pages/positions_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
@@ -92,5 +95,33 @@ func TestPositionsPageConfigGetsStatementAliases(t *testing.T) {
 	writeBookText(t, a, bookText("a", "a", "b"))
 	if got := positionsPageConfig(a, siteReaders{}).Statement; got != nil {
 		t.Fatalf("plain book gave %v", got)
+	}
+}
+
+type positionsBars struct{ bar.PriceBarReader }
+
+type positionsStockIDs struct {
+	market_state_page.StockIDReader
+}
+
+func TestPositionsPageGetsBarsAndStockIDs(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	bars, ids := positionsBars{}, positionsStockIDs{}
+	rd := siteReaders{bars: bars, ext: map[string]any{siteMarketStateIDsKey: ids}}
+	for name, cfg := range map[string]struct{ bars, ids any }{
+		"site":  {positionsPageConfig(a, rd).Bars, positionsPageConfig(a, rd).StockIDs},
+		"named": {positionsNamedConfig(a, rd).Bars, positionsNamedConfig(a, rd).StockIDs},
+	} {
+		if cfg.bars != bars || cfg.ids != ids {
+			t.Fatalf("%s: Bars %v StockIDs %v, want the site readers", name, cfg.bars, cfg.ids)
+		}
+	}
+	for name, cfg := range map[string]positions_page.Config{
+		"site": positionsPageConfig(a, siteReaders{}), "named": positionsNamedConfig(a, siteReaders{}),
+	} {
+		if cfg.Bars != nil || cfg.StockIDs != nil {
+			t.Fatalf("%s: a site with neither reader gave Bars %v StockIDs %v", name, cfg.Bars, cfg.StockIDs)
+		}
 	}
 }

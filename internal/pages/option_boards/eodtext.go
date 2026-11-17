@@ -3,6 +3,7 @@ package option_boards
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -19,14 +20,22 @@ func floatText(v *float64) string {
 	return strconv.FormatFloat(*v, 'f', -1, 64)
 }
 
-// greekText is the text of a stored Theta, Gamma or Vega at 4 decimals; the value is printed, never parsed. Null, NaN and
+// greekText is the text of a stored Theta, Gamma or Vega at 4 decimals, a negative with U+2212; the value is printed, never parsed. Null, NaN and
 // infinity are "n/a".
 // owner decision 2026-11-11: 4 decimals; supersedes Decision 8 of docs/design/option-page-builders.md for Theta, Gamma, Vega
 func greekText(v *float64) string {
 	if v == nil || math.IsNaN(*v) || math.IsInf(*v, 0) {
 		return gapText
 	}
-	return strconv.FormatFloat(*v, 'f', 4, 64)
+	t := strconv.FormatFloat(*v, 'f', 4, 64)
+	if strings.HasPrefix(t, "-") {
+		// "-0.0000": the value rounds to zero at four places, so it carries no sign
+		if strings.Trim(t, "-0.") == "" {
+			return t[1:]
+		}
+		return "\u2212" + t[1:]
+	}
+	return t
 }
 
 // eodText is the text of the end-of-day columns the pages show.
