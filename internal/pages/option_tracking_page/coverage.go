@@ -1,0 +1,225 @@
+package option_tracking_page
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+
+	"github.com/shopspring/decimal"
+
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
+)
+
+// The quote coverage of an open row: of the trading days since it was opened (the opening day
+// and the as-of day included), on how many a two-sided quote (bid and ask both stored and above
+// zero) is stored. The day comes from obs.option_day through Config.Days; a day with no row there
+// is looked up in option_eod. Counts only: nothing is estimated and no gap day is filled.
+const (
+	coverageID    = "coverage"
+	coverageLabel = "Quote coverage"
+	coverageHint  = "Trading days since the position was opened on which a two-sided quote (bid and ask both above zero) is stored"
+
+	maxGapBadges = 5
+
+	reasonOneSide = "one side only"
+	reasonNoQuote = "no quote stored"
+)
+
+type dayKey struct {
+	id  int64
+	day contracts.Day
+}
+
+// lotCoverage is the coverage of one open row: days counted and the gap days, oldest first.
+type lotCoverage struct {
+	days    int
+	gapDays []contracts.Day
+	reasons []string
+}
+
+// coverageOf returns the coverage cell of each open row by position id and the note of the
+// account ("" when no row has a count). With a nil Config.Days every cell is the gap no_reader.
+func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []opt) (map[string]any, string, error) {
+	cells := make(map[string]any, len(open))
+	if len(open) == 0 {
+		return cells, "", nil
+	}
+	if c.Days == nil {
+		for _, o := range open {
+			cells[o.PositionID] = readerGap()
+		}
+		return cells, "", nil
+	}
+	contractOf := make(map[string]string, len(in.Positions))
+	for _, p := range in.Positions {
+		contractOf[p.PositionID] = p.Contract
+	}
+	type lot struct {
+		o    opt
+		id   int64
+		span []contracts.Day
+	}
+	var lots []lot
+	var ids []int64
+	symbols := map[string]bool{}
+	var from contracts.Day
+	for _, o := range open {
+		id, err := strconv.ParseInt(contractOf[o.PositionID], 10, 64)
+		span := sessionsFrom(in.SessionDays, o.OpenedOn)
+		if err != nil || len(span) == 0 {
+			cells[o.PositionID] = codeGap(codeNoValue)
+			continue
+		}
+		lots = append(lots, lot{o, id, span})
+		ids = append(ids, id)
+		symbols[o.Underlying] = true
+		if from == "" || span[0] < from {
+			from = span[0]
+		}
+	}
+	if len(lots) == 0 {
+		return cells, "", nil
+	}
+	stored, err := dayRows(ctx, c, ids, from, in.AsOf)
+	if err != nil {
+		return nil, "", err
+	}
+	var eod map[dayKey]bool
+	loadEod := func() error {
+		if eod != nil {
+			return nil
+		}
+		var err error
+		eod, err = eodSides(ctx, c, symbols, from, in.AsOf)
+		return err
+	}
+	var gapTotal, dayTotal int
+	for _, l := range lots {
+		lc := lotCoverage{days: len(l.span)}
+		for _, d := range l.span {
+			k := dayKey{l.id, d}
+			if row, ok := stored[k]; ok {
+				if r := sideReason(deref(row.Bid), deref(row.Ask)); r != "" {
+					lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, r)
+				}
+				continue
+			}
+			if err := loadEod(); err != nil {
+				return nil, "", err
+			}
+			switch sides, ok := eod[k]; {
+			case !ok:
+				lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, reasonNoQuote)
+			case !sides:
+				lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, reasonOneSide)
+			}
+		}
+		cells[l.o.PositionID] = lc.cell()
+		gapTotal += len(lc.gapDays)
+		dayTotal += lc.days
+	}
+	note := in.Alias + noteSep + " " + strconv.Itoa(gapTotal) + " of " + strconv.Itoa(dayTotal) +
+		" lot-days have no two-sided quote since opening"
+	return cells, note, nil
+}
+
+// sessionsFrom is the session days not before opened, in the order given.
+func sessionsFrom(days []contracts.Day, opened contracts.Day) []contracts.Day {
+	if opened == "" {
+		return nil
+	}
+	for i, d := range days {
+		if d >= opened {
+			return days[i:]
+		}
+	}
+	return nil
+}
+
+// sideReason is "" for a two-sided quote, else why the day is a gap. A quote with neither side
+// above zero is no quote.
+func sideReason(bid, ask string) string {
+	b, a := positive(bid), positive(ask)
+	switch {
+	case b && a:
+		return ""
+	case b || a:
+		return reasonOneSide
+	}
+	return reasonNoQuote
+}
+
+func positive(text string) bool {
+	if text == "" {
+		return false
+	}
+	d, err := decimal.NewFromString(text)
+	return err == nil && d.IsPositive()
+}
+
+// dayRows reads the option_day rows of ids in chunks.
+func dayRows(ctx context.Context, c Config, ids []int64, from, to contracts.Day) (map[dayKey]optionday.Day, error) {
+	out := map[dayKey]optionday.Day{}
+	for _, ch := range chunks(ids) {
+		rows, err := c.Days.Days(ctx, ch, from, to)
+		if err != nil {
+			return nil, fmt.Errorf("option_tracking_page: read option_day: %w", err)
+		}
+		for _, r := range rows {
+			out[dayKey{r.InstrumentID, r.SessionDay}] = r
+		}
+	}
+	return out, nil
+}
+
+// eodSides maps (instrument, day) of the option_eod rows of the symbols to whether both sides are
+// above zero. A missing reader gives an empty map, so every such day is a gap.
+func eodSides(ctx context.Context, c Config, symbols map[string]bool, from, to contracts.Day) (map[dayKey]bool, error) {
+	out := map[dayKey]bool{}
+	if c.Eod == nil || c.Catalog == nil || c.Names == nil {
+		return out, nil
+	}
+	ids, _, err := underlyingIDs(ctx, c, from, symbols)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		rows, err := c.Eod.OptionEod(ctx, id, from, to)
+		if err != nil {
+			return nil, fmt.Errorf("option_tracking_page: read option_eod of %d: %w", id, err)
+		}
+		for _, r := range rows {
+			d := contracts.Day(r.SessionDay.Format(dayLayout))
+			if d < from || d > to {
+				continue
+			}
+			out[dayKey{int64(r.InstrumentID), d}] = sideReason(decimalText(r.Bid), decimalText(r.Ask)) == ""
+		}
+	}
+	return out, nil
+}
+
+// cell is "n of m days", the gap days as badges newest first (at most five and a count of the
+// earlier ones) and tone down when there is any gap.
+func (lc lotCoverage) cell() valueCell {
+	n := len(lc.gapDays)
+	v := textCell(strconv.Itoa(lc.days-n) + " of " + strconv.Itoa(lc.days) + " days")
+	if n == 0 {
+		return v
+	}
+	v.Tone = "down"
+	for i := n - 1; i >= 0 && len(v.Badges) < maxGapBadges; i-- {
+		v.Badges = append(v.Badges, "Gap "+string(lc.gapDays[i])+": "+lc.reasons[i])
+	}
+	if n > maxGapBadges {
+		more := n - maxGapBadges
+		text := "and " + strconv.Itoa(more) + " earlier gaps"
+		if more == 1 {
+			text = "and 1 earlier gap"
+		}
+		v.Badges = append(v.Badges, text)
+	}
+	return v
+}

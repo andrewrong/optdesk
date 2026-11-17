@@ -157,6 +157,18 @@ func buildAccounts(ctx context.Context, c Config, day contracts.Day, vm *viewMod
 		}
 		res := c.Tracker.Track(in, c.Params)
 		a, stale := formatAccount(alias, res, in.HeldKnown)
+		cov, covNote, err := coverageOf(ctx, c, in, res.Open)
+		if err != nil {
+			return err
+		}
+		if a.Open != nil {
+			for i, o := range res.Open {
+				a.Open.Rows[i].Cells[coverageID] = cov[o.PositionID]
+			}
+		}
+		if covNote != "" {
+			vm.Notes = append(vm.Notes, covNote)
+		}
 		vm.Accounts = append(vm.Accounts, a)
 		if res.LongLegsLeftOut > 0 {
 			vm.Notes = append(vm.Notes, alias+noteSep+strconv.Itoa(res.LongLegsLeftOut)+leftOutTail)

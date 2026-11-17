@@ -12,6 +12,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -233,7 +234,10 @@ func TestOutputValidatesAgainstSchema(t *testing.T) {
 	noMark.Open[0].EventStatus, noMark.Open[0].Guard, noMark.Open[0].GuardReason = "no_event_row", "unknown", "no_guard_row"
 	noReader := cfgFor(nil)
 	noReader.Ledger = nil
+	withDays, _ := covConfig("2026-11-08")
+	withDays.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-09", "1", "2")}}
 	cases := map[string]Config{
+		"coverage":  withDays,
 		"ok":        cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main"),
 		"no_open":   cfgFor(map[string]trackapi.TrackResult{"main": {Recent: []opt{sampleClosed("p0")}}}, "main"),
 		"no_marks":  cfgFor(map[string]trackapi.TrackResult{"main": noMark}, "main"),
