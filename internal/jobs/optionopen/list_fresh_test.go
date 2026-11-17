@@ -221,7 +221,7 @@ func TestMissingBarAsksGateway(t *testing.T) {
 	require.Equal(t, contracts.Retryable, res.Err.Kind())
 	require.Empty(t, g2.lst.only("list:"))
 	require.Equal(t, 1, h2.asked)
-	require.Equal(t, reasonNoSpot, g2.row("AAA").Reason)
+	require.Equal(t, reasonAllShort, g2.row("AAA").Reason)
 
 	g3 := newLRig(t, "AAA")
 	g3.closes = map[string]string{}
@@ -400,4 +400,25 @@ func TestZoneModeNoSpotListsNothing(t *testing.T) {
 		require.Equal(t, "no_spot", r.Code)
 	}
 	require.Equal(t, 0, g.ls.puts)
+}
+
+// TestListRunReasonsAreStorable: a name with no spot ends with a reason that option_list_run_reason_ck of
+// migrations/0034_option_list.sql accepts.
+func TestListRunReasonsAreStorable(t *testing.T) {
+	t.Parallel()
+	allowed := map[string]bool{}
+	for _, r := range []string{"not_finished", "none", "no_expiry_in_window", "listchains_failed", "budget", "stop_time",
+		"timeouts", "unserved", "broker_down", "list_max_new", "all_short", "some_short"} {
+		allowed[r] = true
+	}
+	g := newLRig(t, "AAA")
+	g.closes = map[string]string{}
+	g.tweak = func(d *ListDeps) { d.History = &fakeHistory{err: downErr{}} }
+	_ = g.run(g.job(nil))
+	rows, err := g.ls.ListRuns(context.Background(), g.day)
+	require.NoError(t, err)
+	require.NotEmpty(t, rows)
+	for _, r := range rows {
+		require.True(t, allowed[r.Reason], "reason %q is not storable", r.Reason)
+	}
 }
