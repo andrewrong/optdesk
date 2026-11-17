@@ -46,7 +46,7 @@ type Stop struct {
 type Field struct{ Name, Value string }
 
 // Confirm is the preview of a change; the stops lines are written by text.go. Fields are the posted pairs, at most
-// fieldsMax, each value at most fieldMaxChars characters; Build fails rather than clips.
+// fieldsMax, each value at most fieldMaxLen characters; Build fails rather than clips.
 type Confirm struct {
 	Changes []Change
 	Stops   []Stop
