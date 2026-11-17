@@ -50,7 +50,7 @@ func TestRankByYield(t *testing.T) {
 func TestRankTieOrder(t *testing.T) {
 	t.Parallel()
 	in := baseInput()
-	in.BuyPrice = "1000"
+	in.BuyPrice = "" // no buy price: no margin, so the yield tie-breaks are what is tested (with a price the margins differ)
 	mk := func(id, strike, bid string, dte int) compute.OptionQuote {
 		q := putQuote(id, strike, bid, addDays(runDay, dte))
 		q.Ask = bid
@@ -123,6 +123,39 @@ func TestNoBuyPriceRowsRankedByYield(t *testing.T) {
 	for i, r := range rows {
 		if r.Rank != i+1 || r.RankInUnderlying != i+1 || r.Status != "ok" || !hasMark(r, "no_buy_price") {
 			t.Errorf("%s rank %d/%d status %s marks %v", r.InstrumentID, r.Rank, r.RankInUnderlying, r.Status, r.Marks)
+		}
+	}
+}
+
+// TestRankByBuyPriceMargin: priced ok puts of two underlyings are ordered by the margin of the
+// break-even below the buy price, an unpriced one goes last whatever its yield, ranks run 1..4.
+func TestRankByBuyPriceMargin(t *testing.T) {
+	t.Parallel()
+	p := testParams()
+	put := func(underlying, buy, id, strike, bid string) scored {
+		in := baseInput()
+		in.Underlying, in.BuyPrice = underlying, buy
+		q := putQuote(id, strike, bid, addDays(runDay, 30))
+		q.Ask = bid
+		in.Quotes = []compute.OptionQuote{q}
+		dte, _ := dayDiff(in.ChainDay, q.Expiry)
+		st, _ := parseDec(strike)
+		spot, _ := parseDec(in.Spot)
+		return evaluatePut(in, p, q, dte, st, spot, true)
+	}
+	// margins: low 2%, mid 7.1%, high 11.5%; yields: mid > low > high; nobuy has the top yield
+	rows := order([]scored{
+		put("XYZ", "100", "low", "100", "2.00"),
+		put("NOP", "", "nobuy", "100", "5.00"),
+		put("XYZ", "100", "high", "90", "1.50"),
+		put("XYZ", "100", "mid", "95", "2.10"),
+	})
+	if got, want := ids(rows), []string{"high", "mid", "low", "nobuy"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("order %v, want %v", got, want)
+	}
+	for i, r := range rows {
+		if r.Status != "ok" || r.Rank != i+1 || r.RankInUnderlying != i+1 {
+			t.Errorf("%s status %s rank %d/%d", r.InstrumentID, r.Status, r.Rank, r.RankInUnderlying)
 		}
 	}
 }

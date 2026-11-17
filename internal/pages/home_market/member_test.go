@@ -363,7 +363,7 @@ func TestIndexDiffReadingGivesNoNotBuiltGap(t *testing.T) {
 	if n := notBuiltGaps(decodeGaps(t, b)); n != 0 {
 		t.Fatalf("not_built gaps = %d", n)
 	}
-	want := []string{"+3.2", "+4.1", "-1.4"}
+	want := []string{"+3.2", "+4.1", "−1.4"}
 	for i, r := range d.Card.IndexTable.Rows {
 		c := cell(r, "iv_minus_rv20")
 		if c["kind"] != "value" || c["text"] == nil || c["unit"] != "vol_points" {
@@ -410,7 +410,7 @@ func TestDiffNegativeValueMatchesSchema(t *testing.T) {
 	b := build(t, configAll(nil, nil, diffAll()), fullSeries()) // build validates against the schema
 	row := parse(t, b).Card.IndexTable.Rows[2]
 	c := cell(row, "iv_minus_rv20")
-	if c["text"] != "-1.4" || c["value"] != -1.4 {
+	if c["text"] != "−1.4" || c["value"] != -1.4 {
 		t.Fatalf("RUT cell = %v", c)
 	}
 }
