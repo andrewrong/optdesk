@@ -178,7 +178,7 @@ Acceptance:
 ### 5 company-quarters
 
 Module: compute. Size: L.
-- Order: after 2 (it implements `Calculator.Quarters`).
+- Order: after 1 and 2 (it reads the fact fields `Fy`, `Fp` and `Frame` that entry 1 generates, and implements `Calculator.Quarters`).
 Files: `internal/compute/companydata/pick.go`, `internal/compute/companydata/quarters.go`, `internal/compute/companydata/concepts.go`, `internal/compute/companydata/free.go`, `internal/compute/companydata/pick_test.go`, `internal/compute/companydata/quarters_test.go`, `internal/compute/companydata/free_test.go`
 Contracts: unchanged
 Design: docs/design/data-collection.md#Decisions (Decisions 2 to 7)
