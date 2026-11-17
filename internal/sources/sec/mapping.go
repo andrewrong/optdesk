@@ -74,6 +74,9 @@ type companyFacts struct {
 			Accn  string      `json:"accn"`
 			Form  string      `json:"form"`
 			Filed string      `json:"filed"`
+			Fy    *int        `json:"fy"`
+			Fp    string      `json:"fp"`
+			Frame string      `json:"frame"`
 		} `json:"units"`
 	} `json:"facts"`
 }
@@ -133,6 +136,11 @@ func mapCompanyFacts(subject string, body []byte, retrieved time.Time, from, to 
 						Taxonomy: tax, Concept: concept, Unit: unit, Currency: currencyOf(unit),
 						PeriodEnd: end, Value: e.Val.String(), Form: e.Form, DocID: e.Accn,
 						Filed: filed, RetrievedAt: retrieved, RawSha256: digest,
+						Fp: e.Fp, Frame: e.Frame,
+					}
+					if e.Fy != nil && *e.Fy >= 1990 && *e.Fy <= 2100 {
+						fy := *e.Fy
+						f.Fy = &fy
 					}
 					if e.Start != nil {
 						s, err := parseDay(*e.Start)
