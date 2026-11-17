@@ -101,6 +101,7 @@ class SessionState(NamedTuple):
     connected: bool
     generation: int
     market_data_type: int
+    soft_lost: bool = False  # socket up, a 1100 or 2110 not yet restored
 
 
 class Gateway(Protocol):

@@ -48,6 +48,7 @@ BACKOFF_FIRST_S = 1.0
 BACKOFF_CAP_S = 60.0
 STABLE_SESSION_S = 60.0
 POLL_S = 1.0
+RESTORE_WAIT_S = 300.0  # a soft loss waits this long for the 1101 or 1102
 
 
 @dataclass(frozen=True)
@@ -133,8 +134,10 @@ def _gateway_line(logger: logging.Logger, event: str, name: str, **fields: int) 
 async def supervise(gateway: Supervised, clock: Clock, name: str) -> None:
     """Keep the session open: connect, poll, and reconnect with a capped backoff.
 
-    A session that is not healthy, or that ends within STABLE_SESSION_S, keeps the
-    backoff growing; only a longer one sends it back to BACKOFF_FIRST_S.
+    A session that was never connected nor soft_lost, or that ends within
+    STABLE_SESSION_S, keeps the backoff growing; only a longer one sends it back to
+    BACKOFF_FIRST_S. A soft loss (a 1100, the socket still up) keeps the session
+    for RESTORE_WAIT_S, so a 1101 or 1102 restores it; the wait counts as session time.
 
     Runs until cancelled.
     """
@@ -150,8 +153,19 @@ async def supervise(gateway: Supervised, clock: Clock, name: str) -> None:
         state = await gateway.status()
         _gateway_line(_LOG, "connect_ok", name, generation=state.generation)
         started = clock.monotonic()
-        healthy = state.connected
-        while healthy and (await gateway.status()).connected:
+        healthy = state.connected or state.soft_lost
+        soft_since: float | None = None
+        while healthy:
+            current = await gateway.status()
+            at = clock.monotonic()
+            if current.connected:
+                soft_since = None
+            elif current.soft_lost:
+                soft_since = at if soft_since is None else soft_since
+                if at - soft_since >= RESTORE_WAIT_S:
+                    break
+            else:
+                break
             await clock.sleep(POLL_S)
         _gateway_line(_LOG, "session_lost", name)
         if healthy and clock.monotonic() - started >= STABLE_SESSION_S:
