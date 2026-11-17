@@ -71,7 +71,7 @@ func compileSchema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
-	for _, name := range []string{"common.v2.json", "page.underlyings.v1.json"} {
+	for _, name := range []string{"common.v2.json", "page.underlyings.v2.json"} {
 		f, err := os.Open(contractPath("schemas", name))
 		if err != nil {
 			t.Fatal(err)
@@ -85,7 +85,7 @@ func compileSchema(t *testing.T) *jsonschema.Schema {
 			t.Fatal(err)
 		}
 	}
-	s, err := c.Compile("https://optdesk.invalid/schemas/page.underlyings.v1.json")
+	s, err := c.Compile("https://optdesk.invalid/schemas/page.underlyings.v2.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func checkFixture(t *testing.T, in Input, name string) {
 
 func TestBuildGolden(t *testing.T) {
 	t.Parallel()
-	checkFixture(t, fixtureInput(), "page.underlyings.v1.golden.json")
+	checkFixture(t, fixtureInput(), "page.underlyings.v2.golden.json")
 }
 
 func TestBuildConfirm(t *testing.T) {
@@ -137,15 +137,71 @@ func TestBuildConfirm(t *testing.T) {
 			{Group: "options", Symbol: "AAA", Stopped: true},
 			{Group: "fundamentals", Symbol: "AAA", Stopped: true},
 		},
+		Fields: []Field{{Name: "key", Value: "US:AAA"}, {Name: "status", Value: "paused"}},
 	}
-	checkFixture(t, in, "page.underlyings.v1.confirm.json")
+	checkFixture(t, in, "page.underlyings.v2.confirm.json")
+}
+
+func TestBuildConfirmCarriesFields(t *testing.T) {
+	t.Parallel()
+	build := func(c *Confirm, withForm bool) error {
+		in := fixtureInput()
+		if !withForm {
+			in.Form = nil
+		}
+		in.Confirm = c
+		_, err := Build(in)
+		return err
+	}
+	t.Run("two fields in order", func(t *testing.T) {
+		t.Parallel()
+		in := fixtureInput()
+		in.Confirm = &Confirm{Fields: []Field{{Name: "note", Value: ""}, {Name: "key", Value: "US:AAA"}}}
+		m := decode(t, mustBuild(t, in))
+		got, _ := m["confirm"].(map[string]any)["fields"].([]any)
+		want := []any{
+			map[string]any{"name": "note", "value": ""},
+			map[string]any{"name": "key", "value": "US:AAA"},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("fields = %v, want %v", got, want)
+		}
+	})
+	t.Run("nil fields is a list", func(t *testing.T) {
+		t.Parallel()
+		in := fixtureInput()
+		in.Confirm = &Confirm{}
+		m := decode(t, mustBuild(t, in))
+		if got, ok := m["confirm"].(map[string]any)["fields"].([]any); !ok || len(got) != 0 {
+			t.Errorf("fields = %v, want []", m["confirm"])
+		}
+	})
+	t.Run("sixteen fields fail", func(t *testing.T) {
+		t.Parallel()
+		if err := build(&Confirm{Fields: make([]Field, 16)}, true); err == nil {
+			t.Error("16 fields built")
+		}
+	})
+	t.Run("long value fails", func(t *testing.T) {
+		t.Parallel()
+		f := []Field{{Name: "note", Value: strings.Repeat("x", 301)}}
+		if err := build(&Confirm{Fields: f}, true); err == nil {
+			t.Error("301-character value built")
+		}
+	})
+	t.Run("no form fails", func(t *testing.T) {
+		t.Parallel()
+		if err := build(&Confirm{Fields: []Field{{Name: "key", Value: "US:AAA"}}}, false); err == nil {
+			t.Error("confirm without form built")
+		}
+	})
 }
 
 func TestBuildReadOnly(t *testing.T) {
 	t.Parallel()
 	in := fixtureInput()
 	in.Form = nil
-	checkFixture(t, in, "page.underlyings.v1.readonly.json")
+	checkFixture(t, in, "page.underlyings.v2.readonly.json")
 }
 
 func TestBuildHistoryLimitAndDiff(t *testing.T) {

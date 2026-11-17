@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages"
@@ -18,6 +19,13 @@ import (
 // editTexts are the text fields of an edit form, in the order of the confirm table. exchange and currency are read
 // only when they are not empty: the page does not show their stored value.
 var editTexts = []string{"status", "name", "issuer", "exchange", "currency", "buy_price", "sale_price", "report_date_override", "note"}
+
+// echoNames are the posted names the preview carries back, in this order; no other name is echoed.
+var echoNames = []string{"key", "symbol", "market", "kind", "name", "status", "issuer", "exchange", "currency",
+	"buy_price", "sale_price", "report_date_override", "note", "options", "fundamentals"}
+
+// echoMaxChars is the longest posted value the preview carries; a longer one is refused, never clipped.
+const echoMaxChars = 300
 
 // formError is the refusal of the route itself, read like an underlying.InvalidError.
 type formError struct{ field, why string }
@@ -128,7 +136,32 @@ func writeUnderlyings(a *app, r *http.Request, c underlying.Change) (int, error)
 // an absent switch is off. A post with no key and a symbol is an add. Only fields that differ from the row are
 // written. A key that is not on the list, or a save that leaves no active name, is refused.
 func parseUnderlyingsForm(v url.Values, rows []underlying.Row, held map[string]bool) (underlyingsForm, error) {
+	f, err := parseChange(v, rows, held)
+	if err != nil {
+		return f, err
+	}
+	f.preview.Fields = postedFields(v)
+	return f, nil
+}
+
+// postedFields is the first value of each posted whitelisted name, in the order of echoNames, an empty value included.
+func postedFields(v url.Values) []underlyings.Field {
+	var out []underlyings.Field
+	for _, n := range echoNames {
+		if v.Has(n) {
+			out = append(out, underlyings.Field{Name: n, Value: v.Get(n)})
+		}
+	}
+	return out
+}
+
+func parseChange(v url.Values, rows []underlying.Row, held map[string]bool) (underlyingsForm, error) {
 	f := underlyingsForm{confirm: v.Get("confirm") == "1"}
+	for _, n := range echoNames {
+		if utf8.RuneCountInString(v.Get(n)) > echoMaxChars {
+			return f, formError{n, "longer than 300 characters"}
+		}
+	}
 	if key := v.Get("key"); key != "" {
 		i := slices.IndexFunc(rows, func(r underlying.Row) bool { return r.Key == key })
 		if i < 0 {
