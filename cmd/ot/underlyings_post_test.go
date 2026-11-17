@@ -184,13 +184,14 @@ type confirmPayload struct {
 	} `json:"confirm"`
 }
 
-func TestPostUnderlyingsConfirmRoundTripFromPayload(t *testing.T) {
-	t.Parallel()
-	cases := map[string]struct {
-		prep   func(rows []underlying.Row)
-		first  url.Values
-		verify func(t *testing.T, c underlying.Change)
-	}{
+type roundTripCase struct {
+	prep   func(rows []underlying.Row)
+	first  url.Values
+	verify func(t *testing.T, c underlying.Change)
+}
+
+func roundTripCases() map[string]roundTripCase {
+	return map[string]roundTripCase{
 		"text": {
 			first: url.Values{"key": {"US:BBB"}, "name": {"BBB Corp"}, "options": {"on"}},
 			verify: func(t *testing.T, c underlying.Change) {
@@ -243,7 +244,11 @@ func TestPostUnderlyingsConfirmRoundTripFromPayload(t *testing.T) {
 			},
 		},
 	}
-	for name, tc := range cases {
+}
+
+func TestPostUnderlyingsConfirmRoundTripFromPayload(t *testing.T) {
+	t.Parallel()
+	for name, tc := range roundTripCases() {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h, st, _ := underlyingsSite(t, true)
@@ -303,7 +308,8 @@ func TestPostUnderlyingsLongValueIs422AtTheFirstPost(t *testing.T) {
 	t.Parallel()
 	h, st, _ := underlyingsSite(t, true)
 	rec := serve(h, underlyingsPost(t, url.Values{"key": {"US:BBB"}, "note": {strings.Repeat("x", 301)}, "options": {"on"}}))
-	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(decodeUnderlyings(t, rec).Notice, "Refused note: longer than 300 characters") || st.calls() != 0 {
+	notice := decodeUnderlyings(t, rec).Notice
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(notice, "Refused note: longer than 300 characters") || st.calls() != 0 {
 		t.Fatalf("%d %d applies %.300q", rec.Code, st.calls(), rec.Body)
 	}
 }
