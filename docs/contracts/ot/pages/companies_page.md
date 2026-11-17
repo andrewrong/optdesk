@@ -13,6 +13,12 @@ The page is built per request (`ot serve`) or once per command (`ot page`) for t
 - `$OT_HOME/watch.toml`, through `loadWatch`: one row per entry (issuer, market, contract symbol); `HandPrice` is the entry's `buy_price` text, empty when none. A broken file is a build error, as in `ot run-once`; a missing file gives no rows.
 - `OT_PG_DSN_PAGES`: the reading view (`rd.reading_r1`), the view reader of the site; `ot page` opens it once, a missing line gives no reader.
 
+## Last cell and dates
+
+- The text of the "Last" cell is the newest stored daily close with its day, `<price> · close <day>` (for example `128.40 · close 2026-11-04`); it is not the broker mark, which `/positions` shows. A symbol with no close, or a close with no day, shows `no quote`.
+- `header.line` is `Data of <YYYY-MM-DD> · watching <N> companies` and `stale.text` is `Data of <YYYY-MM-DD>`, the day being the page day in full.
+- `notes` holds one line: `Last = daily close of the day shown; /positions shows the broker mark`.
+
 ## Left out
 
 `Series`, `Spot`, `Offers`, `Facts`, the compute functions, `Held`, `Text` and `Override` are not set, so every block but the price line is a gap and no row has a band: the price line cell shows the hand price (`hand_price`) beside the gap text `no band: reader not set`. Nothing is computed in `cmd/ot`.

@@ -56,7 +56,9 @@ func point(day string, v float64) contracts.SeriesPoint {
 // analyst; the return function gives four lines per cost.
 func coreConfig(costs ...string) Config {
 	cfg := testConfig(okBand)
-	cfg.Spot = func(context.Context, string, contracts.Day) (string, bool, error) { return "128.40", true, nil }
+	cfg.Spot = func(context.Context, string, contracts.Day) (Spot, bool, error) {
+		return Spot{Price: "128.40", Day: "2026-11-09"}, true, nil
+	}
 	cfg.Offers = func(context.Context, string, contracts.Day) ([]string, error) { return costs, nil }
 	cfg.BuildFilings = func([]contracts.FundamentalFact, contracts.Day, valuationapi.Standard) valuationapi.FilingsResult {
 		return valuationapi.FilingsResult{State: valuationapi.StateOK, Filings: valuationapi.Filings{
@@ -257,6 +259,7 @@ type input struct {
 	Quotes []struct {
 		InstrumentID int     `json:"instrument_id"`
 		Last         float64 `json:"last"`
+		SessionDay   string  `json:"session_day"`
 	} `json:"quotes"`
 	OwnerText map[string]map[string]string `json:"owner_text"`
 }
@@ -420,13 +423,13 @@ func fixtureConfig(in input) Config {
 	for _, i := range in.Instruments {
 		idOf[i.Symbol] = i.ID
 	}
-	cfg.Spot = func(_ context.Context, symbol string, _ contracts.Day) (string, bool, error) {
+	cfg.Spot = func(_ context.Context, symbol string, _ contracts.Day) (Spot, bool, error) {
 		for _, q := range in.Quotes {
 			if q.InstrumentID == idOf[symbol] {
-				return strconv.FormatFloat(q.Last, 'f', -1, 64), true, nil
+				return Spot{Price: strconv.FormatFloat(q.Last, 'f', -1, 64), Day: contracts.Day(q.SessionDay)}, true, nil
 			}
 		}
-		return "", false, nil
+		return Spot{}, false, nil
 	}
 	cfg.Offers = func(_ context.Context, symbol string, _ contracts.Day) ([]string, error) {
 		var out []string
@@ -540,5 +543,42 @@ func TestRefusalCodesReadAsWords(t *testing.T) {
 	}
 	if got := reasonText("SHARE_JUMP", "STALE_FILING"); strings.Contains(got, "_") || !strings.Contains(got, ", ") {
 		t.Errorf("joined = %q", got)
+	}
+}
+
+func TestLegendFollowsSpotRule(t *testing.T) {
+	t.Parallel()
+	build := func(day contracts.Day) (string, []string) {
+		cfg := coreConfig("120")
+		cfg.Spot = func(context.Context, string, contracts.Day) (Spot, bool, error) {
+			return Spot{Price: "128.40", Day: day}, true, nil
+		}
+		cfg.ImpliedGrowth = func(_ valuationapi.Filings, spot string) valuationapi.ImpliedResult {
+			return valuationapi.ImpliedResult{State: valuationapi.StateOK, Rates: []valuationapi.ImpliedRate{{Rate: "0.08", Growth: "0.05"}}}
+		}
+		b, err := Build(context.Background(), cfg, builtAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var page struct {
+			WatchList struct {
+				Rows []struct {
+					Cells []testCell `json:"cells"`
+				} `json:"rows"`
+			} `json:"watch_list"`
+			Core struct {
+				Legend []string `json:"legend"`
+			} `json:"core"`
+		}
+		if err := json.Unmarshal(b, &page); err != nil {
+			t.Fatal(err)
+		}
+		return page.WatchList.Rows[0].Cells[2].Text, page.Core.Legend
+	}
+	if last, legend := build(""); last != "no quote" || len(legend) != 0 {
+		t.Errorf("empty day: last %q legend %v, want no quote and no legend", last, legend)
+	}
+	if last, legend := build("2026-11-09"); last != "128.40 · close 2026-11-09" || len(legend) != 1 {
+		t.Errorf("with day: last %q legend %v, want a price and one legend line", last, legend)
 	}
 }

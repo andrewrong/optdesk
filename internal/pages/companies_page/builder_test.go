@@ -165,3 +165,92 @@ func TestFullyBuiltPageIsOk(t *testing.T) {
 		t.Fatalf("run_status = %q, data_times = %+v", page.RunStatus, page.DataTimes)
 	}
 }
+
+// spotPage builds the page of cfg and returns the Last text of each watch and holdings row, the
+// header line, the stale text and the notes.
+type spotPage struct {
+	WatchList struct {
+		Rows []struct {
+			Cells []testCell `json:"cells"`
+		} `json:"rows"`
+	} `json:"watch_list"`
+	Holdings struct {
+		Rows []struct {
+			Cells []testCell `json:"cells"`
+		} `json:"rows"`
+	} `json:"holdings"`
+	Header struct {
+		Line string `json:"line"`
+	} `json:"header"`
+	Stale struct {
+		Text string `json:"text"`
+	} `json:"stale"`
+	Notes []string `json:"notes"`
+}
+
+func buildSpotPage(t *testing.T, cfg Config) spotPage {
+	t.Helper()
+	b, err := Build(context.Background(), cfg, time.Date(2026, 11, 10, 14, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p spotPage
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func twoSubjectConfig(price string, day contracts.Day) Config {
+	cfg := testConfig(okBand)
+	cfg.Subjects = []Subject{
+		{Issuer: "cik:0000000001", Market: "US", Symbol: "SYN1"},
+		{Issuer: "cik:0000000002", Market: "US", Symbol: "SYN2"},
+	}
+	cfg.Facts = fakeFactsByIssuer{}
+	cfg.Held = func(context.Context) (map[string]bool, error) { return map[string]bool{"cik:0000000002": true}, nil }
+	cfg.Spot = func(context.Context, string, contracts.Day) (Spot, bool, error) {
+		return Spot{Price: price, Day: day}, true, nil
+	}
+	return cfg
+}
+
+func TestBuildLastCellCarriesDay(t *testing.T) {
+	t.Parallel()
+	p := buildSpotPage(t, twoSubjectConfig("128.40", "2026-11-04"))
+	want := "128.40 · close 2026-11-04"
+	if got := p.WatchList.Rows[0].Cells[2].Text; got != want {
+		t.Errorf("watch row Last = %q, want %q", got, want)
+	}
+	if got := p.Holdings.Rows[0].Cells[2].Text; got != want {
+		t.Errorf("holdings row Last = %q, want %q", got, want)
+	}
+}
+
+func TestBuildNoQuoteWithoutDay(t *testing.T) {
+	t.Parallel()
+	p := buildSpotPage(t, twoSubjectConfig("128.40", ""))
+	if got := p.WatchList.Rows[0].Cells[2].Text; got != "no quote" {
+		t.Errorf("Last = %q, want no quote", got)
+	}
+}
+
+func TestBuildDataOfFormat(t *testing.T) {
+	t.Parallel()
+	p := buildSpotPage(t, twoSubjectConfig("128.40", "2026-11-04"))
+	if p.Header.Line != "Data of 2026-11-10 · watching 2 companies" {
+		t.Errorf("header.line = %q", p.Header.Line)
+	}
+	if p.Stale.Text != "Data of 2026-11-10" {
+		t.Errorf("stale.text = %q", p.Stale.Text)
+	}
+}
+
+func TestBuildNotesHasLastGloss(t *testing.T) {
+	t.Parallel()
+	p := buildSpotPage(t, twoSubjectConfig("128.40", "2026-11-04"))
+	want := "Last = daily close of the day shown; /positions shows the broker mark"
+	if len(p.Notes) != 1 || p.Notes[0] != want {
+		t.Errorf("notes = %q, want [%q]", p.Notes, want)
+	}
+}

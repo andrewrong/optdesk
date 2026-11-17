@@ -23,6 +23,8 @@ const (
 	noQuoteText   = "no quote"
 	notBuiltText  = "%s block not built"
 	staleAfterHrs = 24
+	dataOf        = "Data of "
+	lastGloss     = "Last = daily close of the day shown; /positions shows the broker mark"
 )
 
 // Subject is one company row. Issuer is the issuer text of the watch list (cik:<10 digits> or
@@ -55,7 +57,7 @@ type Config struct {
 	Read   store.ReadingViewReader
 	Facts  store.FactReader
 	Series store.SeriesReader
-	Spot   func(ctx context.Context, symbol string, day contracts.Day) (string, bool, error)
+	Spot   func(ctx context.Context, symbol string, day contracts.Day) (Spot, bool, error)
 	Offers func(ctx context.Context, symbol string, day contracts.Day) ([]string, error)
 
 	StandardOf    valuationapi.StandardOfFunc
@@ -179,7 +181,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		Schema: "companies_page", SchemaVersion: 2,
 		RunID: "companies-" + string(today), BuildID: "companies-" + string(today), Scope: "companies",
 		DataTimes: []sourceTime{}, RunStatus: "ok", Title: pageTitle,
-		Notes: []string{}, Gaps: []gap{},
+		Notes: []string{lastGloss}, Gaps: []gap{},
 		Core:      gap{Reason: "not_built", Text: fmt.Sprintf(notBuiltText, "core")},
 		Diagnosis: gap{Reason: "not_built", Text: fmt.Sprintf(notBuiltText, "diagnosis")},
 		Questions: gap{Reason: "not_built", Text: fmt.Sprintf(notBuiltText, "questions")},
@@ -189,7 +191,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	vm.Stale = stale{
 		DataTime:   vm.GeneratedAt,
 		StaleAfter: at.Add(staleAfterHrs * time.Hour).Format("2006-01-02T15:04:05-07:00"),
-		Text:       "Data of " + string(today)[5:],
+		Text:       dataOf + string(today),
 	}
 	vm.WatchList = watchBlock{Title: "Watch list", Columns: columns, Rows: []row{}}
 	var holds []holdingRow
@@ -201,12 +203,10 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 			return nil, err
 		}
 		last := noQuoteText
-		if cfg.Spot != nil {
-			if q, ok, err := cfg.Spot(ctx, s.Symbol, today); err != nil {
-				return nil, fmt.Errorf("companies_page: spot of %s: %w", s.Symbol, err)
-			} else if ok && q != "" {
-				last = q
-			}
+		if q, ok, err := cfg.spotAt(ctx, s.Symbol, today); err != nil {
+			return nil, err
+		} else if ok {
+			last = q.Price + " · close " + string(q.Day)
 		}
 		cells := []cell{{Text: s.Symbol}, pc, {Text: last}}
 		if reason != "" {
@@ -241,7 +241,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	}
 	vm.Header.Title = pageTitle
 	vm.Header.DataDay = string(today)
-	vm.Header.Line = fmt.Sprintf("%s · watching %d companies", string(today)[5:], len(cfg.Subjects))
+	vm.Header.Line = fmt.Sprintf("%s%s · watching %d companies", dataOf, string(today), len(cfg.Subjects))
 	return json.Marshal(vm)
 }
 
