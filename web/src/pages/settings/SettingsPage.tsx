@@ -4,6 +4,7 @@
 import { CircleCheck, Info, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,50 +48,54 @@ function RevertFields({ row }: { row: HistoryRow }) {
 
 function ConfirmCard({ payload, confirm }: { payload: Payload; confirm: NonNullable<Payload['confirm']> }) {
   return (
-    <Card data-confirm>
-      <CardHeader>
-        <CardTitle>
-          <h2 className="text-lg font-semibold">Confirm changes</h2>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Old value</TableHead>
-              <TableHead>New value</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {confirm.rows.map((row, index) => (
-              <TableRow key={`${index}-${row.label}`} data-confirm-row>
-                <TableCell>{row.label}</TableCell>
-                <TableCell>{row.old}</TableCell>
-                <TableCell>{row.new}</TableCell>
+    <Dialog defaultOpen>
+      <DialogContent data-confirm showCloseButton={false} aria-describedby={undefined} className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle asChild>
+            <h2 className="text-lg font-semibold">Confirm changes</h2>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>Old value</TableHead>
+                <TableHead>New value</TableHead>
               </TableRow>
+            </TableHeader>
+            <TableBody>
+              {confirm.rows.map((row, index) => (
+                <TableRow key={`${index}-${row.label}`} data-confirm-row>
+                  <TableCell>{row.label}</TableCell>
+                  <TableCell>{row.old}</TableCell>
+                  <TableCell>{row.new}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <form method="post" action={confirm.form.post_path} data-confirm-form className="flex items-center gap-2">
+            <Token form={confirm.form} />
+            <input type="hidden" name="confirm" value="1" />
+            {payload.params.map((param) => (
+              <input key={param.key} type="hidden" name={`param.${param.key}`} value={param.value} />
             ))}
-          </TableBody>
-        </Table>
-        <form method="post" action={confirm.form.post_path} data-confirm-form className="flex items-center gap-2">
-          <Token form={confirm.form} />
-          <input type="hidden" name="confirm" value="1" />
-          {payload.params.map((param) => (
-            <input key={param.key} type="hidden" name={`param.${param.key}`} value={param.value} />
-          ))}
-          {payload.rows.map((row) => (
-            <input key={row.instrument_id} type="hidden" name="row" value={row.instrument_id} />
-          ))}
-          {payload.rows.map((row) =>
-            row.excluded ? <input key={row.instrument_id} type="hidden" name="excluded" value={row.instrument_id} /> : null,
-          )}
-          <Button type="submit">Confirm and save</Button>
-          <a href="/settings" className="text-sm underline" data-cancel>
-            Cancel
-          </a>
-        </form>
-      </CardContent>
-    </Card>
+            {payload.rows.map((row) => (
+              <input key={row.instrument_id} type="hidden" name="row" value={row.instrument_id} />
+            ))}
+            {payload.rows.map((row) =>
+              row.excluded ? <input key={row.instrument_id} type="hidden" name="excluded" value={row.instrument_id} /> : null,
+            )}
+            <Button type="submit">Confirm and save</Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -247,7 +252,8 @@ export function SettingsPage({ payload }: { payload: Payload }) {
           <AlertDescription>{payload.gap.text}</AlertDescription>
         </Alert>
       ) : null}
-      {payload.confirm ? <ConfirmCard payload={payload} confirm={payload.confirm} /> : <EditCard payload={payload} />}
+      {payload.confirm ? <ConfirmCard payload={payload} confirm={payload.confirm} /> : null}
+      <EditCard payload={payload} />
       {payload.history.length > 0 ? <HistoryCard payload={payload} /> : null}
     </div>
   )
