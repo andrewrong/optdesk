@@ -1,0 +1,153 @@
+{
+  "schema": "data_health_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "form": {
+    "post_path": "/owner-job-console",
+    "expires": "2026-11-17T10:00:00Z",
+    "mac": "invented-mac-0001"
+  },
+  "datasets": [
+    {
+      "dataset_id": "option_eod",
+      "label": "Option end of day",
+      "job_id": "option_eod_index",
+      "calendar": "XNYS",
+      "gap_days": 2,
+      "repair_all": "button",
+      "newest": [
+        {
+          "series_id": "DGS10",
+          "day": "2026-11-14",
+          "age_days": 3
+        }
+      ],
+      "cells": [
+        {
+          "day": "2026-11-10",
+          "state": "ok",
+          "keys": 5,
+          "ok": 5,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-11",
+          "state": "no_value",
+          "keys": 5,
+          "ok": 3,
+          "no_value": 2,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-12",
+          "state": "expired",
+          "keys": 5,
+          "ok": 3,
+          "no_value": 0,
+          "expired": 2,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "button",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-13",
+          "state": "missing",
+          "keys": 5,
+          "ok": 3,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 2,
+          "missing_keys": [
+            "AAA",
+            "BBB"
+          ],
+          "repair": "button",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-14",
+          "state": "missing",
+          "keys": 5,
+          "ok": 0,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 5,
+          "missing_keys": [
+            "AAA",
+            "BBB",
+            "CCC",
+            "DDD",
+            "EEE"
+          ],
+          "repair": "not_refetchable",
+          "why_text": "The source keeps only today's chain.",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-17",
+          "state": "not_run",
+          "keys": 5,
+          "ok": 0,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": "09:15"
+        }
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "ok",
+      "text": "Invented explanation of ok."
+    },
+    {
+      "term": "no_value",
+      "text": "Invented explanation of no_value."
+    },
+    {
+      "term": "expired",
+      "text": "Invented explanation of expired."
+    },
+    {
+      "term": "missing",
+      "text": "Invented explanation of missing."
+    },
+    {
+      "term": "not_run",
+      "text": "Invented explanation of not_run."
+    },
+    {
+      "term": "none",
+      "text": "Invented explanation of none."
+    },
+    {
+      "term": "button",
+      "text": "Invented explanation of button."
+    },
+    {
+      "term": "not_refetchable",
+      "text": "Invented explanation of not_refetchable."
+    }
+  ],
+  "overwrite_note": "A repair writes only the days that are missing or expired.",
+  "gaps": []
+}
