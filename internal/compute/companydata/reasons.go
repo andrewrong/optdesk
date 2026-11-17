@@ -11,11 +11,12 @@ var reasonTexts = map[companydataapi.Reason]string{
 	companydataapi.ReasonJP:              "Japanese names have no statements source, so their statements are left out on purpose.",
 	companydataapi.ReasonNoCIK:           "No SEC number is set for this name, so type it on the underlyings page.",
 	companydataapi.ReasonFundamentalsOff: "The fundamentals flag of this name is off, so no statements are fetched.",
-	companydataapi.ReasonNoStatements:    "No US-GAAP statements are stored: either this is an IFRS filer, whose quarters are left out on purpose, or the daily run has not stored it yet.",
-	companydataapi.ReasonAnnualOnly:      "The filer reports once a year on form 20-F or 40-F, so there are no quarters.",
-	companydataapi.ReasonNoInstrument:    "No instrument is resolved yet, so no bars can be collected.",
-	companydataapi.ReasonNoBars:          "The instrument is resolved but no daily bar is stored.",
-	companydataapi.ReasonNoNextReport:    "No report date is listed for this name.",
+	companydataapi.ReasonNoStatements: "No US-GAAP statements are stored: either this is an IFRS filer, whose quarters are left out on purpose, " +
+		"or the daily run has not stored it yet.",
+	companydataapi.ReasonAnnualOnly:   "The filer reports once a year on form 20-F or 40-F, so there are no quarters.",
+	companydataapi.ReasonNoInstrument: "No instrument is resolved yet, so no bars can be collected.",
+	companydataapi.ReasonNoBars:       "The instrument is resolved but no daily bar is stored.",
+	companydataapi.ReasonNoNextReport: "No report date is listed for this name.",
 }
 
 func missingOf(r companydataapi.Reason) companydataapi.Missing {
