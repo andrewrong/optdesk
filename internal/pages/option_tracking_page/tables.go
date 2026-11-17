@@ -65,7 +65,7 @@ var recentColumns = []colDef[opt]{
 	col("qty", "Quantity", "right", qty),
 	col("status", "Status", "left", statusCell),
 	col("closed_day", "Closed day", "left", closedDayCell),
-	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
+	col("premium", "Net premium", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }).hinted("Cash of the opening trade plus the closing trade before commissions; negative when the option was bought back for more than it was sold for"),
 	col("commissions", "Commissions", "right", func(o opt) any { return moneyHalfUp(o.Commissions, o.Currency, codeNoValue) }),
 	col("realized", "Realized P&L", "right", func(o opt) any { return moneyHalfUp(o.RealizedPnL, o.Currency, codeNoValue) }),
 }

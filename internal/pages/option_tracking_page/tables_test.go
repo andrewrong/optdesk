@@ -234,3 +234,29 @@ func TestRecentMoneyColumnsRoundingAndGap(t *testing.T) {
 		}
 	}
 }
+
+func TestRecentTableLabelsNetPremium(t *testing.T) {
+	t.Parallel()
+	o := sampleClosed("z")
+	o.Currency, o.PremiumIncome = "USD", "-3541.0000"
+	label := func(tb *table, id string) column {
+		for _, c := range tb.Columns {
+			if c.ID == id {
+				return c
+			}
+		}
+		t.Fatalf("no column %s", id)
+		return column{}
+	}
+	recent := recentTable([]opt{o})
+	c := label(recent, "premium")
+	if c.Label != "Net premium" || c.Hint == nil || *c.Hint == "" {
+		t.Fatalf("recent premium column = %+v", c)
+	}
+	if v := asValue(t, recent.Rows[0].Cells["premium"]); v.Text != "−$3,541.00" {
+		t.Fatalf("premium = %+v", v)
+	}
+	if c := label(openTable([]opt{o}), "premium"); c.Label != "Premium collected" {
+		t.Fatalf("open premium label = %q", c.Label)
+	}
+}
