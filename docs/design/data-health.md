@@ -272,7 +272,7 @@ Acceptance:
 
 - Not read: the ledger datasets of `account_capture`, `position_marks`, `quote_snapshot` and `statement_capture` (entry 6 `TestEveryJobHasRowOrReason` decides; a job with no ledger keys cannot show gaps and is named in the fixed list).
 - Not verified: whether the console host rebuilds its job set per request (`cmd/ot/jobconsole_host.go:71,95` keeps the set it was given). `earnings_refresh` and `dividend_capture` return their first result of a day from memory on a repeat in the same instance (`earningsrefresh/run.go:213-214`, `dividendcapture/run.go:214-215`); with the present-only rule only today's repair can meet it, and it fails loudly (the request ends failed, the cell is not turned `ok`); entry 8 item 3 shows the request's end state.
-- Pending code in flight at the time of reading: #2548 and #2550 touch `internal/jobs/optioneod`; the citations of `optioneod/run.go:118-121` and `map.go:57-71` were read at `e18b41bd` and shift by lines only if those merge.
+- Pending code in flight at the time of reading: #2550 touches `internal/jobs/optioneod`; #2548 merged (`1262b35e`) and the citations of `optioneod/run.go:118-121` and `map.go:57-71` were re-read after it and hold; they shift only if #2550 moves those lines.
 - Not verified: whether a genuine source answer of nothing always leaves a clean newest run row (read: `runkey.go:221-222,242` set no reason and no error); `TestCoverageViewExpired` pins the view's rule on rows, not on a live run.
 - The next free migration number and the order against other open design pull requests (`modules.md` conflicts) are settled when the pull request opens.
 
@@ -308,7 +308,7 @@ Origin/main read at `fef91db2`. Only the five blocking points of `advisor-2026-1
 
 ## Fix round 2026-11-17 (advisor r2, non-blocking points)
 
-Origin/main read at `e18b41bd`; every file:line citation was re-read and holds (`optioneod/run.go:118-121`, `TestPastDayRefuses` `run_test.go:390`, `reconcile.go`, `runkey.go`, `backfill_force.go`, `jobconsole_jobs.go:75-110`, `jobconsole_turn.go`, the manifests); the table cites `fef91db2` text unchanged.
+Origin/main read at `e18b41bd` and `1262b35e`; every file:line citation was re-read and holds (`optioneod/run.go:118-121`, `TestPastDayRefuses` `run_test.go:390`, `reconcile.go`, `runkey.go`, `backfill_force.go`, `jobconsole_jobs.go:75-110`, `jobconsole_turn.go`, the manifests); the table cites `fef91db2` text unchanged.
 
 - a. A `not_run` day prints "not planned: repair of an unplanned day is not built yet", never "lost" (Goal, Decision 5, entry 4); "Planning a `not_run` day" is the first Left out item.
 - b. `earnings_refresh` and `dividend_capture` are present-only (Decision 5, table, entries 4, 6, 8), chosen over a "filled later" mark because it is one flag and no page text.
