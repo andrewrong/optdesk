@@ -31,7 +31,7 @@ Every name the owner holds shows a price and a day result on `/positions`, JP na
 
 1. Reader use only. No job, migration, schema or `contracts/` file changes; the day of the prices goes into one note.
 2. Price. `/positions` keeps the stored mark as the price where one exists (`builder.go:150-163`). A stock with no mark takes the close of its newest `trades` bar up to the capture day (look-back 14 days, as `home_companies` `barLookbackDays`). One `PriceBars` call per stock row gives both the price and the previous close.
-3. Previous close = the close of the bar before the shown price's day, for the same instrument: for a bar price, the bar before that bar; for a mark, the newest bar before the capture day. A name with fewer than two usable bars, or whose bar currency differs from the position currency, has no previous close and the day result is the gap `no_data`. Assumption, named: a mark is taken at or after the close of the capture day; if a capture was taken before the close, mark and previous close can be equal and the day result is then a true zero of that moment, not a gap (Checked by owner).
+3. Previous close = the close of the bar before the shown price's day, for the same instrument: for a bar price, the bar before that bar; for a mark, the newest bar before the capture day. A bar-priced name with fewer than two usable bars, a marked name with no bar before the capture day, or a name whose bar currency differs from the position currency, has no previous close and the day result is the gap `no_data`. Assumption, named: a mark is taken at or after the close of the capture day; if a capture was taken before the close, mark and previous close can be equal and the day result is then a true zero of that moment, not a gap (Checked by owner).
 4. The day result is computed in compute: `HoldingIn` gains `Prev` (previous close per unit, empty when none) and `HoldingLine` gains `Day` (stock rows: quantity x multiplier x (Mark - Prev), converted to USD like `Unrealised` for a converted row; gap `missing_quote` without a Mark, `no_data` without a Prev; option rows: always the gap `no_data`). No total of the day result.
 5. Value, Unrealised, Share and both totals now fill in for a row priced from a bar, because the bar close feeds `Mark`; that is intended (a held name with a bar is no longer a gap), and the page says so in its one note.
 6. Resolving a position to an instrument: one batched `StockIDs` call with every stock symbol of the account (at most 500 names, else the extra rows are gaps); a symbol returned once is used, none or twice is a gap, never a pick. Conid is not used (no reader, Today).
@@ -41,9 +41,8 @@ Every name the owner holds shows a price and a day result on `/positions`, JP na
 ## Modules
 
 - compute (`internal/compute/**`): issue 1, edits the interface file `internal/compute/blockapi/api.go`.
-- pages (`internal/pages/**`): issue 2.
-- ot (`cmd/**`): issue 3.
-(compute, pages, ot) are three issues of one module each. No row of `docs/design/modules.md` changes; no new dependency between modules (pages already depends on store and compute; ot on both).
+- pages (`internal/pages/**`) and ot (`cmd/**`): issue 2, one judged two-module entry: the page change and its wiring in `cmd/ot` land together, so no module issue needs a sibling's unmerged output.
+Issue 1 edits one module; issue 2 spans pages and ot. No row of `docs/design/modules.md` changes; no new dependency between modules (pages already depends on store and compute; ot on both).
 
 ## Interface
 
@@ -66,9 +65,9 @@ Acceptance:
 
 ### 2 positions-day-from-bars
 
-Module: pages. Size: M.
+Modules: pages and ot (one judged two-module entry). Size: M.
 Order: after 1.
-Files: `internal/pages/positions_page/page.go`, `internal/pages/positions_page/builder.go`, `internal/pages/positions_page/rows.go`, `internal/pages/positions_page/strings.go`, `internal/pages/positions_page/bars.go`, `internal/pages/positions_page/builder_test.go`, `internal/pages/positions_page/bars_test.go`, `internal/pages/positions_page/testdata/bars.golden.json`
+Files: `internal/pages/positions_page/page.go`, `internal/pages/positions_page/builder.go`, `internal/pages/positions_page/rows.go`, `internal/pages/positions_page/strings.go`, `internal/pages/positions_page/bars.go`, `internal/pages/positions_page/builder_test.go`, `internal/pages/positions_page/bars_test.go`, `internal/pages/positions_page/testdata/bars.golden.json`, `cmd/ot/positions_site.go`, `cmd/ot/positions_site_test.go`
 Contracts: unchanged
 Design: docs/design/spot-from-bars.md#Decisions (Decisions 2, 3, 5, 6, 7)
 Acceptance:
@@ -78,17 +77,8 @@ Acceptance:
 4. One note for the account lists the bar-priced symbols (at most eight and a count) with their bar days and the words "last stored close"; new test `TestFallbackNoteIsOneLineWithin200Characters` (new) builds 25 bar-priced names plus the skipped and statement notes and asserts `notes` has at most 20 entries, each at most 200 characters, and the page validates against the v3 schema.
 5. New golden `testdata/bars.golden.json` (new) is written by the update path of the golden tests and validated by `validate`; new test `TestGoldenBars` (new) compares it.
 6. A reader error is returned like `TestReaderErrorIsAnError`; `purity_test.go` passes; each new file is under 600 lines and no edited file passes 600 lines.
-
-### 3 positions-bars-wiring
-
-Module: ot. Size: S. This is the composition-root step of the design: it only wires readers that issue 2 adds to `positions_page.Config`, so it is ordered after issue 2 and is written against main once issue 2 has merged; no module issue waits for it.
-Order: after 2.
-Files: `cmd/ot/positions_site.go`, `cmd/ot/positions_site_test.go`
-Contracts: unchanged
-Design: docs/design/spot-from-bars.md#Decisions (Decisions 2, 6)
-Acceptance:
-1. `positionsPageConfig` sets `Bars` from `rd.bars` and `StockIDs` from `siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)`, each only when non-nil; the named path `positionsPageNamedOf` uses the same function, so it gets both when its readers open.
-2. New test `TestPositionsPageGetsBarsAndStockIDs` (new): a site with a fake bar reader and a fake stock reader yields a `positions_page.Config` whose `Bars` and `StockIDs` are those readers, the same through `positionsPageNamedOf`; a site with neither yields a `Config` with both nil. The page behaviour itself is checked in issue 2.
+7. `positionsPageConfig` in `cmd/ot/positions_site.go` sets `Bars` from `rd.bars` and `StockIDs` from `siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)`, each only when non-nil; the named path `positionsPageNamedOf` uses the same function, so it gets both when its readers open.
+8. New test `TestPositionsPageGetsBarsAndStockIDs` (new) in `cmd/ot/positions_site_test.go`: a site with a fake bar reader and a fake stock reader yields a `positions_page.Config` whose `Bars` and `StockIDs` are those readers, the same through `positionsPageNamedOf`; a site with neither yields a `Config` with both nil.
 
 ## Checked by CI
 
@@ -121,5 +111,5 @@ Answers to the window's file adversarial-spot-from-bars-2026-11-17.md (outside t
 8. Simpler way, conid: not adopted, no reader by identifier exists (Today). One batched `StockIDs` call instead (Decision 6). One `PriceBars` call per row serves price and previous close (Decision 2).
 9. Lock-in, bar currency: adopted. A currency mismatch is a gap (Decision 3, issue 2 item 2). The second `StockIDs` interface copy: not changed, a page cannot import another page.
 10. Name equals symbol: kept as a named assumption of the bars job; a shared symbol is a gap.
-11. Claim likely false, `ot page` keeps no bars: adopted. Removed; issue 3 covers the named path.
+11. Claim likely false, `ot page` keeps no bars: adopted. Removed; issue 2 (acceptance 7) covers the named path.
 12. Slip risks: `holdings_new.go` added to issue 1 Files; "size ceilings" became "under 600 lines"; goldens fixed; issue 2 kept at six items (it did not need splitting).
