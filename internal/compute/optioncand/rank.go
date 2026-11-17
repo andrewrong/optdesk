@@ -12,9 +12,12 @@ type scored struct {
 	row    compute.Candidate
 	yield  *big.Rat
 	strike *big.Rat
+	// margin is (buy price - break-even) / buy price of a short put with both; nil otherwise.
+	margin *big.Rat
 }
 
-// order sorts the rows: ok rows first by yield descending, DTE, strike and instrument id
+// order sorts the rows: ok rows first, those with a margin before those without, the larger
+// margin first; equal margins and rows without one go by yield descending, DTE, strike and instrument id
 // ascending, then the others by expiry, strike and instrument id; it ranks the ok rows.
 func order(rows []scored) []compute.Candidate {
 	sort.SliceStable(rows, func(i, j int) bool { return less(rows[i], rows[j]) })
@@ -36,6 +39,14 @@ func less(a, b scored) bool {
 		return aok
 	}
 	if aok {
+		if (a.margin == nil) != (b.margin == nil) {
+			return a.margin != nil
+		}
+		if a.margin != nil {
+			if c := a.margin.Cmp(b.margin); c != 0 {
+				return c > 0
+			}
+		}
 		if c := a.yield.Cmp(b.yield); c != 0 {
 			return c > 0
 		}
