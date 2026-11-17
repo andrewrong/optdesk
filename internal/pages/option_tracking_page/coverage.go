@@ -108,10 +108,10 @@ type eodLoader struct {
 	c        Config
 	symbols  map[string]bool
 	from, to contracts.Day
-	sides    map[dayKey]bool
+	sides    map[dayKey]string
 }
 
-func (e *eodLoader) get() (map[dayKey]bool, error) {
+func (e *eodLoader) get() (map[dayKey]string, error) {
 	if e.sides != nil {
 		return e.sides, nil
 	}
@@ -138,11 +138,10 @@ func classify(id int64, span []contracts.Day, stored map[dayKey]optionday.Day, e
 		if err != nil {
 			return lc, err
 		}
-		switch sides, ok := m[k]; {
-		case !ok:
+		if reason, ok := m[k]; !ok {
 			gap(d, reasonNoQuote)
-		case !sides:
-			gap(d, reasonOneSide)
+		} else if reason != "" {
+			gap(d, reason)
 		}
 	}
 	return lc, nil
@@ -197,10 +196,10 @@ func dayRows(ctx context.Context, c Config, ids []int64, from, to contracts.Day)
 	return out, nil
 }
 
-// eodSides maps (instrument, day) of the option_eod rows of the symbols to whether both sides are
-// above zero. A missing reader gives an empty map, so every such day is a gap.
-func eodSides(ctx context.Context, c Config, symbols map[string]bool, from, to contracts.Day) (map[dayKey]bool, error) {
-	out := map[dayKey]bool{}
+// eodSides maps (instrument, day) of the option_eod rows of the symbols to the reason of the day
+// ("" for two sides above zero). A missing reader gives an empty map, so every such day is a gap.
+func eodSides(ctx context.Context, c Config, symbols map[string]bool, from, to contracts.Day) (map[dayKey]string, error) {
+	out := map[dayKey]string{}
 	if c.Eod == nil || c.Catalog == nil || c.Names == nil {
 		return out, nil
 	}
@@ -218,7 +217,7 @@ func eodSides(ctx context.Context, c Config, symbols map[string]bool, from, to c
 			if d < from || d > to {
 				continue
 			}
-			out[dayKey{int64(r.InstrumentID), d}] = sideReason(decimalText(r.Bid), decimalText(r.Ask)) == ""
+			out[dayKey{int64(r.InstrumentID), d}] = sideReason(decimalText(r.Bid), decimalText(r.Ask))
 		}
 	}
 	return out, nil

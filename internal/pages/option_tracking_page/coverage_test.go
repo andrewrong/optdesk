@@ -199,3 +199,14 @@ func TestCoverageColumnIsLast(t *testing.T) {
 		t.Fatalf("last column = %+v", last.column)
 	}
 }
+
+func TestCoverageEodNoSidesIsNoQuote(t *testing.T) {
+	t.Parallel()
+	c, _ := covConfig("2026-11-09")
+	c.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-10", "1", "2")}}
+	c.Eod = fakeEod{rows: map[int64][]contracts.OptionEod{1: {eodRow(10, "2026-11-09", 0, 0)}}}
+	b := cellOf(t, buildMap(t, c), 0)["badges"].([]any)
+	if len(b) != 1 || b[0] != "Gap 2026-11-09: no quote stored" {
+		t.Fatalf("badges = %v", b)
+	}
+}
