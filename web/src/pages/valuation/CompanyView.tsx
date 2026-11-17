@@ -118,8 +118,13 @@ export function CompanyView({ payload }: { payload: Payload }) {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p data-profile>
-            {company.symbol}, {label(CURRENCY_TEXT, company.currency)}, R market: {label(R_MARKET_TEXT, company.r_market)}, pool:{' '}
-            {label(POOL_TEXT, company.pool)}, {company.pool_date}
+            {[
+              company.symbol,
+              label(CURRENCY_TEXT, company.currency),
+              `R market: ${label(R_MARKET_TEXT, company.r_market)}`,
+              `pool: ${label(POOL_TEXT, company.pool)}`,
+              ...(company.pool_date !== '' ? [company.pool_date] : []),
+            ].join(', ')}
           </p>
           {company.note !== '' ? <p>{company.note}</p> : null}
           {close ? (
