@@ -313,7 +313,7 @@ func TestGoldenFigures(t *testing.T) {
 	t.Parallel()
 	var p probe
 	out := blockapi.OptionTilesOut{SoldCount: 3, OpenPremium: usd("1234.50", "1235"), MaxLossUsd: usd("4000.00", "4000"), OpenCount: 2}
-	got := build(t, figCfg(&p, compute.StructureResult{}, out))
+	got := build(t, withFigures(okCfg(sold("1234.5000", "-15.2500", "0.324170")), &p, compute.StructureResult{}, out))
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, got, "", "  "); err != nil {
 		t.Fatal(err)
