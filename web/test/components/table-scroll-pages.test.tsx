@@ -10,6 +10,7 @@ import { App } from '@/shell/App'
 import optionPage from '../../fixtures/option-page/ok.json'
 import positions from '../../fixtures/positions-page/ok.json'
 import { ok as candidates } from '../pages/optioncandidates/fixtures/ok'
+import { ok as pnl } from '../pages/optionpnl/fixtures/ok'
 import { ok as tracking } from '../pages/optiontracking/fixtures/ok'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -24,6 +25,7 @@ const PAGES: [string, unknown][] = [
   ['options/candidates', candidates],
   ['job-console', jobConsole],
   ['options/tracking', tracking],
+  ['options/pnl', pnl],
 ]
 const STYLED = ['overflow-x-auto', '[scrollbar-width:thin]', '[&::-webkit-scrollbar-thumb]:bg-border']
 
