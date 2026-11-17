@@ -55,6 +55,19 @@ func (f *fakeCalc) RoundText(value string, places int) string { return value + "
 func TestCalculatorContractFake(t *testing.T) {
 	t.Parallel()
 	var c valuelinesapi.Calculator = &fakeCalc{}
+	readLinesAndBand(t, c)
+	readChange(t, c)
+	readRates(t, c)
+	if p := c.Check(valuelinesapi.CheckInput{}); len(p) != 1 || p[0].Field != "v" {
+		t.Fatalf("Check = %+v", p)
+	}
+	if c.RoundText("2.345", 2) != "2.345r" {
+		t.Fatal("RoundText not called")
+	}
+}
+
+func readLinesAndBand(t *testing.T, c valuelinesapi.Calculator) {
+	t.Helper()
 	in := valuelinesapi.Input{V: "100", P: "3", Market: valuelinesapi.MarketUS, Close: "80"}
 	l, err := c.Lines(in)
 	if err != nil || l.C != "90" || l.Zone != "buy" || l.Flags == nil || !l.Flags.InBuy {
@@ -67,12 +80,20 @@ func TestCalculatorContractFake(t *testing.T) {
 	if b.Min != "40" || b.Max != "160" || len(b.Marks) != 1 || b.Marks[0].Pos != "0.4167" {
 		t.Fatalf("Band = %+v", b)
 	}
+}
+
+func readChange(t *testing.T, c valuelinesapi.Calculator) {
+	t.Helper()
 	if p, err := c.ChangePercent("100", "88"); err != nil || p != "-12" {
 		t.Fatalf("ChangePercent = %q, %v", p, err)
 	}
 	if _, err := c.ChangePercent("0", "1"); !errors.Is(err, valuelinesapi.ErrBadInput) {
 		t.Fatalf("err = %v", err)
 	}
+}
+
+func readRates(t *testing.T, c valuelinesapi.Calculator) {
+	t.Helper()
 	r, err := c.ProposeR([]valuelinesapi.RRow{{YieldUpTo: "4", US: "1", JP: "0.9", HKCN: "0.8"}}, "3")
 	if err != nil || r.US != "1" || r.JP != "0.9" || r.HKCN != "0.8" {
 		t.Fatalf("ProposeR = %+v, %v", r, err)
@@ -82,12 +103,6 @@ func TestCalculatorContractFake(t *testing.T) {
 	}
 	if w := c.RStepWarnings(valuelinesapi.RValues{}, valuelinesapi.RValues{}); w == nil || len(w) != 0 {
 		t.Fatalf("empty warnings = %#v", w)
-	}
-	if p := c.Check(valuelinesapi.CheckInput{}); len(p) != 1 || p[0].Field != "v" {
-		t.Fatalf("Check = %+v", p)
-	}
-	if c.RoundText("2.345", 2) != "2.345r" {
-		t.Fatal("RoundText not called")
 	}
 }
 
