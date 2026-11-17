@@ -34,28 +34,22 @@ func number(s string) (json.Number, error) {
 	return json.Number(s), nil
 }
 
-// percent is the decimal text s moved two places to the right with a percent sign; no digit is rounded.
+// percent is the decimal text s moved two places to the right with a percent sign, rounded half away from zero
+// to one decimal, a negative with U+2212 (no sign for a zero result).
 func percent(s string) (string, error) {
 	if !decPattern.MatchString(s) {
 		return "", fmt.Errorf("option_result_page: %q is not a decimal", s)
 	}
-	sign := ""
-	if strings.HasPrefix(s, "-") {
-		sign, s = "-", s[1:]
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		return "", fmt.Errorf("option_result_page: %q is not a decimal", s)
 	}
-	whole, frac, _ := strings.Cut(s, ".")
-	for len(frac) < 2 {
-		frac += "0"
+	r := d.Mul(decimal.NewFromInt(100)).Round(1)
+	out := r.Abs().StringFixed(1) + "%"
+	if r.IsNegative() {
+		out = "−" + out
 	}
-	whole = strings.TrimLeft(whole+frac[:2], "0")
-	if whole == "" {
-		whole = "0"
-	}
-	out := sign + whole
-	if rest := frac[2:]; rest != "" {
-		out += "." + rest
-	}
-	return out + "%", nil
+	return out, nil
 }
 
 // moneyText is the decimal text s as money of currency: "$" or "¥" (another currency its code and a space), the

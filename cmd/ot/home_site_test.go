@@ -341,10 +341,10 @@ func TestHomeOptionsTilesShowFigures(t *testing.T) {
 	if f := tiles["sold_count_month"].Figure; f["kind"] != "value" || f["value"] != float64(1) || f["unit"] != "structures" {
 		t.Fatalf("sold = %v", f)
 	}
-	if f := tiles["open_premium_usd"].Figure; f["kind"] != "value" || f["text"] != "$200" || f["unit"] != "usd" {
+	if f := tiles["open_premium_usd"].Figure; f["kind"] != "value" || f["text"] != "$200.00" || f["unit"] != "usd" {
 		t.Fatalf("open premium = %v", f)
 	}
-	if f := tiles["max_loss_usd"].Figure; f["kind"] != "value" || f["text"] != "$800" || f["value"] != float64(800) {
+	if f := tiles["max_loss_usd"].Figure; f["kind"] != "value" || f["text"] != "$800.00" || f["value"] != float64(800) {
 		t.Fatalf("max loss = %v", f)
 	}
 }

@@ -251,7 +251,17 @@ func openContract(o trackapi.TrackedOption) any {
 
 func company(o trackapi.TrackedOption) any { return plainCell(o.Underlying) }
 
-func qty(o trackapi.TrackedOption) any { return numCell(o.Quantity, codeNoValue) }
+func qty(o trackapi.TrackedOption) any { return quantityCell(o.Quantity) }
+
+// quantityCell is numCell with the typographic minus in the shown text; the value stays the stored number.
+func quantityCell(text string) any {
+	cell := numCell(text, codeNoValue)
+	if c, ok := cell.(valueCell); ok {
+		c.Text = strings.Replace(c.Text, "-", "−", 1)
+		return c
+	}
+	return cell
+}
 
 func dteCell(o trackapi.TrackedOption) any { return numCell(strconv.Itoa(o.DTE), codeNoValue) }
 
@@ -366,7 +376,7 @@ func reconContract(r trackapi.TrackRecon) any {
 
 func reconCompany(r trackapi.TrackRecon) any { return plainCell(r.Underlying) }
 
-func reconQty(r trackapi.TrackRecon) any { return numCell(r.Quantity, codeNoValue) }
+func reconQty(r trackapi.TrackRecon) any { return quantityCell(r.Quantity) }
 
 func reconCode(r trackapi.TrackRecon) any {
 	c := textCell(r.Code)
