@@ -299,9 +299,49 @@ func TestRunnerRoleUpdatesJobRequestColumns(t *testing.T) {
 		`UPDATE settings.job_request_withdraw SET withdrawn_at = now()`,
 		`DELETE FROM settings.job_request`,
 		`DELETE FROM settings.job_request_withdraw`,
-		`INSERT INTO settings.job_request (job_id, session_day, force) VALUES ('x', '2026-11-11', false)`,
 		`SELECT 1 FROM settings.rule_param`,
 		`SELECT 1 FROM settings.option_exclusion`,
+	} {
+		if _, err := r.Exec(ctx, q); !isPermissionError(err) {
+			t.Errorf("%s: want a permission error, got %v", q, err)
+		}
+	}
+}
+
+// TestRunnerCanInsertRequestColumns: the runner role inserts a request with job_id, session_day and force, and
+// still cannot set state or keys, update job_id or force, delete, or insert a withdrawal.
+func TestRunnerCanInsertRequestColumns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newScratch(t, true)
+	if err := migrateLocked(ctx, t, s.openAs(t, testPassword), os.DirFS(migrationsDir), quietLog()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if _, err := s.admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.admin.Exec(ctx, "ALTER ROLE ot_runner PASSWORD "+literal(testPassword))
+	var r *pgx.Conn
+	if err == nil {
+		r = connectAs(ctx, t, adminDSN(t, s.db), roleRunner, testPassword)
+	}
+	_, _ = s.admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var id int64
+	if err := r.QueryRow(ctx, `INSERT INTO settings.job_request (job_id, session_day, force)
+		VALUES ('calendar_refresh', '2026-11-11', false) RETURNING id`).Scan(&id); err != nil {
+		t.Fatalf("insert of the three columns: %v", err)
+	}
+	for _, q := range []string{
+		`INSERT INTO settings.job_request (job_id, session_day, force, state) VALUES ('x', '2026-11-11', false, 'running')`,
+		`INSERT INTO settings.job_request (job_id, session_day, force, keys) VALUES ('x', '2026-11-11', false, '{"v":1,"lines":[]}')`,
+		`UPDATE settings.job_request SET job_id = 'x'`,
+		`UPDATE settings.job_request SET force = true`,
+		`DELETE FROM settings.job_request`,
+		`INSERT INTO settings.job_request_withdraw (request_id) VALUES (1)`,
 	} {
 		if _, err := r.Exec(ctx, q); !isPermissionError(err) {
 			t.Errorf("%s: want a permission error, got %v", q, err)
