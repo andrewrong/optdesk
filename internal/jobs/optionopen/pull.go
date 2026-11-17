@@ -265,7 +265,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok := 0, 0
+	planned, ok, unread := 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -285,13 +285,21 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		}
 		res.Returned += len(rows)
 		for _, r := range rows {
-			if r.Status == stOK {
+			switch {
+			case r.Status == stOK:
 				ok++
+			case r.Status == stDisconnected, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
+				unread++
 			}
 		}
 		res.Usable = ok
 	}
 	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
+		if unread > 0 {
+			// Items not asked because the broker answered nothing at the moment: the key is run again.
+			return withErr(res, newErr(contracts.Retryable, "%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot of the stock was not read or the broker was unavailable",
+				ok, planned, p.m.MinOKShare, unread))
+		}
 		return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, p.m.MinOKShare))
 	}
 	return res

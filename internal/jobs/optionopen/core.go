@@ -203,10 +203,13 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 	}
 	spot, spotTs, code, err := c.spot(ctx, st, ts[0].Under)
 	if err != nil {
+		_, ecode := callStatus(err)
+		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", ecode, "err", err.Error(), "items", len(ts))
 		c.callFailed(st, ts, err)
 		return
 	}
 	if spot <= 0 {
+		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", code, "items", len(ts))
 		// Never a quote against a stale spot: the band is built from the open spot.
 		c.finish(st, ts, stDeferred, code, 0, nil)
 		return
