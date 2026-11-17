@@ -3,9 +3,11 @@ package optionevidenceapi_test
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 // fakeEvaluator answers made-up numbers; a strike or bid that is not above 0 is bad input.
@@ -102,4 +104,42 @@ type emptyLabels struct{}
 
 func (emptyLabels) Evaluate(optionevidenceapi.Row) (optionevidenceapi.Evidence, error) {
 	return optionevidenceapi.Evidence{Labels: []string{}}, nil
+}
+
+// fakeATM answers 95 with IV 0.294 for expiry 2026-12-18 and nothing otherwise.
+type fakeATM struct{}
+
+func (fakeATM) ATM(chain []optionevidenceapi.ChainQuote, expiry contracts.Day, spot, source string) (string, string) {
+	if expiry == "2026-12-18" && len(chain) > 0 {
+		return "0.294", "95"
+	}
+	return "", ""
+}
+
+// TestATMPickerContractFake: a caller reads a pair and an empty pair from a fake ATMPicker.
+func TestATMPickerContractFake(t *testing.T) {
+	t.Parallel()
+	var p optionevidenceapi.ATMPicker = fakeATM{}
+	chain := []optionevidenceapi.ChainQuote{{Expiry: "2026-12-18", Right: "P", Strike: "95", IV: "0.294", Source: "option_eod"}}
+	if iv, k := p.ATM(chain, "2026-12-18", "96.50", "option_eod"); iv != "0.294" || k != "95" {
+		t.Errorf("pair = (%q, %q)", iv, k)
+	}
+	if iv, k := p.ATM(nil, "2026-12-18", "96.50", "option_eod"); iv != "" || k != "" {
+		t.Errorf("empty pair = (%q, %q)", iv, k)
+	}
+}
+
+// TestChainQuoteFields: ChainQuote has exactly the five fields Expiry, Right, Strike, IV, Source.
+func TestChainQuoteFields(t *testing.T) {
+	t.Parallel()
+	typ := reflect.TypeOf(optionevidenceapi.ChainQuote{})
+	want := []string{"Expiry", "Right", "Strike", "IV", "Source"}
+	if typ.NumField() != len(want) {
+		t.Fatalf("fields = %d", typ.NumField())
+	}
+	for i, n := range want {
+		if typ.Field(i).Name != n {
+			t.Errorf("field %d = %s, want %s", i, typ.Field(i).Name, n)
+		}
+	}
 }

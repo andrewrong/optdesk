@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {"in": "0.294", "out": "29.4000"},
+    {"in": "-0.012", "out": "-1.2000"},
+    {"in": "0.58", "out": "58.0000"},
+    {"in": "", "out": ""},
+    {"in": "abc", "out": ""}
+  ],
+  "row": {"Spot": "96.50", "Strike": "90.00", "Bid": "0.94", "DTE": 31, "IV": "0.305", "ATMIV": "0.294", "Forecast": "0.275", "ForecastErr": "0.041", "IVP": "0.58", "VolEdge": "0.037"},
+  "want": {"SkewPct": "1.1000", "ATMIVPct": "29.4000", "ForecastPct": "27.5000", "ForecastErrPct": "4.1000", "IVPPct": "58.0000", "VolEdgePct": "3.7000"}
+}

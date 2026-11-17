@@ -39,6 +39,8 @@ type Row struct {
 	ForecastErr      string // name-level fraction, "" when none
 	ATMIV            string // same expiry, "" when no ATM row
 	ATMStrike        string // same expiry, "" when no ATM row
+	IVP              string // name-level fraction, "" when none
+	VolEdge          string // name-level fraction, "" when none
 	// EarningsBeforeExpiry is true when an earnings date falls before expiry.
 	EarningsBeforeExpiry bool
 }
@@ -67,12 +69,40 @@ type Evidence struct {
 
 	ForecastErr string   // repeated beside the forecast
 	Labels      []string // never nil; a label changes no gate
+
+	// The percent figures: each is its fraction input (Skew, Row.ATMIV, Row.Forecast, Row.ForecastErr,
+	// Row.IVP, Row.VolEdge) times 100 at four decimals, "" when the input is empty or not a number.
+	SkewPct        string
+	ATMIVPct       string
+	ForecastPct    string
+	ForecastErrPct string
+	IVPPct         string
+	VolEdgePct     string
 }
 
 // Evaluator is the only place these figures are computed. It writes nothing and reads no clock; a
 // spot, strike, bid or DTE that is not a usable number is ErrBadInput.
 type Evaluator interface {
 	Evaluate(r Row) (Evidence, error)
+}
+
+// ChainQuote is one listed option of the chain of one underlying on one day: its expiry, its right
+// ("P" or "C", as the terms store it), its strike and its implied volatility as decimal text (empty
+// when the row has none), and the Source of the quote ("option_eod" or "option_open").
+type ChainQuote struct {
+	Expiry contracts.Day
+	Right  string
+	Strike string
+	IV     string
+	Source string
+}
+
+// ATMPicker chooses the at-the-money row of one expiry. Among the rows of expiry whose Right is "P",
+// whose Source is source and whose IV is a number above 0, it takes the strike nearest to spot within
+// 10% of spot (a trial value), the lower strike on a tie, and returns that row's IV and strike; with no
+// such row, or a spot that is not a number above 0, both are empty. It writes nothing and reads no clock.
+type ATMPicker interface {
+	ATM(chain []ChainQuote, expiry contracts.Day, spot, source string) (iv, strike string)
 }
 
 // ErrBadInput: a spot, strike, bid or DTE that is not a usable number.
