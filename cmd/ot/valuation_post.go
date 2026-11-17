@@ -178,6 +178,17 @@ func tableLines(text string) []tableLine {
 	return out
 }
 
+// postField is the posted field k with its blanks trimmed.
+func postField(v url.Values, k string) string { return strings.TrimSpace(v.Get(k)) }
+
+// ascends checks that the decimal text s is above prev when line i is not the first, and keeps it in prev.
+func ascends(i int, prev *decimal.Decimal, s string) bool {
+	d, _ := decimalAt(s)
+	ok := i == 0 || d.GreaterThan(*prev)
+	*prev = d
+	return ok
+}
+
 // decimalAt checks that s is a decimal text; the text is stored as typed.
 func decimalAt(s string) (decimal.Decimal, bool) {
 	d, err := decimal.NewFromString(s)
@@ -240,11 +251,9 @@ func parseMarginTable(text string) ([]valuation.MarginTableRow, string) {
 				return nil, fmt.Sprintf("line %d: %q is not a number", l.n, f)
 			}
 		}
-		p, _ := decimalAt(l.fields[0])
-		if i > 0 && !p.GreaterThan(prev) {
+		if !ascends(i, &prev, l.fields[0]) {
 			return nil, fmt.Sprintf("line %d: p_from must be above that of the line before", l.n)
 		}
-		prev = p
 		rows = append(rows, valuation.MarginTableRow{PFrom: l.fields[0], M: l.fields[1], W: l.fields[2], H: l.fields[3], S: l.fields[4]})
 	}
 	return rows, ""
@@ -254,7 +263,7 @@ func parseMarginTable(text string) ([]valuation.MarginTableRow, string) {
 // posted yield and the stored R table, and the posted R values are never read. The AI switch of the newest version
 // is carried over. warned says that a market moves by more than RStepWarn; the row is saved either way.
 func acceptR(v url.Values, date contracts.Day, st valuation.State) (valuation.RVersion, bool, string) {
-	yield := strings.TrimSpace(v.Get("yield"))
+	yield := postField(v, "yield")
 	if _, ok := decimalAt(yield); !ok {
 		return valuation.RVersion{}, false, "yield: required, a number"
 	}
@@ -282,7 +291,7 @@ func acceptR(v url.Values, date contracts.Day, st valuation.State) (valuation.RV
 // typedRVersion reads an R version typed on the form: the three R, the AI switch and its expiry text, required
 // when the switch is on (Decision 11).
 func typedRVersion(v url.Values, date contracts.Day) (valuation.RVersion, string) {
-	t := func(k string) string { return strings.TrimSpace(v.Get(k)) }
+	t := func(k string) string { return postField(v, k) }
 	ver := valuation.RVersion{
 		EffectiveDate: date, YieldUsed: t("yield_used"), RUS: t("r_us"), RJP: t("r_jp"), RHKCN: t("r_hkcn"),
 		AISwitch: switchOn(v, "ai_switch"), AIExpiry: t("ai_expiry"), Note: t("note"),

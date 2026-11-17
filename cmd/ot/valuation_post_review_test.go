@@ -41,7 +41,7 @@ func TestFailedCheckStaysDraft(t *testing.T) {
 		if rec.Code != http.StatusUnprocessableEntity || !slices.Equal(f.written(), []string{"profile", "review:draft"}) {
 			t.Fatalf("%s: %d %v %.300q", c.name, rec.Code, f.written(), rec.Body)
 		}
-		if !strings.Contains(rec.Body.String(), "draft") {
+		if !strings.Contains(rec.Body.String(), `"problems":[{"field":"v"`) {
 			t.Fatalf("%s: the problems are not listed: %.300q", c.name, rec.Body)
 		}
 	}
@@ -136,5 +136,18 @@ func TestProfileKeyRefusedWhenOnList(t *testing.T) {
 	rec = vpost(t, h, "/valuation-post", url.Values{"action": {"profile"}, "key": {"US:ZZZ"}, "name": {"Zed"}, "symbol": {"ZZZ"}, "r_market": {"US"}})
 	if rec.Code != http.StatusSeeOther || !slices.Equal(f.written(), []string{"profile"}) || f.profiles[0].CompanyKey != "US:ZZZ" {
 		t.Fatalf("%d %v", rec.Code, f.written())
+	}
+}
+
+func TestProfileWriteFailureAnswersOnce(t *testing.T) {
+	t.Parallel()
+	h, f := valuationSite(t, true)
+	f.failProfile = true
+	rec := vpost(t, h, "/valuation-post", reviewFields(url.Values{"action": {"draft"}}))
+	if rec.Code != http.StatusInternalServerError || rec.Body.String() != "internal error\n" {
+		t.Fatalf("%d %.200q", rec.Code, rec.Body)
+	}
+	if len(f.reviews) != 0 {
+		t.Fatalf("a review was written after the failed profile: %+v", f.reviews)
 	}
 }

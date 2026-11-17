@@ -77,7 +77,7 @@ func postOwnerValuation(a *app, clk clock.Clock, rd siteReaders, newHandler page
 			return
 		}
 	}
-	t := func(k string) string { return strings.TrimSpace(p.v.Get(k)) }
+	t := func(k string) string { return postField(p.v, k) }
 	p.company = t("company")
 	p.typed = valuation_page.Typed{
 		Type: t("type"), VersionDate: t("version_date"), V: t("v"), P: t("p"),
@@ -125,7 +125,7 @@ func (p *reviewPost) write(ctx context.Context, action string) {
 		p.saveProfile(ctx)
 		return
 	}
-	id := strings.TrimSpace(p.v.Get("review_id"))
+	id := postField(p.v, "review_id")
 	if id != "" && !valuationIDForm.MatchString(id) {
 		p.reply(ctx, http.StatusUnprocessableEntity, "review_id: not an id")
 		return
@@ -149,7 +149,9 @@ func (p *reviewPost) write(ctx context.Context, action string) {
 		p.reply(ctx, http.StatusUnprocessableEntity, text)
 		return
 	}
-	if text := p.putProfileOnFirstSave(ctx); text != "" {
+	if text, answered := p.putProfileOnFirstSave(ctx); answered {
+		return
+	} else if text != "" {
 		p.reply(ctx, http.StatusUnprocessableEntity, text)
 		return
 	}
@@ -224,20 +226,21 @@ func (p *reviewPost) storedProfile() (valuation.Profile, bool) {
 }
 
 // putProfileOnFirstSave inserts the profile of a key that has none, from the defaults of Decision 10, before the
-// review (and returns the text of a refusal). A second save finds the profile and writes none.
-func (p *reviewPost) putProfileOnFirstSave(ctx context.Context) string {
+// review. It returns the text of a refusal to answer with 422, or answered true when it has already answered (the 500
+// of a failed write). A second save finds the profile and writes none.
+func (p *reviewPost) putProfileOnFirstSave(ctx context.Context) (refusal string, answered bool) {
 	if _, ok := p.storedProfile(); ok {
-		return ""
+		return "", false
 	}
 	prof, text := defaultProfile(p.key, p.rows, p.typed)
 	if text != "" {
-		return text
+		return text, false
 	}
 	if err := p.st.w.PutProfile(ctx, prof); err != nil {
 		valuationFail(p.a, p.w, "valuation profile write failed")
-		return "profile: not saved"
+		return "", true
 	}
-	return ""
+	return "", false
 }
 
 // defaultProfile is the profile of a key with none: from its row on settings.underlying, else from the typed fields
@@ -295,7 +298,7 @@ func (p *reviewPost) saveProfile(ctx context.Context) {
 
 // profileFields lays the typed fields of the profile form over prof; a field left empty keeps its value.
 func (p *reviewPost) profileFields(prof *valuation.Profile) string {
-	t := func(k string) string { return strings.TrimSpace(p.v.Get(k)) }
+	t := func(k string) string { return postField(p.v, k) }
 	prof.Name = orText(p.typed.Name, prof.Name)
 	prof.Symbol = orText(p.typed.Symbol, prof.Symbol)
 	prof.Currency = orText(p.typed.Currency, prof.Currency)
@@ -329,7 +332,7 @@ func orText(s, d string) string {
 // void inserts the void row of an effective review: a copy of its row with the status void and the reason, which is
 // required.
 func (p *reviewPost) void(ctx context.Context, id string) {
-	reason := strings.TrimSpace(p.v.Get("void_reason"))
+	reason := postField(p.v, "void_reason")
 	switch {
 	case id == "":
 		p.reply(ctx, http.StatusUnprocessableEntity, "review_id: required")
@@ -367,7 +370,7 @@ func newReviewID() string {
 // reviewFromForm reads the review fields of the form. The four required values may be empty on a draft; a value
 // that is typed must have its form (a type of the list, a day), and the effective check is Calculator.Check.
 func reviewFromForm(v url.Values, key, id, status string) (valuation.Review, string) {
-	t := func(k string) string { return strings.TrimSpace(v.Get(k)) }
+	t := func(k string) string { return postField(v, k) }
 	rev := valuation.Review{
 		ReviewID: id, CompanyKey: key, Type: t("type"), Status: status, Source: sourceOwner, V: t("v"), P: t("p"),
 		Trigger: t("trigger"), EarningsBase: t("earnings_base"), BaseBasis: t("base_basis"),

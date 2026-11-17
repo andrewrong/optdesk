@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"slices"
@@ -29,6 +30,8 @@ type fakeValuationStore struct {
 	margins  []valuation.MarginTableVersion
 	calls    []string // "profile", "review:<status>", "rversion", "rtable", "margin", in order
 	opened   int
+
+	failProfile bool // PutProfile returns an error
 }
 
 func newFakeValuation() *fakeValuationStore {
@@ -104,6 +107,9 @@ func (f *fakeValuationStore) RVersions(context.Context) ([]valuation.RVersion, e
 func (f *fakeValuationStore) PutProfile(_ context.Context, p valuation.Profile) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.failProfile {
+		return errors.New("profile write refused")
+	}
 	f.record("profile")
 	for i, o := range f.profiles {
 		if o.CompanyKey == p.CompanyKey {
