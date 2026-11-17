@@ -56,6 +56,7 @@ func changeCell(name string, v compute.FigureValue) any {
 	if !strings.HasPrefix(text, "-") && !strings.HasPrefix(text, "+") && !isZero(text) {
 		text = "+" + text
 	}
+	text = strings.Replace(text, "-", "\u2212", 1)
 	return figure{Kind: "value", Value: json.Number(v.Value), Text: text + "%", Unit: "percent", Tone: "none"}
 }
 
