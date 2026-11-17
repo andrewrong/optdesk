@@ -3,6 +3,7 @@ package pepb_test
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -218,6 +219,25 @@ func TestPercentileRoundsHalfUpAndSkipsBadCloses(t *testing.T) {
 	}
 }
 
+func TestAtPercentileTextNamesLastDay(t *testing.T) {
+	t.Parallel()
+	// 400 bars from 2023-03-01: the window starts 2023-03-01 and the last bar is 2024-04-03.
+	r := runLast(baseFacts(), series("2023-03-01", 400, func(i int) string { return strconv.Itoa(i + 1) }))
+	for _, x := range []pepbapi.Reading{r.PE, r.PB} {
+		if len(x.At) != 2 {
+			t.Fatalf("%s: At = %d", x.Kind, len(x.At))
+		}
+		for _, a := range x.At {
+			if !strings.HasSuffix(a.Text, " as of 2024-04-03 (history, not a buy price)") {
+				t.Fatalf("%s text %q does not name the last bar", x.Kind, a.Text)
+			}
+			if !strings.Contains(a.Text, "days since 2023-03-01:") {
+				t.Fatalf("%s text %q lost the window start", x.Kind, a.Text)
+			}
+		}
+	}
+}
+
 func TestPricePointsAtPercentile(t *testing.T) {
 	t.Parallel()
 	// closes 1 to 300, one per day: the 60th and the 150th sorted close are the 20th and 50th
@@ -238,12 +258,12 @@ func TestPricePointsAtPercentile(t *testing.T) {
 		mustEq(t, "price", a.Price, price)
 		mustEq(t, "text", a.Text, text)
 	}
-	check(pe.At[0], 20, "6.0", "60.00", "PE at the 20th percentile of 300 days since 2023-03-01: price 60.00 (history, not a buy price)")
-	check(pe.At[1], 50, "15.0", "150.00", "PE at the 50th percentile of 300 days since 2023-03-01: price 150.00 (history, not a buy price)")
+	check(pe.At[0], 20, "6.0", "60.00", "PE at the 20th percentile of 300 days since 2023-03-01: price 60.00 as of 2023-12-25 (history, not a buy price)")
+	check(pe.At[1], 50, "15.0", "150.00", "PE at the 50th percentile of 300 days since 2023-03-01: price 150.00 as of 2023-12-25 (history, not a buy price)")
 	// PB ratio = close/50; price = ratio x equity 5000 / 100 shares.
 	pb := r.PB
-	check(pb.At[0], 20, "1.2", "60.00", "PB at the 20th percentile of 300 days since 2023-03-01: price 60.00 (history, not a buy price)")
-	check(pb.At[1], 50, "3.0", "150.00", "PB at the 50th percentile of 300 days since 2023-03-01: price 150.00 (history, not a buy price)")
+	check(pb.At[0], 20, "1.2", "60.00", "PB at the 20th percentile of 300 days since 2023-03-01: price 60.00 as of 2023-12-25 (history, not a buy price)")
+	check(pb.At[1], 50, "3.0", "150.00", "PB at the 50th percentile of 300 days since 2023-03-01: price 150.00 as of 2023-12-25 (history, not a buy price)")
 
 	// Under 250 days there are no points and the text says why.
 	short := runLast(baseFacts(), series("2023-03-01", 100, flat("10")))
