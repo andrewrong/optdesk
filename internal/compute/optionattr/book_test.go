@@ -111,18 +111,25 @@ func TestLotTotalsSumToBook(t *testing.T) {
 	assert.True(t, diff.Equal(dec(all.Difference)))
 }
 
-// TestBookerContractReal runs the cases of the contract test of optionattrapi against the real Booker.
+// TestBookerContractReal runs the cases of TestBookerContractFake and TestBookerEmptyIsNonNil of
+// optionattrapi against the real Booker, with the values the contract names.
 func TestBookerContractReal(t *testing.T) {
 	t.Parallel()
 	b := NewBooker()
-	got := b.Combine([]optionattrapi.Result{{Currency: "USD"}, {Currency: "JPY"}})
+	usd := optionattrapi.Result{Currency: "USD", Time: "412", MoveCost: "-186", LedgerPnL: "226", Difference: "0"}
+	jpy := optionattrapi.Result{Currency: "JPY", Time: "50", MoveCost: "-20", LedgerPnL: "30", Difference: "0"}
+	noQuotes := optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: "9", Difference: "0"}
+	got := b.Combine([]optionattrapi.Result{usd, jpy, noQuotes})
 	require.Len(t, got, 2)
 	assert.Equal(t, "USD", got[0].Currency)
+	assert.Equal(t, "226", got[0].RentMinusCost)
+	assert.Equal(t, "226", got[0].Total)
+	assert.Equal(t, "0", got[0].Difference)
+	assert.Equal(t, 1, got[0].NoQuoteLots)
+	assert.Equal(t, "9", got[0].NoQuoteLedgerPnL)
 	assert.Equal(t, "JPY", got[1].Currency)
-	assert.NotEmpty(t, got[0].RentMinusCost)
-	assert.NotEmpty(t, got[0].Total)
-	assert.NotEmpty(t, got[0].Difference)
-	assert.Equal(t, 0, got[0].NoQuoteLots)
+	assert.Equal(t, "30", got[1].RentMinusCost)
+	assert.Equal(t, 0, got[1].NoQuoteLots)
 	empty := b.Combine(nil)
 	assert.NotNil(t, empty)
 	assert.Empty(t, empty)
