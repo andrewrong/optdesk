@@ -137,6 +137,9 @@ func (p *reviewPost) write(ctx context.Context, action string) {
 	if id == "" {
 		id = newReviewID()
 	}
+	// The page document has no field for the id, so it goes back in this header, in the 303 query and, on a refusal,
+	// in the error text: the form posts it back as review_id so the next save is a row of the same record.
+	p.w.Header().Set("X-Review-Id", id)
 	status := statusDraft
 	var problems []valuelinesapi.Problem
 	if action == "effective" {
@@ -159,7 +162,7 @@ func (p *reviewPost) write(ctx context.Context, action string) {
 		return
 	}
 	if len(problems) > 0 {
-		p.reply(ctx, http.StatusUnprocessableEntity, "Saved as a draft: it is not effective until the checks pass.")
+		p.reply(ctx, http.StatusUnprocessableEntity, "Saved as a draft (review_id "+id+"): it is not effective until the checks pass.")
 		return
 	}
 	valuationSeeOther(p.w, p.r, valuationCompanyRoute, url.Values{"company": {p.key}, "saved": {"1"}, "review": {id}})

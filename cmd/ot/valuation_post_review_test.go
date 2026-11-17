@@ -151,3 +151,21 @@ func TestProfileWriteFailureAnswersOnce(t *testing.T) {
 		t.Fatalf("a review was written after the failed profile: %+v", f.reviews)
 	}
 }
+
+func TestGeneratedReviewIDReturnedOnRefusal(t *testing.T) {
+	t.Parallel()
+	h, f := valuationSite(t, true)
+	rec := vpost(t, h, "/valuation-post", reviewFields(url.Values{"action": {"effective"}, "v": {"0"}}))
+	if rec.Code != http.StatusUnprocessableEntity || len(f.reviews) != 1 {
+		t.Fatalf("%d %+v", rec.Code, f.reviews)
+	}
+	id := f.reviews[0].ReviewID
+	if !strings.Contains(rec.Body.String(), id) || rec.Header().Get("X-Review-Id") != id {
+		t.Fatalf("the re-rendered form does not carry review_id %q, so the next save starts a new record", id)
+	}
+	// the next save with the id posted back is one more row of the same record
+	vpost(t, h, "/valuation-post", reviewFields(url.Values{"action": {"effective"}, "v": {"100"}, "review_id": {id}}))
+	if len(f.reviews) != 2 || f.reviews[1].ReviewID != id {
+		t.Fatalf("%+v", f.reviews)
+	}
+}

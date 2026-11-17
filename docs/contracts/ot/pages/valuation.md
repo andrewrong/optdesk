@@ -37,7 +37,7 @@ Served only when owner edit is on (`rd.edit != nil`); with it off the path is no
 
 ### `POST /valuation-post` (form `valuation-form`)
 
-Fields: `action`, `company` (a key chosen) or `key` (a free key typed), `review_id` (kept by the form across the drafts of one record; made when absent), `type` (`first`, `post_earnings`, `event`, `backfill`), `version_date`, `v`, `p`, `trigger` (`a` to `d`), `fiscal_period_end`, `report_date`, `earnings_base`, `base_basis`, `forward_factor`, `locked_multiple`, `method_1` to `method_3`, `reason_<dim>`, the text fields of the review, `void_reason`, and for a profile `name`, `symbol`, `currency`, `r_market`, `pool`, `pool_date`, `note`.
+Fields: `action`, `company` (a key chosen) or `key` (a free key typed), `review_id` (kept by the form across the drafts of one record; made when absent and then returned to the form in the response header `X-Review-Id`, in the `review=` query of the 303 and, on a 422 of a saved draft, in the error text; the form posts it back), `type` (`first`, `post_earnings`, `event`, `backfill`), `version_date`, `v`, `p`, `trigger` (`a` to `d`), `fiscal_period_end`, `report_date`, `earnings_base`, `base_basis`, `forward_factor`, `locked_multiple`, `method_1` to `method_3`, `reason_<dim>`, the text fields of the review, `void_reason`, and for a profile `name`, `symbol`, `currency`, `r_market`, `pool`, `pool_date`, `note`.
 
 Actions:
 
