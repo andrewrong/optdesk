@@ -1525,8 +1525,8 @@ func (j *FlexTradeRow) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// obs.fundamental_fact r1: one filed value of one concept of one issuer, as a
-// filing reported it; append only.
+// obs.fundamental_fact r2: one filed value of one concept of one issuer, as a
+// filing reported it; append only. r2 adds the optional fy, fp and frame.
 type FundamentalFact struct {
 	// Concept name in the taxonomy.
 	Concept string `json:"concept" yaml:"concept" mapstructure:"concept"`
@@ -1543,6 +1543,19 @@ type FundamentalFact struct {
 
 	// Form of the filing, for example 10-K.
 	Form string `json:"form" yaml:"form" mapstructure:"form"`
+
+	// Fiscal period of the filing that reported the fact (Q1, Q2, Q3 or FY); empty
+	// when absent.
+	Fp string `json:"fp,omitempty" yaml:"fp,omitempty" mapstructure:"fp,omitempty"`
+
+	// Calendar frame SEC assigned to the fact, for example CY2025Q2, or CY2025Q2I for
+	// an instant; empty when absent.
+	Frame string `json:"frame,omitempty" yaml:"frame,omitempty" mapstructure:"frame,omitempty"`
+
+	// Fiscal year of the filing that reported the fact; fy and fp are those of the
+	// filing that reported the fact, not of the period of the fact. Null when the
+	// source has none.
+	Fy *int `json:"fy,omitempty" yaml:"fy,omitempty" mapstructure:"fy,omitempty"`
 
 	// Last day of the period, or the day of an instant fact.
 	PeriodEnd types.SerializableDate `json:"period_end" yaml:"period_end" mapstructure:"period_end"`
@@ -1661,6 +1674,12 @@ func (j *FundamentalFact) UnmarshalJSON(b []byte) error {
 	}
 	if len(plain.DocID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "doc_id", 1)
+	}
+	if v, ok := raw["fp"]; !ok || v == nil {
+		plain.Fp = ""
+	}
+	if v, ok := raw["frame"]; !ok || v == nil {
+		plain.Frame = ""
 	}
 	if len(plain.Taxonomy) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "taxonomy", 1)

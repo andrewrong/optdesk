@@ -19,7 +19,7 @@ type OptionEod = gen.OptionEod
 // QuoteSnapshot is the record of dataset obs.quote_snapshot r1, generated from contracts/datasets.
 type QuoteSnapshot = gen.QuoteSnapshot
 
-// FundamentalFact is the record of dataset obs.fundamental_fact r1, generated from contracts/datasets.
+// FundamentalFact is the record of dataset obs.fundamental_fact r2, generated from contracts/datasets.
 type FundamentalFact = gen.FundamentalFact
 
 // OptionCandidate is the record of dataset candidates.option_candidate r1, generated from contracts/datasets.

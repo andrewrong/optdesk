@@ -13,19 +13,19 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// datasetRevision names the revision of a dataset's schema file; r1 unless listed.
-// fixtureRevision is the revision of every fixture file.
-const fixtureRevision = "r1"
+// datasetRevision names the revision of a dataset's schema file and of its fixture file; r1 unless listed.
+var datasetRevision = map[string]string{"optionledger.flex_fetch": "r2", "obs.fundamental_fact": "r2"}
 
-var datasetRevision = map[string]string{"optionledger.flex_fetch": "r2"}
+func revisionOf(name string) string {
+	if r, ok := datasetRevision[name]; ok {
+		return r
+	}
+	return "r1"
+}
 
 func compileDataset(t *testing.T, name string) *jsonschema.Schema {
 	t.Helper()
-	rev := "r1"
-	if r, ok := datasetRevision[name]; ok {
-		rev = r
-	}
-	file := name + "." + rev + ".json"
+	file := name + "." + revisionOf(name) + ".json"
 	f, err := os.Open(filepath.Join("..", "..", "contracts", "datasets", file))
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func compileDataset(t *testing.T, name string) *jsonschema.Schema {
 
 func loadRecords(t *testing.T, name string) ([]map[string]any, []byte) {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", name+"."+fixtureRevision+".json"))
+	b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", name+"."+revisionOf(name)+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}

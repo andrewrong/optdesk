@@ -1,0 +1,16 @@
+{
+  "schema": "company_quarters_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0002",
+  "built_at": "2026-11-17T09:30:00Z",
+  "company": null,
+  "choices": [
+    {"key": "US:ACME", "label": "ACME", "path": "/company-quarters?c=US:ACME"}
+  ],
+  "columns": [],
+  "quarters": [],
+  "notes": [],
+  "gaps": [
+    {"kind": "gap", "reason": "unknown_company", "text": "The company in the address is not on the list; pick one."}
+  ]
+}
