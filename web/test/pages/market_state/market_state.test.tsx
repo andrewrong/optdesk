@@ -462,7 +462,29 @@ describe('market state page', () => {
         expect(apart).toBe(true)
       }
     }
-    expect(placed[0]!.anchor).toBe('start')
+    // The first label no longer sits at the plain right-hand spot: the dot of C is now an obstacle there.
+    expect(placed[0]!.anchor).toBe('end')
+  })
+
+  it('placeLabels keeps clear of dots and axis lines', () => {
+    const anchors = [
+      { id: 'XLRE', x: 300, y: 100, width: 28 },
+      { id: 'XLU', x: 306, y: 102, width: 21 },
+      { id: 'XLF', x: 312, y: 104, width: 21 },
+      { id: 'XLY', x: 318, y: 103, width: 21 },
+      { id: 'XLC', x: 200, y: 200, width: 21 },
+    ]
+    const zero = { x: 200, y: 200 }
+    const placed = placeLabels(anchors, 13, zero)
+    expect(placed).toHaveLength(5)
+    const apart = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) =>
+      a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top
+    for (const [i, p] of placed.entries()) {
+      for (const q of placed.slice(i + 1)) expect(apart(p, q)).toBe(true)
+      for (const a of anchors) expect(apart(p, { left: a.x - 7, right: a.x + 7, top: a.y - 7, bottom: a.y + 7 })).toBe(true)
+      expect(p.left < zero.x && zero.x < p.right).toBe(false)
+      expect(p.top < zero.y && zero.y < p.bottom).toBe(false)
+    }
   })
 
   it('keeps the ok fixture labels apart in the drawn map', async () => {
