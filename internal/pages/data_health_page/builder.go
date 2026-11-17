@@ -136,6 +136,7 @@ func datasetRow(in Input, id string, rows []coverage.Cell, windows map[string][]
 	}
 	cells := DatasetCells(rows, id, windows[cal])
 	Apply(cells, job, in.Form, in.Now, in.Today)
+	LateText(id, cells, windows[cal], newest)
 	gaps := GapDays(cells)
 	d := Dataset{DatasetID: id, Label: id, JobID: jobID, Calendar: cal, GapDays: len(gaps),
 		RepairAll: RepairAll(gaps, in.Form), Newest: []Newest{}, Cells: cells}
