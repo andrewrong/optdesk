@@ -12,6 +12,7 @@ The job stores, once a day in the session (the slot of `option_eod`: XNYS, 90 mi
 
 - Window: `min_dte` 0, `max_dte` 60, `max_expiries` 2, `chunk` 50, `budget_minutes` 8.
 - Band: `sigma_days` 20, `sigma_fallback` 0.20, `band_k` 1.8.
+- `[[underlying]]` row per index (SPX, XSP, RUT): `price_increment` "0.01" and `lot_size` "1", the values the instrument store requires (`checkInput` refuses an empty one). The build refuses a row of any manifest of the package whose `price_increment` or `lot_size` is missing or not a decimal (digits with an optional fraction), naming the symbol and the key.
 - `[[index]]` row per class: `trading_class`, `strike_multiple` (SPX 50, XSP 5, RUT 5; the probes show steps of 5 and 1 near the money), `max_contracts` 80 (a cap per class and day), `expiry_kind` (`listed` or `third_friday`), `sigma_index`, `spot_index`, `spot_divisor` (SPX 1, XSP 10 on the SPX close, RUT 1).
 
 ## Selection

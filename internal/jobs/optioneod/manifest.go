@@ -3,6 +3,7 @@ package optioneod
 import (
 	"fmt"
 	"math/big"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -312,13 +313,20 @@ func (m manifest) validateUnderlying(u underlying) error {
 		if u.Symbol == "" {
 			return fmt.Errorf("optioneod: manifest: a stock underlying needs a symbol")
 		}
-		return nil
-	}
-	if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
+	} else if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
 		return fmt.Errorf("optioneod: manifest: an underlying needs symbol, con_id and currency")
+	}
+	// The instrument store refuses an empty or non-decimal value of either (instrument.checkInput).
+	for _, kv := range [...]struct{ key, val string }{{"price_increment", u.PriceIncrement}, {"lot_size", u.LotSize}} {
+		if !underlyingDecimalRe.MatchString(kv.val) {
+			return fmt.Errorf("optioneod: manifest: underlying %s: %s %q is not a decimal number", u.Symbol, kv.key, kv.val)
+		}
 	}
 	return nil
 }
+
+// underlyingDecimalRe is the decimal the instrument store accepts: digits with an optional fraction.
+var underlyingDecimalRe = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 
 // fourDigits reports whether s is exactly four ASCII digits.
 func fourDigits(s string) bool {
