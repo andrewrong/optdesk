@@ -14,6 +14,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
+	"github.com/atombender/go-jsonschema/pkg/types"
 )
 
 // trackingFixture is an app whose optionTrackingPage fake builds {"schema":"option_tracking_page"} and records
@@ -356,5 +358,76 @@ func TestTrackingBuildPassesMarks(t *testing.T) {
 	}
 	if f.got.Marks != mark.Reader(m) {
 		t.Fatalf("recorded Marks %v", f.got.Marks)
+	}
+}
+
+func TestTrackingReadersCarryDays(t *testing.T) {
+	t.Parallel()
+	d := &recordDays{}
+	got := trackingReadersOf(siteReaders{days: d})
+	if got.Days != optionday.DayReader(d) {
+		t.Fatalf("Days %v", got.Days)
+	}
+	if trackingReadersOf(siteReaders{}).Days != nil {
+		t.Fatal("nil days not nil")
+	}
+}
+
+// coverageLedger holds one open short option, contract id 12345, opened on 2026-11-04.
+type coverageLedger struct{ store.OptionLedgerReader }
+
+func (coverageLedger) FlexTradeRows(_ context.Context, alias string) ([]store.FlexTradeRow, error) {
+	if alias != demoNoticesMain {
+		return []store.FlexTradeRow{}, nil
+	}
+	attrs := `{"assetCategory":"OPT","symbol":"DEMO","underlyingSymbol":"DEMO","conid":"12345","strike":"95",` +
+		`"expiry":"20261218","putCall":"P","multiplier":"100","quantity":"-1","proceeds":"120","ibCommission":"-0.65",` +
+		`"currency":"USD","openCloseIndicator":"O","notes":"","tradeDate":"20261104","orderTime":"20261104;100000"}`
+	return []store.FlexTradeRow{demoLedgerRow("c1", attrs)}, nil
+}
+
+func (coverageLedger) LatestOkFetch(context.Context, string, string) (store.FlexFetchRecord, bool, error) {
+	return store.FlexFetchRecord{}, false, nil
+}
+
+func (coverageLedger) StoredAliases(context.Context) ([]string, error) {
+	return []string{demoNoticesMain}, nil
+}
+
+// oneDaySessions answers the one session day 2026-11-04 .. 2026-11-05 as sessions.
+type oneDaySessions struct{ store.SessionDayReader }
+
+func (oneDaySessions) SessionDays(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SessionDay, error) {
+	var out []contracts.SessionDay
+	for _, d := range []int{4} {
+		out = append(out, contracts.SessionDay{SessionDay: types.SerializableDate{Time: time.Date(2026, 11, d, 0, 0, 0, 0, time.UTC)}, IsSession: true})
+	}
+	return out, nil
+}
+
+// oneRowDays answers one two-sided row for contract 12345 on 2026-11-04.
+type oneRowDays struct{ optionday.DayReader }
+
+func (oneRowDays) Days(_ context.Context, ids []int64, _, _ contracts.Day) ([]optionday.Day, error) {
+	if len(ids) != 1 || ids[0] != 12345 {
+		return []optionday.Day{}, nil
+	}
+	bid, ask := "1.0", "1.2"
+	return []optionday.Day{{InstrumentID: 12345, SessionDay: "2026-11-04", Bid: &bid, Ask: &ask}}, nil
+}
+
+func TestServeTrackingShowsCoverage(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.deps.optionTrackingPage = newOptionTrackingPage
+	rd := siteReaders{
+		optionLedger: coverageLedger{}, noticeAccount: demoNoticeAccount{}, sessions: oneDaySessions{},
+		days: oneRowDays{}, aliases: []string{demoNoticesMain},
+	}
+	h := siteHandler(a, trackingClock, "2026-11-04", rd, echoHandler, http.NotFoundHandler())
+	rec := trackingGet(t, h, http.MethodGet, "/"+siteTrackingRoute)
+	body := rec.Body.String()
+	if rec.Code != 200 || !strings.Contains(body, "1 of 1 days") {
+		t.Fatalf("%d %s", rec.Code, body)
 	}
 }

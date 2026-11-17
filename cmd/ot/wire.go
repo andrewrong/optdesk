@@ -89,6 +89,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/ops"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
 	optionledgerstore "github.com/andrewrong/optdesk/internal/store/optionledger"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/ownersetpg"
@@ -114,6 +115,7 @@ type deps struct {
 	newDiffer               clock.NewSessionDayDifferFunc
 	newCalendarRefresh      calendarrefresh.NewCalendarRefreshFunc
 	openSessionDay          store.OpenSessionDayFunc
+	openOptionDay           optionday.OpenDayReaderFunc
 	openSeries              store.OpenSeriesFunc
 	openLedger              store.OpenLedgerFunc
 	setup                   store.SetupFunc
@@ -267,6 +269,8 @@ func newDeps() deps {
 }
 
 // newBaseDeps returns the real constructors of the fields of deps other than ext.
+//
+//nolint:funlen // one flat table of constructors
 func newBaseDeps() deps {
 	stats, sops := gonumstats.New(), own.NewSeriesOps()
 	rl := rules.New()
@@ -296,6 +300,7 @@ func newBaseDeps() deps {
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
 		openReadingView:         reading.OpenView,
+		openOptionDay:           snapshot.OpenDayReader,
 		reportPage:              newReportPage,
 		alertRules:              alertrules.DefaultRules,
 		evaluateAlerts:          alertrules.Evaluate,
@@ -379,7 +384,7 @@ func newOptionTrackingPage(zone *time.Location, runID, buildID, scope string, r 
 	return option_tracking_page.NewPage(option_tracking_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone,
 		Ledger: r.Ledger, Account: r.Account, Candidates: r.Candidates, Eod: r.Eod, Catalog: r.Catalog,
-		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions, Marks: r.Marks,
+		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions, Marks: r.Marks, Days: r.Days,
 		Tracker: optiontrack.New(), Replay: optionledger.New(),
 		Params:     trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30},
 		CalendarID: "XNYS",

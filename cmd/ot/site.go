@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/runview"
@@ -124,6 +125,10 @@ type siteReaders struct {
 	// failed open, the blocks that need a mark stay gaps).
 	marks mark.Reader
 
+	// days is the reader of obs.option_day behind the coverage column of option_tracking_page, opened with the pages
+	// line (nil: no opener or the demo profile; the column is the gap no_reader).
+	days optionday.DayReader
+
 	// hours is the reader of the hours notices of the home overview, opened with the pages line (nil: the demo
 	// profile or a failed open; the overview then shows no notice).
 	hours hoursnotice.Reader
@@ -198,7 +203,7 @@ func siteReaderOf[T any](rd siteReaders, key string) (T, bool) {
 // five option stores, the reading view, the candidate store, and the account and earnings stores) opened once with the one .env line of the
 // pages role (the session-day store included), and a function that closes them. A failed open closes the stores already opened.
 //
-//nolint:funlen // one flat sequence of opens, each with its fail line; splitting it would hide the close order
+//nolint:funlen,gocyclo // one flat sequence of opens, each with its fail line; splitting it would hide the close order
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
@@ -276,13 +281,17 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
+	days, ok := openDayReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
 	bars, fx, ok := openBarReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
 	rd := siteReaders{
 		hours: openHoursReader(ctx, dsn, track),
-		bars:  bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
+		days:  days, bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
