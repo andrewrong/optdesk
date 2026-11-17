@@ -44,7 +44,8 @@ func TestPageNamedUnknown(t *testing.T) {
 		`household_risk, macro_page, market_page, ` +
 		`market_state_page, ` +
 		`ops_today_page, ` +
-		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page`
+		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page, ` +
+		`valuation_company, valuation_form, valuation_params, valuation_table`
 	if err == nil || err.Error() != want {
 		t.Fatalf("err %v, want %s", err, want)
 	}
@@ -110,7 +111,8 @@ func TestUnknownPageListsReports(t *testing.T) {
 		`household_risk, macro_page, market_page, ` +
 		`market_state_page, ` +
 		`ops_today_page, ` +
-		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page`
+		`option_candidates_page, option_notices_page, option_page, option_tracking_page, positions_page, report_page, ` +
+		`valuation_company, valuation_form, valuation_params, valuation_table`
 	if err == nil || err.Error() != want {
 		t.Fatalf("err %v, want %s", err, want)
 	}
