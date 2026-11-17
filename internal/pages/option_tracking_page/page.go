@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
 )
 
 // Config is what the option_tracking_page builder needs besides the series reader.
@@ -28,6 +29,7 @@ type Config struct {
 	Tracker               trackapi.OptionTracker // nil is an error of Build
 	Replay                compute.OptionLedger   // nil is an error of Build
 	Marks                 mark.Reader            // nil means no position marks
+	Days                  optionday.DayReader    // nil gives every quote coverage cell the gap no_reader
 	Params                trackapi.TrackParams
 	CalendarID            string
 }

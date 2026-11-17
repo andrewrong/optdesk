@@ -47,7 +47,7 @@ func TestOpenColumns(t *testing.T) {
 	t.Parallel()
 	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")).Accounts[0]
 	want := []string{"company", "contract", "qty", "dte", "moneyness", "spot", "mid", "premium", "kept", "kept_percent",
-		"delta", "iv", "results", "ex", "guard"}
+		"delta", "iv", "results", "ex", "guard", "coverage"}
 	if got := colIDs(a.Open); !reflect.DeepEqual(got, want) {
 		t.Fatalf("columns = %v", got)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/pages/option_tracking_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
 )
 
 func TestNewPageMeta(t *testing.T) {
@@ -43,6 +44,7 @@ type (
 	fakeTerms      struct{ store.OptionTermsReader }
 	fakeSessions   struct{ store.SessionDayReader }
 	noSeries       struct{ store.SeriesReader }
+	fakeDayReader  struct{ optionday.DayReader }
 )
 
 func TestConfigContract(t *testing.T) {
@@ -51,7 +53,7 @@ func TestConfigContract(t *testing.T) {
 		RunID: "r", BuildID: "b", Scope: "s", Zone: time.UTC,
 		Account: fakeAccount{}, Candidates: fakeCandidates{},
 		Eod: fakeEod{}, Catalog: fakeCatalog{}, Names: fakeNames{}, Terms: fakeTerms{},
-		Sessions: fakeSessions{}, Tracker: fakeTracker{}, Replay: fakeReplay{},
+		Sessions: fakeSessions{}, Tracker: fakeTracker{}, Replay: fakeReplay{}, Days: fakeDayReader{},
 		Params:     trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30},
 		CalendarID: "XNYS",
 	}

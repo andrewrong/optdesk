@@ -56,6 +56,7 @@ var openColumns = []colDef[opt]{
 	col("results", "Next earnings", "left", resultsCell),
 	col("ex", "Ex-dividend date", "left", exCell),
 	col("guard", "Early assignment", "left", guardCell),
+	col(coverageID, coverageLabel, "left", func(opt) any { return readerGap() }).hinted(coverageHint),
 }
 
 var recentColumns = []colDef[opt]{
