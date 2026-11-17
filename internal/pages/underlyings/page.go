@@ -14,7 +14,7 @@ import (
 // full Input instead.
 func Page() pages.Page {
 	return pages.Page{
-		Meta: pages.Meta{Name: "underlyings", Schema: "page.underlyings.v1"},
+		Meta: pages.Meta{Name: "underlyings", Schema: "page.underlyings.v2"},
 		Build: func(_ context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 			return Build(Input{Now: at, SessionDay: string(day)})
 		},
