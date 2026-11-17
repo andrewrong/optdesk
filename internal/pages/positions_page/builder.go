@@ -127,7 +127,12 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
-	in := holdingsOf(snap.positions, price)
+	bp, err := c.barPrices(ctx, snap.positions, price, snap.day)
+	if err != nil {
+		return nil, err
+	}
+	price = bp.Price
+	in := holdingsOf(snap.positions, price, bp.Prev)
 	res := c.Holdings().Holdings(in)
 	if len(res.Rows) != len(in.Rows) {
 		return nil, fmt.Errorf("positions_page: holdings gave %d lines for %d rows", len(res.Rows), len(in.Rows))
@@ -137,7 +142,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
-	return marshal(c.assemble(alias, label, snap, ledgerAt, stocks, options, trades, skipped, at))
+	return marshal(c.assemble(alias, label, snap, ledgerAt, stocks, options, trades, skipped, bp.Fallbacks, at))
 }
 
 // ready is true when every reader and constructor is set.
@@ -223,7 +228,7 @@ func (c Config) premiums(ctx context.Context, alias string, sessions []contracts
 }
 
 func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, stocks []stockRow, options []optionRow,
-	trades tradesTable, skipped int, at time.Time) pageJSON {
+	trades tradesTable, skipped int, fb []fallback, at time.Time) pageJSON {
 	v := viewJSON{
 		Key: alias, Label: label, Trades: &trades,
 		Sentence: sentenceStocks + strconv.Itoa(len(stocks)) + sentenceRows + strconv.Itoa(len(options)) + sentenceLegs,
@@ -242,9 +247,12 @@ func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, 
 	p := c.base(alias, at)
 	p.RunStatus = "partial"
 	p.Views = []viewJSON{v}
-	p.Gaps = []gapJSON{gapOf("no_data", titleStocks+", "+titleOptions+": "+textDayProfit)}
+	p.Gaps = []gapJSON{gapOf("no_data", missingDay(stocks)+": "+textDayProfit)}
 	if skipped > 0 {
 		p.Notes = append(p.Notes, textSkippedStart+strconv.Itoa(skipped)+textSkippedEnd)
+	}
+	if n := fallbackNote(fb); n != "" {
+		p.Notes = append(p.Notes, n)
 	}
 	if slices.Contains(c.Statement, alias) {
 		p.Notes = append(p.Notes, textStatementFrom+snap.day+textStatementNote)
@@ -295,4 +303,18 @@ func (c Config) gapPage(alias, label string, at time.Time, reason, text string) 
 	}}
 	p.Gaps = []gapJSON{g}
 	return p
+}
+
+// missingDay names the tables whose day result is still a gap: the options always, the stocks when one stock row
+// has no day result or there is none.
+func missingDay(stocks []stockRow) string {
+	for _, r := range stocks {
+		if _, gap := r.Day.(gapJSON); gap {
+			return titleStocks + ", " + titleOptions
+		}
+	}
+	if len(stocks) == 0 {
+		return titleStocks + ", " + titleOptions
+	}
+	return titleOptions
 }

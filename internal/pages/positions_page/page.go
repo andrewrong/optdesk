@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
@@ -31,6 +32,10 @@ type Config struct {
 	Ledgers        compute.NewOptionLedgerFunc
 	Figures        blockapi.NewPageFiguresFunc
 	Holdings       blockapi.NewHoldingFiguresFunc
+	// Bars and StockIDs give a stock with no mark the close of its newest daily bar as price and every stock
+	// its previous close; both are optional and with either nil the page reads marks only.
+	Bars     bar.PriceBarReader
+	StockIDs StockIDReader
 	// Statement lists the aliases whose capture comes from the broker statement; Build adds the note
 	// textStatementNote to the page of such an alias when a capture was found. Read only by Build.
 	Statement []string

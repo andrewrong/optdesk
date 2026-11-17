@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/pages/positions_page"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -28,12 +29,27 @@ func init() {
 // positionsPageConfig is the config of positions_page from the readers of the site; a reader that is nil gives
 // the gap page no_reader (the demo profile has no session reader).
 func positionsPageConfig(a *app, rd siteReaders) positions_page.Config {
-	return positions_page.Config{
+	c := positions_page.Config{
 		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Marks: rd.marks, Figures: pagefig.New, Holdings: pagefig.NewHoldings,
 		Statement: pageStatementAliases(a),
 	}
+	// A nil reader stays a nil interface: the page then reads marks only.
+	if rd.bars != nil {
+		c.Bars = rd.bars
+	}
+	if ids, ok := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey); ok && ids != nil {
+		c.StockIDs = ids
+	}
+	return c
+}
+
+// positionsNamedConfig is the config of positions_page for ot page: the config of the site with its own run id.
+func positionsNamedConfig(a *app, rd siteReaders) positions_page.Config {
+	cfg := positionsPageConfig(a, rd)
+	cfg.RunID = "ot-page"
+	return cfg
 }
 
 // buildPositionsPage builds positions_page per request for the day of dayFlag or today and the account of the
@@ -75,8 +91,7 @@ func positionsPageNamedOf(ctx context.Context, a *app) (pages.Page, func(), erro
 			return pages.Page{}, nil, err
 		}
 	}
-	cfg := positionsPageConfig(a, rd)
-	cfg.RunID = "ot-page"
+	cfg := positionsNamedConfig(a, rd)
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
 		return positions_page.Build(ctx, cfg, rd.aliasList()[0], day, now)
 	}
