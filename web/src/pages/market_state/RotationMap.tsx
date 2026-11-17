@@ -238,7 +238,7 @@ export function RotationMap({ block }: { block: Sectors }) {
               tickCount={5}
               padding={{ top: 32, bottom: 16 }}
               tickLine={false}
-              tickFormatter={(tick: number) => `${tick}${unitSuffix('percentage_points')}`}
+              tickFormatter={(tick: number) => `${String(tick).replace('-', '−')}${unitSuffix('percentage_points')}`}
               label={{ value: axes.y_caption, angle: -90, position: 'insideLeft', offset: 0, fontSize: 12, style: { textAnchor: 'middle' } }}
             />
             {axes.quadrants.map((q) => (
