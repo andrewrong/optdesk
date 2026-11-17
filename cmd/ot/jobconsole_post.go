@@ -28,7 +28,7 @@ type jobRun struct {
 }
 
 // postOwnerJobConsole serves POST /owner-job-console: the guard of /owner-settings (guardOwnerPost) first, then
-// the action run or withdraw. The poster is opened with the OT_PG_DSN_SETTINGS line per post and closed after it.
+// the action run, withdraw or repair. The poster is opened with the OT_PG_DSN_SETTINGS line per post and closed after it.
 func postOwnerJobConsole(a *app, clk clock.Clock, rd siteReaders, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -55,6 +55,7 @@ func postOwnerJobConsole(a *app, clk clock.Clock, rd siteReaders, w http.Respons
 			http.Error(w, textBadForm, http.StatusUnprocessableEntity)
 			return
 		}
+	case "repair":
 	default:
 		http.Error(w, textBadForm, http.StatusUnprocessableEntity)
 		return
@@ -72,11 +73,14 @@ func postOwnerJobConsole(a *app, clk clock.Clock, rd siteReaders, w http.Respons
 		return
 	}
 	defer func() { _ = st.Close() }()
-	if action == "run" {
+	switch action {
+	case "run":
 		postRun(ctx, a, st, run, w, r)
-		return
+	case "repair":
+		postRepair(ctx, a, st, clk, w, r)
+	default:
+		postWithdraw(ctx, a, st, id, w, r)
 	}
-	postWithdraw(ctx, a, st, id, w, r)
 }
 
 // storeFailed answers 503 with the fixed text and logs a line that holds no error text (it may hold a DSN).
