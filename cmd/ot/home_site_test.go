@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/contracts/gen"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
@@ -194,6 +195,16 @@ type holdsDEMOB struct{ holdsAAA }
 
 func (holdsDEMOB) Positions(context.Context, string, string) ([]store.Position, error) {
 	return []store.Position{{Symbol: "DEMOB", SecType: "stock", Quantity: "10"}}, nil
+}
+
+// holdsSymbol holds shares of one symbol on every day.
+type holdsSymbol struct {
+	holdsAAA
+	symbol string
+}
+
+func (h holdsSymbol) Positions(context.Context, string, string) ([]store.Position, error) {
+	return []store.Position{{Symbol: h.symbol, SecType: "stock", Quantity: "10"}}, nil
 }
 
 // fakeSymbolCatalog lists underlying 7 and names it DEMOB.
@@ -375,5 +386,50 @@ func TestHomeMacroSayIsReserves(t *testing.T) {
 	if got := p.Macro.Card.Say; !strings.HasPrefix(got, fmt.Sprintf("Reserves $%.1ftn, 4 weeks ", level/1e12)) ||
 		!strings.HasSuffix(got, "("+string(want.Reserves.Day)+").") {
 		t.Fatalf("say %q, want the reserves fact of %+v", got, want.Reserves)
+	}
+}
+
+// fakeStockReader names one stock that has no option_eod row.
+type fakeStockReader struct{}
+
+func (fakeStockReader) StockIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, n := range names {
+		if n == "7203" {
+			out = append(out, store.InstrumentName{InstrumentID: 11, Type: "stock", Name: "7203"})
+		}
+	}
+	return out, nil
+}
+
+func TestHomeDayChangeForNameWithoutOptions(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	bars := &recordingBars{}
+	rd := siteReaders{
+		underlying: &fakeListReader{rows: []underlying.Row{{
+			Key: "JP:7203", Symbol: "7203", Market: "JP", Issuer: "edinet:E00001", Status: underlying.StatusActive,
+		}}},
+		account: holdsSymbol{symbol: "7203"}, aliases: []string{"main"}, catalog: fakeSymbolCatalog{}, names: fakeSymbolCatalog{},
+		bars: bars, ext: map[string]any{siteMarketStateIDsKey: market_state_page.StockIDReader(fakeStockReader{})},
+	}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Companies struct {
+			Card struct {
+				Rows []struct {
+					DayChange map[string]any `json:"day_change"`
+				} `json:"rows"`
+			} `json:"card"`
+		} `json:"companies"`
+	}
+	if err := json.Unmarshal(body, &p); err != nil || len(p.Companies.Card.Rows) != 1 {
+		t.Fatalf("rows %d, err %v: %s", len(p.Companies.Card.Rows), err, body)
+	}
+	if c := p.Companies.Card.Rows[0].DayChange; c["kind"] != "value" || len(bars.ids) == 0 || bars.ids[0] != 11 {
+		t.Fatalf("day change %v, ids %v, want a value from id 11", c, bars.ids)
 	}
 }
