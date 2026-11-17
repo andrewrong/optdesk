@@ -41,7 +41,7 @@ export function ExcessBars({ block }: { block: Payload['sectors'] }) {
             domain={ticks ? [ticks[0]!, ticks[ticks.length - 1]!] : undefined}
             ticks={ticks}
             allowDecimals={false}
-            tickFormatter={(tick: number) => `${tick}${unitSuffix('percentage_points')}`}
+            tickFormatter={(tick: number) => `${String(tick).replace('-', '−')}${unitSuffix('percentage_points')}`}
             tickLine={false}
             axisLine={false}
           />

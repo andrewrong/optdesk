@@ -74,6 +74,7 @@ vi.mock('recharts', async (importOriginal) => {
           data-padding-top={(props.padding as { top: number }).top}
           data-domain={JSON.stringify(typeof props.domain === 'function' ? props.domain([-1.27, 2.81] as never, false) : null)}
           data-tick={props.tickFormatter?.(2, 0)}
+          data-tick-negative={props.tickFormatter?.(-10, 0)}
         >
           <text>{(props.label as { value: string }).value}</text>
         </g>
@@ -362,7 +363,7 @@ describe('market state page', () => {
     const values = rows.map((r) => r.gap_63.value)
     const negative = rows.find((r) => r.gap_63.value < 0)!
     const positive = rows.find((r) => r.gap_63.value > 0)!
-    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => parseFloat(t.textContent ?? ''))
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => parseFloat((t.textContent ?? '').replace('−', '-')))
     // The ends of the axis (its first and last tick) lie at least 4 points beyond the extreme bars.
     expect(Math.min(...ticks)).toBeLessThanOrEqual(Math.min(...values) - 4)
     expect(Math.max(...ticks)).toBeGreaterThanOrEqual(Math.max(...values) + 4)
@@ -390,7 +391,16 @@ describe('market state page', () => {
     await show(fixture('ok'))
     const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => t.textContent ?? '')
     expect(ticks.length).toBeGreaterThan(1)
-    for (const t of ticks) expect(t).toMatch(/^-?\d+ pp$/)
+    for (const t of ticks) expect(t).toMatch(/^(−|)\d+ pp$/)
+  })
+
+  it('axis ticks use the typographic minus', async () => {
+    await show(fixture('ok'))
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => t.textContent ?? '')
+    expect(ticks.some((t) => t.startsWith('−'))).toBe(true)
+    for (const t of ticks) expect(t).not.toContain('-')
+    expect(host.querySelector('[data-axis=y]')!.getAttribute('data-tick-negative')).toBe('−10 pp')
+    expect(host.querySelector('[data-axis=y]')!.getAttribute('data-tick')).toBe('2 pp')
   })
 
   it('draws no legend and names the four quadrants (rotation map, from the ok fixture)', async () => {
@@ -508,7 +518,7 @@ describe('market state page', () => {
 
   it('spaces the bar axis ticks by one fixed step', async () => {
     await show(fixture('ok'))
-    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => parseFloat(t.textContent ?? ''))
+    const ticks = [...host.querySelectorAll('.recharts-cartesian-axis-tick-value[orientation=bottom]')].map((t) => parseFloat((t.textContent ?? '').replace('−', '-')))
     const steps = new Set(ticks.slice(1).map((t, i) => t - ticks[i]!))
     expect(steps.size).toBe(1)
     expect([...steps][0]!).toBeGreaterThanOrEqual(5)
