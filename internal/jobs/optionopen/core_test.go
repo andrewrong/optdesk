@@ -704,3 +704,38 @@ func TestPullLogsEveryRowThatIsNotOkWithItsAbsentFields(t *testing.T) {
 		t.Errorf("partial line attributes %q", lines[0])
 	}
 }
+
+func TestStockLogsWhySpotWasNotRead(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		under func(int) ([]broker.Quote, error)
+		want  []string
+	}{
+		{"no data", func(int) ([]broker.Quote, error) { return []broker.Quote{{Status: broker.StatusNoData}}, nil }, []string{"code=NO_DATA"}},
+		{"timeout", func(int) ([]broker.Quote, error) { return []broker.Quote{{Status: broker.StatusTimeout}}, nil }, []string{"code=TIMEOUT"}},
+		{"ibkr code", func(int) ([]broker.Quote, error) {
+			return []broker.Quote{{Status: broker.StatusError, ErrorCode: 162}}, nil
+		}, []string{"code=162"}},
+		{"call error", func(int) ([]broker.Quote, error) { return nil, typedErr{contracts.Permanent} }, []string{"code=BROKER_ERROR", "permanent"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var buf bytes.Buffer
+			b := newFake(100)
+			b.under = tc.under
+			c := newCore(b)
+			c.Log = slog.New(slog.NewTextHandler(&buf, nil))
+			c.Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put), target(1, 12, ClassPuts, 90, Put)})
+			lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+			if len(lines) != 1 {
+				t.Fatalf("want one log line, got %q", buf.String())
+			}
+			for _, w := range append(tc.want, "spot not read", "symbol=AAA", "items=2") {
+				if !strings.Contains(lines[0], w) {
+					t.Errorf("line %q lacks %q", lines[0], w)
+				}
+			}
+		})
+	}
+}
