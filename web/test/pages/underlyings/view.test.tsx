@@ -142,8 +142,7 @@ describe('underlyings view', () => {
   })
 
   it('refuses the bad-version payload', () => {
-    // The v1 bad-version fixture carries version 2, which is supported now; an unknown version is 3.
-    const r = validate({ ...fixture('bad-version'), schema_version: 3 } as unknown as Payload)
+    const r = validate(fixture('bad-version'))
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.gap.reason).toBe('unsupported_version')
   })
