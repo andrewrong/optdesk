@@ -41,7 +41,7 @@ func mkSeries(title, empty string, pts []point) series {
 }
 
 // monthSeries are the month and the running series, in the order of the rule; a month that is not over is muted.
-func monthSeries(months []compute.ResultMonth) (m, r series, err error) {
+func monthSeries(months []compute.ResultMonth, cur string) (m, r series, err error) {
 	var mp, rp []point
 	for _, x := range months {
 		v, err := number(x.Realized)
@@ -52,14 +52,14 @@ func monthSeries(months []compute.ResultMonth) (m, r series, err error) {
 		if err != nil {
 			return m, r, err
 		}
-		mp = append(mp, point{Label: x.Month, Value: v, Text: x.Realized, Muted: !x.Over})
-		rp = append(rp, point{Label: x.Month, Value: run, Text: x.Running, Muted: !x.Over})
+		mp = append(mp, point{Label: x.Month, Value: v, Text: moneyText(x.Realized, cur), Muted: !x.Over})
+		rp = append(rp, point{Label: x.Month, Value: run, Text: moneyText(x.Running, cur), Muted: !x.Over})
 	}
 	return mkSeries("Monthly realized", "No closed months", mp), mkSeries("Cumulative realized", "No cumulative result", rp), nil
 }
 
 // endingSeries is one point per ending, value its realized result; endingLines are the same as lines.
-func endingSeries(ends []compute.ResultEnding) (series, []string, error) {
+func endingSeries(ends []compute.ResultEnding, cur string) (series, []string, error) {
 	var pts []point
 	lines := []string{}
 	for _, e := range ends {
@@ -67,7 +67,7 @@ func endingSeries(ends []compute.ResultEnding) (series, []string, error) {
 		if err != nil {
 			return series{}, nil, err
 		}
-		text := strconv.Itoa(e.Count) + " trade(s), realized " + e.Realized
+		text := strconv.Itoa(e.Count) + " trade(s), realized " + moneyText(e.Realized, cur)
 		pts = append(pts, point{Label: e.Status, Value: v, Text: text})
 		lines = append(lines, e.Status+": "+text)
 	}
