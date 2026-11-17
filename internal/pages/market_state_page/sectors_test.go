@@ -19,7 +19,7 @@ func TestSectorRowsAreNotReordered(t *testing.T) {
 		t.Errorf("order = %v", got)
 	}
 	rows := sectorRows(m)
-	if obj(obj(rows[1])["gap_63"])["text"] != "-3.00 pp" || obj(rows[0])["group"] != "sector" || obj(rows[3])["group"] != "industry" {
+	if obj(obj(rows[1])["gap_63"])["text"] != "−3.00 pp" || obj(rows[0])["group"] != "sector" || obj(rows[3])["group"] != "industry" {
 		t.Errorf("rows = %v", rows)
 	}
 	if r := obj(obj(rows[0])["rank_63"]); r["at"].(json.Number) != "1" || r["of"].(json.Number) != "3" {
@@ -161,5 +161,28 @@ func TestSectorsCaptionsWriteGapsInPP(t *testing.T) {
 	}
 	if c, _ := s["bars_caption"].(string); !strings.Contains(c, "in pp;") || strings.Contains(c, "points") {
 		t.Errorf("bars_caption = %v", s["bars_caption"])
+	}
+}
+
+func TestGapTextUsesTypographicMinus(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ in, value, text string }{
+		{"-3.611", "-3.61", "−3.61 pp"},
+		{"2.5", "2.50", "+2.50 pp"},
+		{"0", "0.00", "0.00 pp"},
+	}
+	for _, c := range cases {
+		f, ok := gapFigure(c.in, "", "gap").(figure)
+		if !ok {
+			t.Fatalf("gapFigure(%q) is no figure", c.in)
+		}
+		if f.Value != json.Number(c.value) || f.Text != c.text {
+			t.Errorf("gapFigure(%q) = value %q text %q, want %q %q", c.in, f.Value, f.Text, c.value, c.text)
+		}
+	}
+	for in, want := range map[string]string{"0": "0", "0.0": "0.0", "0.00": "0.00", "-1.5": "−1.5", "1.5": "+1.5"} {
+		if got := signed(in); got != want {
+			t.Errorf("signed(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

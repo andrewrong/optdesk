@@ -113,10 +113,14 @@ func shiftRound(text string, shift, decimals int) (string, error) {
 	return digits, nil
 }
 
-// signed puts a plus in front of a positive decimal text.
+// signed puts a plus in front of a positive decimal text and the typographic minus U+2212 in
+// place of the "-" of a negative one; a zero keeps no sign.
 func signed(text string) string {
-	if strings.HasPrefix(text, "-") || strings.Trim(text, "0.") == "" {
+	if strings.Trim(text, "0.") == "" {
 		return text
+	}
+	if rest, ok := strings.CutPrefix(text, "-"); ok {
+		return "\u2212" + rest
 	}
 	return "+" + text
 }
