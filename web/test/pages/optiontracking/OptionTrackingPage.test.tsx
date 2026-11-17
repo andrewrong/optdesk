@@ -164,3 +164,20 @@ it('open table wraps contract and moneyness cells', async () => {
   expect(wrapOf('delta')).toEqual(Array(rows).fill(false))
   expect(wrapOf('iv')).toEqual(Array(rows).fill(false))
 })
+
+it('new: the coverage column shows its text, its badge and its hint', async () => {
+  await show(ok)
+  const open = host.querySelector('[data-table="open"]')!
+  const column = ok.accounts[0].open.columns.find((c) => c.id === 'coverage')!
+  const headers = [...open.querySelectorAll('thead th')]
+  const index = headers.findIndex((th) => th.textContent?.includes('Quote coverage'))
+  expect(index).toBeGreaterThanOrEqual(0)
+  expect(column.hint).toBeTruthy()
+  const row = open.querySelector('tbody tr')!
+  const cell = row.children[index]!
+  expect(cell.textContent).toContain('9 of 10 days')
+  expect(cell.textContent).toContain('Gap 2026-11-12: no quote stored')
+  const contractIndex = ok.accounts[0].open.columns.findIndex((c) => c.id === 'contract')
+  expect(cell.classList.contains('whitespace-normal')).toBe(true)
+  expect(cell.classList.contains('whitespace-normal')).toBe(row.children[contractIndex]!.classList.contains('whitespace-normal'))
+})
