@@ -102,7 +102,7 @@ func newDatabase(t *testing.T) string {
 	// needs the timescale hypertables of 0006 and 0007, which no fact test has, so the stub below is the one
 	// column 0046 refers to.
 	for _, f := range []string{
-		"0017_fundamental_fact.sql", "0020_events.sql", "0023_dividends.sql", stubInstrument, "0046_fundamentals_keys.sql",
+		"0017_fundamental_fact.sql", "0020_events.sql", "0023_dividends.sql", stubInstrument, "0046_fundamentals_keys.sql", "0053_fundamental_fact_period.sql",
 	} {
 		sql := f
 		if f != stubInstrument {
