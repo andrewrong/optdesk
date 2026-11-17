@@ -107,7 +107,7 @@ func TestRotationCopiedFromResult(t *testing.T) {
 		first["y"].(interface{ String() string }).String() != "1.30" || first["text"] != "2026-11-06: 63-session +4.00, pace +1.30" {
 		t.Errorf("first = %v", first)
 	}
-	if second["day"] != "2026-11-13" || second["text"] != "2026-11-13: 63-session +5.00, pace -0.17" {
+	if second["day"] != "2026-11-13" || second["text"] != "2026-11-13: 63-session +5.00, pace −0.17" {
 		t.Errorf("second = %v", second)
 	}
 	res := sampleResult()
