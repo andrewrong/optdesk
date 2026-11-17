@@ -57,6 +57,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
       { label: 'Watch list', path: '/underlyings' },
       { label: 'Price lines', path: '/plan/price-lines' },
       { label: 'Valuation', path: '/valuation' },
+      { label: 'Data', path: '/company-data' },
     ],
   },
   {
