@@ -49,8 +49,17 @@ func (h *consoleHost) turn(ctx context.Context) (bool, error) {
 
 // claimNext starts the host, reads the queue, finishes the withdrawn and claims the first request left. It
 // returns whether it did any work and, for a claimed request, the ConsoleRun that runs it and writes its end.
-// It starts no goroutine.
+// It starts no goroutine. When no request was claimed it runs the catch-up pass if one is due.
 func (h *consoleHost) claimNext(ctx context.Context) (took bool, run runner.ConsoleRun) {
+	took, run = h.claimQueued(ctx)
+	if run == nil && h.catchUpDue() {
+		h.catchUpPass(ctx)
+	}
+	return took, run
+}
+
+// claimQueued is claimNext without the catch-up pass.
+func (h *consoleHost) claimQueued(ctx context.Context) (took bool, run runner.ConsoleRun) {
 	if _, _, started := h.current(); !started {
 		sctx, cancel := clockTimeout(ctx, h.clk, startPhase)
 		err := h.Start(sctx)

@@ -181,7 +181,7 @@ func runScheduler(
 		enabled = append(enabled, j)
 	}
 	kr := d.newKeyRunner(w.ledger, sl, fw)
-	host, closeConsole := openConsoleHost(ctx, a, cfg.runnerDSN, d.newKeyGapSyncer, w.ledger, sl, fw)
+	host, closeConsole := openConsoleHost(ctx, a, cfg.runnerDSN, cfg.pagesDSN, d.newKeyGapSyncer, w.ledger, sl, fw)
 	defer closeConsole()
 	locks := shared.NewJobLocks() // one set for every build, so a swap keeps the locks of a run in flight
 	build := newBuild(d.newReconciler, withJobLocks, locks, w.ledger, sl, w.cal, fw, kr, func(jobs []contracts.Job, bf runner.Backfiller) {

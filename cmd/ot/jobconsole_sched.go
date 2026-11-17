@@ -6,6 +6,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/coverage"
+	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -55,9 +57,11 @@ func (c *consoleReconciler) ClaimConsole(ctx context.Context) ([]runner.ConsoleR
 
 // openConsoleHost opens the consumer with the runner DSN and builds the host over it and the key gap syncer.
 // Anything missing (no openers in deps, no syncer constructor, a failed open) leaves the console off: the host
-// is nil, one warn line is written and the scheduler goes on. The func closes the consumer.
+// is nil, one warn line is written and the scheduler goes on. The catch-up pass needs a poster (runner DSN) and a
+// coverage reader (pages DSN); with either missing the pass is off, one warn line says so and the console works.
+// The func closes everything opened.
 func openConsoleHost(
-	ctx context.Context, a *app, runnerDSN string, newSyncer runner.NewKeyGapSyncerFunc,
+	ctx context.Context, a *app, runnerDSN, pagesDSN string, newSyncer runner.NewKeyGapSyncerFunc,
 	ops store.OpsLedger, sl store.SchedulerLedger, clk clockwork.Clock,
 ) (*consoleHost, func()) {
 	noop := func() {}
@@ -70,5 +74,41 @@ func openConsoleHost(
 		consoleOff(a, "open failed")
 		return nil, noop
 	}
-	return newConsoleHost(q, newSyncer(ops, sl, clk), ops, clk, a.log), func() { _ = q.Close() }
+	post, cov := openCatchUp(ctx, a, o, runnerDSN, pagesDSN)
+	closeAll := func() {
+		_ = q.Close()
+		if post != nil {
+			_ = post.Close()
+		}
+		if cov != nil {
+			_ = cov.Close()
+		}
+	}
+	return newConsoleHost(q, newSyncer(ops, sl, clk), ops, clk, a.log, post, cov), closeAll
+}
+
+// openCatchUp opens the poster and the coverage reader of the catch-up pass; both are nil (and one warn line is
+// written) when either cannot be had.
+func openCatchUp(ctx context.Context, a *app, o jobRequestOpeners, runnerDSN, pagesDSN string) (jobrequest.Poster, coverage.Reader) {
+	off := func(why string) (jobrequest.Poster, coverage.Reader) {
+		a.log.Warn("catch-up off: "+why, "component", "ot", "status", "catch-up off")
+		return nil, nil
+	}
+	d, ok := a.deps.ext[extDataHealth].(dataHealthDeps)
+	switch {
+	case o.Poster == nil:
+		return off("no request poster")
+	case !ok || d.openCoverage == nil || pagesDSN == "":
+		return off("no coverage reader")
+	}
+	post, err := o.Poster(ctx, runnerDSN)
+	if err != nil {
+		return off("poster open failed")
+	}
+	cov, err := d.openCoverage(ctx, pagesDSN)
+	if err != nil {
+		_ = post.Close()
+		return off("coverage open failed")
+	}
+	return post, cov
 }
