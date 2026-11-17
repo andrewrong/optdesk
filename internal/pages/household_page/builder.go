@@ -350,6 +350,7 @@ func base(c Config, scopes []accountScope, alias string, at time.Time) pageJSON 
 	}
 	return pageJSON{
 		Schema: "household_page", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
+		RiskLink: linkRisk, PositionsLink: linkPositions,
 		GeneratedAt: at.Format(timeLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{}, Scopes: scopes,
 		Stale: staleLabel{DataTime: at.Format(timeLayout), StaleAfter: at.Format(timeLayout), Text: textStaleLabel + "none"},
 	}
