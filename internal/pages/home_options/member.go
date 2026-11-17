@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -179,9 +181,10 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	var in compute.ResultInput
 	var sections []compute.ResultSection
 	var fs figureState
+	var recorded time.Time
 	if c.Ledger != nil {
 		var structs []compute.Structure
-		if in, structs, err = replay(ctx, c, day); err != nil {
+		if in, structs, recorded, err = replay(ctx, c, day); err != nil {
 			return nil, err
 		}
 		if len(in.Positions) > 0 {
@@ -195,36 +198,40 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			fs.out = c.Tiles().Tiles(blockapi.OptionTilesIn{Day: day, Positions: in.Positions, Structures: structs})
 		}
 	}
-	return json.Marshal(assemble(c, at, d, in.Positions, sections, fs))
+	return json.Marshal(assemble(c, at, d, recorded, in.Positions, sections, fs))
 }
 
 // replay replays every stored alias as of day; the positions, unresolved and review ids of all of
-// them are one ResultInput. With Structures and Tiles set, Evaluate runs once per alias and the structures
+// them are one ResultInput. The third result is the newest RecordedAt of the stored rows (zero when none is set). With Structures and Tiles set, Evaluate runs once per alias and the structures
 // (Structures and Other) of every alias are returned.
-func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInput, []compute.Structure, error) {
+func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInput, []compute.Structure, time.Time, error) {
 	in := compute.ResultInput{AsOf: day}
+	var recorded time.Time
 	var structs []compute.Structure
 	aliases, err := c.Ledger.StoredAliases(ctx)
 	if err != nil {
-		return in, nil, fmt.Errorf("home_options: read aliases: %w", err)
+		return in, nil, recorded, fmt.Errorf("home_options: read aliases: %w", err)
 	}
 	in.Alias = strings.Join(aliases, ",")
 	for _, alias := range aliases {
 		rows, err := c.Ledger.FlexTradeRows(ctx, alias)
 		if err != nil {
-			return in, nil, fmt.Errorf("home_options: read trades of %s: %w", alias, err)
+			return in, nil, recorded, fmt.Errorf("home_options: read trades of %s: %w", alias, err)
 		}
 		if len(rows) == 0 {
 			continue
 		}
 		if c.Replay == nil {
-			return in, nil, errors.New("home_options: nil replay")
+			return in, nil, recorded, errors.New("home_options: nil replay")
 		}
 		trades := make([]compute.LedgerTrade, 0, len(rows))
 		for _, r := range rows {
 			var m map[string]string
 			if err := json.Unmarshal([]byte(r.Attributes), &m); err != nil {
-				return in, nil, fmt.Errorf("home_options: attributes of %s: %w", r.TransactionID, err)
+				return in, nil, recorded, fmt.Errorf("home_options: attributes of %s: %w", r.TransactionID, err)
+			}
+			if r.RecordedAt.After(recorded) {
+				recorded = r.RecordedAt
 			}
 			trades = append(trades, compute.LedgerTrade{TransactionID: r.TransactionID, Revision: r.Revision, Attributes: m})
 		}
@@ -240,18 +247,22 @@ func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInp
 			structs = append(structs, sr.Other...)
 		}
 	}
-	return in, structs, nil
+	return in, structs, recorded, nil
 }
 
-// assemble builds the document from the sections of the summary.
-func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sections []compute.ResultSection, fs figureState) summary {
+// assemble builds the document from the sections of the summary. The freshness base is the day of the
+// newest stored record (recorded, in c.Zone) when there is one, else the newest trade day.
+func assemble(c Config, at, d, recorded time.Time, positions []compute.LedgerPosition, sections []compute.ResultSection, fs figureState) summary {
 	noRows := len(positions) == 0
 	noText := textNoRows
 	if c.Ledger == nil {
 		noText = textNoReader
 	}
 	base, baseText := at, textNoDay
-	if newest := newestDay(positions, d); newest != "" {
+	if !recorded.IsZero() {
+		t := recorded.In(c.Zone)
+		base, baseText = t, "Ledger as of "+t.Format("01-02")
+	} else if newest := newestDay(positions, d); newest != "" {
 		if t, err := time.Parse(dayLayout, newest); err == nil {
 			base, baseText = t, "Ledger as of "+t.Format("01-02")
 		}
@@ -376,8 +387,13 @@ func caption(sec compute.ResultSection) string {
 	if r, ok := money(sec.Realized).(figure); ok {
 		parts = append(parts, "realised "+r.Text)
 	}
-	if sec.KeptShare != "" {
-		parts = append(parts, "kept share "+sec.KeptShare)
+	if k, err := decimal.NewFromString(sec.KeptShare); err == nil {
+		pct := k.Mul(decimal.NewFromInt(100)).Round(1) // half away from zero
+		text := pct.Abs().StringFixed(1) + "%"
+		if pct.IsNegative() {
+			text = minus + text
+		}
+		parts = append(parts, "kept share "+text)
 	}
 	return strings.Join(parts, "; ")
 }
