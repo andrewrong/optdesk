@@ -158,6 +158,7 @@ it('open table wraps contract and moneyness cells', async () => {
       tr.children[ids.indexOf(id)]?.classList.contains('whitespace-normal'),
     )
   const rows = account.open.rows.length
+  expect(rows).toBeGreaterThan(0)
   expect(wrapOf('contract')).toEqual(Array(rows).fill(true))
   expect(wrapOf('moneyness')).toEqual(Array(rows).fill(true))
   expect(wrapOf('delta')).toEqual(Array(rows).fill(false))
