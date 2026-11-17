@@ -10,11 +10,90 @@
   },
   "datasets": [
     {
+      "dataset_id": "account_statement",
+      "label": "Account statements",
+      "job_id": "statement_capture",
+      "calendar": "XNYS",
+      "gap_days": 2,
+      "repair_all": "button",
+      "newest": [],
+      "cells": [
+        {
+          "day": "2026-11-10",
+          "state": "ok",
+          "keys": 3,
+          "ok": 3,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-11",
+          "state": "no_value",
+          "keys": 3,
+          "ok": 2,
+          "no_value": 1,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-12",
+          "state": "expired",
+          "keys": 3,
+          "ok": 2,
+          "no_value": 0,
+          "expired": 1,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "button",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-13",
+          "state": "missing",
+          "keys": 3,
+          "ok": 1,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 2,
+          "missing_keys": [
+            "statement-a",
+            "statement-b"
+          ],
+          "repair": "button",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-16",
+          "state": "not_run",
+          "keys": 0,
+          "ok": 0,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "not_refetchable",
+          "why_text": "not planned: repair of an unplanned day is not built yet",
+          "due_text": ""
+        }
+      ]
+    },
+    {
       "dataset_id": "option_eod",
       "label": "Option end of day",
       "job_id": "option_eod_index",
       "calendar": "XNYS",
-      "gap_days": 1,
+      "gap_days": 0,
       "repair_all": "none",
       "newest": [],
       "cells": [
@@ -91,58 +170,6 @@
           "repair": "none",
           "why_text": "",
           "due_text": "due at 11:00 EST"
-        }
-      ]
-    },
-    {
-      "dataset_id": "statement_capture",
-      "label": "Account statements",
-      "job_id": "statement_capture",
-      "calendar": "XNYS",
-      "gap_days": 2,
-      "repair_all": "button",
-      "newest": [],
-      "cells": [
-        {
-          "day": "2026-11-13",
-          "state": "ok",
-          "keys": 1,
-          "ok": 1,
-          "no_value": 0,
-          "expired": 0,
-          "missing": 0,
-          "missing_keys": [],
-          "repair": "none",
-          "why_text": "",
-          "due_text": ""
-        },
-        {
-          "day": "2026-11-16",
-          "state": "expired",
-          "keys": 1,
-          "ok": 0,
-          "no_value": 0,
-          "expired": 1,
-          "missing": 0,
-          "missing_keys": [],
-          "repair": "button",
-          "why_text": "",
-          "due_text": ""
-        },
-        {
-          "day": "2026-11-17",
-          "state": "missing",
-          "keys": 1,
-          "ok": 0,
-          "no_value": 0,
-          "expired": 0,
-          "missing": 1,
-          "missing_keys": [
-            "statement-a"
-          ],
-          "repair": "button",
-          "why_text": "",
-          "due_text": ""
         }
       ]
     },
