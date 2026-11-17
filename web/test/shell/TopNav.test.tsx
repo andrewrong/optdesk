@@ -24,87 +24,96 @@ afterEach(async () => {
 })
 const links = () => [...host.querySelectorAll('a')]
 
-describe('TopNav', () => {
-  it('has sixteen items: the fixed links and the Option positions menu', async () => {
-    await showAt('/home')
-    expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation')
-    expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Home', '/home'],
-      ['Macro', '/macro'],
-      ['Market state', '/market-state'],
-      ['Household', '/household'],
-      ['Positions', '/positions'],
-      ['Risk', '/risk'],
-      ['Options', '/options'],
-      ['Option data', '/options/data'],
-      ['Option candidates', '/options/candidates'],
-      ['Advice', '/advice'],
-      ['Valuation', '/valuation'],
-      ['Settings', '/settings'],
-      ['Price lines', '/plan/price-lines'],
-      ['Job console', '/job-console'],
-      ['Data health', '/data-health'],
-    ])
-    const items = [...host.querySelectorAll('nav > div > a, nav > div > button')].map((e) => e.textContent)
-    expect(items).toHaveLength(16)
-    expect(items[15]).toBe('Option positions')
-  })
-
-  it('the Option positions menu holds the links Structures, Result and Notices', async () => {
-    await showAt('/home')
-    const trigger = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Option positions')
-    expect(trigger).toBeDefined()
-    await act(async () => {
-      trigger?.focus()
-      trigger?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    })
-    const menu = [...document.querySelectorAll('[role="menu"] a')]
-    expect(menu.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]])[] = [
+  ['Market', [['Macro', '/macro'], ['Market state', '/market-state']]],
+  ['Portfolio', [['Household', '/household'], ['Positions', '/positions'], ['Risk', '/risk']]],
+  [
+    'Options',
+    [
+      ['Overview', '/options'],
+      ['Data', '/options/data'],
+      ['Candidates', '/options/candidates'],
       ['Structures', '/options/structures'],
       ['Result', '/options/result'],
       ['Notices', '/options/notices'],
       ['Tracking', '/options/tracking'],
-    ])
-  })
+      ['Advice', '/advice'],
+    ],
+  ],
+  ['Companies', [['Watch list', '/underlyings'], ['Price lines', '/plan/price-lines'], ['Valuation', '/valuation']]],
+  ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Data health', '/data-health']]],
+]
 
-  it.each([
-    ['/positions', 'Positions'],
-    ['/risk/', 'Risk'],
-    ['/', 'Home'],
-    ['/options/data', 'Option data'],
-    ['/options/data/9001', 'Option data'],
-    ['/options', 'Options'],
-    ['/macro/', 'Macro'],
-    ['/settings', 'Settings'],
-    ['/valuation', 'Valuation'],
-  ])('marks only the link of %s', async (pathname, label) => {
-    await showAt(pathname)
-    const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')
-    expect(marked.map((a) => a.textContent)).toEqual([label])
+const triggers = () => [...host.querySelectorAll('nav > div > button')] as HTMLElement[]
+async function openMenu(name: string) {
+  const trigger = triggers().find((b) => b.textContent === name)
+  expect(trigger).toBeDefined()
+  await act(async () => {
+    trigger?.focus()
+    trigger?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
   })
+  const menus = document.querySelectorAll('[role="menu"]')
+  expect(menus).toHaveLength(1)
+  return menus[0] as HTMLElement
+}
+const pairs = (els: Iterable<Element>) => [...els].map((a) => [a.textContent, a.getAttribute('href')])
 
-  it('lists the job console link', async () => {
-    await showAt('/job-console')
-    const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')
-    expect(marked.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['Job console', '/job-console']])
-  })
-
-  it('the desktop bar wraps onto further rows and holds the Job console link', async () => {
+describe('TestTopNavSixTopLevelItems', () => {
+  it('the bar has six children and no flex-wrap', async () => {
     await showAt('/home')
+    expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation')
     const bar = host.querySelector('nav > div')
-    expect(bar?.className).toContain('flex-wrap')
-    expect(bar?.className).toContain('gap-y-1')
-    const job = links().find((a) => a.textContent === 'Job console')
-    expect(job).toBeDefined()
-    expect(bar?.contains(job ?? null)).toBe(true)
+    const children = [...(bar?.children ?? [])]
+    expect(children.length).toBeLessThanOrEqual(6)
+    expect(children.map((e) => e.textContent)).toEqual(['Home', 'Market', 'Portfolio', 'Options', 'Companies', 'System'])
+    expect(bar?.className).not.toContain('flex-wrap')
+    expect(bar?.className).not.toContain('gap-y-1')
+    expect(bar?.className).toContain('hidden md:flex gap-1')
+  })
+})
+
+describe('TestTopNavGroupMenus', () => {
+  it.each(GROUPS)('the %s menu lists its links in order', async (name, expected) => {
+    await showAt('/home')
+    const menu = await openMenu(name)
+    expect(pairs(menu.querySelectorAll('a'))).toEqual(expected.map(([l, h]) => [l, h]))
+    if (name === 'Options') {
+      const texts = [...menu.querySelectorAll('a, [data-slot="dropdown-menu-label"]')].map((e) => e.textContent)
+      expect(texts).toEqual([
+        'Overview', 'Data', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'Advice',
+      ])
+    }
   })
 
-  it('TopNav lists Price lines', async () => {
-    await showAt('/plan/price-lines')
-    const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')
-    expect(marked.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['Price lines', '/plan/price-lines']])
+  it('marks Data in the Options menu at options/data/9001', async () => {
+    await showAt('/options/data/9001')
+    const menu = await openMenu('Options')
+    const marked = [...menu.querySelectorAll('a[aria-current="page"]')]
+    expect(marked.map((a) => a.textContent)).toEqual(['Data'])
   })
+})
 
+describe('TestTopNavMarksGroup', () => {
+  it.each([
+    ['/home', 'Home', 'page'],
+    ['/macro', 'Market', 'true'],
+    ['/risk/', 'Portfolio', 'true'],
+    ['/options', 'Options', 'true'],
+    ['/options/data/9001', 'Options', 'true'],
+    ['/options/structures', 'Options', 'true'],
+    ['/advice', 'Options', 'true'],
+    ['/plan/price-lines', 'Companies', 'true'],
+    ['/valuation', 'Companies', 'true'],
+    ['/job-console', 'System', 'true'],
+    ['/data-health', 'System', 'true'],
+  ])('at %s the bar marks %s', async (pathname, label, value) => {
+    await showAt(pathname)
+    const marked = [...host.querySelectorAll('nav > div [aria-current]')].filter((e) => e.matches('button, a'))
+    expect(marked.map((e) => [e.textContent, e.getAttribute('aria-current')])).toEqual([[label, value]])
+  })
+})
+
+describe('TopNav', () => {
   it('marks none on a page that is not in the bar', async () => {
     await showAt('/structure')
     expect(links().some((a) => a.hasAttribute('aria-current'))).toBe(false)
@@ -128,40 +137,34 @@ describe('TopNav', () => {
     expect(host.querySelector('nav > div')?.className).toContain('hidden md:flex')
   })
 
-  it('the sheet opens and lists the sixteen items, the position links under Option positions', async () => {
+  it('TestTopNavSheetGroups: Home first, five heading rows, Held options sub-heading', async () => {
     await showAt('/home')
     const sheet = await openSheet()
-    expect(sheet).not.toBeNull()
     expect(sheet?.getAttribute('data-side')).toBe('left')
-    const hrefs = [...(sheet?.querySelectorAll('a') ?? [])].map((a) => [a.textContent, a.getAttribute('href')])
-    expect(hrefs).toEqual([
-      ['Home', '/home'],
-      ['Macro', '/macro'],
-      ['Market state', '/market-state'],
-      ['Household', '/household'],
-      ['Positions', '/positions'],
-      ['Risk', '/risk'],
-      ['Options', '/options'],
-      ['Option data', '/options/data'],
-      ['Option candidates', '/options/candidates'],
-      ['Advice', '/advice'],
-      ['Valuation', '/valuation'],
-      ['Settings', '/settings'],
-      ['Price lines', '/plan/price-lines'],
-      ['Job console', '/job-console'],
-      ['Data health', '/data-health'],
-      ['Structures', '/options/structures'],
-      ['Result', '/options/result'],
-      ['Notices', '/options/notices'],
-      ['Tracking', '/options/tracking'],
+    const rows = [...(sheet?.querySelectorAll('ul > li') ?? [])]
+    const headings = rows.filter((li) => !li.querySelector('a')).map((li) => li.textContent)
+    expect(headings).toEqual(['Market', 'Portfolio', 'Options', 'Held options', 'Companies', 'System'])
+    expect(rows[0]?.textContent).toBe('Home')
+    expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe('/home')
+    const flat = rows.map((li) => li.querySelector('a')?.textContent ?? li.textContent)
+    expect(flat).toEqual([
+      'Home',
+      'Market', 'Macro', 'Market state',
+      'Portfolio', 'Household', 'Positions', 'Risk',
+      'Options', 'Overview', 'Data', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'Advice',
+      'Companies', 'Watch list', 'Price lines', 'Valuation',
+      'System', 'Settings', 'Job console', 'Data health',
     ])
-    expect(sheet?.textContent).toContain('Option positions')
+    const expected = [['Home', '/home'], ...GROUPS.flatMap(([, l]) => l)].map(([l, h]) => [l, h])
+    expect(pairs(sheet?.querySelectorAll('a') ?? [])).toEqual(expected)
+    const structures = [...(sheet?.querySelectorAll('a') ?? [])].find((a) => a.textContent === 'Structures')
+    expect(structures?.className).toContain('pl-6')
   })
 
-  it('the sheet marks the current page with aria-current', async () => {
+  it('TestTopNavSheetGroups: marks the link Data at options/data/9001', async () => {
     await showAt('/options/data/9001')
     const sheet = await openSheet()
-    const marked = [...(sheet?.querySelectorAll('a[aria-current="page"]') ?? [])]
-    expect(marked.map((a) => a.textContent)).toEqual(['Option data'])
+    const marked = [...(sheet?.querySelectorAll('[aria-current]') ?? [])]
+    expect(marked.map((a) => [a.textContent, a.getAttribute('aria-current')])).toEqual([['Data', 'page']])
   })
 })
