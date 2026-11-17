@@ -20,11 +20,11 @@ func TestNewPageMetaIsOptionPnlPage(t *testing.T) {
 	}
 }
 
-func TestBuildStubSaysNotBuilt(t *testing.T) {
+func TestBuildNilZoneIsError(t *testing.T) {
 	t.Parallel()
 	p := NewPage(Config{})
 	_, err := p.Build(context.Background(), nil, contracts.Day("2026-11-13"), time.Unix(0, 0))
-	if err == nil || !strings.Contains(err.Error(), "not built") {
-		t.Fatalf("err = %v, want not built", err)
+	if err == nil || !strings.Contains(err.Error(), "nil zone") {
+		t.Fatalf("err = %v, want nil zone", err)
 	}
 }
