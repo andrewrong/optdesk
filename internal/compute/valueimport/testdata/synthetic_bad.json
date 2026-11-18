@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "as_of": "2026-03-01",
+    "R_table_current": {"US": 0.90, "JP": 0.80, "HK": 0.70, "CN": 0.70},
+    "params_by_P": {"4": [0.25, 0.10, 0.35, 0.15]}
+  },
+  "companies": [
+    {"ticker": "SYNA", "name": "SynthAlpha", "market": "US", "currency": "USD", "v_version": "2026-02-20",
+     "V": "secret-looking-text", "P": 4, "R": 0.90, "B_hi": 63.0}
+  ]
+}
