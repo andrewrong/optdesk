@@ -265,11 +265,11 @@ func moneynessCell(o trackapi.TrackedOption) any {
 	if !known || o.OtmPercent == "" {
 		return codeGap(markCode(o))
 	}
-	c, ok := numValue(o.OtmPercent)
+	c, d, ok := parseNumber(o.OtmPercent)
 	if !ok {
 		return codeGap(codeUnreadable)
 	}
-	c.Text = o.OtmPercent + "%"
+	c.Text = signedText(d, 1, "") + "%"
 	c.Badges = []string{badge}
 	return c
 }
