@@ -15,3 +15,4 @@ blob-report/
 .check-bundle-test/
 dist-sheet/
 .scratch/
+e2e/out/

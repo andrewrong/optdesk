@@ -1,5 +1,5 @@
 {
-  "revision": "2026-11-06.1",
+  "revision": "2026-11-18.1",
   "packages": {
     "react": {"version": "19.3.1", "kind": "framework"},
     "react-dom": {"version": "19.3.1", "kind": "framework"},
@@ -33,6 +33,7 @@
     "@tanstack/react-table": {"version": "8.21.3", "kind": "tables"},
     "eslint": {"version": "10.13.0", "kind": "lint"},
     "typescript-eslint": {"version": "8.72.0", "kind": "lint"},
-    "json-schema-to-typescript": {"version": "16.0.0", "kind": "codegen"}
+    "json-schema-to-typescript": {"version": "16.0.0", "kind": "codegen"},
+    "@playwright/test": {"version": "1.64.1", "kind": "e2e"}
   }
 }
