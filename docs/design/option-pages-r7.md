@@ -319,7 +319,7 @@ Acceptance:
 ### 16 notices-cash-compute (interface)
 
 Module: compute. Size: S.
-Order: first.
+Order: after 3.
 Files: `internal/compute/api.go`, `internal/compute/optionnotice/cash.go`, `internal/compute/optionnotice/cash_test.go`, `internal/compute/optionnotice/notice.go`, `docs/contracts/compute/optionnotice.md`
 Contracts: unchanged
 Design: docs/design/option-pages-r7.md#16
