@@ -229,6 +229,9 @@ func markCode(o trackapi.TrackedOption) string {
 	if o.MarkStatus == codeNoMark {
 		return codeNoMark
 	}
+	if o.MarkStatus == "ok" && o.Spot == "" {
+		return codeMarkOnly
+	}
 	return codeNoValue
 }
 
