@@ -384,7 +384,7 @@ func newestDay(positions []compute.LedgerPosition, d time.Time) string {
 // caption places the Realized and KeptShare of the section as text; a field the section leaves
 // empty is left out.
 func caption(sec compute.ResultSection) string {
-	parts := []string{"Opening cash of closed sold positions totals"}
+	parts := []string{"All accounts combined: opening cash of closed sold positions totals"}
 	if r, ok := money(sec.Realized).(figure); ok {
 		parts = append(parts, "realised "+r.Text)
 	}

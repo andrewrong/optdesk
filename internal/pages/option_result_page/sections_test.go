@@ -156,3 +156,19 @@ func TestPercentOneDecimal(t *testing.T) {
 		}
 	}
 }
+
+func TestSectionLeadNamesTheAccount(t *testing.T) {
+	t.Parallel()
+	c, _ := testConfig(t, "result_ok.json")
+	c.Aliases = []string{"mine"}
+	secs := sectionsOf(buildMap(t, c, "mine"))
+	if len(secs) == 0 {
+		t.Fatal("no sections")
+	}
+	for _, s := range secs {
+		want := s["heading"].(string) + ", account mine: closed options, each currency listed on its own, not added together"
+		if got := s["lead"].(string); got != want {
+			t.Errorf("lead = %q, want %q", got, want)
+		}
+	}
+}
