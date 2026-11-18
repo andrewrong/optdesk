@@ -182,6 +182,7 @@ func parseEvent(t compute.LedgerTrade, cat string, notes map[string]bool) (event
 	if e.underlying == "" {
 		e.underlying = strings.TrimSpace(a["symbol"])
 	}
+	e.underlying = bareName(e.underlying, e.currency)
 	e.putCall = strings.ToUpper(strings.TrimSpace(a["putCall"]))
 	e.expiry = digits(a["expiry"])
 	if e.mult, ok = dec(a["multiplier"]); !ok || e.mult.Sign() <= 0 || e.underlying == "" {
@@ -212,6 +213,18 @@ func parseEvent(t compute.LedgerTrade, cat string, notes map[string]bool) (event
 	return e, ok
 }
 
+// bareName drops the Flex exchange suffix ".T" of a JPY name, once, when a name is left; the
+// stock instruments are stored under the bare code. Other currencies keep their text.
+func bareName(name, currency string) string {
+	if currency != "JPY" {
+		return name
+	}
+	if bare := strings.TrimSuffix(name, ".T"); bare != "" {
+		return bare
+	}
+	return name
+}
+
 func optionKind(indicator string, notes map[string]bool) string {
 	switch strings.ToUpper(strings.TrimSpace(indicator)) {
 	case "O":
@@ -232,7 +245,7 @@ func optionKind(indicator string, notes map[string]bool) string {
 
 func parseStock(e event, a map[string]string) (event, bool) {
 	var ok bool
-	e.underlying = strings.TrimSpace(a["symbol"])
+	e.underlying = bareName(strings.TrimSpace(a["symbol"]), e.currency)
 	e.mult = big.NewRat(1, 1)
 	e.kind = kindStockBuy
 	if e.qty.Sign() < 0 {
