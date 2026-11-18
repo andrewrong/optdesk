@@ -79,7 +79,7 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
                 {underlying.earnings_text}
               </Badge>
             ) : (
-              'No data source'
+              '无财报日期（指数或未登记发行人）'
             )}
           </span>
         </CardContent>
