@@ -207,3 +207,65 @@ type NewSECFunc func(SECConfig) (FactSource, error)
 // NewEDINETFunc is the constructor of the EDINET source (declared here; implemented by entry 18 of
 // docs/design/valuation.md).
 type NewEDINETFunc func(EDINETConfig) (FactSource, error)
+
+// BarPair names one instrument of a bar request: the symbol as the source spells it and its currency.
+type BarPair struct {
+	Symbol   string
+	Currency string
+}
+
+// BarRequest names the pairs and the inclusive range of session days to fetch.
+type BarRequest struct {
+	Pairs []BarPair
+	From  contracts.Day
+	To    contracts.Day
+}
+
+// RefBar is one daily bar of a pair: the session day and the close as decimal text.
+type RefBar struct {
+	Pair  BarPair
+	Day   contracts.Day
+	Close string
+}
+
+// BarUnanswered is a pair the source could not answer, with one of the BarCode constants.
+type BarUnanswered struct {
+	Pair BarPair
+	Code string
+}
+
+// BarResult is the answer of one DailyBars call: the bars found and the pairs not answered.
+type BarResult struct {
+	Bars       []RefBar
+	Unanswered []BarUnanswered
+}
+
+// BarSource fetches daily bars of a second source. One DailyBars call makes at most the requests its
+// service allows and never retries. It returns contracts.TypedError values only, and no text holds a key
+// or an address. It returns an error only when the whole source failed; a pair it cannot answer goes in
+// the Unanswered list of the result with its code. It may split one call into batches. It stops at the
+// deadline of its context and then returns the partial result, with the unanswered pairs and their code.
+type BarSource interface {
+	DailyBars(ctx context.Context, req BarRequest) (BarResult, error)
+}
+
+// BarConfig holds the arguments of NewBarSourceFunc; a source reads the fields it needs (yfinance the
+// command and the timing, Tiingo the key). Command is the argv of an outside command, Key is passed in by
+// the caller (this package reads no environment) and PerPair is the time allowed for one pair.
+type BarConfig struct {
+	Command []string
+	Key     string
+	PerPair time.Duration
+}
+
+// NewBarSourceFunc is the constructor of a bar source (internal/sources/yfinance.New).
+type NewBarSourceFunc func(BarConfig) (BarSource, error)
+
+// The codes of BarUnanswered.Code.
+const (
+	BarCodeRateLimited   = "rate_limited"
+	BarCodeNoData        = "no_data"
+	BarCodeNetwork       = "network"
+	BarCodeTimeout       = "timeout"
+	BarCodeSourceChanged = "source_changed"
+)
