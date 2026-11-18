@@ -440,7 +440,8 @@ func TestCardsStayThirtyDays(t *testing.T) {
 	r.replay.positions = append(r.replay.positions, call, long)
 	vm := r.build(t)
 	a := vm.Accounts[0]
-	if len(a.Lots) != 1 || !strings.HasPrefix(a.SampleNote, "1 ended lots") || len(a.Books) != 1 || !strings.HasPrefix(a.Books[0].Counts, "USD book, 1 lot counted") {
+	if len(a.Lots) != 1 || !strings.HasPrefix(a.SampleNote, "1 ended lots") || len(a.Books) != 1 ||
+		!strings.HasPrefix(a.Books[0].Counts, "USD book, 1 lot counted") {
 		t.Fatalf("lots = %d, note = %q, books = %+v", len(a.Lots), a.SampleNote, a.Books)
 	}
 	if n := strings.Join(vm.Notes, "|"); strings.Contains(n, "skipped") {
