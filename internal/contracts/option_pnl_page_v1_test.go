@@ -104,3 +104,64 @@ func TestOptionPnlPageLotGapValid(t *testing.T) {
 		t.Fatal("lot with gap and book with left_out is invalid")
 	}
 }
+
+func pnlLedger(viewIDs ...string) map[string]any {
+	views := []any{}
+	for _, id := range viewIDs {
+		views = append(views, map[string]any{
+			"id": id, "label": "By month",
+			"groups": []any{map[string]any{
+				"id": "grp-2026-11", "label": "2026-11", "summary": "6 lots ended",
+				"books": []any{pnlBook(nil)},
+			}},
+		})
+	}
+	return map[string]any{"title": "Ledger", "note": "2 open lots", "views": views}
+}
+
+func TestOptionPnlLedgerValid(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	pnlAccount(inst)["ledger"] = pnlLedger("by_month", "by_company")
+	if !pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("account with a ledger of two views is invalid")
+	}
+}
+
+func TestOptionPnlLedgerNullValid(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	pnlAccount(inst)["ledger"] = nil
+	if !pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("ledger null is invalid")
+	}
+}
+
+func TestOptionPnlNoLedgerStillValid(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	delete(pnlAccount(inst), "ledger")
+	if !pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("account without the ledger key is invalid")
+	}
+}
+
+func TestOptionPnlLedgerViewIDEnum(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	pnlAccount(inst)["ledger"] = pnlLedger("by_week")
+	if pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("view id by_week validates")
+	}
+}
+
+func TestOptionPnlLedgerUnknownField(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	l := pnlLedger("by_month")
+	l["views"].([]any)[0].(map[string]any)["groups"].([]any)[0].(map[string]any)["extra"] = 1
+	pnlAccount(inst)["ledger"] = l
+	if pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("extra key of Group validates")
+	}
+}

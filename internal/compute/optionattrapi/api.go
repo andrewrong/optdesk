@@ -115,6 +115,11 @@ type Book struct {
 	LedgerPnL, Difference                        string
 	// Ledger P&L of the lots counted apart; in no sum field above.
 	NoQuoteLedgerPnL, UnreconciledLedgerPnL string
+	// AllLots is Lots + NoQuoteLots + UnreconciledLots: the lots given to Combine that have a ledger P&L.
+	// LedgerAllPnL is LedgerPnL + NoQuoteLedgerPnL + UnreconciledLedgerPnL, exact, not rounded.
+	// Neither includes a lot that was not given to Combine.
+	AllLots      int
+	LedgerAllPnL string
 }
 
 // Booker is the only place results are added. One Book per currency, in order of first appearance.

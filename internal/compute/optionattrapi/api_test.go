@@ -173,3 +173,20 @@ func TestBookerEmptyIsNonNil(t *testing.T) {
 		t.Fatalf("got = %#v", got)
 	}
 }
+
+// TestBookFieldsLedgerAll: a caller reads AllLots and LedgerAllPnL from a fake Booker.
+func TestBookFieldsLedgerAll(t *testing.T) {
+	t.Parallel()
+	var b optionattrapi.Booker = allBooker{}
+	got := b.Combine([]optionattrapi.Result{{Currency: "USD"}})
+	if len(got) != 1 || got[0].AllLots != 6 || got[0].LedgerAllPnL != "537.80" {
+		t.Fatalf("books = %+v", got)
+	}
+}
+
+// allBooker answers one Book with the two ledger-all fields set.
+type allBooker struct{}
+
+func (allBooker) Combine(rs []optionattrapi.Result) []optionattrapi.Book {
+	return []optionattrapi.Book{{Currency: "USD", AllLots: 6, LedgerAllPnL: "537.80"}}
+}
