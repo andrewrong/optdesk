@@ -70,7 +70,8 @@ type bucket struct {
 
 // buildTiers sorts the stored short-put rows into the tiers of Config.Tiers. It calls Judge once and
 // the evidence builder and Config.Figures once for the rows of the Fits and Check tiers, whatever their stored
-// status, and writes the texts; day is the day Build was called for, which a past earnings date is compared with; a nil Tiers or no row gives nil. A reader or Judge error is returned.
+// status, and writes the texts; day is the day Build was called for, which a past earnings date is compared
+// with; a nil Tiers or no row gives nil. A reader or Judge error is returned.
 func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, at time.Time) (*tiersView, error) {
 	if c.Tiers == nil || len(gr.rows) == 0 {
 		return nil, nil
@@ -137,12 +138,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 		}
 		v.Tiers = append(v.Tiers, t)
 	}
-	all := companiesOf(res, gr.rows, gr.day, day)
-	fillValuation(ctx, c, all)
-	v.Companies, v.IdleNote, v.BuyHint = splitIdle(all)
-	sayNone(v.Tiers)
-	spot := spotHintZh
-	v.SpotHint = &spot
+	fillStrips(ctx, c, v, companiesOf(res, gr.rows, gr.day, day))
 	v.Legend = legendOf(res, f, n)
 	v.KeptNote = keptNoteOf(v.Kept)
 	return v, nil
@@ -352,4 +348,13 @@ func sayNone(ts []tierView) {
 	if len(ts[1].Rows) == 0 {
 		ts[1].Explain = noneHead + noneCheck
 	}
+}
+
+// fillStrips writes the company strips, the idle line, the hints and the None explanations of v from all.
+func fillStrips(ctx context.Context, c Config, v *tiersView, all []companyView) {
+	fillValuation(ctx, c, all)
+	v.Companies, v.IdleNote, v.BuyHint = splitIdle(all)
+	sayNone(v.Tiers)
+	spot := spotHintZh
+	v.SpotHint = &spot
 }
