@@ -222,6 +222,8 @@ export interface TierView {
   companies: Company[];
   common: Mark[];
   kept: Text1 | null;
+  kept_note?: Text1 | null;
+  stored_title?: Text1 | null;
   legend: LegendItem[];
   columns: TierColumn[];
   tiers: Tier[];
