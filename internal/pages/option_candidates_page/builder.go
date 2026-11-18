@@ -40,6 +40,8 @@ type viewModel struct {
 	RuleVersion   *string      `json:"rule_version"`
 	EstimateNote  string       `json:"estimate_note"`
 	Groups        []group      `json:"groups"`
+	// ShortPutTiers is the tier view of the short-put rows, null without a Tiers judge or rows.
+	ShortPutTiers *tiersView `json:"short_put_tiers"`
 }
 
 // Build returns the page.option_candidates_page.v1 JSON for day: the stored rows of each kind
@@ -75,16 +77,20 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 		vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
 	} else {
 		for _, s := range groupSpecs {
-			gd, rows, rate, ev, err := readGroup(ctx, c, series, s.kind, day)
+			gr, err := readGroup(ctx, c, series, s.kind, day)
 			if err != nil {
 				return nil, err
 			}
+			gd, rows := gr.day, gr.rows
 			if len(rows) == 0 {
 				vm.Groups = append(vm.Groups, gapGroup(s.kind, mkGap("no_rows", gapNoRows)))
 				continue
 			}
-			g := buildGroup(s, gd, day, rows, c.Figures, rate, ev)
+			g := buildGroup(s, gd, day, rows, c.Figures, gr.rate, gr.ev)
 			vm.Groups = append(vm.Groups, g)
+			if vm.ShortPutTiers, err = tiersOfKind(ctx, c, s.kind, gr, generatedAt, vm.ShortPutTiers); err != nil {
+				return nil, err
+			}
 			vm.Notes = withTrialNote(vm.Notes, g)
 			if gd > chainDay {
 				chainDay, first = gd, &rows[0]
@@ -110,25 +116,51 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 	return json.Marshal(vm)
 }
 
+// groupRead is what one group read: its day, rows with their display names, the cash rate of the day, the
+// tickers of the names and, for the short-put kind, the evidence of its ok rows.
+type groupRead struct {
+	day     contracts.Day
+	rows    []store.Candidate
+	rate    rateRead
+	ev      evidenceSet
+	tickers map[int]string
+}
+
 // readGroup reads the rows of one kind with their display names, the cash rate of the group's day and,
-// for the short-put kind, the evidence of its ok rows.
+// for the short-put kind, the evidence of its ok rows (the stored main table); the tier view asks for the
+// evidence of its own rows.
 func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind string,
-	day contracts.Day) (contracts.Day, []store.Candidate, rateRead, evidenceSet, error) {
+	day contracts.Day) (groupRead, error) {
 	gd, rows, err := readKind(ctx, c.Candidates, kind, day)
 	if err != nil || len(rows) == 0 {
-		return gd, nil, rateRead{}, evidenceSet{}, err
+		return groupRead{day: gd}, err
 	}
 	tickers, err := tickersOf(ctx, c.Names, rows)
 	if err != nil {
-		return gd, nil, rateRead{}, evidenceSet{}, err
+		return groupRead{day: gd}, err
 	}
 	rows = namedRows(rows, tickers)
 	rate, err := readRate(ctx, series, gd)
+	gr := groupRead{day: gd, rows: rows, rate: rate, tickers: tickers}
 	if err != nil || kind != kindShortPut {
-		return gd, rows, rate, evidenceSet{}, err
+		return gr, err
 	}
-	ev, err := evidenceOf(ctx, inputsOf(c), tickers, gd, rate, rows)
-	return gd, rows, rate, ev, err
+	var ok []store.Candidate
+	for _, r := range rows {
+		if r.Status == "ok" {
+			ok = append(ok, r)
+		}
+	}
+	gr.ev, err = evidenceOf(ctx, inputsOf(c), tickers, gd, rate, ok)
+	return gr, err
+}
+
+// tiersOfKind is the tier view of the short-put group and prev for any other kind.
+func tiersOfKind(ctx context.Context, c Config, kind string, gr groupRead, at time.Time, prev *tiersView) (*tiersView, error) {
+	if kind != kindShortPut {
+		return prev, nil
+	}
+	return buildTiers(ctx, c, gr, at)
 }
 
 // fillRun writes the fields that exist only when some group has rows.

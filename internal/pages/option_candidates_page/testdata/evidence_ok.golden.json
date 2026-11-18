@@ -529,5 +529,6 @@
         "text": "No candidates of this kind in the last 7 days"
       }
     }
-  ]
+  ],
+  "short_put_tiers": null
 }

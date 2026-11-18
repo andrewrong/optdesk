@@ -1,0 +1,896 @@
+{
+  "schema": "option_candidates_page",
+  "schema_version": 1,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "s1",
+  "generated_at": "2026-11-09T22:00:00+00:00",
+  "data_times": [
+    {
+      "source": "option_candidate",
+      "data_time": "2026-11-09T00:00:00+00:00"
+    }
+  ],
+  "run_status": "partial",
+  "stale": null,
+  "title": "Option candidates",
+  "notes": [
+    "Japanese option candidates: later design (option-candidates-jp)",
+    "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
+  ],
+  "gaps": [],
+  "chain_day": "2026-11-09",
+  "computed_at": "2026-11-09T21:30:00+00:00",
+  "rule_version": "r1",
+  "estimate_note": "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price",
+  "groups": [
+    {
+      "kind": "short_put",
+      "title": "Short put",
+      "day": "2026-11-09",
+      "stale": false,
+      "counts": {
+        "ok": 2,
+        "blocked": 0,
+        "unknown": 0
+      },
+      "main": {
+        "columns": [
+          {
+            "id": "rank",
+            "label": "Rank",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "company",
+            "label": "Company",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "expiry",
+            "label": "Expiry",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "dte",
+            "label": "DTE",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "strike",
+            "label": "Strike",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "bid",
+            "label": "Bid (EOD estimate)",
+            "align": "right",
+            "hint": "Closing bid, sold on the next trading day, not a traded price"
+          },
+          {
+            "id": "yield",
+            "label": "Annualised yield",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "excess",
+            "label": "Vs cash",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "break_even",
+            "label": "Break-even",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "delta",
+            "label": "Delta",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "iv",
+            "label": "IV",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "itm",
+            "label": "ITM probability",
+            "align": "right",
+            "hint": "Model estimate of the chance the put ends in the money; not an assignment probability"
+          },
+          {
+            "id": "marks",
+            "label": "Marks",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "fit",
+            "label": "Account cash",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "next_earnings",
+            "label": "Next earnings",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "below_buy",
+            "label": "Below buy",
+            "align": "right",
+            "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-09"
+          },
+          {
+            "id": "one_sigma",
+            "label": "One-sigma move",
+            "align": "right",
+            "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-09"
+          },
+          {
+            "id": "bid_vs_forecast",
+            "label": "Bid vs forecast price",
+            "align": "right",
+            "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-09, rate none"
+          },
+          {
+            "id": "skew",
+            "label": "Skew",
+            "align": "right",
+            "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-09"
+          },
+          {
+            "id": "forecast_vol",
+            "label": "Forecast vol",
+            "align": "right",
+            "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge"
+          },
+          {
+            "id": "ivp",
+            "label": "IVP",
+            "align": "right",
+            "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge"
+          },
+          {
+            "id": "vol_edge",
+            "label": "Name IV vs forecast",
+            "align": "right",
+            "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge"
+          },
+          {
+            "id": "labels",
+            "label": "Labels",
+            "align": "right",
+            "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-09"
+          }
+        ],
+        "rows": [
+          {
+            "id": "cand-short_put-1-0",
+            "cells": {
+              "below_buy": {
+                "text": "$0.94 (1.0%)",
+                "value": 0.94,
+                "badges": [],
+                "tone": "none"
+              },
+              "bid": {
+                "text": "$0.42",
+                "value": 0.42,
+                "badges": [],
+                "tone": "none"
+              },
+              "bid_vs_forecast": {
+                "text": "+$0.21 per share (+$21.29 per contract)",
+                "value": 0.21,
+                "badges": [
+                  "model price $0.73"
+                ],
+                "tone": "none"
+              },
+              "break_even": {
+                "text": "$93.80",
+                "value": 93.80,
+                "badges": [],
+                "tone": "none"
+              },
+              "company": {
+                "text": "AAA",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "delta": {
+                "text": "−0.19",
+                "value": -0.19,
+                "badges": [],
+                "tone": "none"
+              },
+              "dte": {
+                "text": "39",
+                "value": 39,
+                "badges": [],
+                "tone": "none"
+              },
+              "excess": {
+                "text": "below 8.0%",
+                "value": 800,
+                "badges": [],
+                "tone": "none"
+              },
+              "expiry": {
+                "text": "2026-12-18",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "fit": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "forecast_vol": {
+                "text": "27.5%",
+                "value": 27.5000,
+                "badges": [
+                  "last error 4.1%",
+                  "as of 2026-11-09"
+                ],
+                "tone": "none"
+              },
+              "itm": {
+                "text": "21.8%",
+                "value": 2180,
+                "badges": [],
+                "tone": "none"
+              },
+              "iv": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "ivp": {
+                "text": "58.0%",
+                "value": 58.0000,
+                "badges": [
+                  "as of 2026-11-09"
+                ],
+                "tone": "none"
+              },
+              "labels": {
+                "text": "—",
+                "value": null,
+                "badges": [
+                  "ex-dividend inside the life"
+                ],
+                "tone": "none"
+              },
+              "marks": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "next_earnings": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "No earnings date known"
+              },
+              "one_sigma": {
+                "text": "$8.58 (8.9%)",
+                "value": 8.5775,
+                "badges": [
+                  "0.9 sigma to break-even"
+                ],
+                "tone": "none"
+              },
+              "rank": {
+                "text": "1",
+                "value": 1,
+                "badges": [],
+                "tone": "none"
+              },
+              "skew": {
+                "text": "+1.1 pts",
+                "value": 1.1000,
+                "badges": [
+                  "ATM IV 29.4% at 95.00"
+                ],
+                "tone": "none"
+              },
+              "strike": {
+                "text": "85.00",
+                "value": 85.00,
+                "badges": [],
+                "tone": "none"
+              },
+              "vol_edge": {
+                "text": "+3.7 pts",
+                "value": 3.7000,
+                "badges": [
+                  "as of 2026-11-09"
+                ],
+                "tone": "none"
+              },
+              "yield": {
+                "text": "12.3%",
+                "value": 0.123456,
+                "badges": [],
+                "tone": "none"
+              }
+            },
+            "reasons": []
+          },
+          {
+            "id": "cand-short_put-5-1",
+            "cells": {
+              "below_buy": {
+                "text": "$0.94 (1.0%)",
+                "value": 0.94,
+                "badges": [],
+                "tone": "none"
+              },
+              "bid": {
+                "text": "$0.50",
+                "value": 0.50,
+                "badges": [],
+                "tone": "none"
+              },
+              "bid_vs_forecast": {
+                "text": "+$0.21 per share (+$21.29 per contract)",
+                "value": 0.21,
+                "badges": [
+                  "model price $0.73"
+                ],
+                "tone": "none"
+              },
+              "break_even": {
+                "text": "$93.80",
+                "value": 93.80,
+                "badges": [],
+                "tone": "none"
+              },
+              "company": {
+                "text": "BBB",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "delta": {
+                "text": "−0.19",
+                "value": -0.19,
+                "badges": [],
+                "tone": "none"
+              },
+              "dte": {
+                "text": "39",
+                "value": 39,
+                "badges": [],
+                "tone": "none"
+              },
+              "excess": {
+                "text": "below 8.0%",
+                "value": 800,
+                "badges": [],
+                "tone": "none"
+              },
+              "expiry": {
+                "text": "2026-12-18",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "fit": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "forecast_vol": {
+                "text": "27.5%",
+                "value": 27.5000,
+                "badges": [
+                  "last error 4.1%",
+                  "as of 2026-11-09"
+                ],
+                "tone": "none"
+              },
+              "itm": {
+                "text": "21.8%",
+                "value": 2180,
+                "badges": [],
+                "tone": "none"
+              },
+              "iv": {
+                "text": "30.5%",
+                "value": 0.305,
+                "badges": [],
+                "tone": "none"
+              },
+              "ivp": {
+                "text": "58.0%",
+                "value": 58.0000,
+                "badges": [
+                  "as of 2026-11-09"
+                ],
+                "tone": "none"
+              },
+              "labels": {
+                "text": "—",
+                "value": null,
+                "badges": [
+                  "ex-dividend inside the life"
+                ],
+                "tone": "none"
+              },
+              "marks": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "next_earnings": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "No earnings date known"
+              },
+              "one_sigma": {
+                "text": "$8.58 (8.9%)",
+                "value": 8.5775,
+                "badges": [
+                  "0.9 sigma to break-even"
+                ],
+                "tone": "none"
+              },
+              "rank": {
+                "text": "5",
+                "value": 5,
+                "badges": [],
+                "tone": "none"
+              },
+              "skew": {
+                "text": "+1.1 pts",
+                "value": 1.1000,
+                "badges": [
+                  "ATM IV 29.4% at 95.00"
+                ],
+                "tone": "none"
+              },
+              "strike": {
+                "text": "40.00",
+                "value": 40.00,
+                "badges": [],
+                "tone": "none"
+              },
+              "vol_edge": {
+                "text": "+3.7 pts",
+                "value": 3.7000,
+                "badges": [
+                  "as of 2026-11-09"
+                ],
+                "tone": "none"
+              },
+              "yield": {
+                "text": "12.3%",
+                "value": 0.123456,
+                "badges": [],
+                "tone": "none"
+              }
+            },
+            "reasons": []
+          }
+        ]
+      },
+      "other": null,
+      "gap": null
+    },
+    {
+      "kind": "covered_call",
+      "title": "Covered call",
+      "day": null,
+      "stale": false,
+      "counts": {
+        "ok": 0,
+        "blocked": 0,
+        "unknown": 0
+      },
+      "main": null,
+      "other": null,
+      "gap": {
+        "kind": "gap",
+        "reason": "no_rows",
+        "text": "No candidates of this kind in the last 7 days"
+      }
+    },
+    {
+      "kind": "held_call_guard",
+      "title": "Held call guard",
+      "day": null,
+      "stale": false,
+      "counts": {
+        "ok": 0,
+        "blocked": 0,
+        "unknown": 0
+      },
+      "main": null,
+      "other": null,
+      "gap": {
+        "kind": "gap",
+        "reason": "no_rows",
+        "text": "No candidates of this kind in the last 7 days"
+      }
+    }
+  ],
+  "short_put_tiers": {
+    "chain_day": "2026-11-09",
+    "companies": [
+      {
+        "key": "7",
+        "ticker": "AAA",
+        "spot": "$96.50",
+        "spot_day": "2026-11-09",
+        "buy_price": "$90.00",
+        "buy_price_note": null,
+        "next_earnings": "unknown",
+        "counts": "1 fit, 0 check, 0 collapsed"
+      },
+      {
+        "key": "8",
+        "ticker": "BBB",
+        "spot": "$41.20",
+        "spot_day": "2026-11-09",
+        "buy_price": null,
+        "buy_price_note": "not set",
+        "next_earnings": "unknown",
+        "counts": "0 fit, 0 check, 1 collapsed"
+      }
+    ],
+    "common": [],
+    "kept": null,
+    "legend": [
+      {
+        "tier": "fits",
+        "title": "✓ Fits (1)",
+        "text": "满足你的全部条件：已设买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金只做标记，现有数据算不出全额行权价覆盖。这不是买入建议。|delta| 低于 0.15 时权利金薄，仍然满足条件。"
+      },
+      {
+        "tier": "check",
+        "title": "! Check (0)",
+        "text": "已设买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
+      },
+      {
+        "tier": "grey",
+        "title": "– Not judged (1)",
+        "text": "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。"
+      },
+      {
+        "tier": "cash",
+        "title": "Account cash",
+        "text": "现金：现有数据算不出全额行权价覆盖，只做标记（cash_unknown）。"
+      }
+    ],
+    "columns": [
+      {
+        "id": "arrow",
+        "label": "Details",
+        "hint": null
+      },
+      {
+        "id": "tier",
+        "label": "Tier",
+        "hint": "档位：满足条件、需要再看，或未评判。；数据日 2026-11-09"
+      },
+      {
+        "id": "contract",
+        "label": "Contract",
+        "hint": "合约：标的、行权价、到期日和剩余天数。；数据日 2026-11-09"
+      },
+      {
+        "id": "margin",
+        "label": "Margin of safety",
+        "hint": "安全边际：保本点（行权价减 bid）比你的买入价低多少，占买入价的百分比。；数据日 2026-11-09"
+      },
+      {
+        "id": "below_spot",
+        "label": "Below spot",
+        "hint": "距现价：保本点比现价低多少；moves* = (现价 − 保本点) / (现价 × 本合约 IV × sqrt(年数))，即几个预期波动。；数据日 2026-11-09"
+      },
+      {
+        "id": "premium",
+        "label": "Premium / yield",
+        "hint": "权利金：bid 乘以乘数得每份合约的钱；年化收益只按时间价值除以行权价计算。；数据日 2026-11-09"
+      },
+      {
+        "id": "badges",
+        "label": "Badges",
+        "hint": "徽标：需要再看一眼的地方；琥珀色的会让这一行落到 Check。；数据日 2026-11-09"
+      }
+    ],
+    "tiers": [
+      {
+        "id": "fits",
+        "word": "Fits",
+        "icon": "check",
+        "title": "1 fit your conditions",
+        "explain": "满足你的全部条件：已设买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金只做标记，现有数据算不出全额行权价覆盖。这不是买入建议。",
+        "collapsed": false,
+        "rows": [
+          {
+            "id": "tier-short_put-1-0",
+            "company": "7",
+            "contract": {
+              "name": "AAA",
+              "strike": "$85.00",
+              "expiry": "2026-12-18",
+              "dte": "39d"
+            },
+            "margin": {
+              "main": "6.0%",
+              "sub": "BE $84.58 vs $90.00",
+              "gap": null
+            },
+            "below_spot": {
+              "main": "12.4%",
+              "sub": "no IV",
+              "gap": null
+            },
+            "premium": {
+              "main": "$42.00",
+              "sub": "5.8%/yr",
+              "gap": null
+            },
+            "badges": [],
+            "notes": [],
+            "fields": [
+              {
+                "id": "iv",
+                "label": "IV (this contract)",
+                "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-09",
+                "value": null,
+                "gap": {
+                  "kind": "gap",
+                  "reason": "missing_input",
+                  "text": "not stored"
+                },
+                "badges": []
+              },
+              {
+                "id": "delta",
+                "label": "Delta (rough chance of assignment)",
+                "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-09",
+                "value": "−0.19",
+                "gap": null,
+                "badges": []
+              },
+              {
+                "id": "itm_probability",
+                "label": "ITM probability",
+                "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-09",
+                "value": "21.8%",
+                "gap": null,
+                "badges": []
+              },
+              {
+                "id": "vs_cash",
+                "label": "Vs cash",
+                "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-09",
+                "value": "below 8.0%",
+                "gap": null,
+                "badges": []
+              },
+              {
+                "id": "account_cash",
+                "label": "Account cash",
+                "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-09",
+                "value": null,
+                "gap": {
+                  "kind": "gap",
+                  "reason": "no_data",
+                  "text": "No account cash figure"
+                },
+                "badges": []
+              },
+              {
+                "id": "bid_per_share",
+                "label": "Bid per share",
+                "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-09",
+                "value": "$0.42",
+                "gap": null,
+                "badges": []
+              },
+              {
+                "id": "below_buy",
+                "label": "Below buy",
+                "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-09",
+                "value": "$0.94 (1.0%)",
+                "gap": null,
+                "badges": []
+              },
+              {
+                "id": "one_sigma",
+                "label": "One-sigma move",
+                "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-09",
+                "value": "$8.58 (8.9%)",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "0.9 sigma to break-even",
+                    "gloss": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-09",
+                    "tone": "none"
+                  }
+                ]
+              },
+              {
+                "id": "bid_vs_forecast",
+                "label": "Bid vs forecast price",
+                "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-09, rate none",
+                "value": "+$0.21 per share (+$21.29 per contract)",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "model price $0.73",
+                    "gloss": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-09, rate none",
+                    "tone": "none"
+                  }
+                ]
+              },
+              {
+                "id": "skew",
+                "label": "Skew",
+                "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-09",
+                "value": "+1.1 pts",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "ATM IV 29.4% at 95.00",
+                    "gloss": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-09",
+                    "tone": "none"
+                  }
+                ]
+              },
+              {
+                "id": "forecast_vol",
+                "label": "Forecast vol",
+                "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+                "value": "27.5%",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "last error 4.1%",
+                    "gloss": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+                    "tone": "none"
+                  },
+                  {
+                    "code": "evidence",
+                    "label": "as of 2026-11-09",
+                    "gloss": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+                    "tone": "none"
+                  }
+                ]
+              },
+              {
+                "id": "ivp",
+                "label": "IVP",
+                "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+                "value": "58.0%",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "as of 2026-11-09",
+                    "gloss": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+                    "tone": "none"
+                  }
+                ]
+              },
+              {
+                "id": "vol_edge",
+                "label": "Name IV vs forecast",
+                "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+                "value": "+3.7 pts",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "as of 2026-11-09",
+                    "gloss": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+                    "tone": "none"
+                  }
+                ]
+              },
+              {
+                "id": "labels",
+                "label": "Labels",
+                "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-09",
+                "value": "—",
+                "gap": null,
+                "badges": [
+                  {
+                    "code": "evidence",
+                    "label": "ex-dividend inside the life",
+                    "gloss": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-09",
+                    "tone": "none"
+                  }
+                ]
+              }
+            ],
+            "line": null
+          }
+        ]
+      },
+      {
+        "id": "check",
+        "word": "Check",
+        "icon": "alert",
+        "title": "0 to check",
+        "explain": "已设买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。",
+        "collapsed": false,
+        "rows": []
+      },
+      {
+        "id": "grey_no_buy_price",
+        "word": "Not judged",
+        "icon": "minus",
+        "title": "1 not judged: no buy price",
+        "explain": "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。没有设买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。",
+        "collapsed": true,
+        "rows": [
+          {
+            "id": "tier-short_put-5-1",
+            "company": "8",
+            "contract": {
+              "name": "BBB",
+              "strike": "$40.00",
+              "expiry": "2026-12-18",
+              "dte": "39d"
+            },
+            "margin": {
+              "main": "No buy price set",
+              "sub": null,
+              "gap": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "No buy price set"
+              }
+            },
+            "below_spot": {
+              "main": "not formed",
+              "sub": null,
+              "gap": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "not formed"
+              }
+            },
+            "premium": {
+              "main": "$540.00",
+              "sub": "22.4%/yr",
+              "gap": null
+            },
+            "badges": [],
+            "notes": [],
+            "fields": [],
+            "line": "BBB $40.00 2026-12-18; Bid $0.50; BE $96.50; yield 22.4%/yr"
+          }
+        ]
+      }
+    ]
+  }
+}
