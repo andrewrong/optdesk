@@ -234,7 +234,7 @@ func TestKeptLine(t *testing.T) {
 	res := resultOf(fitsVerdict(keyOf(rows, 0)))
 	res.Kept = []optiontierapi.Kept{{Code: "no_buy_price", N: 1, Every: true}, {Code: "in_the_money", N: 2}, {Code: "no_open_interest", N: 3}}
 	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: res}))
-	want := "未进入 Fits 的原因（行数）：没有买入价 每一行；价内 2；No open interest 3"
+	want := "未进入 Fits 的原因（行数）：没有买入价 1（每一行）；价内 2；" + zhKeptLabel_no_open_interest + " 3"
 	if view.Kept == nil || *view.Kept != want {
 		t.Errorf("kept = %v, want %s", view.Kept, want)
 	}
@@ -328,3 +328,80 @@ func TestPairMainNeverEmpty(t *testing.T) {
 }
 
 var _ = store.Candidate{}
+
+func keptOf(t *testing.T, kept ...optiontierapi.Kept) *tiersView {
+	t.Helper()
+	rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+	res := resultOf(fitsVerdict(keyOf(rows, 0)))
+	res.Kept = kept
+	return buildTiersOf(t, tierConfig(rows, &fakeTierer{res: res}))
+}
+
+func TestKeptLineChineseNames(t *testing.T) {
+	t.Parallel()
+	view := keptOf(t, optiontierapi.Kept{Code: "no_open_interest", N: 3, Every: true}, optiontierapi.Kept{Code: "wide_quote", N: 2})
+	want := "未进入 Fits 的原因（行数）：" + zhKeptLabel_no_open_interest + " 3（每一行）；" + zhKeptLabel_wide_quote + " 2"
+	if view.Kept == nil || *view.Kept != want {
+		t.Fatalf("kept = %v, want %s", view.Kept, want)
+	}
+	for _, code := range []string{"No open interest", "Wide quote"} {
+		if strings.Contains(*view.Kept, code) {
+			t.Errorf("kept has the English label %q", code)
+		}
+	}
+}
+
+func TestKeptNoteOnce(t *testing.T) {
+	t.Parallel()
+	view := keptOf(t, optiontierapi.Kept{Code: "in_the_money", N: 2})
+	if view.KeptNote == nil || *view.KeptNote != "一行可以有几个原因，所以各项行数相加可以大于总行数。" {
+		t.Errorf("kept_note = %v", view.KeptNote)
+	}
+	if view.StoredTitle != "原始表格" {
+		t.Errorf("stored_title = %q", view.StoredTitle)
+	}
+	b, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(b), "一行可以有几个原因"); n != 1 {
+		t.Errorf("note appears %d times", n)
+	}
+	if none := keptOf(t); none.Kept != nil || none.KeptNote != nil {
+		t.Errorf("kept = %v, note = %v with nothing kept", none.Kept, none.KeptNote)
+	}
+}
+
+func TestGreyExplainIsGlossAlone(t *testing.T) {
+	t.Parallel()
+	rows := []store.Candidate{tierPut(1, "ok", "100.00", "5.40")}
+	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(greyVerdict(keyOf(rows, 0), "in_the_money"))}))
+	g := tierByID(view, "grey_in_the_money")
+	if g.Explain != zhGreyGloss_in_the_money || strings.Contains(g.Explain, explainGrey) {
+		t.Errorf("explain = %q", g.Explain)
+	}
+	if !strings.HasPrefix(tierByID(view, "fits").Explain, "满足你的全部条件") {
+		t.Errorf("fits explain = %q", tierByID(view, "fits").Explain)
+	}
+}
+
+func TestKeptLongSetEndsWithEllipsis(t *testing.T) {
+	t.Parallel()
+	var kept []optiontierapi.Kept
+	for _, code := range []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "above_buy_price", "bad_input",
+		"no_open_interest", "low_open_interest", "one_sided_quote", "wide_quote", "stale_quote", "earnings_before_expiry",
+		"cash_short", "delta_above_bound", "delta_unknown"} {
+		kept = append(kept, optiontierapi.Kept{Code: code, N: 1234, Every: true})
+	}
+	line := *keptOf(t, kept...).Kept
+	if n := utf8.RuneCountInString(line); n > 200 {
+		t.Errorf("%d characters", n)
+	}
+	if !strings.HasSuffix(line, "…") {
+		t.Errorf("a cut line does not end with the ellipsis: %s", line)
+	}
+	short := *keptOf(t, kept[:2]...).Kept
+	if strings.HasSuffix(short, "…") {
+		t.Errorf("an uncut line ends with the ellipsis: %s", short)
+	}
+}

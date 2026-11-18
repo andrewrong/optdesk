@@ -47,13 +47,15 @@ type tierView struct {
 }
 
 type tiersView struct {
-	ChainDay  string        `json:"chain_day"`
-	Companies []companyView `json:"companies"`
-	Common    []markView    `json:"common"`
-	Kept      *string       `json:"kept"`
-	Legend    []legendItem  `json:"legend"`
-	Columns   []tierColumn  `json:"columns"`
-	Tiers     []tierView    `json:"tiers"`
+	ChainDay    string        `json:"chain_day"`
+	Companies   []companyView `json:"companies"`
+	Common      []markView    `json:"common"`
+	Kept        *string       `json:"kept"`
+	KeptNote    *string       `json:"kept_note"`
+	Legend      []legendItem  `json:"legend"`
+	Columns     []tierColumn  `json:"columns"`
+	Tiers       []tierView    `json:"tiers"`
+	StoredTitle string        `json:"stored_title"`
 }
 
 // bucket is the rows (keys, in display order) of one tier of the answer.
@@ -108,7 +110,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tie
 	}
 	v := &tiersView{
 		ChainDay: string(gr.day), Companies: companiesOf(res, gr.rows, gr.day), Common: commonOf(res.Common),
-		Kept: keptLine(res.Kept), Columns: columnsOf(string(gr.day)), Tiers: make([]tierView, 0, len(buckets)),
+		Kept: keptLine(res.Kept), StoredTitle: storedTitle, Columns: columnsOf(string(gr.day)), Tiers: make([]tierView, 0, len(buckets)),
 	}
 	var n tierCounts
 	for i, b := range buckets {
@@ -132,6 +134,10 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tie
 		v.Tiers = append(v.Tiers, t)
 	}
 	v.Legend = legendOf(res, f, n)
+	if v.Kept != nil {
+		note := keptNote
+		v.KeptNote = &note
+	}
 	return v, nil
 }
 
@@ -179,7 +185,7 @@ func tierOf(b bucket, res optiontierapi.Result, f tierFacts) tierView {
 		t.Word, t.Icon, t.Title, t.Explain = tierCheckWord, iconAlert, titleCheckTail, explainCheck
 	default:
 		g := greySpecs[b.grey]
-		t.Word, t.Icon, t.Title, t.Explain, t.Collapsed = tierGreyWord, iconMinus, g.titleTail, explainGrey+g.gloss, true
+		t.Word, t.Icon, t.Title, t.Explain, t.Collapsed = tierGreyWord, iconMinus, g.titleTail, g.gloss, true
 	}
 	return t
 }
@@ -234,11 +240,10 @@ func keptLine(kept []optiontierapi.Kept) *string {
 	line := keptHead
 	for i, k := range kept {
 		label := keptLabelOf(k.Code)
-		n := strconv.Itoa(k.N)
+		entry := label + " " + strconv.Itoa(k.N)
 		if k.Every {
-			n = keptEvery
+			entry += keptEvery
 		}
-		entry := label + " " + n
 		if i > 0 {
 			entry = keptSeparator + entry
 		}
@@ -251,13 +256,13 @@ func keptLine(kept []optiontierapi.Kept) *string {
 	return &line
 }
 
-// keptLabelOf is the Chinese word of a grey reason, the English label of a badge.
+// keptLabelOf is the Chinese word of a grey reason or of a look-at badge.
 func keptLabelOf(code string) string {
 	if g, ok := greySpecs[code]; ok {
 		return g.keptLabel
 	}
-	if b, ok := badgeTexts[code]; ok {
-		return b.label
+	if l, ok := keptLabels[code]; ok {
+		return l
 	}
 	return code
 }

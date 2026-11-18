@@ -152,6 +152,8 @@ func premiumPair(v optiontierapi.Verdict) pairView {
 	p := pairView{Main: main}
 	if y, ok := fixedText(v.YieldPct, 1); v.YieldPct != "" && ok {
 		p.Sub = subOf(minusText(y) + yieldSuffix)
+	} else if v.Why["yield"] == whyBelowIntr {
+		p.Sub = subOf(belowIntrinsicText)
 	} else {
 		p.Sub = subOf(whyText(v, "yield", gapNoYield))
 	}
@@ -171,12 +173,14 @@ func greyLine(v optiontierapi.Verdict, c store.Candidate) string {
 	} else {
 		parts = append(parts, lineBEGap+whyText(v, "break_even", gapNoBid))
 	}
-	if v.Grey == "in_the_money" {
-		in, ok1 := moneyText(v.Intrinsic)
-		tv, ok2 := moneyText(v.TimeValue)
-		if ok1 && ok2 {
-			parts = append(parts, lineIntrinsic+in+lineTimeValue+tv)
+	if in, ok := moneyText(v.Intrinsic); ok && (v.Grey == "in_the_money" || v.Why["time_value"] == whyBelowIntr) {
+		part := lineIntrinsic + in
+		if v.Why["time_value"] == whyBelowIntr {
+			part += lineTimeValue + belowIntrinsicText
+		} else if tv, ok := moneyText(v.TimeValue); v.TimeValue != "" && ok {
+			part += lineTimeValue + tv
 		}
+		parts = append(parts, part)
 	}
 	if y, ok := fixedText(v.YieldPct, 1); v.YieldPct != "" && ok {
 		parts = append(parts, lineYield+minusText(y)+yieldSuffix)
