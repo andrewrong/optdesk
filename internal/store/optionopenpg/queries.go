@@ -11,6 +11,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/shared"
 )
 
+var (
+	_ openquote.Stores               = (*store)(nil)
+	_ openquote.OptionOpenSlotReader = (*store)(nil)
+)
+
 // optionOpenQuoteColumns are the quote columns of obs.option_open: a thinner row (one with a NULL where the stored row
 // has a value) never replaces a fuller one of the same rank 2 or 1.
 var optionOpenQuoteColumns = []string{
@@ -77,13 +82,22 @@ const optionOpenCols = `session_day, capture_id, slot, instrument_id, underlying
 
 // selectOptionOpenSQL reads the view: the newest row of each instrument of one day (greatest received_at, ties by
 // slot and capture id). Argument: session_day.
-const selectOptionOpenSQL = `SELECT DISTINCT ON (instrument_id) session_day, capture_id::text, slot, instrument_id, ` +
+const selectOptionOpenSQL = `SELECT DISTINCT ON (instrument_id) ` + optionOpenViewCols +
+	` FROM rd.option_open_r1 WHERE session_day = $1 ` +
+	`ORDER BY instrument_id, received_at DESC, slot DESC, capture_id DESC`
+
+// selectOptionOpenSlotSQL reads the view for one slot: the newest row of each given instrument (ordered as
+// selectOptionOpenSQL does). Arguments: session_day, slot, instrument ids.
+const selectOptionOpenSlotSQL = `SELECT DISTINCT ON (instrument_id) ` + optionOpenViewCols +
+	` FROM rd.option_open_r1 WHERE session_day = $1 AND slot = $2 AND instrument_id = ANY($3) ` +
+	`ORDER BY instrument_id, received_at DESC, capture_id DESC`
+
+// optionOpenViewCols are the columns of rd.option_open_r1 in the order scanOptionOpen reads them.
+const optionOpenViewCols = `session_day, capture_id::text, slot, instrument_id, ` +
 	`underlying_id, plan_id::text, generation, market_data_type, requested_at, sent_at, received_at, event_ts, ` +
 	`connection_generation, status, error_code, skew, outside_band, currency, bid, ask, bid_size, ask_size, last, ` +
 	`volume, underlying_price, underlying_ccy, underlying_event_ts, iv_bid_decimal, iv_mid_decimal, iv_ask_decimal, ` +
-	`iv_decimal, delta, gamma, theta_per_calendar_day, vega_per_vol_point ` +
-	`FROM rd.option_open_r1 WHERE session_day = $1 ` +
-	`ORDER BY instrument_id, received_at DESC, slot DESC, capture_id DESC`
+	`iv_decimal, delta, gamma, theta_per_calendar_day, vega_per_vol_point`
 
 // InsertOptionOpen upserts the rows in one transaction, guarded as optionOpenGuard says, and then writes
 // obs.option_day for each row of status 1 or 2 in the same transaction; see openquote.OptionOpenWriter.
@@ -132,8 +146,30 @@ func (s *store) OptionOpen(ctx context.Context, day contracts.Day) ([]contracts.
 	if err != nil {
 		return nil, err
 	}
+	return s.selectOptionOpen(ctx, "select option_open", selectOptionOpenSQL, []any{d})
+}
+
+// OptionOpenSlot returns the newest row of each given instrument stored for the day and the slot; see
+// openquote.OptionOpenSlotReader.
+func (s *store) OptionOpenSlot(ctx context.Context, day contracts.Day, slot string, instrumentIDs []int64) ([]contracts.OptionOpen, error) {
+	if slot == openquote.SlotRefresh {
+		return nil, permanent(fmt.Errorf("optionopenpg: a row of slot %q is not stored", openquote.SlotRefresh))
+	}
+	if len(instrumentIDs) == 0 {
+		return []contracts.OptionOpen{}, nil
+	}
+	d, err := parseDay(day)
+	if err != nil {
+		return nil, err
+	}
+	return s.selectOptionOpen(ctx, "select option_open slot", selectOptionOpenSlotSQL,
+		[]any{d, slot, append([]int64{}, instrumentIDs...)})
+}
+
+// selectOptionOpen runs a statement that selects optionOpenViewCols and returns its rows, instants in UTC.
+func (s *store) selectOptionOpen(ctx context.Context, what, sql string, args []any) ([]contracts.OptionOpen, error) {
 	out := []contracts.OptionOpen{}
-	err = s.selectRows(ctx, "select option_open", selectOptionOpenSQL, []any{d}, func(sc scanner) error {
+	err := s.selectRows(ctx, what, sql, args, func(sc scanner) error {
 		var r contracts.OptionOpen
 		var sd time.Time
 		if err := sc.Scan(&sd, &r.CaptureID, &r.Slot, &r.InstrumentID, &r.UnderlyingID, &r.PlanID, &r.Generation,
