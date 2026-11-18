@@ -7,9 +7,12 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
+	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
 // ATMFunc returns the implied volatility and the strike of the at-the-money put of one expiry of one
@@ -26,6 +29,11 @@ type Config struct {
 	Evidence              optionevidenceapi.Evaluator // nil gives the gap no_reader
 	ATMFor                ATMFunc                     // nil gives the gap no_reader
 	Readings              store.ReadingViewReader     // nil gives the gap no_reader
+	Tiers                 optiontierapi.Tierer        // judges the short-put rows into tiers; nil gives the gap no_reader
+	Account               store.AccountReader         // the cash and positions of each alias; nil gives the gap no_reader
+	Aliases               []string                    // the account aliases whose cash is read; nil gives the gap no_reader
+	Owner                 ownerset.Reader             // the stored rule parameters; nil gives the default 0.3
+	RuleParams            settingsapi.RuleParams      // resolves the stored parameters; nil gives the default 0.3
 }
 
 // NewPage is the option_candidates_page page for c.
