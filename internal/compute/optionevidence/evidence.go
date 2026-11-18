@@ -77,6 +77,7 @@ func (e *evaluator) Evaluate(r optionevidenceapi.Row) (optionevidenceapi.Evidenc
 	e.move(&ev, r, spot, breakEven)
 	e.edge(&ev, r, spot, strike, bid)
 	skew(&ev, r)
+	fillPercents(&ev, r)
 	ev.Labels = e.labels(r, ev)
 	return ev, nil
 }

@@ -1,0 +1,12 @@
+{
+  "chain": [
+    {"Expiry": "2026-12-18", "Right": "P", "Strike": "90", "IV": "0.312", "Source": "option_eod"},
+    {"Expiry": "2026-12-18", "Right": "P", "Strike": "95", "IV": "0.294", "Source": "option_eod"},
+    {"Expiry": "2026-12-18", "Right": "P", "Strike": "100", "IV": "0.281", "Source": "option_eod"},
+    {"Expiry": "2026-12-18", "Right": "C", "Strike": "96.5", "IV": "0.270", "Source": "option_eod"},
+    {"Expiry": "2026-12-18", "Right": "P", "Strike": "96", "IV": "0.290", "Source": "option_open"},
+    {"Expiry": "2027-01-15", "Right": "P", "Strike": "96.5", "IV": "0.260", "Source": "option_eod"},
+    {"Expiry": "2026-12-18", "Right": "P", "Strike": "97", "IV": "", "Source": "option_eod"},
+    {"Expiry": "2026-12-18", "Right": "P", "Strike": "96", "IV": "0", "Source": "option_eod"}
+  ]
+}
