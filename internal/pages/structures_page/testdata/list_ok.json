@@ -42,7 +42,7 @@
      "Gap": ""
     },
     "ExpiryDistance": {
-     "Value": "-0.091200",
+     "Value": "0.091200",
      "Gap": ""
     },
     "CloseCost": {
@@ -124,7 +124,7 @@
      "Gap": ""
     },
     "ExpiryDistance": {
-     "Value": "-0.050000",
+     "Value": "0.050000",
      "Gap": ""
     },
     "CloseCost": {

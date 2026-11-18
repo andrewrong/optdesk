@@ -18,6 +18,8 @@ type Config struct {
 	Main                  string         // the alias of the main account
 	Aliases               []string       // the aliases to show, in order
 	Account               store.AccountReader
+	Sessions              store.SessionDayReader   // nil gives the comparison dataDay < buildDay
+	CalendarID            string                   // empty means XNYS
 	Candidates            store.CandidateReader    // nil gives the gap no_reader
 	Earnings              store.EarningsDateReader // nil gives the gap no_reader
 	Rule                  compute.OptionNotices    // nil is an error of Build
