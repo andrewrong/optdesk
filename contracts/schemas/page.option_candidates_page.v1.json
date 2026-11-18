@@ -127,6 +127,17 @@
     },
     "stale_after": {
       "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "short_put_tiers": {
+      "description": "The tier view of the stored short puts, or null. Additive and optional; every figure is text.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TierView"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "$defs": {
@@ -482,6 +493,451 @@
         },
         "text": {
           "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "TierView": {
+      "description": "The short puts sorted into tiers, from docs/design/candidates-tiers.md#Interface.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chain_day",
+        "companies",
+        "common",
+        "kept",
+        "legend",
+        "columns",
+        "tiers"
+      ],
+      "properties": {
+        "chain_day": {
+          "$ref": "#/$defs/Text"
+        },
+        "companies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Company"
+          }
+        },
+        "common": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mark"
+          }
+        },
+        "kept": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "legend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LegendItem"
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TierColumn"
+          }
+        },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tier"
+          }
+        }
+      }
+    },
+    "Company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "ticker",
+        "spot",
+        "spot_day",
+        "buy_price",
+        "buy_price_note",
+        "next_earnings",
+        "counts"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/Text"
+        },
+        "ticker": {
+          "$ref": "#/$defs/Text"
+        },
+        "spot": {
+          "$ref": "#/$defs/Text"
+        },
+        "spot_day": {
+          "$ref": "#/$defs/Text"
+        },
+        "buy_price": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "buy_price_note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_earnings": {
+          "$ref": "#/$defs/Text"
+        },
+        "counts": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Mark": {
+      "description": "An info mark said once above the table.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "gloss"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "gloss": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "LegendItem": {
+      "description": "One line of the legend; text is Chinese with the current values.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier",
+        "title",
+        "text"
+      ],
+      "properties": {
+        "tier": {
+          "$ref": "#/$defs/Text"
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "TierColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "hint"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Tier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "word",
+        "icon",
+        "title",
+        "explain",
+        "collapsed",
+        "rows"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "fits",
+            "check",
+            "grey_no_buy_price",
+            "grey_no_spot",
+            "grey_in_the_money",
+            "grey_no_bid",
+            "grey_above_buy_price",
+            "grey_bad_input"
+          ]
+        },
+        "word": {
+          "$ref": "#/$defs/Text"
+        },
+        "icon": {
+          "type": "string",
+          "enum": [
+            "check",
+            "alert",
+            "minus"
+          ]
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "explain": {
+          "$ref": "#/$defs/Text"
+        },
+        "collapsed": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TierRow"
+          }
+        }
+      }
+    },
+    "TierRow": {
+      "description": "line is the one-line text of a grey row.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "company",
+        "contract",
+        "margin",
+        "below_spot",
+        "premium",
+        "badges",
+        "notes",
+        "fields",
+        "line"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Text"
+        },
+        "company": {
+          "$ref": "#/$defs/Text"
+        },
+        "contract": {
+          "$ref": "#/$defs/Contract"
+        },
+        "margin": {
+          "$ref": "#/$defs/Pair"
+        },
+        "below_spot": {
+          "$ref": "#/$defs/Pair"
+        },
+        "premium": {
+          "$ref": "#/$defs/Pair"
+        },
+        "badges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Badge"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Badge"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Field"
+          }
+        },
+        "line": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "strike",
+        "expiry",
+        "dte"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Text"
+        },
+        "strike": {
+          "$ref": "#/$defs/Text"
+        },
+        "expiry": {
+          "$ref": "#/$defs/Text"
+        },
+        "dte": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Pair": {
+      "description": "A Pair with a gap has the gap text in main and sub null.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "main",
+        "sub",
+        "gap"
+      ],
+      "properties": {
+        "main": {
+          "$ref": "#/$defs/Text"
+        },
+        "sub": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gap": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Badge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "gloss",
+        "tone"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "gloss": {
+          "$ref": "#/$defs/Text"
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "info",
+            "none"
+          ]
+        }
+      }
+    },
+    "Field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "hint",
+        "value",
+        "gap",
+        "badges"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gap": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "badges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Badge"
+          }
         }
       }
     }

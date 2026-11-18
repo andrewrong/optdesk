@@ -124,6 +124,10 @@ export interface OptionCandidatesPage {
    */
   groups: [Group] | [Group, Group] | [Group, Group, Group];
   stale_after?: Timestamp;
+  /**
+   * The tier view of the stored short puts, or null. Additive and optional; every figure is text.
+   */
+  short_put_tiers?: TierView | null;
 }
 /**
  * The data time of one source behind the card.
@@ -209,4 +213,107 @@ export interface Counts {
   ok: number;
   blocked: number;
   unknown: number;
+}
+/**
+ * The short puts sorted into tiers, from docs/design/candidates-tiers.md#Interface.
+ */
+export interface TierView {
+  chain_day: Text1;
+  companies: Company[];
+  common: Mark[];
+  kept: Text1 | null;
+  legend: LegendItem[];
+  columns: TierColumn[];
+  tiers: Tier[];
+}
+export interface Company {
+  key: Text1;
+  ticker: Text1;
+  spot: Text1;
+  spot_day: Text1;
+  buy_price: Text1 | null;
+  buy_price_note: Text1 | null;
+  next_earnings: Text1;
+  counts: Text1;
+}
+/**
+ * An info mark said once above the table.
+ */
+export interface Mark {
+  code: Text1;
+  label: Text1;
+  gloss: Text1;
+}
+/**
+ * One line of the legend; text is Chinese with the current values.
+ */
+export interface LegendItem {
+  tier: Text1;
+  title: Text1;
+  text: Text1;
+}
+export interface TierColumn {
+  id: Text1;
+  label: Text1;
+  hint: Text1 | null;
+}
+export interface Tier {
+  id:
+    | "fits"
+    | "check"
+    | "grey_no_buy_price"
+    | "grey_no_spot"
+    | "grey_in_the_money"
+    | "grey_no_bid"
+    | "grey_above_buy_price"
+    | "grey_bad_input";
+  word: Text1;
+  icon: "check" | "alert" | "minus";
+  title: Text1;
+  explain: Text1;
+  collapsed: boolean;
+  rows: TierRow[];
+}
+/**
+ * line is the one-line text of a grey row.
+ */
+export interface TierRow {
+  id: Text1;
+  company: Text1;
+  contract: Contract;
+  margin: Pair;
+  below_spot: Pair;
+  premium: Pair;
+  badges: Badge[];
+  notes: Badge[];
+  fields: Field[];
+  line: Text1 | null;
+}
+export interface Contract {
+  name: Text1;
+  strike: Text1;
+  expiry: Text1;
+  dte: Text1;
+}
+/**
+ * A Pair with a gap has the gap text in main and sub null.
+ */
+export interface Pair {
+  main: Text1;
+  sub: Text1 | null;
+  gap: Gap | null;
+}
+export interface Badge {
+  code: Text1;
+  label: Text1;
+  gloss: Text1;
+  tone: "warn" | "info" | "none";
+}
+export interface Field {
+  id: Text1;
+  label: Text1;
+  hint: Text1 | null;
+  value: Text1 | null;
+  gap: Gap | null;
+  badges: Badge[];
 }
