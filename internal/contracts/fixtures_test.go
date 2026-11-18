@@ -15,6 +15,7 @@ const fixturesDir = "../../web/fixtures"
 // fixtureSchema maps a directory of web/fixtures to its schema file.
 var fixtureSchema = map[string]string{
 	"advice-page":            "page.advice_page.v1.json",
+	"base-data-page":         "page.base_data_page.v1.json",
 	"companies-page":         "page.companies_page.v1.json",
 	"full-scan":              "page.full_scan.v1.json",
 	"held-companies-summary": "page.held_companies_summary.v1.json",
@@ -103,7 +104,7 @@ func validateFixture(t *testing.T, s *jsonschema.Schema, path string) error {
 
 // resolvesByID reports whether the schema refs others by $id, which only compilePageV2 resolves.
 func resolvesByID(schemaFile string) bool {
-	return strings.HasSuffix(schemaFile, ".v2.json") || strings.HasSuffix(schemaFile, ".v3.json")
+	return schemaFile == baseDataPageV1 || strings.HasSuffix(schemaFile, ".v2.json") || strings.HasSuffix(schemaFile, ".v3.json")
 }
 
 func TestFixturesValidate(t *testing.T) {
