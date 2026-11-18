@@ -1,0 +1,24 @@
+{
+  "schema": "base_data_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-18T09:30:00Z",
+  "as_of": "2026-11-18",
+  "last_sessions": {"XNYS": "2026-11-17", "XTKS": "2026-11-18"},
+  "top": {
+    "level": "unknown",
+    "text_zh": "基础数据暂时无法读取。",
+    "counts": {"pass": 0, "warn": 0, "fail": 0, "unknown": 12}
+  },
+  "groups": [],
+  "glossary": [],
+  "derived_note": "",
+  "repair_path": "/data-health",
+  "gaps": [
+    {
+      "kind": "gap",
+      "reason": "facts_unavailable",
+      "text": "All four fact views failed to read."
+    }
+  ]
+}
