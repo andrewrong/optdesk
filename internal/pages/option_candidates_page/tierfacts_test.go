@@ -139,3 +139,21 @@ func TestRowWithBadGatesIsMarkedUnreadable(t *testing.T) {
 		t.Fatalf("row %+v", row)
 	}
 }
+
+// TestReaderErrorReturned: a reader error of the cash or the owner settings is an error of Build, not a
+// page without tiers.
+func TestReaderErrorReturned(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	for name, mod := range map[string]func(*Config){
+		"account": func(c *Config) { c.Account, c.Aliases = &fakeAccount{err: boom}, []string{"A"} },
+		"owner":   func(c *Config) { c.Owner, c.RuleParams = fakeOwner{err: boom}, fakeRules{} },
+	} {
+		rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+		c := tierConfig(rows, &fakeTierer{res: resultOf(fitsVerdict(keyOf(rows, 0)))})
+		mod(&c)
+		if _, err := Build(context.Background(), c, nil, buildDay, testNow); !errors.Is(err, boom) {
+			t.Errorf("%s: Build err = %v", name, err)
+		}
+	}
+}
