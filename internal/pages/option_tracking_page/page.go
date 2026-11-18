@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 )
@@ -25,6 +26,7 @@ type Config struct {
 	Catalog               store.OptionEodCatalog
 	Names                 store.InstrumentNameReader
 	Terms                 store.OptionTermsReader
+	Bars                  bar.PriceBarReader // nil gives no bars: the close then comes from the option_eod prints
 	Sessions              store.SessionDayReader
 	Tracker               trackapi.OptionTracker // nil is an error of Build
 	Replay                compute.OptionLedger   // nil is an error of Build

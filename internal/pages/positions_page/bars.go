@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -85,7 +86,7 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 			}
 			continue
 		}
-		last, prev, ok := barPrice(cs, p.Currency)
+		last, prev, ok := barPrice(cs, capDay, p.Currency)
 		if !ok {
 			continue
 		}
@@ -133,17 +134,26 @@ func prevOfMark(cs []dayClose, capDay, currency string) (string, bool) {
 	return "", false
 }
 
-// barPrice is the newest bar as the price, when it is in currency, and the close of the bar before it ("" when
-// there is none or it is in another currency).
-func barPrice(cs []dayClose, currency string) (last dayClose, prev string, ok bool) {
-	n := len(cs)
-	if n == 0 || cs[n-1].currency != currency {
+// barPrice is the bar shared.Pick takes from cs (no prints, the look-back of the bars read) as the price,
+// when it is in currency, and the close of the bar before it ("" when there is none or it is in another
+// currency).
+func barPrice(cs []dayClose, capDay, currency string) (last dayClose, prev string, ok bool) {
+	var src shared.Source
+	for _, c := range cs {
+		src.Bars = append(src.Bars, shared.Bar{Day: contracts.Day(c.day), Close: c.close})
+	}
+	picked, found := shared.Pick(src, contracts.Day(capDay))
+	if !found {
 		return dayClose{}, "", false
 	}
-	if n > 1 && cs[n-2].currency == currency {
-		prev = cs[n-2].close
+	i := slices.IndexFunc(cs, func(c dayClose) bool { return c.day == string(picked.Day) && c.close == picked.Price })
+	if i < 0 || cs[i].currency != currency {
+		return dayClose{}, "", false
 	}
-	return cs[n-1], prev, true
+	if i > 0 && cs[i-1].currency == currency {
+		prev = cs[i-1].close
+	}
+	return cs[i], prev, true
 }
 
 // fallbackNote is the one line of the account that names the bar-priced symbols, at most noteSymbols and a

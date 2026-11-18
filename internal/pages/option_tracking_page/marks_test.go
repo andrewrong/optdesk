@@ -33,7 +33,7 @@ func marksRig(contract, status string, rows ...mark.PositionMark) Config {
 func TestMarkWithBidAskBecomesQuoteAndRowIsOk(t *testing.T) {
 	t.Parallel()
 	c := marksRig("123", "open", mark.PositionMark{ConID: 123, SessionDay: "2026-11-10", Price: "1.5", Basis: mark.BasisMid, Bid: "1.4", Ask: "1.6"})
-	in, _, err := gather(context.Background(), c, "main", buildDay)
+	in, _, _, err := gather(context.Background(), c, "main", buildDay)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestMarkWithBidAskBecomesQuoteAndRowIsOk(t *testing.T) {
 func TestMarkWithPriceOnlyGivesBidAskEqualPrice(t *testing.T) {
 	t.Parallel()
 	c := marksRig("123", "open", mark.PositionMark{ConID: 123, SessionDay: "2026-11-10", Price: "2.25", Basis: mark.BasisLast})
-	in, _, err := gather(context.Background(), c, "main", buildDay)
+	in, _, _, err := gather(context.Background(), c, "main", buildDay)
 	if err != nil || len(in.Quotes) != 1 || in.Quotes[0].Bid != "2.25" || in.Quotes[0].Ask != "2.25" {
 		t.Fatalf("err = %v quotes = %+v", err, in.Quotes)
 	}
@@ -59,7 +59,7 @@ func TestMarkWithPriceOnlyGivesBidAskEqualPrice(t *testing.T) {
 func TestMarkBasisNoneGivesNoQuoteAndNoMark(t *testing.T) {
 	t.Parallel()
 	c := marksRig("123", "open", mark.PositionMark{ConID: 123, SessionDay: "2026-11-10", Basis: mark.BasisNone})
-	in, _, err := gather(context.Background(), c, "main", buildDay)
+	in, _, _, err := gather(context.Background(), c, "main", buildDay)
 	if err != nil || len(in.Quotes) != 0 {
 		t.Fatalf("err = %v quotes = %+v", err, in.Quotes)
 	}
@@ -76,7 +76,7 @@ func TestMarkNotMatchedToCompositeOrClosedPosition(t *testing.T) {
 		"composite": marksRig("AAPL:2026-12-18:150:P", "open", row),
 		"closed":    marksRig("123", "closed", row),
 	} {
-		in, _, err := gather(context.Background(), c, "main", buildDay)
+		in, _, _, err := gather(context.Background(), c, "main", buildDay)
 		if err != nil || len(in.Quotes) != 0 {
 			t.Fatalf("%s: err = %v quotes = %+v", name, err, in.Quotes)
 		}
@@ -87,13 +87,13 @@ func TestNilMarksKeepsInputAndMarksReadWithoutEodReaders(t *testing.T) {
 	t.Parallel()
 	c := marksRig("123", "open", mark.PositionMark{ConID: 123, SessionDay: "2026-11-10", Price: "1", Basis: mark.BasisLast})
 	c.Marks = nil
-	in, _, err := gather(context.Background(), c, "main", buildDay)
+	in, _, _, err := gather(context.Background(), c, "main", buildDay)
 	if err != nil || len(in.Quotes) != 0 {
 		t.Fatalf("err = %v quotes = %+v", err, in.Quotes)
 	}
 	c = marksRig("123", "open", mark.PositionMark{ConID: 123, SessionDay: "2026-11-10", Price: "1", Basis: mark.BasisLast})
 	c.Eod = nil
-	in, gs, err := gather(context.Background(), c, "main", buildDay)
+	in, _, gs, err := gather(context.Background(), c, "main", buildDay)
 	if err != nil || len(in.Quotes) != 1 || len(gs) != 1 || gs[0] != gapNoEodReaders {
 		t.Fatalf("err = %v quotes = %+v gaps = %v", err, in.Quotes, gs)
 	}
@@ -103,7 +103,7 @@ func TestMarksReaderErrorIsReturned(t *testing.T) {
 	t.Parallel()
 	c := marksRig("123", "open")
 	c.Marks = fakeMarks{err: errors.New("boom")}
-	if _, _, err := gather(context.Background(), c, "main", buildDay); err == nil {
+	if _, _, _, err := gather(context.Background(), c, "main", buildDay); err == nil {
 		t.Fatal("want error")
 	}
 }

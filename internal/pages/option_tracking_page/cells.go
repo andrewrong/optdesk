@@ -10,6 +10,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 )
 
 var numberPattern = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
@@ -285,15 +286,29 @@ func eventGap(o trackapi.TrackedOption) (gap, bool) {
 	return codeGap(o.EventStatus), true
 }
 
-// spotCell is the stock close with the day of the figure beside it as a badge; a row with no
-// MarkDay shows the price alone.
-func spotCell(o opt) any {
-	v := moneyHalfUp(o.Spot, o.Currency, markCode(o))
-	if c, ok := v.(valueCell); ok && o.MarkDay != "" {
-		c.Badges = append(c.Badges, string(o.MarkDay))
+// spotCell is the stock close with the source and day of the picked close beside it as a badge,
+// "close <day>" for a bar and "last print <day>" for an option_eod print. A row with no close is
+// the gap of the missing close; a close of no known underlying shows the price alone.
+func spotCell(o opt, closes map[string]shared.Close) any {
+	v := moneyHalfUp(o.Spot, o.Currency, closeCode(o))
+	cl, picked := closes[o.Underlying]
+	if c, ok := v.(valueCell); ok && picked && cl.Day != "" {
+		label := badgePrint
+		if cl.Via == "bar" {
+			label = badgeClose
+		}
+		c.Badges = append(c.Badges, label+" "+string(cl.Day))
 		return c
 	}
 	return v
+}
+
+// closeCode is the cause of an empty figure that depends on the stock close: no close, else the mark.
+func closeCode(o trackapi.TrackedOption) string {
+	if o.Spot == "" {
+		return codeNoClose
+	}
+	return markCode(o)
 }
 
 // resultsCell is the next earnings date; a date before asOf (the page day) has passed and shows

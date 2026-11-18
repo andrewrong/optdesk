@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 // Config is what the structures pages need besides the series reader. A nil reader is the gap no_reader; a nil
@@ -24,6 +25,7 @@ type Config struct {
 	Terms          store.OptionTermsReader
 	Catalog        store.OptionEodCatalog     // with Names finds the underlying of a held option; nil with Names nil: the STOCK rows of the capture
 	Names          store.InstrumentNameReader // the name of an instrument is the symbol of the option
+	Bars           bar.PriceBarReader         // nil gives no bars: the close then comes from the option_eod prints
 	Ledgers        compute.NewOptionLedgerFunc
 	Structures     compute.NewOptionStructuresFunc
 }

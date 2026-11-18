@@ -5,6 +5,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 )
 
 // netPremiumHint explains the closed table's premium column.
@@ -45,15 +46,16 @@ func (d colDef[T]) hinted(h string) colDef[T] {
 
 type opt = trackapi.TrackedOption
 
-// openColumns is the open table; asOf is the page day, which the earnings cell compares with.
-func openColumns(asOf contracts.Day) []colDef[opt] {
+// openColumns is the open table; asOf is the page day, which the earnings cell compares with, and
+// closes is the picked close of each underlying, which the stock close cell names.
+func openColumns(asOf contracts.Day, closes map[string]shared.Close) []colDef[opt] {
 	return []colDef[opt]{
 		col("company", "Company", "left", company),
 		col("contract", "Contract", "left", openContract),
 		col("qty", "Quantity", "right", qty),
 		col("dte", "DTE", "right", dteCell),
-		col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent distance from the strike, positive is out of the money"),
-		col("spot", "Stock close", "right", spotCell),
+		col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent of the closing price, positive is out of the money"),
+		col("spot", "Stock close", "right", func(o opt) any { return spotCell(o, closes) }),
 		col("mid", "Mid price", "right", func(o opt) any { return moneyHalfUp(o.Mid, o.Currency, markCode(o)) }).hinted(markNote),
 		col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
 		col("kept", "Kept", "right", func(o opt) any { return moneyHalfUp(o.Kept, o.Currency, markCode(o)) }),
@@ -126,8 +128,8 @@ func chkID(r trackapi.TrackRecon) string {
 	return "chk-" + safeID(strings.Join([]string{r.Code, r.Underlying, string(r.Expiry), r.Strike, r.Right}, idSep))
 }
 
-func openTable(rows []opt, asOf contracts.Day) *table {
-	return makeTable(openColumns(asOf), rows, posID)
+func openTable(rows []opt, asOf contracts.Day, closes map[string]shared.Close) *table {
+	return makeTable(openColumns(asOf, closes), rows, posID)
 }
 func recentTable(rows []opt) *table                { return makeTable(recentColumns, rows, posID) }
 func reconTable(rows []trackapi.TrackRecon) *table { return makeTable(reconColumns, rows, chkID) }
@@ -138,10 +140,10 @@ func accountTitle(alias string) string { return labelAccount + alias + labelClos
 // formatAccount turns the tracker result of one alias into an Account. stale is true when an
 // open row has no fresh mark. A table with no rows is null, except the check table of an
 // account that was captured, where no row means nothing differs.
-func formatAccount(alias string, res trackapi.TrackResult, heldKnown bool, asOf contracts.Day) (a account, stale bool) {
+func formatAccount(alias string, res trackapi.TrackResult, heldKnown bool, asOf contracts.Day, closes map[string]shared.Close) (a account, stale bool) {
 	a = account{Alias: alias, Title: accountTitle(alias), LongLegsLeftOut: res.LongLegsLeftOut}
 	if len(res.Open) > 0 {
-		a.Open = openTable(res.Open, asOf)
+		a.Open = openTable(res.Open, asOf, closes)
 	} else {
 		a.Title += titleSep + noOpenText
 	}
