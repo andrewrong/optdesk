@@ -65,6 +65,10 @@ const (
 	textNotInSnapshot = "%d short put(s) in the option ledger are not in the position snapshot: %s"
 	textLedgerBoth    = "%d short put(s) in stored positions are not in the option ledger yet: %s; %d in the option ledger are not in the position snapshot: %s"
 
+	noteNotInSnapshot = "not in the position snapshot"
+	noteNotInLedger   = "%d short put(s) not in the option ledger yet: %s"
+	noteStressSteps   = "steps at -10%, -20% and -30% need underlying prices: no data yet"
+
 	nameMonthStart = "Month start"
 	nameMonthEnd   = "Month end"
 	whoseMain      = "Me"

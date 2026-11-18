@@ -267,7 +267,7 @@ func TestMarkBlocksAreMissingQuoteGaps(t *testing.T) {
 	if g := gapOf(t, m, "movers"); g["text"] != "The change today needs prices of two trading days: no data yet" {
 		t.Fatalf("movers gap = %v", g)
 	}
-	if g := gapOf(t, m, "stress"); g["reason"] != "missing_quote" {
+	if g := m["stress"].(map[string]any)["gap"]; g != nil {
 		t.Fatalf("stress gap = %v", g)
 	}
 	rows := m["stress"].(map[string]any)["rows"].([]any)
@@ -277,7 +277,7 @@ func TestMarkBlocksAreMissingQuoteGaps(t *testing.T) {
 	if u := rows[0].(map[string]any)["amount"].(map[string]any)["unit"]; u != "usd_signed" {
 		t.Fatalf("negative cash unit = %v", u)
 	}
-	for _, blk := range []string{"overview", "cash_after", "obligations", "income"} {
+	for _, blk := range []string{"overview", "cash_after", "obligations", "income", "stress"} {
 		if m[blk].(map[string]any)["gap"] != nil {
 			t.Fatalf("%s has a gap", blk)
 		}
@@ -427,24 +427,39 @@ func shortPut(sym, strike string) store.Position {
 		Strike: strike, Expiry: "2026-11-12"}
 }
 
-func ledgerBlocks(t *testing.T, m map[string]any, wantGap bool) {
+// ledgerBlocks checks the three put blocks never carry a block gap; with wantNote the single income
+// and cash after rows name the stored puts missing from the ledger and the page gaps list the line.
+func ledgerBlocks(t *testing.T, m map[string]any, wantNote bool) {
 	t.Helper()
 	for _, blk := range []string{"obligations", "income", "cash_after"} {
-		g, _ := m[blk].(map[string]any)["gap"].(map[string]any)
-		if !wantGap {
-			if g != nil {
-				t.Fatalf("%s has a gap: %v", blk, g)
-			}
-			continue
-		}
-		if g == nil || g["reason"] != "no_data" {
-			t.Fatalf("%s gap = %v", blk, g)
-		}
-		text, _ := g["text"].(string)
-		if !strings.Contains(text, "7974") || !strings.Contains(text, "option ledger") {
-			t.Fatalf("%s gap text = %q", blk, text)
+		if g := m[blk].(map[string]any)["gap"]; g != nil {
+			t.Fatalf("%s has a block gap: %v", blk, g)
 		}
 	}
+	for _, blk := range []string{"income", "cash_after"} {
+		rows := m[blk].(map[string]any)["rows"].([]any)
+		note, _ := rows[0].(map[string]any)["note"].(string)
+		if wantNote != (strings.Contains(note, "7974") && strings.Contains(note, "not in the option ledger yet")) {
+			t.Fatalf("%s row note = %q, wantNote %v", blk, note, wantNote)
+		}
+	}
+	if wantNote && !hasGapLine(m, "option ledger") {
+		t.Fatalf("page gaps = %v", m["gaps"])
+	}
+}
+
+func hasGapLine(m map[string]any, sub string) bool {
+	for _, g := range m["gaps"].([]any) {
+		if strings.Contains(g.(map[string]any)["text"].(string), sub) {
+			return true
+		}
+	}
+	return false
+}
+
+func rowNote(row any) string {
+	n, _ := row.(map[string]any)["note"].(string)
+	return n
 }
 
 func TestStoredShortPutMissingFromLedgerIsGap(t *testing.T) {
@@ -496,7 +511,13 @@ func TestManyMissingShortPutsNameFiveAndFit(t *testing.T) {
 	c := config(acc, &got)
 	c.Ledgers = func() compute.OptionLedger { return emptyReplayer{} }
 	m, b := build(t, c, "main")
-	text := gapOf(t, m, "obligations")["text"].(string)
+	for _, blk := range []string{"income", "cash_after"} {
+		note := rowNote(m[blk].(map[string]any)["rows"].([]any)[0])
+		if n := strings.Count(note, "7974"); n > 5 || n == 0 || len([]rune(note)) > 200 || !strings.HasPrefix(note, "7 short put(s)") {
+			t.Fatalf("%s note (%d) = %q", blk, len([]rune(note)), note)
+		}
+	}
+	text := m["gaps"].([]any)[len(m["gaps"].([]any))-1].(map[string]any)["text"].(string)
 	if n := strings.Count(text, "7974"); n > 5 || n == 0 || len([]rune(text)) > 200 || !strings.HasPrefix(text, "7 short put(s)") {
 		t.Fatalf("gap text (%d) = %q", len([]rune(text)), text)
 	}
@@ -533,7 +554,12 @@ func TestOnlyUnmatchedStoredPutsAreCountedAndNamed(t *testing.T) {
 	c := config(acc, &got)
 	c.Ledgers = func() compute.OptionLedger { return ledgerOf{"7974", "7250", "20261112"} }
 	m, _ := build(t, c, "main")
-	text := gapOf(t, m, "obligations")["text"].(string)
+	var text string
+	for _, g := range m["gaps"].([]any) {
+		if x := g.(map[string]any)["text"].(string); strings.Contains(x, "option ledger") {
+			text = x
+		}
+	}
 	if !strings.HasPrefix(text, "1 short put(s)") || !strings.Contains(text, "P7000") || strings.Contains(text, "P7250") {
 		t.Fatalf("gap text = %q", text)
 	}
@@ -721,16 +747,17 @@ func TestLedgerPutNotInSnapshotIsFlagged(t *testing.T) {
 	c := config(acc, &got)
 	c.Ledgers = nvda
 	m, b := build(t, c, "main")
-	if rows := m["obligations"].(map[string]any)["rows"].([]any); len(rows) != 1 {
-		t.Fatalf("obligations rows = %v, want the row kept beside the gap", rows)
+	rows := m["obligations"].(map[string]any)["rows"].([]any)
+	if len(rows) != 1 || rowNote(rows[0]) != "premium JPY 10.00; not in the position snapshot" && rowNote(rows[0]) != "not in the position snapshot" {
+		t.Fatalf("obligations rows = %v, want the row kept with its note", rows)
 	}
 	for _, blk := range []string{"obligations", "income", "cash_after"} {
-		g := gapOf(t, m, blk)
-		text, _ := g["text"].(string)
-		if g["reason"] != "no_data" || !strings.Contains(text, "NVDA") || !strings.Contains(text, "185") ||
-			!strings.Contains(text, "position snapshot") {
-			t.Fatalf("%s gap = %v", blk, g)
+		if g := m[blk].(map[string]any)["gap"]; g != nil {
+			t.Fatalf("%s has a block gap: %v", blk, g)
 		}
+	}
+	if !hasGapLine(m, "NVDA") || !hasGapLine(m, "position snapshot") || m["run_status"] != "partial" {
+		t.Fatalf("gaps = %v, status %v", m["gaps"], m["run_status"])
 	}
 	validate(t, b)
 
@@ -749,9 +776,20 @@ func TestBothDirectionsShareOneGapText(t *testing.T) {
 	acc.stored = []store.Position{shortPut("7974", "7250")}
 	var got blockapi.HouseholdInput
 	m, b := build(t, config(acc, &got), "main") // the default ledger holds AAA 50
-	text := gapOf(t, m, "obligations")["text"].(string)
-	if !strings.Contains(text, "7974") || !strings.Contains(text, "AAA") || len([]rune(text)) > 170 {
+	var text string
+	for _, g := range m["gaps"].([]any) {
+		if x := g.(map[string]any)["text"].(string); strings.Contains(x, "7974") {
+			text = x
+		}
+	}
+	if !strings.Contains(text, "AAA") || len([]rune(text)) > 170 {
 		t.Fatalf("gap text = %q", text)
+	}
+	if n := rowNote(m["obligations"].(map[string]any)["rows"].([]any)[0]); !strings.Contains(n, "not in the position snapshot") {
+		t.Fatalf("obligation note = %q", n)
+	}
+	if n := rowNote(m["income"].(map[string]any)["rows"].([]any)[0]); !strings.Contains(n, "7974") {
+		t.Fatalf("income note = %q", n)
 	}
 	validate(t, b)
 }
