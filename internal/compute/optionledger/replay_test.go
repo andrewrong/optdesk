@@ -121,3 +121,31 @@ func TestSameRowsSameResult(t *testing.T) {
 		t.Fatalf("rule version %d", first.RuleVersion)
 	}
 }
+
+func TestJapanSuffixRemoved(t *testing.T) {
+	t.Parallel()
+	opt := optRow("1", "-1", "100", "-1", "O", "20260301", "11", "100", "20260320", "P", "")
+	opt.Attributes["symbol"] = "7974 260320P00100000"
+	opt.Attributes["underlyingSymbol"] = "7974.T"
+	opt.Attributes["currency"] = "JPY"
+	stk := stkRow("2", "100", "10", "-1000", "-1", "20260302")
+	stk.Attributes["symbol"] = "7974.T"
+	stk.Attributes["currency"] = "JPY"
+	res := replay(opt, stk)
+	if len(res.Positions) != 1 || res.Positions[0].Underlying != "7974" {
+		t.Errorf("positions = %+v, want one with underlying 7974", res.Positions)
+	}
+	if len(res.Cycles) != 1 || res.Cycles[0].Underlying != "7974" {
+		t.Errorf("cycles = %+v, want one with underlying 7974", res.Cycles)
+	}
+}
+
+func TestSuffixKeptOutsideJapan(t *testing.T) {
+	t.Parallel()
+	stk := stkRow("2", "100", "10", "-1000", "-1", "20260302")
+	stk.Attributes["symbol"] = "ABC.T"
+	res := replay(stk)
+	if len(res.Cycles) != 1 || res.Cycles[0].Underlying != "ABC.T" {
+		t.Fatalf("cycles = %+v, want one with underlying ABC.T", res.Cycles)
+	}
+}
