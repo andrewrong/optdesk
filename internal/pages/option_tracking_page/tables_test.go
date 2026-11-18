@@ -47,7 +47,7 @@ func TestOrderKept(t *testing.T) {
 func TestOpenColumns(t *testing.T) {
 	t.Parallel()
 	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")).Accounts[0]
-	want := []string{"company", "contract", "qty", "dte", "moneyness", "spot", "mid", "premium", "kept", "kept_percent",
+	want := []string{"company", "contract", "opened", "qty", "dte", "moneyness", "spot", "mid", "premium", "kept", "kept_percent",
 		"delta", "iv", "results", "ex", "guard", "coverage"}
 	if got := colIDs(a.Open); !reflect.DeepEqual(got, want) {
 		t.Fatalf("columns = %v", got)
@@ -55,6 +55,23 @@ func TestOpenColumns(t *testing.T) {
 	for _, id := range want {
 		if _, ok := a.Open.Rows[0].Cells[id]; !ok {
 			t.Errorf("row has no cell %s", id)
+		}
+	}
+}
+
+func TestOpenTableShowsOpenedDay(t *testing.T) {
+	t.Parallel()
+	res := okResult()
+	res.Open = []opt{sampleOpen("a"), sampleOpen("b")}
+	res.Open[0].PremiumIncome, res.Open[1].PremiumIncome = "647", "647"
+	res.Open[0].OpenedOn, res.Open[1].OpenedOn = "2026-10-01", "2026-10-05"
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main")).Accounts[0]
+	if len(a.Open.Rows) != 2 {
+		t.Fatalf("%d rows", len(a.Open.Rows))
+	}
+	for i, day := range []string{"2026-10-01", "2026-10-05"} {
+		if c := cellMap(t, a.Open.Rows[i], "opened"); c["text"] != day {
+			t.Errorf("row %d opened = %v", i, c)
 		}
 	}
 }

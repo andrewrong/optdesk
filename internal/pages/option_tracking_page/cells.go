@@ -394,6 +394,8 @@ func statusCell(o trackapi.TrackedOption) any {
 	return c
 }
 
+func openedDayCell(o trackapi.TrackedOption) any { return dayCell(o.OpenedOn) }
+
 func closedDayCell(o trackapi.TrackedOption) any { return dayCell(o.ClosedOn) }
 
 func reconContract(r trackapi.TrackRecon) any {

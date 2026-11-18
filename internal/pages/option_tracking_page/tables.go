@@ -52,6 +52,7 @@ func openColumns(asOf contracts.Day, closes map[string]shared.Close) []colDef[op
 	return []colDef[opt]{
 		col("company", "Company", "left", company),
 		col("contract", "Contract", "left", openContract),
+		col("opened", "Opened", "left", openedDayCell),
 		col("qty", "Quantity", "right", qty),
 		col("dte", "DTE", "right", dteCell),
 		col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent of the closing price, positive is out of the money"),
