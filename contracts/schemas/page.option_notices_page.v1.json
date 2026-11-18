@@ -176,6 +176,9 @@
         },
         "note_hint": {
           "$ref": "#/$defs/NullableText"
+        },
+        "cash_gloss": {
+          "$ref": "#/$defs/NullableText"
         }
       }
     },
@@ -272,6 +275,12 @@
           "items": {
             "$ref": "#/$defs/CashPut"
           }
+        },
+        "available_text": {
+          "$ref": "#/$defs/NullableText"
+        },
+        "left_text": {
+          "$ref": "#/$defs/NullableText"
         }
       }
     },

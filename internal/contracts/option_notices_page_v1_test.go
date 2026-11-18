@@ -151,3 +151,36 @@ func TestOptionNoticesPageHintsValid(t *testing.T) {
 		}
 	}
 }
+
+func TestOptionNoticesPageCashFieldsValid(t *testing.T) {
+	t.Parallel()
+	inst := noticesMinimal(t)
+	b := noticesBlock()
+	b["cash_gloss"] = "gloss"
+	b["cash_by_date"] = []any{map[string]any{
+		"day": "2026-11-07", "currency": "USD", "amount_text": "1,000",
+		"available_text": "5,000", "left_text": nil,
+	}}
+	inst["accounts"] = []any{b}
+	if !pageV1Valid(t, optionNoticesPageV1, inst) {
+		t.Fatal("a block with the cash gloss and a cash row with both texts is invalid")
+	}
+	b["cash_gloss"] = nil
+	b["cash_by_date"].([]any)[0].(map[string]any)["left_text"] = "4,000"
+	if !pageV1Valid(t, optionNoticesPageV1, inst) {
+		t.Fatal("a null gloss with both texts is invalid")
+	}
+	b["cash_gloss"] = ""
+	if pageV1Valid(t, optionNoticesPageV1, inst) {
+		t.Fatal("an empty gloss validates")
+	}
+}
+
+func TestOptionNoticesPageWithoutCashFieldsValid(t *testing.T) {
+	t.Parallel()
+	inst := noticesMinimal(t)
+	inst["accounts"] = []any{noticesBlock()}
+	if !pageV1Valid(t, optionNoticesPageV1, inst) {
+		t.Fatal("a block without the cash fields is invalid")
+	}
+}

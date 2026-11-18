@@ -86,6 +86,7 @@ export interface AliasBlock {
   note: NullableText;
   cushion_hint?: NullableText;
   note_hint?: NullableText;
+  cash_gloss?: NullableText;
 }
 /**
  * One notice. code is a pattern, not an enum, so a new code needs no schema change.
@@ -109,6 +110,8 @@ export interface CashRow {
   currency: Text1;
   amount_text: Text1;
   puts?: CashPut[];
+  available_text?: NullableText;
+  left_text?: NullableText;
 }
 /**
  * One short put behind a cash amount; all text from the producer, no per-put figure.
