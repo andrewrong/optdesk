@@ -11,6 +11,7 @@ const allowedCJK = [
   '\u76d8\u4e2d\u8bd5\u7b97', // intraday estimate
   '\u76d8\u4e2d', // intraday
   '\u76d8\u4e2d\u00b7\u5ef6\u8fdf', // intraday, delayed
+  '\u65e0\u8d22\u62a5\u65e5\u671f\uff08\u6307\u6570\u6216\u672a\u767b\u8bb0\u53d1\u884c\u4eba\uff09', // no earnings date (index or issuer not registered)
 ]
 
 // ideographs, CJK punctuation and full-width forms
