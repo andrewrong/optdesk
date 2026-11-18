@@ -1,10 +1,18 @@
 package companies_page
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -271,4 +279,113 @@ func TestBuildNotesHasLastGloss(t *testing.T) {
 	if len(p.Notes) != 1 || p.Notes[0] != want {
 		t.Errorf("notes = %q, want [%q]", p.Notes, want)
 	}
+}
+
+// farConfig is a page of subjects whose band top is 100 and whose last prices are given by
+// symbol; the first subject is held.
+func farConfig(prices map[string]string, symbols ...string) Config {
+	cfg := testConfig(valuationapi.BandFigure{ID: "valuation.buy_band", State: valuationapi.StateOK, Value: "100", Low: "80", Currency: "USD"})
+	cfg.Subjects = nil
+	for i, s := range symbols {
+		cfg.Subjects = append(cfg.Subjects, Subject{Issuer: "cik:000000000" + string(rune('1'+i%9)), Market: "US", Symbol: s})
+	}
+	cfg.Facts = fakeFactsByIssuer{}
+	cfg.Held = func(context.Context) (map[string]bool, error) {
+		return map[string]bool{cfg.Subjects[0].Issuer: true}, nil
+	}
+	cfg.Spot = func(_ context.Context, symbol string, _ contracts.Day) (Spot, bool, error) {
+		p, ok := prices[symbol]
+		return Spot{Price: p, Day: "2026-11-09"}, ok, nil
+	}
+	return cfg
+}
+
+func TestFarAboveBandNoteNamesThem(t *testing.T) {
+	t.Parallel()
+	p := buildSpotPage(t, farConfig(map[string]string{"AAA": "500", "BBB": "200", "CCC": "400"}, "AAA", "BBB", "CCC"))
+	want := "Last is over 3 times the top of the price line for: AAA, CCC. " +
+		"The line is the price at an 8% free-cash-flow yield on the 5-year median (after stock pay), a no-growth value."
+	if len(p.Notes) != 2 || p.Notes[0] != lastGloss || p.Notes[1] != want {
+		t.Errorf("notes = %q", p.Notes)
+	}
+	if got := p.Holdings.Rows[0].Cells[1]; got.Text != "$80.00 to $100.00" || got.PriceState != "awaiting approval" {
+		t.Errorf("price cell changed: %+v", got)
+	}
+}
+
+func TestNoFarAboveBandNoNote(t *testing.T) {
+	t.Parallel()
+	// exactly 3 times is not over 3 times; an override, no band and no quote are not named.
+	cfg := farConfig(map[string]string{"AAA": "300", "BBB": "900", "CCC": "900"}, "AAA", "BBB", "CCC", "DDD")
+	cfg.Override = fakeOverride{"BBB": "120"}
+	cfg.BuildFilings = func(f []contracts.FundamentalFact, _ contracts.Day, _ valuationapi.Standard) valuationapi.FilingsResult {
+		if len(f) == 3 { // CCC
+			return valuationapi.FilingsResult{State: valuationapi.StateUnvalued, Reasons: []string{"financial_sic"}}
+		}
+		return valuationapi.FilingsResult{State: valuationapi.StateOK}
+	}
+	p := buildSpotPage(t, cfg)
+	if len(p.Notes) != 1 || p.Notes[0] != lastGloss {
+		t.Errorf("notes = %q", p.Notes)
+	}
+}
+
+func TestFarAboveBandNoteFitsTheSchema(t *testing.T) {
+	t.Parallel()
+	prices := map[string]string{}
+	var symbols []string
+	for _, s := range []string{"AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH", "II", "JJ", "KK", "LL"} {
+		symbols = append(symbols, s)
+		prices[s] = "1000"
+	}
+	cfg := farConfig(prices, symbols...)
+	b, err := Build(context.Background(), cfg, time.Date(2026, 11, 10, 14, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p spotPage
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Notes) != 2 {
+		t.Fatalf("notes = %q", p.Notes)
+	}
+	note := p.Notes[1]
+	if n := utf8.RuneCountInString(note); n > 200 {
+		t.Errorf("note has %d characters", n)
+	}
+	if !strings.Contains(note, "AA, BB, CC, DD, EE, FF and 6 more.") || strings.Contains(note, "GG") {
+		t.Errorf("note = %q", note)
+	}
+	c := jsonschema.NewCompiler()
+	c.AssertFormat()
+	c.UseLoader(schemaLoader{})
+	s, err := c.Compile(schemaHost + "page.companies_page.v2.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Validate(doc); err != nil {
+		t.Errorf("page does not validate: %v", err)
+	}
+}
+
+const schemaHost = "https://optdesk.invalid/schemas/"
+
+// schemaLoader serves https://optdesk.invalid/schemas/<file> from contracts/schemas.
+type schemaLoader struct{}
+
+func (schemaLoader) Load(url string) (any, error) {
+	file, ok := strings.CutPrefix(url, schemaHost)
+	if !ok || strings.ContainsAny(file, "/\\") {
+		return nil, fmt.Errorf("unexpected schema url %q", url)
+	}
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "schemas", file))
+	if err != nil {
+		return nil, err
+	}
+	return jsonschema.UnmarshalJSON(bytes.NewReader(b))
 }
