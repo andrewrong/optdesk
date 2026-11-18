@@ -45,7 +45,7 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 	}
 	out := section{
 		Key: s.Side + "_" + strings.ToLower(s.Currency), Heading: heading,
-		Lead:  heading + ": closed options, each currency listed on its own, not added together",
+		Lead:  heading + ", account " + alias + ": closed options, each currency listed on its own, not added together",
 		Scope: alias, FigureNotes: []string{}, EndingsTitle: "Endings",
 		BooksTitle: "Reconciliation with the broker", BooksNote: "Broker figures are taken from Flex fifoPnlRealized, compared only, not in any figure",
 	}

@@ -43,7 +43,7 @@
           "unit": "usd_signed",
           "tone": "up"
         },
-        "caption": "Opening cash of closed sold positions totals; realised −$15.25; kept share 32.4%"
+        "caption": "All accounts combined: opening cash of closed sold positions totals; realised −$15.25; kept share 32.4%"
       },
       "open_premium_usd": {
         "label": "Open premium",
