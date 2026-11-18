@@ -1,0 +1,9 @@
+{
+  "params": {"DeltaMax": "0.3", "ThinDelta": "0.15", "MaxCashAgeDays": 3, "DaysInYear": 365},
+  "base": {
+    "Key": "a", "Company": "AAA", "ChainDay": "2026-11-17", "Expiry": "2026-12-18", "DTE": 31,
+    "Spot": "96.50", "Strike": "90.00", "Bid": "0.94", "BuyPrice": "90.00",
+    "IV": "0.305", "Delta": "-0.22", "Multiplier": "100"
+  },
+  "itm": {"Key": "itm", "Company": "AAA", "Expiry": "2026-12-18", "DTE": 31, "Spot": "96.50", "Strike": "100.00", "Bid": "5.40", "BuyPrice": "100.00", "IV": "0.305", "Delta": "-0.55", "Multiplier": "100"}
+}
