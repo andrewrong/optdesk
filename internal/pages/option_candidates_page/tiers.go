@@ -14,14 +14,15 @@ import (
 )
 
 type companyView struct {
-	Key          string  `json:"key"`
-	Ticker       string  `json:"ticker"`
-	Spot         string  `json:"spot"`
-	SpotDay      string  `json:"spot_day"`
-	BuyPrice     *string `json:"buy_price"`
-	BuyPriceNote *string `json:"buy_price_note"`
-	NextEarnings string  `json:"next_earnings"`
-	Counts       string  `json:"counts"`
+	Key          string         `json:"key"`
+	Ticker       string         `json:"ticker"`
+	Spot         string         `json:"spot"`
+	SpotDay      string         `json:"spot_day"`
+	BuyPrice     *string        `json:"buy_price"`
+	BuyPriceNote *string        `json:"buy_price_note"`
+	NextEarnings string         `json:"next_earnings"`
+	Counts       string         `json:"counts"`
+	Valuation    *valueLineView `json:"valuation"`
 }
 
 type markView struct {
@@ -133,12 +134,19 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tie
 		}
 		v.Tiers = append(v.Tiers, t)
 	}
+	fillValuation(ctx, c, v.Companies)
 	v.Legend = legendOf(res, f, n)
-	if v.Kept != nil {
-		note := keptNote
-		v.KeptNote = &note
-	}
+	v.KeptNote = keptNoteOf(v.Kept)
 	return v, nil
+}
+
+// keptNoteOf is the note that one row can have several reasons; nil when there is no kept line.
+func keptNoteOf(kept *string) *string {
+	if kept == nil {
+		return nil
+	}
+	note := keptNote
+	return &note
 }
 
 // tierIDOf is the id of the tier of a verdict; a grey reason the page has no text for is bad_input.
