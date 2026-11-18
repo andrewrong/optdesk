@@ -49,7 +49,7 @@ var pageMetaKeys = map[string][]string{
 		"scope", "sentence", "stale", "stale_after", "title"},
 	"macro_rates": {"gaps", "generated_at", "schema", "schema_version", "sentence", "session_day", "title"},
 	"option_candidates_page": {"build_id", "chain_day", "computed_at", "data_times", "estimate_note", "gaps", "generated_at", "notes",
-		"rule_version", "run_id", "run_status", "schema", "schema_version", "scope", "stale", "stale_after", "title"},
+		"rule_version", "run_id", "run_status", "schema", "schema_version", "scope", "short_put_tiers", "stale", "stale_after", "title"},
 	"option_notices_page": {"build_id", "data_times", "day", "gaps", "generated_at", "notes", "run_id", "run_status", "schema",
 		"schema_version", "scope", "stale", "stale_after", "title"},
 	"option_tracking_page": {"as_of", "build_id", "data_times", "gaps", "generated_at", "mark_note", "notes", "run_id", "run_status",

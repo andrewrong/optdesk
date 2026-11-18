@@ -8,11 +8,14 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionevidence"
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfig"
+	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/strategy/risk/bsm"
 )
 
@@ -33,6 +36,13 @@ type candidateReaders struct {
 	View  store.ReadingViewReader
 	Terms store.OptionTermsReader
 	Days  optionday.DayReader
+	// The five fields of the tier view; all nil on the named path (ot page) and in the demo profile, where
+	// short_put_tiers is null.
+	Tiers      optiontierapi.Tierer
+	Account    store.AccountReader
+	Aliases    []string
+	Owner      ownerset.Reader
+	RuleParams settingsapi.RuleParams
 }
 
 // bsmValuer adapts the Black-Scholes pricer to optionevidenceapi.Valuer, so cmd/ot is the place that joins the
@@ -61,9 +71,10 @@ func candidatesConfig(zone *time.Location, runID, buildID, scope string, r candi
 	return option_candidates_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: r.Cands, Names: r.Names,
 		Figures:  optionfig.New(),
-		Evidence: optionevidence.New(newBSMValuer(), optionevidence.DefaultParams()),
+		Evidence: newEvaluator(),
 		ATMFor:   newATMFor(r.Days, r.Terms, optionevidence.NewATMPicker()),
 		Readings: r.View,
+		Tiers:    r.Tiers, Account: r.Account, Aliases: r.Aliases, Owner: r.Owner, RuleParams: r.RuleParams,
 	}
 }
 
