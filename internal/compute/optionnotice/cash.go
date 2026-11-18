@@ -9,8 +9,8 @@ import (
 )
 
 // cashByDate sums strike x multiplier x contracts of the short puts per expiry day and
-// currency, from the build day on; no conversion. When the TotalCashValue row has the currency of
-// a row, Available is that cash and Left is Available minus the dues up to and including the row
+// currency, from the build day on; no conversion. When a TotalCashValue row has the currency of
+// a row (the first parsable one of that currency), Available is that cash and Left is Available minus the dues up to and including the row
 // (negative is a shortfall); otherwise both are empty.
 func cashByDate(cur []held, day int, dayOK bool, values []compute.NoticeValue) []compute.CashDay {
 	type key struct {
@@ -38,24 +38,26 @@ func cashByDate(cur []held, day int, dayOK bool, values []compute.NoticeValue) [
 		}
 		return keys[i].cur < keys[j].cur
 	})
-	var cash *big.Rat
-	var cashCur, cashText string
+	cash := map[string]*big.Rat{}
 	for _, v := range values {
-		if v.Tag == "TotalCashValue" {
-			if r, ok := parseDec(v.Value); ok {
-				cash, cashCur, cashText = r, v.Currency, formatTrim(r)
-			}
-			break
+		if v.Tag != "TotalCashValue" || cash[v.Currency] != nil {
+			continue
+		}
+		if r, ok := parseDec(v.Value); ok {
+			cash[v.Currency] = r
 		}
 	}
-	due := new(big.Rat)
+	due := map[string]*big.Rat{}
 	var out []compute.CashDay
 	for _, k := range keys {
 		row := compute.CashDay{Day: contracts.Day(dayText(k.day)), Currency: k.cur, Amount: formatTrim(sums[k])}
-		if cash != nil && k.cur == cashCur {
-			due.Add(due, sums[k])
-			row.Available = cashText
-			row.Left = formatTrim(new(big.Rat).Sub(cash, due))
+		if c := cash[k.cur]; c != nil {
+			if due[k.cur] == nil {
+				due[k.cur] = new(big.Rat)
+			}
+			due[k.cur].Add(due[k.cur], sums[k])
+			row.Available = formatTrim(c)
+			row.Left = formatTrim(new(big.Rat).Sub(c, due[k.cur]))
 		}
 		out = append(out, row)
 	}

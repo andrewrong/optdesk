@@ -82,3 +82,15 @@ func TestCashOtherCurrencyHasNoFigure(t *testing.T) {
 		t.Fatalf("got %v", r.CashByDate)
 	}
 }
+
+func TestCashPicksCashRowOfSameCurrency(t *testing.T) {
+	t.Parallel()
+	vs := []compute.NoticeValue{
+		{Tag: "TotalCashValue", Value: "5000000", Currency: "JPY"},
+		{Tag: "TotalCashValue", Value: "50000", Currency: "USD"},
+	}
+	r := eval(cashWith(vs, shortOpt("AAA", "2026-11-20", "340", "P", "-1")))
+	if len(r.CashByDate) != 1 || r.CashByDate[0].Available != "50000" || r.CashByDate[0].Left != "16000" {
+		t.Fatalf("got %v", r.CashByDate)
+	}
+}
