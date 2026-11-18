@@ -16,6 +16,8 @@ type bookCase struct {
 	Name    string
 	Results []optionattrapi.Result
 	Want    []map[string]any
+	// Months and Companies key each result for the partition test; parallel to Results.
+	Months, Companies []string
 }
 
 func bookCaseByName(t *testing.T, name string) bookCase {
@@ -133,4 +135,54 @@ func TestBookerContractReal(t *testing.T) {
 	empty := b.Combine(nil)
 	assert.NotNil(t, empty)
 	assert.Empty(t, empty)
+}
+
+func TestCombineAllLotsCounted(t *testing.T) {
+	t.Parallel()
+	c := bookCaseByName(t, "all-lots")
+	got := NewBooker().Combine(c.Results)
+	require.Len(t, got, 1)
+	assert.Equal(t, 5, got[0].AllLots)
+	want := dec(got[0].LedgerPnL).Add(dec(got[0].NoQuoteLedgerPnL)).Add(dec(got[0].UnreconciledLedgerPnL))
+	assert.True(t, want.Equal(dec(got[0].LedgerAllPnL)), "want %s got %s", want, got[0].LedgerAllPnL)
+	assert.Equal(t, "538.55", got[0].LedgerAllPnL)
+}
+
+func TestCombineLedgerAllExact(t *testing.T) {
+	t.Parallel()
+	got := NewBooker().Combine(bookCaseByName(t, "ledger-exact").Results)
+	require.Len(t, got, 1)
+	assert.Equal(t, "0.3", got[0].LedgerAllPnL)
+}
+
+func TestCombineBucketsSumToAll(t *testing.T) {
+	t.Parallel()
+	c := bookCaseByName(t, "all-lots")
+	all := NewBooker().Combine(c.Results)[0]
+	for name, keys := range map[string][]string{"month": c.Months, "company": c.Companies} {
+		buckets := map[string][]optionattrapi.Result{}
+		for i, r := range c.Results {
+			buckets[keys[i]] = append(buckets[keys[i]], r)
+		}
+		require.Greater(t, len(buckets), 1, name)
+		var total, tm, move, ledger, diff, allLedger decimal.Decimal
+		var allLots int
+		for _, rs := range buckets {
+			b := NewBooker().Combine(rs)[0]
+			total = total.Add(dec(b.Total))
+			tm = tm.Add(dec(b.Time))
+			move = move.Add(dec(b.MoveCost))
+			ledger = ledger.Add(dec(b.LedgerPnL))
+			diff = diff.Add(dec(b.Difference))
+			allLedger = allLedger.Add(dec(b.LedgerAllPnL))
+			allLots += b.AllLots
+		}
+		assert.True(t, total.Equal(dec(all.Total)), name)
+		assert.True(t, tm.Equal(dec(all.Time)), name)
+		assert.True(t, move.Equal(dec(all.MoveCost)), name)
+		assert.True(t, ledger.Equal(dec(all.LedgerPnL)), name)
+		assert.True(t, diff.Equal(dec(all.Difference)), name)
+		assert.True(t, allLedger.Equal(dec(all.LedgerAllPnL)), name)
+		assert.Equal(t, all.AllLots, allLots, name)
+	}
 }

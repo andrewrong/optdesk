@@ -18,6 +18,10 @@ Source: `docs/design/option-attribution.md`, entry 1. Every number is decimal te
 
 **Lots counted apart.** A result with `NoQuotes` is counted in `NoQuoteLots`, and one with an empty `Difference` (an open lot whose ledger mark day differs from its last quote day) in `UnreconciledLots`. Both add nothing to any sum field of the `Book`; their ledger P&L is added to `NoQuoteLedgerPnL` and `UnreconciledLedgerPnL`, and to no other field.
 
+**All lots with a ledger P&L.** `AllLots` is `Lots` + `NoQuoteLots` + `UnreconciledLots`, and `LedgerAllPnL` is `LedgerPnL` + `NoQuoteLedgerPnL` + `UnreconciledLedgerPnL`, exact and not rounded: the count and the ledger P&L of every lot given to `Combine`. A lot not given to `Combine` (a lot with no close, no ledger P&L, or refused input) is in neither.
+
+**Partition rule.** The `Book` of a set of results equals, per currency, the sum of the `Book`s of any partition of the set, for every sum field and for `AllLots` and `LedgerAllPnL`. A caller buckets the results by any key (a month, a company) and calls `Combine` once per bucket; `Book` has no day and no company, the caller keeps the key.
+
 **Rent minus cost.** `RentMinusCost` is `Time` plus `MoveCost` (seller amounts: `MoveCost` is negative).
 
 **Total and the book identity.** `Total` is `Entry` + `Exit` + `Direction` + `MoveCost` + `IVRemark` + `Time` + `Unsplit` + `Commission`, the option side; it excludes `AssignedIntrinsic`, which is its own field. For the lots added, `LedgerPnL` = `Total` + `AssignedIntrinsic` + `Difference`. An empty `Exit` counts as zero.

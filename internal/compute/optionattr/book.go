@@ -76,6 +76,8 @@ func (booker) Combine(rs []optionattrapi.Result) []optionattrapi.Book {
 			Add(s.time).Add(s.unsplit).Add(s.commission).String()
 		b.AssignedIntrinsic, b.LedgerPnL, b.Difference = s.assigned.String(), s.ledger.String(), s.diff.String()
 		b.NoQuoteLedgerPnL, b.UnreconciledLedgerPnL = s.noQuoteLedger.String(), s.unreconciledLedger.String()
+		b.AllLots = b.Lots + b.NoQuoteLots + b.UnreconciledLots
+		b.LedgerAllPnL = s.ledger.Add(s.noQuoteLedger).Add(s.unreconciledLedger).String()
 		out = append(out, b)
 	}
 	return out
