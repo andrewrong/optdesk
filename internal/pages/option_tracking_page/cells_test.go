@@ -74,7 +74,7 @@ func TestMarkOnlyRowText(t *testing.T) {
 	o := sampleOpen("c")
 	o.MarkStatus, o.Mid = "ok", "1.2500"
 	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
-	want := codeTexts[codeMarkOnly]
+	want := "Only the account mark is stored for this contract, no stock close, delta or IV"
 	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
 		var cell any
 		for _, d := range openColumns {
