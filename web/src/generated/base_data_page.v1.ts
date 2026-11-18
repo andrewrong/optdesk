@@ -82,6 +82,9 @@ export interface CrossCheck {
   matched: Count;
   diff: Count;
   missing: Count;
+  skipped?: Count;
+  reason?: "no_run" | "rate_limited" | "network" | "timeout" | "source_changed";
+  reason_zh?: string;
   tolerance_text: Optional;
   source_id: Text;
   run_at: Timestamp | null;
@@ -313,6 +316,7 @@ export interface CrossCheckItem {
   diff: Optional;
   kind: Text;
   hint_zh: Optional;
+  company?: string;
 }
 export interface GlossaryRow {
   term: Text;

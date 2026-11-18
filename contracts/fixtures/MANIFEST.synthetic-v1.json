@@ -70,6 +70,7 @@
     {"path": "page.data_health_page.v1.gap.json", "sha256": "d69193da9f3a19596015f4e644725d048a41ba54ad95929b9a70d0fd59e23dc3"},
     {"path": "page.base_data_page.v1.ok.json", "sha256": "b23f082681b0be3427357a6686a43be9993976399f9765e7c624ec9bb7dc0646"},
     {"path": "page.base_data_page.v1.gap.json", "sha256": "f13c605e4f28fc81e6affcc3185139e00187d1ea124250edf5811d2acadb2647"},
+    {"path": "page.base_data_page.v1.cross.json", "sha256": "a94906369f5f9c4f00da6c040c0876bd5c04ab35330030f70bf31605d4942cd2"},
     {"path": "page.valuation_params_page.v1.ok.json", "sha256": "c464ee885fd6d336d84cbc419c9540d5c764a4f97977e576e768748eba72343f"},
     {"path": "page.valuation_page.v1.table.json", "sha256": "73a2de27189b48a7d4f36abe7fe6e6beff764d601c9e9a0cfb898fbaa288c407"},
     {"path": "page.valuation_page.v1.company.json", "sha256": "9eec0d9f1de664f7fbac0286e4ed2e04f7e61d9c4265babd24f040c0fa873c9e"},

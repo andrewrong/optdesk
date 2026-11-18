@@ -1,0 +1,85 @@
+{
+  "schema": "base_data_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-18T09:30:00Z",
+  "as_of": "2026-11-18",
+  "last_sessions": {
+    "XNYS": "2026-11-17",
+    "XTKS": "2026-11-18"
+  },
+  "top": {
+    "level": "warn",
+    "text_zh": "基础数据共 1 项：1 项警告。",
+    "counts": {
+      "pass": 0,
+      "warn": 1,
+      "fail": 0,
+      "unknown": 0
+    }
+  },
+  "groups": [
+    {
+      "name": "Market data",
+      "rows": [
+        {
+          "dataset": "bars",
+          "label": "Daily bars",
+          "label_zh": "日线",
+          "level": "warn",
+          "newest_value": "SPY close 590.10",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SPY",
+          "age_text": "0 s",
+          "failed_summary": "",
+          "checks": [],
+          "cross_check": {
+            "pair_id": "R6",
+            "level": "warn",
+            "n": 48,
+            "matched": 45,
+            "diff": 2,
+            "missing": 1,
+            "skipped": 3,
+            "tolerance_text": "within 0.5 percent",
+            "source_id": "yfinance",
+            "run_at": "2026-11-18T09:20:00Z",
+            "items": [
+              {
+                "key": "SPY 2026-11-17",
+                "ours": "590.10",
+                "other": "593.20",
+                "diff": "0.53%",
+                "kind": "diff",
+                "hint_zh": "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整",
+                "company": "SPDR S&P 500 ETF"
+              },
+              {
+                "key": "XYZ 2026-11-17",
+                "ours": "",
+                "other": "",
+                "diff": "",
+                "kind": "skipped",
+                "hint_zh": "",
+                "company": "Example Corp"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "pass",
+      "text": "所有检查通过。"
+    },
+    {
+      "term": "fail",
+      "text": "至少一项检查失败，请到数据健康页修复。"
+    }
+  ],
+  "derived_note": "Newest values and ages are worked out by the builder from stored facts.",
+  "repair_path": "/data-health",
+  "gaps": []
+}
