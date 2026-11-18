@@ -8,6 +8,7 @@ import {
   useReactTable,
   type ColumnDef,
   type Row as TableRowModel,
+  type Table as ReactTable,
 } from '@tanstack/react-table'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Fragment, useMemo } from 'react'
@@ -21,6 +22,9 @@ type Dataset = Group['rows'][number] & { group: string }
 
 const WORST_FIRST: Record<Level, number> = { fail: 0, unknown: 1, warn: 2, pass: 3 }
 const DASH = '—'
+
+// Whether the user has sorted: the one test the group rows and the group name inside a row both follow.
+const isSorted = (table: ReactTable<Dataset>) => table.getState().sorting.length > 0
 
 const columns: ColumnDef<Dataset>[] = [
   {
@@ -39,7 +43,7 @@ const columns: ColumnDef<Dataset>[] = [
         <span>
           {row.original.label}
           <span className="block text-xs text-muted-foreground">{row.original.label_zh}</span>
-          {table.getState().sorting.length > 0 ? <span className="block text-xs text-muted-foreground">{row.original.group}</span> : null}
+          {isSorted(table) ? <span className="block text-xs text-muted-foreground">{row.original.group}</span> : null}
         </span>
       </button>
     ),
@@ -71,7 +75,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
   const rows = table.getRowModel().rows
   // A group name row stands only while the rows are in payload order; once sorted, a group's rows are apart, so the
   // name moves into the row itself and no group label repeats.
-  const sorted = table.getState().sorting.length > 0
+  const sorted = isSorted(table)
   return (
     <Table>
       <TableHeader>
