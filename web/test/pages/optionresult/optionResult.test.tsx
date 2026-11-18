@@ -105,3 +105,14 @@ it('each section prints its endings heading exactly once', async () => {
     expect(headings.length, section.key).toBe(1)
   }
 })
+
+it('does not print endings_title as a heading', async () => {
+  await show(ok)
+  for (const s of ok.sections) {
+    const card = host.querySelector(`[data-section="${s.key}"]`)
+    const hits = [...(card?.querySelectorAll('h4') ?? [])].filter(
+      (h) => h.textContent === s.endings_title,
+    )
+    expect(hits.length, s.key).toBe(0)
+  }
+})
