@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.valuation_import_page.v1.json",
+  "title": "ValuationImportPage",
+  "description": "View model of the valuation import page: the upload form (view empty), the preview of the plan with the site's own check (view preview) and the outcome of the confirm (view result). Every figure is a decimal text written by the builder; the view computes nothing. There is no digest: the confirm re-parses the file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "view", "post_path", "max_file_bytes", "file", "r", "margin", "rows", "not_in_file", "unvalued", "removed", "counts", "flagged_note", "result", "problems", "gaps", "error"],
+  "properties": {
+    "schema": {"const": "valuation_import_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "view": {"enum": ["empty", "preview", "result"]},
+    "post_path": {"const": "valuation-import-post", "type": "string"},
+    "max_file_bytes": {"type": "integer", "minimum": 1},
+    "file": {"oneOf": [{"$ref": "#/$defs/File"}, {"type": "null"}]},
+    "r": {"oneOf": [{"$ref": "#/$defs/R"}, {"type": "null"}]},
+    "margin": {"oneOf": [{"$ref": "#/$defs/Margin"}, {"type": "null"}]},
+    "rows": {"type": "array", "items": {"$ref": "#/$defs/Row"}},
+    "not_in_file": {"type": "array", "items": {"$ref": "#/$defs/Text"}},
+    "unvalued": {"type": "array", "items": {"$ref": "#/$defs/Text"}},
+    "removed": {"type": "array", "items": {"$ref": "#/$defs/Text"}},
+    "counts": {"$ref": "#/$defs/Counts"},
+    "flagged_note": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]},
+    "result": {"type": "array", "items": {"$ref": "#/$defs/ResultItem"}},
+    "problems": {"type": "array", "items": {"$ref": "#/$defs/Problem"}},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "error": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Optional": {"type": "string", "maxLength": 600},
+    "Figure": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "Day": {"type": "string", "format": "date"},
+    "Action": {"enum": ["insert", "same", "older", "refused", "profile_only"]},
+    "File": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256", "as_of"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 64},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "as_of": {"$ref": "#/$defs/Day"}
+      }
+    },
+    "R": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "file_us", "file_jp", "file_hkcn", "stored_us", "stored_jp", "stored_hkcn", "note", "latest_yield", "problem"],
+      "properties": {
+        "action": {"$ref": "#/$defs/Action"},
+        "file_us": {"$ref": "#/$defs/Figure"},
+        "file_jp": {"$ref": "#/$defs/Figure"},
+        "file_hkcn": {"$ref": "#/$defs/Figure"},
+        "stored_us": {"$ref": "#/$defs/Optional"},
+        "stored_jp": {"$ref": "#/$defs/Optional"},
+        "stored_hkcn": {"$ref": "#/$defs/Optional"},
+        "note": {"$ref": "#/$defs/Optional"},
+        "latest_yield": {"$ref": "#/$defs/Optional"},
+        "problem": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "MarginRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p_from", "m", "w", "h", "s"],
+      "properties": {
+        "p_from": {"$ref": "#/$defs/Figure"},
+        "m": {"$ref": "#/$defs/Figure"},
+        "w": {"$ref": "#/$defs/Figure"},
+        "h": {"$ref": "#/$defs/Figure"},
+        "s": {"$ref": "#/$defs/Figure"}
+      }
+    },
+    "Margin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "rows"],
+      "properties": {
+        "action": {"$ref": "#/$defs/Action"},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/MarginRow"}}
+      }
+    },
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "ticker", "name", "currency", "r_market", "new_profile", "unmatched", "proposed_key", "action", "reason", "review_type", "v", "p", "version_date", "file_buy_top", "site_buy_top", "needs_tick"],
+      "properties": {
+        "key": {"$ref": "#/$defs/Optional"},
+        "ticker": {"$ref": "#/$defs/Text"},
+        "name": {"$ref": "#/$defs/Text"},
+        "currency": {"$ref": "#/$defs/Text"},
+        "r_market": {"type": "string", "enum": ["US", "JP", "HKCN"]},
+        "new_profile": {"type": "boolean"},
+        "unmatched": {"type": "boolean"},
+        "proposed_key": {"$ref": "#/$defs/Optional"},
+        "action": {"$ref": "#/$defs/Action"},
+        "reason": {"$ref": "#/$defs/Optional"},
+        "review_type": {"$ref": "#/$defs/Optional"},
+        "v": {"$ref": "#/$defs/Figure"},
+        "p": {"$ref": "#/$defs/Figure"},
+        "version_date": {"$ref": "#/$defs/Day"},
+        "file_buy_top": {"$ref": "#/$defs/Optional"},
+        "site_buy_top": {"$ref": "#/$defs/Optional"},
+        "needs_tick": {"type": "boolean"}
+      }
+    },
+    "Counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["insert", "same", "older", "refused", "needs_tick"],
+      "properties": {
+        "insert": {"type": "integer", "minimum": 0},
+        "same": {"type": "integer", "minimum": 0},
+        "older": {"type": "integer", "minimum": 0},
+        "refused": {"type": "integer", "minimum": 0},
+        "needs_tick": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ResultItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "outcome", "text"],
+      "properties": {
+        "key": {"$ref": "#/$defs/Text"},
+        "outcome": {"enum": ["inserted", "same", "older", "refused", "not_confirmed", "failed"]},
+        "text": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "Problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"const": "store_unavailable"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    }
+  }
+}
