@@ -350,7 +350,8 @@ func TestUnidentifiedHasReason(t *testing.T) {
 			}
 		})
 	}
-	single := compute.StructureResult{Other: []compute.Structure{{ID: "x", Underlying: "AMD", Kind: "other", Legs: []compute.StructureLeg{leg("P", "2026-12-18", "-1")}}}}
+	one := compute.Structure{ID: "x", Underlying: "AMD", Kind: "other", Legs: []compute.StructureLeg{leg("P", "2026-12-18", "-1")}}
+	single := compute.StructureResult{Other: []compute.Structure{one}}
 	if n := decode(t, newRig(single).build(t, "main"))["note"].(string); strings.Contains(n, "AMD:") {
 		t.Fatalf("single-leg note = %q", n)
 	}
