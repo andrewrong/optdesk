@@ -94,3 +94,14 @@ it('refuses a version it cannot read and registers the schema', () => {
   expect(validate(ok).ok).toBe(true)
   expect(registration.schema).toBe('option_result_page')
 })
+
+it('each section prints its endings heading exactly once', async () => {
+  await show(ok)
+  for (const section of ok.sections) {
+    const card = host.querySelector(`[data-section="${section.key}"]`)
+    const headings = [...(card?.querySelectorAll('h4') ?? [])].filter(
+      (h) => h.textContent === section.endings.title,
+    )
+    expect(headings.length, section.key).toBe(1)
+  }
+})

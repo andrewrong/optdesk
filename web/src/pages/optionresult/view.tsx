@@ -65,7 +65,6 @@ function SectionCard({ section }: { section: Section }) {
         <SeriesBlock series={section.months} />
         <SeriesBlock series={section.running} />
         <Separator />
-        <h4 className="text-sm font-medium">{section.endings_title}</h4>
         <SeriesBlock series={section.endings} />
         {section.assignment ? <p className="text-sm">{section.assignment}</p> : null}
         {section.protection ? <p className="text-sm">{section.protection}</p> : null}
