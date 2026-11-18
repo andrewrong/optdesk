@@ -206,7 +206,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		if q, ok, err := cfg.spotAt(ctx, s.Symbol, today); err != nil {
 			return nil, err
 		} else if ok {
-			last = q.Price + " · close " + string(q.Day)
+			last = lastText(s.Market, q)
 		}
 		cells := []cell{{Text: s.Symbol}, pc, {Text: last}}
 		if reason != "" {
@@ -241,7 +241,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	}
 	vm.Header.Title = pageTitle
 	vm.Header.DataDay = string(today)
-	vm.Header.Line = fmt.Sprintf("%s%s · watching %d companies", dataOf, string(today), len(cfg.Subjects))
+	vm.Header.Line = fmt.Sprintf("Watching %d companies", len(cfg.Subjects))
 	return json.Marshal(vm)
 }
 

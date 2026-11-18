@@ -578,7 +578,7 @@ func TestLegendFollowsSpotRule(t *testing.T) {
 	if last, legend := build(""); last != "no quote" || len(legend) != 0 {
 		t.Errorf("empty day: last %q legend %v, want no quote and no legend", last, legend)
 	}
-	if last, legend := build("2026-11-09"); last != "128.40 · close 2026-11-09" || len(legend) != 1 {
+	if last, legend := build("2026-11-09"); last != "$128.40 · close 2026-11-09" || len(legend) != 1 {
 		t.Errorf("with day: last %q legend %v, want a price and one legend line", last, legend)
 	}
 }

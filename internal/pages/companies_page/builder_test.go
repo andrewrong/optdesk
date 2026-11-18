@@ -218,12 +218,30 @@ func twoSubjectConfig(price string, day contracts.Day) Config {
 func TestBuildLastCellCarriesDay(t *testing.T) {
 	t.Parallel()
 	p := buildSpotPage(t, twoSubjectConfig("128.40", "2026-11-04"))
-	want := "128.40 · close 2026-11-04"
+	want := "$128.40 · close 2026-11-04"
 	if got := p.WatchList.Rows[0].Cells[2].Text; got != want {
 		t.Errorf("watch row Last = %q, want %q", got, want)
 	}
 	if got := p.Holdings.Rows[0].Cells[2].Text; got != want {
 		t.Errorf("holdings row Last = %q, want %q", got, want)
+	}
+}
+
+func TestBuildLastCellJapaneseYen(t *testing.T) {
+	t.Parallel()
+	cfg := twoSubjectConfig("5574", "2026-11-17")
+	cfg.Subjects[0].Market = "JP"
+	p := buildSpotPage(t, cfg)
+	if got, want := p.WatchList.Rows[0].Cells[2].Text, "¥5,574.00 · close 2026-11-17"; got != want {
+		t.Errorf("Last = %q, want %q", got, want)
+	}
+}
+
+func TestBuildLastCellPriceNotDecimal(t *testing.T) {
+	t.Parallel()
+	p := buildSpotPage(t, twoSubjectConfig("n/a", "2026-11-04"))
+	if got, want := p.WatchList.Rows[0].Cells[2].Text, "n/a · close 2026-11-04"; got != want {
+		t.Errorf("Last = %q, want %q", got, want)
 	}
 }
 
@@ -238,7 +256,7 @@ func TestBuildNoQuoteWithoutDay(t *testing.T) {
 func TestBuildDataOfFormat(t *testing.T) {
 	t.Parallel()
 	p := buildSpotPage(t, twoSubjectConfig("128.40", "2026-11-04"))
-	if p.Header.Line != "Data of 2026-11-10 · watching 2 companies" {
+	if p.Header.Line != "Watching 2 companies" {
 		t.Errorf("header.line = %q", p.Header.Line)
 	}
 	if p.Stale.Text != "Data of 2026-11-10" {
