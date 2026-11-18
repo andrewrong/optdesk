@@ -2,11 +2,11 @@ package option_tracking_page
 
 import (
 	"encoding/json"
-	"github.com/andrewrong/optdesk/internal/contracts"
 	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 func asGap(t *testing.T, c any) gap {

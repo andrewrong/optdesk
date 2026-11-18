@@ -19,7 +19,7 @@ import (
 const (
 	coverageID    = "coverage"
 	coverageLabel = "Quote coverage"
-	coverageHint  = "Trading days since the position was opened on which a two-sided quote (bid and ask both above zero) is stored"
+	coverageHint  = "Trading days from the later of the opening day and the first stored quote of the contract, on which a two-sided quote (bid and ask both above zero) is stored"
 
 	reasonOneSide = "one side only"
 	reasonNoQuote = "no quote stored"
@@ -86,7 +86,7 @@ func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []op
 	eod := &eodLoader{ctx: ctx, c: c, symbols: symbols, from: from, to: in.AsOf}
 	var gapTotal, dayTotal int
 	for _, l := range lots {
-		lc, err := classify(l.id, l.span, stored, eod)
+		lc, err := coverFromFirstQuote(l.id, l.span, stored, eod)
 		if err != nil {
 			return nil, "", err
 		}
@@ -117,10 +117,10 @@ func (e *eodLoader) get() (map[dayKey]string, error) {
 	return e.sides, err
 }
 
-// classify counts the days of one lot from the later of its opening day and the first day on
+// coverFromFirstQuote counts the days of one lot from the later of its opening day and the first day on
 // which a quote with at least one side is stored (the lot's span starts at its opening day), and
 // names its gap days. A lot with no stored quote at all is counted over its whole span.
-func classify(id int64, span []contracts.Day, stored map[dayKey]optionday.Day, eod *eodLoader) (lotCoverage, error) {
+func coverFromFirstQuote(id int64, span []contracts.Day, stored map[dayKey]optionday.Day, eod *eodLoader) (lotCoverage, error) {
 	reasons := make([]string, len(span))
 	first := -1
 	for i, d := range span {

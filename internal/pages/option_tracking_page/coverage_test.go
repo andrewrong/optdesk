@@ -221,3 +221,11 @@ func TestCoverageEodNoSidesIsNoQuote(t *testing.T) {
 		t.Fatalf("cell = %v", cell)
 	}
 }
+
+func TestCoverageHintNamesFirstStoredQuote(t *testing.T) {
+	t.Parallel()
+	last := openColumns("")[len(openColumns(""))-1]
+	if last.Hint == nil || strings.Contains(*last.Hint, "since the position was opened") {
+		t.Fatalf("hint = %v, counts from the first stored quote now", last.Hint)
+	}
+}
