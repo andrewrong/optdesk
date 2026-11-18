@@ -40,3 +40,27 @@ func TestQuoteJoinedByTerms(t *testing.T) {
 		t.Fatalf("strike text compared as a number: %+v", r)
 	}
 }
+
+func TestSpotKeptWithoutMid(t *testing.T) {
+	t.Parallel()
+	r := one(t, pos("a", call), callQuote("", "1.2", "110"))
+	if r.MarkStatus != "no_mark" || r.Mid != "" || r.Spot != "110" || r.Moneyness != "itm" || r.OtmPercent != "-9.09" {
+		t.Fatalf("%+v", r)
+	}
+}
+
+func TestNoCloseIsUnknownMoneyness(t *testing.T) {
+	t.Parallel()
+	for name, qs := range map[string][]trackapi.TrackQuote{
+		"no quote":    nil,
+		"empty close": {callQuote("1", "1.2", "")},
+		"zero close":  {callQuote("1", "1.2", "0")},
+		"negative":    {callQuote("1", "1.2", "-5")},
+		"unparsable":  {callQuote("1", "1.2", "n/a")},
+	} {
+		r := one(t, pos("a", call), qs...)
+		if r.Spot != "" || r.Moneyness != "unknown" || r.OtmPercent != "" {
+			t.Errorf("%s: %+v", name, r)
+		}
+	}
+}
