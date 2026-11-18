@@ -5,6 +5,8 @@
     "bad-version.json",
     "gap.ts",
     "ok.ts",
-    "stale.ts"
+    "stale.ts",
+    "tiers-null.ts",
+    "tiers.ts"
   ]
 }
