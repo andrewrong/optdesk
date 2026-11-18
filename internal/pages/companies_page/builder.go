@@ -195,18 +195,16 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	}
 	vm.WatchList = watchBlock{Title: "Watch list", Columns: columns, Rows: []row{}}
 	var holds []holdingRow
-	var unvalued string
 	var why reasonGroups
+	var far []string
 	for _, s := range cfg.Subjects {
-		pc, reason, err := cfg.priceCell(ctx, s, today)
+		pc, top, reason, err := cfg.priceCell(ctx, s, today)
 		if err != nil {
 			return nil, err
 		}
-		last := noQuoteText
-		if q, ok, err := cfg.spotAt(ctx, s.Symbol, today); err != nil {
+		last, err := cfg.lastOf(ctx, s, top, today, &far)
+		if err != nil {
 			return nil, err
-		} else if ok {
-			last = lastText(s.Market, q)
 		}
 		cells := []cell{{Text: s.Symbol}, pc, {Text: last}}
 		if reason != "" {
@@ -222,6 +220,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		}
 		vm.WatchList.Rows = append(vm.WatchList.Rows, row{Cells: cells})
 	}
+	vm.Notes = append(vm.Notes, farAboveNotes(far)...)
 	if !cfg.bandReady() && len(cfg.Subjects) > 0 {
 		vm.Gaps = append(vm.Gaps, gap{Reason: "no_reader", Text: "price line: a reader or compute function is not set"})
 	}
@@ -230,7 +229,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		vm.Holdings = &holdingsBlock{Columns: columns, Rows: append([]holdingRow{}, holds...)}
 		vm.Header.HeldCount = &n
 	}
-	if unvalued = why.line(); unvalued != "" {
+	if unvalued := why.line(); unvalued != "" {
 		vm.Unvalued = &unvalued
 	}
 	if err := cfg.fillBlocks(ctx, &vm, today); err != nil {
@@ -243,6 +242,19 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	vm.Header.DataDay = string(today)
 	vm.Header.Line = fmt.Sprintf("Watching %d companies", len(cfg.Subjects))
 	return json.Marshal(vm)
+}
+
+// lastOf is the Last cell text of a subject. When that last price is over farAboveBand times top
+// (never while top is empty), the symbol is appended to far.
+func (c Config) lastOf(ctx context.Context, s Subject, top string, today contracts.Day, far *[]string) (string, error) {
+	q, ok, err := c.spotAt(ctx, s.Symbol, today)
+	if err != nil || !ok {
+		return noQuoteText, err
+	}
+	if top != "" && isFarAbove(q.Price, top) {
+		*far = append(*far, s.Symbol)
+	}
+	return lastText(s.Market, q), nil
 }
 
 // fillStatus sets data_times to the page day at 00:00 and run_status to partial while the page

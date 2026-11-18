@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/shopspring/decimal"
 
@@ -23,6 +24,15 @@ const (
 	// approvalLookbackDays is how far before today the approval is looked for.
 	approvalLookbackDays = 400
 
+	// farAboveBand is the multiple of the band top over which the last price earns a mention in
+	// the page notes: the band is a no-growth value, and a reader should not take a growth name's
+	// distance from it for a broken figure. Trial value.
+	farAboveBand = 3
+	// farNamesMax is how many subjects the note names; the rest are "and N more".
+	farNamesMax = 6
+	// noteMax is the schema limit of a page note, in characters.
+	noteMax = 200
+
 	// The price_state values of page.companies_page.v2.
 	stateBand     = "band"
 	stateOverride = "owner override"
@@ -37,45 +47,46 @@ func (c Config) bandReady() bool {
 
 // priceCell builds the price line cell of one subject. The override wins; then the band as the
 // compute functions give it, qualified by the owner's approval. The cell holds no formula: every
-// figure in it is text the compute functions or the owner wrote.
-func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (out cell, reason string, err error) {
+// figure in it is text the compute functions or the owner wrote. top is the 8% value of the band
+// as the compute functions gave it, empty for an override or a subject with no band.
+func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (out cell, top, reason string, err error) {
 	out = cell{HandPrice: s.HandPrice}
 	if c.Override != nil {
 		line, ok, oerr := c.Override.Line(ctx, s.Symbol)
 		if oerr != nil {
-			return cell{}, "", fmt.Errorf("companies_page: override of %s: %w", s.Symbol, oerr)
+			return cell{}, "", "", fmt.Errorf("companies_page: override of %s: %w", s.Symbol, oerr)
 		}
 		if ok && line != "" {
 			out.Text, out.PriceState = line, stateOverride
-			return out, "", nil
+			return out, "", "", nil
 		}
 	}
 	if !c.bandReady() {
 		out.Text = noReaderText
-		return out, "", nil
+		return out, "", "", nil
 	}
 	source, ok := factSource(s.Issuer)
 	if !ok {
 		out.Text = unvaluedCell
-		return out, "no issuer id", nil
+		return out, "", "no issuer id", nil
 	}
 	facts, ferr := c.Facts.FactsFiledBy(ctx, source, s.Issuer, today)
 	if ferr != nil {
-		return cell{}, "", fmt.Errorf("companies_page: facts of %s: %w", s.Symbol, ferr)
+		return cell{}, "", "", fmt.Errorf("companies_page: facts of %s: %w", s.Symbol, ferr)
 	}
 	fr := c.BuildFilings(facts, today, c.StandardOf(facts))
 	if fr.State != valuationapi.StateOK {
 		out.Text = unvaluedCell
-		return out, reasonText(fr.Reasons...), nil
+		return out, "", reasonText(fr.Reasons...), nil
 	}
 	band := c.Band(bandName, fr.Filings, today)
 	if band.State != valuationapi.StateOK {
 		out.Text = unvaluedCell
-		return out, reasonText(band.Reasons...), nil
+		return out, "", reasonText(band.Reasons...), nil
 	}
 	state, aerr := c.approvalState(ctx, s.Symbol, band.Value, today)
 	if aerr != nil {
-		return cell{}, "", aerr
+		return cell{}, "", "", aerr
 	}
 	out.PriceState = state
 	figure := bandText(band)
@@ -88,7 +99,7 @@ func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (
 	default:
 		out.Text = state
 	}
-	return out, "", nil
+	return out, band.Value, "", nil
 }
 
 // approvalState is the price state of a band whose 8% value is value: the band while the latest
@@ -186,4 +197,40 @@ func signed(sign string, d decimal.Decimal) string {
 		out = "-" + out
 	}
 	return out
+}
+
+// farAboveNotes is the page note, as a list of none or one, naming the subjects whose last price
+// is over farAboveBand times the top of their band, built once for all of them: at most farNamesMax names, then "and N more",
+// fewer names when the note would pass the schema limit of a note. It is empty when there are none.
+func farAboveNotes(symbols []string) []string {
+	n := min(len(symbols), farNamesMax)
+	for ; n > 0; n-- {
+		note := farAboveText(symbols, n)
+		if utf8.RuneCountInString(note) <= noteMax {
+			return []string{note}
+		}
+	}
+	return nil
+}
+
+// farAboveText names the first n symbols and counts the rest.
+func farAboveText(symbols []string, n int) string {
+	more := ""
+	if len(symbols) > n {
+		more = fmt.Sprintf(" and %d more", len(symbols)-n)
+	}
+	return fmt.Sprintf("Last is over %d times the top of the price line for: %s%s. "+
+		"The line is the price at an 8%% free-cash-flow yield on the 5-year median (after stock pay), a no-growth value.",
+		farAboveBand, strings.Join(symbols[:n], ", "), more)
+}
+
+// isFarAbove reports whether last is more than farAboveBand times top. A figure that is not a
+// decimal, or a top that is not positive, is not far above.
+func isFarAbove(last, top string) bool {
+	l, lerr := decimal.NewFromString(last)
+	t, terr := decimal.NewFromString(top)
+	if lerr != nil || terr != nil || !t.IsPositive() {
+		return false
+	}
+	return l.GreaterThan(t.Mul(decimal.NewFromInt(farAboveBand)))
 }
