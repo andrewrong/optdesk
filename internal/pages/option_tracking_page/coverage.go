@@ -19,7 +19,8 @@ import (
 const (
 	coverageID    = "coverage"
 	coverageLabel = "Quote coverage"
-	coverageHint  = "Trading days from the later of the opening day and the first stored quote of the contract, on which a two-sided quote (bid and ask both above zero) is stored"
+	coverageHint  = "Trading days from the later of the opening day and the first stored quote of the " +
+		"contract, on which a two-sided quote (bid and ask both above zero) is stored"
 
 	reasonOneSide = "one side only"
 	reasonNoQuote = "no quote stored"
