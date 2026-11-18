@@ -197,3 +197,41 @@ func TestAtTheMoneyIsNotItm(t *testing.T) {
 		t.Errorf("strike above spot: %+v", itm)
 	}
 }
+
+// TestThresholdBoundariesAreTheIssueNumbers: the default delta bound 0.3, the thin line 0.15 and the cash
+// age 3 days are inclusive/exclusive exactly where the issue puts them.
+func TestThresholdBoundariesAreTheIssueNumbers(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	f.Params = DefaultParams()
+	delta := func(d string) optiontierapi.Verdict {
+		return one(t, f, func(r *optiontierapi.Row) { r.Delta = d }, "main")
+	}
+	if v := delta("-0.30"); v.Tier != "fits" {
+		t.Errorf("|delta| 0.30 = bound: %+v", v)
+	}
+	if v := delta("-0.31"); v.Tier != "check" {
+		t.Errorf("|delta| 0.31: %+v", v)
+	}
+	if v := delta("-0.15"); len(v.Notes) != 0 {
+		t.Errorf("|delta| 0.15 = thin line has note: %+v", v.Notes)
+	}
+	if v := delta("-0.1499"); len(v.Notes) != 1 {
+		t.Errorf("|delta| 0.1499 lacks the note: %+v", v.Notes)
+	}
+	age := func(days int) string {
+		in := optiontierapi.Input{Params: f.Params, Rows: []optiontierapi.Row{f.Base},
+			Accounts: []optiontierapi.AccountCash{{Alias: "x", Cash: "50000", Currency: "USD", AgeDays: days}}}
+		res, err := New(&fakeEvaluator{}).Judge(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Verdicts[0].Cash[0].Why
+	}
+	if got := age(3); got != "" {
+		t.Errorf("age 3 days: why %q", got)
+	}
+	if got := age(4); got != "stale_cash" {
+		t.Errorf("age 4 days: why %q", got)
+	}
+}
