@@ -52,7 +52,7 @@ func okFigs() optionfigapi.PutFigures {
 
 func TestFigureColumnsNilFigures(t *testing.T) {
 	t.Parallel()
-	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-09", []store.Candidate{cand("short_put", 1, "ok")}, nil, rateRead{})
+	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-09", []store.Candidate{cand("short_put", 1, "ok")}, nil, rateRead{}, evidenceSet{})
 	for _, id := range []string{"itm", "excess"} {
 		if c, ok := g.Main.Rows[0].Cells[id].(gap); !ok || c.Reason != "no_reader" {
 			t.Errorf("%s = %+v", id, g.Main.Rows[0].Cells[id])
@@ -64,7 +64,7 @@ func TestFigureColumnsCells(t *testing.T) {
 	t.Parallel()
 	f := &fakeFigs{res: okFigs()}
 	rows := []store.Candidate{cand("short_put", 1, "ok"), cand("short_put", 2, "ok"), cand("short_put", 3, "blocked")}
-	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-10", rows, f, rateRead{text: "4.5", day: "2026-11-08"})
+	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-10", rows, f, rateRead{text: "4.5", day: "2026-11-08"}, evidenceSet{})
 	if f.calls != 2 {
 		t.Fatalf("Put called %d times, want once per ok row", f.calls)
 	}
@@ -88,7 +88,7 @@ func TestFigureColumnsCells(t *testing.T) {
 func TestFigureBelowAndGaps(t *testing.T) {
 	t.Parallel()
 	f := &fakeFigs{res: optionfigapi.PutFigures{ExcessPercent: "1.0%", ExcessKey: "-100", ItmGap: "stale_input", ItmWhy: "cash rate is 9 days old"}}
-	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-09", []store.Candidate{cand("short_put", 1, "ok")}, f, rateRead{})
+	g := buildGroup(groupSpecs[0], "2026-11-09", "2026-11-09", []store.Candidate{cand("short_put", 1, "ok")}, f, rateRead{}, evidenceSet{})
 	if c := g.Main.Rows[0].Cells["excess"].(valueCell); c.Text != "below 1.0%" || string(*c.Value) != "-100" {
 		t.Errorf("excess = %+v", c)
 	}
@@ -101,7 +101,7 @@ func TestCallGroupsHaveNoFigureColumns(t *testing.T) {
 	t.Parallel()
 	f := &fakeFigs{res: okFigs()}
 	for _, s := range groupSpecs[1:] {
-		g := buildGroup(s, "2026-11-09", "2026-11-09", []store.Candidate{cand(s.kind, 1, "ok")}, f, rateRead{})
+		g := buildGroup(s, "2026-11-09", "2026-11-09", []store.Candidate{cand(s.kind, 1, "ok")}, f, rateRead{}, evidenceSet{})
 		for _, col := range g.Main.Columns {
 			id := col.ID
 			if id == "itm" || id == "excess" {

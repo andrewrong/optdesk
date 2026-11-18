@@ -78,3 +78,64 @@ var reasonTexts = map[string]string{
 	"no_dividend_info":       "No dividend information",
 	"stale_dividend":         "Dividend information is out of date",
 }
+
+// Texts of the evidence columns (candidates-evidence.md Decisions 6, 9, 10, 14 and 15).
+const (
+	evBelowBuyLabel   = "Below buy"
+	evOneSigmaLabel   = "One-sigma move"
+	evBidFcstLabel    = "Bid vs forecast price"
+	evSkewLabel       = "Skew"
+	evForecastLabel   = "Forecast vol"
+	evIVPLabel        = "IVP"
+	evVolEdgeLabel    = "Name IV vs forecast"
+	evLabelsLabel     = "Labels"
+	evDayHead         = "; data day "
+	evBadgeDay        = "data day in the badge"
+	evBelowBuyHint    = "The break-even is this far below your buy price, in dollars and as a share of it"
+	evOneSigmaHint    = "one-sigma = a one standard deviation move by expiry, from the contract's IV"
+	evSkewHint        = "skew = this contract's IV minus the IV of the at-the-money put, in percentage points"
+	evLabelsHint      = "Soft labels; they never change which row passes or where it is shown"
+	evForecastHint    = "the mean of the 20-, 60- and 120-session realised volatility"
+	evIVPHint         = "IV percentile: today's IV is at or above this share of the last year's days"
+	evVolEdgeHint     = "the name's implied volatility minus the forecast, in percentage points"
+	evBidFcstHintHead = "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). "
+	trialRateSentence = "DGS3MO is the cash rate for every currency (a trial)."
+	evBidFcstDays     = " Data days: chain "
+	evBidFcstRate     = ", rate "
+	evNoRateDay       = "none"
+	trialRateNote     = "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
+
+	evPerShare    = " per share ("
+	evPerContract = " per contract)"
+	evModelPrice  = "model price "
+	evSigmaBadge  = " sigma to break-even"
+	evATMBadge    = "ATM IV "
+	evATMAt       = " at "
+	evLastError   = "last error "
+	evAsOf        = "as of "
+	evPts         = " pts"
+	evDeltaNone   = "delta not stored"
+
+	gapNoSpot      = "no spot"
+	gapNotStored   = "not stored"
+	gapNoATM       = "no ATM quote"
+	gapNoBuy       = "No buy price set"
+	gapNoForecast  = "No forecast volatility stored"
+	gapNoRate      = "No cash rate within 7 days (DGS3MO)"
+	gapNoFair      = "The model price could not be made"
+	gapNoReadings  = "No reading reader"
+	gapNoTicker    = "No ticker: readings are by ticker"
+	readNoReader   = "no_reader"
+	readNoInput    = "no_input"
+	forecastBrOpen = " ("
+)
+
+// labelTexts are the badge words of Evidence.Labels (Decision 14); a label not listed is shown as it is.
+var labelTexts = map[string]string{
+	"no_edge_at_bid":     "bid not above the forecast price",
+	"delta_outside_band": "delta outside the trial band",
+	"ex_div_inside_life": "ex-dividend inside the life",
+}
+
+// readingReasons are the stored reason codes of a missing reading, as the single-name page names them.
+var readingReasons = map[int]string{1: "no_input", 2: "short_history", 3: "stale_input", 4: "zero_range", 5: "bad_input"}
