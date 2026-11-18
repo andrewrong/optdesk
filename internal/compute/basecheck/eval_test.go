@@ -276,3 +276,23 @@ func TestRowsIgnoresSubjectOutsideRow(t *testing.T) {
 		t.Errorf("chains rows with a bare JPY = %s, want fail", c.Level)
 	}
 }
+
+func TestCoverageGapSkipsDaysNotClosed(t *testing.T) {
+	t.Parallel()
+	gap := func(cells ...basecheckapi.Cell) basecheckapi.Check {
+		in := load(t)
+		in.Cells = cells
+		return checkOf(t, rowOf(t, Evaluate(in), "bars"), "coverage_gap")
+	}
+	cell := func(day string) basecheckapi.Cell {
+		return basecheckapi.Cell{Day: contracts.Day(day), Dataset: "bars", Keys: 10, Missing: 1}
+	}
+	c := gap(cell("2026-11-10"), cell("2026-11-18"))
+	if c.N != 1 || c.Bad != 1 || c.Example != "2026-11-10" || c.Level != basecheckapi.Warn {
+		t.Errorf("open day skipped: N=%d Bad=%d example=%q level=%s, want 1 1 2026-11-10 warn", c.N, c.Bad, c.Example, c.Level)
+	}
+	c = gap(cell("2026-11-18"))
+	if c.Level != basecheckapi.Unknown {
+		t.Errorf("only open day: level=%s, want unknown", c.Level)
+	}
+}

@@ -267,8 +267,9 @@ func ledgerCheck(in basecheckapi.Input, info basecheckapi.RowInfo, rule string, 
 	switch rule {
 	case "coverage_gap":
 		missing := map[contracts.Day]int{}
+		closed, hasClosed := in.Days[firstCalendar(info)]
 		for _, cell := range cells {
-			if cell.Day < HistoryStart {
+			if cell.Day < HistoryStart || (hasClosed && cell.Day > closed) {
 				continue
 			}
 			missing[cell.Day] += cell.Missing
