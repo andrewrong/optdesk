@@ -555,6 +555,36 @@
             }
           ]
         },
+        "idle_note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "buy_hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "spot_hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "legend": {
           "type": "array",
           "items": {
