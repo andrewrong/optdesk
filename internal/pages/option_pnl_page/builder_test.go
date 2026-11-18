@@ -345,7 +345,8 @@ func TestLotsOlderThan30DaysNotShown(t *testing.T) {
 
 func TestFewerThan20EndedLots(t *testing.T) {
 	t.Parallel()
-	for n, want := range map[int]string{19: "19 ended lots, 0 split lots: fewer than 20 split lots: no conclusion about what pays", 20: "20 ended lots, 0 split lots: fewer than 20 split lots: no conclusion about what pays"} {
+	const few = ": fewer than 20 split lots: no conclusion about what pays"
+	for n, want := range map[int]string{19: "19 ended lots, 0 split lots" + few, 20: "20 ended lots, 0 split lots" + few} {
 		r := newRig()
 		for i := 0; i < n; i++ {
 			r.replay.positions = append(r.replay.positions, lotPos("p"+itoa(i), "BBB", itoa(1000+i), "38.00", "closed"))
