@@ -46,6 +46,11 @@ func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 		return nil, err
 	}
 	readers := candidateReaders{Cands: rd.cands, Names: rd.names, View: rd.view, Terms: rd.terms, Days: rd.days}
+	if a.profile.Name != "demo" {
+		// The tier view: the demo profile has no stored cash or rule parameters, so it builds none.
+		readers.Tiers, readers.Account, readers.Aliases = newTierer(), rd.account, rd.aliasList()
+		readers.Owner, readers.RuleParams = rd.owner, a.deps.newRuleParams()
+	}
 	return newCandidatesPage(a, "ot-serve", readers).Build(ctx, rd.series, day, clk.Now().UTC())
 }
 

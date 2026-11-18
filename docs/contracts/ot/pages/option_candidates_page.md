@@ -22,6 +22,10 @@ The company name of a row is the ticker, read from the instrument-name reader (`
 
 The ATM row of the skew is chosen by `newATMFor` (`cmd/ot/evidence_site.go`): one `ChainDay` per underlying and day, `OptionTerms` in chunks of at most 500 ids, one `ChainQuote` per chain row that has terms, and the picker `optionevidence.NewATMPicker()` called with the Source `option_eod`, the capture of the candidates' own quote. A nil day reader, terms reader or picker gives no function, and the page shows the gap `no_reader`. `Evidence` is `optionevidence.New` over the `bsm` pricer with `DefaultParams()`.
 
+## Tier view readers
+
+`ot serve` also passes the readers of the tier view in `candidateReaders`: `Tiers` from `newTierer()` (`cmd/ot/tiers_site.go`, `optiontier.New` over `newEvaluator()`, returned as `optiontierapi.Tierer`), `Account` from `rd.account`, `Aliases` from `rd.aliasList()`, `Owner` from `rd.owner` and `RuleParams` from `deps.newRuleParams()`; they fill the same fields of `option_candidates_page.Config`. The demo profile passes none of them. `ot page --name option_candidates_page` passes none of the five, opens no store beyond the candidate and name stores, and the field `short_put_tiers` is `null`. The new file is `cmd/ot/tiers_site.go`.
+
 ## Left out
 
 With no reader for a store the page shows its own gap (`no_reader`); a nil zone is an error. The demo profile opens no store.

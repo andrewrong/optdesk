@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/ruleparam"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -35,6 +36,7 @@ func newCandidatesFixture(t *testing.T, env string) *candidatesFixture {
 	t.Helper()
 	f := &candidatesFixture{}
 	f.a, _ = testApp(t, env)
+	f.a.deps.newRuleParams = ruleparam.New
 	f.a.deps.optionCandidatesPage = func(_ *time.Location, _, _, _ string, r candidateReaders) pages.Page {
 		f.gotAll = r
 		f.got = r.Cands
@@ -252,6 +254,7 @@ func TestCandidatesNamesReaderPassed(t *testing.T) {
 		t.Fatalf("names reader %v", f.gotNames)
 	}
 	a, _ := testApp(t, "")
+	a.deps.newRuleParams = ruleparam.New
 	a.deps.optionCandidatesPage = newOptionCandidatesPage
 	b, err := buildCandidates(t.Context(), a, candidatesClock, "2026-11-05", siteReaders{cands: demoCandidates{}, names: names})
 	if err != nil || !strings.Contains(string(b), "ZZZ") {
@@ -276,6 +279,7 @@ func TestBuildCandidatesReadsRateSeries(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")
 	a.deps.optionCandidatesPage = newOptionCandidatesPage
+	a.deps.newRuleParams = ruleparam.New
 	rs := &rateSeries{}
 	if _, err := buildCandidates(t.Context(), a, candidatesClock, "2026-11-05", siteReaders{cands: demoCandidates{}, series: rs}); err != nil {
 		t.Fatal(err)
