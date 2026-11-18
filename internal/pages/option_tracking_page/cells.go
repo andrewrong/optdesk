@@ -285,12 +285,25 @@ func eventGap(o trackapi.TrackedOption) (gap, bool) {
 	return codeGap(o.EventStatus), true
 }
 
-func resultsCell(o trackapi.TrackedOption) any {
+// spotCell is the stock close with the day of the figure beside it as a badge; a row with no
+// MarkDay shows the price alone.
+func spotCell(o opt) any {
+	v := moneyHalfUp(o.Spot, o.Currency, markCode(o))
+	if c, ok := v.(valueCell); ok && o.MarkDay != "" {
+		c.Badges = append(c.Badges, string(o.MarkDay))
+		return c
+	}
+	return v
+}
+
+// resultsCell is the next earnings date; a date before asOf (the page day) has passed and shows
+// the dash. An empty asOf compares nothing.
+func resultsCell(o trackapi.TrackedOption, asOf contracts.Day) any {
 	if g, bad := eventGap(o); bad {
 		return g
 	}
 	c := textCell(dash)
-	if o.NextEarnings != "" {
+	if o.NextEarnings != "" && (asOf == "" || o.NextEarnings >= asOf) {
 		c.Text = string(o.NextEarnings)
 	}
 	if o.EarningsInLife {
