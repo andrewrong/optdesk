@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -47,7 +48,8 @@ func DialHistory(ctx context.Context, socketPath string, o broker.Options) (brok
 func (c *historyClient) Close() error { return c.conn.Close() }
 
 // Bars asks for the daily bars of one contract. An unset or unknown kind and an End that is neither
-// YYYY-MM-DD nor empty fail before any call; RESOURCE_EXHAUSTED (pacing) is Retryable. A bar whose
+// YYYY-MM-DD nor empty fail before any call; RESOURCE_EXHAUSTED (pacing) and an UNKNOWN
+// status that carries broker error 162 or "no data" are Retryable. A bar whose
 // day is not YYYY-MM-DD or whose price or volume is not a decimal is a Permanent error.
 func (c *historyClient) Bars(ctx context.Context, q broker.BarQuery) ([]broker.Bar, error) {
 	kind, ok := barKindOf[q.Kind]
@@ -70,7 +72,11 @@ func (c *historyClient) Bars(ctx context.Context, q broker.BarQuery) ([]broker.B
 		if status.Code(err) == codes.ResourceExhausted {
 			return nil, &brokerError{kind: contracts.Retryable, text: "broker: bars: " + codes.ResourceExhausted.String(), err: err}
 		}
-		return nil, wrapErr(ctx, "bars", err)
+		wrapped := wrapErr(ctx, "bars", err)
+		if be, ok := wrapped.(*brokerError); ok && isNoData(err) {
+			be.kind = contracts.Retryable
+		}
+		return nil, wrapped
 	}
 	out := make([]broker.Bar, 0, len(resp.GetBars()))
 	for _, b := range resp.GetBars() {
@@ -81,6 +87,19 @@ func (c *historyClient) Bars(ctx context.Context, q broker.BarQuery) ([]broker.B
 		out = append(out, bar)
 	}
 	return out, nil
+}
+
+var brokerError162 = regexp.MustCompile(`\b162\b`)
+
+// isNoData reports whether err is the UNKNOWN status pyside sends for broker error 162 ("HMDS query
+// returned no data"): a later attempt can succeed, so Bars types it Retryable.
+func isNoData(err error) bool {
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Unknown {
+		return false
+	}
+	m := st.Message()
+	return brokerError162.MatchString(m) || strings.Contains(strings.ToLower(m), "no data")
 }
 
 func isDay(s string) bool {
