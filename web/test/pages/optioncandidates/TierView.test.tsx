@@ -102,4 +102,13 @@ describe('TierView', () => {
     expect(page.querySelector('[data-tier-view]')).toBeNull()
     expect(page.textContent).not.toContain('Stored tables')
   })
+
+  it('TestRowWrapsOnPhone', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const fits = page.querySelector('[data-tier=fits]')!
+    // Decision 13: at 640px and below a row wraps to two lines, so no fixed wide minimum forces sideways scrolling.
+    expect(fits.querySelector('.min-w-\\[60rem\\]')).toBeNull()
+    const row = fits.querySelector('[data-row] tr')!
+    expect(row.className).toMatch(/max-sm:|sm:table-row|flex-wrap/)
+  })
 })

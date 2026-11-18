@@ -11,7 +11,7 @@ import type { Badge as BadgeT, Field, Pair, Tier, TierColumn, TierRow } from '@/
 const icons = { check: Check, alert: TriangleAlert, minus: Minus }
 const borders: Record<string, string> = { fits: 'border-l-success', check: 'border-l-warn' }
 const tones = { warn: 'warn', info: 'secondary', none: 'outline' } as const
-const widths = ['w-10', 'w-28', 'w-56', 'w-40', 'w-32', 'w-36', 'min-w-64']
+const widths = ['w-10', 'w-28', 'w-56', 'w-40', 'w-32', 'w-36', 'sm:min-w-64']
 
 function Hint({ text, children }: { text: string | null; children: React.ReactNode }) {
   if (text === null) return <>{children}</>
@@ -43,7 +43,7 @@ function Badges({ items }: { items: BadgeT[] }) {
 
 function PairCell({ id, pair }: { id: string; pair: Pair }) {
   return (
-    <TableCell data-cell={id} className="align-top">
+    <TableCell data-cell={id} className="align-top max-sm:order-4 max-sm:basis-1/3 max-sm:whitespace-normal">
       {pair.gap ? (
         <span className="text-muted-foreground">{pair.gap.text}</span>
       ) : (
@@ -53,6 +53,16 @@ function PairCell({ id, pair }: { id: string; pair: Pair }) {
         </>
       )}
     </TableCell>
+  )
+}
+
+function TierTitle({ tier }: { tier: Tier }) {
+  return (
+    <>
+      <TierIcon tier={tier} />
+      <span>{tier.word}</span>
+      <span>{tier.title}</span>
+    </>
   )
 }
 
@@ -75,7 +85,7 @@ function FieldItem({ field }: { field: Field }) {
   )
 }
 
-function Cols() {
+function TierColgroup() {
   return (
     <colgroup>
       {widths.map((w) => (
@@ -88,7 +98,7 @@ function Cols() {
 export function TierHead({ columns }: { columns: TierColumn[] }) {
   return (
     <Table className="table-fixed">
-      <Cols />
+      <TierColgroup />
       <TableHeader>
         <TableRow>
           {columns.map((c, i) => (
@@ -106,11 +116,11 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
   return (
     <Accordion type="single" collapsible data-row={row.id}>
       <AccordionItem value={row.id}>
-        <Table className="table-fixed">
-          <Cols />
-          <TableBody>
-            <TableRow className={cn('border-l-4', borders[tier.id] ?? 'border-l-muted')}>
-              <TableCell className="align-top">
+        <Table className="table-fixed max-sm:block">
+          <TierColgroup />
+          <TableBody className="max-sm:block">
+            <TableRow className={cn('border-l-4 max-sm:flex max-sm:flex-wrap', borders[tier.id] ?? 'border-l-muted')}>
+              <TableCell className="align-top max-sm:order-1 max-sm:w-10">
                 <AccordionTrigger
                   data-arrow
                   aria-label={row.contract.name}
@@ -119,13 +129,13 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
                   <ChevronRight className="size-4 transition-transform group-aria-expanded/accordion-trigger:rotate-90" />
                 </AccordionTrigger>
               </TableCell>
-              <TableCell className="align-top">
+              <TableCell className="align-top max-sm:order-2">
                 <Badge variant="outline" className="gap-1">
                   <TierIcon tier={tier} />
                   {tier.word}
                 </Badge>
               </TableCell>
-              <TableCell data-cell="contract" className="align-top">
+              <TableCell data-cell="contract" className="align-top max-sm:order-3 max-sm:min-w-0 max-sm:flex-1 max-sm:whitespace-normal">
                 <div className="font-medium">{row.contract.name}</div>
                 <div className="text-xs text-muted-foreground">
                   {row.contract.strike} {row.contract.expiry} {row.contract.dte}
@@ -134,7 +144,7 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
               <PairCell id="margin" pair={row.margin} />
               <PairCell id="below_spot" pair={row.below_spot} />
               <PairCell id="premium" pair={row.premium} />
-              <TableCell data-cell="badges" className="min-w-64 align-top">
+              <TableCell data-cell="badges" className="align-top sm:min-w-64 max-sm:order-5 max-sm:basis-full">
                 <div className="flex flex-wrap gap-1">
                   <Badges items={row.badges} />
                   <Badges items={row.notes} />
@@ -161,9 +171,7 @@ function GreyGroup({ tier }: { tier: Tier }) {
       <AccordionItem value={tier.id}>
         <AccordionTrigger>
           <span className="flex items-center gap-2">
-            <TierIcon tier={tier} />
-            <span>{tier.word}</span>
-            <span>{tier.title}</span>
+            <TierTitle tier={tier} />
           </span>
         </AccordionTrigger>
         <AccordionContent>
@@ -184,14 +192,14 @@ export function TierSection({ tier, columns }: { tier: Tier; columns: TierColumn
   return (
     <section data-tier={tier.id} className="min-w-0 space-y-1">
       <h3 className="flex items-center gap-2 text-base font-semibold">
-        <TierIcon tier={tier} />
-        <span>{tier.word}</span>
-        <span>{tier.title}</span>
+        <TierTitle tier={tier} />
       </h3>
       <p className="text-xs text-muted-foreground">{tier.explain}</p>
       <div className="overflow-x-auto">
-        <div className="min-w-[60rem]">
-          <TierHead columns={columns} />
+        <div className="sm:min-w-[60rem]">
+          <div className="max-sm:hidden">
+            <TierHead columns={columns} />
+          </div>
           {tier.rows.map((row) => (
             <DataRow key={row.id} tier={tier} row={row} />
           ))}
