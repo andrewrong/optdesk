@@ -3,7 +3,6 @@ package base_data_page
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
@@ -84,8 +83,8 @@ func failedSummary(checks []basecheckapi.Check) string {
 		p := c.Rule
 		if c.Rule == "coverage_gap" {
 			p = fmt.Sprintf("%s %d days", c.Rule, c.Bad)
-		} else if s, err := strconv.ParseFloat(c.Share, 64); err == nil && s > 0 {
-			p = fmt.Sprintf("%s %s%%", c.Rule, strconv.FormatFloat(s*100, 'f', -1, 64))
+		} else if pct, ok := percentText(c.Share); ok {
+			p = fmt.Sprintf("%s %s%%", c.Rule, pct)
 		}
 		parts = append(parts, p)
 	}
@@ -102,4 +101,33 @@ func glossary() []GlossaryRow {
 		{termSession, textSession}, {termLedger, textLedger}, {termTrial, textTrial}, {termShare, textShare},
 		{termSplit, textSplit}, {termCrossed, textCrossed}, {termNonLive, textNonLive}, {termCoverage, textCoverage},
 	}
+}
+
+// percentText moves the decimal point of a decimal text two places, as text, so that no float arithmetic is done:
+// "0.021" is "2.1" and "0.07" is "7". It is false for a share that is zero or not a plain decimal.
+func percentText(share string) (string, bool) {
+	whole, frac, _ := strings.Cut(share, ".")
+	if whole == "" || !allDigits(whole) || (frac != "" && !allDigits(frac)) || strings.Trim(whole+frac, "0") == "" {
+		return "", false
+	}
+	for len(frac) < 2 {
+		frac += "0"
+	}
+	whole = strings.TrimLeft(whole+frac[:2], "0")
+	if whole == "" {
+		whole = "0"
+	}
+	if rest := strings.TrimRight(frac[2:], "0"); rest != "" {
+		return whole + "." + rest, true
+	}
+	return whole, true
+}
+
+func allDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }

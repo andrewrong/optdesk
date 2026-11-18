@@ -44,8 +44,24 @@ func Hint(id string) (string, bool) {
 	if _, ok := rowHints[row]; !ok {
 		return "", false
 	}
+	if !ruleKnown(row, rule) {
+		return "", false
+	}
 	t, ok := ruleHints[rule]
 	return t, ok
+}
+
+// ruleKnown is true for a rule of the row in basecheckapi.Rules, and for not_read, which any row can show.
+func ruleKnown(row, rule string) bool {
+	if rule == "not_read" {
+		return true
+	}
+	for _, r := range basecheckapi.Rules {
+		if r.Row == row && r.Rule == rule {
+			return true
+		}
+	}
+	return false
 }
 
 var errNoEval = errors.New("base_data_page: no Eval")

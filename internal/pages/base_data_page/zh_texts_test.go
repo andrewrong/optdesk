@@ -34,6 +34,9 @@ func TestEveryRuleAndRowHasChineseHint(t *testing.T) {
 	if _, ok := Hint("nosuchrow.rows"); ok {
 		t.Error("a rule of an unknown row has a hint")
 	}
+	if _, ok := Hint("fx.ohlc_order"); ok {
+		t.Error("a rule the row does not have has a hint")
+	}
 	if _, ok := Hint("nosuchrow"); ok {
 		t.Error("an unknown row has a hint")
 	}

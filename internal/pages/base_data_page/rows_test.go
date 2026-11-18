@@ -41,3 +41,27 @@ func TestUnknownRuleGetsFallbackHint(t *testing.T) {
 		t.Fatalf("got %+v", got[0])
 	}
 }
+
+// TestFailedSummaryPercentIsExact: the percent is the share text with the point moved, never float arithmetic.
+func TestFailedSummaryPercentIsExact(t *testing.T) {
+	t.Parallel()
+	got := failedSummary([]basecheckapi.Check{{Rule: "crossed", Level: basecheckapi.Fail, Share: "0.07"}})
+	if want := "crossed 7%"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// TestPercentText: shares of several shapes, and the ones that give no percent.
+func TestPercentText(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{"0.021": "2.1", "0.0033": "0.33", "0.5": "50", "1": "100", "0.001": "0.1", "0.0005": "0.05"} {
+		if got, ok := percentText(in); !ok || got != want {
+			t.Errorf("percentText(%q) = %q, %v; want %q", in, got, ok, want)
+		}
+	}
+	for _, in := range []string{"", "0", "0.000", "x", "-0.1", "1e-3"} {
+		if got, ok := percentText(in); ok {
+			t.Errorf("percentText(%q) = %q, want none", in, got)
+		}
+	}
+}
