@@ -11,7 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-// evState is what the evidence of one ok short-put row came to.
+// evState is what the evidence of one short-put row came to.
 type evState int
 
 const (
@@ -21,7 +21,7 @@ const (
 	evUnreadable         // Evaluate answered ErrBadInput
 )
 
-// rowEvidence is the evidence of one ok short-put row, as the Evaluator answered it with the readings
+// rowEvidence is the evidence of one short-put row, as the Evaluator answered it with the readings
 // and the ATM pair that went into it.
 type rowEvidence struct {
 	state       evState
@@ -31,7 +31,7 @@ type rowEvidence struct {
 	atmNoReader bool // nil ATMFor
 }
 
-// evidenceSet is the evidence of the ok rows of one group, by the row's position in the main table;
+// evidenceSet is the evidence of the rows it was built for, by the row's position in them;
 // the zero value (no rows) makes every evidence cell the gap no_reader.
 type evidenceSet struct {
 	rows     []rowEvidence
@@ -51,7 +51,7 @@ func inputsOf(c Config) evidenceInputs {
 	return evidenceInputs{eval: c.Evidence, atm: c.ATMFor, readings: c.Readings, names: c.Names}
 }
 
-// evidenceOf evaluates the ok rows of a short-put group, once per row, in row order. Any reader error
+// evidenceOf evaluates the given short-put rows, whatever their stored status, once per row, in row order. Any reader error
 // and any Evaluate error but ErrBadInput is returned.
 func evidenceOf(ctx context.Context, in evidenceInputs, tickers map[int]string, gd contracts.Day, rate rateRead, rows []store.Candidate) (evidenceSet, error) {
 	set := evidenceSet{chainDay: gd, rateDay: rate.day}
@@ -62,9 +62,6 @@ func evidenceOf(ctx context.Context, in evidenceInputs, tickers map[int]string, 
 	var err error
 	byName := map[int]nameReadings{}
 	for _, c := range rows {
-		if c.Status != "ok" {
-			continue
-		}
 		r := rowEvidence{}
 		switch spot := deref(c.Spot); {
 		case spot == "":

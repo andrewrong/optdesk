@@ -86,3 +86,33 @@ func TestNoClockNoIO(t *testing.T) {
 		})
 	}
 }
+
+// TestNoArithmeticInTiers: the tier files place stored text; they import no number library and call
+// neither percentText nor roundDigits.
+func TestNoArithmeticInTiers(t *testing.T) {
+	t.Parallel()
+	banned := map[string]bool{`"math"`: true, `"math/big"`: true, `"sort"`: true}
+	n := 0
+	for name, f := range sources(t) {
+		if !strings.HasPrefix(name, "tier") {
+			continue
+		}
+		n++
+		for _, imp := range f.Imports {
+			if banned[imp.Path.Value] || strings.Contains(imp.Path.Value, "decimal") {
+				t.Errorf("%s imports %s", name, imp.Path.Value)
+			}
+		}
+		ast.Inspect(f, func(x ast.Node) bool {
+			if call, ok := x.(*ast.CallExpr); ok {
+				if id, ok := call.Fun.(*ast.Ident); ok && (id.Name == "percentText" || id.Name == "roundDigits") {
+					t.Errorf("%s calls %s", name, id.Name)
+				}
+			}
+			return true
+		})
+	}
+	if n == 0 {
+		t.Fatal("no tier source files")
+	}
+}
