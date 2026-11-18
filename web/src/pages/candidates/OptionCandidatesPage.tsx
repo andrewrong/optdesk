@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CandidateGroup } from '@/pages/candidates/CandidateGroup'
+import { TierView } from '@/pages/candidates/TierView'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/option_candidates_page'
 
@@ -45,6 +46,12 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           ))}
         </CardContent>
       </Card>
+      {payload.short_put_tiers ? (
+        <>
+          <TierView tiers={payload.short_put_tiers} />
+          <h2 className="text-xl font-semibold">Stored tables</h2>
+        </>
+      ) : null}
       <Tabs defaultValue={payload.groups[0].kind}>
         <TabsList>
           {payload.groups.map((group) => (
