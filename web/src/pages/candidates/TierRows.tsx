@@ -11,6 +11,8 @@ import type { Badge as BadgeT, Field, Pair, Tier, TierColumn, TierRow } from '@/
 const icons = { check: Check, alert: TriangleAlert, minus: Minus }
 const borders: Record<string, string> = { fits: 'border-l-success', check: 'border-l-warn' }
 const tones = { warn: 'warn', info: 'secondary', none: 'outline' } as const
+const titleTones: Record<string, string> = { fits: 'text-success', check: 'text-warn' }
+const wordVariants: Record<string, 'success' | 'warn' | 'outline'> = { fits: 'success', check: 'warn' }
 const widths = ['w-10', 'w-28', 'w-56', 'w-40', 'w-32', 'w-36', 'sm:min-w-64']
 
 function Hint({ text, children }: { text: string | null; children: React.ReactNode }) {
@@ -103,7 +105,7 @@ export function TierHead({ columns }: { columns: TierColumn[] }) {
         <TableRow>
           {columns.map((c, i) => (
             <TableHead key={c.id} data-col={c.id} className={cn(i === columns.length - 1 && 'min-w-64')}>
-              <Hint text={c.hint}>{c.label}</Hint>
+              <Hint text={c.hint}>{i === 0 ? <span className="sr-only">{c.label}</span> : c.label}</Hint>
             </TableHead>
           ))}
         </TableRow>
@@ -130,7 +132,7 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
                 </AccordionTrigger>
               </TableCell>
               <TableCell className="align-top max-sm:order-2">
-                <Badge variant="outline" className="gap-1">
+                <Badge variant={wordVariants[tier.id] ?? 'outline'} className="gap-1">
                   <TierIcon tier={tier} />
                   {tier.word}
                 </Badge>
@@ -169,7 +171,7 @@ function GreyGroup({ tier }: { tier: Tier }) {
   return (
     <Accordion type="single" collapsible data-tier={tier.id}>
       <AccordionItem value={tier.id}>
-        <AccordionTrigger>
+        <AccordionTrigger className="text-muted-foreground">
           <span className="flex items-center gap-2">
             <TierTitle tier={tier} />
           </span>
@@ -191,7 +193,7 @@ export function TierSection({ tier, columns }: { tier: Tier; columns: TierColumn
   if (tier.collapsed) return <GreyGroup tier={tier} />
   return (
     <section data-tier={tier.id} className="min-w-0 space-y-1">
-      <h3 className="flex items-center gap-2 text-base font-semibold">
+      <h3 className={cn('flex items-center gap-2 text-base font-semibold', titleTones[tier.id])}>
         <TierTitle tier={tier} />
       </h3>
       <p className="text-xs text-muted-foreground">{tier.explain}</p>

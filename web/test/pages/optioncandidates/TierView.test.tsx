@@ -111,4 +111,18 @@ describe('TierView', () => {
     const row = fits.querySelector('[data-row] tr')!
     expect(row.className).toMatch(/max-sm:|sm:table-row|flex-wrap/)
   })
+
+  it('TestTierColoursAndHeaderLabel', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    expect(page.querySelector('[data-tier=fits] h3')!.className).toContain('text-success')
+    expect(page.querySelector('[data-tier=check] h3')!.className).toContain('text-warn')
+    expect(page.querySelector('[data-tier=grey_in_the_money] button')!.className).toContain('text-muted-foreground')
+    expect(page.querySelector('[data-tier=fits] [data-row] [data-slot=badge]')!.className).toContain('text-success')
+    expect(page.querySelector('[data-tier=check] [data-row] [data-slot=badge]')!.className).toContain('text-warn')
+    expect(page.querySelector('[data-legend-item=fits]')!.className).toContain('bg-success/10')
+    expect(page.querySelector('[data-legend-item=check]')!.className).toContain('bg-warn/10')
+    expect(page.querySelector('[data-legend-item=grey]')!.className).toContain('bg-muted')
+    const label = page.querySelector('[data-tier=fits] [data-col=arrow] .sr-only')!
+    expect(label.textContent).toBe(tiers.columns[0]!.label)
+  })
 })
