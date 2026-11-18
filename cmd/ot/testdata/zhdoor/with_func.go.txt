@@ -1,0 +1,5 @@
+package demo
+
+const A = "说明"
+
+func F() string { return A }

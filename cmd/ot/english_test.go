@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -25,8 +26,35 @@ var guardedTrees = []string{"internal/pages", "internal/compute/pagefig", "cmd/o
 
 var cjkRun = regexp.MustCompile(`[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]+`)
 
+// isZhTextsDoor reports whether rel, a slash path from the repository root, is the one door for Chinese
+// explanation texts: internal/pages/<page>/zh_texts.go with exactly one directory between pages and the file.
+// Owner's word: ask optdesk-4802 (2026-11-17); design entry: docs/design/candidates-tiers.md (Decision 11).
+// The file may hold only string constants; checkZhTexts enforces it.
+func isZhTextsDoor(rel string) bool {
+	parts := strings.Split(rel, "/")
+	return len(parts) == 4 && parts[0] == "internal" && parts[1] == "pages" && parts[3] == "zh_texts.go"
+}
+
+// cjkFindings returns the CJK findings of one file text that is not part of an allowedCJK entry. A door file
+// passes.
+func cjkFindings(rel, text string) []string {
+	if isZhTextsDoor(rel) {
+		return nil
+	}
+	for _, ok := range allowedCJK {
+		text = strings.ReplaceAll(text, ok, "")
+	}
+	var out []string
+	for i, line := range strings.Split(text, "\n") {
+		if m := cjkRun.FindString(line); m != "" {
+			out = append(out, fmt.Sprintf("%s: line %d of the text without allowed values holds %q", rel, i+1, m))
+		}
+	}
+	return out
+}
+
 // TestGoTreesAreEnglish fails on any CJK character in a non-test .go file of the guarded trees that is not
-// part of an allowedCJK entry.
+// part of an allowedCJK entry or in a zh_texts.go door file.
 func TestGoTreesAreEnglish(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..")
@@ -42,13 +70,17 @@ func TestGoTreesAreEnglish(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			text := string(b)
-			for _, ok := range allowedCJK {
-				text = strings.ReplaceAll(text, ok, "")
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
 			}
-			for i, line := range strings.Split(text, "\n") {
-				if m := cjkRun.FindString(line); m != "" {
-					t.Errorf("%s: line %d of the text without allowed values holds %q", filepath.ToSlash(path), i+1, m)
+			rel = filepath.ToSlash(rel)
+			for _, f := range cjkFindings(rel, string(b)) {
+				t.Error(f)
+			}
+			if isZhTextsDoor(rel) {
+				for _, f := range checkZhTexts(rel, b) {
+					t.Errorf("%s", f)
 				}
 			}
 			return nil

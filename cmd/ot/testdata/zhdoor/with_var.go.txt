@@ -1,0 +1,3 @@
+package demo
+
+var A = "说明"
