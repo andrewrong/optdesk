@@ -116,13 +116,30 @@ describe('OptionCandidatesPage', () => {
   })
 })
 
+const open = (el: Element) => act(async () => (el as HTMLElement).click())
+
 describe('OptionCandidatesPage tiers', () => {
   it('TestStoredTablesBelowTiers', async () => {
     const page = await show({ ...ok, short_put_tiers: tiers } as never)
+    await open(page.querySelector('[data-stored-tables] button')!)
     const view = page.querySelector('[data-tier-view]')!
-    const heading = [...page.querySelectorAll('h2')].find((h) => h.textContent === 'Stored tables')!
+    const heading = page.querySelector('[data-stored-tables] button')!
     const tabs = page.querySelector('[data-tab]')!
     expect(view.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(heading.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('TestStoredTablesClosedByDefault', async () => {
+    const page = await show({ ...ok, short_put_tiers: tiers } as never)
+    const trigger = page.querySelector('[data-stored-tables] button')!
+    expect(trigger.textContent).toBe(tiers.stored_title)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(page.querySelector('[data-tab]')).toBeNull()
+    await open(trigger)
+    expect(page.querySelectorAll('[data-tab]').length).toBe(ok.groups.length)
+    await act(async () => root?.unmount())
+    host.remove()
+    const plain = await show({ ...ok, short_put_tiers: { ...tiers, stored_title: null } } as never)
+    expect(plain.querySelector('[data-stored-tables] button')!.textContent).toBe('Stored tables')
   })
 })

@@ -47,6 +47,8 @@ export const tiers: TierView = {
   ],
   common: [{ code: 'earnings_unconfirmed', label: 'tiers Earnings unconfirmed', gloss: 'tiers 财报日没有人工核实' }],
   kept: '未进入 Fits 的原因（行数）：没有买入价 1',
+  kept_note: 'tiers 一行可以有几个原因',
+  stored_title: 'tiers 原始表格',
   legend: [
     { tier: 'fits', title: 'tiers legend Fits', text: 'tiers 满足你的全部条件' },
     { tier: 'check', title: 'tiers legend Check', text: 'tiers 有需要再看一眼的徽标' },
@@ -99,7 +101,7 @@ export const tiers: TierView = {
       title: '1 tiers in the money',
       explain: 'tiers 价内',
       collapsed: true,
-      rows: [row('g1', { line: 'tiers grey line AAA $100.00 12-18' })],
+      rows: [row('g1', { below_spot: { main: 'tiers gap no iv', sub: null, gap: { kind: 'gap', reason: 'no_data', text: 'tiers gap no iv' } }, line: 'tiers grey line AAA $100.00 12-18' })],
     },
   ],
 }

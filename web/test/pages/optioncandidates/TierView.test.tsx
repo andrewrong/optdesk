@@ -55,8 +55,9 @@ describe('TierView', () => {
     expect(group.querySelector('button')!.getAttribute('aria-expanded')).toBe('false')
     expect(group.textContent).not.toContain(tiers.tiers[2]!.rows[0]!.line!)
     await open(group.querySelector('button')!)
+    expect(group.querySelectorAll('[data-row]')).toHaveLength(tiers.tiers[2]!.rows.length)
+    await open(group.querySelector('[data-arrow]')!)
     expect(group.textContent).toContain(tiers.tiers[2]!.rows[0]!.line!)
-    expect(group.querySelectorAll('[data-row] [data-expand]')).toHaveLength(0)
   })
 
   it('TestRowExpansionFields', async () => {
@@ -124,5 +125,66 @@ describe('TierView', () => {
     expect(page.querySelector('[data-legend-item=grey]')!.className).toContain('bg-muted')
     const label = page.querySelector('[data-tier=fits] [data-col=arrow] .sr-only')!
     expect(label.textContent).toBe(tiers.columns[0]!.label)
+  })
+
+  it('TestGreyGroupRowsHaveColumns', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const group = page.querySelector('[data-tier=grey_in_the_money]')!
+    await open(group.querySelector('button')!)
+    const fitsCells = page.querySelector('[data-tier=fits] [data-row] tbody tr')!.querySelectorAll('td').length
+    const rows = group.querySelectorAll('[data-row] tbody tr')
+    expect(rows).toHaveLength(tiers.tiers[2]!.rows.length)
+    for (const tr of rows) expect(tr.querySelectorAll('td')).toHaveLength(fitsCells)
+    const line = tiers.tiers[2]!.rows[0]!.line!
+    expect(group.textContent).not.toContain(line)
+    await open(group.querySelector('[data-arrow]')!)
+    expect(group.querySelector('[data-expand]')!.textContent).toContain(line)
+  })
+
+  it('TestNoExplainUnderHeader', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    for (const id of ['fits', 'check']) {
+      const scope = page.querySelector(`[data-tier=${id}]`)!
+      const tier = tiers.tiers.find((t) => t.id === id)!
+      expect(scope.textContent).not.toContain(tier.explain)
+    }
+  })
+
+  it('TestGreyGlossShownWhenOpened', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const group = page.querySelector('[data-tier=grey_in_the_money]')!
+    const gloss = tiers.tiers[2]!.explain
+    expect(group.textContent).not.toContain(gloss)
+    await open(group.querySelector('button')!)
+    expect(group.textContent).toContain(gloss)
+  })
+
+  it('TestKeptNoteAfterKept', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const kept = page.querySelector('[data-kept]')!
+    const note = page.querySelector('[data-kept-note]')!
+    expect(note.textContent).toBe(tiers.kept_note)
+    expect(kept.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await act(async () => root?.unmount())
+    host.remove()
+    const none = await show(<TierView tiers={{ ...tiers, kept_note: null }} />)
+    expect(none.querySelector('[data-kept-note]')).toBeNull()
+  })
+
+  it('TestGapCellsMuted', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    await open(page.querySelector('[data-tier=grey_in_the_money] button')!)
+    const cells = [
+      page.querySelectorAll('[data-tier=fits] [data-row]')[1]!.querySelector('[data-cell=margin]')!,
+      page.querySelector('[data-tier=grey_in_the_money] [data-row] [data-cell=below_spot]')!,
+    ]
+    for (const cell of cells) {
+      const gapText = cell.textContent!
+      expect(gapText).toContain('gap')
+      const span = [...cell.querySelectorAll('span')].find((e) => e.textContent === gapText)!
+      expect(span.className).toContain('text-muted-foreground')
+    }
+    const normal = page.querySelector('[data-tier=fits] [data-row] [data-cell=margin] div')!
+    expect(normal.className).not.toContain('text-muted-foreground')
   })
 })

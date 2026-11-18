@@ -2,6 +2,7 @@
 // group present, the notes at the foot. Every visible string is a payload field; this file counts, sorts, compares
 // and words nothing. The table sort buttons are those of the shared data-table; there is no filter control.
 import { TriangleAlert } from 'lucide-react'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +17,25 @@ export type { Payload as OptionCandidatesPayload } from '@/types/option_candidat
 
 export function OptionCandidatesPage({ payload }: { payload: Payload }) {
   const staleText = payload.stale ? payload.stale.text : null
+  const tabs = (
+    <Tabs defaultValue={payload.groups[0].kind}>
+      <TabsList>
+        {payload.groups.map((group) => (
+          <TabsTrigger key={group.kind} value={group.kind} data-tab={group.kind}>
+            {group.title}
+            <Badge variant="secondary">{group.counts.ok}</Badge>
+            <Badge variant="outline">{group.counts.blocked}</Badge>
+            <Badge variant="outline">{group.counts.unknown}</Badge>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {payload.groups.map((group) => (
+        <TabsContent key={group.kind} value={group.kind}>
+          <CandidateGroup group={group} staleText={staleText} />
+        </TabsContent>
+      ))}
+    </Tabs>
+  )
   return (
     <div className="min-w-0 space-y-4" data-page="option-candidates">
       <Card data-header>
@@ -46,29 +66,21 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           ))}
         </CardContent>
       </Card>
+      {payload.short_put_tiers ? <TierView tiers={payload.short_put_tiers} /> : null}
       {payload.short_put_tiers ? (
-        <>
-          <TierView tiers={payload.short_put_tiers} />
-          <h2 className="text-xl font-semibold">Stored tables</h2>
-        </>
-      ) : null}
-      <Tabs defaultValue={payload.groups[0].kind}>
-        <TabsList>
-          {payload.groups.map((group) => (
-            <TabsTrigger key={group.kind} value={group.kind} data-tab={group.kind}>
-              {group.title}
-              <Badge variant="secondary">{group.counts.ok}</Badge>
-              <Badge variant="outline">{group.counts.blocked}</Badge>
-              <Badge variant="outline">{group.counts.unknown}</Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {payload.groups.map((group) => (
-          <TabsContent key={group.kind} value={group.kind}>
-            <CandidateGroup group={group} staleText={staleText} />
-          </TabsContent>
-        ))}
-      </Tabs>
+        <Accordion type="single" collapsible data-stored-tables>
+          <AccordionItem value="stored">
+            <AccordionTrigger className="text-xl font-semibold">
+              {payload.short_put_tiers.stored_title ?? 'Stored tables'}
+            </AccordionTrigger>
+            <AccordionContent>
+              {tabs}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ) : (
+        tabs
+      )}
       {payload.notes.map((note, index) => (
         <p key={`${index}-${note}`} className="text-xs text-muted-foreground" data-note>
           {note}
