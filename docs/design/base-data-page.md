@@ -390,7 +390,7 @@ Acceptance:
 
 ### 14 recon-api (interface)
 
-Module: compute. Size: S. Order: after 2 (both edit `internal/compute/basecheckapi/api.go`; entry 2 has landed).
+Module: compute. Size: S. Order: after 2.
 Files: `internal/compute/reconapi/api.go`, `internal/compute/reconapi/api_test.go`, `internal/compute/basecheckapi/api.go`, `internal/compute/basecheckapi/api_test.go`
 Contracts: unchanged
 The declarations of Interface 5: the compare function type, its data and the verdict function type, and the pair levels on `basecheckapi.Input`. Editing the interface file of basecheckapi is an interface change; it lands before entry 19.
@@ -413,7 +413,7 @@ Acceptance:
 
 ### 16 crosscheck-schema (interface)
 
-Module: contracts. Size: S. Order: first.
+Module: contracts. Size: S. Order: after 3.
 Files: `contracts/schemas/page.base_data_page.v1.json`, `web/src/generated/base_data_page.v1.ts`, `contracts/fixtures/page.base_data_page.v1.cross.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/base_data_page_v1_test.go`
 Contracts: page.base_data_page v1 additive
 Interface 8: the optional integer `skipped` on `CrossCheck` and the optional string `company` on its items, with the generated type and a fixture that carries a `cross_check`.
@@ -453,7 +453,7 @@ Acceptance:
 
 ### 19 recon-compare
 
-Module: compute. Size: M. Order: after 14.
+Module: compute. Size: M. Order: after 8, 14.
 Files: `internal/compute/recon/compare.go`, `internal/compute/recon/verdict.go`, `internal/compute/recon/rules.go`, `internal/compute/recon/compare_test.go`, `internal/compute/recon/verdict_test.go`, `internal/compute/recon/testdata/pairs.json`, `internal/compute/basecheck/eval.go`, `internal/compute/basecheck/eval_test.go`
 Contracts: unchanged
 The pure compare function of the Version 2 section Compare logic as a `reconapi.Func`, the tolerance and verdict table as data (`rules.go`), `Verdict` as a `reconapi.VerdictFunc` (S5), and the fold of the pair levels into the row level in `Evaluate` (S7).
@@ -494,7 +494,7 @@ Acceptance:
 
 ### 22 recon-cross-check-page
 
-Module: pages. Size: M. Order: after 14, 15, 16, 19 and 20.
+Module: pages. Size: M. Order: after 9, 14, 15, 16, 19 and 20.
 Files: `internal/pages/base_data_page/crosscheck.go`, `internal/pages/base_data_page/crosscheck_test.go`, `internal/pages/base_data_page/builder.go`, `internal/pages/base_data_page/builder_test.go`, `internal/pages/base_data_page/page.go`, `internal/pages/base_data_page/convert.go`, `internal/pages/base_data_page/convert_test.go`, `internal/pages/base_data_page/testdata/cross_check_r6.json`
 Contracts: unchanged
 The page reads the newest runs, makes the pair levels with `recon.Verdict`, hands them to `Eval` as `Input.Pairs` (so the bars row level includes R6) and fills the optional `cross_check` of the bars row.
@@ -507,7 +507,7 @@ Acceptance:
 
 ### 23 recon-bars-wire
 
-Module: ot. Size: M. Order: after 17, 18, 20, 21 and 22.
+Module: ot. Size: M. Order: after 10, 17, 18, 20, 21 and 22.
 Files: `cmd/ot/wire_barsource.go`, `cmd/ot/wire_reconbars.go`, `cmd/ot/wire_barsource_test.go`, `cmd/ot/runonce.go`, `cmd/ot/runonce_test.go`, `docs/contracts/ot/jobs/recon_bars.md`, `cmd/ot/jobconsole_jobs.go`, `cmd/ot/jobconsole_jobs_test.go`, `cmd/ot/data_health_site.go`, `cmd/ot/data_health_site_test.go`, `cmd/ot/base_data_site.go`, `cmd/ot/base_data_site_test.go`
 Contracts: unchanged
 The composition: the source registry (the one line a new source adds), the job family `recon_bars` at order 230 (free at `c517086c`; `registerJob` panics on a duplicate), its `jobTable` row and the tests and lists that count jobs, and the recon reader of the base data page (both its builders).
@@ -522,7 +522,7 @@ Acceptance:
 
 ### 24 cross-check-web
 
-Module: web. Size: S. Order: after 16 and 22.
+Module: web. Size: S. Order: after 11, 16 and 22.
 Files: `web/src/pages/base_data/CrossCheck.tsx`, `web/src/pages/base_data/DatasetTable.tsx`, `web/test/pages/base_data/cross_check.test.tsx`, `web/test/pages/base_data/fixtures/cross_check.ts`, `web/test/pages/base_data/fixtures/MANIFEST.synthetic-v1.json`
 Contracts: unchanged
 A column Cross-check on the dataset table and the opened pair with its items; the front end renders payload fields and computes nothing.
