@@ -7,6 +7,7 @@
     "ok.ts",
     "stale.ts",
     "tiers-null.ts",
-    "tiers.ts"
+    "tiers.ts",
+    "valueline.ts"
   ]
 }
