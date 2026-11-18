@@ -393,15 +393,15 @@ func openOptionLedgerStore(ctx context.Context, dsn string) (store.OptionLedgerS
 
 // optionNoticesPageFunc builds option_notices_page from plain arguments.
 type optionNoticesPageFunc func(zone *time.Location, runID, buildID, scope, main string, aliases []string, acct store.AccountReader,
-	cands store.CandidateReader, earn store.EarningsDateReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page
+	cands store.CandidateReader, earn store.EarningsDateReader, sessions store.SessionDayReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page
 
 // newOptionNoticesPage builds the page option_notices_page in zone from the plain arguments; the one place
 // that names option_notices_page.Config.
 func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main string, aliases []string, acct store.AccountReader,
-	cands store.CandidateReader, earn store.EarningsDateReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page {
+	cands store.CandidateReader, earn store.EarningsDateReader, sessions store.SessionDayReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page {
 	return option_notices_page.NewPage(option_notices_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Main: main, Aliases: aliases,
-		Account: acct, Candidates: cands, Earnings: earn, Rule: rule, Params: params,
+		Account: acct, Candidates: cands, Earnings: earn, Sessions: sessions, Rule: rule, Params: params,
 	})
 }
 

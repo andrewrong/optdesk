@@ -73,7 +73,7 @@ func TestMarketPageWiresReadings(t *testing.T) {
 func TestOptionNoticesPageWiresRule(t *testing.T) {
 	t.Parallel()
 	d := newDeps()
-	p := d.optionNoticesPage(time.UTC, "ot-page", "dev", "notices", "main", []string{"main"}, nil, nil, nil, d.newOptionNotices(), d.noticeParams())
+	p := d.optionNoticesPage(time.UTC, "ot-page", "dev", "notices", "main", []string{"main"}, nil, nil, nil, nil, d.newOptionNotices(), d.noticeParams())
 	if p.Meta.Name != "option_notices_page" || p.Meta.Schema != "page.option_notices_page.v1" {
 		t.Fatalf("meta %+v", p.Meta)
 	}
