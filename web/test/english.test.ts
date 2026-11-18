@@ -11,6 +11,9 @@ const allowedCJK = [
   '\u76d8\u4e2d\u8bd5\u7b97', // intraday estimate
   '\u76d8\u4e2d', // intraday
   '\u76d8\u4e2d\u00b7\u5ef6\u8fdf', // intraday, delayed
+  '\u9664\u606f\u65e5\u5217\u6682\u65e0\u6570\u636e\uff1a\u5f53\u524d\u6ca1\u6709\u53ef\u7528\u7684\u9664\u606f\u65e5\u6765\u6e90\uff0c\u5df2\u9690\u85cf\u3002', // ex-dividend column hidden: no data source
+  '\u672c\u5468\u6ca1\u6709\u9700\u8981\u51b3\u5b9a\u7684\u7ed3\u6784\u3002', // no structure to decide this week
+  '\u6ca1\u6709\u5176\u4ed6\u7ed3\u6784\u3002', // no other structures
   '\u65e0\u8d22\u62a5\u65e5\u671f\uff08\u6307\u6570\u6216\u672a\u767b\u8bb0\u53d1\u884c\u4eba\uff09', // no earnings date (index or issuer not registered)
 ]
 
