@@ -50,6 +50,7 @@ func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 		// The tier view: the demo profile has no stored cash or rule parameters, so it builds none.
 		readers.Tiers, readers.Account, readers.Aliases = newTierer(), rd.account, rd.aliasList()
 		readers.Owner, readers.RuleParams = rd.owner, a.deps.newRuleParams()
+		readers.Valuation = valuationReaderOf(rd)
 	}
 	return newCandidatesPage(a, "ot-serve", readers).Build(ctx, rd.series, day, clk.Now().UTC())
 }

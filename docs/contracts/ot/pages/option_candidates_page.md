@@ -26,6 +26,10 @@ The ATM row of the skew is chosen by `newATMFor` (`cmd/ot/evidence_site.go`): on
 
 `ot serve` also passes the readers of the tier view in `candidateReaders`: `Tiers` from `newTierer()` (`cmd/ot/tiers_site.go`, `optiontier.New` over `newEvaluator()`, returned as `optiontierapi.Tierer`), `Account` from `rd.account`, `Aliases` from `rd.aliasList()`, `Owner` from `rd.owner` and `RuleParams` from `deps.newRuleParams()`; they fill the same fields of `option_candidates_page.Config`. The demo profile passes none of them. `ot page --name option_candidates_page` passes none of the five, opens no store beyond the candidate and name stores, and the field `short_put_tiers` is `null`. The new file is `cmd/ot/tiers_site.go`.
 
+## Valuation line readers
+
+`ot serve` passes the valuation reader of the site, `valuationReaderOf(rd)` (nil without the pages line), in `candidateReaders.Valuation`; `candidatesConfig` sets `Valuation` from it and `ValueLines` from `newValueLines()` (`cmd/ot/valline_site.go`, `valuelines.New()` returned as `valuelinesapi.Calculator`), so the calculator is set on every path. The demo profile builds a nil `Valuation`. `ot page --name option_candidates_page` passes no valuation reader (nil `Valuation`), opens no store for it, and the `valuation` block of the company strips is `null` there.
+
 ## Left out
 
 With no reader for a store the page shows its own gap (`no_reader`); a nil zone is an error. The demo profile opens no store.

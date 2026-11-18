@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/store/valuation"
 	"github.com/andrewrong/optdesk/internal/strategy/risk/bsm"
 )
 
@@ -43,6 +44,9 @@ type candidateReaders struct {
 	Aliases    []string
 	Owner      ownerset.Reader
 	RuleParams settingsapi.RuleParams
+	// Valuation is the valuation reader of the site, for the valuation line of the company strips; nil on the
+	// named path (ot page), in the demo profile and on a site with no pages line.
+	Valuation valuation.Reader
 }
 
 // bsmValuer adapts the Black-Scholes pricer to optionevidenceapi.Valuer, so cmd/ot is the place that joins the
@@ -75,6 +79,7 @@ func candidatesConfig(zone *time.Location, runID, buildID, scope string, r candi
 		ATMFor:   newATMFor(r.Days, r.Terms, optionevidence.NewATMPicker()),
 		Readings: r.View,
 		Tiers:    r.Tiers, Account: r.Account, Aliases: r.Aliases, Owner: r.Owner, RuleParams: r.RuleParams,
+		Valuation: r.Valuation, ValueLines: newValueLines(),
 	}
 }
 
