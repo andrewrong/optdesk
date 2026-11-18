@@ -385,6 +385,17 @@ func isRetryable(run store.Run) bool {
 	return run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && !isCrash(run)
 }
 
+// lastEmptyFinish is the newest FinishedAt of an empty_before_close run, zero when there is none.
+func lastEmptyFinish(runs []store.Run) time.Time {
+	var last time.Time
+	for _, run := range runs {
+		if run.ReasonCode == reasonEmptyBeforeClose && run.FinishedAt.After(last) {
+			last = run.FinishedAt
+		}
+	}
+	return last
+}
+
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
 // error with no window). Runs that are empty_before_close (before the close one is also spaced by emptyRetryGap), retryable before the close, crashed
@@ -402,7 +413,6 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	beforeClose := !closeAt.IsZero() && now.Before(closeAt)
 	crashes, counted := 0, 0
 	var latest *store.Run
-	var lastEmpty time.Time // newest FinishedAt of an empty_before_close run
 	for i, run := range runs {
 		switch {
 		case run.Status == store.RunRunning:
@@ -415,11 +425,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		case isCrash(run):
 			crashes++
 		case run.ReasonCode == reasonConsoleStop: // a console_stop run is no attempt and no crash
-		case run.ReasonCode == reasonEmptyBeforeClose:
-			if run.FinishedAt.After(lastEmpty) {
-				lastEmpty = run.FinishedAt
-			}
-		case beforeClose && isRetryable(run):
+		case run.ReasonCode == reasonEmptyBeforeClose, beforeClose && isRetryable(run):
 		default:
 			counted++
 			latest = &runs[i]
@@ -431,7 +437,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
 		return crashed, false, ""
 	}
-	if beforeClose && now.Sub(lastEmpty) < emptyRetryGap {
+	if beforeClose && now.Sub(lastEmptyFinish(runs)) < emptyRetryGap {
 		return crashed, false, ""
 	}
 	return crashed, true, reason
