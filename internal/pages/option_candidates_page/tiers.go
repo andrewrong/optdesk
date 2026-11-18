@@ -57,6 +57,9 @@ type tiersView struct {
 	Columns     []tierColumn  `json:"columns"`
 	Tiers       []tierView    `json:"tiers"`
 	StoredTitle string        `json:"stored_title"`
+	IdleNote    *string       `json:"idle_note"`
+	BuyHint     *string       `json:"buy_hint"`
+	SpotHint    *string       `json:"spot_hint"`
 }
 
 // bucket is the rows (keys, in display order) of one tier of the answer.
@@ -67,8 +70,8 @@ type bucket struct {
 
 // buildTiers sorts the stored short-put rows into the tiers of Config.Tiers. It calls Judge once and
 // the evidence builder and Config.Figures once for the rows of the Fits and Check tiers, whatever their stored
-// status, and writes the texts; a nil Tiers or no row gives nil. A reader or Judge error is returned.
-func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tiersView, error) {
+// status, and writes the texts; day is the day Build was called for, which a past earnings date is compared with; a nil Tiers or no row gives nil. A reader or Judge error is returned.
+func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, at time.Time) (*tiersView, error) {
 	if c.Tiers == nil || len(gr.rows) == 0 {
 		return nil, nil
 	}
@@ -110,7 +113,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tie
 		env.cashDay[a.Alias] = string(a.CaptureDay)
 	}
 	v := &tiersView{
-		ChainDay: string(gr.day), Companies: companiesOf(res, gr.rows, gr.day), Common: commonOf(res.Common),
+		ChainDay: string(gr.day), Common: commonOf(res.Common),
 		Kept: keptLine(res.Kept), StoredTitle: storedTitle, Columns: columnsOf(string(gr.day)), Tiers: make([]tierView, 0, len(buckets)),
 	}
 	var n tierCounts
@@ -134,7 +137,12 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tie
 		}
 		v.Tiers = append(v.Tiers, t)
 	}
-	fillValuation(ctx, c, v.Companies)
+	all := companiesOf(res, gr.rows, gr.day, day)
+	fillValuation(ctx, c, all)
+	v.Companies, v.IdleNote, v.BuyHint = splitIdle(all)
+	sayNone(v.Tiers)
+	spot := spotHintZh
+	v.SpotHint = &spot
 	v.Legend = legendOf(res, f, n)
 	v.KeptNote = keptNoteOf(v.Kept)
 	return v, nil
@@ -199,8 +207,9 @@ func tierOf(b bucket, res optiontierapi.Result, f tierFacts) tierView {
 }
 
 // companiesOf is the strip of the answer's companies: ticker, stored spot and its day, buy price or "not set"
-// and the next earnings, from the first row of the company.
-func companiesOf(res optiontierapi.Result, rows []store.Candidate, day contracts.Day) []companyView {
+// and the next earnings, from the first row of the company. SpotDay is the day of the stored rows; an
+// earnings date before day, the data day, is shown as unknown.
+func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day contracts.Day) []companyView {
 	out := make([]companyView, 0, len(res.Companies))
 	for _, cc := range res.Companies {
 		i := slices.IndexFunc(rows, func(r store.Candidate) bool { return strconv.Itoa(r.UnderlyingID) == cc.Company })
@@ -209,7 +218,7 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, day contracts
 		}
 		r := rows[i]
 		v := companyView{
-			Key: cc.Company, Ticker: r.Issuer, Spot: noSpotText, SpotDay: string(day), NextEarnings: earningsUnknown,
+			Key: cc.Company, Ticker: r.Issuer, Spot: noSpotText, SpotDay: string(rowsDay), NextEarnings: earningsUnknown,
 			Counts: strconv.Itoa(cc.Fits) + countFit + strconv.Itoa(cc.Check) + countCheck + strconv.Itoa(cc.Grey) + countCollapsed,
 		}
 		if m, ok := moneyText(deref(r.Spot)); deref(r.Spot) != "" && ok {
@@ -221,7 +230,7 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, day contracts
 			note := notSet
 			v.BuyPriceNote = &note
 		}
-		if r.NextEarnings != nil {
+		if r.NextEarnings != nil && *r.NextEarnings >= day {
 			v.NextEarnings = string(*r.NextEarnings)
 		}
 		out = append(out, v)
@@ -285,5 +294,62 @@ func columnsOf(day string) []tierColumn {
 		{ID: colBelowSpotID, Label: colBelowLabel, Hint: dayHinted(hintBelow, day)},
 		{ID: colPremiumID, Label: colPremiumLabel, Hint: dayHinted(hintPremium, day)},
 		{ID: colBadgesID, Label: colBadgesLabel, Hint: dayHinted(hintBadges, day)},
+	}
+}
+
+// splitIdle keeps the companies that have a buy price or a valuation figure and names the others in one
+// line, cut with an ellipsis before 200 characters; the hint says where a buy price is set when any company
+// has none. Each is nil when it does not apply.
+func splitIdle(all []companyView) (listed []companyView, idle, hint *string) {
+	listed = make([]companyView, 0, len(all))
+	var idleTickers []string
+	for _, cv := range all {
+		if cv.BuyPrice == nil {
+			h := buyHintZh
+			hint = &h
+		}
+		if cv.BuyPrice != nil || hasFigure(cv) {
+			listed = append(listed, cv)
+		} else {
+			idleTickers = append(idleTickers, cv.Ticker)
+		}
+	}
+	if len(idleTickers) == 0 {
+		return listed, nil, hint
+	}
+	head := strconv.Itoa(len(idleTickers)) + idleNoteTail
+	line := head
+	for i, tk := range idleTickers {
+		entry := tk
+		if i > 0 {
+			entry = idleNoteSep + tk
+		}
+		if utf8.RuneCountInString(line+entry+idleNoteEllipsis) > keptMaxChars {
+			line += idleNoteEllipsis
+			break
+		}
+		line += entry
+	}
+	return listed, &line, hint
+}
+
+// sayNone starts the explanation of an empty Fits or Check tier with "None:" and the reason that applies;
+// a tier with rows keeps its own explanation. ts holds Fits, Check, then the grey tiers.
+func sayNone(ts []tierView) {
+	if len(ts) < 2 {
+		return
+	}
+	if len(ts[0].Rows) == 0 {
+		reason := noneFits
+		switch {
+		case len(ts[1].Rows) > 0:
+			reason = noneFitsHasCheck
+		case len(ts) > 2:
+			reason = noneFitsAllGrey
+		}
+		ts[0].Explain = noneHead + reason
+	}
+	if len(ts[1].Rows) == 0 {
+		ts[1].Explain = noneHead + noneCheck
 	}
 }

@@ -61,8 +61,8 @@ func TestValueLineFromCalculator(t *testing.T) {
 	if !reflect.DeepEqual(in, want) || in.Close != "" {
 		t.Errorf("input = %+v", in)
 	}
-	if reasonOf(cs[1]) != "no_profile" {
-		t.Errorf("BBB reason = %q", reasonOf(cs[1]))
+	if len(cs) != 1 {
+		t.Errorf("companies = %d: BBB has no buy price and no figure, so it is on the idle line", len(cs))
 	}
 }
 
@@ -143,8 +143,8 @@ func TestValueLineReadErrorIsSoft(t *testing.T) {
 	c, v := valueConfig(valueState(), &fakeLines{buy: "91.2"})
 	v.err = errors.New("db down")
 	cs := companiesOfBuild(t, c)
-	if len(cs) != 2 {
-		t.Fatalf("companies = %d", len(cs))
+	if len(cs) != 1 {
+		t.Fatalf("companies = %d, want the one with a buy price", len(cs))
 	}
 	for i, cv := range cs {
 		if reasonOf(cv) != "read_failed" || cv.Valuation.Text != valueReasonReadFailedZh {
@@ -173,7 +173,7 @@ func TestValueLineNilReadersNull(t *testing.T) {
 
 func TestValueLineGateTextIsBuyPrice(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview()), valueEntry("BBB", valueReview())), &fakeLines{buy: "91.2"})
 	cs := companiesOfBuild(t, c)
 	if cs[0].BuyPrice == nil || cs[0].Valuation.GateText != *cs[0].BuyPrice {
 		t.Errorf("AAA = %+v", cs[0])
@@ -262,7 +262,7 @@ func TestValueLineValidatesSchema(t *testing.T) {
 	var p struct {
 		Tiers struct{ Companies []json.RawMessage } `json:"short_put_tiers"`
 	}
-	if err := json.Unmarshal(b, &p); err != nil || len(p.Tiers.Companies) != 2 {
+	if err := json.Unmarshal(b, &p); err != nil || len(p.Tiers.Companies) != 1 {
 		t.Fatalf("companies: %v", err)
 	}
 }

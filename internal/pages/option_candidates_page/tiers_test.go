@@ -7,11 +7,13 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
 	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -380,7 +382,7 @@ func TestGreyExplainIsGlossAlone(t *testing.T) {
 	if g.Explain != zhGreyGloss_in_the_money || strings.Contains(g.Explain, explainGrey) {
 		t.Errorf("explain = %q", g.Explain)
 	}
-	if !strings.HasPrefix(tierByID(view, "fits").Explain, "满足你的全部条件") {
+	if !strings.HasPrefix(tierByID(view, "fits").Explain, noneHead) {
 		t.Errorf("fits explain = %q", tierByID(view, "fits").Explain)
 	}
 }
@@ -403,5 +405,99 @@ func TestKeptLongSetEndsWithEllipsis(t *testing.T) {
 	short := *keptOf(t, kept[:2]...).Kept
 	if strings.HasSuffix(short, "…") {
 		t.Errorf("an uncut line ends with the ellipsis: %s", short)
+	}
+}
+
+func TestIdleCompaniesOneLine(t *testing.T) {
+	t.Parallel()
+	c, _ := tierScenario("tiers_ok")
+	view := buildTiersOf(t, c)
+	if len(view.Companies) != 1 || view.Companies[0].Ticker != "AAA" {
+		t.Fatalf("companies = %+v", view.Companies)
+	}
+	if view.IdleNote == nil || *view.IdleNote != "1 家公司没有买入价和估值档案：BBB" {
+		t.Errorf("idle_note = %v", view.IdleNote)
+	}
+	if view.BuyHint == nil || !strings.Contains(*view.BuyHint, "Watch list") || !strings.Contains(*view.BuyHint, "Buy") {
+		t.Errorf("buy_hint = %v", view.BuyHint)
+	}
+	// every company has a buy price: no idle line and no hint
+	rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+	all := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(fitsVerdict(keyOf(rows, 0)))}))
+	if all.IdleNote != nil || all.BuyHint != nil || len(all.Companies) != 1 {
+		t.Errorf("idle = %v hint = %v companies = %d", all.IdleNote, all.BuyHint, len(all.Companies))
+	}
+}
+
+func TestIdleLineEndsWithEllipsis(t *testing.T) {
+	t.Parallel()
+	var rows []store.Candidate
+	var vs []optiontierapi.Verdict
+	names := map[int]string{}
+	var counts []optiontierapi.CompanyCount
+	for i := 0; i < 60; i++ {
+		r := tierPut(i+1, "ok", "40.00", "0.50")
+		r.UnderlyingID, r.BuyPrice = 100+i, nil
+		names[100+i] = "TICKER" + strings.Repeat("X", 3) + string(rune('A'+i%26))
+		rows = append(rows, r)
+		vs = append(vs, greyVerdict(keyOf(rows, i), "no_buy_price"))
+		counts = append(counts, optiontierapi.CompanyCount{Company: strconv.Itoa(100 + i), Grey: 1})
+	}
+	res := resultOf(vs...)
+	res.Companies = counts
+	c := tierConfig(rows, &fakeTierer{res: res})
+	c.Names = &namesFake{names: names}
+	view := buildTiersOf(t, c)
+	if view.IdleNote == nil || utf8.RuneCountInString(*view.IdleNote) > 200 || !strings.HasSuffix(*view.IdleNote, "…") ||
+		!strings.HasPrefix(*view.IdleNote, "60 家公司没有买入价和估值档案：") {
+		t.Errorf("idle_note = %v", view.IdleNote)
+	}
+	if len(view.Companies) != 0 {
+		t.Errorf("companies = %d", len(view.Companies))
+	}
+}
+
+func TestEmptyTierSaysNone(t *testing.T) {
+	t.Parallel()
+	rows := []store.Candidate{tierPut(1, "ok", "100.00", "5.40")}
+	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(greyVerdict(keyOf(rows, 0), "in_the_money"))}))
+	for _, id := range []string{"fits", "check"} {
+		if e := tierByID(view, id).Explain; !strings.HasPrefix(e, "无：") || utf8.RuneCountInString(e) > 200 {
+			t.Errorf("%s explain = %q", id, e)
+		}
+	}
+	if tierByID(view, "fits").Explain == tierByID(view, "check").Explain {
+		t.Error("fits and check say the same")
+	}
+	// a tier with rows keeps its own explanation
+	rows = []store.Candidate{tierPut(1, "ok", "85.00", "0.42"), tierPut(2, "ok", "87.50", "0.60")}
+	view = buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(fitsVerdict(keyOf(rows, 0)), checkVerdict(keyOf(rows, 1), "no_open_interest"))}))
+	if !strings.HasPrefix(tierByID(view, "fits").Explain, "满足你的全部条件") || tierByID(view, "check").Explain != explainCheck {
+		t.Errorf("explains = %q, %q", tierByID(view, "fits").Explain, tierByID(view, "check").Explain)
+	}
+}
+
+func TestPastEarningsIsUnknown(t *testing.T) {
+	t.Parallel()
+	for date, want := range map[string]string{"2026-11-08": "unknown", "2026-11-09": "2026-11-09", "2026-11-20": "2026-11-20"} {
+		rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+		d := contracts.Day(date)
+		rows[0].NextEarnings = &d
+		view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(fitsVerdict(keyOf(rows, 0)))}))
+		if got := view.Companies[0].NextEarnings; got != want {
+			t.Errorf("stored %s shows %q, want %q", date, got, want)
+		}
+	}
+}
+
+func TestSpotHintSet(t *testing.T) {
+	t.Parallel()
+	rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(fitsVerdict(keyOf(rows, 0)))}))
+	if view.SpotHint == nil || !strings.Contains(*view.SpotHint, "运行时") || !strings.Contains(*view.SpotHint, "不是当天收盘价") {
+		t.Errorf("spot_hint = %v", view.SpotHint)
+	}
+	if view.Companies[0].SpotDay != "2026-11-09" {
+		t.Errorf("spot_day = %q", view.Companies[0].SpotDay)
 	}
 }

@@ -944,25 +944,6 @@
           "gate_text": "$90.00",
           "gate_hint": "闸门用的买入价，是你手填的价格，档位只看它；它与估值买入线互不影响。"
         }
-      },
-      {
-        "key": "8",
-        "ticker": "BBB",
-        "spot": "$41.20",
-        "spot_day": "2026-11-09",
-        "buy_price": null,
-        "buy_price_note": "not set",
-        "next_earnings": "unknown",
-        "counts": "0 fit, 0 check, 1 collapsed",
-        "valuation": {
-          "label": "Valuation buy line B_hi",
-          "text": "这家公司还没有生效的估值复核，不显示估值买入线。",
-          "hint": "估值买入线 B_hi 只是显示，不参与任何判断；闸门用的是你手填的买入价。B_hi 用今天的 R 版本和安全边际表，加上这次复核的 V 和 P 算出，所以旁边的复核日是 V 和 P 的日期，不是表的日期。",
-          "reason": "no_review",
-          "gate_label": "Buy price used by the gate (hand-typed)",
-          "gate_text": "not set",
-          "gate_hint": "闸门用的买入价，是你手填的价格，档位只看它；它与估值买入线互不影响。"
-        }
       }
     ],
     "common": [
@@ -1775,6 +1756,9 @@
         ]
       }
     ],
-    "stored_title": "原始表格"
+    "stored_title": "原始表格",
+    "idle_note": "1 家公司没有买入价和估值档案：BBB",
+    "buy_hint": "有公司没有设买入价：在 Companies \u003e Watch list 的 Buy 列填写，填了才会被评判。",
+    "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
   }
 }
