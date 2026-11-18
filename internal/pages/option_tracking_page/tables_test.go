@@ -138,11 +138,11 @@ func TestRecentPremiumShowsCurrency(t *testing.T) {
 
 func TestAccountTitleNamesAccount(t *testing.T) {
 	t.Parallel()
-	a, _ := formatAccount("a", trackapi.TrackResult{Open: []opt{sampleOpen("p")}}, false)
+	a, _ := formatAccount("a", trackapi.TrackResult{Open: []opt{sampleOpen("p")}}, false, "")
 	if a.Title != "Account (a)" || a.Alias != "a" {
 		t.Fatalf("account = %+v", a)
 	}
-	a, _ = formatAccount("a", trackapi.TrackResult{Recent: []opt{sampleClosed("z")}}, false)
+	a, _ = formatAccount("a", trackapi.TrackResult{Recent: []opt{sampleClosed("z")}}, false, "")
 	if a.Title != "Account (a) · No open short options" {
 		t.Fatalf("title = %q", a.Title)
 	}
@@ -154,7 +154,7 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 	o.Spot, o.Mid, o.Kept = "394.8229675292969", "3.3250", "201.5000"
 	o.KeptPercent, o.Delta, o.Commissions, o.RealizedPnL = "62.98765", "-0.2512345", "1.3", "12.345678"
 	o.Iv = "0.31254"
-	c := openTable([]opt{o}).Rows[0].Cells
+	c := openTable([]opt{o}, "").Rows[0].Cells
 	want := map[string]string{"spot": "$394.82", "mid": "$3.33", "kept": "$201.50", "kept_percent": "63.0%",
 		"delta": "−0.25", "iv": "31.3%"}
 	for k, w := range want {
@@ -181,7 +181,7 @@ func TestOpenTableDeltaIvFormat(t *testing.T) {
 	for _, tc := range cases {
 		o := sampleOpen("p")
 		o.Delta, o.Iv = tc.delta, tc.iv
-		c := openTable([]opt{o}).Rows[0].Cells
+		c := openTable([]opt{o}, "").Rows[0].Cells
 		if v := asValue(t, c["delta"]); v.Text != tc.wantDelta || string(*v.Value) != tc.delta {
 			t.Errorf("delta %s = %q (%v), want %q", tc.delta, v.Text, v.Value, tc.wantDelta)
 		}
@@ -195,7 +195,7 @@ func TestTrackingMoneyColumnsFormat(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
 	o.Currency, o.Spot, o.Mid, o.Commissions, o.RealizedPnL = "USD", "12345.675", "-3.005", "1.3", "-1234.5"
-	open := openTable([]opt{o}).Rows[0].Cells
+	open := openTable([]opt{o}, "").Rows[0].Cells
 	recent := recentTable([]opt{o}).Rows[0].Cells
 	cases := []struct {
 		cells     map[string]any
@@ -260,4 +260,41 @@ func TestRecentTableLabelsNetPremium(t *testing.T) {
 	if c := find(a.Open, "premium"); c.Label != "Premium collected" {
 		t.Fatalf("open premium label = %q", c.Label)
 	}
+}
+
+func TestStockCloseCarriesDay(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.Spot, o.MarkDay = "156.05", "2026-11-17"
+	v := asValue(t, openTable([]opt{o}, "2026-11-18").Rows[0].Cells["spot"])
+	if v.Text != "$156.05" || !hasBadge(v, "2026-11-17") {
+		t.Fatalf("spot = %+v", v)
+	}
+	o.MarkDay = ""
+	v = asValue(t, openTable([]opt{o}, "2026-11-18").Rows[0].Cells["spot"])
+	if v.Text != "$156.05" || len(v.Badges) != 0 {
+		t.Fatalf("spot without day = %+v", v)
+	}
+}
+
+func TestKeptPercentBeforeDelta(t *testing.T) {
+	t.Parallel()
+	var ids []string
+	for _, c := range openTable([]opt{sampleOpen("p")}, "").Columns {
+		ids = append(ids, c.ID)
+	}
+	at := func(id string) int {
+		for i, x := range ids {
+			if x == id {
+				return i
+			}
+		}
+		t.Fatalf("column %s missing in %v", id, ids)
+		return -1
+	}
+	if at("kept") != at("premium")+1 || at("kept_percent") != at("premium")+2 || at("delta") != at("premium")+3 {
+		t.Fatalf("columns = %v", ids)
+	}
+	at("ex")
+	at("guard")
 }

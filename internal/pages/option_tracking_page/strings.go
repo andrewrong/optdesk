@@ -7,7 +7,7 @@ const (
 	flexNote    = "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table"
 	markNote    = "Mid price, the midpoint of the closing bid/ask; not a traded price"
 	noOpenText  = "No open short options"
-	leftOutTail = " long legs not listed, see the option positions page"
+	leftOutTail = " long legs not listed, see Held options > Structures"
 	staleText   = "Some open contracts have no fresh closing price, the related cells show a gap"
 	defaultName = "main"
 

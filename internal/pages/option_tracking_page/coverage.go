@@ -12,16 +12,15 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 )
 
-// The quote coverage of an open row: of the trading days since it was opened (the opening day
-// and the as-of day included), on how many a two-sided quote (bid and ask both stored and above
+// The quote coverage of an open row: of the trading days from the later of its opening day and
+// the first stored quote of the contract (the as-of day included), on how many a two-sided quote (bid and ask both stored and above
 // zero) is stored. The day comes from obs.option_day through Config.Days; a day with no row there
 // is looked up in option_eod. Counts only: nothing is estimated and no gap day is filled.
 const (
 	coverageID    = "coverage"
 	coverageLabel = "Quote coverage"
-	coverageHint  = "Trading days since the position was opened on which a two-sided quote (bid and ask both above zero) is stored"
-
-	maxGapBadges = 5
+	coverageHint  = "Trading days from the later of the opening day and the first stored quote of the " +
+		"contract, on which a two-sided quote (bid and ask both above zero) is stored"
 
 	reasonOneSide = "one side only"
 	reasonNoQuote = "no quote stored"
@@ -36,7 +35,6 @@ type dayKey struct {
 type lotCoverage struct {
 	days    int
 	gapDays []contracts.Day
-	reasons []string
 }
 
 // coverageOf returns the coverage cell of each open row by position id and the note of the
@@ -89,7 +87,7 @@ func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []op
 	eod := &eodLoader{ctx: ctx, c: c, symbols: symbols, from: from, to: in.AsOf}
 	var gapTotal, dayTotal int
 	for _, l := range lots {
-		lc, err := classify(l.id, l.span, stored, eod)
+		lc, err := coverFromFirstQuote(l.id, l.span, stored, eod)
 		if err != nil {
 			return nil, "", err
 		}
@@ -98,7 +96,7 @@ func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []op
 		dayTotal += lc.days
 	}
 	note := in.Alias + noteSep + " " + strconv.Itoa(gapTotal) + " of " + strconv.Itoa(dayTotal) +
-		" lot-days have no two-sided quote since opening"
+		" lot-days have no two-sided quote since the first stored quote"
 	return cells, note, nil
 }
 
@@ -120,28 +118,38 @@ func (e *eodLoader) get() (map[dayKey]string, error) {
 	return e.sides, err
 }
 
-// classify counts the days of one lot and names its gap days.
-func classify(id int64, span []contracts.Day, stored map[dayKey]optionday.Day, eod *eodLoader) (lotCoverage, error) {
-	lc := lotCoverage{days: len(span)}
-	gap := func(d contracts.Day, reason string) {
-		lc.gapDays, lc.reasons = append(lc.gapDays, d), append(lc.reasons, reason)
-	}
-	for _, d := range span {
+// coverFromFirstQuote counts the days of one lot from the later of its opening day and the first day on
+// which a quote with at least one side is stored (the lot's span starts at its opening day), and
+// names its gap days. A lot with no stored quote at all is counted over its whole span.
+func coverFromFirstQuote(id int64, span []contracts.Day, stored map[dayKey]optionday.Day, eod *eodLoader) (lotCoverage, error) {
+	reasons := make([]string, len(span))
+	first := -1
+	for i, d := range span {
 		k := dayKey{id, d}
 		if row, ok := stored[k]; ok {
-			if r := sideReason(deref(row.Bid), deref(row.Ask)); r != "" {
-				gap(d, r)
+			reasons[i] = sideReason(deref(row.Bid), deref(row.Ask))
+		} else {
+			m, err := eod.get()
+			if err != nil {
+				return lotCoverage{}, err
 			}
-			continue
+			r, ok := m[k]
+			if !ok {
+				r = reasonNoQuote
+			}
+			reasons[i] = r
 		}
-		m, err := eod.get()
-		if err != nil {
-			return lc, err
+		if first < 0 && reasons[i] != reasonNoQuote {
+			first = i
 		}
-		if reason, ok := m[k]; !ok {
-			gap(d, reasonNoQuote)
-		} else if reason != "" {
-			gap(d, reason)
+	}
+	if first < 0 {
+		first = 0
+	}
+	lc := lotCoverage{days: len(span) - first}
+	for i := first; i < len(span); i++ {
+		if reasons[i] != "" {
+			lc.gapDays = append(lc.gapDays, span[i])
 		}
 	}
 	return lc, nil
@@ -223,25 +231,11 @@ func eodSides(ctx context.Context, c Config, symbols map[string]bool, from, to c
 	return out, nil
 }
 
-// cell is "n of m days", the gap days as badges newest first (at most five and a count of the
-// earlier ones) and tone down when there is any gap.
+// cell is "n of m days", toned down when there is any gap; the gap days are not listed.
 func (lc lotCoverage) cell() valueCell {
-	n := len(lc.gapDays)
-	v := textCell(strconv.Itoa(lc.days-n) + " of " + strconv.Itoa(lc.days) + " days")
-	if n == 0 {
-		return v
-	}
-	v.Tone = "down"
-	for i := n - 1; i >= 0 && len(v.Badges) < maxGapBadges; i-- {
-		v.Badges = append(v.Badges, "Gap "+string(lc.gapDays[i])+": "+lc.reasons[i])
-	}
-	if n > maxGapBadges {
-		more := n - maxGapBadges
-		text := "and " + strconv.Itoa(more) + " earlier gaps"
-		if more == 1 {
-			text = "and 1 earlier gap"
-		}
-		v.Badges = append(v.Badges, text)
+	v := textCell(strconv.Itoa(lc.days-len(lc.gapDays)) + " of " + strconv.Itoa(lc.days) + " days")
+	if len(lc.gapDays) > 0 {
+		v.Tone = "down"
 	}
 	return v
 }

@@ -130,8 +130,7 @@ func TestCoverageCountsTwoSidedDays(t *testing.T) {
 	}
 	c.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-08", "1", "2"), dayRow(10, "2026-11-09", "1", "0"), dayRow(10, "2026-11-10", "1", "2")}}
 	cell = cellOf(t, buildMap(t, c), 0)
-	b := cell["badges"].([]any)
-	if cell["text"] != "2 of 3 days" || cell["tone"] != "down" || len(b) != 1 || b[0] != "Gap 2026-11-09: one side only" {
+	if cell["text"] != "2 of 3 days" || cell["tone"] != "down" || len(cell["badges"].([]any)) != 0 {
 		t.Fatalf("cell = %v", cell)
 	}
 }
@@ -139,22 +138,35 @@ func TestCoverageCountsTwoSidedDays(t *testing.T) {
 func TestCoverageGapReasons(t *testing.T) {
 	t.Parallel()
 	c, _ := covConfig("2026-11-08")
-	// 11-08 no row anywhere; 11-09 no option_day row but an option_eod row with both sides; 11-10 stored.
+	// 11-08 no row anywhere (before the first stored quote, not counted); 11-09 no option_day row
+	// but an option_eod row with both sides; 11-10 stored.
 	c.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-10", "1", "2")}}
 	c.Eod = fakeEod{rows: map[int64][]contracts.OptionEod{1: {eodRow(10, "2026-11-09", 1, 2)}}}
 	cell := cellOf(t, buildMap(t, c), 0)
-	b := cell["badges"].([]any)
-	if cell["text"] != "2 of 3 days" || len(b) != 1 || !strings.HasSuffix(b[0].(string), "no quote stored") {
+	if cell["text"] != "2 of 2 days" {
 		t.Fatalf("cell = %v", cell)
 	}
 
 	c, _ = covConfig("2026-11-01")
 	c.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-08", "1", "2"), dayRow(10, "2026-11-09", "1", "2"), dayRow(10, "2026-11-10", "1", "2")}}
 	cell = cellOf(t, buildMap(t, c), 0)
-	b = cell["badges"].([]any)
-	if cell["text"] != "3 of 10 days" || len(b) != 6 || b[0] != "Gap 2026-11-07: no quote stored" ||
-		b[4] != "Gap 2026-11-03: no quote stored" || b[5] != "and 2 earlier gaps" {
+	if cell["text"] != "3 of 3 days" {
 		t.Fatalf("cell = %v", cell)
+	}
+}
+
+func TestCoverageCountsFromFirstStoredQuote(t *testing.T) {
+	t.Parallel()
+	// Opened 2026-11-01; the first stored quote is 11-08, with a gap on 11-09: seven earlier sessions are not counted.
+	c, _ := covConfig("2026-11-01")
+	c.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-08", "1", "2"), dayRow(10, "2026-11-10", "1", "2")}}
+	m := buildMap(t, c)
+	cell := cellOf(t, m, 0)
+	if cell["text"] != "2 of 3 days" || len(cell["badges"].([]any)) != 0 {
+		t.Fatalf("cell = %v", cell)
+	}
+	if notesWith(m, "main: 1 of 3 lot-days") != 1 {
+		t.Fatalf("notes = %v", m["notes"])
 	}
 }
 
@@ -194,7 +206,7 @@ func TestCoverageReaderErrorFailsBuild(t *testing.T) {
 
 func TestCoverageColumnIsLast(t *testing.T) {
 	t.Parallel()
-	last := openColumns[len(openColumns)-1]
+	last := openColumns("")[len(openColumns(""))-1]
 	if last.ID != "coverage" || last.Label != "Quote coverage" || last.Hint == nil || *last.Hint != coverageHint {
 		t.Fatalf("last column = %+v", last.column)
 	}
@@ -205,8 +217,15 @@ func TestCoverageEodNoSidesIsNoQuote(t *testing.T) {
 	c, _ := covConfig("2026-11-09")
 	c.Days = fakeDays{rows: []optionday.Day{dayRow(10, "2026-11-10", "1", "2")}}
 	c.Eod = fakeEod{rows: map[int64][]contracts.OptionEod{1: {eodRow(10, "2026-11-09", 0, 0)}}}
-	b := cellOf(t, buildMap(t, c), 0)["badges"].([]any)
-	if len(b) != 1 || b[0] != "Gap 2026-11-09: no quote stored" {
-		t.Fatalf("badges = %v", b)
+	if cell := cellOf(t, buildMap(t, c), 0); cell["text"] != "1 of 1 days" {
+		t.Fatalf("cell = %v", cell)
+	}
+}
+
+func TestCoverageHintNamesFirstStoredQuote(t *testing.T) {
+	t.Parallel()
+	last := openColumns("")[len(openColumns(""))-1]
+	if last.Hint == nil || strings.Contains(*last.Hint, "since the position was opened") {
+		t.Fatalf("hint = %v, counts from the first stored quote now", last.Hint)
 	}
 }

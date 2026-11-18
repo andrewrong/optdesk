@@ -171,7 +171,7 @@ func buildAccounts(ctx context.Context, c Config, day contracts.Day, vm *viewMod
 			vm.Gaps = append(vm.Gaps, codeGap(codeNoAccount))
 		}
 		res := c.Tracker.Track(in, c.Params)
-		a, stale := formatAccount(alias, res, in.HeldKnown)
+		a, stale := formatAccount(alias, res, in.HeldKnown, day)
 		covNote, err := attachCoverage(ctx, c, in, res.Open, &a)
 		if err != nil {
 			return err
