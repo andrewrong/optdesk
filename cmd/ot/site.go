@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/hoursnoticepg"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
@@ -139,6 +140,9 @@ type siteReaders struct {
 
 	// fx is the stored FX rate reader of household_page, from the same bar store as bars (nil when bars is nil).
 	fx bar.FxRateReader
+
+	// dividends is the dividend reader of structures_page (nil: no opener; the Ex-dividend cell is the gap no_reader).
+	dividends dividend.Reader
 
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
@@ -289,9 +293,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
+	dividends, ok := openDividendReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
 	rd := siteReaders{
 		hours: openHoursReader(ctx, dsn, track),
-		days:  days, bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
+		days:  days, bars: bars, fx: fx, dividends: dividends, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
@@ -695,4 +703,16 @@ func openBarReader(ctx context.Context, a *app, dsn string, track func(io.Closer
 		return nil, nil, false
 	}
 	return bs, bs, true
+}
+
+// openDividendReader opens the dividend store when deps has an opener (nil without one); a failed open is false.
+func openDividendReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (dividend.Reader, bool) {
+	if a.deps.openDividend == nil {
+		return nil, true
+	}
+	ds, err := a.deps.openDividend(ctx, dsn)
+	if !track(ds, err) {
+		return nil, false
+	}
+	return ds, true
 }

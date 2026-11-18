@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 )
@@ -34,6 +35,7 @@ type trackingReaders struct {
 	Sessions   store.SessionDayReader
 	Marks      mark.Reader
 	Days       optionday.DayReader
+	Bars       bar.PriceBarReader
 }
 
 // trackingReadersOf picks the readers of the page from the readers of the site. Sessions is rd.sessions, opened
@@ -45,7 +47,7 @@ func trackingReadersOf(rd siteReaders) trackingReaders {
 	}
 	return trackingReaders{
 		Ledger: ledger, Account: rd.noticeAccount, Candidates: rd.cands, Eod: rd.eod,
-		Catalog: rd.catalog, Names: rd.names, Terms: rd.terms, Sessions: rd.sessions, Marks: rd.marks, Days: rd.days,
+		Catalog: rd.catalog, Names: rd.names, Terms: rd.terms, Sessions: rd.sessions, Marks: rd.marks, Days: rd.days, Bars: rd.bars,
 	}
 }
 

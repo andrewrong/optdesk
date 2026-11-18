@@ -316,3 +316,28 @@ func TestNoticesServePassesSessions(t *testing.T) {
 		t.Fatalf("sessions %v, want the reader of the site", f.sessions)
 	}
 }
+
+func TestNoticesPageGetsSessions(t *testing.T) {
+	t.Parallel()
+	f := newNoticesFixture(t, noticesEnv(t))
+	f.a.profile.Name = "real"
+	f.a.deps.openSessionDay = func(context.Context, string) (store.SessionDayStore, error) {
+		return cSessions{closeCounter: closeCounter{new(atomic.Int32)}}, nil
+	}
+	_, closeFn, err := noticesPageNamed(t.Context(), f.a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeFn()
+	if f.sessions == nil {
+		t.Error("stored readers: sessions nil")
+	}
+	d := newNoticesFixture(t, "")
+	d.a.profile.Name = "demo"
+	if _, _, err := noticesPageNamed(t.Context(), d.a); err != nil {
+		t.Fatal(err)
+	}
+	if d.sessions != nil {
+		t.Errorf("demo profile: sessions %v", d.sessions)
+	}
+}

@@ -29,7 +29,7 @@ func riskConfig(a *app, rd siteReaders) risk_page.Config {
 		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Holdings: pagefig.NewHoldings,
-		Structures: rd.structures, Eod: rd.eod, Terms: rd.terms,
+		Structures: rd.structures, Eod: rd.eod, Terms: rd.terms, Bars: rd.bars,
 	}
 }
 

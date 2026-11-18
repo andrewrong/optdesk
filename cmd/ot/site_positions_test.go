@@ -22,6 +22,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/structures_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
 var positionsClock = fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
@@ -333,5 +335,25 @@ func TestStructuresConfigHasCatalogAndNames(t *testing.T) {
 	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute+"?account=nobody")
 	if c := rec.last(t); c.cfg.Catalog != nil || c.cfg.Names != nil {
 		t.Errorf("gap case: catalog %v, names %v", c.cfg.Catalog, c.cfg.Names)
+	}
+}
+
+type fakeBarsReader struct{ bar.PriceBarReader }
+
+type fakeDividendReader struct{ dividend.Reader }
+
+func TestStructuresConfigHasBarsAndDividends(t *testing.T) {
+	t.Parallel()
+	a, rec := positionsApp(t)
+	rd := positionsReaders()
+	rd.bars, rd.dividends = fakeBarsReader{}, fakeDividendReader{}
+	h := siteHandler(a, positionsClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute)
+	if c := rec.last(t); c.cfg.Bars == nil || c.cfg.Dividends == nil {
+		t.Errorf("stored readers: bars %v, dividends %v", c.cfg.Bars, c.cfg.Dividends)
+	}
+	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute+"?account=nobody")
+	if c := rec.last(t); c.cfg.Bars != nil || c.cfg.Dividends != nil {
+		t.Errorf("gap case: bars %v, dividends %v", c.cfg.Bars, c.cfg.Dividends)
 	}
 }
