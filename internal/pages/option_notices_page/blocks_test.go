@@ -170,3 +170,27 @@ func TestCushionHintFollowsParams(t *testing.T) {
 		t.Errorf("hint = %q", *b.CushionHint)
 	}
 }
+
+func TestBlockCarriesCashGlossAndPerDateCash(t *testing.T) {
+	t.Parallel()
+	rule := &fakeRule{result: compute.NoticeResult{CashByDate: []compute.CashDay{
+		{Day: "2026-11-13", Currency: "USD", Amount: "9500", Available: "25000", Left: "15500"},
+		{Day: "2026-11-20", Currency: "USD", Amount: "100"},
+	}}}
+	p := buildPage(t, testConfig(oneCapture(), rule))
+	b := p.Accounts[0]
+	if b.CashGloss == nil || *b.CashGloss != cashGlossZh {
+		t.Errorf("gloss = %v", b.CashGloss)
+	}
+	got := b.CashByDate
+	if len(got) != 2 || got[0].AvailableText == nil || *got[0].AvailableText != "$25,000.00" ||
+		got[0].LeftText == nil || *got[0].LeftText != "$15,500.00" {
+		t.Fatalf("row 0 = %+v", got)
+	}
+	if got[1].AvailableText != nil || got[1].LeftText != nil {
+		t.Errorf("row 1 = %+v", got[1])
+	}
+	if nc := p.Accounts[1]; nc.Status != "no_capture" || nc.CashGloss != nil {
+		t.Errorf("no capture = %+v", nc)
+	}
+}
