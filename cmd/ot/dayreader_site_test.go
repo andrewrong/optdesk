@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"reflect"
 	"sync/atomic"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
+	"github.com/andrewrong/optdesk/internal/store/snapshot"
 )
 
 // recordDays is an optionday.DayReader that counts its Close.
@@ -73,5 +75,14 @@ func TestOpenSiteReadersOpensDayReader(t *testing.T) {
 	defer dclose()
 	if drd.days != nil {
 		t.Fatalf("demo days %v", drd.days)
+	}
+}
+
+func TestDefaultOptionDayOpenerIsConid(t *testing.T) {
+	t.Parallel()
+	got := reflect.ValueOf(newBaseDeps().openOptionDay).Pointer()
+	want := reflect.ValueOf(snapshot.OpenConidDayReader).Pointer()
+	if got != want {
+		t.Fatal("openOptionDay is not snapshot.OpenConidDayReader")
 	}
 }
