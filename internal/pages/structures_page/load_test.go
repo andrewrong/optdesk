@@ -195,3 +195,69 @@ func TestLoadFeedsTheRules(t *testing.T) {
 		t.Fatalf("params = %+v", r.params)
 	}
 }
+
+type stubCatalog struct {
+	store.OptionEodCatalog
+	latest []store.OptionEodLatest
+}
+
+func (s stubCatalog) OptionEodLatest(context.Context, contracts.Day) ([]store.OptionEodLatest, error) {
+	return s.latest, nil
+}
+
+type stubNames struct {
+	store.InstrumentNameReader
+	names []store.InstrumentName
+}
+
+func (s stubNames) InstrumentNames(context.Context, []int64) ([]store.InstrumentName, error) {
+	return s.names, nil
+}
+
+// heldPutRig is a rig holding one short AAPL put, with a capture that has the option row and, when withStock
+// is set, the stock row of AAPL (instrument 77); option_eod holds the put under underlying 77.
+func heldPutRig(withStock bool) *rig {
+	r := newRig(compute.StructureResult{})
+	r.cfg.Ledgers = func() compute.OptionLedger {
+		open := compute.LedgerPosition{PositionID: "main:T1:1", Underlying: "AAPL", Status: "open"}
+		return stubReplay{got: &r.replay, res: compute.LedgerResult{Positions: []compute.LedgerPosition{open}}}
+	}
+	held := []store.Position{{SecType: "option", Symbol: "AAPL", Right: "put", Strike: "150", Expiry: "2026-12-18", Quantity: "-1"}}
+	if withStock {
+		held = append(held, store.Position{SecType: "stock", Symbol: "AAPL", ConID: 77})
+	}
+	r.cfg.Account = stubAccount{byDay: map[string][]store.Position{"2026-11-06": held}}
+	bid := 1.1
+	r.cfg.Eod = stubEod{byUnderlying: map[int64][]contracts.OptionEod{77: {
+		{InstrumentID: 5, SessionDay: types.SerializableDate{Time: time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)}, Bid: &bid},
+	}}}
+	r.cfg.Terms = stubTerms{terms: []store.OptionTerms{{InstrumentID: 5, Right: "P", Strike: "150", ExpirationDate: "2026-12-18"}}}
+	return r
+}
+
+var wantHeldPutQuote = compute.StructureQuote{Underlying: "AAPL", Right: "P", Strike: "150", Expiry: "2026-12-18", Day: "2026-11-06", Bid: "1.1"}
+
+func TestQuotesFoundWithoutStockRow(t *testing.T) {
+	t.Parallel()
+	r := heldPutRig(false)
+	r.cfg.Catalog = stubCatalog{latest: []store.OptionEodLatest{{UnderlyingID: 76}, {UnderlyingID: 77}}}
+	r.cfg.Names = stubNames{names: []store.InstrumentName{{InstrumentID: 76, Name: "MSFT"}, {InstrumentID: 77, Name: "AAPL"}}}
+	r.build(t, "main")
+	if len(r.in.Quotes) != 1 || r.in.Quotes[0] != wantHeldPutQuote {
+		t.Fatalf("quotes = %+v, want %+v", r.in.Quotes, wantHeldPutQuote)
+	}
+}
+
+func TestQuotesFromStockRowWhenNoCatalog(t *testing.T) {
+	t.Parallel()
+	r := heldPutRig(true)
+	r.build(t, "main")
+	if len(r.in.Quotes) != 1 || r.in.Quotes[0] != wantHeldPutQuote {
+		t.Fatalf("quotes = %+v, want %+v", r.in.Quotes, wantHeldPutQuote)
+	}
+	r = heldPutRig(false)
+	r.build(t, "main")
+	if len(r.in.Quotes) != 0 {
+		t.Fatalf("quotes without stock row or catalog = %+v", r.in.Quotes)
+	}
+}

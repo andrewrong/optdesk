@@ -108,7 +108,7 @@ func buildPositions(ctx context.Context, a *app, clk clock.Clock, dayFlag string
 	buildID := buildIDOf(version)
 	st := structures_page.Config{RunID: "ot-serve", BuildID: buildID, Zone: a.profile.Zone, Aliases: aliases,
 		Ledger: rd.ledger, Account: rd.account, Eod: rd.eod, Sessions: rd.sessions, Terms: rd.terms,
-		Ledgers: rd.ledgers, Structures: rd.structures}
+		Ledgers: rd.ledgers, Structures: rd.structures, Catalog: rd.catalog, Names: rd.names}
 	page := a.deps.structuresListPage(st, alias)
 	switch kind {
 	case kindList:

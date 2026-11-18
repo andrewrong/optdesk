@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -324,4 +325,47 @@ func TestNoClockNoIO(t *testing.T) {
 			return true
 		})
 	}
+}
+
+func TestUnidentifiedHasReason(t *testing.T) {
+	t.Parallel()
+	leg := func(right, expiry, qty string) compute.StructureLeg {
+		return compute.StructureLeg{Right: right, Expiry: expiry, Quantity: qty}
+	}
+	cases := []struct {
+		name string
+		legs []compute.StructureLeg
+		want string
+	}{
+		{"opposite sides at different expiries", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("P", "2027-01-15", "1")}, reasonOppositeSidesExpiries},
+		{"put and call at one expiry", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("C", "2026-12-18", "-1")}, reasonPutCallOneExpiry},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			res := compute.StructureResult{Other: []compute.Structure{{ID: "main:T9:1", Underlying: "AMD", Kind: "other", Legs: tc.legs}}}
+			m := decode(t, newRig(res).build(t, "main"))
+			note := m["note"].(string)
+			if !strings.Contains(note, "AMD: "+tc.want) {
+				t.Fatalf("note = %q, want reason %q", note, tc.want)
+			}
+		})
+	}
+	one := compute.Structure{ID: "x", Underlying: "AMD", Kind: "other", Legs: []compute.StructureLeg{leg("P", "2026-12-18", "-1")}}
+	single := compute.StructureResult{Other: []compute.Structure{one}}
+	if n := decode(t, newRig(single).build(t, "main"))["note"].(string); strings.Contains(n, "AMD:") {
+		t.Fatalf("single-leg note = %q", n)
+	}
+}
+
+func TestOtherReasonIsChinese(t *testing.T) {
+	t.Parallel()
+	legs := []compute.StructureLeg{{Right: "P", Expiry: "2026-12-18", Quantity: "-1"}, {Right: "C", Expiry: "2026-12-18", Quantity: "-1"}}
+	r := otherReason(legs)
+	for _, c := range r {
+		if unicode.Is(unicode.Han, c) {
+			return
+		}
+	}
+	t.Fatalf("reason %q has no Chinese text", r)
 }

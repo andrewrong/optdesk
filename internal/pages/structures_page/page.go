@@ -22,6 +22,8 @@ type Config struct {
 	Eod            store.OptionEodReader
 	Sessions       store.SessionDayReader
 	Terms          store.OptionTermsReader
+	Catalog        store.OptionEodCatalog     // with Names finds the underlying of a held option; nil with Names nil: the STOCK rows of the capture
+	Names          store.InstrumentNameReader // the name of an instrument is the symbol of the option
 	Ledgers        compute.NewOptionLedgerFunc
 	Structures     compute.NewOptionStructuresFunc
 }
