@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -80,14 +81,17 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	}
 	rep := ledger.Replay(compute.LedgerInput{Alias: alias, Trades: trades, SessionDays: sessions, AsOf: day}, compute.LedgerParams{})
 	sum := results.Summarise(compute.ResultInput{Alias: alias, Positions: rep.Positions, Unresolved: rep.Unresolved, Review: rep.Review, AsOf: day})
+	rels := make([]compute.ResultReliability, 0, len(sum.Sections))
 	for _, s := range sum.Sections {
 		sec, err := sectionOf(alias, s)
 		if err != nil {
 			return nil, err
 		}
 		vm.Sections = append(vm.Sections, sec)
-		vm.Reliability = append(vm.Reliability, reliabilityOf(sec.Key, sec.Heading, s.Reliability))
+		rels = append(rels, s.Reliability)
 	}
+	vm.Reliability = reliabilityOf(vm.Sections, rels)
+	vm.Notes = append(vm.Notes, scopeOf(alias, c.Aliases))
 	if len(vm.Sections) == 0 {
 		vm.Nothing = ptr(nothingText)
 	}
@@ -124,3 +128,17 @@ func tradeOf(id string, rev int, attrs string) (compute.LedgerTrade, error) {
 }
 
 func ptr(s string) *string { return &s }
+
+// scopeOf is the note that says which account the page shows and names the others.
+func scopeOf(alias string, aliases []string) string {
+	var others []string
+	for _, a := range aliases {
+		if a != alias {
+			others = append(others, a)
+		}
+	}
+	if len(others) == 0 {
+		return scopeNote + alias
+	}
+	return scopeNote + alias + otherAccounts + strings.Join(others, otherSep)
+}

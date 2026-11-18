@@ -369,3 +369,18 @@ func TestNoClockNoIO(t *testing.T) {
 		})
 	}
 }
+
+func TestScopeNoteNamesOtherAccounts(t *testing.T) {
+	t.Parallel()
+	c, _ := testConfig(t, "result_ok.json")
+	c.Aliases = []string{"main", "second", "third"}
+	notes := strs(buildMap(t, c, "second")["notes"])
+	if len(notes) != 1 || notes[0] != "本页只含账户 second；其他账户：main、third" {
+		t.Errorf("notes = %v", notes)
+	}
+	c.Aliases = []string{"main"}
+	notes = strs(buildMap(t, c, "main")["notes"])
+	if len(notes) != 1 || notes[0] != "本页只含账户 main" {
+		t.Errorf("single account notes = %v", notes)
+	}
+}
