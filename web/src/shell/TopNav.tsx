@@ -63,6 +63,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { label: 'Settings', path: '/settings' },
       { label: 'Job console', path: '/job-console' },
+      { label: 'Base data', path: '/base-data' },
       { label: 'Data health', path: '/data-health' },
       { label: 'Option data', path: '/options/data', prefix: true },
     ],

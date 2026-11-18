@@ -39,7 +39,7 @@ const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]
     ],
   ],
   ['Companies', [['Watch list', '/underlyings'], ['Price lines', '/plan/price-lines'], ['Valuation', '/valuation'], ['Data', '/company-data']]],
-  ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Data health', '/data-health'], ['Option data', '/options/data']]],
+  ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Base data', '/base-data'], ['Data health', '/data-health'], ['Option data', '/options/data']]],
 ]
 
 const triggers = () => [...host.querySelectorAll('nav > div > button')] as HTMLElement[]
@@ -155,7 +155,7 @@ describe('TopNav', () => {
       'Portfolio', 'Household', 'Positions', 'Risk',
       'Options', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split',
       'Companies', 'Watch list', 'Price lines', 'Valuation', 'Data',
-      'System', 'Settings', 'Job console', 'Data health', 'Option data',
+      'System', 'Settings', 'Job console', 'Base data', 'Data health', 'Option data',
     ])
     const expected = [['Home', '/home'], ...GROUPS.flatMap(([, l]) => l)].map(([l, h]) => [l, h])
     expect(pairs(sheet?.querySelectorAll('a') ?? [])).toEqual(expected)
