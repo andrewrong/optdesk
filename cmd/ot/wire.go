@@ -86,9 +86,11 @@ import (
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 	optionledgerstore "github.com/andrewrong/optdesk/internal/store/optionledger"
+	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/ownersetpg"
 	"github.com/andrewrong/optdesk/internal/store/reading"
@@ -140,6 +142,7 @@ type deps struct {
 	newQuoteSnapshot        quotesnapshot.NewQuoteSnapshotFunc
 	dialAccount             dialAccountFunc
 	openAccount             store.OpenAccountFunc
+	openOptionOpen          func(ctx context.Context, dsn string) (openquote.Stores, error) // nil: option_candidates reads option_eod only
 	newAccountCapture       newAccountCaptureFunc
 	openMark                mark.OpenFunc
 	openRuns                openRunsFunc // ops_today_page and the reason writer of the ledger
@@ -259,6 +262,7 @@ func newDeps() deps {
 	d.newSettingsForm = settingsform.New
 	d.openDividend, d.newDividendCapture = eventstore.OpenDividend, dividendcapture.New
 	d.openOwnerSet = ownersetpg.Open
+	d.openOptionOpen = optionopenpg.Open
 	d.openUnderlying = underlyingpg.Open
 	d.openValuation = valuationpg.Open
 	d.openBar, d.newBarsRefresh, d.newFxRefresh, d.newHistory = openBarStore, barsrefresh.New, fxrefresh.New, grpcbroker.DialHistory
