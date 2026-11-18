@@ -45,6 +45,14 @@ type Input struct {
 	Cells    []Cell
 	Days     map[string]contracts.Day
 	Sessions map[string][]contracts.Day
+	Pairs    []PairLevel
+}
+
+// PairLevel is the level of one reconciled pair of version 2, made by reconapi.VerdictFunc. Dataset
+// is the row id the pair is shown on; a row takes the worst of its checks and its pair levels.
+type PairLevel struct {
+	Dataset, Pair string
+	Level         Level
 }
 
 // Check is the result of one rule on one row. Share, WarnAt and FailAt are decimal text written
