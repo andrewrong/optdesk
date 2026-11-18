@@ -390,7 +390,7 @@ Acceptance:
 
 ### 14 recon-api (interface)
 
-Module: compute. Size: S. Order: first.
+Module: compute. Size: S. Order: after 2 (both edit `internal/compute/basecheckapi/api.go`; entry 2 has landed).
 Files: `internal/compute/reconapi/api.go`, `internal/compute/reconapi/api_test.go`, `internal/compute/basecheckapi/api.go`, `internal/compute/basecheckapi/api_test.go`
 Contracts: unchanged
 The declarations of Interface 5: the compare function type, its data and the verdict function type, and the pair levels on `basecheckapi.Input`. Editing the interface file of basecheckapi is an interface change; it lands before entry 19.
