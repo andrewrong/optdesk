@@ -12,12 +12,12 @@ export type { Payload as StructuresListPayload } from '@/types/structures_list'
 
 const COLUMNS: Column[] = [
   { id: 'symbol', label: 'Underlying' },
-  { id: 'kind', label: 'Type' },
+  { id: 'kind', label: 'Type', wrap: true },
   { id: 'expiry', label: 'Expiry' },
-  { id: 'moneyness', label: 'In/out of the money' },
+  { id: 'moneyness', label: 'In/out of the money', wrap: true },
   { id: 'distance', label: 'Distance to last', align: 'right' },
   { id: 'earned', label: 'Earned %', align: 'right' },
-  { id: 'ex_dividend', label: 'Ex-dividend' },
+  { id: 'ex_dividend', label: 'Ex-dividend', wrap: true },
   { id: 'max_loss', label: 'Max loss', align: 'right' },
   { id: 'max_gain', label: 'Max profit', align: 'right' },
   { id: 'pnl', label: 'Floating P/L', align: 'right' },
@@ -45,12 +45,22 @@ const toCells = (row: Row): Record<string, Cell> => ({
   pnl: row.pnl,
 })
 
+const NO_EX_DIVIDEND = '除息日列暂无数据：当前没有可用的除息日来源，已隐藏。'
+const EMPTY_GROUP = ['本周没有需要决定的结构。', '没有其他结构。']
+
 export function StructuresList({ payload }: { payload: Payload }) {
+  const hasExDividend = payload.groups.some((group) => group.rows.some((row) => row.ex_dividend !== null))
+  const columns = hasExDividend ? COLUMNS : COLUMNS.filter((column) => column.id !== 'ex_dividend')
   return (
     <div className="min-w-0 space-y-6" data-page="structures-list">
       <header>
         <h1 className="text-2xl font-semibold">{payload.title}</h1>
         <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
+        {hasExDividend ? null : (
+          <p className="mt-1 text-sm text-muted-foreground" data-structures-no-ex-dividend>
+            {NO_EX_DIVIDEND}
+          </p>
+        )}
       </header>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       {payload.groups.map((group, index) => (
@@ -62,7 +72,14 @@ export function StructuresList({ payload }: { payload: Payload }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-w-0">
-            <DataTable columns={COLUMNS} rows={group.rows.map(toCells)} />
+            {group.rows.length === 0 ? (
+              <Alert data-structures-empty>
+                <Info aria-hidden />
+                <AlertDescription>{EMPTY_GROUP[index] ?? EMPTY_GROUP[1]}</AlertDescription>
+              </Alert>
+            ) : (
+              <DataTable columns={columns} rows={group.rows.map(toCells)} />
+            )}
             {group.rows.some((row) => row.compare) ? (
               <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
                 {group.rows.map((row) =>
