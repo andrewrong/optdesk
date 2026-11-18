@@ -170,5 +170,5 @@ func aliasOf(ctx context.Context, c Config, alias string, main bool, day contrac
 		}
 		in.Earnings = e
 	}
-	return okBlock(alias, main, cp.Day, day, c.Rule.Evaluate(in, c.Params), note, cp.Positions), nil
+	return okBlock(alias, main, cp.Day, day, c.Rule.Evaluate(in, c.Params), note, cp.Positions, c.Params), nil
 }

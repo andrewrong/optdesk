@@ -1,6 +1,7 @@
 package option_notices_page
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -141,7 +142,7 @@ func TestHintsSetOnlyWhenShown(t *testing.T) {
 	cfg := testConfig(oneCapture(), &fakeRule{result: compute.NoticeResult{Cushion: "0.1"}})
 	cfg.Candidates = cand
 	b := buildPage(t, cfg).Accounts[0]
-	if b.CushionHint == nil || *b.CushionHint != cushionHint || b.NoteHint != nil || b.Note != nil {
+	if b.CushionHint == nil || *b.CushionHint != cushionHintText(cfg.Params) || b.NoteHint != nil || b.Note != nil {
 		t.Errorf("cushion present: %+v", b)
 	}
 	// cushion absent, no guard record.
@@ -154,5 +155,18 @@ func TestHintsSetOnlyWhenShown(t *testing.T) {
 		&fakeRule{})).Accounts[1]
 	if b.Status != "no_capture" || b.NoteHint != nil || b.CushionHint != nil {
 		t.Errorf("no capture: %+v", b)
+	}
+}
+
+func TestCushionHintFollowsParams(t *testing.T) {
+	t.Parallel()
+	cfg := testConfig(oneCapture(), &fakeRule{result: compute.NoticeResult{Cushion: "0.1"}})
+	cfg.Params.CushionWarn, cfg.Params.CushionAct = "0.20", "0.08"
+	b := buildPage(t, cfg).Accounts[0]
+	if b.CushionHint == nil || strings.Contains(*b.CushionHint, "15%") || strings.Contains(*b.CushionHint, " 5%") {
+		t.Errorf("hint does not match params 0.20/0.08: %v", b.CushionHint)
+	}
+	if !strings.Contains(*b.CushionHint, "20%") || !strings.Contains(*b.CushionHint, "8%") {
+		t.Errorf("hint = %q", *b.CushionHint)
 	}
 }

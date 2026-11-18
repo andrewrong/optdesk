@@ -88,7 +88,7 @@ func noCaptureBlock(alias string, main bool) aliasBlock {
 
 // okBlock writes the block of an alias from the rule's result, in the rule's order. The status is
 // stale when the data day is older than the build day. note is empty for no note.
-func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compute.NoticeResult, note string, positions []store.Position) aliasBlock {
+func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compute.NoticeResult, note string, positions []store.Position, params compute.NoticeParams) aliasBlock {
 	b := aliasBlock{Alias: clip(alias), Main: main, Status: "ok", Notices: make([]noticeRow, 0, len(res.Notices)),
 		CashByDate: make([]cashRow, 0, len(res.CashByDate))}
 	if dataDay < buildDay {
@@ -106,7 +106,7 @@ func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compu
 	if res.Cushion != "" {
 		t := clip(cushionHead + percentText(res.Cushion))
 		b.CushionText = &t
-		h := cushionHint
+		h := cushionHintText(params)
 		b.CushionHint = &h
 	}
 	if note != "" {
