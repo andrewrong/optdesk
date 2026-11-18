@@ -301,7 +301,7 @@ func newBaseDeps() deps {
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
 		openReadingView:         reading.OpenView,
-		openOptionDay:           snapshot.OpenDayReader,
+		openOptionDay:           snapshot.OpenConidDayReader, // takes conids: the pages key lots by conid
 		reportPage:              newReportPage,
 		alertRules:              alertrules.DefaultRules,
 		evaluateAlerts:          alertrules.Evaluate,
