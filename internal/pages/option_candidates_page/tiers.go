@@ -14,14 +14,15 @@ import (
 )
 
 type companyView struct {
-	Key          string  `json:"key"`
-	Ticker       string  `json:"ticker"`
-	Spot         string  `json:"spot"`
-	SpotDay      string  `json:"spot_day"`
-	BuyPrice     *string `json:"buy_price"`
-	BuyPriceNote *string `json:"buy_price_note"`
-	NextEarnings string  `json:"next_earnings"`
-	Counts       string  `json:"counts"`
+	Key          string         `json:"key"`
+	Ticker       string         `json:"ticker"`
+	Spot         string         `json:"spot"`
+	SpotDay      string         `json:"spot_day"`
+	BuyPrice     *string        `json:"buy_price"`
+	BuyPriceNote *string        `json:"buy_price_note"`
+	NextEarnings string         `json:"next_earnings"`
+	Counts       string         `json:"counts"`
+	Valuation    *valueLineView `json:"valuation"`
 }
 
 type markView struct {
@@ -133,6 +134,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, at time.Time) (*tie
 		}
 		v.Tiers = append(v.Tiers, t)
 	}
+	fillValuation(ctx, c, v.Companies)
 	v.Legend = legendOf(res, f, n)
 	if v.Kept != nil {
 		note := keptNote

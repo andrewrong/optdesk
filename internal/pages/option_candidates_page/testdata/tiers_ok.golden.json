@@ -934,7 +934,8 @@
         "buy_price": "$90.00",
         "buy_price_note": null,
         "next_earnings": "unknown",
-        "counts": "2 fit, 1 check, 1 collapsed"
+        "counts": "2 fit, 1 check, 1 collapsed",
+        "valuation": null
       },
       {
         "key": "8",
@@ -944,7 +945,8 @@
         "buy_price": null,
         "buy_price_note": "not set",
         "next_earnings": "unknown",
-        "counts": "0 fit, 0 check, 1 collapsed"
+        "counts": "0 fit, 0 check, 1 collapsed",
+        "valuation": null
       }
     ],
     "common": [

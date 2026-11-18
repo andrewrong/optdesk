@@ -82,3 +82,17 @@ const (
 	zhBadgeGloss_earnings_unknown        = "没有可用的财报日，不改变档位。"
 	zhBadgeGloss_cash_unknown            = "没有现金数字，现金只做标记。"
 )
+
+// Chinese texts of the valuation line on the company strip (candidates-valuation-line.md Decision 6).
+const (
+	valueHintZh             = "估值买入线 B_hi 只是显示，不参与任何判断；闸门用的是你手填的买入价。B_hi 用今天的 R 版本和安全边际表，加上这次复核的 V 和 P 算出，所以旁边的复核日是 V 和 P 的日期，不是表的日期。"
+	gateHintZh              = "闸门用的买入价，是你手填的价格，档位只看它；它与估值买入线互不影响。"
+	valueReasonNoProfileZh  = "没有找到这家公司的估值档案，不显示估值买入线。"
+	valueReasonAmbiguousZh  = "有两家公司用同一个代码，无法确定估值属于哪一家，不显示估值买入线。"
+	valueReasonRemovedZh    = "这家公司已移出估值池，不显示估值买入线。"
+	valueReasonNoReviewZh   = "这家公司还没有生效的估值复核，不显示估值买入线。"
+	valueReasonNoTablesZh   = "还没有存 R 版本或安全边际表，不显示估值买入线。"
+	valueReasonCurrencyZh   = "估值不是美元，页面不换算币种，不显示估值买入线。"
+	valueReasonBadInputZh   = "这次复核的 V 或 P 超出范围，算不出估值买入线。"
+	valueReasonReadFailedZh = "估值数据读不出来，不显示估值买入线；其他内容不受影响。"
+)
