@@ -22,7 +22,8 @@ const (
 	staleTail     = ", not the current day"
 	cushionHead   = "Cushion "
 	cushionHint   = "Cushion: the broker's stored Cushion value. Warns at 15% or below, needs action at 5% or below."
-	noteHint      = "No guard record: the held-call guard did not store a verdict for this account on the snapshot day, so no short call was checked against early assignment or earnings."
+	noteHint      = "No guard record: the held-call guard did not store a verdict for this account on the snapshot day, " +
+		"so no short call was checked against early assignment or earnings."
 )
 
 const (
