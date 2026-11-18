@@ -109,3 +109,21 @@ func TestMaxDteNotBelowMinDte(t *testing.T) {
 		}
 	}
 }
+
+func TestPutDeltaMaxNormalize(t *testing.T) {
+	t.Parallel()
+	p := New()
+	got, err := p.Normalize("put_delta_max", "0.30")
+	if err != nil || got != "0.3" {
+		t.Errorf("0.30 = %q, %v", got, err)
+	}
+	for _, in := range []string{"0.04", "0.51", "abc"} {
+		if _, err := p.Normalize("put_delta_max", in); !errors.Is(err, ErrRefused) {
+			t.Errorf("%q: err = %v, want refusal", in, err)
+		}
+	}
+	got, err = p.Normalize("put_delta_max", "")
+	if err != nil || got != "" {
+		t.Errorf("empty = %q, %v", got, err)
+	}
+}
