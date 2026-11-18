@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 func asGap(t *testing.T, c any) gap {
@@ -62,7 +63,7 @@ func TestMissingMarkIsGapCell(t *testing.T) {
 	if g.Kind != "gap" || g.Reason != "missing_quote" || g.Text != "No fresh closing price" {
 		t.Fatalf("gap = %+v", g)
 	}
-	for _, d := range openColumns {
+	for _, d := range openColumns("") {
 		if v, ok := d.cell(o).(valueCell); ok && v.Text == "0" {
 			t.Fatalf("column %s has the text 0", d.ID)
 		}
@@ -77,7 +78,7 @@ func TestMarkOnlyRowText(t *testing.T) {
 	want := markOnlyZh
 	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
 		var cell any
-		for _, d := range openColumns {
+		for _, d := range openColumns("") {
 			if d.ID == id {
 				cell = d.cell(o)
 			}
@@ -87,7 +88,7 @@ func TestMarkOnlyRowText(t *testing.T) {
 			t.Fatalf("%s = %+v", id, g)
 		}
 	}
-	for _, d := range openColumns {
+	for _, d := range openColumns("") {
 		if d.ID == "mid" {
 			if c := asValue(t, d.cell(o)); c.Value == nil || *c.Value != "1.2500" {
 				t.Fatalf("mid = %+v", c)
@@ -107,7 +108,7 @@ func TestMarkOnlyTextIsChinese(t *testing.T) {
 	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
 	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
 		found := false
-		for _, d := range openColumns {
+		for _, d := range openColumns("") {
 			if d.ID == id {
 				found = true
 				if g := asGap(t, d.cell(o)); g.Text != markOnlyZh {
@@ -160,14 +161,14 @@ func TestEarlyAssignmentBadge(t *testing.T) {
 func TestEventsInLifeBadge(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
-	if c := asValue(t, resultsCell(o)); c.Text != "2026-12-01" || !hasBadge(c, "In term") {
+	if c := asValue(t, resultsCell(o, "")); c.Text != "2026-12-01" || !hasBadge(c, "In term") {
 		t.Fatalf("results = %+v", c)
 	}
 	if c := asValue(t, exCell(o)); c.Text != "2026-12-05 0.25" || !hasBadge(c, "In term") {
 		t.Fatalf("ex = %+v", c)
 	}
 	o.EarningsInLife, o.ExInLife = false, false
-	if c := asValue(t, resultsCell(o)); hasBadge(c, "In term") {
+	if c := asValue(t, resultsCell(o, "")); hasBadge(c, "In term") {
 		t.Fatalf("results = %+v", c)
 	}
 	o.Right = "P"
@@ -175,7 +176,7 @@ func TestEventsInLifeBadge(t *testing.T) {
 		t.Fatalf("put ex = %+v", c)
 	}
 	o.Right, o.EventStatus = "C", "no_event_row"
-	for _, c := range []any{resultsCell(o), exCell(o)} {
+	for _, c := range []any{resultsCell(o, ""), exCell(o)} {
 		if g := asGap(t, c); g.Reason != "missing_input" || g.Text != codeTexts["no_event_row"] {
 			t.Fatalf("gap = %+v", g)
 		}
@@ -186,7 +187,7 @@ func TestEmptyStringIsNeverZero(t *testing.T) {
 	t.Parallel()
 	for _, status := range []string{"ok", "no_mark"} {
 		o := opt{MarkStatus: status, Right: "C", Guard: "ok", EventStatus: "ok"}
-		for _, d := range openColumns {
+		for _, d := range openColumns("") {
 			switch d.ID {
 			case "mid", "spot", "premium", "kept", "kept_percent", "delta", "iv", "moneyness", "qty":
 				g := asGap(t, d.cell(o))
@@ -352,5 +353,19 @@ func TestMoneynessGaps(t *testing.T) {
 	o.OtmPercent = ""
 	if g := asGap(t, moneynessCell(o)); g.Text == "Unreadable" || g.Kind != "gap" {
 		t.Fatalf("empty gap = %+v", g)
+	}
+}
+
+func TestPastEarningsShowsDash(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.NextEarnings = "2026-11-17"
+	if c := asValue(t, resultsCell(o, "2026-11-18")); c.Text != dash {
+		t.Fatalf("past date = %q, want the dash", c.Text)
+	}
+	for _, day := range []contracts.Day{"2026-11-17", "2026-11-16"} {
+		if c := asValue(t, resultsCell(o, day)); c.Text != "2026-11-17" {
+			t.Fatalf("as of %s = %q, want the date", day, c.Text)
+		}
 	}
 }

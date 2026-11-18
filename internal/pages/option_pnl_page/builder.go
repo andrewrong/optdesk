@@ -179,22 +179,25 @@ func buildAccount(c Config, alias string, idx int, g gathered, day contracts.Day
 	all := make([]outcome, 0, len(g.lots))
 	var cards []outcome
 	var results []optionattrapi.Result
-	ended := 0
+	ended, split := 0, 0
 	for _, l := range g.lots {
 		o, err := attribute(c, l, g.rates)
 		if err != nil {
 			return a, err
 		}
 		all = append(all, o)
+		if l.pos.Status != statusOpen {
+			ended++
+			if o.split() {
+				split++
+			}
+		}
 		if !l.card {
 			continue
 		}
 		cards = append(cards, o)
 		if !o.isGap() {
 			results = append(results, o.res)
-		}
-		if l.pos.Status != statusOpen {
-			ended++
 		}
 	}
 	var books []optionattrapi.Book
@@ -209,9 +212,10 @@ func buildAccount(c Config, alias string, idx int, g gathered, day contracts.Day
 		a.Lots = append(a.Lots, card)
 	}
 	a.Books = bookCards(alias, cards, books)
-	a.SampleNote = strconv.Itoa(ended) + " ended lots: " + sampleFew
-	if ended >= 20 {
-		a.SampleNote = strconv.Itoa(ended) + " ended lots: " + sampleEnuf
+	counts := strconv.Itoa(ended) + " ended lots, " + strconv.Itoa(split) + " split lots: "
+	a.SampleNote = counts + sampleFew
+	if split >= ledgerMinLots {
+		a.SampleNote = counts + sampleEnuf
 	}
 	a.Ledger = buildLedger(c, idx, d, all)
 	return a, nil

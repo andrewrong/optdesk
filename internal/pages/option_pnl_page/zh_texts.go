@@ -25,3 +25,12 @@ const (
 	ledgerHintAssignedZh   = "看跌期权被行权时转移到股票上的价值"
 	ledgerHintLedgerSaysZh = "账本给出的数字：合计加行权内在价值加差额"
 )
+
+// Late entry and folded months. Design: docs/design/option-pages-r7.md#4. {N} and {M} are written by the
+// page with strconv.
+const (
+	lateEntryLotZh  = "这是从成交到第一条存档报价之间的市场波动，不是滑点"
+	lateEntryBookZh = "{M} 个仓位中有 {N} 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）"
+	foldedMonthsZh  = "无拆分的月份"
+	foldedNoteZh    = "2026-11-07 之前没有存档报价，这些仓位只有账本数字，无法拆分"
+)

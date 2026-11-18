@@ -91,13 +91,23 @@ func TestNotesNameNulls(t *testing.T) {
 	t.Parallel()
 	c, _ := testConfig(t, "result_ok.json")
 	secs := sectionsOf(buildMap(t, c, "main"))
-	if n := strs(secs[0]["figure_notes"]); len(n) != 1 || !strings.Contains(n[0], "Protection") {
+	if n := strs(secs[0]["figure_notes"]); len(n) != 0 {
 		t.Errorf("sold_usd notes = %v", n)
 	}
 	n := strings.Join(strs(secs[1]["figure_notes"]), "|")
-	for _, w := range []string{"Retained ratio", "Assigned", "Protection"} {
-		if !strings.Contains(n, w) {
-			t.Errorf("bought_usd notes %q miss %q", n, w)
+	if !strings.Contains(n, "Retained ratio") {
+		t.Errorf("bought_usd notes %q miss Retained ratio", n)
+	}
+}
+
+func TestNoEmptyNoteLines(t *testing.T) {
+	t.Parallel()
+	c, _ := testConfig(t, "result_ok.json")
+	for _, s := range sectionsOf(buildMap(t, c, "main")) {
+		for _, n := range strs(s["figure_notes"]) {
+			if strings.Contains(n, "is empty") {
+				t.Errorf("%v note %q", s["key"], n)
+			}
 		}
 	}
 }

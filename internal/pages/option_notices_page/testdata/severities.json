@@ -11,6 +11,6 @@
      "Facts": [{"Label": "reason", "Value": "earnings_before_expiry"}]},
     {"Code": "capture_stale", "Severity": "info", "Facts": [{"Label": "capture_day", "Value": "2026-11-06"}]}
   ],
-  "cash": [{"Day": "2026-11-09", "Currency": "USD", "Amount": "9500"}],
+  "cash": [{"Day": "2026-11-09", "Currency": "USD", "Amount": "9500", "Available": "25000", "Left": "15500"}],
   "cushion": "0.04"
 }

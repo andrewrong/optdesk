@@ -77,10 +77,7 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 		prem := orGap(moneyText(s.AssignedPremium, s.Currency))
 		t := "Assigned premium " + prem + ", shares " + orGap(s.AssignedShares) + "; cost is still the strike, premium not deducted"
 		out.Assignment = &t
-	} else {
-		out.FigureNotes = append(out.FigureNotes, "Assigned note is empty: this section has no assignment ending")
 	}
-	out.FigureNotes = append(out.FigureNotes, "Protection note is empty: this design has no such figure")
 	r := s.Reliability
 	out.BooksLines = []string{
 		"Same " + itoa(r.Equal) + " trade(s), differ " + itoa(r.Differ) + " trade(s)",

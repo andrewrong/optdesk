@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/optionattrapi"
 )
 
@@ -61,5 +62,63 @@ func TestAssignmentLedgerLine(t *testing.T) {
 	l := ledgerLine("p", f, "USD", true, false)
 	if l.Text != "total $78.20 + assignment intrinsic $190.00 = $268.20" || l.Hint == nil || *l.Hint != "total + assignment intrinsic = ledger" {
 		t.Fatalf("line = %+v", l)
+	}
+}
+
+func TestLateEntryHintOnLotAndBook(t *testing.T) {
+	t.Parallel()
+	mk := func(late bool) outcome {
+		return outcome{lot: pnlLot{pos: compute.LedgerPosition{Currency: "USD", Status: "closed"}},
+			res: optionattrapi.Result{Currency: "USD", Entry: "1", LateEntry: late, LedgerPnL: "1"}}
+	}
+	outs := []outcome{mk(true), mk(true), mk(false), mk(false), mk(false)}
+	books := bookCards("a", outs, []optionattrapi.Book{{Currency: "USD", Lots: 5, Entry: "1", Total: "1"}})
+	var entry *line
+	for i, l := range books[0].Lines {
+		if l.Label == "Entry vs mid" {
+			entry = &books[0].Lines[i]
+		}
+	}
+	if entry == nil || entry.Hint == nil || !strings.Contains(*entry.Hint, "5 个仓位中有 2 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）") {
+		t.Fatalf("book entry line = %+v", entry)
+	}
+	entryOf := func(o outcome) line {
+		card, err := lotCard(Config{}, "p", "a", o, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, l := range card.Lines {
+			if l.Label == "Entry vs mid" {
+				return l
+			}
+		}
+		t.Fatal("no entry line")
+		return line{}
+	}
+	if l := entryOf(mk(true)); l.Hint == nil || !strings.Contains(*l.Hint, lateEntryLotZh) {
+		t.Errorf("late lot hint = %v", l.Hint)
+	}
+	if l := entryOf(mk(false)); l.Hint == nil || strings.Contains(*l.Hint, lateEntryLotZh) {
+		t.Errorf("plain lot hint = %v", l.Hint)
+	}
+}
+
+func TestBookLateEntryHintCountsBookLots(t *testing.T) {
+	t.Parallel()
+	mk := func(late, gap bool) outcome {
+		o := outcome{lot: pnlLot{pos: compute.LedgerPosition{Currency: "USD", Status: "closed"}},
+			res: optionattrapi.Result{Currency: "USD", Entry: "1", LateEntry: late, LedgerPnL: "1"}}
+		if gap {
+			o.res.Entry = ""
+			o.reason = "no quotes" // a gap lot, which the Booker does not count
+		}
+		return o
+	}
+	outs := []outcome{mk(true, false), mk(false, false), mk(false, true)}
+	books := bookCards("a", outs, []optionattrapi.Book{{Currency: "USD", Lots: 2, Entry: "1", Total: "1"}})
+	for _, l := range books[0].Lines {
+		if l.Label == "Entry vs mid" && (l.Hint == nil || !strings.Contains(*l.Hint, "2 个仓位中有 1 个")) {
+			t.Fatalf("hint = %v, want M = book lots 2", l.Hint)
+		}
 	}
 }

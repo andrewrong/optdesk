@@ -87,11 +87,23 @@ func buildLedger(c Config, idx int, d time.Time, outs []outcome) *ledgerView {
 		byCompany[p.Underlying] = append(byCompany[p.Underlying], o)
 	}
 	byM := ledgerTab{ID: "by_month", Label: "By month", Groups: []groupView{}}
+	var folded []outcome
+	var foldedMonths []string
 	for i, m := range months {
 		if len(byMonth[m]) == 0 && i != 0 {
 			continue
 		}
+		if noSplit(byMonth[m]) {
+			folded = append(folded, byMonth[m]...)
+			foldedMonths = append(foldedMonths, m)
+			continue
+		}
 		byM.Groups = append(byM.Groups, ledgerGroup(c, "a"+strconv.Itoa(idx)+"m", len(byM.Groups), m, byMonth[m], false))
+	}
+	if len(folded) > 0 {
+		g := ledgerGroup(c, "a"+strconv.Itoa(idx)+"m", len(byM.Groups), foldedLabel(foldedMonths, len(folded)), folded, false)
+		g.Summary = fit(g.Summary + " · " + foldedNoteZh)
+		byM.Groups = append(byM.Groups, g)
 	}
 	byC := ledgerTab{ID: "by_company", Label: "By company", Groups: []groupView{}}
 	for _, name := range companies {
@@ -99,6 +111,26 @@ func buildLedger(c Config, idx int, d time.Time, outs []outcome) *ledgerView {
 	}
 	return &ledgerView{Title: "Ledger", Note: ledgerNoteZh + " · " + plural(len(open), "open lot", "open lots"),
 		Views: []ledgerTab{byM, byC}}
+}
+
+// noSplit is true for a bucket with lots of which none could be split.
+func noSplit(outs []outcome) bool {
+	for _, o := range outs {
+		if o.split() {
+			return false
+		}
+	}
+	return len(outs) > 0
+}
+
+// foldedLabel names the folded months by the first and the last of them and the lot count.
+func foldedLabel(months []string, lots int) string {
+	oldest, newest := months[len(months)-1], months[0] // months run newest first
+	span := oldest
+	if newest != oldest {
+		span += " ~ " + newest
+	}
+	return foldedMonthsZh + " " + span + " · " + plural(lots, "lot", "lots")
 }
 
 func monthOfDay(day contracts.Day) string {
@@ -224,6 +256,7 @@ func ledgerBook(tok string, gi, ci int, cur string, outs []outcome, b optionattr
 	for i := range lines {
 		lines[i].Hint = hintOf(prefix, lines[i].ID)
 	}
+	withEntryHint(lines, prefix+"-entry", lateEntryHint(outs, len(outs)))
 	v.Headline.Hint = hintOf(prefix, v.Headline.ID)
 	v.Lines = lines
 	return v

@@ -53,6 +53,9 @@ func lotCard(c Config, prefix, alias string, o outcome, isRoll bool) (lotView, e
 		card.Lines = append(splitLines(prefix, f, cur, assigned), ledgerLine(prefix, f, cur, assigned, false))
 		card.Recon = []line{mkLine(prefix+"-diff", "Ours vs ledger", "difference "+money(f.Difference, cur), "difference")}
 	}
+	if res.LateEntry {
+		withEntryHint(card.Lines, prefix+"-entry", lateEntryLotZh)
+	}
 	if p.Status == statusOpen {
 		card.Recon = append(card.Recon, mkLine(prefix+"-circ", "Open-lot check", circularNote, "").tone("muted"))
 	}
@@ -244,6 +247,7 @@ func bookCards(alias string, outs []outcome, books []optionattrapi.Book) []bookV
 		f := figuresOfBook(b)
 		v.Headline = mkLine(prefix+"-head", "Rent minus move cost", money(f.RentMinusCost, cur), "rent").tone(toneOf(f.RentMinusCost))
 		v.Lines = append(splitLines(prefix, f, cur, true), ledgerLine(prefix, f, cur, true, true))
+		withEntryHint(v.Lines, prefix+"-entry", lateEntryHint(curOutcomes(outs, cur), b.Lots))
 		out = append(out, v)
 	}
 	return out
@@ -300,4 +304,15 @@ func leftOut(outs []outcome, b optionattrapi.Book, cur string) *string {
 	n := gapLots + b.NoQuoteLots + b.UnreconciledLots
 	s := fit(strconv.Itoa(n) + " of " + strconv.Itoa(b.Lots+n) + leftOutHead + strings.Join(parts, "; "))
 	return &s
+}
+
+// curOutcomes are the outcomes of one currency.
+func curOutcomes(outs []outcome, cur string) []outcome {
+	var r []outcome
+	for _, o := range outs {
+		if o.lot.pos.Currency == cur {
+			r = append(r, o)
+		}
+	}
+	return r
 }

@@ -127,7 +127,7 @@ func TestLongLegsLeftOut(t *testing.T) {
 	if vm.Accounts[0].LongLegsLeftOut != 3 {
 		t.Fatalf("long_legs_left_out = %d", vm.Accounts[0].LongLegsLeftOut)
 	}
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "3 long legs not listed, see the option positions page") {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "3 long legs not listed, see Held options > Structures") {
 		t.Fatalf("notes = %v", vm.Notes)
 	}
 	if len(vm.Notes) < 1 || vm.Notes[0] != "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table" ||
@@ -262,7 +262,7 @@ func TestBuildEmptyLedgerTitle(t *testing.T) {
 	}
 	res := trackapi.TrackResult{LongLegsLeftOut: 14}
 	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"a": res}, "a"))
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "a:14 long legs not listed, see the option positions page") {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "a:14 long legs not listed, see Held options > Structures") {
 		t.Fatalf("notes = %v", vm.Notes)
 	}
 }
