@@ -30,7 +30,7 @@ The Go client of the pyside IBKR service. `broker.Broker` (`internal/broker/api.
 
 ## Error kinds
 
-Every error is a `contracts.TypedError`. `UNAVAILABLE` and `DEADLINE_EXCEEDED` are `Retryable`; `INVALID_ARGUMENT`, `FAILED_PRECONDITION` and every other code are `Permanent`. The text of an error holds the code and never the socket path. A cancelled context gives an error that wraps `context.Canceled` and is `Permanent`.
+Every error is a `contracts.TypedError`. `INTERNAL`, `UNAVAILABLE` and `DEADLINE_EXCEEDED` are `Retryable`; `INVALID_ARGUMENT`, `FAILED_PRECONDITION` and every other code are `Permanent`. The text of an error holds the code and never the socket path. A cancelled context gives an error that wraps `context.Canceled` and is `Permanent`.
 
 ## Defaults
 

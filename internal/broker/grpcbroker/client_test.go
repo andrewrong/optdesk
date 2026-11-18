@@ -182,13 +182,25 @@ func TestErrorKinds(t *testing.T) {
 	t.Parallel()
 	for code := codes.Canceled; code <= codes.Unauthenticated; code++ {
 		want := contracts.Permanent
-		if code == codes.Unavailable || code == codes.DeadlineExceeded {
+		if code == codes.Internal || code == codes.Unavailable || code == codes.DeadlineExceeded {
 			want = contracts.Retryable
 		}
 		err := wrapErr(context.Background(), "x", status.Error(code, "m"))
 		if kindErr(t, err) != want {
 			t.Fatalf("code %v gave %v, want %v", code, kindErr(t, err), want)
 		}
+	}
+}
+
+func TestInternalIsRetryableOnSnapshot(t *testing.T) {
+	t.Parallel()
+	f := &fake{snapshot: func(_ *pb.SnapshotRequest, _ grpc.ServerStreamingServer[pb.SnapshotResponse]) error {
+		return status.Error(codes.Internal, "boom")
+	}}
+	b := serve(t, f, broker.Options{})
+	_, err := b.Snapshot(context.Background(), broker.KindSnapshot, []broker.Contract{opt(1)})
+	if err == nil || kindErr(t, err) != contracts.Retryable {
+		t.Fatalf("err %v, want Retryable", err)
 	}
 }
 
