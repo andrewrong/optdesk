@@ -7,7 +7,7 @@
 -- Day is the New York date. account has the subject USD (calendar XNYS); the rules of the whole row have the
 -- subject ''. The newest capture of an alias is the one with the newest captured_at. position_expired reads the
 -- option positions of those captures; expiry is text, so when any of them is not an ISO date the fact is left out
--- (the check is unknown) rather than guessed; an ISO date compares as text.
+-- (the check is unknown) rather than guessed: the gate is a HAVING on the aggregate, so no row comes out at all; an ISO date compares as text.
 -- flex_section_absent is a setup note, never a rule: it counts the sections that version 2 wants and that the newest
 -- fetch of each alias marks absent.
 CREATE VIEW rd.base_fact_account_r1 AS
@@ -69,7 +69,7 @@ SELECT 'account', 'position_expired', '', count(*)::bigint,
        (count(*) FILTER (WHERE o.expiry < to_char(t.day, 'YYYY-MM-DD')))::bigint, NULL::date, NULL::text
 FROM opt o
 CROSS JOIN today t
-WHERE NOT EXISTS (
+HAVING NOT EXISTS (
     SELECT 1 FROM opt x
     WHERE x.expiry !~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
 UNION ALL
