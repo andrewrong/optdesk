@@ -222,6 +222,8 @@ export interface TierView {
   companies: Company[];
   common: Mark[];
   kept: Text1 | null;
+  kept_note?: Text1 | null;
+  stored_title?: Text1 | null;
   legend: LegendItem[];
   columns: TierColumn[];
   tiers: Tier[];
@@ -235,6 +237,21 @@ export interface Company {
   buy_price_note: Text1 | null;
   next_earnings: Text1;
   counts: Text1;
+  valuation?: ValueLine | null;
+}
+/**
+ * The valuation line and the gate buy price of a strip, from docs/design/candidates-valuation-line.md#Interface.
+ */
+export interface ValueLine {
+  label: Text1;
+  text: Text1;
+  hint: Text1 | null;
+  reason:
+    | ("no_profile" | "ambiguous" | "removed" | "no_review" | "no_tables" | "currency" | "bad_input" | "read_failed")
+    | null;
+  gate_label: Text1;
+  gate_text: Text1;
+  gate_hint: Text1 | null;
 }
 /**
  * An info mark said once above the table.
