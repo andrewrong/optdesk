@@ -1,4 +1,4 @@
-import { ChevronDown, Lightbulb, Menu, type LucideIcon } from 'lucide-react'
+import { ChevronDown, Menu, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -36,8 +36,6 @@ const NAV_GROUPS: readonly NavGroup[] = [
   {
     label: 'Options',
     items: [
-      { label: 'Overview', path: '/options' },
-      { label: 'Data', path: '/options/data', prefix: true },
       { label: 'Candidates', path: '/options/candidates' },
       {
         label: 'Held options',
@@ -49,7 +47,6 @@ const NAV_GROUPS: readonly NavGroup[] = [
           { label: 'P&L split', path: '/options/pnl' },
         ],
       },
-      { label: 'Advice', path: '/advice', icon: Lightbulb },
     ],
   },
   {
@@ -67,6 +64,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
       { label: 'Settings', path: '/settings' },
       { label: 'Job console', path: '/job-console' },
       { label: 'Data health', path: '/data-health' },
+      { label: 'Option data', path: '/options/data', prefix: true },
     ],
   },
 ]
