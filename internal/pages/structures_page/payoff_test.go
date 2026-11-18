@@ -1,6 +1,12 @@
 package structures_page_test
 
 import (
+	"context"
+	"time"
+
+	"github.com/atombender/go-jsonschema/pkg/types"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"strings"
 	"testing"
 )
@@ -108,5 +114,30 @@ func TestGreekGapNamed(t *testing.T) {
 	// with no quote reader the whole block is the gap no_reader
 	if r := obj(t, fx.build(t, gapsID, false)["greeks"])["reason"]; r != "no_reader" {
 		t.Errorf("no reader greeks = %v", r)
+	}
+}
+
+// twoDayEod holds one contract on 2026-11-05 under a stale price and one on 2026-11-06 under the newer one.
+type twoDayEod struct{ stubEod }
+
+func (twoDayEod) OptionEod(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.OptionEod, error) {
+	at := func(d int) types.SerializableDate {
+		return types.SerializableDate{Time: time.Date(2026, 11, d, 0, 0, 0, 0, time.UTC)}
+	}
+	old, newer := 322.5, 318.25
+	return []contracts.OptionEod{
+		{InstrumentID: 1, SessionDay: at(5), UnderlyingPrice: &old},
+		{InstrumentID: 2, SessionDay: at(6), UnderlyingPrice: &newer},
+	}, nil
+}
+
+func TestPayoffSpotIsPickedClose(t *testing.T) {
+	t.Parallel()
+	fx := readFixture(t, "detail_spread")
+	c := fx.config(true)
+	c.Eod = twoDayEod{}
+	p := obj(t, buildWith(t, c, spreadID)["payoff"])
+	if spot := obj(t, p["spot"]); spot["text"] != "318.25" {
+		t.Errorf("spot = %v, want the picked print 318.25", spot)
 	}
 }

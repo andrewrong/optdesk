@@ -15,6 +15,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 func groupRows(t *testing.T, m map[string]any, i int) []map[string]any {
@@ -376,5 +377,59 @@ func TestShortPutMoneynessMatchesSign(t *testing.T) {
 	r := groupRows(t, m, 0)[0]
 	if r["kind_text"] != "Short put" || r["distance"] != "9.1200%" || r["moneyness"] != "out of the money" {
 		t.Fatalf("row = %v", r)
+	}
+}
+
+// aaplOnly is the AAPL structure of list_ok alone: no other unit, no capture difference, no gap cell.
+func aaplOnly(t *testing.T) compute.StructureResult {
+	t.Helper()
+	res := readResult(t, "list_ok")
+	var keep []compute.Structure
+	for _, s := range res.Structures {
+		if s.Underlying == "AAPL" {
+			s.Figures.RollNet = compute.FigureValue{Value: "-10.0000"}
+			keep = append(keep, s)
+		}
+	}
+	return compute.StructureResult{Structures: keep}
+}
+
+func TestNoteNamesCloseDays(t *testing.T) {
+	t.Parallel()
+	r := printsRig()
+	r.cfg.Structures = newRig(aaplOnly(t)).cfg.Structures
+	r.cfg.Bars = stubBars{rows: []contracts.PriceBar{barOn(6, "94.1")}}
+	m := decode(t, r.build(t, "main"))
+	if n, _ := m["note"].(string); n != "距现价所用价格：AAPL 收盘 2026-11-06" {
+		t.Fatalf("bar note = %q", n)
+	}
+	r.cfg.Bars = nil
+	m = decode(t, r.build(t, "main"))
+	if n, _ := m["note"].(string); n != "距现价所用价格：AAPL 最近成交 2026-11-06" {
+		t.Fatalf("print note = %q", n)
+	}
+	// no close: no line
+	r = newRig(aaplOnly(t))
+	if m = decode(t, r.build(t, "main")); m["note"] != nil {
+		t.Fatalf("note without a close = %v", m["note"])
+	}
+}
+
+func TestFullPageWithCloseNoteStaysOk(t *testing.T) {
+	t.Parallel()
+	r := printsRig()
+	r.cfg.Structures = newRig(aaplOnly(t)).cfg.Structures
+	m := decode(t, r.build(t, "main"))
+	if m["run_status"] != "ok" || m["note"] == nil {
+		t.Fatalf("status = %v, note = %v", m["run_status"], m["note"])
+	}
+	// another note keeps the page partial and the close line follows it
+	res := aaplOnly(t)
+	res.Diff.CaptureOnly = readResult(t, "list_ok").Diff.CaptureOnly
+	r.cfg.Structures = newRig(res).cfg.Structures
+	m = decode(t, r.build(t, "main"))
+	n, _ := m["note"].(string)
+	if m["run_status"] != "partial" || !strings.Contains(n, "Positions not yet in Flex") || !strings.HasSuffix(n, "AAPL 最近成交 2026-11-06") {
+		t.Fatalf("status = %v, note = %q", m["run_status"], n)
 	}
 }

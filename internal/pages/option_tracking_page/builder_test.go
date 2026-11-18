@@ -285,10 +285,13 @@ func TestBuildGapTextsHaveNoCodeWord(t *testing.T) {
 	c = cfgFor(map[string]trackapi.TrackResult{"main": res}, "main")
 	raw := buildRaw(t, c)
 	cells := buildPage(t, c).Accounts[0].Open.Rows[0].Cells
-	for _, id := range []string{"delta", "iv", "kept", "kept_percent", "mid", "moneyness", "spot"} {
+	for _, id := range []string{"delta", "iv", "kept", "kept_percent", "mid", "moneyness"} {
 		if g := cells[id].(map[string]any); g["text"] != "No fresh closing price" || g["reason"] != "missing_quote" {
 			t.Errorf("%s = %+v", id, g)
 		}
+	}
+	if g := cells["spot"].(map[string]any); g["text"] != "No closing price of the stock" || g["reason"] != "missing_quote" {
+		t.Errorf("spot = %+v", g)
 	}
 	for _, id := range []string{"ex", "results"} {
 		g := cells[id].(map[string]any)

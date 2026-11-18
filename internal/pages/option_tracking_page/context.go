@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -41,13 +42,15 @@ const kindHeldCallGuard = "held_call_guard"
 var eventKinds = []string{"short_put", "covered_call", kindHeldCallGuard}
 
 // gather reads everything the tracker needs for one alias on day and maps it to text. It does
-// no arithmetic. A nil reader is a gap; a reader error is returned.
-func gather(ctx context.Context, c Config, alias string, day contracts.Day) (trackapi.TrackInput, gaps, error) {
+// no arithmetic. A nil reader is a gap; a reader error is returned. The second result is the picked
+// close of each held underlying that has one, by symbol.
+func gather(ctx context.Context, c Config, alias string, day contracts.Day) (trackapi.TrackInput, map[string]shared.Close, gaps, error) {
 	in := trackapi.TrackInput{Alias: alias, AsOf: day}
 	var gs gaps
+	var closes map[string]shared.Close
 	d, err := time.Parse(dayLayout, string(day))
 	if err != nil {
-		return in, nil, fmt.Errorf("option_tracking_page: build day %q: %w", day, err)
+		return in, nil, nil, fmt.Errorf("option_tracking_page: build day %q: %w", day, err)
 	}
 	if c.Ledger == nil {
 		gs = append(gs, gapNoReader)
@@ -55,18 +58,18 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day) (tra
 	if c.Sessions == nil {
 		gs = append(gs, gapNoSessions)
 	} else if in.SessionDays, err = sessionDays(ctx, c, d, day); err != nil {
-		return in, gs, err
+		return in, closes, gs, err
 	}
 	if c.Ledger != nil {
 		trades, err := tradesOf(ctx, c.Ledger, alias)
 		if err != nil {
-			return in, gs, err
+			return in, closes, gs, err
 		}
 		if len(trades) == 0 {
 			gs = append(gs, gapNoFlexRows)
 		} else {
 			if c.Replay == nil {
-				return in, gs, fmt.Errorf("option_tracking_page: nil replay")
+				return in, closes, gs, fmt.Errorf("option_tracking_page: nil replay")
 			}
 			in.Positions = c.Replay.Replay(compute.LedgerInput{Alias: alias, Trades: trades, SessionDays: in.SessionDays, AsOf: day},
 				compute.LedgerParams{MarkMaxAgeSessions: c.Params.MarkMaxAgeSessions}).Positions
@@ -74,33 +77,36 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day) (tra
 	}
 	if c.Eod == nil || c.Catalog == nil || c.Names == nil || c.Terms == nil {
 		gs = append(gs, gapNoEodReaders)
-	} else if in.Quotes, err = quotesOf(ctx, c, d, in.Positions); err != nil {
-		return in, gs, err
+	} else if in.Quotes, closes, err = quotesOf(ctx, c, d, in.Positions); err != nil {
+		return in, closes, gs, err
 	}
-	if in.Quotes, err = withMarks(ctx, c, alias, day, in); err != nil {
-		return in, gs, err
+	if in.Quotes, err = withMarks(ctx, c, alias, day, in, closes); err != nil {
+		return in, closes, gs, err
 	}
 	if c.Candidates == nil {
 		gs = append(gs, gapNoCandidates)
 	} else if c.Names == nil {
 		gs = append(gs, gapNoNames)
 	} else if in.Events, err = eventsOf(ctx, c.Candidates, c.Names, alias, d); err != nil {
-		return in, gs, err
+		return in, closes, gs, err
 	}
 	if c.Account == nil {
 		gs = append(gs, gapNoAccount)
 	} else if in.Held, in.HeldKnown, err = heldOf(ctx, c.Account, alias, d); err != nil {
-		return in, gs, err
+		return in, closes, gs, err
 	}
-	return in, gs, nil
+	return in, closes, gs, nil
 }
 
 // withMarks is in.Quotes followed by the quotes of the position marks; a nil Config.Marks adds none.
-func withMarks(ctx context.Context, c Config, alias string, day contracts.Day, in trackapi.TrackInput) ([]trackapi.TrackQuote, error) {
+func withMarks(ctx context.Context, c Config, alias string, day contracts.Day, in trackapi.TrackInput, closes map[string]shared.Close) ([]trackapi.TrackQuote, error) {
 	if c.Marks == nil {
 		return in.Quotes, nil
 	}
 	mq, err := markQuotes(ctx, c, alias, day, in.Positions)
+	for i := range mq {
+		mq[i].UnderlyingClose = closes[mq[i].Underlying].Price
+	}
 	return append(in.Quotes, mq...), err
 }
 
@@ -231,7 +237,7 @@ func termsOf(ctx context.Context, r store.OptionTermsReader, rows []contracts.Op
 	return terms, nil
 }
 
-func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.LedgerPosition) ([]trackapi.TrackQuote, error) {
+func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.LedgerPosition) ([]trackapi.TrackQuote, map[string]shared.Close, error) {
 	symbols := map[string]bool{}
 	wanted := map[contractKey]bool{}
 	for _, p := range positions {
@@ -242,20 +248,28 @@ func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.Le
 		wanted[contractKey{p.Underlying, p.Expiry, strikeKey(p.Strike), side(p.Right)}] = true
 	}
 	if len(symbols) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	from := dayText(d, c.Params.MarkMaxAgeSessions+quoteExtraDays)
 	to := dayText(d, 0)
 	ids, names, err := underlyingIDs(ctx, c, from, symbols)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var rows []contracts.OptionEod
 	underOf := map[int]string{}
+	closes := map[string]shared.Close{}
 	for _, id := range ids {
 		got, err := c.Eod.OptionEod(ctx, id, from, to)
 		if err != nil {
-			return nil, fmt.Errorf("option_tracking_page: read option_eod of %d: %w", id, err)
+			return nil, nil, fmt.Errorf("option_tracking_page: read option_eod of %d: %w", id, err)
+		}
+		src, err := shared.SourceOf(ctx, c.Bars, id, got, to)
+		if err != nil {
+			return nil, nil, fmt.Errorf("option_tracking_page: read price bars of %s: %w", names[id], err)
+		}
+		if cl, ok := shared.Pick(src, to); ok {
+			closes[names[id]] = cl
 		}
 		for _, r := range got {
 			underOf[r.InstrumentID] = names[id]
@@ -264,7 +278,7 @@ func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.Le
 	}
 	terms, err := termsOf(ctx, c.Terms, rows)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	newest := map[contractKey]trackapi.TrackQuote{}
 	var order []contractKey
@@ -279,7 +293,7 @@ func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.Le
 		}
 		q := trackapi.TrackQuote{Underlying: k.underlying, Expiry: t.ExpirationDate, Strike: t.Strike, Right: side(t.Right),
 			Day: contracts.Day(r.SessionDay.Format(dayLayout)), Bid: decimalText(r.Bid), Ask: decimalText(r.Ask),
-			UnderlyingClose: decimalText(r.UnderlyingPrice), Delta: decimalText(r.Delta), Iv: decimalText(r.IvDecimal)}
+			UnderlyingClose: closes[k.underlying].Price, Delta: decimalText(r.Delta), Iv: decimalText(r.IvDecimal)}
 		old, had := newest[k]
 		if !had {
 			order = append(order, k)
@@ -292,7 +306,7 @@ func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.Le
 	for _, k := range order {
 		out = append(out, newest[k])
 	}
-	return out, nil
+	return out, closes, nil
 }
 
 type gateResult struct {

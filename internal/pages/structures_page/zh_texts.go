@@ -7,3 +7,10 @@ const (
 	// reasonPutCallOneExpiry: a put and a call at one expiry.
 	reasonPutCallOneExpiry = "同一到期日同时持有认沽和认购"
 )
+
+// The line of the page note that names the close behind each distance.
+const (
+	closeNotePrefix = "距现价所用价格："
+	closeWord       = "收盘"
+	printWord       = "最近成交"
+)

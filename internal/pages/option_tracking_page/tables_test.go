@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 )
 
 func ids(rows []row) []string {
@@ -138,11 +139,11 @@ func TestRecentPremiumShowsCurrency(t *testing.T) {
 
 func TestAccountTitleNamesAccount(t *testing.T) {
 	t.Parallel()
-	a, _ := formatAccount("a", trackapi.TrackResult{Open: []opt{sampleOpen("p")}}, false, "")
+	a, _ := formatAccount("a", trackapi.TrackResult{Open: []opt{sampleOpen("p")}}, false, "", nil)
 	if a.Title != "Account (a)" || a.Alias != "a" {
 		t.Fatalf("account = %+v", a)
 	}
-	a, _ = formatAccount("a", trackapi.TrackResult{Recent: []opt{sampleClosed("z")}}, false, "")
+	a, _ = formatAccount("a", trackapi.TrackResult{Recent: []opt{sampleClosed("z")}}, false, "", nil)
 	if a.Title != "Account (a) · No open short options" {
 		t.Fatalf("title = %q", a.Title)
 	}
@@ -154,7 +155,7 @@ func TestOpenTablePricesHaveTwoDecimals(t *testing.T) {
 	o.Spot, o.Mid, o.Kept = "394.8229675292969", "3.3250", "201.5000"
 	o.KeptPercent, o.Delta, o.Commissions, o.RealizedPnL = "62.98765", "-0.2512345", "1.3", "12.345678"
 	o.Iv = "0.31254"
-	c := openTable([]opt{o}, "").Rows[0].Cells
+	c := openTable([]opt{o}, "", nil).Rows[0].Cells
 	want := map[string]string{"spot": "$394.82", "mid": "$3.33", "kept": "$201.50", "kept_percent": "63.0%",
 		"delta": "−0.25", "iv": "31.3%"}
 	for k, w := range want {
@@ -181,7 +182,7 @@ func TestOpenTableDeltaIvFormat(t *testing.T) {
 	for _, tc := range cases {
 		o := sampleOpen("p")
 		o.Delta, o.Iv = tc.delta, tc.iv
-		c := openTable([]opt{o}, "").Rows[0].Cells
+		c := openTable([]opt{o}, "", nil).Rows[0].Cells
 		if v := asValue(t, c["delta"]); v.Text != tc.wantDelta || string(*v.Value) != tc.delta {
 			t.Errorf("delta %s = %q (%v), want %q", tc.delta, v.Text, v.Value, tc.wantDelta)
 		}
@@ -195,7 +196,7 @@ func TestTrackingMoneyColumnsFormat(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
 	o.Currency, o.Spot, o.Mid, o.Commissions, o.RealizedPnL = "USD", "12345.675", "-3.005", "1.3", "-1234.5"
-	open := openTable([]opt{o}, "").Rows[0].Cells
+	open := openTable([]opt{o}, "", nil).Rows[0].Cells
 	recent := recentTable([]opt{o}).Rows[0].Cells
 	cases := []struct {
 		cells     map[string]any
@@ -262,25 +263,52 @@ func TestRecentTableLabelsNetPremium(t *testing.T) {
 	}
 }
 
-func TestStockCloseCarriesDay(t *testing.T) {
+func TestSpotBadgeNamesSourceAndDay(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
-	o.Spot, o.MarkDay = "156.05", "2026-11-17"
-	v := asValue(t, openTable([]opt{o}, "2026-11-18").Rows[0].Cells["spot"])
-	if v.Text != "$156.05" || !hasBadge(v, "2026-11-17") {
+	o.Spot = "156.05"
+	spot := func(c shared.Close) valueCell {
+		return asValue(t, openTable([]opt{o}, "2026-11-18", map[string]shared.Close{"AAPL": c}).Rows[0].Cells["spot"])
+	}
+	v := spot(shared.Close{Day: "2026-11-17", Price: "156.05", Via: "bar"})
+	if v.Text != "$156.05" || !reflect.DeepEqual(v.Badges, []string{"close 2026-11-17"}) {
+		t.Fatalf("bar spot = %+v", v)
+	}
+	v = spot(shared.Close{Day: "2026-11-18", Price: "156.05", Via: "option_eod"})
+	if !reflect.DeepEqual(v.Badges, []string{"last print 2026-11-18"}) {
+		t.Fatalf("print spot = %+v", v)
+	}
+	v = asValue(t, openTable([]opt{o}, "2026-11-18", nil).Rows[0].Cells["spot"])
+	if v.Text != "$156.05" || len(v.Badges) != 0 {
+		t.Fatalf("spot without a picked close = %+v", v)
+	}
+}
+
+func TestNoMidKeepsSpotAndMoneyness(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.MarkStatus, o.Mid, o.Kept, o.KeptPercent, o.Delta, o.Iv = "no_mark", "", "", "", "", ""
+	o.Spot, o.OtmPercent, o.Moneyness = "145.2", "3.20", "otm"
+	cells := openTable([]opt{o}, "2026-11-18", nil).Rows[0].Cells
+	if v := asValue(t, cells["spot"]); v.Text != "$145.20" {
 		t.Fatalf("spot = %+v", v)
 	}
-	o.MarkDay = ""
-	v = asValue(t, openTable([]opt{o}, "2026-11-18").Rows[0].Cells["spot"])
-	if v.Text != "$156.05" || len(v.Badges) != 0 {
-		t.Fatalf("spot without day = %+v", v)
+	if v := asValue(t, cells["moneyness"]); v.Text != "+3.2%" && v.Text != "3.2%" {
+		t.Fatalf("moneyness = %+v", v)
+	}
+	if g := asGap(t, cells["mid"]); g.Text != "No fresh closing price" {
+		t.Fatalf("mid = %+v", g)
+	}
+	o.Spot = ""
+	if g := asGap(t, openTable([]opt{o}, "", nil).Rows[0].Cells["spot"]); g.Text != "No closing price of the stock" {
+		t.Fatalf("no close spot = %+v", g)
 	}
 }
 
 func TestKeptPercentBeforeDelta(t *testing.T) {
 	t.Parallel()
 	var ids []string
-	for _, c := range openTable([]opt{sampleOpen("p")}, "").Columns {
+	for _, c := range openTable([]opt{sampleOpen("p")}, "", nil).Columns {
 		ids = append(ids, c.ID)
 	}
 	at := func(id string) int {

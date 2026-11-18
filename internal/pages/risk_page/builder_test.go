@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -405,5 +406,90 @@ func TestEmptyVegaBlockNamesItsGap(t *testing.T) {
 				t.Fatalf("page gaps = %v", m["gaps"])
 			}
 		})
+	}
+}
+
+type eodRows []contracts.OptionEod
+
+func (e eodRows) OptionEod(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.OptionEod, error) {
+	return e, nil
+}
+
+type termsOf struct{}
+
+func (termsOf) OptionTerms(_ context.Context, ids []int64) ([]store.OptionTerms, error) {
+	var out []store.OptionTerms
+	for _, id := range ids {
+		out = append(out, store.OptionTerms{InstrumentID: id, Right: "P", Strike: "100", ExpirationDate: "2026-12-18"})
+	}
+	return out, nil
+}
+
+type openReplayer struct{}
+
+func (openReplayer) Replay(compute.LedgerInput, compute.LedgerParams) compute.LedgerResult {
+	return compute.LedgerResult{Positions: []compute.LedgerPosition{{Underlying: "AAA", Status: "open"}}}
+}
+
+type barsOf struct {
+	rows []contracts.PriceBar
+	err  error
+}
+
+func (b barsOf) PriceBars(context.Context, int64, string, contracts.Day, contracts.Day) ([]contracts.PriceBar, error) {
+	return b.rows, b.err
+}
+
+func closeConfig(seen *compute.StructureInput, bars barsOf) risk_page.Config {
+	c := okConfig(compute.StructureResult{}, stk("AAA", 1, "100", "USD"))
+	c.Ledgers = func() compute.OptionLedger { return openReplayer{} }
+	c.Structures = func() compute.OptionStructures { return structures{seen: seen} }
+	c.Terms = termsOf{}
+	c.Bars = bars
+	return c
+}
+
+func TestRiskQuotesUsePickedClose(t *testing.T) {
+	t.Parallel()
+	sd := func(d string) types.SerializableDate {
+		tm, _ := time.Parse("2006-01-02", d)
+		return types.SerializableDate{Time: tm}
+	}
+	p1, p2 := 91.5, 93.25
+	rows := eodRows{
+		{InstrumentID: 11, SessionDay: sd("2026-11-09"), UnderlyingPrice: &p1},
+		{InstrumentID: 11, SessionDay: sd("2026-11-10"), UnderlyingPrice: &p2},
+		{InstrumentID: 12, SessionDay: sd("2026-11-09"), UnderlyingPrice: &p1},
+	}
+	var seen compute.StructureInput
+	c := closeConfig(&seen, barsOf{rows: []contracts.PriceBar{{SessionDay: sd("2026-11-10"), Close: "94.1"}}})
+	c.Eod = rows
+	build(t, c, "main")
+	if len(seen.Quotes) != 2 {
+		t.Fatalf("quotes = %+v", seen.Quotes)
+	}
+	for _, q := range seen.Quotes {
+		if q.UnderlyingClose != "94.1" {
+			t.Errorf("close of %s = %q, want the bar 94.1", q.Right, q.UnderlyingClose)
+		}
+	}
+	c.Bars = nil
+	build(t, c, "main")
+	for _, q := range seen.Quotes {
+		if q.UnderlyingClose != "93.25" {
+			t.Errorf("without bars close = %q, want the print 93.25", q.UnderlyingClose)
+		}
+	}
+}
+
+func TestRiskBarsErrorNamesPage(t *testing.T) {
+	t.Parallel()
+	var seen compute.StructureInput
+	p := 90.0
+	c := closeConfig(&seen, barsOf{err: context.DeadlineExceeded})
+	c.Eod = eodRows{{InstrumentID: 11, UnderlyingPrice: &p}}
+	_, err := risk_page.NewPage(c, "main").Build(context.Background(), nil, day, at)
+	if err == nil || !strings.Contains(err.Error(), "risk_page") {
+		t.Fatalf("err = %v", err)
 	}
 }

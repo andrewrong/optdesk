@@ -206,7 +206,7 @@ func TestCoverageReaderErrorFailsBuild(t *testing.T) {
 
 func TestCoverageColumnIsLast(t *testing.T) {
 	t.Parallel()
-	last := openColumns("")[len(openColumns(""))-1]
+	last := openColumns("", nil)[len(openColumns("", nil))-1]
 	if last.ID != "coverage" || last.Label != "Quote coverage" || last.Hint == nil || *last.Hint != coverageHint {
 		t.Fatalf("last column = %+v", last.column)
 	}
@@ -224,7 +224,7 @@ func TestCoverageEodNoSidesIsNoQuote(t *testing.T) {
 
 func TestCoverageHintNamesFirstStoredQuote(t *testing.T) {
 	t.Parallel()
-	last := openColumns("")[len(openColumns(""))-1]
+	last := openColumns("", nil)[len(openColumns("", nil))-1]
 	if last.Hint == nil || strings.Contains(*last.Hint, "since the position was opened") {
 		t.Fatalf("hint = %v, counts from the first stored quote now", last.Hint)
 	}

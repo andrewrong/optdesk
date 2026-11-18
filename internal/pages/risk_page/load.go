@@ -10,6 +10,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -143,6 +144,8 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 	under := map[int]string{}
 	var ids []int // instrument ids in order of first sight
 	seen := map[string]bool{}
+	ids0 := map[string]int64{}
+	eodRows := map[string][]contracts.OptionEod{}
 	for _, p := range ps {
 		if p.Status != "open" || seen[p.Underlying] || conIDs[p.Underlying] == 0 {
 			continue
@@ -152,6 +155,7 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 		if err != nil {
 			return nil, fmt.Errorf("risk_page: read option_eod: %w", err)
 		}
+		ids0[p.Underlying], eodRows[p.Underlying] = conIDs[p.Underlying], rows
 		for _, r := range rows {
 			old, ok := newest[r.InstrumentID]
 			if !ok {
@@ -161,6 +165,16 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 				newest[r.InstrumentID] = r
 				under[r.InstrumentID] = p.Underlying
 			}
+		}
+	}
+	closes := map[string]string{}
+	for sym, id := range ids0 {
+		src, err := shared.SourceOf(ctx, c.Bars, id, eodRows[sym], day)
+		if err != nil {
+			return nil, fmt.Errorf("risk_page: read price bars of %s: %w", sym, err)
+		}
+		if cl, ok := shared.Pick(src, day); ok {
+			closes[sym] = cl.Price
 		}
 	}
 	var out []compute.StructureQuote
@@ -175,7 +189,9 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 			return nil, fmt.Errorf("risk_page: read option terms: %w", err)
 		}
 		for _, t := range terms {
-			out = append(out, quoteOf(under[int(t.InstrumentID)], t, newest[int(t.InstrumentID)]))
+			q := quoteOf(under[int(t.InstrumentID)], t, newest[int(t.InstrumentID)])
+			q.UnderlyingClose = closes[q.Underlying]
+			out = append(out, q)
 		}
 	}
 	return out, nil
@@ -190,9 +206,6 @@ func quoteOf(underlying string, t store.OptionTerms, r contracts.OptionEod) comp
 	}
 	if v := r.Ask; v != nil {
 		q.Ask = strconv.FormatFloat(*v, 'f', -1, 64)
-	}
-	if v := r.UnderlyingPrice; v != nil {
-		q.UnderlyingClose = strconv.FormatFloat(*v, 'f', -1, 64)
 	}
 	if v := r.Delta; v != nil {
 		q.Delta = strconv.FormatFloat(*v, 'f', -1, 64)

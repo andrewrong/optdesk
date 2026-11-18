@@ -29,12 +29,14 @@ const (
 
 // Tracking codes and the common.v2 reasons they use.
 const (
-	codeNoMark      = "no_mark"
-	codeNoEventRow  = "no_event_row"
-	codeNoGuardRow  = "no_guard_row"
-	codeNoFlexRows  = "no_flex_rows"
-	codeNoAccount   = "no_account"
-	codeNoValue     = "no_value"
+	codeNoMark     = "no_mark"
+	codeNoEventRow = "no_event_row"
+	codeNoGuardRow = "no_guard_row"
+	codeNoFlexRows = "no_flex_rows"
+	codeNoAccount  = "no_account"
+	codeNoValue    = "no_value"
+	codeNoClose    = "no_close"
+
 	codeMarkOnly    = "mark_only"
 	codeUnreadable  = "unreadable"
 	reasonQuote     = "missing_quote"
@@ -42,6 +44,9 @@ const (
 	reasonData      = "no_data"
 	reasonNoReader  = "no_reader"
 	guardUnknownTxt = "Unconfirmed"
+
+	badgeClose = "close"      // badge of a close from a bar
+	badgePrint = "last print" // badge of a close from an option_eod print
 )
 
 // codeTexts is the sentence of a gap text.
@@ -52,6 +57,7 @@ var codeTexts = map[string]string{
 	codeNoFlexRows: "No Flex record for this account",
 	codeNoAccount:  "No account position record, check table not built",
 	codeNoValue:    "No such value",
+	codeNoClose:    "No closing price of the stock",
 	codeMarkOnly:   markOnlyZh,
 	codeUnreadable: unreadable,
 	"no_reader":    "No reader",
@@ -70,6 +76,7 @@ var reasonOf = map[string]string{
 	codeNoFlexRows: reasonData,
 	codeNoAccount:  reasonData,
 	codeNoValue:    reasonData,
+	codeNoClose:    reasonQuote,
 	codeMarkOnly:   reasonData,
 	codeUnreadable: reasonData,
 }

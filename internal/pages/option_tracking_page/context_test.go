@@ -5,12 +5,14 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/atombender/go-jsonschema/pkg/types"
 )
@@ -196,7 +198,7 @@ func put(id int64, strike string) store.OptionTerms {
 func TestGatherReplaysFlexRows(t *testing.T) {
 	t.Parallel()
 	r := newRig()
-	in, gs, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, gs, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(gs) != 0 {
 		t.Fatalf("err = %v gaps = %v", err, gs)
 	}
@@ -220,7 +222,7 @@ func TestNoMarksPassedToReplay(t *testing.T) {
 	r := newRig()
 	r.terms[10] = put(10, "150")
 	r.eod[1] = []contracts.OptionEod{eodRow(10, "2026-11-09", 1, 2)}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(in.Quotes) != 1 {
 		t.Fatalf("err = %v quotes = %v", err, in.Quotes)
 	}
@@ -237,7 +239,7 @@ func TestUnderlyingFoundByName(t *testing.T) {
 	r.terms[10], r.terms[20] = put(10, "150"), put(20, "150")
 	r.eod[1] = []contracts.OptionEod{eodRow(10, "2026-11-09", 9, 9.5)}
 	r.eod[2] = []contracts.OptionEod{eodRow(20, "2026-11-09", 1, 2)}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(in.Quotes) != 1 {
 		t.Fatalf("err = %v quotes = %v", err, in.Quotes)
 	}
@@ -251,7 +253,7 @@ func TestQuoteMatchedByTerms(t *testing.T) {
 	r := newRig()
 	r.terms[10], r.terms[11] = put(10, "150.00"), put(11, "155")
 	r.eod[1] = []contracts.OptionEod{eodRow(10, "2026-11-06", 1, 2), eodRow(10, "2026-11-09", 1.1, 2.2), eodRow(11, "2026-11-09", 7, 8)}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(in.Quotes) != 1 {
 		t.Fatalf("err = %v quotes = %+v", err, in.Quotes)
 	}
@@ -269,7 +271,7 @@ func TestChunksOf500(t *testing.T) {
 		rows = append(rows, eodRow(i, "2026-11-09", 1, 2))
 	}
 	r.eod[1] = rows
-	if _, _, err := gather(context.Background(), r.config(), "main", buildDay); err != nil {
+	if _, _, _, err := gather(context.Background(), r.config(), "main", buildDay); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(r.termCalls, []int{500, 1}) {
@@ -282,7 +284,7 @@ func TestChunksOf500(t *testing.T) {
 	}
 	r.catalogIDs = ids
 	r.nameSizes = nil
-	if _, _, err := gather(context.Background(), r.config(), "main", buildDay); err != nil {
+	if _, _, _, err := gather(context.Background(), r.config(), "main", buildDay); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(r.nameSizes, []int{500, 1}) {
@@ -318,7 +320,7 @@ func TestEventsFromAllKinds(t *testing.T) {
 	r.candidates["2026-11-10|covered_call"] = []store.Candidate{cand("covered_call", "2026-11-10", "AAPL", "main")}
 	r.candidates["2026-11-10|held_call_guard"] = []store.Candidate{cand("held_call_guard", "2026-11-10", "AAPL", "main"),
 		cand("held_call_guard", "2026-11-10", "MSFT", "other")}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(in.Events) != 3 {
 		t.Fatalf("err = %v events = %+v", err, in.Events)
 	}
@@ -343,7 +345,7 @@ func TestEventLookbackSevenDays(t *testing.T) {
 	r := newRig()
 	r.candidates["2026-11-03|short_put"] = []store.Candidate{cand("short_put", "2026-11-03", "AAPL", "")}
 	r.candidates["2026-11-02|short_put"] = []store.Candidate{cand("short_put", "2026-11-02", "AAPL", "")}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(in.Events) != 1 || in.Events[0].Day != "2026-11-03" {
 		t.Fatalf("err = %v events = %+v", err, in.Events)
 	}
@@ -359,7 +361,7 @@ func TestHeldFromNewestCapture(t *testing.T) {
 	stk := store.Position{SecType: "stock", Symbol: "AAPL", Quantity: "100"}
 	r.positions["2026-11-08"] = []store.Position{stk, opt}
 	r.positions["2026-11-05"] = []store.Position{stk}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || !in.HeldKnown {
 		t.Fatalf("err = %v known = %v", err, in.HeldKnown)
 	}
@@ -375,7 +377,7 @@ func TestHeldFromNewestCapture(t *testing.T) {
 		t.Fatalf("asked = %v", r.acctAsked)
 	}
 	r2 := newRig()
-	in, _, err = gather(context.Background(), r2.config(), "main", buildDay)
+	in, _, _, err = gather(context.Background(), r2.config(), "main", buildDay)
 	if err != nil || in.HeldKnown || len(r2.acctAsked) != 7 {
 		t.Fatalf("err = %v known = %v asked = %v", err, in.HeldKnown, r2.acctAsked)
 	}
@@ -383,7 +385,7 @@ func TestHeldFromNewestCapture(t *testing.T) {
 
 func TestNilReadersAreGaps(t *testing.T) {
 	t.Parallel()
-	_, gs, err := gather(context.Background(), Config{}, "main", buildDay)
+	_, _, gs, err := gather(context.Background(), Config{}, "main", buildDay)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -394,7 +396,7 @@ func TestNilReadersAreGaps(t *testing.T) {
 	r := newRig()
 	c := r.config()
 	c.Ledger = fakeLedger{}
-	_, gs, err = gather(context.Background(), c, "main", buildDay)
+	_, _, gs, err = gather(context.Background(), c, "main", buildDay)
 	if err != nil || !reflect.DeepEqual(gs, gaps{gapNoFlexRows}) {
 		t.Fatalf("err = %v gaps = %v", err, gs)
 	}
@@ -406,12 +408,12 @@ func TestReaderErrorIsReturned(t *testing.T) {
 	r := newRig()
 	c := r.config()
 	c.Ledger = fakeLedger{err: boom}
-	if _, _, err := gather(context.Background(), c, "main", buildDay); !errors.Is(err, boom) {
+	if _, _, _, err := gather(context.Background(), c, "main", buildDay); !errors.Is(err, boom) {
 		t.Fatalf("ledger err = %v", err)
 	}
 	c = r.config()
 	c.Candidates = fakeCandidates{err: boom, asked: &[]string{}, mu: &sync.Mutex{}}
-	if _, _, err := gather(context.Background(), c, "main", buildDay); !errors.Is(err, boom) {
+	if _, _, _, err := gather(context.Background(), c, "main", buildDay); !errors.Is(err, boom) {
 		t.Fatalf("candidates err = %v", err)
 	}
 }
@@ -426,11 +428,82 @@ func TestEventUnderlyingIsSymbol(t *testing.T) {
 	lost := cand("short_put", "2026-11-09", "cik:0000000001", "")
 	lost.UnderlyingID = 99 // no name: the row cannot join a position
 	r.candidates["2026-11-09|short_put"] = []store.Candidate{lost}
-	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	in, _, _, err := gather(context.Background(), r.config(), "main", buildDay)
 	if err != nil || len(in.Events) != 1 {
 		t.Fatalf("err = %v events = %+v", err, in.Events)
 	}
 	if e := in.Events[0]; e.Underlying != "AAPL" || e.GuardStatus != "block" {
 		t.Fatalf("event = %+v", e)
+	}
+}
+
+type fakeBars struct {
+	rows []contracts.PriceBar
+	err  error
+	got  *int64
+}
+
+func (f fakeBars) PriceBars(_ context.Context, id int64, basis string, _, _ contracts.Day) ([]contracts.PriceBar, error) {
+	if f.got != nil {
+		*f.got = id
+	}
+	if basis != "trades" {
+		return nil, nil
+	}
+	return f.rows, f.err
+}
+
+func barRow(day, closeText string) contracts.PriceBar {
+	d, _ := time.Parse("2006-01-02", day)
+	return contracts.PriceBar{SessionDay: types.SerializableDate{Time: d}, Close: closeText}
+}
+
+// printRig holds the held put (instrument 10) and a contract nobody holds (instrument 11), each with a print.
+func printRig() *rig {
+	r := newRig()
+	r.terms[10], r.terms[11] = put(10, "150"), put(11, "160")
+	held := eodRow(10, "2026-11-06", 1, 1.2)
+	held.UnderlyingPrice = fp(150.5)
+	other := eodRow(11, "2026-11-09", 3, 3.2)
+	other.UnderlyingPrice = fp(152.25)
+	r.eod[1] = []contracts.OptionEod{held, other}
+	return r
+}
+
+func TestSourcesCarryAllContractRows(t *testing.T) {
+	t.Parallel()
+	r := printRig()
+	in, closes, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := shared.Close{Day: "2026-11-09", Price: "152.25", Via: "option_eod"}
+	if closes["AAPL"] != want {
+		t.Fatalf("close = %+v, want the print of the contract that is not held %+v", closes["AAPL"], want)
+	}
+	if len(in.Quotes) != 1 || in.Quotes[0].UnderlyingClose != "152.25" || in.Quotes[0].Day != "2026-11-06" {
+		t.Fatalf("quotes = %+v: the held quote keeps its own day and carries the picked close", in.Quotes)
+	}
+}
+
+func TestSourcesCarryBars(t *testing.T) {
+	t.Parallel()
+	r := printRig()
+	var id int64
+	c := r.config()
+	c.Bars = fakeBars{rows: []contracts.PriceBar{barRow("2026-11-09", "153.1")}, got: &id}
+	in, closes, _, err := gather(context.Background(), c, "main", buildDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (shared.Close{Day: "2026-11-09", Price: "153.1", Via: "bar"}); closes["AAPL"] != want {
+		t.Fatalf("close = %+v, want the bar of the print's day %+v", closes["AAPL"], want)
+	}
+	if id != 1 || in.Quotes[0].UnderlyingClose != "153.1" {
+		t.Fatalf("bars of instrument %d, quote %+v", id, in.Quotes)
+	}
+	c.Bars = fakeBars{err: errors.New("boom")}
+	if _, _, _, err = gather(context.Background(), c, "main", buildDay); err == nil || !strings.Contains(err.Error(), "option_tracking_page") {
+		t.Fatalf("err = %v", err)
 	}
 }
