@@ -8,6 +8,7 @@ const (
 		"the early-exercise premium is not modelled"
 	quoteDayNote = "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
 	callsTail    = " call lots skipped: this page shows short puts only"
+	longsTail    = " long put lots skipped: this page shows short puts only (本页只显示卖出的看跌期权，买入的看跌期权不在此页)"
 
 	sampleFew  = "fewer than 20 ended lots: no conclusion about what pays"
 	sampleEnuf = "20 or more ended lots"
