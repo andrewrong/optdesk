@@ -11,8 +11,7 @@ const (
 	cushionHintTail = " 时需要处理。"
 
 	// cashGlossZh explains the cash-due table.
-	cashGlossZh = "如果当天到期的所有空头 put 都被行权（Assigned，即你卖出的 put 的买方要求你按行权价买入股票），" +
-		"这就是你买入股票需要支付的现金（行权价 strike × 合约乘数 multiplier × 数量 quantity）。"
+	cashGlossZh = "如果当天到期的所有空头 put 都被行权（Assigned，即你卖出的 put 的买方要求你按行权价买入股票），这就是你买入股票需要支付的现金（行权价 strike × 合约乘数 multiplier × 数量 quantity）。"
 )
 
 // reasonTextsZh are the sentences of the known guard reason codes.
