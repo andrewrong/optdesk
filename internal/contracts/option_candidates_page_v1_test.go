@@ -228,3 +228,23 @@ func TestOptionCandidatesTiersEmptyTextFails(t *testing.T) {
 		t.Fatal("a 201-character explain validates")
 	}
 }
+
+func TestOptionCandidatesTiersNoteTitleValid(t *testing.T) {
+	t.Parallel()
+	texts := candidatesMinimal(t)
+	view := tiersView()
+	view["kept_note"] = "a note"
+	view["stored_title"] = "stored tables"
+	texts["short_put_tiers"] = view
+	if !pageV1Valid(t, optionCandidatesPageV1, texts) {
+		t.Fatal("kept_note and stored_title as texts are invalid")
+	}
+	nulls := candidatesMinimal(t)
+	view = tiersView()
+	view["kept_note"] = nil
+	view["stored_title"] = nil
+	nulls["short_put_tiers"] = view
+	if !pageV1Valid(t, optionCandidatesPageV1, nulls) {
+		t.Fatal("kept_note and stored_title as null are invalid")
+	}
+}

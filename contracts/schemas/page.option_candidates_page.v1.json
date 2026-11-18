@@ -535,6 +535,26 @@
             }
           ]
         },
+        "kept_note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stored_title": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "legend": {
           "type": "array",
           "items": {
