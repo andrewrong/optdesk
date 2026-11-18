@@ -15,7 +15,6 @@ const (
 	exPassedText        = "除息日已过，等待下次采集"
 	exNoRowText         = "没有除息预期记录（该股可能不派息，或尚未采集）"
 	exNotApplicableText = "不适用：没有卖出认购腿"
-	exDividendLookback  = 10 // days before the page day of the dividend rows read
 )
 
 // The line of the page note that names the close behind each distance.

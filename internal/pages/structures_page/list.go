@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	pageTitle      = "Position structures"
-	decideTitle    = "To decide this week"
-	othersTitle    = "Other structures"
-	otherNote      = "Unidentified structures, shown leg by leg"
-	noReaderNote   = "Ledger or trading day reader not connected (no_reader)"
-	noCaptureNote  = "No position snapshot, not compared with Flex"
-	oldCaptureNote = "Position snapshot is older than 3 trading days, not compared with Flex"
-	noAccountNote  = "Position snapshot reader not connected (no_reader), not compared with Flex"
-	shownContracts = 2
+	pageTitle          = "Position structures"
+	decideTitle        = "To decide this week"
+	othersTitle        = "Other structures"
+	otherNote          = "Unidentified structures, shown leg by leg"
+	noReaderNote       = "Ledger or trading day reader not connected (no_reader)"
+	noCaptureNote      = "No position snapshot, not compared with Flex"
+	oldCaptureNote     = "Position snapshot is older than 3 trading days, not compared with Flex"
+	noAccountNote      = "Position snapshot reader not connected (no_reader), not compared with Flex"
+	shownContracts     = 2
+	exDividendLookback = 10 // days before the page day of the dividend rows read
 )
 
 var kindTexts = map[string]string{
