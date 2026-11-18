@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -21,6 +22,8 @@ const (
 	staleHead     = "Position snapshot is from "
 	staleTail     = ", not the current day"
 	cushionHead   = "Cushion "
+	noteHint      = "No guard record: the held-call guard did not store a verdict for this account on the snapshot day, " +
+		"so no short call was checked against early assignment or earnings."
 )
 
 const (
@@ -150,6 +153,17 @@ func moneyBody(amount string) (string, bool) {
 		b.WriteRune(c)
 	}
 	return b.String() + "." + frac, true
+}
+
+// thresholdText is a threshold ratio as a percent without a needless ".0": "0.15" gives "15%".
+func thresholdText(ratio string) string {
+	return strings.Replace(percentText(ratio), ".0%", "%", 1)
+}
+
+// cushionHintText explains the cushion with the thresholds the rule is run with.
+func cushionHintText(p compute.NoticeParams) string {
+	return clip("Cushion: the broker's stored Cushion value. Warns at " + thresholdText(p.CushionWarn) +
+		" or below, needs action at " + thresholdText(p.CushionAct) + " or below.")
 }
 
 // clip keeps text within the schema limit and never empty.

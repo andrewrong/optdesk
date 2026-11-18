@@ -333,3 +333,33 @@ func TestOutputValidatesAgainstSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestBuiltPageHasPutsAndHints(t *testing.T) {
+	t.Parallel()
+	a := fakeAccount{positions: map[string][]store.Position{"main/2026-11-09": {shortPut("ACME", "2026-11-13")}}}
+	rule := &fakeRule{result: compute.NoticeResult{Cushion: "0.1", CashByDate: []compute.CashDay{
+		{Day: "2026-11-13", Currency: "USD", Amount: "9500"}, {Day: "2026-11-20", Currency: "USD", Amount: "1"}}}}
+	b := buildBytes(t, testConfig(a, rule))
+	validate(t, "puts_hints", b)
+	var raw struct {
+		Accounts []map[string]json.RawMessage `json:"accounts"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatal(err)
+	}
+	acc := raw.Accounts[0]
+	var cash []map[string]json.RawMessage
+	if err := json.Unmarshal(acc["cash_by_date"], &cash); err != nil || len(cash) != 2 {
+		t.Fatalf("cash: %v %s", err, acc["cash_by_date"])
+	}
+	for _, r := range cash {
+		if !strings.HasPrefix(string(r["puts"]), "[") {
+			t.Errorf("puts = %s", r["puts"])
+		}
+	}
+	for _, k := range []string{"cushion_hint", "note_hint"} {
+		if !strings.HasPrefix(string(acc[k]), `"`) {
+			t.Errorf("%s = %s", k, acc[k])
+		}
+	}
+}

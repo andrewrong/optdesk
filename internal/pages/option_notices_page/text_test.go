@@ -1,6 +1,7 @@
 package option_notices_page
 
 import (
+	"github.com/andrewrong/optdesk/internal/compute"
 	"strings"
 	"testing"
 )
@@ -67,5 +68,14 @@ func TestAmountTextUnreadable(t *testing.T) {
 	}
 	if got := amountText("abc", ""); got != "abc" {
 		t.Errorf("amountText(abc, empty) = %q", got)
+	}
+}
+
+func TestHintsAtMost200Runes(t *testing.T) {
+	t.Parallel()
+	for _, h := range []string{cushionHintText(compute.NoticeParams{CushionWarn: "0.15", CushionAct: "0.05"}), noteHint} {
+		if n := len([]rune(h)); n == 0 || n > 200 {
+			t.Errorf("hint %q has %d runes", h, n)
+		}
 	}
 }
