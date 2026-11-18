@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -339,5 +340,37 @@ func TestNoticesPageGetsSessions(t *testing.T) {
 	}
 	if d.sessions != nil {
 		t.Errorf("demo profile: sessions %v", d.sessions)
+	}
+}
+
+// calendarSessions records the calendar ids the notices page asks for.
+type calendarSessions struct {
+	store.SessionDayReader
+	mu  *sync.Mutex
+	ids *[]string
+}
+
+func (c calendarSessions) SessionDays(_ context.Context, id string, _, _ contracts.Day) ([]contracts.SessionDay, error) {
+	c.mu.Lock()
+	*c.ids = append(*c.ids, id)
+	c.mu.Unlock()
+	return nil, nil
+}
+
+func TestNoticesPageReadsXNYSSessions(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.profile.Name = "real"
+	writeBookText(t, a, bookText("m", "b", "m"))
+	a.deps.optionNoticesPage = newOptionNoticesPage
+	a.deps.newOptionNotices = func() compute.OptionNotices { return demoNoticeRule{} }
+	a.deps.noticeParams = func() compute.NoticeParams { return compute.NoticeParams{} }
+	var ids []string
+	rd := siteReaders{sessions: calendarSessions{mu: &sync.Mutex{}, ids: &ids}, noticeAccount: demoNoticeAccount{}}
+	if _, err := buildNotices(t.Context(), a, noticesClock, "2026-11-05", rd); err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) == 0 || ids[0] != "XNYS" {
+		t.Fatalf("calendars asked %v", ids)
 	}
 }
