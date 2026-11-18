@@ -110,3 +110,21 @@ func TestConfigEvidenceFields(t *testing.T) {
 		t.Fatalf("Meta = %+v", p.Meta)
 	}
 }
+
+func TestConfigTierFieldsNilBuild(t *testing.T) {
+	t.Parallel()
+	c := option_candidates_page.Config{
+		RunID: "r", BuildID: "b", Scope: "s",
+		Zone: time.UTC, Candidates: fakeCandidates{},
+		Tiers: nil, Account: nil, Aliases: nil, Owner: nil, RuleParams: nil,
+	}
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	out, err := option_candidates_page.Build(context.Background(), c, noSeries{}, contracts.Day("2026-01-02"), at)
+	if err != nil || !json.Valid(out) || !strings.Contains(string(out), `"schema":"option_candidates_page"`) {
+		t.Fatalf("Build = %q, %v", out, err)
+	}
+	s := string(out)
+	if i := strings.Index(s, "short_put_tiers"); i >= 0 && !strings.HasPrefix(s[i:], `short_put_tiers":null`) {
+		t.Fatalf("short_put_tiers is not null: %s", s[i:])
+	}
+}
