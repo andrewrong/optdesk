@@ -69,12 +69,13 @@ Entry 2 (module pages, interface `internal/pages/option_candidates_page/page.go`
 
 ## Issues
 
-Ordering against the design `tiers-amend-1` (branch `design/tiers-amend-1`), which edits the same `companyView` and `tiers.go`, the `Company` definition of the schema and `CompanyStrip.tsx`: its entries 10 (tiers-a1-contract), 11 (tiers-a1-page) and 12 (tiers-a1-web) are preconditions named in the Order lines of entries 1, 3 and 5, and `BASE` in every acceptance item of this design is main with those entries landed, so the `companyView` fields, the golden shape, the `Company` definition and the line counts of `## Today` are those of that design's result; the window adds `Depends on: #<n>` when it registers these drafts. Build order: entries 1 and 2 are the interface entries and land first of this design's entries, in parallel; entry 3 (pages) needs both; entry 4 (ot) needs entry 2; entry 5 (web) needs only the generated types of entry 1. Companies in every test and fixture are AAA, BBB, CCC with invented numbers (no valuation number of the owner appears in the repository). No migration; nothing holds the auto-deploy. A test names a Chinese constant and never repeats its text.
+Ordering against the design `tiers-amend-1` (branch `design/tiers-amend-1`), which edits the same `companyView` and `tiers.go`, the `Company` definition of the schema and `CompanyStrip.tsx`: its entries 10 (tiers-a1-contract), 11 (tiers-a1-page) and 12 (tiers-a1-web) are preconditions named in the "Also waits" lines of entries 1, 3 and 5 (an Order line names only entries of this design), and `BASE` in every acceptance item of this design is main with those entries landed, so the `companyView` fields, the golden shape, the `Company` definition and the line counts of `## Today` are those of that design's result; the window adds `Depends on: #<n>` when it registers these drafts. Build order: entries 1 and 2 are the interface entries and land first of this design's entries, in parallel; entry 3 (pages) needs both; entry 4 (ot) needs entry 2; entry 5 (web) needs only the generated types of entry 1. Companies in every test and fixture are AAA, BBB, CCC with invented numbers (no valuation number of the owner appears in the repository). No migration; nothing holds the auto-deploy. A test names a Chinese constant and never repeats its text.
 
 ### 1 valline-contract (interface)
 
 Module: contracts. Size: S.
-Order: after tiers-amend-1 entry 10 (tiers-a1-contract).
+Order: first.
+Also waits for tiers-amend-1 entry 10 (tiers-a1-contract) of docs/design/candidates-tiers.md to merge; its cut issue carries `Depends on:` that issue.
 Files: `contracts/schemas/page.option_candidates_page.v1.json`, `web/src/generated/option_candidates_page.v1.ts`, `internal/contracts/option_candidates_page_v1_test.go`, `docs/contracts/page-schemas.md`
 Contracts: page.option_candidates_page v1 additive
 Design: docs/design/candidates-valuation-line.md#Interface
@@ -104,7 +105,8 @@ Acceptance:
 ### 3 valline-page
 
 Module: pages. Size: M.
-Order: after 1 and 2 and tiers-amend-1 entry 11 (tiers-a1-page).
+Order: after 1 and 2.
+Also waits for tiers-amend-1 entry 11 (tiers-a1-page) of docs/design/candidates-tiers.md to merge; its cut issue carries `Depends on:` that issue.
 Files: `internal/pages/option_candidates_page/valueline.go`, `internal/pages/option_candidates_page/valueline_test.go`, `internal/pages/option_candidates_page/valuefakes_test.go`, `internal/pages/option_candidates_page/tiers.go`, `internal/pages/option_candidates_page/tiers_test.go`, `internal/pages/option_candidates_page/zh_texts.go`, `internal/pages/option_candidates_page/testdata/tiers_ok.golden.json`, `internal/pages/option_candidates_page/testdata/tiers_gaps.golden.json`, `internal/pages/option_candidates_page/testdata/valueline.golden.json`, `docs/contracts/pages.md`
 Contracts: unchanged
 Design: docs/design/candidates-valuation-line.md#Decisions
@@ -138,7 +140,8 @@ Acceptance:
 ### 5 valline-web
 
 Module: web. Size: S.
-Order: after 1 and tiers-amend-1 entry 12 (tiers-a1-web).
+Order: after 1.
+Also waits for tiers-amend-1 entry 12 (tiers-a1-web) of docs/design/candidates-tiers.md to merge; its cut issue carries `Depends on:` that issue.
 Files: `web/src/pages/candidates/CompanyStrip.tsx`, `web/test/pages/optioncandidates/CompanyStrip.test.tsx`, `web/test/pages/optioncandidates/fixtures/valueline.ts`
 Contracts: unchanged
 Design: docs/design/candidates-valuation-line.md#Decisions
