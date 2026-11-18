@@ -34,6 +34,10 @@ const (
 	// reasonEmptyBeforeClose marks a finished run that came back empty before the window
 	// close: the key stays missing and the run does not count toward the two-run cap.
 	reasonEmptyBeforeClose = "empty_before_close"
+	// emptyRetryGap is the least time between two asks of a key that came back empty before the
+	// close: a run starts only when the newest empty_before_close run finished at least this long
+	// ago. FRED and similar sources publish a day's value after the day; six hours is a trial value.
+	emptyRetryGap = 6 * time.Hour
 	// The reason "expired" explains a key whose last run ended retryable and whose window has closed.
 	reasonExpired = "expired"
 	// reasonCrashedRepeatedly is written at the close on the latest of three crashed or abandoned_stop runs.
@@ -383,7 +387,7 @@ func isRetryable(run store.Run) bool {
 
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
-// error with no window). Runs that are empty_before_close, retryable before the close, crashed
+// error with no window). Runs that are empty_before_close (before the close one is also spaced by emptyRetryGap), retryable before the close, crashed
 // or abandoned_stop do not count. A run starts when no run is running, fewer than two runs count,
 // the key is not stopped by the brake (three crashed or abandoned_stop runs: crashed_repeatedly,
 // written by expireIfClosed at the close) and either no run counts or the latest counted run is
@@ -398,6 +402,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	beforeClose := !closeAt.IsZero() && now.Before(closeAt)
 	crashes, counted := 0, 0
 	var latest *store.Run
+	var lastEmpty time.Time // newest FinishedAt of an empty_before_close run
 	for i, run := range runs {
 		switch {
 		case run.Status == store.RunRunning:
@@ -410,7 +415,11 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		case isCrash(run):
 			crashes++
 		case run.ReasonCode == reasonConsoleStop: // a console_stop run is no attempt and no crash
-		case run.ReasonCode == reasonEmptyBeforeClose, beforeClose && isRetryable(run):
+		case run.ReasonCode == reasonEmptyBeforeClose:
+			if run.FinishedAt.After(lastEmpty) {
+				lastEmpty = run.FinishedAt
+			}
+		case beforeClose && isRetryable(run):
 		default:
 			counted++
 			latest = &runs[i]
@@ -420,6 +429,9 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		crashes++
 	}
 	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
+		return crashed, false, ""
+	}
+	if beforeClose && now.Sub(lastEmpty) < emptyRetryGap {
 		return crashed, false, ""
 	}
 	return crashed, true, reason
