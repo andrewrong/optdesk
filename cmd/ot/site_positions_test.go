@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/structures_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
 var positionsClock = fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
@@ -333,5 +336,84 @@ func TestStructuresConfigHasCatalogAndNames(t *testing.T) {
 	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute+"?account=nobody")
 	if c := rec.last(t); c.cfg.Catalog != nil || c.cfg.Names != nil {
 		t.Errorf("gap case: catalog %v, names %v", c.cfg.Catalog, c.cfg.Names)
+	}
+}
+
+type fakeBarsReader struct{ bar.PriceBarReader }
+
+type fakeDividendReader struct{ dividend.Reader }
+
+func TestStructuresConfigHasBarsAndDividends(t *testing.T) {
+	t.Parallel()
+	a, rec := positionsApp(t)
+	rd := positionsReaders()
+	rd.bars, rd.dividends = fakeBarsReader{}, fakeDividendReader{}
+	h := siteHandler(a, positionsClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute)
+	if c := rec.last(t); c.cfg.Bars == nil || c.cfg.Dividends == nil {
+		t.Errorf("stored readers: bars %v, dividends %v", c.cfg.Bars, c.cfg.Dividends)
+	}
+	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute+"?account=nobody")
+	if c := rec.last(t); c.cfg.Bars != nil || c.cfg.Dividends != nil {
+		t.Errorf("gap case: bars %v, dividends %v", c.cfg.Bars, c.cfg.Dividends)
+	}
+}
+
+// cDividends is a dividend store whose Close is counted.
+type cDividends struct {
+	dividend.Store
+	closeCounter
+}
+
+func (c cDividends) Close() error { return c.closeCounter.Close() }
+
+func TestSiteOpensDividendStore(t *testing.T) {
+	t.Parallel()
+	var closed atomic.Int32
+	a := sessionApp(t, &closed)
+	var dsn string
+	ds := cDividends{closeCounter: closeCounter{&closed}}
+	a.deps.openDividend = func(_ context.Context, d string) (dividend.Store, error) {
+		dsn = d
+		return ds, nil
+	}
+	rd, closeFn, err := openSiteReaders(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dsn != "pages-dsn" || rd.dividends != dividend.Reader(ds) {
+		t.Fatalf("dsn %q dividends %v", dsn, rd.dividends)
+	}
+	closeFn()
+	if closed.Load() != 8 {
+		t.Fatalf("closed %d want 8 (the dividend store is closed with the others)", closed.Load())
+	}
+}
+
+func TestSiteDividendOpenFails(t *testing.T) {
+	t.Parallel()
+	var closed atomic.Int32
+	a := sessionApp(t, &closed)
+	a.deps.openDividend = func(context.Context, string) (dividend.Store, error) {
+		return nil, errors.New("open sentinel-secret")
+	}
+	_, _, err := openSiteReaders(t.Context(), a)
+	if err == nil || err.Error() != "open stores with OT_PG_DSN_PAGES failed" || strings.Contains(err.Error(), "sentinel") {
+		t.Fatalf("err %v", err)
+	}
+	if closed.Load() != 7 {
+		t.Fatalf("closed %d want 7 (the stores opened before are closed)", closed.Load())
+	}
+}
+
+func TestSiteDividendNilOpener(t *testing.T) {
+	t.Parallel()
+	var closed atomic.Int32
+	rd, _, err := openSiteReaders(t.Context(), sessionApp(t, &closed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rd.dividends != nil {
+		t.Fatalf("dividends %v", rd.dividends)
 	}
 }

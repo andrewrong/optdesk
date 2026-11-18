@@ -134,6 +134,13 @@ func noticesPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 		}
 		closers, r.earn = append(closers, s.Close), s
 	}
+	if a.deps.openSessionDay != nil {
+		s, err := a.deps.openSessionDay(ctx, dsn)
+		if err != nil {
+			return fail()
+		}
+		closers, r.sessions = append(closers, s.Close), s
+	}
 	p, err := newNoticesPage(a, "ot-page", r)
 	if err != nil {
 		closeAll()

@@ -375,7 +375,7 @@ func newOptionTrackingPage(zone *time.Location, runID, buildID, scope string, r 
 	return option_tracking_page.NewPage(option_tracking_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone,
 		Ledger: r.Ledger, Account: r.Account, Candidates: r.Candidates, Eod: r.Eod, Catalog: r.Catalog,
-		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions, Marks: r.Marks, Days: r.Days,
+		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions, Marks: r.Marks, Days: r.Days, Bars: r.Bars,
 		Tracker: optiontrack.New(), Replay: optionledger.New(),
 		Params:     trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30},
 		CalendarID: "XNYS",
@@ -403,7 +403,7 @@ func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main strin
 	rule compute.OptionNotices, params compute.NoticeParams) pages.Page {
 	return option_notices_page.NewPage(option_notices_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Main: main, Aliases: aliases,
-		Account: acct, Candidates: cands, Earnings: earn, Sessions: sessions, Rule: rule, Params: params,
+		Account: acct, Candidates: cands, Earnings: earn, Sessions: sessions, CalendarID: "XNYS", Rule: rule, Params: params,
 	})
 }
 

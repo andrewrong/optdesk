@@ -99,3 +99,14 @@ func TestRiskPageNamedDemoIsGap(t *testing.T) {
 		t.Fatalf("%v %s", err, got)
 	}
 }
+
+func TestRiskConfigHasBars(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	if got := riskConfig(a, siteReaders{bars: fakeBarsReader{}}).Bars; got == nil {
+		t.Error("stored bars not handed to the page")
+	}
+	if got := riskConfig(a, siteReaders{}).Bars; got != nil {
+		t.Errorf("gap case: bars %v", got)
+	}
+}

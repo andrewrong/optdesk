@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/atombender/go-jsonschema/pkg/types"
@@ -429,5 +430,16 @@ func TestServeTrackingShowsCoverage(t *testing.T) {
 	body := rec.Body.String()
 	if rec.Code != 200 || !strings.Contains(body, "1 of 1 days") {
 		t.Fatalf("%d %s", rec.Code, body)
+	}
+}
+
+func TestTrackingConfigHasBars(t *testing.T) {
+	t.Parallel()
+	b := fakeBarsReader{}
+	if got := trackingReadersOf(siteReaders{bars: b}).Bars; got != bar.PriceBarReader(b) {
+		t.Errorf("Bars %v", got)
+	}
+	if trackingReadersOf(siteReaders{}).Bars != nil {
+		t.Error("gap case: Bars not nil")
 	}
 }
