@@ -131,6 +131,34 @@ func TestBarsPacedIsRetryable(t *testing.T) {
 	}
 }
 
+func TestBarsNoDataIsRetryable(t *testing.T) {
+	t.Parallel()
+	c, _ := serveBars(t, &fakeBars{answer: func(*pb.BarsRequest) (*pb.BarsResponse, error) {
+		return nil, status.Error(codes.Unknown, "error 162: HMDS query returned no data")
+	}})
+	bars, err := c.Bars(context.Background(), query())
+	if err == nil || kindErr(t, err) != contracts.Retryable {
+		t.Fatalf("want a Retryable error, got %v", err)
+	}
+	if bars != nil {
+		t.Fatalf("want no bars, got %v", bars)
+	}
+	if want := "broker: bars: Unknown: error 162: HMDS query returned no data"; err.Error() != want {
+		t.Fatalf("error text = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestBarsOtherUnknownIsPermanent(t *testing.T) {
+	t.Parallel()
+	c, _ := serveBars(t, &fakeBars{answer: func(*pb.BarsRequest) (*pb.BarsResponse, error) {
+		return nil, status.Error(codes.Unknown, "boom")
+	}})
+	_, err := c.Bars(context.Background(), query())
+	if err == nil || kindErr(t, err) != contracts.Permanent {
+		t.Fatalf("want a Permanent error, got %v", err)
+	}
+}
+
 func TestBarsUnsetKindIsError(t *testing.T) {
 	t.Parallel()
 	c, f := serveBars(t, okBars())
