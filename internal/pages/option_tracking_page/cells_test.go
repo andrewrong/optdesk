@@ -74,7 +74,7 @@ func TestMarkOnlyRowText(t *testing.T) {
 	o := sampleOpen("c")
 	o.MarkStatus, o.Mid = "ok", "1.2500"
 	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
-	want := "Only the account mark is stored for this contract, no stock close, delta or IV"
+	want := markOnlyZh
 	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
 		var cell any
 		for _, d := range openColumns {
@@ -97,6 +97,27 @@ func TestMarkOnlyRowText(t *testing.T) {
 	o.Spot = "100.00"
 	if g := asGap(t, numCell("", markCode(o))); g.Text != "No such value" {
 		t.Fatalf("with spot = %+v", g)
+	}
+}
+
+func TestMarkOnlyTextIsChinese(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("c")
+	o.MarkStatus, o.Mid = "ok", "1.2500"
+	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
+	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
+		found := false
+		for _, d := range openColumns {
+			if d.ID == id {
+				found = true
+				if g := asGap(t, d.cell(o)); g.Text != markOnlyZh {
+					t.Fatalf("%s text = %q, want %q", id, g.Text, markOnlyZh)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("no column %s", id)
+		}
 	}
 }
 

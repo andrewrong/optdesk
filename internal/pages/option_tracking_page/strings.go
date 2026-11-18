@@ -52,7 +52,7 @@ var codeTexts = map[string]string{
 	codeNoFlexRows: "No Flex record for this account",
 	codeNoAccount:  "No account position record, check table not built",
 	codeNoValue:    "No such value",
-	codeMarkOnly:   "Only the account mark is stored for this contract, no stock close, delta or IV",
+	codeMarkOnly:   markOnlyZh,
 	codeUnreadable: unreadable,
 	"no_reader":    "No reader",
 
