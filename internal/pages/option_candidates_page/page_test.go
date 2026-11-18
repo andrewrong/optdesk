@@ -178,6 +178,10 @@ func TestConfigValuationFieldsNilBuild(t *testing.T) {
 	if err != nil || !json.Valid(out) {
 		t.Fatalf("Build = %q, %v", out, err)
 	}
+	viaPage, err := option_candidates_page.NewPage(c).Build(context.Background(), nil, contracts.Day("2026-11-09"), at)
+	if err != nil || string(viaPage) != string(out) {
+		t.Fatalf("NewPage build differs from Build: %q, %v", viaPage, err)
+	}
 	var page struct {
 		Tiers *struct {
 			Companies []map[string]any `json:"companies"`
