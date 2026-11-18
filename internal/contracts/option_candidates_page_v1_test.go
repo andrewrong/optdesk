@@ -1,6 +1,9 @@
 package contracts_test
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 const optionCandidatesPageV1 = "page.option_candidates_page.v1.json"
 
@@ -111,5 +114,117 @@ func TestOptionCandidatesPageNoRunAndUnreadableGapsValid(t *testing.T) {
 	inst["gaps"] = []any{map[string]any{"kind": "gap", "reason": "bogus", "text": "x"}}
 	if pageV1Valid(t, optionCandidatesPageV1, inst) {
 		t.Fatal("an unknown gap reason validates")
+	}
+}
+
+func tiersBadge() map[string]any {
+	return map[string]any{"code": "thin_premium", "label": "thin", "gloss": "premium is thin", "tone": "warn"}
+}
+
+func tiersRow() map[string]any {
+	return map[string]any{
+		"id":      "row-1",
+		"company": "AAA",
+		"contract": map[string]any{
+			"name": "AAA 95 put", "strike": "95", "expiry": "2026-12-18", "dte": "30",
+		},
+		"margin":     map[string]any{"main": "5.2%", "sub": "to buy price", "gap": nil},
+		"below_spot": map[string]any{"main": "8.0%", "sub": nil, "gap": nil},
+		"premium":    map[string]any{"main": "1.20", "sub": nil, "gap": nil},
+		"badges":     []any{tiersBadge()},
+		"notes":      []any{},
+		"fields": []any{map[string]any{
+			"id": "yield", "label": "Yield", "hint": nil, "value": nil,
+			"gap":    map[string]any{"kind": "gap", "reason": "missing_input", "text": "no spot"},
+			"badges": []any{},
+		}},
+		"line": nil,
+	}
+}
+
+func tiersView() map[string]any {
+	return map[string]any{
+		"chain_day": "2026-11-18",
+		"companies": []any{map[string]any{
+			"key": "1", "ticker": "AAA", "spot": "100", "spot_day": "2026-11-18",
+			"buy_price": nil, "buy_price_note": nil, "next_earnings": "2026-12-01", "counts": "1 fits",
+		}},
+		"common":  []any{map[string]any{"code": "delayed", "label": "delayed", "gloss": "quotes are delayed"}},
+		"kept":    nil,
+		"legend":  []any{map[string]any{"tier": "fits", "title": "Fits", "text": "delta at most 0.3"}},
+		"columns": []any{map[string]any{"id": "margin", "label": "Margin", "hint": nil}},
+		"tiers": []any{map[string]any{
+			"id": "fits", "word": "fits", "icon": "check", "title": "Fits", "explain": "rows that fit",
+			"collapsed": false, "rows": []any{tiersRow()},
+		}},
+	}
+}
+
+func tiersFirstRow(inst map[string]any) map[string]any {
+	tiers := inst["short_put_tiers"].(map[string]any)["tiers"].([]any)
+	return tiers[0].(map[string]any)["rows"].([]any)[0].(map[string]any)
+}
+
+func TestOptionCandidatesTiersNullValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = nil
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("short_put_tiers null is invalid")
+	}
+}
+
+func TestOptionCandidatesTiersAbsentValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	delete(inst, "short_put_tiers")
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an instance without short_put_tiers is invalid")
+	}
+}
+
+func TestOptionCandidatesTiersOneTierValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a tier fits with one row, a badge and a field with a gap is invalid")
+	}
+}
+
+func TestOptionCandidatesTiersUnknownFieldFails(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	tiersFirstRow(inst)["extra"] = "x"
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an extra field of a TierRow validates")
+	}
+}
+
+func TestOptionCandidatesTiersNumberFails(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	tiersFirstRow(inst)["contract"].(map[string]any)["strike"] = 95.0
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a JSON number where a Text is expected validates")
+	}
+}
+
+func TestOptionCandidatesTiersEmptyTextFails(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	tiersFirstRow(inst)["margin"].(map[string]any)["main"] = ""
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an empty Pair.main validates")
+	}
+	inst = candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	tier := inst["short_put_tiers"].(map[string]any)["tiers"].([]any)[0].(map[string]any)
+	tier["explain"] = strings.Repeat("x", 201)
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a 201-character explain validates")
 	}
 }
