@@ -16,6 +16,9 @@ type pnlLot struct {
 	pos      compute.LedgerPosition
 	rows     []optionday.Day
 	endClose string
+	// card is true for the lots of the 30-day rule: open, or ended within RecentDays. The other lots
+	// are in the ledger only.
+	card bool
 }
 
 // outcome is one lot after the attribution: a lot with a reason has class and reason set and no result.

@@ -47,11 +47,12 @@ type lotView struct {
 }
 
 type accountView struct {
-	Alias      string     `json:"alias"`
-	Books      []bookView `json:"books"`
-	Lots       []lotView  `json:"lots"`
-	SampleNote string     `json:"sample_note"`
-	Gap        *gap       `json:"gap"`
+	Alias      string      `json:"alias"`
+	Books      []bookView  `json:"books"`
+	Lots       []lotView   `json:"lots"`
+	SampleNote string      `json:"sample_note"`
+	Gap        *gap        `json:"gap"`
+	Ledger     *ledgerView `json:"ledger"`
 }
 
 type sourceTime struct {
@@ -152,7 +153,7 @@ func buildAccounts(ctx context.Context, c Config, r store.SeriesReader, day cont
 			vm.Accounts = append(vm.Accounts, gapAccount(alias, gp))
 			continue
 		}
-		a, err := buildAccount(c, alias, i, g)
+		a, err := buildAccount(c, alias, i, g, day)
 		if err != nil {
 			return err
 		}
@@ -167,10 +168,16 @@ func buildAccounts(ctx context.Context, c Config, r store.SeriesReader, day cont
 	return nil
 }
 
-// buildAccount attributes the lots of one alias and writes its books and cards.
-func buildAccount(c Config, alias string, idx int, g gathered) (accountView, error) {
+// buildAccount attributes the lots of one alias and writes its books, cards and ledger. The books, the
+// cards, roll and the sample note use the card lots only; the ledger uses every ended lot.
+func buildAccount(c Config, alias string, idx int, g gathered, day contracts.Day) (accountView, error) {
 	a := accountView{Alias: alias, Books: []bookView{}, Lots: []lotView{}}
-	outs := make([]outcome, 0, len(g.lots))
+	d, err := time.Parse(dayLayout, string(day))
+	if err != nil {
+		return a, fmt.Errorf("option_pnl_page: build day %q: %w", day, err)
+	}
+	all := make([]outcome, 0, len(g.lots))
+	var cards []outcome
 	var results []optionattrapi.Result
 	ended := 0
 	for _, l := range g.lots {
@@ -178,7 +185,11 @@ func buildAccount(c Config, alias string, idx int, g gathered) (accountView, err
 		if err != nil {
 			return a, err
 		}
-		outs = append(outs, o)
+		all = append(all, o)
+		if !l.card {
+			continue
+		}
+		cards = append(cards, o)
 		if !o.isGap() {
 			results = append(results, o.res)
 		}
@@ -190,18 +201,19 @@ func buildAccount(c Config, alias string, idx int, g gathered) (accountView, err
 	if len(results) > 0 {
 		books = c.Booker.Combine(results)
 	}
-	for n, o := range outs {
-		card, err := lotCard(c, fmt.Sprintf("a%dl%d", idx, n), alias, o, roll(o, outs))
+	for n, o := range cards {
+		card, err := lotCard(c, fmt.Sprintf("a%dl%d", idx, n), alias, o, roll(o, cards))
 		if err != nil {
 			return a, err
 		}
 		a.Lots = append(a.Lots, card)
 	}
-	a.Books = bookCards(alias, outs, books)
+	a.Books = bookCards(alias, cards, books)
 	a.SampleNote = strconv.Itoa(ended) + " ended lots: " + sampleFew
 	if ended >= 20 {
 		a.SampleNote = strconv.Itoa(ended) + " ended lots: " + sampleEnuf
 	}
+	a.Ledger = buildLedger(c, idx, d, all)
 	return a, nil
 }
 

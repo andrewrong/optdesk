@@ -626,6 +626,84 @@
         },
         "counts": {
           "$ref": "#/$defs/Text"
+        },
+        "valuation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ValueLine"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ValueLine": {
+      "description": "The valuation line and the gate buy price of a strip, from docs/design/candidates-valuation-line.md#Interface.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "text",
+        "hint",
+        "reason",
+        "gate_label",
+        "gate_text",
+        "gate_hint"
+      ],
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "no_profile",
+                "ambiguous",
+                "removed",
+                "no_review",
+                "no_tables",
+                "currency",
+                "bad_input",
+                "read_failed"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gate_label": {
+          "$ref": "#/$defs/Text"
+        },
+        "gate_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "gate_hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
