@@ -613,6 +613,7 @@ func TestIvGapsNameTheIndex(t *testing.T) {
 	t.Parallel()
 	e := allOK()
 	delete(e.iv, "NDX")
+	e.series = map[string][]contracts.SeriesPoint{}
 	e.iv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(1), "")}
 	m := e.page(t)
 	if c := ivCellOf(t, m, 1); c["kind"] != "gap" || c["text"] != "NDX implied volatility: no data, not stored yet" {
@@ -623,6 +624,7 @@ func TestIvGapsNameTheIndex(t *testing.T) {
 	}
 	for _, v := range []string{"0", "-0.1"} {
 		e := allOK()
+		e.series = map[string][]contracts.SeriesPoint{}
 		e.iv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", v, nil, "")}
 		if c := ivCellOf(t, e.page(t), 0); c["kind"] != "gap" || c["text"] != "SPX implied volatility: no data, inputs incomplete" {
 			t.Errorf("value %s: iv = %v", v, c)
@@ -643,5 +645,34 @@ func TestN225IvAndUniqueGapTexts(t *testing.T) {
 			t.Errorf("gap text twice: %q", txt)
 		}
 		seen[txt] = true
+	}
+}
+
+func TestIndexIVFromVolatilityIndex(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	e.iv = nil
+	e.series = map[string][]contracts.SeriesPoint{seriesVIX: {pt("2026-11-06", 24.14)}, seriesVXN: {pt("2026-11-05", 26.06)}}
+	m := e.page(t)
+	c := ivCellOf(t, m, 0)
+	if c["kind"] != "value" || c["text"] != "VIX 24.1" || c["unit"] != "vol_points" || fmt.Sprint(c["value"]) != "24.1" {
+		t.Errorf("SPX iv = %v", c)
+	}
+	if c := ivCellOf(t, m, 1); c["kind"] != "value" || c["text"] != "VXN 26.1 (11-05)" {
+		t.Errorf("NDX iv = %v", c)
+	}
+	if c := ivCellOf(t, m, 2); c["kind"] != "gap" || c["text"] != "RUT implied volatility: no data, not stored yet" {
+		t.Errorf("RUT iv = %v", c)
+	}
+	if c := ivCellOf(t, m, 3); c["text"] != "N225 implied volatility: not built yet" {
+		t.Errorf("N225 iv = %v", c)
+	}
+}
+
+func TestIndexIVPrefersStoredIbkr(t *testing.T) {
+	t.Parallel()
+	c := ivCellOf(t, allOK().page(t), 0)
+	if c["kind"] != "value" || c["text"] != "21.5" {
+		t.Errorf("SPX iv = %v", c)
 	}
 }

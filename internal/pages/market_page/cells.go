@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const dayLayout = "2006-01-02"
@@ -166,6 +167,29 @@ func ivCell(name string, r reading) any {
 	return mkFigure(text, text, unitVolPoints)
 }
 
+// volIndexCell is the iv cell of an index from the newest point of its volatility index
+// series (VIX, VXN, RVX) in vol points, named by the index and, when the point is not of
+// the page's day d, by its day. It is nil when the series has no point in the window.
+func volIndexCell(ctx context.Context, r store.SeriesReader, s indexSpec, d time.Time) (any, error) {
+	rows, err := r.SeriesPoints(ctx, s.series, contracts.Day(d.AddDate(0, 0, -ivrvMaxAgeDays).Format(dayLayout)), contracts.Day(d.Format(dayLayout)))
+	if err != nil {
+		return nil, fmt.Errorf("market_page: read %s: %w", s.series, err)
+	}
+	pts := storedPoints(rows, d)
+	if len(pts) == 0 {
+		return nil, nil
+	}
+	text, err := shiftRound(pts[0].text, 0, 1)
+	if err != nil {
+		return nil, nil
+	}
+	shown := s.volIndex + " " + text
+	if !pts[0].date.Equal(d) {
+		shown += " (" + pts[0].date.Format("01-02") + ")"
+	}
+	return mkFigure(text, shown, unitVolPoints), nil
+}
+
 // rv20Cell is the rv20 cell of one index: the stored 20-day realised volatility in vol
 // points, one decimal. A stored zero is a value; only a missing or negative input is a Gap.
 func rv20Cell(name string, r reading) any {
@@ -237,14 +261,14 @@ type indexRow struct {
 	Rank3Y      any    `json:"rank_3y"`
 }
 
-type indexSpec struct{ name, figure, series string }
+type indexSpec struct{ name, figure, series, volIndex string }
 
 // indexSpecs are the four rows in page order; N225 has no figure.
 var indexSpecs = []indexSpec{
-	{"SPX", figVixPctile, seriesVIX},
-	{"NDX", figVxnPctile, seriesVXN},
-	{"RUT", figRvxPctile, seriesRVX},
-	{"N225", "", ""},
+	{"SPX", figVixPctile, seriesVIX, "VIX"},
+	{"NDX", figVxnPctile, seriesVXN, "VXN"},
+	{"RUT", figRvxPctile, seriesRVX, "RVX"},
+	{"N225", "", "", ""},
 }
 
 type indices struct {
@@ -257,7 +281,7 @@ type indices struct {
 
 // buildIndices fills the four rows and fills days with the data days of the readings;
 // failed counts the ranks of SPX, NDX and RUT that are Gaps.
-func buildIndices(ctx context.Context, c Config, d time.Time, days dataDays) (indices, int, error) {
+func buildIndices(ctx context.Context, c Config, r0 store.SeriesReader, d time.Time, days dataDays) (indices, int, error) {
 	out := indices{Title: indicesTitle, Sentence: indicesSentence, Columns: indicesColumns, Note: indicesNote, Rows: []indexRow{}}
 	failed := 0
 	for _, s := range indexSpecs {
@@ -279,6 +303,15 @@ func buildIndices(ctx context.Context, c Config, d time.Time, days dataDays) (in
 				return indices{}, 0, err
 			}
 			row.IV = ivCell(s.name, iv)
+			if _, isGap := row.IV.(gap); isGap {
+				fromSeries, err := volIndexCell(ctx, r0, s, d)
+				if err != nil {
+					return indices{}, 0, err
+				}
+				if fromSeries != nil {
+					row.IV = fromSeries
+				}
+			}
 			rv, err := readNewestKind(ctx, c, figRv20, kindUnderlying, s.name, d)
 			if err != nil {
 				return indices{}, 0, err
