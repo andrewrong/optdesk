@@ -173,6 +173,21 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
   )
 }
 
+function TierTable({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="sm:min-w-[60rem]">
+        <div className="max-sm:hidden">
+          <TierHead columns={columns} />
+        </div>
+        {tier.rows.map((row) => (
+          <DataRow key={row.id} tier={tier} row={row} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function GreyGroup({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
   return (
     <Accordion type="single" collapsible data-tier={tier.id}>
@@ -184,16 +199,7 @@ function GreyGroup({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
         </AccordionTrigger>
         <AccordionContent>
           <p className="mb-2 text-xs text-muted-foreground">{tier.explain}</p>
-          <div className="overflow-x-auto">
-            <div className="sm:min-w-[60rem]">
-              <div className="max-sm:hidden">
-                <TierHead columns={columns} />
-              </div>
-              {tier.rows.map((row) => (
-                <DataRow key={row.id} tier={tier} row={row} />
-              ))}
-            </div>
-          </div>
+          <TierTable tier={tier} columns={columns} />
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -207,16 +213,7 @@ export function TierSection({ tier, columns }: { tier: Tier; columns: TierColumn
       <h3 className={cn('flex items-center gap-2 text-base font-semibold', titleTones[tier.id])}>
         <TierTitle tier={tier} />
       </h3>
-      <div className="overflow-x-auto">
-        <div className="sm:min-w-[60rem]">
-          <div className="max-sm:hidden">
-            <TierHead columns={columns} />
-          </div>
-          {tier.rows.map((row) => (
-            <DataRow key={row.id} tier={tier} row={row} />
-          ))}
-        </div>
-      </div>
+      <TierTable tier={tier} columns={columns} />
     </section>
   )
 }

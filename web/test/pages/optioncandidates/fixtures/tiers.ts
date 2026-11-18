@@ -101,7 +101,7 @@ export const tiers: TierView = {
       title: '1 tiers in the money',
       explain: 'tiers 价内',
       collapsed: true,
-      rows: [row('g1', { line: 'tiers grey line AAA $100.00 12-18' })],
+      rows: [row('g1', { below_spot: { main: 'tiers gap no iv', sub: null, gap: { kind: 'gap', reason: 'no_data', text: 'tiers gap no iv' } }, line: 'tiers grey line AAA $100.00 12-18' })],
     },
   ],
 }

@@ -170,4 +170,21 @@ describe('TierView', () => {
     const none = await show(<TierView tiers={{ ...tiers, kept_note: null }} />)
     expect(none.querySelector('[data-kept-note]')).toBeNull()
   })
+
+  it('TestGapCellsMuted', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    await open(page.querySelector('[data-tier=grey_in_the_money] button')!)
+    const cells = [
+      page.querySelectorAll('[data-tier=fits] [data-row]')[1]!.querySelector('[data-cell=margin]')!,
+      page.querySelector('[data-tier=grey_in_the_money] [data-row] [data-cell=below_spot]')!,
+    ]
+    for (const cell of cells) {
+      const gapText = cell.textContent!
+      expect(gapText).toContain('gap')
+      const span = [...cell.querySelectorAll('span')].find((e) => e.textContent === gapText)!
+      expect(span.className).toContain('text-muted-foreground')
+    }
+    const normal = page.querySelector('[data-tier=fits] [data-row] [data-cell=margin] div')!
+    expect(normal.className).not.toContain('text-muted-foreground')
+  })
 })
