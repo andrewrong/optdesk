@@ -63,6 +63,19 @@ func markFor(in trackapi.TrackInput, p trackapi.TrackParams, pos compute.LedgerP
 	return m, true
 }
 
+// closeOf is the positive UnderlyingClose of the newest quote of the contract, with its text;
+// it does not wait for a mid and has no age limit.
+func closeOf(in trackapi.TrackInput, pos compute.LedgerPosition) (*big.Rat, string) {
+	best, found := newestQuote(in, pos)
+	if !found {
+		return nil, ""
+	}
+	if s, ok := dec(best.UnderlyingClose); ok && s.Sign() > 0 {
+		return s, strings.TrimSpace(best.UnderlyingClose)
+	}
+	return nil, ""
+}
+
 // baseRow copies what the ledger gave.
 func baseRow(pos compute.LedgerPosition) trackapi.TrackedOption {
 	return trackapi.TrackedOption{
@@ -84,6 +97,14 @@ func openRow(in trackapi.TrackInput, p trackapi.TrackParams, pos compute.LedgerP
 	}
 	row.Moneyness = "unknown"
 	strike, strikeOK := dec(pos.Strike)
+	spot, spotText := closeOf(in, pos)
+	if spot != nil && strikeOK {
+		row.Spot = spotText
+		row.Moneyness = moneyness(isPut, strike, spot)
+		if o, ok := otmPercent(isPut, strike, spot); ok {
+			row.OtmPercent = o
+		}
+	}
 	m, ok := markFor(in, p, pos)
 	if !ok {
 		row.MarkStatus = "no_mark"
@@ -123,11 +144,6 @@ func fillMark(row *trackapi.TrackedOption, m mark, pos compute.LedgerPosition, i
 	row.MarkStatus, row.MarkDay, row.Mid = "ok", m.day, fixed(m.mid, 4)
 	row.Delta, row.Iv = m.delta, m.iv
 	if m.spot != nil && strikeOK {
-		row.Spot = m.spotText
-		row.Moneyness = moneyness(isPut, strike, m.spot)
-		if o, ok := otmPercent(isPut, strike, m.spot); ok {
-			row.OtmPercent = o
-		}
 		row.Extrinsic = fixed(extrinsic(isPut, m.mid, strike, m.spot), 4)
 	}
 	prem, ok1 := dec(pos.PremiumIncome)

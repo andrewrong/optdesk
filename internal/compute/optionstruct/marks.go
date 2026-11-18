@@ -115,7 +115,8 @@ func (m marker) markOf(l leg) legMark {
 	return legMark{mid: mid, pnl: pnl, quote: q}
 }
 
-// spotOf is the underlying close of the newest quote of the underlying that has one.
+// spotOf is the underlying close of the newest quote of the underlying that has a positive
+// one; it checks no age (the page leaves an old close out).
 func (m marker) spotOf(underlying string) (*big.Rat, string) {
 	if len(m.quotes) == 0 {
 		return nil, gapNoData
@@ -131,11 +132,8 @@ func (m marker) spotOf(underlying string) (*big.Rat, string) {
 			spot, day = c, q.Day
 		}
 	}
-	switch {
-	case spot == nil:
+	if spot == nil {
 		return nil, gapMissingQuote
-	case m.stale(day):
-		return nil, gapStale
 	}
 	return spot, ""
 }
@@ -237,7 +235,9 @@ func parseDay(d contracts.Day) (time.Time, bool) {
 }
 
 // fillDistances sets figure: structure.expiry_distance and figure: structure.level_distance:
-// (price - spot) / spot as a ratio of 6 places; the page moves the point two places.
+// expiry_distance is (spot - strike) / spot for a short put and (strike - spot) / spot for a
+// short call, level_distance is (price - spot) / spot; a ratio of 6 places, the page moves
+// the point two places.
 func (m marker) fillDistances(s *compute.Structure, u unit) {
 	spot, gap := m.spotOf(u.legs[0].p.Underlying)
 	s.Figures.ExpiryDistance = noData
@@ -248,7 +248,7 @@ func (m marker) fillDistances(s *compute.Structure, u unit) {
 				n = l
 			}
 		}
-		s.Figures.ExpiryDistance = distance(n.strike, spot, gap)
+		s.Figures.ExpiryDistance = expiryDistance(n, spot, gap)
 	} else if u.kind == kindOther {
 		s.Figures.ExpiryDistance = noRule
 	}
@@ -257,6 +257,15 @@ func (m marker) fillDistances(s *compute.Structure, u unit) {
 			s.Levels[i].Distance = distance(p, spot, gap).Value
 		}
 	}
+}
+
+// expiryDistance is the share of the close the strike lies below it (a put) or above it (a
+// call): positive out of the money.
+func expiryDistance(l leg, spot *big.Rat, gap string) compute.FigureValue {
+	if gap != "" || l.p.Right == "C" {
+		return distance(l.strike, spot, gap)
+	}
+	return compute.FigureValue{Value: fixed6(new(big.Rat).Quo(sub(spot, l.strike), spot))}
 }
 
 func distance(price, spot *big.Rat, gap string) compute.FigureValue {

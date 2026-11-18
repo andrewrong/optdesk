@@ -109,29 +109,37 @@ func side(right string) string {
 	return ""
 }
 
-// otmPercent is the signed distance to the strike in percent, positive out of the money.
-func otmPercent(isPut bool, strike, spot *big.Rat) (string, bool) {
-	if strike.Sign() <= 0 {
-		return "", false
+// otmShare is (spot - strike) / spot for a put and (strike - spot) / spot for a call: the
+// one distance of the two rules, a share of the close, positive out of the money.
+func otmShare(isPut bool, strike, spot *big.Rat) (*big.Rat, bool) {
+	if spot.Sign() <= 0 {
+		return nil, false
 	}
 	d := new(big.Rat).Sub(spot, strike)
 	if !isPut {
 		d.Neg(d)
 	}
-	d.Quo(d, strike).Mul(d, big.NewRat(100, 1))
-	return fixed(d, 2), true
+	return d.Quo(d, spot), true
 }
 
-// moneyness is itm, otm or atm (only when spot equals strike exactly).
-func moneyness(isPut bool, strike, spot *big.Rat) string {
-	c := spot.Cmp(strike)
-	if !isPut {
-		c = -c
+// otmPercent is that distance in percent, two places, half even.
+func otmPercent(isPut bool, strike, spot *big.Rat) (string, bool) {
+	d, ok := otmShare(isPut, strike, spot)
+	if !ok {
+		return "", false
 	}
+	return fixed(d.Mul(d, big.NewRat(100, 1)), 2), true
+}
+
+// moneyness is itm, otm or atm (only when the distance is exactly zero), from its sign.
+func moneyness(isPut bool, strike, spot *big.Rat) string {
+	d, ok := otmShare(isPut, strike, spot)
 	switch {
-	case c == 0:
+	case !ok:
+		return "unknown"
+	case d.Sign() == 0:
 		return "atm"
-	case c > 0:
+	case d.Sign() > 0:
 		return "otm"
 	}
 	return "itm"

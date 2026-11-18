@@ -133,7 +133,8 @@ func (c cells) percent(f compute.FigureValue) any {
 	return p
 }
 
-// moneyness names where the first sold leg stands, from the sign of the stored distance text.
+// moneyness names where the first sold leg stands, from the sign of the stored distance text alone:
+// positive is out of the money for a put and a call alike.
 func (c cells) moneyness(s compute.Structure) any {
 	f := s.Figures.ExpiryDistance
 	if r := c.reasonOf(f); r != "" {
@@ -148,11 +149,10 @@ func (c cells) moneyness(s compute.Structure) any {
 	if strings.Trim(f.Value, "-0.") == "" {
 		return "at the money"
 	}
-	below := strings.HasPrefix(f.Value, "-") // the strike lies below the underlying
-	if (s.Legs[0].Right == "P") == below {
-		return "out of the money"
+	if strings.HasPrefix(f.Value, "-") {
+		return "in the money"
 	}
-	return "in the money"
+	return "out of the money"
 }
 
 // maxLossCell is max_loss; an unbounded naked call is shown as such.
