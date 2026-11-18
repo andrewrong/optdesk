@@ -96,3 +96,17 @@ const (
 	valueReasonBadInputZh   = "这次复核的 V 或 P 超出范围，算不出估值买入线。"
 	valueReasonReadFailedZh = "估值数据读不出来，不显示估值买入线；其他内容不受影响。"
 )
+
+// Chinese texts of the idle line, the buy hint, the empty tiers and the spot hint (option-pages-r7.md Decision 6).
+const (
+	idleNoteTail     = " 家公司没有买入价和估值档案："
+	idleNoteSep      = "、"
+	idleNoteEllipsis = "…"
+	buyHintZh        = "有公司没有设买入价：在 Companies > Watch list 的 Buy 列填写，填了才会被评判。"
+	spotHintZh       = "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
+	noneHead         = "无："
+	noneFitsAllGrey  = "所有行都未评判，原因见下方折叠的分组。"
+	noneFitsHasCheck = "满足条件的行都带有需要再看一眼的徽标，见 Check。"
+	noneFits         = "没有一行同时满足已设买入价、保本点不高于买入价、价外和 delta 上限。"
+	noneCheck        = "没有行满足三项条件却带有需要再看一眼的徽标。"
+)

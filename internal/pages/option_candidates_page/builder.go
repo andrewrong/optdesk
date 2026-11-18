@@ -88,7 +88,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 			}
 			g := buildGroup(s, gd, day, rows, c.Figures, gr.rate, gr.ev)
 			vm.Groups = append(vm.Groups, g)
-			if vm.ShortPutTiers, err = tiersOfKind(ctx, c, s.kind, gr, generatedAt, vm.ShortPutTiers); err != nil {
+			if vm.ShortPutTiers, err = tiersOfKind(ctx, c, s.kind, gr, day, generatedAt, vm.ShortPutTiers); err != nil {
 				return nil, err
 			}
 			vm.Notes = withTrialNote(vm.Notes, g)
@@ -156,11 +156,11 @@ func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind st
 }
 
 // tiersOfKind is the tier view of the short-put group and prev for any other kind.
-func tiersOfKind(ctx context.Context, c Config, kind string, gr groupRead, at time.Time, prev *tiersView) (*tiersView, error) {
+func tiersOfKind(ctx context.Context, c Config, kind string, gr groupRead, day contracts.Day, at time.Time, prev *tiersView) (*tiersView, error) {
 	if kind != kindShortPut {
 		return prev, nil
 	}
-	return buildTiers(ctx, c, gr, at)
+	return buildTiers(ctx, c, gr, day, at)
 }
 
 // fillRun writes the fields that exist only when some group has rows.

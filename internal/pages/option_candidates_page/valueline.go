@@ -135,3 +135,6 @@ func entryOf(st valuation.State, ticker string) *valuation.Entry {
 	}
 	return nil
 }
+
+// hasFigure is true when the strip shows a valuation figure, not a reason.
+func hasFigure(cv companyView) bool { return cv.Valuation != nil && cv.Valuation.Reason == nil }
