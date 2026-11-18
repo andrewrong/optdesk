@@ -7,7 +7,7 @@ const (
 	// scopeNote is followed by the account alias.
 	scopeNote = "本页只含账户 "
 	// countGloss says what a counted trade is on this page and that the pnl page counts something else.
-	countGloss = "计数说明：本页的一笔指账户的一个已平仓头寸，认购与认沽合计，按方向和币种分列；期权盈亏页只计已结束的卖出认沽批次，两者口径不同，笔数不会相等。"
+	countGloss = "计数说明：本页的一笔指账户的一个已平仓头寸，认购与认沽合计，按方向和币种分列；期权盈亏页只计已结束的卖出认沽批次，两者口径不同，笔数可能不同。"
 	// otherAccounts joins the scope note to the other aliases, which are joined by otherSep.
 	otherAccounts = "；其他账户："
 	otherSep      = "、"

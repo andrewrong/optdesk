@@ -42,7 +42,7 @@ func TestNotesCarryCountGloss(t *testing.T) {
 	if notes[0] != "本页只含账户 main" {
 		t.Errorf("notes[0] = %q, want the scope note", notes[0])
 	}
-	want := "计数说明：本页的一笔指账户的一个已平仓头寸，认购与认沽合计，按方向和币种分列；期权盈亏页只计已结束的卖出认沽批次，两者口径不同，笔数不会相等。"
+	want := "计数说明：本页的一笔指账户的一个已平仓头寸，认购与认沽合计，按方向和币种分列；期权盈亏页只计已结束的卖出认沽批次，两者口径不同，笔数可能不同。"
 	if notes[1] != want {
 		t.Errorf("notes[1] = %q, want %q", notes[1], want)
 	}
