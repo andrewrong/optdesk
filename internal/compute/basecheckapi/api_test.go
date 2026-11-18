@@ -48,3 +48,12 @@ func TestLevelValues(t *testing.T) {
 		}
 	}
 }
+
+// TestInputCarriesPairs: the pair levels travel on Input and a caller reads them back by row.
+func TestInputCarriesPairs(t *testing.T) {
+	t.Parallel()
+	in := basecheckapi.Input{Pairs: []basecheckapi.PairLevel{{Dataset: "bars", Pair: "R6", Level: basecheckapi.Warn}}}
+	if len(in.Pairs) != 1 || in.Pairs[0].Dataset != "bars" || in.Pairs[0].Pair != "R6" || in.Pairs[0].Level != basecheckapi.Warn {
+		t.Fatalf("unexpected pairs %+v", in.Pairs)
+	}
+}
