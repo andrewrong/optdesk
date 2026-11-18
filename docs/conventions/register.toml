@@ -1245,19 +1245,19 @@ history = ["2026-11-04 v1: registered with the held options list; Advisor: agree
 
 [[figure]]
 id = "structure.expiry_distance"
-version = 2
+version = 3
 title_zh = "结构列表：距现价（最近到期的卖出腿行权价）"
 pages = ["structures_list.groups.rows.distance"]
 formula = """
-structure.level_distance applied to the strike of the nearest short leg (earliest expiry): (strike - spot) / spot, an exact ratio written with 6 decimals, half-even. Synthetic: spot 52, strike 50 gives -0.038462; spot 100, strike 105 gives 0.050000."""
+Of the nearest short leg (earliest expiry): (spot - strike) / spot for a short put and (strike - spot) / spot for a short call, an exact ratio written with 6 decimals, half-even, positive out of the money and negative in the money. Synthetic: spot 100 with put strike 95 gives 0.050000; spot 100 with put strike 105 gives -0.050000."""
 inputs = """
-The strike of the nearest short leg from the ledger; the underlying close of the stored IBKR quote."""
-period_date = "The day of the stored quote."
+The strike and right of the nearest short leg from the ledger; the underlying close picked by docs/design/option-pages-r8.md#2."""
+period_date = "The day of the underlying close of docs/design/option-pages-r8.md#2."
 currency = "None: a ratio of two prices."
 excludes = """
 Any intraday price; the long legs; a spot of zero or less."""
 gap_text = """
-No quote with an underlying close: missing_quote; an older one: stale_input; JPY: unsupported_currency; an 'other' structure: no_rule; no short leg: no_data. Never a zero."""
+No underlying close: missing_quote; JPY: unsupported_currency; an 'other' structure: no_rule; no short leg: no_data. Never a zero."""
 implemented_by = [
   "internal/compute/optionstruct.distance",
   "internal/compute/optionstruct.marker.fillDistances",
@@ -1265,7 +1265,7 @@ implemented_by = [
 source_hash = "pending-recompute"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/option-positions.md"
-history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees.", "2026-11-10 v2: ratio with 6 decimals; spot from the stored IBKR quote; named gap reasons; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
+history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees.", "2026-11-10 v2: ratio with 6 decimals; spot from the stored IBKR quote; named gap reasons; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands.", "2026-11-18 v3: base the close, positive out of the money, one close for tracking and structures; by docs/design/option-pages-r8.md"]
 
 [[figure]]
 id = "option.candidates.iv_context"
