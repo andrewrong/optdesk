@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CandidateGroup } from '@/pages/candidates/CandidateGroup'
+import { ShortList } from '@/pages/candidates/ShortList'
 import { TierView } from '@/pages/candidates/TierView'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/option_candidates_page'
@@ -35,6 +36,25 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
         </TabsContent>
       ))}
     </Tabs>
+  )
+  const lower = (
+    <>
+        {payload.short_put_tiers ? <TierView tiers={payload.short_put_tiers} /> : null}
+        {payload.short_put_tiers ? (
+          <Accordion type="single" collapsible data-stored-tables>
+            <AccordionItem value="stored">
+              <AccordionTrigger className="text-xl font-semibold">
+                {payload.short_put_tiers.stored_title ?? 'Stored tables'}
+              </AccordionTrigger>
+              <AccordionContent>
+                {tabs}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        ) : (
+          tabs
+        )}
+    </>
   )
   return (
     <div className="min-w-0 space-y-4" data-page="option-candidates">
@@ -66,20 +86,18 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           ))}
         </CardContent>
       </Card>
-      {payload.short_put_tiers ? <TierView tiers={payload.short_put_tiers} /> : null}
-      {payload.short_put_tiers ? (
-        <Accordion type="single" collapsible data-stored-tables>
-          <AccordionItem value="stored">
-            <AccordionTrigger className="text-xl font-semibold">
-              {payload.short_put_tiers.stored_title ?? 'Stored tables'}
-            </AccordionTrigger>
-            <AccordionContent>
-              {tabs}
+      <ShortList list={payload.short_put_list} />
+      {payload.short_put_list ? (
+        <Accordion type="single" collapsible data-folded>
+          <AccordionItem value="folded">
+            <AccordionTrigger className="text-xl font-semibold">{payload.short_put_list.folded_title}</AccordionTrigger>
+            <AccordionContent className="space-y-4">
+              {lower}
             </AccordionContent>
           </AccordionItem>
         </Accordion>
       ) : (
-        tabs
+        lower
       )}
       {payload.notes.map((note, index) => (
         <p key={`${index}-${note}`} className="text-xs text-muted-foreground" data-note>

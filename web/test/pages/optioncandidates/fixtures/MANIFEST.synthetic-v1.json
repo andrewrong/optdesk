@@ -5,6 +5,7 @@
     "bad-version.json",
     "gap.ts",
     "ok.ts",
+    "shortlist.ts",
     "stale.ts",
     "tiers-null.ts",
     "tiers.ts",
