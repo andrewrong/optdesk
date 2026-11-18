@@ -1,6 +1,7 @@
 package optiontier
 
 import (
+	"cmp"
 	"sort"
 
 	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
@@ -57,26 +58,6 @@ func strikeCmp(a, b string) int {
 	return 0
 }
 
-func strCmp(a, b string) int {
-	switch {
-	case a < b:
-		return -1
-	case a > b:
-		return 1
-	}
-	return 0
-}
-
-func intCmp(a, b int) int {
-	switch {
-	case a < b:
-		return -1
-	case a > b:
-		return 1
-	}
-	return 0
-}
-
 // sortTier orders by margin descending, yield descending, then DTE, strike and key ascending.
 func sortTier(rows []*rowState) {
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -87,7 +68,7 @@ func sortTier(rows []*rowState) {
 		if c := descText(a.v.YieldPct, b.v.YieldPct); c != 0 {
 			return c < 0
 		}
-		if c := intCmp(a.row.DTE, b.row.DTE); c != 0 {
+		if c := cmp.Compare(a.row.DTE, b.row.DTE); c != 0 {
 			return c < 0
 		}
 		if c := strikeCmp(a.row.Strike, b.row.Strike); c != 0 {
@@ -110,10 +91,10 @@ func greyRank(reason string) int {
 func sortGrey(rows []*rowState) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := rows[i], rows[j]
-		if c := intCmp(greyRank(a.v.Grey), greyRank(b.v.Grey)); c != 0 {
+		if c := cmp.Compare(greyRank(a.v.Grey), greyRank(b.v.Grey)); c != 0 {
 			return c < 0
 		}
-		if c := strCmp(string(a.row.Expiry), string(b.row.Expiry)); c != 0 {
+		if c := cmp.Compare(string(a.row.Expiry), string(b.row.Expiry)); c != 0 {
 			return c < 0
 		}
 		if c := strikeCmp(a.row.Strike, b.row.Strike); c != 0 {

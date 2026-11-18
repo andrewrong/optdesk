@@ -9,17 +9,17 @@ import (
 
 // Ids of the figures in Verdict.Why.
 const (
-	figMargin     = "margin"
-	figBelowSpot  = "below_spot"
-	figMoves      = "moves"
-	figPerContr   = "per_contract"
-	figTimeValue  = "time_value"
-	figYield      = "yield"
-	whyNoIV       = "no_iv"
-	whyZeroDTE    = "zero_dte"
-	whyNotEvaled  = "not_judged"
-	percentPlaces = 4
-	yieldScale    = 16
+	figMargin      = "margin"
+	figBelowSpot   = "below_spot"
+	figMoves       = "moves"
+	figPerContract = "per_contract"
+	figTimeValue   = "time_value"
+	figYield       = "yield"
+	whyNoIV        = "no_iv"
+	whyZeroDTE     = "zero_dte"
+	whyNotEvaled   = "not_judged"
+	percentPlaces  = 4
+	yieldScale     = 16
 )
 
 var hundred = decimal.NewFromInt(100)
@@ -60,7 +60,7 @@ func writeFigures(v *optiontierapi.Verdict, r optiontierapi.Row, n numbers, p op
 	if n.okBid {
 		v.PerContract = n.bid.Mul(n.mult).String()
 	} else {
-		why[figPerContr] = orElse(grey, greyNoBid)
+		why[figPerContract] = orElse(grey, greyNoBid)
 	}
 	writeTimeValue(v, r, n, p, grey)
 }
