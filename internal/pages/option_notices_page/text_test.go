@@ -79,3 +79,22 @@ func TestHintsAtMost200Runes(t *testing.T) {
 		}
 	}
 }
+
+func TestExplanationsAreChinese(t *testing.T) {
+	t.Parallel()
+	hint := cushionHintText(compute.NoticeParams{CushionWarn: "0.15", CushionAct: "0.05"})
+	for name, s := range map[string]string{"noteHint": noteHint, "cushionHint": hint, "cashGloss": cashGlossZh} {
+		found := false
+		for _, r := range s {
+			if r >= 0x4e00 && r <= 0x9fff {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s has no CJK rune: %q", name, s)
+		}
+	}
+	if !strings.Contains(hint, "15%") || !strings.Contains(hint, "5%") {
+		t.Errorf("hint lost thresholds: %q", hint)
+	}
+}
