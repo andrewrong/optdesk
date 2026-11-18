@@ -220,7 +220,7 @@ Contracts: page.base_data_page v1 (new)
 The schema of Interface 3 including the optional version 2 slot (`cross_check` on a row and `cross_checks`), the generated type and two fixtures with invented numbers.
 Acceptance:
 1. The schema has the properties and the `required` list of Interface 3; `schema` and `schema_version` are const; `repair_path` is const `/data-health`; `gaps.reason` is the enum of three values `facts_unavailable`, `view_unavailable`, `coverage_unavailable`; `cross_check` and `cross_checks` are optional and not in `required`.
-2. `web/src/generated/base_data_page.v1.ts` is generated from the schema; `git diff --name-only BASE` lists it with the schema.
+2. `web/src/generated/base_data_page.v1.ts` is generated from the schema; `git diff --name-only BASE` lists it with the schema. The names and texts named here are new.
 3. The fixtures `ok` and `gap` are listed in `MANIFEST.synthetic-v1.json` with their sha256 as the other fixtures are; `gap` has no groups and one gap.
 4. `base_data_page_v1_test.go` has `TestBaseDataPageOkValid` (new), `TestBaseDataPageGapValid` (new), `TestBaseDataPageRejectsBadLevel` (new), `TestBaseDataPageAcceptsCrossCheckSlot` (new: a row with a `cross_check` validates, one without it validates).
 5. `page-schemas.md` lists `page.base_data_page.v1 | 1` in the table and one paragraph naming `docs/design/base-data-page.md#Interface`.
