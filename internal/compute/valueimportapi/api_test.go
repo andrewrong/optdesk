@@ -23,7 +23,11 @@ func (f *fakeImporter) Plan(in valueimportapi.Input) (valueimportapi.Plan, error
 		FileSHA256: "abc",
 		AsOf:       "2026-01-02",
 		R:          valueimportapi.RPlan{Action: valueimportapi.ActionInsert, US: "0.9", JP: "0.8", HKCN: "0.7", AISwitch: true, AIExpiry: "2026-06-01"},
-		Margin:     valueimportapi.MarginPlan{Action: valueimportapi.ActionOlder, Rows: []valuelinesapi.MarginRow{{PFrom: "0", M: "0.1", W: "0.1", H: "0.2", S: "0.1"}}, EffectiveDate: "2026-01-02"},
+		Margin: valueimportapi.MarginPlan{
+			Action:        valueimportapi.ActionOlder,
+			Rows:          []valuelinesapi.MarginRow{{PFrom: "0", M: "0.1", W: "0.1", H: "0.2", S: "0.1"}},
+			EffectiveDate: "2026-01-02",
+		},
 		Rows: []valueimportapi.RowPlan{
 			{Key: "US:AAA", Action: valueimportapi.ActionInsert, ReviewType: "first", NeedsTick: true},
 			{Key: "US:BBB", Action: valueimportapi.ActionSame},
