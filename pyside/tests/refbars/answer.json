@@ -1,0 +1,15 @@
+{
+  "results": [
+    {
+      "symbol": "AAPL",
+      "currency": "USD",
+      "error_code": "",
+      "bars": [
+        {"session_day": "2026-11-16", "close": "189.5000"},
+        {"session_day": "2026-11-17", "close": "190.2500"}
+      ]
+    },
+    {"symbol": "7203", "currency": "JPY", "error_code": "rate_limited", "bars": []},
+    {"symbol": "ZZZZ", "currency": "USD", "error_code": "no_data", "bars": []}
+  ]
+}
