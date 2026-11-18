@@ -52,7 +52,7 @@ func buildThresholds() map[string]Threshold {
 
 	t := map[string]Threshold{
 		"bars.ohlc_order": pair(anyBad, anyBad, "def"),
-		"bars.bar_jump":   pair(anyBad, none, "def"),
+		"bars.bar_jump":   pair(anyBad, none, "trial"),
 
 		"quotes.crossed":  pair(share("0.001"), share("0.02"), "trial"),
 		"quotes.empty":    pair(share("0.1"), share("0.4"), "trial"),
@@ -78,6 +78,10 @@ func buildThresholds() map[string]Threshold {
 		"account.position_expired": pair(anyBad, anyBad, "def"),
 
 		"flex.flex_age": pair(days("3"), days("7"), "trial"),
+
+		// Rows with no subject calendar count calendar days (Decision 6).
+		"rates.age":    pair(days("1"), days("2"), "trial"),
+		"calendar.age": pair(days("1"), days("2"), "trial"),
 
 		"contracts.age": pair(days("7"), days("30"), "trial"),
 		"events.age":    pair(days("3"), days("10"), "trial"),

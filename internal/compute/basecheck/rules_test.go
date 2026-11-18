@@ -65,3 +65,13 @@ func TestEveryThresholdHasSource(t *testing.T) {
 		}
 	}
 }
+
+func TestCalendarlessAgeUsesDays(t *testing.T) {
+	t.Parallel()
+	for _, id := range []string{"rates.age", "calendar.age"} {
+		th := Thresholds[id]
+		if th.Warn.Kind != Days || th.Fail.Kind != Days {
+			t.Errorf("%s = %+v, want calendar days (Decision 6: no subject calendar)", id, th)
+		}
+	}
+}
