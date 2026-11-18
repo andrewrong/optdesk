@@ -22,8 +22,6 @@ const (
 	staleHead     = "Position snapshot is from "
 	staleTail     = ", not the current day"
 	cushionHead   = "Cushion "
-	noteHint      = "No guard record: the held-call guard did not store a verdict for this account on the snapshot day, " +
-		"so no short call was checked against early assignment or earnings."
 )
 
 const (
@@ -60,9 +58,9 @@ var factLabels = map[string]string{
 
 // reasonTexts are the sentences of the known guard reason codes.
 var reasonTexts = map[string]string{
-	"earnings_before_expiry": "Earnings date is before expiry",
-	"early_assignment_risk":  "Early assignment risk before the ex-dividend date",
-	"strike_floor":           "Strike is below the sell price floor",
+	"earnings_before_expiry": reasonEarningsZh,
+	"early_assignment_risk":  reasonAssignmentZh,
+	"strike_floor":           reasonFloorZh,
 }
 
 func noticeTitle(code string) string {
@@ -162,8 +160,8 @@ func thresholdText(ratio string) string {
 
 // cushionHintText explains the cushion with the thresholds the rule is run with.
 func cushionHintText(p compute.NoticeParams) string {
-	return clip("Cushion: the broker's stored Cushion value. Warns at " + thresholdText(p.CushionWarn) +
-		" or below, needs action at " + thresholdText(p.CushionAct) + " or below.")
+	return clip(cushionHintHead + thresholdText(p.CushionWarn) + cushionHintMid + thresholdText(p.CushionAct) +
+		cushionHintTail)
 }
 
 // clip keeps text within the schema limit and never empty.

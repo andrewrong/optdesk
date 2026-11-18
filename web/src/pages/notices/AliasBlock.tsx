@@ -13,9 +13,6 @@ type Block = Payload['accounts'][number]
 
 const STATUS_LABEL: Record<string, string> = { ok: 'Current', stale: 'Stale', no_capture: 'No capture' }
 
-const CASH_GLOSS =
-  "If every short put that expires on that day were assigned, this is the cash you would need to pay for the shares (strike × multiplier × quantity). 'Assigned' = the buyer of your put makes you buy the stock at the strike."
-
 export function AliasBlock({ block }: { block: Block }) {
   return (
     <Card data-alias={block.alias} className="min-w-0">
@@ -46,9 +43,11 @@ export function AliasBlock({ block }: { block: Block }) {
             <h3 data-cash-title className="text-base font-semibold">
               Cash due if assigned
             </h3>
-            <p data-cash-gloss className="text-sm text-muted-foreground">
-              {CASH_GLOSS}
-            </p>
+            {typeof block.cash_gloss === 'string' ? (
+              <p data-cash-gloss className="text-sm text-muted-foreground">
+                {block.cash_gloss}
+              </p>
+            ) : null}
             {block.cash_by_date.length === 0 ? (
               <Alert data-cash-empty>
                 <AlertDescription>No short put is open: no cash is due.</AlertDescription>
@@ -75,6 +74,16 @@ export function AliasBlock({ block }: { block: Block }) {
                         </TableRow>
                       </TableBody>
                     </Table>
+                    {typeof row.available_text === 'string' ? (
+                      <p data-cash-available className="px-2 text-sm text-muted-foreground">
+                        <span data-label>Account cash</span> <span>{row.available_text}</span>
+                      </p>
+                    ) : null}
+                    {typeof row.left_text === 'string' ? (
+                      <p data-cash-left className="px-2 text-sm text-muted-foreground">
+                        <span data-label>Left after dues</span> <span>{row.left_text}</span>
+                      </p>
+                    ) : null}
                     <CashPuts puts={row.puts} />
                   </div>
                 ))}

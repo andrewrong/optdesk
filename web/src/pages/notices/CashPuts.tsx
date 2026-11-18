@@ -16,8 +16,10 @@ export function CashPuts({ puts }: { puts: Cash['puts'] }) {
         >
           <span>{put.symbol}</span>
           <span>{put.expiry}</span>
+          <span data-label>Strike</span>
           <span>{put.strike_text}</span>
           <span>{put.right}</span>
+          <span data-label>Qty</span>
           <span>{put.quantity_text}</span>
         </li>
       ))}
