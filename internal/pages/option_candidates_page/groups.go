@@ -87,7 +87,8 @@ func readKind(ctx context.Context, r store.CandidateReader, kind string, day con
 
 // buildGroup splits the rows of one group in their stored order: ok rows to the main table, the
 // others to the second table with their reasons. A group day before the build day is stale.
-func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.Candidate, figs optionfigapi.OptionFigures, rate rateRead) group {
+func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.Candidate, figs optionfigapi.OptionFigures,
+	rate rateRead, ev evidenceSet) group {
 	g := group{Kind: spec.kind, Title: groupTitles[spec.kind], Stale: groupDay < buildDay}
 	d := string(groupDay)
 	g.Day = &d
@@ -106,7 +107,7 @@ func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.C
 		}
 	}
 	if len(main) > 0 {
-		g.Main = buildTable(bindFigures(spec, groupDay, main, figs, rate), spec.kind, main, g.Stale, false)
+		g.Main = buildTable(bindFigures(spec, groupDay, main, figs, rate, ev), spec.kind, main, g.Stale, false)
 	}
 	if len(other) > 0 {
 		g.Other = buildTable(otherColumns, spec.kind, other, g.Stale, true)
@@ -116,13 +117,16 @@ func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.C
 
 // bindFigures gives the figure columns of a short-put group their cells: one Put per ok row, read by
 // the row's position. The static columns are returned as they are.
-func bindFigures(spec groupSpec, groupDay contracts.Day, main []store.Candidate, figs optionfigapi.OptionFigures, rate rateRead) []colDef {
+func bindFigures(spec groupSpec, groupDay contracts.Day, main []store.Candidate, figs optionfigapi.OptionFigures, rate rateRead, ev evidenceSet) []colDef {
 	var res []optionfigapi.PutFigures
 	if spec.kind == kindShortPut {
 		res = putFigures(figs, rate, groupDay, main)
 	}
-	defs := make([]colDef, len(spec.main))
+	defs := make([]colDef, len(spec.main), len(spec.main)+8)
 	copy(defs, spec.main)
+	if spec.kind == kindShortPut {
+		defs = append(defs, evidenceCols(ev)...)
+	}
 	for i, d := range defs {
 		switch d.ID {
 		case itmID:

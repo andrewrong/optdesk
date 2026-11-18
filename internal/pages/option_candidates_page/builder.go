@@ -75,7 +75,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 		vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
 	} else {
 		for _, s := range groupSpecs {
-			gd, rows, rate, err := readGroup(ctx, c, series, s.kind, day)
+			gd, rows, rate, ev, err := readGroup(ctx, c, series, s.kind, day)
 			if err != nil {
 				return nil, err
 			}
@@ -83,8 +83,9 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 				vm.Groups = append(vm.Groups, gapGroup(s.kind, mkGap("no_rows", gapNoRows)))
 				continue
 			}
-			g := buildGroup(s, gd, day, rows, c.Figures, rate)
+			g := buildGroup(s, gd, day, rows, c.Figures, rate, ev)
 			vm.Groups = append(vm.Groups, g)
+			vm.Notes = withTrialNote(vm.Notes, g)
 			if gd > chainDay {
 				chainDay, first = gd, &rows[0]
 			}
@@ -109,17 +110,25 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 	return json.Marshal(vm)
 }
 
-// readGroup reads the rows of one kind with their display names and the cash rate of the group's day.
-func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind string, day contracts.Day) (contracts.Day, []store.Candidate, rateRead, error) {
+// readGroup reads the rows of one kind with their display names, the cash rate of the group's day and,
+// for the short-put kind, the evidence of its ok rows.
+func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind string,
+	day contracts.Day) (contracts.Day, []store.Candidate, rateRead, evidenceSet, error) {
 	gd, rows, err := readKind(ctx, c.Candidates, kind, day)
 	if err != nil || len(rows) == 0 {
-		return gd, nil, rateRead{}, err
+		return gd, nil, rateRead{}, evidenceSet{}, err
 	}
-	if rows, err = withDisplayNames(ctx, c.Names, rows); err != nil {
-		return gd, nil, rateRead{}, err
+	tickers, err := tickersOf(ctx, c.Names, rows)
+	if err != nil {
+		return gd, nil, rateRead{}, evidenceSet{}, err
 	}
+	rows = namedRows(rows, tickers)
 	rate, err := readRate(ctx, series, gd)
-	return gd, rows, rate, err
+	if err != nil || kind != kindShortPut {
+		return gd, rows, rate, evidenceSet{}, err
+	}
+	ev, err := evidenceOf(ctx, inputsOf(c), tickers, gd, rate, rows)
+	return gd, rows, rate, ev, err
 }
 
 // fillRun writes the fields that exist only when some group has rows.
@@ -146,4 +155,12 @@ func fillRun(vm *viewModel, zone *time.Location, chainDay, oldestStale contracts
 		vm.Stale = &staleLabel{DataTime: st, IsStale: true, Text: staleTextHead + string(oldestStale) + staleTextTail}
 	}
 	return nil
+}
+
+// withTrialNote adds the trial-rate sentence once a short-put group shows the evidence columns.
+func withTrialNote(notes []string, g group) []string {
+	if g.Kind == kindShortPut && g.Main != nil {
+		return append(notes, trialRateNote)
+	}
+	return notes
 }

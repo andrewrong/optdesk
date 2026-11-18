@@ -1,0 +1,360 @@
+{
+  "schema": "option_candidates_page",
+  "schema_version": 1,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "s1",
+  "generated_at": "2026-11-09T22:00:00+00:00",
+  "data_times": [
+    {
+      "source": "option_candidate",
+      "data_time": "2026-11-09T00:00:00+00:00"
+    }
+  ],
+  "run_status": "partial",
+  "stale": null,
+  "title": "Option candidates",
+  "notes": [
+    "Japanese option candidates: later design (option-candidates-jp)",
+    "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
+  ],
+  "gaps": [],
+  "chain_day": "2026-11-09",
+  "computed_at": "2026-11-09T21:30:00+00:00",
+  "rule_version": "r1",
+  "estimate_note": "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price",
+  "groups": [
+    {
+      "kind": "short_put",
+      "title": "Short put",
+      "day": "2026-11-09",
+      "stale": false,
+      "counts": {
+        "ok": 1,
+        "blocked": 0,
+        "unknown": 0
+      },
+      "main": {
+        "columns": [
+          {
+            "id": "rank",
+            "label": "Rank",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "company",
+            "label": "Company",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "expiry",
+            "label": "Expiry",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "dte",
+            "label": "DTE",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "strike",
+            "label": "Strike",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "bid",
+            "label": "Bid (EOD estimate)",
+            "align": "right",
+            "hint": "Closing bid, sold on the next trading day, not a traded price"
+          },
+          {
+            "id": "yield",
+            "label": "Annualised yield",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "excess",
+            "label": "Vs cash",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "break_even",
+            "label": "Break-even",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "delta",
+            "label": "Delta",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "iv",
+            "label": "IV",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "itm",
+            "label": "ITM probability",
+            "align": "right",
+            "hint": "Model estimate of the chance the put ends in the money; not an assignment probability"
+          },
+          {
+            "id": "marks",
+            "label": "Marks",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "fit",
+            "label": "Account cash",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "next_earnings",
+            "label": "Next earnings",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "below_buy",
+            "label": "Below buy",
+            "align": "right",
+            "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-09"
+          },
+          {
+            "id": "one_sigma",
+            "label": "One-sigma move",
+            "align": "right",
+            "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-09"
+          },
+          {
+            "id": "bid_vs_forecast",
+            "label": "Bid vs forecast price",
+            "align": "right",
+            "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-09, rate none"
+          },
+          {
+            "id": "skew",
+            "label": "Skew",
+            "align": "right",
+            "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-09"
+          },
+          {
+            "id": "forecast_vol",
+            "label": "Forecast vol",
+            "align": "right",
+            "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge"
+          },
+          {
+            "id": "ivp",
+            "label": "IVP",
+            "align": "right",
+            "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge"
+          },
+          {
+            "id": "vol_edge",
+            "label": "Name IV vs forecast",
+            "align": "right",
+            "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge"
+          },
+          {
+            "id": "labels",
+            "label": "Labels",
+            "align": "right",
+            "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-09"
+          }
+        ],
+        "rows": [
+          {
+            "id": "cand-short_put-3-0",
+            "cells": {
+              "below_buy": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "No buy price set"
+              },
+              "bid": {
+                "text": "$0.94",
+                "value": 0.94,
+                "badges": [],
+                "tone": "none"
+              },
+              "bid_vs_forecast": {
+                "kind": "gap",
+                "reason": "missing_input",
+                "text": "No forecast volatility stored (no_input)"
+              },
+              "break_even": {
+                "text": "$93.80",
+                "value": 93.80,
+                "badges": [],
+                "tone": "none"
+              },
+              "company": {
+                "text": "BBB",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "delta": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "dte": {
+                "text": "39",
+                "value": 39,
+                "badges": [],
+                "tone": "none"
+              },
+              "excess": {
+                "kind": "gap",
+                "reason": "no_reader",
+                "text": "No candidate reader: cannot show"
+              },
+              "expiry": {
+                "text": "2026-12-18",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "fit": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "forecast_vol": {
+                "kind": "gap",
+                "reason": "missing_input",
+                "text": "No forecast volatility stored (no_input)"
+              },
+              "itm": {
+                "kind": "gap",
+                "reason": "no_reader",
+                "text": "No candidate reader: cannot show"
+              },
+              "iv": {
+                "text": "31.0%",
+                "value": 0.31,
+                "badges": [],
+                "tone": "none"
+              },
+              "ivp": {
+                "kind": "gap",
+                "reason": "missing_input",
+                "text": "no_input"
+              },
+              "labels": {
+                "text": "—",
+                "value": null,
+                "badges": [
+                  "delta not stored"
+                ],
+                "tone": "none"
+              },
+              "marks": {
+                "text": "—",
+                "value": null,
+                "badges": [],
+                "tone": "none"
+              },
+              "next_earnings": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "No earnings date known"
+              },
+              "one_sigma": {
+                "text": "$2.64 (6.4%)",
+                "value": 2.6400,
+                "badges": [
+                  "1.1 sigma to break-even"
+                ],
+                "tone": "none"
+              },
+              "rank": {
+                "text": "3",
+                "value": 3,
+                "badges": [],
+                "tone": "none"
+              },
+              "skew": {
+                "kind": "gap",
+                "reason": "no_data",
+                "text": "no ATM quote"
+              },
+              "strike": {
+                "text": "40.00",
+                "value": 40.00,
+                "badges": [],
+                "tone": "none"
+              },
+              "vol_edge": {
+                "kind": "gap",
+                "reason": "missing_input",
+                "text": "no_input"
+              },
+              "yield": {
+                "text": "12.3%",
+                "value": 0.123456,
+                "badges": [],
+                "tone": "none"
+              }
+            },
+            "reasons": []
+          }
+        ]
+      },
+      "other": null,
+      "gap": null
+    },
+    {
+      "kind": "covered_call",
+      "title": "Covered call",
+      "day": null,
+      "stale": false,
+      "counts": {
+        "ok": 0,
+        "blocked": 0,
+        "unknown": 0
+      },
+      "main": null,
+      "other": null,
+      "gap": {
+        "kind": "gap",
+        "reason": "no_rows",
+        "text": "No candidates of this kind in the last 7 days"
+      }
+    },
+    {
+      "kind": "held_call_guard",
+      "title": "Held call guard",
+      "day": null,
+      "stale": false,
+      "counts": {
+        "ok": 0,
+        "blocked": 0,
+        "unknown": 0
+      },
+      "main": null,
+      "other": null,
+      "gap": {
+        "kind": "gap",
+        "reason": "no_rows",
+        "text": "No candidates of this kind in the last 7 days"
+      }
+    }
+  ]
+}
