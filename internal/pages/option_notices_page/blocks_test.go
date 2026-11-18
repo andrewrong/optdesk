@@ -42,7 +42,7 @@ func TestCashByDateText(t *testing.T) {
 	}}}
 	p := buildPage(t, testConfig(oneCapture(), rule))
 	got := p.Accounts[0].CashByDate
-	if len(got) != 2 || got[0] != (cashRow{Day: "2026-11-13", Currency: "USD", AmountText: "$9,500.00"}) ||
+	if len(got) != 2 || got[0].Day != "2026-11-13" || got[0].Currency != "USD" || got[0].AmountText != "$9,500.00" ||
 		got[1].AmountText != "¥1,200,000.50" {
 		t.Errorf("cash = %+v", got)
 	}
@@ -86,5 +86,73 @@ func TestGuardReasonsAndFacts(t *testing.T) {
 	}
 	if len(n.Facts) != 1 || n.Facts[0] != (fact{Label: "Earnings date", Text: "2026-12-01"}) {
 		t.Errorf("facts = %v", n.Facts)
+	}
+}
+
+func putPos(symbol, expiry, strike, qty, cur string) store.Position {
+	return store.Position{Symbol: symbol, SecType: "option", Expiry: expiry, Strike: strike, Right: "P",
+		Multiplier: "100", Quantity: qty, Currency: cur}
+}
+
+func TestCashPutsListed(t *testing.T) {
+	t.Parallel()
+	call := putPos("CALLCO", "2026-11-13", "50", "-1", "USD")
+	call.Right = "C"
+	pos := []store.Position{
+		putPos("AAA", "2026-11-13", "95", "-2", "USD"),
+		call,
+		putPos("LONGCO", "2026-11-13", "40", "3", "USD"),
+		putPos("YENCO", "2026-11-13", "900", "-1", "JPY"),
+		putPos("BBB", "2026-11-20", "10.5", "-1", "USD"),
+		putPos("CCC", "2026-11-13", "96", "-1", "USD"),
+	}
+	rule := &fakeRule{result: compute.NoticeResult{CashByDate: []compute.CashDay{
+		{Day: "2026-11-13", Currency: "USD", Amount: "28700"},
+		{Day: "2026-11-20", Currency: "USD", Amount: "1050"},
+		{Day: "2026-11-27", Currency: "USD", Amount: "5"},
+	}}}
+	a := fakeAccount{positions: map[string][]store.Position{"main/2026-11-09": pos}}
+	got := buildPage(t, testConfig(a, rule)).Accounts[0].CashByDate
+	want := [][]putRow{
+		{{Symbol: "AAA", Expiry: "2026-11-13", StrikeText: "95", Right: "P", QuantityText: "2"},
+			{Symbol: "CCC", Expiry: "2026-11-13", StrikeText: "96", Right: "P", QuantityText: "1"}},
+		{{Symbol: "BBB", Expiry: "2026-11-20", StrikeText: "10.5", Right: "P", QuantityText: "1"}},
+		{},
+	}
+	for i, w := range want {
+		if got[i].Puts == nil || len(got[i].Puts) != len(w) {
+			t.Fatalf("row %d puts = %#v", i, got[i].Puts)
+		}
+		for j := range w {
+			if got[i].Puts[j] != w[j] {
+				t.Errorf("row %d put %d = %+v, want %+v", i, j, got[i].Puts[j], w[j])
+			}
+		}
+	}
+	if got[0].AmountText != "$28,700.00" {
+		t.Errorf("amount = %q", got[0].AmountText)
+	}
+}
+
+func TestHintsSetOnlyWhenShown(t *testing.T) {
+	t.Parallel()
+	// cushion present, guard rows stored for the day: no note.
+	cand := &fakeCandidates{rows: map[string][]store.Candidate{"2026-11-09/held_call_guard": {{Alias: "main"}}}}
+	cfg := testConfig(oneCapture(), &fakeRule{result: compute.NoticeResult{Cushion: "0.1"}})
+	cfg.Candidates = cand
+	b := buildPage(t, cfg).Accounts[0]
+	if b.CushionHint == nil || *b.CushionHint != cushionHint || b.NoteHint != nil || b.Note != nil {
+		t.Errorf("cushion present: %+v", b)
+	}
+	// cushion absent, no guard record.
+	b = buildPage(t, testConfig(oneCapture(), &fakeRule{})).Accounts[0]
+	if b.CushionHint != nil || b.NoteHint == nil || *b.NoteHint != noteHint || b.Note == nil || *b.Note != noteNoGuard {
+		t.Errorf("no guard: %+v", b)
+	}
+	// no capture: note is not the no-guard note, so no hint.
+	b = buildPage(t, testConfig(fakeAccount{positions: map[string][]store.Position{"main/2026-11-09": {stock("A")}}},
+		&fakeRule{})).Accounts[1]
+	if b.Status != "no_capture" || b.NoteHint != nil || b.CushionHint != nil {
+		t.Errorf("no capture: %+v", b)
 	}
 }

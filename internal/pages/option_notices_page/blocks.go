@@ -1,8 +1,11 @@
 package option_notices_page
 
 import (
+	"strings"
+
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 type gap struct {
@@ -30,9 +33,37 @@ type noticeRow struct {
 }
 
 type cashRow struct {
-	Day        string `json:"day"`
-	Currency   string `json:"currency"`
-	AmountText string `json:"amount_text"`
+	Day        string   `json:"day"`
+	Currency   string   `json:"currency"`
+	AmountText string   `json:"amount_text"`
+	Puts       []putRow `json:"puts"`
+}
+
+// putRow is one stored short put behind a cash day, as stored text; no per-put figure.
+type putRow struct {
+	Symbol       string `json:"symbol"`
+	Expiry       string `json:"expiry"`
+	StrikeText   string `json:"strike_text"`
+	Right        string `json:"right"`
+	QuantityText string `json:"quantity_text"`
+}
+
+// putsOf lists the short puts of rows that expire on day in currency, in stored order.
+func putsOf(rows []store.Position, day contracts.Day, currency string) []putRow {
+	out := []putRow{}
+	for _, p := range rows {
+		if (p.SecType != storedOption && p.SecType != "OPT") || (p.Right != "P" && !strings.EqualFold(p.Right, "put")) ||
+			p.Expiry != string(day) || p.Currency != currency {
+			continue
+		}
+		qty, short := strings.CutPrefix(p.Quantity, "-")
+		if !short || strings.Trim(qty, "0.") == "" {
+			continue
+		}
+		out = append(out, putRow{Symbol: clip(p.Symbol), Expiry: p.Expiry, StrikeText: clip(p.Strike), Right: "P",
+			QuantityText: clip(qty)})
+	}
+	return out
 }
 
 type aliasBlock struct {
@@ -44,6 +75,8 @@ type aliasBlock struct {
 	CashByDate  []cashRow   `json:"cash_by_date"`
 	CushionText *string     `json:"cushion_text"`
 	Note        *string     `json:"note"`
+	CushionHint *string     `json:"cushion_hint"`
+	NoteHint    *string     `json:"note_hint"`
 }
 
 // noCaptureBlock is the block of an alias with no stored capture.
@@ -55,7 +88,7 @@ func noCaptureBlock(alias string, main bool) aliasBlock {
 
 // okBlock writes the block of an alias from the rule's result, in the rule's order. The status is
 // stale when the data day is older than the build day. note is empty for no note.
-func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compute.NoticeResult, note string) aliasBlock {
+func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compute.NoticeResult, note string, positions []store.Position) aliasBlock {
 	b := aliasBlock{Alias: clip(alias), Main: main, Status: "ok", Notices: make([]noticeRow, 0, len(res.Notices)),
 		CashByDate: make([]cashRow, 0, len(res.CashByDate))}
 	if dataDay < buildDay {
@@ -68,14 +101,20 @@ func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compu
 	}
 	for _, c := range res.CashByDate {
 		b.CashByDate = append(b.CashByDate, cashRow{Day: string(c.Day), Currency: clip(c.Currency),
-			AmountText: clip(amountText(c.Amount, c.Currency))})
+			AmountText: clip(amountText(c.Amount, c.Currency)), Puts: putsOf(positions, c.Day, c.Currency)})
 	}
 	if res.Cushion != "" {
 		t := clip(cushionHead + percentText(res.Cushion))
 		b.CushionText = &t
+		h := cushionHint
+		b.CushionHint = &h
 	}
 	if note != "" {
 		b.Note = &note
+		if note == noteNoGuard {
+			h := noteHint
+			b.NoteHint = &h
+		}
 	}
 	return b
 }

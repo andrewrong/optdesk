@@ -69,3 +69,12 @@ func TestAmountTextUnreadable(t *testing.T) {
 		t.Errorf("amountText(abc, empty) = %q", got)
 	}
 }
+
+func TestHintsAtMost200Runes(t *testing.T) {
+	t.Parallel()
+	for _, h := range []string{cushionHint, noteHint} {
+		if n := len([]rune(h)); n == 0 || n > 200 {
+			t.Errorf("hint %q has %d runes", h, n)
+		}
+	}
+}
