@@ -84,15 +84,15 @@ On 2026-11-18 (first pass 22:36 to 23:05, batches 8 and 23 failed and were retri
 
 ## Interface
 
-None. `CandidateStores` (`internal/jobs/optioncandidates/types.go`) gains one optional field `Open openquote.OptionOpenReader` (nil: the job of today); the constructor types `NewOptionCandidatesJobFunc` and `NewOptionCandidatesCallsFunc` keep their signatures, so `internal/jobs/api.go` is not edited. `cmd/ot` gets the reader through a new field of its `deps` (a function value, nil leaves `Open` nil), not through a package variable. `internal/runner/api.go` is not edited: the rule of Decision 12 is inside `reconcile`. `Contracts: unchanged`.
+One interface change, made by entry 1 (candidates-source, marked (interface)): `CandidateStores` (`internal/jobs/optioncandidates/types.go`) gains one optional field `Open openquote.OptionOpenReader` (nil: the job of today); the constructor types `NewOptionCandidatesJobFunc` and `NewOptionCandidatesCallsFunc` keep their signatures, so `internal/jobs/api.go` is not edited. `cmd/ot` gets the reader through a new field of its `deps` (a function value, nil leaves `Open` nil), not through a package variable. `internal/runner/api.go` is not edited: the rule of Decision 12 is inside `reconcile`. `Contracts: unchanged`.
 
 ## Issues
 
 Each entry is one module. All entries: `Plan: P2`, `Design: docs/design/candidates-at-open.md#<n>`. The checked head is `origin/main` `d4d59e7f`. Order: 1 and 3 and 4 first (independent), 2 after 1, 5 after 1, 2, 3 and 4 (the switch is last, so no day runs the job at the open on the old rows). No entry edits `internal/jobs/api.go`, `internal/runner/api.go`, `internal/jobs/optionopen`, `internal/jobs/optioneod` or a migration.
 
-### 1 candidates-source
+### 1 candidates-source (interface)
 
-Module: jobs. Size: M. Order: first.
+Module: jobs. Size: M. Order: first. This is the interface entry: it declares `Open` in `types.go` with its doc comment, and entry 2 (module ot) is ordered after it.
 Files: `internal/jobs/optioncandidates/source.go`, `internal/jobs/optioncandidates/source_test.go`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/types.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/job_test.go`, `docs/contracts/jobs/option_candidates.md`
 The job reads the open snapshot of D per underlying with the fallback and joins the open interest of the last sessions; the schedule is not changed here.
 
