@@ -373,7 +373,17 @@ func withPositionsRules(a *app, rd siteReaders) siteReaders {
 	return rd
 }
 
-// siteHandler serves the routes of the site: health (before any page route), "" (302 to home), the live routes macro, options/data and
+// redirectOptions answers a GET or HEAD of the route options with a 302 to options/candidates and reports whether it did.
+func redirectOptions(w http.ResponseWriter, r *http.Request) bool {
+	if strings.TrimPrefix(r.URL.Path, "/") != siteOptionRoute || (r.Method != http.MethodGet && r.Method != http.MethodHead) {
+		return false
+	}
+	http.Redirect(w, r, "/"+siteCandidatesRoute, http.StatusFound)
+	return true
+}
+
+// siteHandler serves the routes of the site: health (before any page route), "" (302 to home), options (GET, HEAD: 302 to
+// options/candidates), the live routes macro, options/data and
 // options/data/<id>, the routes report, market and options/candidates and options/notices, the registered page routes and
 // assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
@@ -417,6 +427,9 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 		}
 		if strings.TrimPrefix(r.URL.Path, "/") == flexImportPostRoute && rd.edit != nil {
 			postOwnerFlexImport(a, clk, rd, newHandler, w, r)
+			return
+		}
+		if redirectOptions(w, r) {
 			return
 		}
 		pagesH.ServeHTTP(w, r)
