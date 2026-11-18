@@ -68,12 +68,35 @@ describe('OptionNoticesPage', () => {
   it('shows the cash by date table in payload order and the cushion text', async () => {
     const page = await show(ok)
     const block = page.querySelector('[data-alias=ok-main]')!
-    const days = [...block.querySelectorAll('[data-cash] tbody tr')].map((tr) => tr.querySelector('td')!.textContent)
+    const days = [...block.querySelectorAll('[data-cash] tbody tr:not([data-cash-puts])')].map((tr) => tr.querySelector('td')!.textContent)
     expect(days).toEqual(ok.accounts[0]!.cash_by_date.map((r) => r.day))
-    const amounts = [...block.querySelectorAll('[data-cash] tbody tr')].map((tr) => tr.lastElementChild!.textContent)
+    const amounts = [...block.querySelectorAll('[data-cash] tbody tr:not([data-cash-puts])')].map((tr) => tr.lastElementChild!.textContent)
     expect(amounts).toEqual(ok.accounts[0]!.cash_by_date.map((r) => r.amount_text))
     expect(block.querySelector('[data-cushion]')!.textContent).toBe(ok.accounts[0]!.cushion_text)
     expect(page.querySelector('[data-alias=ok-second] table')).toBeNull()
+  })
+
+  it('lists the puts under each cash day', async () => {
+    const page = await show(ok)
+    const rows = [...page.querySelectorAll('[data-alias=ok-main] [data-cash] tbody tr')]
+    expect(rows.map((r) => r.hasAttribute('data-cash-puts'))).toEqual([false, true, false])
+    const puts = [...rows[1]!.querySelectorAll('[data-cash-put]')].map((li) =>
+      [...li.querySelectorAll('span')].map((s) => s.textContent),
+    )
+    expect(puts).toEqual(
+      ok.accounts[0]!.cash_by_date[0]!.puts.map((p) => [p.symbol, p.expiry, p.strike_text, p.right, p.quantity_text]),
+    )
+    expect(rows[1]!.querySelector('td')!.getAttribute('colspan')).toBe('3')
+  })
+
+  it('shows the cushion and no-guard-record hints', async () => {
+    const page = await show(ok)
+    const block = page.querySelector('[data-alias=ok-main]')!
+    expect(block.querySelector('[data-cushion-hint]')!.textContent).toBe(ok.accounts[0]!.cushion_hint)
+    expect(block.querySelector('[data-note-hint]')!.textContent).toBe(ok.accounts[0]!.note_hint)
+    const second = page.querySelector('[data-alias=ok-second]')!
+    expect(second.querySelector('[data-cushion-hint]')).toBeNull()
+    expect(second.querySelector('[data-note-hint]')).toBeNull()
   })
 
   it('new: the cash title, its gloss and the empty line', async () => {

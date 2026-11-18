@@ -54,11 +54,18 @@ export const ok = {
         },
       ],
       cash_by_date: [
-        { day: '2026-11-20', currency: 'USD', amount_text: 'ok Amount B' },
-        { day: '2026-11-14', currency: 'USD', amount_text: 'ok Amount A' },
+        { day: '2026-11-20', currency: 'USD', amount_text: 'ok Amount B',
+          puts: [
+            { symbol: 'OKA', expiry: '2026-11-20', strike_text: 'ok Strike 1', right: 'P', quantity_text: 'ok Qty 1' },
+            { symbol: 'OKB', expiry: '2026-11-20', strike_text: 'ok Strike 2', right: 'P', quantity_text: 'ok Qty 2' },
+          ],
+        },
+        { day: '2026-11-14', currency: 'USD', amount_text: 'ok Amount A', puts: [] },
       ],
       cushion_text: 'ok Buffer text',
+      cushion_hint: 'ok Cushion hint',
       note: null,
+      note_hint: 'ok No guard record hint',
     },
     {
       alias: 'ok-second',

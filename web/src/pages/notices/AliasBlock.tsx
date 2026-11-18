@@ -1,10 +1,12 @@
 // One card per alias: status, data day, notices, the "cash by date" table and the cushion text. A `no_capture` block
 // shows its note and no table. Text as sent; nothing is compared, summed, sorted or formatted here.
+import { Fragment } from 'react'
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { CashPuts } from '@/pages/notices/CashPuts'
 import { NoticeList } from '@/pages/notices/NoticeList'
 import type { Payload } from '@/types/option_notices_page'
 
@@ -34,6 +36,11 @@ export function AliasBlock({ block }: { block: Block }) {
             <AlertDescription>{block.note}</AlertDescription>
           </Alert>
         ) : null}
+        {typeof block.note_hint === 'string' ? (
+          <p data-note-hint className="text-sm text-muted-foreground">
+            {block.note_hint}
+          </p>
+        ) : null}
         {block.status === 'no_capture' ? null : (
           <>
             <NoticeList notices={block.notices} />
@@ -58,11 +65,14 @@ export function AliasBlock({ block }: { block: Block }) {
                 </TableHeader>
                 <TableBody>
                   {block.cash_by_date.map((row, index) => (
-                    <TableRow key={`${index}-${row.day}-${row.currency}`}>
-                      <TableCell>{row.day}</TableCell>
-                      <TableCell>{row.currency}</TableCell>
-                      <TableCell>{row.amount_text}</TableCell>
-                    </TableRow>
+                    <Fragment key={`${index}-${row.day}-${row.currency}`}>
+                      <TableRow>
+                        <TableCell>{row.day}</TableCell>
+                        <TableCell>{row.currency}</TableCell>
+                        <TableCell>{row.amount_text}</TableCell>
+                      </TableRow>
+                      <CashPuts puts={row.puts} />
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>
@@ -70,6 +80,11 @@ export function AliasBlock({ block }: { block: Block }) {
             {block.cushion_text ? (
               <p className="text-sm" data-cushion>
                 {block.cushion_text}
+              </p>
+            ) : null}
+            {typeof block.cushion_hint === 'string' ? (
+              <p data-cushion-hint className="text-sm text-muted-foreground">
+                {block.cushion_hint}
               </p>
             ) : null}
           </>
