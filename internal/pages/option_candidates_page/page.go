@@ -31,7 +31,7 @@ type Config struct {
 	Readings              store.ReadingViewReader     // nil gives the gap no_reader
 	Tiers                 optiontierapi.Tierer        // judges the short-put rows into tiers; nil gives the gap no_reader
 	Account               store.AccountReader         // the cash and positions of each alias; nil gives the gap no_reader
-	Aliases               []string                    // the account aliases whose cash is read
+	Aliases               []string                    // the account aliases whose cash is read; nil gives the gap no_reader
 	Owner                 ownerset.Reader             // the stored rule parameters; nil gives the default 0.3
 	RuleParams            settingsapi.RuleParams      // resolves the stored parameters; nil gives the default 0.3
 }
