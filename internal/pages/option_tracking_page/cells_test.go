@@ -69,6 +69,37 @@ func TestMissingMarkIsGapCell(t *testing.T) {
 	}
 }
 
+func TestMarkOnlyRowText(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("c")
+	o.MarkStatus, o.Mid = "ok", "1.2500"
+	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
+	want := "Only the account mark is stored for this contract, no stock close, delta or IV"
+	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
+		var cell any
+		for _, d := range openColumns {
+			if d.ID == id {
+				cell = d.cell(o)
+			}
+		}
+		g := asGap(t, cell)
+		if g.Reason != "no_data" || g.Text != want {
+			t.Fatalf("%s = %+v", id, g)
+		}
+	}
+	for _, d := range openColumns {
+		if d.ID == "mid" {
+			if c := asValue(t, d.cell(o)); c.Value == nil || *c.Value != "1.2500" {
+				t.Fatalf("mid = %+v", c)
+			}
+		}
+	}
+	o.Spot = "100.00"
+	if g := asGap(t, numCell("", markCode(o))); g.Text != "No such value" {
+		t.Fatalf("with spot = %+v", g)
+	}
+}
+
 func TestGuardBadges(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")

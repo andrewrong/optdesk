@@ -35,6 +35,7 @@ const (
 	codeNoFlexRows  = "no_flex_rows"
 	codeNoAccount   = "no_account"
 	codeNoValue     = "no_value"
+	codeMarkOnly    = "mark_only"
 	codeUnreadable  = "unreadable"
 	reasonQuote     = "missing_quote"
 	reasonInput     = "missing_input"
@@ -51,6 +52,7 @@ var codeTexts = map[string]string{
 	codeNoFlexRows: "No Flex record for this account",
 	codeNoAccount:  "No account position record, check table not built",
 	codeNoValue:    "No such value",
+	codeMarkOnly:   "Only the account mark is stored for this contract, no stock close, delta or IV",
 	codeUnreadable: unreadable,
 	"no_reader":    "No reader",
 
@@ -68,6 +70,7 @@ var reasonOf = map[string]string{
 	codeNoFlexRows: reasonData,
 	codeNoAccount:  reasonData,
 	codeNoValue:    reasonData,
+	codeMarkOnly:   reasonData,
 	codeUnreadable: reasonData,
 }
 
