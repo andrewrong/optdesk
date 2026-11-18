@@ -34,6 +34,10 @@ const (
 	// reasonEmptyBeforeClose marks a finished run that came back empty before the window
 	// close: the key stays missing and the run does not count toward the two-run cap.
 	reasonEmptyBeforeClose = "empty_before_close"
+	// emptyRetryGap is the least time between two asks of a key that came back empty before the
+	// close: a run starts only when the newest empty_before_close run finished at least this long
+	// ago. FRED and similar sources publish a day's value after the day; six hours is a trial value.
+	emptyRetryGap = 6 * time.Hour
 	// The reason "expired" explains a key whose last run ended retryable and whose window has closed.
 	reasonExpired = "expired"
 	// reasonCrashedRepeatedly is written at the close on the latest of three crashed or abandoned_stop runs.
@@ -381,14 +385,26 @@ func isRetryable(run store.Run) bool {
 	return run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && !isCrash(run)
 }
 
+// lastEmptyFinish is the newest FinishedAt of an empty_before_close run, zero when there is none.
+func lastEmptyFinish(runs []store.Run) time.Time {
+	var last time.Time
+	for _, run := range runs {
+		if run.ReasonCode == reasonEmptyBeforeClose && run.FinishedAt.After(last) {
+			last = run.FinishedAt
+		}
+	}
+	return last
+}
+
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
 // error with no window). Runs that are empty_before_close, retryable before the close, crashed
-// or abandoned_stop do not count. A run starts when no run is running, fewer than two runs count,
-// the key is not stopped by the brake (three crashed or abandoned_stop runs: crashed_repeatedly,
-// written by expireIfClosed at the close) and either no run counts or the latest counted run is
-// RunPartial: the second run is only for a partial. A running run with a live lease is pending:
-// nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
+// or abandoned_stop do not count; before the close, an empty_before_close run also holds the key
+// back until emptyRetryGap has passed since the newest one finished. A run starts when no run is
+// running, fewer than two runs count, the key is not stopped by the brake (three crashed or
+// abandoned_stop runs: crashed_repeatedly, written by expireIfClosed at the close) and either no
+// run counts or the latest counted run is RunPartial: the second run is only for a partial. A
+// running run with a live lease is pending: nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
 // the same rule. closeAt is the close of the key's dataset window, zero when it has none.
 func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
 	now := r.clk.Now()
@@ -420,6 +436,9 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		crashes++
 	}
 	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
+		return crashed, false, ""
+	}
+	if beforeClose && now.Sub(lastEmptyFinish(runs)) < emptyRetryGap {
 		return crashed, false, ""
 	}
 	return crashed, true, reason

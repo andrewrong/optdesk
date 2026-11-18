@@ -139,7 +139,7 @@ func TestMissingKeyTakesOrdinaryRunAndMark(t *testing.T) {
 func TestMissingKeyBeforeCloseKeepsEmptyBeforeCloseRetry(t *testing.T) {
 	t.Parallel()
 	l := bfSetup(bfDay, keyA)
-	clk := clockwork.NewFakeClockAt(utc("2026-11-04T15:00:00Z")) // inside the window, which closes at 21:00
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T12:00:00Z")) // inside the window, which closes at 21:00
 	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: map[contracts.ExpectedKey]contracts.JobResult{keyA: {}}}
 	rec := forceRec(l, clk, job)
 	res, err := rec.BackfillWith(context.Background(), bfDay, nil, runner.BackfillOptions{})
@@ -150,6 +150,7 @@ func TestMissingKeyBeforeCloseKeepsEmptyBeforeCloseRetry(t *testing.T) {
 	if line.Group != runner.GroupRan || line.ReasonCode != "empty_before_close" || line.Mark != "" {
 		t.Fatalf("line %+v", line)
 	}
+	clk.Advance(emptyRetryGap) // 18:00, still before the close
 	if _, start, _ := rec.nextAttempt(l.runs[bfDay], utc("2026-11-04T21:00:00Z")); !start {
 		t.Fatal("the scheduler does not retry the key")
 	}

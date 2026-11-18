@@ -255,14 +255,48 @@ func empty() map[contracts.ExpectedKey]contracts.JobResult {
 	return map[contracts.ExpectedKey]contracts.JobResult{keyA: {}}
 }
 
-func TestEmptyBeforeCloseStaysMissing(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
+func newLongRec(start string) (*fakeLedger, *clockwork.FakeClock, *fakeJob, runner.Reconciler) {
+	clk := clockwork.NewFakeClockAt(utc(start))
 	led := newLedger()
 	led.cursor = store.Cursor{Day: "2026-11-03"}
 	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: empty()}
-	rec := newRec(led, clk, job)
+	wj := windowedJob{fakeJob: job, calendarID: "XNYS", close: 96 * time.Hour}
+	return led, clk, job, NewWithRule(led, oneDay(), clk, []contracts.Job{wj}, runner.WindowRule{CalendarID: "XNYS"})
+}
+
+func TestEmptyBeforeCloseSpacing(t *testing.T) {
+	t.Parallel()
+	led, clk, job, rec := newLongRec("2026-11-04T12:00:00Z")
+	waits, want := []time.Duration{0, 0, emptyRetryGap - time.Minute, time.Minute}, []int{1, 1, 1, 2}
+	for i, w := range waits {
+		clk.Advance(w)
+		if err := rec.Reconcile(context.Background(), "2026-11-04"); err != nil || len(job.calls) != want[i] {
+			t.Fatalf("step %d: err=%v calls=%d, want %d", i, err, len(job.calls), want[i])
+		}
+	}
+	if p, _ := led.Present(context.Background(), "2026-11-04"); p[keyA] != "" || led.cursor.Day != "2026-11-03" {
+		t.Fatalf("present=%v cursor=%s", p, led.cursor.Day)
+	}
+}
+
+func TestEmptyBeforeCloseTwentyFourTicks(t *testing.T) {
+	t.Parallel()
+	_, clk, job, rec := newLongRec("2026-11-04T12:00:00Z")
+	for i := 0; i < 96; i++ {
+		if err := rec.Reconcile(context.Background(), "2026-11-04"); err != nil {
+			t.Fatal(err)
+		}
+		clk.Advance(15 * time.Minute)
+	}
+	if n := len(job.calls); n < 1 || n > 4 {
+		t.Fatalf("runs in one day = %d, want 1..4", n)
+	}
+}
+
+func TestEmptyBeforeCloseStaysMissing(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	led, clk, job, rec := newLongRec("2026-11-04T20:00:00Z")
 	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
 		t.Fatal(err)
 	}
@@ -270,6 +304,7 @@ func TestEmptyBeforeCloseStaysMissing(t *testing.T) {
 	if _, ok := present[keyA]; ok || led.cursor.Day != "2026-11-03" {
 		t.Fatalf("present=%v cursor=%s", present, led.cursor.Day)
 	}
+	clk.Advance(emptyRetryGap)
 	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
 		t.Fatal(err)
 	}
@@ -279,6 +314,7 @@ func TestEmptyBeforeCloseStaysMissing(t *testing.T) {
 	job.mu.Lock()
 	job.results = nil
 	job.mu.Unlock()
+	clk.Advance(emptyRetryGap)
 	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
 		t.Fatal(err)
 	}
@@ -298,11 +334,7 @@ func TestEmptyBeforeCloseStaysMissing(t *testing.T) {
 func TestEmptyBeforeCloseDoesNotExhaustCap(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
-	led := newLedger()
-	led.cursor = store.Cursor{Day: "2026-11-03"}
-	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: empty()}
-	rec := newRec(led, clk, job)
+	led, clk, job, rec := newLongRec("2026-11-04T20:00:00Z")
 	for i := 1; i <= 3; i++ {
 		if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
 			t.Fatal(err)
@@ -310,8 +342,13 @@ func TestEmptyBeforeCloseDoesNotExhaustCap(t *testing.T) {
 		if len(job.calls) != i {
 			t.Fatalf("after call %d: %d runs", i, len(job.calls))
 		}
+		clk.Advance(emptyRetryGap)
 	}
-	clk.Advance(time.Hour) // at the close instant
+	w, err := led.Window(ctx, "ds", "2026-11-04")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clk.Advance(w.CloseAt.Sub(clk.Now())) // at the close instant
 	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
 		t.Fatal(err)
 	}
