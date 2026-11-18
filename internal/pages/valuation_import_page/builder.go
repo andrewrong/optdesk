@@ -33,7 +33,7 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 		p.Problems = append(p.Problems, problemJSON{Text: cut(t)})
 	}
 	for _, t := range in.Gaps {
-		p.Gaps = append(p.Gaps, gapJSON{Kind: "gap", Reason: reasonStoreNA, Text: cut(t)})
+		p.Gaps = append(p.Gaps, gapJSON{Kind: "gap", Reason: gapStoreUnavailable, Text: cut(t)})
 	}
 	if in.View != ViewEmpty {
 		fillPlan(p, in)

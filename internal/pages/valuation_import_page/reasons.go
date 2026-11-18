@@ -5,9 +5,11 @@ var hinted = map[string]string{
 	"the site computes another buy-zone top":         ReasonOtherTop,
 	"HK and CN differ: the site has one HKCN column": ReasonHKCN,
 	"the row R differs from the R of its market":     ReasonRMarket,
-	"first":                       TextFirst,
-	"event":                       TextEvent,
-	"the key picked is not valid": ReasonBadKey,
+	"older than stored":                              TextOlder,
+	"unmatched name":                                 TextUnmatched,
+	"first":                                          TextFirst,
+	"event":                                          TextEvent,
+	"the key picked is not valid":                    ReasonBadKey,
 }
 
 // Reasons lists every sentence above, for the test that each has a Chinese hint.
