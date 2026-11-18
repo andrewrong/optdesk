@@ -2,13 +2,10 @@ name: ui-shots
 
 # Renders every fixture page of web/ at widths 390 and 1280 and uploads the PNGs as the
 # artifact ui-shots, which crew hands to the reviewer (agent-crew design ui-shots, entry 3).
+# The job runs on every pull request so that it can be a required check of main: when no
+# UI path changed it reports success after the `changed` step and renders nothing.
 on:
   pull_request:
-    paths:
-      - 'web/src/**'
-      - 'web/index.html'
-      - 'web/fixtures/**'
-      - '.github/workflows/ui-shots.yml'
 
 permissions:
   contents: read
@@ -21,22 +18,44 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: changed
+        id: changed
+        shell: bash
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          files=$(git diff --name-only "$BASE...$HEAD")
+          if grep -qE '^(web/|contracts/fixtures/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.github/workflows/ui-shots\.yml$)' <<<"$files"; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"
+            echo "no UI path changed: nothing to render"
+          fi
       # pnpm version comes from the packageManager field of the root package.json.
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: steps.changed.outputs.ui == 'true'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.changed.outputs.ui == 'true'
         with:
           node-version: 24.22.2
           cache: pnpm
       - name: pnpm install
+        if: steps.changed.outputs.ui == 'true'
         run: pnpm install --frozen-lockfile
       - name: build
+        if: steps.changed.outputs.ui == 'true'
         run: pnpm --dir web run build
       - name: install chromium
+        if: steps.changed.outputs.ui == 'true'
         run: pnpm --dir web exec playwright install --with-deps chromium
       - name: render pages
+        if: steps.changed.outputs.ui == 'true'
         run: pnpm --dir web exec playwright test
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.changed.outputs.ui == 'true'
         with:
           name: ui-shots
           path: web/e2e/out
