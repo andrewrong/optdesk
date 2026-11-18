@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 // load reads the invented base input of testdata/facts.json: every rule has a fact and every
@@ -228,5 +229,29 @@ func TestNotReadRowIsUnknown(t *testing.T) {
 	}
 	if got := rowOf(t, out, "bars").Level; got != basecheckapi.Pass {
 		t.Errorf("bars = %s, want pass", got)
+	}
+}
+
+func TestCoverageGapSkipsDaysBeforeHistoryStart(t *testing.T) {
+	t.Parallel()
+	gap := func(cells ...basecheckapi.Cell) basecheckapi.Check {
+		in := load(t)
+		in.Cells = cells
+		return checkOf(t, rowOf(t, Evaluate(in), "bars"), "coverage_gap")
+	}
+	cell := func(day string, missing int) basecheckapi.Cell {
+		return basecheckapi.Cell{Day: contracts.Day(day), Dataset: "bars", Keys: 10, Missing: missing}
+	}
+	c := gap(cell("2026-11-02", 3), cell("2026-11-06", 3), cell("2026-11-09", 0))
+	if c.N != 1 || c.Bad != 0 || c.Level != basecheckapi.Pass {
+		t.Errorf("before start skipped: N=%d Bad=%d level=%s, want 1 0 pass", c.N, c.Bad, c.Level)
+	}
+	c = gap(cell("2026-11-02", 3), cell("2026-11-06", 3), cell("2026-11-09", 0), cell("2026-11-10", 1))
+	if c.N != 2 || c.Bad != 1 || c.Example != "2026-11-10" || c.Level != basecheckapi.Warn {
+		t.Errorf("one bad day: N=%d Bad=%d example=%q level=%s", c.N, c.Bad, c.Example, c.Level)
+	}
+	c = gap(cell("2026-11-02", 3), cell("2026-11-06", 3))
+	if c.Level != basecheckapi.Unknown {
+		t.Errorf("only before start: level=%s, want unknown", c.Level)
 	}
 }

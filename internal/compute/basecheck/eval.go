@@ -246,12 +246,15 @@ func ledgerCheck(in basecheckapi.Input, info basecheckapi.RowInfo, rule string, 
 	c := baseCheck(rule, th)
 	switch rule {
 	case "coverage_gap":
-		if len(cells) == 0 {
-			return c
-		}
 		missing := map[contracts.Day]int{}
 		for _, cell := range cells {
+			if cell.Day < HistoryStart {
+				continue
+			}
 			missing[cell.Day] += cell.Missing
+		}
+		if len(missing) == 0 {
+			return c
 		}
 		c.N = int64(len(missing))
 		for d, m := range missing {

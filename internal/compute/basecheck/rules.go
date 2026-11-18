@@ -3,7 +3,14 @@
 // changes this file only (docs/design/base-data-page.md#7).
 package basecheck
 
-import "github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+import (
+	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
+)
+
+// HistoryStart is the first day the coverage ledger recorded presence. Days before it hold
+// expected keys but no record of what was stored, so coverage_gap does not count them.
+const HistoryStart contracts.Day = "2026-11-07"
 
 // Kind says how a Limit reads its Value.
 type Kind string
