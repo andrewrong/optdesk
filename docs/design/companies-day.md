@@ -8,8 +8,8 @@ Source: owner's data-correctness sweep 2026-11-17. Cites checked at origin/main 
 
 ## 你会看到什么
 
-- /companies 页头写 "Data of 2026-11-17 · watching 2 companies"（整日期，加 "Data of"）。页底状态行 stale.text 用同一种格式："Data of 2026-11-17"（以前是 "Data of 11-17"）。页头的日期是页面日，不是数据日；数据日在每个价格里。
-- 每一行的 "Last" 单元格直接写出价格和它自己的日期，例如 "128.40 · close 2026-11-14"。"close" 的意思是日线收盘价（bars_refresh 存下的 `trades` 日线），不是券商标记价。页面下方的备注里有一行："Last = daily close of the day shown; /positions shows the broker mark"，所以 /positions 的价格可以不同，差别有据可查。
+- /companies 页头只写 "Watching 2 companies"，日期只写一次：整日期在 stale.text（"Data of 2026-11-17"，以前是 "Data of 11-17"）和 header.data_day 里，页头文字里不再重复。页头的日期是页面日，不是数据日；数据日在每个价格里。
+- 每一行的 "Last" 单元格直接写出价格和它自己的日期，例如 "$128.40 · close 2026-11-14"。"close" 的意思是日线收盘价（bars_refresh 存下的 `trades` 日线），不是券商标记价。页面下方的备注里有一行："Last = daily close of the day shown; /positions shows the broker mark"，所以 /positions 的价格可以不同，差别有据可查。
 - 日期是那根日线的交易日：周末或停牌时可以比页头早几天（最多 14 天，查找窗口不变）。
 - PE/PB 区块里的 "price at percentile" 价格也写出日期，例如 "PE at the 20th percentile of 300 days since 2025-08-20: price 103.70 as of 2026-11-05 (history, not a buy price)"。
 - 没有日线的名字，或日线没有交易日的名字：仍写 "no quote"，没有日期，不猜。隐含增长图例用同一条规则，表格和图例对同一行给出同一个答案。

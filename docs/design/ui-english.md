@@ -48,7 +48,7 @@ Where a text lives:
 
 ## Decisions
 
-1. English: every text a user reads in a page payload, a figure label, a site title, a web component, an error or empty state and the fallback notice of `web/index.html` is English. A bilingual text keeps only the English half (`Sample data, not live data`, `page did not load, do not act`). No language switch, no locale files. A text stays where it lives (a `strings.go`, an inline literal, a component); only its language changes.
+1. English: every text a user reads in a page payload, a figure label, a site title, a web component, an error or empty state and the fallback notice of `web/index.html` is English, except that an explanation, hint or risk text may be Chinese, only in `internal/pages/<page>/zh_texts.go` (owner, #2826, ask optdesk-4802, 2026-11-17); labels, titles and numbers stay English. A bilingual text keeps only the English half (`Sample data, not live data`, `page did not load, do not act`). No language switch, no locale files. A text stays where it lives (a `strings.go`, an inline literal, a component); only its language changes.
 2. Tone: short, plain, sentence case, no full stop on a label, a full stop on a sentence; an empty state is `<Subject>: <state>` ("Implied volatility: no data yet"), a gap sentence says what is missing and why ("no data: not stored yet"). ASCII punctuation only (`,` `:` `;` `.`); the Chinese `，` `：` `；` `。` `、` and full-width parentheses are not used in code that builds a text.
 3. Glossary, one English word per term, used by every issue. A term not listed is translated plainly and listed in the pull request description as a courtesy to the reviewer; no acceptance item depends on that list (a description is not a file of the tree).
 
