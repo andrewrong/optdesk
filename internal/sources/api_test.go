@@ -117,3 +117,59 @@ func TestParseFlexFuncContract(t *testing.T) {
 		t.Fatalf("got %+v err %v", got, err)
 	}
 }
+
+type fakeBars struct{}
+
+func (fakeBars) DailyBars(ctx context.Context, req sources.BarRequest) (sources.BarResult, error) {
+	var res sources.BarResult
+	for _, p := range req.Pairs {
+		switch {
+		case ctx.Err() != nil:
+			res.Unanswered = append(res.Unanswered, sources.BarUnanswered{Pair: p, Code: sources.BarCodeTimeout})
+		case p.Symbol == "NONE":
+			res.Unanswered = append(res.Unanswered, sources.BarUnanswered{Pair: p, Code: sources.BarCodeNoData})
+		default:
+			res.Bars = append(res.Bars, sources.RefBar{Pair: p, Day: req.From, Close: "187.2"})
+		}
+	}
+	return res, nil
+}
+
+func TestFakeBarSourceServesCaller(t *testing.T) {
+	t.Parallel()
+	newSource := sources.NewBarSourceFunc(func(sources.BarConfig) (sources.BarSource, error) { return fakeBars{}, nil })
+	src, err := newSource(sources.BarConfig{Command: []string{"unused"}, Key: "k", PerPair: 15 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := sources.BarRequest{
+		Pairs: []sources.BarPair{{Symbol: "AAPL", Currency: "USD"}, {Symbol: "NONE", Currency: "USD"}},
+		From:  "2026-11-17", To: "2026-11-17",
+	}
+	got, err := src.DailyBars(context.Background(), req)
+	if err != nil || len(got.Bars) != 1 || got.Bars[0].Pair.Symbol != "AAPL" || got.Bars[0].Close != "187.2" {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+	if len(got.Unanswered) != 1 || got.Unanswered[0].Code != sources.BarCodeNoData {
+		t.Fatalf("unanswered %+v", got.Unanswered)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	got, err = src.DailyBars(ctx, req)
+	if err != nil || len(got.Bars) != 0 || len(got.Unanswered) != 2 || got.Unanswered[0].Code != sources.BarCodeTimeout {
+		t.Fatalf("cancelled: got %+v err %v", got, err)
+	}
+}
+
+func TestBarCodesAreFive(t *testing.T) {
+	t.Parallel()
+	want := []string{"rate_limited", "no_data", "network", "timeout", "source_changed"}
+	got := []string{sources.BarCodeRateLimited, sources.BarCodeNoData, sources.BarCodeNetwork, sources.BarCodeTimeout, sources.BarCodeSourceChanged}
+	seen := map[string]bool{}
+	for i, c := range got {
+		if c != want[i] || seen[c] {
+			t.Fatalf("code %d is %q, want %q (seen %v)", i, c, want[i], seen[c])
+		}
+		seen[c] = true
+	}
+}
