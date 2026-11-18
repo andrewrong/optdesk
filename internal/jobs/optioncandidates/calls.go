@@ -46,7 +46,9 @@ func NewWithCalls(
 // under a new run id: puts first, then covered calls, then held-call guards. Nothing is written when a read fails.
 func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	us, skipped := j.split()
+	src := newSourceRun(j.job, day)
 	defer func() {
+		skipped = append(skipped, src.finish()...)
 		j.mu.Lock()
 		j.skipped = skipped
 		j.mu.Unlock()
@@ -62,6 +64,8 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 	for _, s := range missing {
 		skipped = append(skipped, "US entry "+s+": no chain day of option_eod, no row")
 	}
+	src.nNone = len(missing)
+	src.begin(ctx, days)
 	rate, rateDay, err := j.rate(ctx, day)
 	if err != nil {
 		return fail("read_rate_failed", err)
@@ -70,7 +74,7 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 	var puts, calls, guards []store.Candidate
 	shadow := newShadow(j.st)
 	for _, ul := range ulist {
-		rows, failed := j.underlying(ctx, rc, entryOf(us, ul.issuer), ul, shadow)
+		rows, failed := j.underlying(ctx, rc, src, entryOf(us, ul.issuer), ul, shadow)
 		if failed != nil {
 			return *failed
 		}
@@ -119,16 +123,18 @@ type runCtx struct {
 // underlying reads the stores of one underlying, evaluates the three kinds and maps the rows; a failure is the
 // result the run returns.
 func (j *callsJob) underlying(
-	ctx context.Context, rc runCtx, entry jobs.WatchEntry, ul underlyingRef, shadow *shadowRun,
+	ctx context.Context, rc runCtx, src *sourceRun, entry jobs.WatchEntry, ul underlyingRef, shadow *shadowRun,
 ) ([]store.Candidate, *contracts.JobResult) {
 	failWith := func(code string, err error) ([]store.Candidate, *contracts.JobResult) {
 		res := fail(code, err)
 		return nil, &res
 	}
-	spot, quotes, err := j.chainQuotes(ctx, ul)
+	ch, err := src.chain(ctx, ul, entry, true)
 	if err != nil {
 		return failWith("read_chain_failed", err)
 	}
+	ul.chainDay = ch.chainDay
+	spot, quotes := ch.spot, ch.quotes
 	info, ev, err := j.earnings(ctx, entry, ul.chainDay)
 	if err != nil {
 		return failWith("read_earnings_failed", err)
@@ -164,6 +170,7 @@ func (j *callsJob) underlying(
 	shadow.add(in, ul, ev)
 	var rows []store.Candidate
 	for _, c := range j.rule.Evaluate(in, j.params) {
+		ch.addMarks(&c)
 		row, err := toStoreRow(c, rc.day, ul, ev, rc.now)
 		if err != nil {
 			return failWith("map_candidate_failed", err)
@@ -242,45 +249,4 @@ func (j *callsJob) heldShortCalls(ctx context.Context, symbol string, days []con
 func isShortCall(p store.Position, symbol string) bool {
 	q, ok := new(big.Rat).SetString(strings.TrimSpace(p.Quantity))
 	return ok && q.Sign() < 0 && strings.EqualFold(p.Symbol, symbol) && p.SecType == "option" && p.Right == "call"
-}
-
-// chainQuotes is quotes of input.go for both rights: the rows of the chain day, the terms of their contracts
-// and the join of the two.
-func (j *callsJob) chainQuotes(ctx context.Context, ul underlyingRef) (spot string, out []compute.OptionQuote, err error) {
-	rows, err := j.st.OptionEod.OptionEod(ctx, ul.id, ul.chainDay, ul.chainDay)
-	if err != nil {
-		return "", nil, err
-	}
-	best := map[int]contracts.OptionEod{}
-	for _, r := range rows {
-		if old, ok := best[r.InstrumentID]; !ok || r.Generation > old.Generation ||
-			(r.Generation == old.Generation && r.CaptureID >= old.CaptureID) {
-			best[r.InstrumentID] = r
-		}
-		if spot == "" {
-			spot = optText(r.UnderlyingPrice)
-		}
-	}
-	ids := make([]int64, 0, len(best))
-	for id := range best {
-		ids = append(ids, int64(id))
-	}
-	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
-	for start := 0; start < len(ids); start += termsChunk {
-		end := min(start+termsChunk, len(ids))
-		terms, err := j.st.Terms.OptionTerms(ctx, ids[start:end])
-		if err != nil {
-			return "", nil, err
-		}
-		for _, t := range terms {
-			r := best[int(t.InstrumentID)]
-			out = append(out, compute.OptionQuote{
-				InstrumentID: strconv.FormatInt(t.InstrumentID, 10), Expiry: t.ExpirationDate, Right: t.Right,
-				Strike: t.Strike, Multiplier: t.Multiplier, Bid: optText(r.Bid), Ask: optText(r.Ask),
-				BidSize: intOf(r.BidSize), OpenInterest: intOf(r.OpenInterest), Delta: optText(r.Delta),
-				IV: optText(r.IvDecimal), MarketDataType: r.MarketDataType, QuoteOK: r.Status == 1,
-			})
-		}
-	}
-	return spot, out, nil
 }

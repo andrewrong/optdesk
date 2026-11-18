@@ -2,6 +2,7 @@ package optioncandidates
 
 import (
 	"errors"
+	"math/big"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -31,7 +32,8 @@ type manifest struct {
 		MaxEventAgeSessions int    `toml:"max_event_age_sessions"`
 		MinReportGapDays    int    `toml:"min_report_gap_days"`
 	} `toml:"params"`
-	Need []needRow `toml:"need"`
+	Source sourceParams `toml:"source"`
+	Need   []needRow    `toml:"need"`
 }
 
 // needRow is one [[need]] row of job.toml.
@@ -73,4 +75,18 @@ func parseManifest(b []byte) (manifest, slot, compute.CandidateParams, error) {
 		MinOpenInterest: p.MinOpenInterest, DivGuardFactor: p.DivGuardFactor, MaxRateAgeDays: p.MaxRateAgeDays,
 		MaxEventAgeSessions: p.MaxEventAgeSessions, MinReportGapDays: p.MinReportGapDays,
 	}, nil
+}
+
+// checkSource names the key of [source] that is wrong, never its value.
+func checkSource(src sourceParams) error {
+	if src.OpenMinRows < 1 {
+		return errors.New("optioncandidates: manifest: source.open_min_rows is invalid")
+	}
+	if r, ok := new(big.Rat).SetString(src.NeedHigh); src.NeedHigh == "" || !ok || r.Sign() <= 0 {
+		return errors.New("optioncandidates: manifest: source.need_high is invalid")
+	}
+	if src.OILookbackSessions < 1 {
+		return errors.New("optioncandidates: manifest: source.oi_lookback_sessions is invalid")
+	}
+	return nil
 }
