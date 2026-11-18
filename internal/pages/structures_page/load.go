@@ -130,7 +130,8 @@ func rightLetter(r string) string {
 // terms. The instrument id of an underlying comes from the catalog and the names when both are set (the way
 // the tracking page finds it), else from the stock rows of the capture, and a held underlying with neither
 // has no quotes.
-func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks map[string]int64, day contracts.Day) ([]compute.StructureQuote, map[string]shared.Close, error) {
+func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks map[string]int64,
+	day contracts.Day) ([]compute.StructureQuote, map[string]shared.Close, error) {
 	if c.Eod == nil || c.Terms == nil {
 		return nil, nil, nil
 	}
@@ -157,12 +158,8 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 		if err != nil {
 			return nil, nil, fmt.Errorf("structures_page: read option_eod: %w", err)
 		}
-		src, err := shared.SourceOf(ctx, c.Bars, stocks[p.Underlying], rows, day)
-		if err != nil {
-			return nil, nil, fmt.Errorf("structures_page: read price bars of %s: %w", p.Underlying, err)
-		}
-		if cl, ok := shared.Pick(src, day); ok {
-			closes[p.Underlying] = cl
+		if err := c.pickClose(ctx, stocks[p.Underlying], p.Underlying, rows, day, closes); err != nil {
+			return nil, nil, err
 		}
 		for _, r := range rows {
 			old, ok := newest[r.InstrumentID]
@@ -175,6 +172,17 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 			}
 		}
 	}
+	out, err := c.quotesOfRows(ctx, ids, under, newest, closes)
+	if err != nil {
+		return nil, nil, err
+	}
+	return out, closes, nil
+}
+
+// quotesOfRows matches the newest row of each instrument id to its terms, in batches, and gives the quote of
+// each with the picked close of its underlying.
+func (c Config) quotesOfRows(ctx context.Context, ids []int, under map[int]string, newest map[int]contracts.OptionEod,
+	closes map[string]shared.Close) ([]compute.StructureQuote, error) {
 	var out []compute.StructureQuote
 	for lo := 0; lo < len(ids); lo += termsBatch {
 		hi := min(lo+termsBatch, len(ids))
@@ -184,7 +192,7 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 		}
 		terms, err := c.Terms.OptionTerms(ctx, batch)
 		if err != nil {
-			return nil, nil, fmt.Errorf("structures_page: read option terms: %w", err)
+			return nil, fmt.Errorf("structures_page: read option terms: %w", err)
 		}
 		for _, t := range terms {
 			q := quoteOf(under[int(t.InstrumentID)], t, newest[int(t.InstrumentID)])
@@ -192,7 +200,20 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 			out = append(out, q)
 		}
 	}
-	return out, closes, nil
+	return out, nil
+}
+
+// pickClose adds to closes the picked close of the underlying sym (instrument id) on day.
+func (c Config) pickClose(ctx context.Context, id int64, sym string, rows []contracts.OptionEod, day contracts.Day,
+	closes map[string]shared.Close) error {
+	src, err := shared.SourceOf(ctx, c.Bars, id, rows, day)
+	if err != nil {
+		return fmt.Errorf("structures_page: read price bars of %s: %w", sym, err)
+	}
+	if cl, ok := shared.Pick(src, day); ok {
+		closes[sym] = cl
+	}
+	return nil
 }
 
 // catalogIDs maps the symbol of each open position to the underlying id of option_eod whose name equals it.

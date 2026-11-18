@@ -13,4 +13,5 @@ const (
 	closeNotePrefix = "距现价所用价格："
 	closeWord       = "收盘"
 	printWord       = "最近成交"
+	closeNoteSep    = "；"
 )

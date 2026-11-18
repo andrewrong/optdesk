@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 // gaps are the named gaps of one gather: a reader that is nil gives its gap, in the order
@@ -99,7 +100,8 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day) (tra
 }
 
 // withMarks is in.Quotes followed by the quotes of the position marks; a nil Config.Marks adds none.
-func withMarks(ctx context.Context, c Config, alias string, day contracts.Day, in trackapi.TrackInput, closes map[string]shared.Close) ([]trackapi.TrackQuote, error) {
+func withMarks(ctx context.Context, c Config, alias string, day contracts.Day, in trackapi.TrackInput,
+	closes map[string]shared.Close) ([]trackapi.TrackQuote, error) {
 	if c.Marks == nil {
 		return in.Quotes, nil
 	}
@@ -264,12 +266,8 @@ func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.Le
 		if err != nil {
 			return nil, nil, fmt.Errorf("option_tracking_page: read option_eod of %d: %w", id, err)
 		}
-		src, err := shared.SourceOf(ctx, c.Bars, id, got, to)
-		if err != nil {
-			return nil, nil, fmt.Errorf("option_tracking_page: read price bars of %s: %w", names[id], err)
-		}
-		if cl, ok := shared.Pick(src, to); ok {
-			closes[names[id]] = cl
+		if err := pickClose(ctx, c.Bars, id, names[id], got, to, closes); err != nil {
+			return nil, nil, err
 		}
 		for _, r := range got {
 			underOf[r.InstrumentID] = names[id]
@@ -307,6 +305,20 @@ func quotesOf(ctx context.Context, c Config, d time.Time, positions []compute.Le
 		out = append(out, newest[k])
 	}
 	return out, closes, nil
+}
+
+// pickClose adds to closes the picked close of the underlying sym (instrument id) on day from its option_eod rows
+// and, when bars is set, its trades bars.
+func pickClose(ctx context.Context, bars bar.PriceBarReader, id int64, sym string, rows []contracts.OptionEod,
+	day contracts.Day, closes map[string]shared.Close) error {
+	src, err := shared.SourceOf(ctx, bars, id, rows, day)
+	if err != nil {
+		return fmt.Errorf("option_tracking_page: read price bars of %s: %w", sym, err)
+	}
+	if cl, ok := shared.Pick(src, day); ok {
+		closes[sym] = cl
+	}
+	return nil
 }
 
 type gateResult struct {

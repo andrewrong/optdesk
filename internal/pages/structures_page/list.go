@@ -167,7 +167,7 @@ func closeNote(res compute.StructureResult, closes map[string]shared.Close) stri
 	if len(parts) == 0 {
 		return ""
 	}
-	return closeNotePrefix + strings.Join(parts, "；")
+	return closeNotePrefix + strings.Join(parts, closeNoteSep)
 }
 
 func joinNote(note *string, line string) string {
