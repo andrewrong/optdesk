@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -31,28 +32,35 @@ const (
 // load reads everything Evaluate needs through the readers of c, and the picked close of each held
 // underlying that has one. Ledger and Sessions are not nil.
 func (c Config) load(ctx context.Context, alias string, day contracts.Day) (compute.StructureInput, map[string]shared.Close, error) {
+	in, closes, _, err := c.loadIDs(ctx, alias, day)
+	return in, closes, err
+}
+
+// loadIDs is load that also gives the instrument id of each held underlying it found (absent: none).
+func (c Config) loadIDs(ctx context.Context, alias string, day contracts.Day) (compute.StructureInput,
+	map[string]shared.Close, map[string]int64, error) {
 	in := compute.StructureInput{Alias: alias, AsOf: day}
 	if c.Ledgers == nil || c.Structures == nil {
-		return in, nil, errors.New("structures_page: no rule constructors")
+		return in, nil, nil, errors.New("structures_page: no rule constructors")
 	}
 	trades, err := c.trades(ctx, alias)
 	if err != nil {
-		return in, nil, err
+		return in, nil, nil, err
 	}
 	in.SessionDays, err = c.sessionDays(ctx, day)
 	if err != nil {
-		return in, nil, err
+		return in, nil, nil, err
 	}
 	res := c.Ledgers().Replay(compute.LedgerInput{Alias: alias, Trades: trades, SessionDays: in.SessionDays, AsOf: day},
 		compute.LedgerParams{MarkMaxAgeSessions: markMaxAgeSessions})
 	in.Positions, in.Cycles = res.Positions, res.Cycles
 	stocks := map[string]int64{}
 	if err := c.capture(ctx, alias, &in, stocks); err != nil {
-		return in, nil, err
+		return in, nil, nil, err
 	}
 	var closes map[string]shared.Close
 	in.Quotes, closes, err = c.quotes(ctx, in.Positions, stocks, day)
-	return in, closes, err
+	return in, closes, stocks, err
 }
 
 func (c Config) trades(ctx context.Context, alias string) ([]compute.LedgerTrade, error) {
@@ -140,9 +148,12 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 		return nil, nil, err
 	}
 	if c.Catalog != nil && c.Names != nil {
-		if stocks, err = c.catalogIDs(ctx, ps, from); err != nil {
+		found, err := c.catalogIDs(ctx, ps, from)
+		if err != nil {
 			return nil, nil, err
 		}
+		clear(stocks)
+		maps.Copy(stocks, found)
 	}
 	newest := map[int]contracts.OptionEod{}
 	under := map[int]string{}

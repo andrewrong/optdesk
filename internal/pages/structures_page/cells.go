@@ -49,7 +49,10 @@ func mkGap(reason string) gap {
 
 // cells turns the figures of one structure into cells. noQuotes is true when no quote reader is wired:
 // a missing quote is then the gap no_reader.
-type cells struct{ noQuotes bool }
+type cells struct {
+	noQuotes bool
+	exDiv    map[string]any // the ex_dividend cell of each structure id, list only
+}
 
 // reasonOf is the gap reason of a figure, or "" when it has a value.
 func (c cells) reasonOf(f compute.FigureValue) string {
