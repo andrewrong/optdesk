@@ -473,3 +473,24 @@ func TestRunRetryOfAKeyWhoseSpotCameBack(t *testing.T) {
 		}
 	}
 }
+
+func TestPartialRowsUnderShareAreRetryable(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 10)
+	b := newFake(100)
+	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+		qs := okQuotes(b.clk, cs)
+		for i := 0; i < 6; i++ { // a bid and no ask or IV: partial
+			bid := qs[i].Bid
+			qs[i] = broker.Quote{Contract: cs[i], Status: broker.StatusOK, Bid: bid, ReceivedAt: b.clk.Now()}
+		}
+		return qs, nil
+	}
+	res := runAll(t, newPull(t, s, b))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || res.Usable != 4 || res.Returned != 10 {
+		t.Errorf("err %v usable %d returned %d, want Retryable with the 10 rows written", res.Err, res.Usable, res.Returned)
+	}
+	if len(s.written) != 1 {
+		t.Errorf("written %d times, want once", len(s.written))
+	}
+}
