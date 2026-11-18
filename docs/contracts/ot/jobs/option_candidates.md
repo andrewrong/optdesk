@@ -6,11 +6,12 @@ Family file: `cmd/ot/candidates.go`; registered with `registerJob` in an `init()
 
 ## Window
 
-The job states its own window through `runner.Windowed`; `ot` passes the zero `runner.WindowRule{}` (see `docs/contracts/jobs.md` for the job). The scheduler runs it at `session_close` plus 30 minutes; it puts only.
+The job states its own window through `runner.Windowed`; `ot` passes the zero `runner.WindowRule{}` (see `docs/contracts/jobs.md` for the job). The scheduler runs it at `session_open` plus 5 minutes, after `option_open` (the slot itself is switched by a later entry of `docs/design/candidates-at-open.md`); it puts only.
 
 ## Lines it reads
 
 - `OT_PG_DSN_CANDIDATE`: the candidate store (role `ot_w_candidate`), optional.
+- `OT_PG_DSN_OPTION_OPEN`: the option open store (role `ot_w_option_open`), optional: without it, or when it cannot be opened (one `degraded` warning naming the line), the job reads `option_eod` only.
 - The compute stores, the events reader (`OT_PG_DSN_EVENTS`) and the account reader (`OT_PG_DSN_ACCOUNT`) when set, and `$OT_HOME/watch.toml`.
 
 ## Left out

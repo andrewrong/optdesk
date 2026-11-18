@@ -21,6 +21,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
@@ -321,5 +322,89 @@ func TestCandidateAliasesLeaveStatementAlias(t *testing.T) {
 	st, _ := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n", bookText("mine", "mine", "wife", "a")+"statement = [\"a\"]\n")
 	if !slices.Equal(st.Aliases, []string{"mine", "wife"}) {
 		t.Fatalf("aliases %v", st.Aliases)
+	}
+}
+
+// openStub is an option open store: the job reads only its OptionOpen and the run closes it.
+type openStub struct {
+	openquote.Stores
+	closed *atomic.Int32
+}
+
+func (s openStub) Close() error { s.closed.Add(1); return nil }
+
+// openRun runs candidateJob with cfg.openDSN and the opener (nil: no opener) and returns the stores newOptionCandidates
+// received, the closers of the run and the log.
+func openRun(t *testing.T, dsn string, opener func(context.Context, string) (openquote.Stores, error)) (optioncandidates.CandidateStores, *closerSet, string) {
+	t.Helper()
+	a, logs := testApp(t, candidateEnv)
+	var cl atomic.Int32
+	var got optioncandidates.CandidateStores
+	a.deps.openCandidateRW = func(context.Context, string) (candidateRW, error) { return &fakeCandidateRW{closed: &cl}, nil }
+	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
+	a.deps.openOptionOpen = opener
+	a.deps.newOptionCandidates = func(st optioncandidates.CandidateStores, _ compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
+		got = st
+		return candJobStub{id: jobOptionCandidates}, nil
+	}
+	f := jobFactory{d: a.deps}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "AAA"}})...)
+	extra := &closerSet{}
+	j, err := a.candidateJob(context.Background(), runOnceConfig{candidateDSN: "cand-dsn", openDSN: dsn}, &f, extra)
+	if err != nil || j == nil {
+		t.Fatalf("candidateJob: %v %v\n%s", j, err, logs)
+	}
+	return got, extra, logs.String()
+}
+
+func TestCandidatesGetOpenReader(t *testing.T) {
+	t.Parallel()
+	var cl atomic.Int32
+	var dsn string
+	st, extra, _ := openRun(t, "open-dsn", func(_ context.Context, d string) (openquote.Stores, error) {
+		dsn = d
+		return openStub{closed: &cl}, nil
+	})
+	if dsn != "open-dsn" || st.Open == nil {
+		t.Fatalf("dsn %q open %v", dsn, st.Open)
+	}
+	for _, c := range extra.cs {
+		_ = c.Close()
+	}
+	if cl.Load() != 1 {
+		t.Fatalf("open store closed %d times", cl.Load())
+	}
+}
+
+func TestCandidatesNoOpenDSNLeavesOpenNil(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	st, _, _ := openRun(t, "", func(context.Context, string) (openquote.Stores, error) {
+		calls.Add(1)
+		return openStub{closed: &atomic.Int32{}}, nil
+	})
+	if calls.Load() != 0 || st.Open != nil {
+		t.Fatalf("calls %d open %v", calls.Load(), st.Open)
+	}
+}
+
+func TestCandidatesNilOpenerLeavesOpenNil(t *testing.T) {
+	t.Parallel()
+	st, _, _ := openRun(t, "open-dsn", nil)
+	if st.Open != nil {
+		t.Fatalf("open %v", st.Open)
+	}
+}
+
+func TestCandidatesOpenStoreErrorKeepsJob(t *testing.T) {
+	t.Parallel()
+	st, _, log := openRun(t, "secret-open-dsn", func(context.Context, string) (openquote.Stores, error) {
+		return nil, errors.New("dial secret-open-dsn failed")
+	})
+	if st.Open != nil {
+		t.Fatalf("open %v", st.Open)
+	}
+	named := strings.Count(log, "OT_PG_DSN_OPTION_OPEN") == 1 && strings.Contains(log, "component=ot")
+	if !named || !strings.Contains(log, `status="degraded`) || strings.Contains(log, "secret-open-dsn") {
+		t.Fatalf("log %q", log)
 	}
 }

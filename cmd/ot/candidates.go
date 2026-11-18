@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/pages/candidate_text"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -72,8 +73,8 @@ func (f jobFactory) optionCandidates() (contracts.Job, error) {
 	st := optioncandidates.CandidateStores{
 		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
 		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases, Candidates: f.candidates,
-		SessionDays: f.compute.SessionDays,
-		Strategy:    f.shadow.strategy, Results: f.shadow.results,
+		SessionDays: f.compute.SessionDays, Open: f.candOpen,
+		Strategy: f.shadow.strategy, Results: f.shadow.results,
 	}
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		j, err := f.d.newOptionCandidates(st, f.d.newCandidateRule(), entries, f.clk)
@@ -117,7 +118,24 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 			a.candidateAliases(f)
 		}
 	}
+	a.candidateOpen(ctx, cfg, f, extra)
 	return f.optionCandidates()
+}
+
+// candidateOpen sets f.candOpen from the option open store (OT_PG_DSN_OPTION_OPEN). No line, no opener or a store
+// that cannot be opened leaves it nil (the job reads option_eod only); the last logs one warning without the DSN.
+func (a *app) candidateOpen(ctx context.Context, cfg runOnceConfig, f *jobFactory, extra *closerSet) {
+	if cfg.openDSN == "" || f.d.openOptionOpen == nil {
+		return
+	}
+	s, err := f.d.openOptionOpen(ctx, cfg.openDSN)
+	if err != nil || s == nil {
+		a.log.Warn("option open reader off", "component", "ot", "job", jobOptionCandidates, "status",
+			"degraded: open the option open store with "+openquote.DSNEnvOptionOpen+" failed")
+		return
+	}
+	extra.addCloser(s)
+	f.candOpen = s
 }
 
 // candidateAliases sets f.candAliases from the book of accounts.toml (f.book, set by the wiring); a factory
