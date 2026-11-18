@@ -560,6 +560,7 @@
     ],
     "common": [],
     "kept": null,
+    "kept_note": null,
     "legend": [
       {
         "tier": "fits",
@@ -849,7 +850,7 @@
         "word": "Not judged",
         "icon": "minus",
         "title": "1 not judged: no buy price",
-        "explain": "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。没有设买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。",
+        "explain": "没有设买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。",
         "collapsed": true,
         "rows": [
           {
@@ -891,6 +892,7 @@
           }
         ]
       }
-    ]
+    ],
+    "stored_title": "原始表格"
   }
 }

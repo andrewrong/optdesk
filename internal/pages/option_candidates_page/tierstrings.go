@@ -28,43 +28,46 @@ const (
 	legendCashTier   = "cash"
 	legendGreyTier   = "grey"
 
-	notSet          = "not set"
-	earningsUnknown = "unknown"
-	noSpotText      = "no spot"
-	countFit        = " fit, "
-	countCheck      = " check, "
-	countCollapsed  = " collapsed"
-	unreadableGates = "unreadable_gates"
-	dteSuffix       = "d"
-	noValue         = "not formed"
-	movesSuffix     = " moves*"
-	yieldSuffix     = "%/yr"
-	beHead          = "BE "
-	beVs            = " vs "
-	lineSep         = "; "
-	lineBid         = "Bid "
-	lineYield       = "yield "
-	lineIntrinsic   = "intrinsic "
-	lineTimeValue   = ", time value "
-	lineBEGap       = "BE: "
-	gapNoIV         = "no IV"
-	gapNoBid        = "no bid"
-	gapNoYield      = "no yield"
-	fitsPrefix      = "fits: "
-	fitsNone        = "fits: none"
-	aliasSep        = ": "
-	cashEnough      = "enough, "
-	cashShort       = "short, "
-	cashFree        = " free after "
-	cashCommitted   = " committed ("
-	cashNoFig       = "no figure: "
-	gapNoAccount    = "No account cash figure"
-	earningsLabelSp = " "
-	badgeToneWarn   = "warn"
-	badgeToneInfo   = "info"
-	badgeToneNone   = "none"
-	evBadgeCode     = "evidence"
-	cashBadgeHead   = "cash_"
+	notSet             = "not set"
+	earningsUnknown    = "unknown"
+	noSpotText         = "no spot"
+	countFit           = " fit, "
+	countCheck         = " check, "
+	countCollapsed     = " collapsed"
+	unreadableGates    = "unreadable_gates"
+	dteSuffix          = "d"
+	noValue            = "not formed"
+	movesSuffix        = " moves*"
+	yieldSuffix        = "%/yr"
+	beHead             = "BE "
+	beVs               = " vs "
+	lineSep            = "; "
+	lineBid            = "Bid "
+	lineYield          = "yield "
+	lineIntrinsic      = "intrinsic "
+	lineTimeValue      = ", time value "
+	lineBEGap          = "BE: "
+	gapNoIV            = "no IV"
+	gapNoBid           = "no bid"
+	gapNoYield         = "no yield"
+	gapBelowIntr       = "bid below intrinsic"
+	whyBelowIntr       = "bid_below_intrinsic"
+	belowIntrinsicText = gapBelowIntr + hintBelowIntrinsic
+	fitsPrefix         = "fits: "
+	fitsNone           = "fits: none"
+	aliasSep           = ": "
+	cashEnough         = "enough, "
+	cashShort          = "short, "
+	cashFree           = " free after "
+	cashCommitted      = " committed ("
+	cashNoFig          = "no figure: "
+	gapNoAccount       = "No account cash figure"
+	earningsLabelSp    = " "
+	badgeToneWarn      = "warn"
+	badgeToneInfo      = "info"
+	badgeToneNone      = "none"
+	evBadgeCode        = "evidence"
+	cashBadgeHead      = "cash_"
 )
 
 // Column and field labels of the tier view.
@@ -101,6 +104,19 @@ var greySpecs = map[string]greySpec{
 }
 
 const fallbackGrey = "bad_input"
+
+// keptLabels are the Chinese words of the look-at badges in the kept line.
+var keptLabels = map[string]string{
+	"no_open_interest":       zhKeptLabel_no_open_interest,
+	"low_open_interest":      zhKeptLabel_low_open_interest,
+	"one_sided_quote":        zhKeptLabel_one_sided_quote,
+	"wide_quote":             zhKeptLabel_wide_quote,
+	"stale_quote":            zhKeptLabel_stale_quote,
+	"earnings_before_expiry": zhKeptLabel_earnings_before_expiry,
+	"cash_short":             zhKeptLabel_cash_short,
+	"delta_above_bound":      zhKeptLabel_delta_above_bound,
+	"delta_unknown":          zhKeptLabel_delta_unknown,
+}
 
 // badgeTexts are the English label and the Chinese gloss of each badge, note and info mark.
 var badgeTexts = map[string]struct{ label, gloss string }{

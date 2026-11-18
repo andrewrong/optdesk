@@ -122,3 +122,32 @@ func TestHintsEndWithDataDay(t *testing.T) {
 		}
 	}
 }
+
+func TestBidBelowIntrinsicGap(t *testing.T) {
+	t.Parallel()
+	rows := []store.Candidate{tierPut(1, "ok", "100.00", "3.00")}
+	v := greyVerdict(keyOf(rows, 0), "in_the_money")
+	v.BreakEven, v.Intrinsic, v.TimeValue, v.YieldPct, v.PerContract = "97.00", "3.50", "", "", "300.00"
+	v.Why = map[string]string{"time_value": "bid_below_intrinsic", "yield": "bid_below_intrinsic"}
+	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(v)}))
+	r := tierByID(view, "grey_in_the_money").Rows[0]
+	for name, s := range map[string]string{"line": deref(r.Line), "premium sub": deref(r.Premium.Sub)} {
+		if !strings.Contains(s, "bid below intrinsic") || !han.MatchString(s) {
+			t.Errorf("%s = %q has no gap with its hint", name, s)
+		}
+		if strings.Contains(s, "−") || strings.Contains(s, "-") && !strings.Contains(s, "2026-") {
+			t.Errorf("%s = %q has a negative figure", name, s)
+		}
+		if strings.Contains(s, "%/yr") || strings.Contains(s, "time value $") {
+			t.Errorf("%s = %q has a time value or yield", name, s)
+		}
+	}
+	if !strings.Contains(deref(r.Line), "intrinsic $3.50") {
+		t.Errorf("line = %q has no intrinsic", deref(r.Line))
+	}
+	v.Why = nil
+	view = buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(v)}))
+	if l := deref(tierByID(view, "grey_in_the_money").Rows[0].Line); !strings.Contains(l, "intrinsic $3.50") {
+		t.Errorf("intrinsic dropped with an empty time value: %q", l)
+	}
+}
