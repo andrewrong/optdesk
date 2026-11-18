@@ -1,6 +1,7 @@
 package optiontrack
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -61,7 +62,7 @@ func TestAtmOnlyWhenEqual(t *testing.T) {
 
 func TestOtmPercentRounding(t *testing.T) {
 	t.Parallel()
-	// Decision 5: put (spot - strike) / strike, call (strike - spot) / strike, times 100;
+	// Decision 1: put (spot - strike) / spot, call (strike - spot) / spot, times 100;
 	// positive out of the money, so a put at spot 105 over strike 100 is out of the money.
 	cases := []struct {
 		right  string
@@ -69,16 +70,16 @@ func TestOtmPercentRounding(t *testing.T) {
 		spot   string
 		want   string
 	}{
-		{"P", "100", "105", "5.00"},
-		{"P", "100", "95", "-5.00"},
-		{"C", "100", "95", "5.00"},
-		{"C", "100", "105", "-5.00"},
-		{"P", "1000", "999.95", "0.00"},  // -0.005 is a half: to even, zero
-		{"P", "1000", "1000.05", "0.00"}, // 0.005
-		{"P", "1000", "1000.15", "0.02"}, // 0.015 is a half: to even, 0.02
-		{"P", "1000", "1000.25", "0.02"}, // 0.025 is a half: to even, 0.02
-		{"P", "1000", "999.85", "-0.02"}, // -0.015
-		{"P", "1000", "999.75", "-0.02"}, // -0.025
+		{"P", "100", "105", "4.76"},
+		{"P", "100", "95", "-5.26"},
+		{"C", "100", "95", "5.26"},
+		{"C", "100", "105", "-4.76"},
+		{"P", "999.95", "1000", "0.00"},   // 0.005 is a half: to even, zero
+		{"P", "1000.05", "1000", "0.00"},  // -0.005
+		{"P", "999.85", "1000", "0.02"},   // 0.015 is a half: to even, 0.02
+		{"P", "999.75", "1000", "0.02"},   // 0.025 is a half: to even, 0.02
+		{"P", "1000.15", "1000", "-0.02"}, // -0.015
+		{"P", "1000.25", "1000", "-0.02"}, // -0.025
 	}
 	for _, c := range cases {
 		p := pos("a", func(p *compute.LedgerPosition) { p.Strike, p.Right = c.strike, c.right })
@@ -123,7 +124,7 @@ func TestStaleMark(t *testing.T) {
 	}
 	in.SessionDays = append(in.SessionDays[:3:3], "2026-11-08", "2026-11-09")
 	r := New().Track(in, defParams).Open[0]
-	if r.MarkStatus != "no_mark" || r.Mid != "" || r.Kept != "" || r.Spot != "" {
+	if r.MarkStatus != "no_mark" || r.Mid != "" || r.Kept != "" || r.Spot != "110" {
 		t.Fatalf("age 4: %+v", r)
 	}
 	// a quote after the as-of day is not used
@@ -199,5 +200,27 @@ func TestDeltaIvCopied(t *testing.T) {
 	q.Delta, q.Iv = "", ""
 	if r := one(t, pos("a", nil), q); r.Delta != "" || r.Iv != "" {
 		t.Fatalf("a missing value must stay empty: %+v", r)
+	}
+}
+
+func TestOtmPercentBaseIsSpot(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ right, strike, spot, want string }{
+		{"P", "380", "367.71", "-3.34"},
+		{"P", "80", "54.27", "-47.41"},
+		{"P", "340", "367.71", "7.54"},
+		{"C", "25", "7.63", "227.65"},
+	}
+	for _, c := range cases {
+		strike, _ := dec(c.strike)
+		spot, _ := dec(c.spot)
+		got, ok := otmPercent(c.right == "P", strike, spot)
+		if !ok || got != c.want {
+			t.Errorf("%s strike %s spot %s: %q want %q", c.right, c.strike, c.spot, got, c.want)
+		}
+	}
+	one, _ := dec("1")
+	if _, ok := otmPercent(true, one, new(big.Rat)); ok {
+		t.Error("a spot of zero gives a value")
 	}
 }

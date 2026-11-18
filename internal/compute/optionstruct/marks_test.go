@@ -2,11 +2,14 @@ package optionstruct
 
 import (
 	"encoding/json"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/optiontrack"
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -140,7 +143,7 @@ func TestExpiryDistanceText(t *testing.T) {
 	q.UnderlyingClose = "52"
 	s := firstOf(t, evalMarked([]compute.LedgerPosition{pos("s1", "P", "50", "-1", "1.50")},
 		[]compute.StructureQuote{q}, baseParams()))
-	if s.Figures.ExpiryDistance.Value != "-0.038462" { // (50 - 52) / 52
+	if s.Figures.ExpiryDistance.Value != "0.038462" { // (52 - 50) / 52
 		t.Errorf("expiry distance = %+v", s.Figures.ExpiryDistance)
 	}
 	var strike, be string
@@ -240,5 +243,52 @@ func TestRecentCommissionWindow(t *testing.T) {
 	none := firstOf(t, evalMarked([]compute.LedgerPosition{shortPut()}, nil, baseParams()))
 	if none.Figures.RecentCommission != noData {
 		t.Errorf("no rows = %+v, want no_data", none.Figures.RecentCommission)
+	}
+}
+
+func TestExpiryDistanceIsShareOfClose(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ right, strike, close, want string }{
+		{"P", "340", "359.24", "0.053558"},
+		{"C", "25", "20", "0.250000"},
+	}
+	for _, c := range cases {
+		q := quote(c.right, c.strike, "2026-12-18", "0.55", "0.65")
+		q.UnderlyingClose = c.close
+		s := firstOf(t, evalMarked([]compute.LedgerPosition{pos("s1", c.right, c.strike, "-1", "1.50")},
+			[]compute.StructureQuote{q}, baseParams()))
+		if got := s.Figures.ExpiryDistance.Value; got != c.want {
+			t.Errorf("%s strike %s close %s: %q want %q", c.right, c.strike, c.close, got, c.want)
+		}
+	}
+}
+
+// TestTrackAndStructureAgree: the two rules give one distance, the percent of the track
+// divided by 100 is the ratio of the structure.
+func TestTrackAndStructureAgree(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ right, strike, close string }{{"P", "90", "100"}, {"C", "25", "20"}, {"P", "380", "400"}, {"C", "120", "100"}} {
+		lp := pos("s1", c.right, c.strike, "-1", "1.50")
+		q := quote(c.right, c.strike, "2026-12-18", "0.55", "0.65")
+		q.UnderlyingClose = c.close
+		st := firstOf(t, evalMarked([]compute.LedgerPosition{lp}, []compute.StructureQuote{q}, baseParams()))
+
+		res := optiontrack.New().Track(trackapi.TrackInput{
+			Alias: "acct", AsOf: "2026-11-06", SessionDays: sessionDays, Positions: []compute.LedgerPosition{lp},
+			Quotes: []trackapi.TrackQuote{{
+				Underlying: "AAPL", Expiry: "2026-12-18", Strike: c.strike, Right: c.right, Day: "2026-11-06",
+				Bid: "0.55", Ask: "0.65", UnderlyingClose: c.close,
+			}},
+		}, trackapi.TrackParams{MarkMaxAgeSessions: 1})
+		if len(res.Open) != 1 {
+			t.Fatalf("open rows = %d", len(res.Open))
+		}
+		pct, _ := new(big.Rat).SetString(res.Open[0].OtmPercent)
+		// the percent has two places (item 1), so six-place equality holds where the share has
+		// at most four: the closes above are chosen so.
+		pct.Quo(pct, big.NewRat(100, 1))
+		if got := pct.FloatString(6); got != st.Figures.ExpiryDistance.Value {
+			t.Errorf("%s: track %s/100 = %s, structure %s", c.right, res.Open[0].OtmPercent, got, st.Figures.ExpiryDistance.Value)
+		}
 	}
 }

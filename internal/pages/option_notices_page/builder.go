@@ -74,6 +74,10 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 	if c.Candidates == nil || c.Earnings == nil {
 		vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
 	}
+	sessions, err := sessionDays(ctx, c, day)
+	if err != nil {
+		return nil, err
+	}
 	var oldest contracts.Day
 	for _, alias := range order(c) {
 		main := alias == c.Main
@@ -88,7 +92,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 			}
 			continue
 		}
-		block, err := aliasOf(ctx, c, alias, main, day, cp)
+		block, err := aliasOf(ctx, c, alias, main, day, sessions, cp)
 		if err != nil {
 			return nil, err
 		}
@@ -147,8 +151,38 @@ func finish(vm *viewModel, zone *time.Location, oldest contracts.Day) error {
 	return nil
 }
 
+// sessionSpanDays is how many days before the build day the session days are read.
+const sessionSpanDays = 15
+
+// sessionDays reads the session days of the calendar of c for sessionSpanDays up to day; nil when
+// c has no Sessions reader.
+func sessionDays(ctx context.Context, c Config, day contracts.Day) ([]contracts.Day, error) {
+	if c.Sessions == nil {
+		return nil, nil
+	}
+	from, err := daysBack(day, sessionSpanDays)
+	if err != nil {
+		return nil, fmt.Errorf("option_notices_page: bad day %q: %w", day, err)
+	}
+	cal := c.CalendarID
+	if cal == "" {
+		cal = "XNYS"
+	}
+	rows, err := c.Sessions.SessionDays(ctx, cal, from, day)
+	if err != nil {
+		return nil, fmt.Errorf("option_notices_page: read session days: %w", err)
+	}
+	var out []contracts.Day
+	for _, s := range rows {
+		if s.IsSession {
+			out = append(out, contracts.Day(s.SessionDay.Format(dayLayout)))
+		}
+	}
+	return out, nil
+}
+
 // aliasOf converts the stored rows of one alias to the rule input, evaluates it and writes the block.
-func aliasOf(ctx context.Context, c Config, alias string, main bool, day contracts.Day, cp capture) (aliasBlock, error) {
+func aliasOf(ctx context.Context, c Config, alias string, main bool, day contracts.Day, sessions []contracts.Day, cp capture) (aliasBlock, error) {
 	in := compute.NoticeInput{Day: day, Alias: alias, CaptureDay: cp.Day, Positions: noticePositions(cp.Positions),
 		PrevDay: cp.PrevDay, PrevPositions: noticePositions(cp.Prev), Guards: []compute.NoticeGuard{},
 		Earnings: []compute.NoticeEarnings{}, Values: noticeValues(cp.Values)}
@@ -170,5 +204,5 @@ func aliasOf(ctx context.Context, c Config, alias string, main bool, day contrac
 		}
 		in.Earnings = e
 	}
-	return okBlock(alias, main, cp.Day, day, c.Rule.Evaluate(in, c.Params), note, cp.Positions, c.Params), nil
+	return okBlock(alias, main, cp.Day, day, sessions, c.Rule.Evaluate(in, c.Params), note, cp.Positions, c.Params), nil
 }

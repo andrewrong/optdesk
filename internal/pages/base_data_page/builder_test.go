@@ -1,0 +1,337 @@
+package base_data_page
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/basefact"
+	"github.com/andrewrong/optdesk/internal/store/coverage"
+)
+
+const (
+	schemaDir  = "../../../contracts/schemas/"
+	schemaHost = "https://optdesk.invalid/schemas/"
+)
+
+var testNow = time.Date(2026, 11, 18, 9, 30, 0, 0, time.UTC)
+
+type fileLoader struct{}
+
+func (fileLoader) Load(url string) (any, error) {
+	file, ok := strings.CutPrefix(url, schemaHost)
+	if !ok || strings.ContainsAny(file, "/\\") {
+		return nil, fmt.Errorf("unexpected schema url %q", url)
+	}
+	b, err := os.ReadFile(schemaDir + file)
+	if err != nil {
+		return nil, err
+	}
+	return jsonschema.UnmarshalJSON(bytes.NewReader(b))
+}
+
+func validate(t *testing.T, b []byte) {
+	t.Helper()
+	c := jsonschema.NewCompiler()
+	c.AssertFormat()
+	c.UseLoader(fileLoader{})
+	s, err := c.Compile(schemaHost + "page.base_data_page.v1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Validate(inst); err != nil {
+		t.Fatalf("%v\n%s", err, b)
+	}
+}
+
+type fakeFacts struct {
+	res basefact.Result
+	err error
+}
+
+func (f fakeFacts) Facts(context.Context) (basefact.Result, error) { return f.res, f.err }
+func (fakeFacts) Close() error                                     { return nil }
+
+// fakeCov serves every weekday as a session of every calendar.
+type fakeCov struct {
+	cells      []coverage.Cell
+	sessionErr error
+}
+
+func (f fakeCov) Cells(context.Context, contracts.Day, contracts.Day) ([]coverage.Cell, error) {
+	return f.cells, nil
+}
+
+func (f fakeCov) Sessions(_ context.Context, cal string, from, to contracts.Day) ([]coverage.Session, error) {
+	if f.sessionErr != nil {
+		return nil, f.sessionErr
+	}
+	a, _ := time.Parse(dayFormat, string(from))
+	b, _ := time.Parse(dayFormat, string(to))
+	out := []coverage.Session{}
+	for d := a; !d.After(b); d = d.AddDate(0, 0, 1) {
+		out = append(out, coverage.Session{Calendar: cal, Day: contracts.Day(d.Format(dayFormat)),
+			IsSession: d.Weekday() != time.Saturday && d.Weekday() != time.Sunday})
+	}
+	return out, nil
+}
+func (fakeCov) NewestObservations(context.Context) ([]coverage.Newest, error) { return nil, nil }
+func (fakeCov) Close() error                                                  { return nil }
+
+// fakeEval gives every row pass, except bars (warn, bar_jump) and chains (fail, crossed); NotRead rows are unknown.
+// It records the Input it got.
+type fakeEval struct{ got *basecheckapi.Input }
+
+func (f fakeEval) Func() basecheckapi.Func {
+	return func(in basecheckapi.Input) basecheckapi.Output {
+		if f.got != nil {
+			*f.got = in
+		}
+		unread := map[string]bool{}
+		for _, id := range in.NotRead {
+			unread[id] = true
+		}
+		out := basecheckapi.Output{Level: basecheckapi.Pass, Counts: map[basecheckapi.Level]int{}}
+		for _, info := range basecheckapi.Rows {
+			r := basecheckapi.Row{Dataset: info.ID, Group: info.Group, Level: basecheckapi.Pass,
+				Newest: "2026-11-17", NewestValue: "value of " + info.ID, NewestSubject: "SUB",
+				Checks: []basecheckapi.Check{{Rule: "rows", Level: basecheckapi.Pass, N: 40, ThresholdSource: "def"}}}
+			switch {
+			case unread[info.ID]:
+				r = basecheckapi.Row{Dataset: info.ID, Group: info.Group, Level: basecheckapi.Unknown,
+					Checks: []basecheckapi.Check{{Rule: "not_read", Level: basecheckapi.Unknown}}}
+			case info.ID == "bars":
+				r.Level = basecheckapi.Warn
+				r.Checks = append(r.Checks, basecheckapi.Check{Rule: "bar_jump", Level: basecheckapi.Warn, N: 900, Bad: 3,
+					Share: "0.0033", WarnAt: "1", ThresholdSource: "trial", Example: "NVDA 2026-11-10"})
+			case info.ID == "chains":
+				r.Level = basecheckapi.Fail
+				r.AgeSessions = 1
+				r.Checks = append(r.Checks, basecheckapi.Check{Rule: "crossed", Level: basecheckapi.Fail, N: 112004, Bad: 2352,
+					Share: "0.021", WarnAt: "0.01", FailAt: "0.02", ThresholdSource: "trial", Example: "NVDA 2026-12-18 C 200"})
+			}
+			out.Counts[r.Level]++
+			if rank(r.Level) > rank(out.Level) {
+				out.Level = r.Level
+			}
+			out.Rows = append(out.Rows, r)
+		}
+		return out
+	}
+}
+
+func rank(l basecheckapi.Level) int {
+	return map[basecheckapi.Level]int{basecheckapi.Pass: 0, basecheckapi.Warn: 1, basecheckapi.Unknown: 2, basecheckapi.Fail: 3}[l]
+}
+
+func okFacts() fakeFacts {
+	return fakeFacts{res: basefact.Result{Facts: []basefact.Fact{{Dataset: "bars", Rule: "rows", N: 40}}, Failed: []string{}}}
+}
+
+func build(t *testing.T, in Input) (map[string]any, []byte) {
+	t.Helper()
+	b, err := Build(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, b)
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	return m, b
+}
+
+func defaultInput(ev fakeEval) Input {
+	return Input{Now: testNow, Facts: okFacts(), Cov: fakeCov{}, Eval: ev.Func()}
+}
+
+func gapReasons(m map[string]any) []string {
+	var out []string
+	for _, g := range m["gaps"].([]any) {
+		out = append(out, g.(map[string]any)["reason"].(string))
+	}
+	return out
+}
+
+func rowIDs(m map[string]any) []string {
+	var ids []string
+	for _, g := range m["groups"].([]any) {
+		for _, r := range g.(map[string]any)["rows"].([]any) {
+			ids = append(ids, r.(map[string]any)["dataset"].(string))
+		}
+	}
+	return ids
+}
+
+func jsonEqual(t *testing.T, got []byte, file string) {
+	t.Helper()
+	want, err := os.ReadFile(filepath.Join("testdata", file))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var g, w any
+	if err := json.Unmarshal(got, &g); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(want, &w); err != nil {
+		t.Fatal(err)
+	}
+	gb, _ := json.MarshalIndent(g, "", " ")
+	wb, _ := json.MarshalIndent(w, "", " ")
+	if !bytes.Equal(gb, wb) {
+		t.Fatalf("output differs from testdata/%s:\n%s", file, gb)
+	}
+}
+
+// TestBuildGroupsAreFour: the rows lie in the four groups of the table, in table order.
+func TestBuildGroupsAreFour(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, defaultInput(fakeEval{}))
+	var names []string
+	for _, g := range m["groups"].([]any) {
+		names = append(names, g.(map[string]any)["name"].(string))
+	}
+	if got := strings.Join(names, "|"); got != "Market data|Rates and events|Company facts|Account facts" {
+		t.Fatalf("groups = %s", got)
+	}
+	if len(rowIDs(m)) != len(basecheckapi.Rows) {
+		t.Fatalf("rows = %v", rowIDs(m))
+	}
+}
+
+// TestBuildPayloadMatchesFixture: the output for a fake Eval equals testdata/ok.json and validates.
+func TestBuildPayloadMatchesFixture(t *testing.T) {
+	t.Parallel()
+	_, b := build(t, defaultInput(fakeEval{}))
+	jsonEqual(t, b, "ok.json")
+}
+
+// TestBuildOneViewFailsOthersStay: a failed view group puts its rows in NotRead and gives one gap; the other rows stay.
+func TestBuildOneViewFailsOthersStay(t *testing.T) {
+	t.Parallel()
+	var got basecheckapi.Input
+	in := defaultInput(fakeEval{got: &got})
+	in.Facts = fakeFacts{res: basefact.Result{Facts: []basefact.Fact{}, Failed: []string{basefact.GroupOption}}}
+	m, _ := build(t, in)
+	if want := "quotes,chains,open"; strings.Join(got.NotRead, ",") != want {
+		t.Fatalf("NotRead = %v, want %s", got.NotRead, want)
+	}
+	if r := gapReasons(m); len(r) != 1 || r[0] != "view_unavailable" {
+		t.Fatalf("gaps = %v", r)
+	}
+	text := m["gaps"].([]any)[0].(map[string]any)["text"].(string)
+	if !strings.Contains(text, "option quotes") {
+		t.Fatalf("gap does not name the group in words: %s", text)
+	}
+	if len(rowIDs(m)) != len(basecheckapi.Rows) {
+		t.Fatalf("rows = %v", rowIDs(m))
+	}
+	if m["top"].(map[string]any)["level"] != "unknown" {
+		t.Fatalf("top = %v", m["top"])
+	}
+}
+
+// TestBuildAllViewsFailGap: all four views failing gives facts_unavailable, no row and no verdict call.
+func TestBuildAllViewsFailGap(t *testing.T) {
+	t.Parallel()
+	called := false
+	in := defaultInput(fakeEval{})
+	in.Eval = func(basecheckapi.Input) basecheckapi.Output { called = true; return basecheckapi.Output{} }
+	in.Facts = fakeFacts{err: errors.New("all four views failed")}
+	m, b := build(t, in)
+	if called {
+		t.Fatal("Eval called")
+	}
+	if r := gapReasons(m); len(r) != 1 || r[0] != "facts_unavailable" {
+		t.Fatalf("gaps = %v", r)
+	}
+	if len(rowIDs(m)) != 0 {
+		t.Fatalf("rows = %v", rowIDs(m))
+	}
+	jsonEqual(t, b, "gap.json")
+}
+
+// TestBuildGivesBothCalendars: Days and Sessions carry both calendars, the newest session before the zone's today;
+// a failed coverage read gives the gap and still evaluates the rules.
+func TestBuildGivesBothCalendars(t *testing.T) {
+	t.Parallel()
+	var got basecheckapi.Input
+	m, _ := build(t, defaultInput(fakeEval{got: &got}))
+	// 2026-11-18 09:30 UTC is 04:30 on the 18th in New York and 18:30 on the 18th in Tokyo: both last closed on the 17th.
+	for _, cal := range []string{"XNYS", "XTKS"} {
+		if got.Days[cal] != "2026-11-17" {
+			t.Errorf("Days[%s] = %s", cal, got.Days[cal])
+		}
+		if s := got.Sessions[cal]; len(s) == 0 || s[len(s)-1] != "2026-11-17" {
+			t.Errorf("Sessions[%s] ends at %v", cal, s)
+		}
+	}
+	if ls := m["last_sessions"].(map[string]any); ls["XNYS"] != "2026-11-17" || ls["XTKS"] != "2026-11-17" {
+		t.Errorf("last_sessions = %v", ls)
+	}
+
+	// 2026-11-17 16:00 UTC is 01:00 on the 18th in Tokyo (Tokyo closed on the 17th) and 11:00 on the 17th in New York.
+	early := defaultInput(fakeEval{got: &got})
+	early.Now = time.Date(2026, 11, 17, 16, 0, 0, 0, time.UTC)
+	build(t, early)
+	if got.Days["XNYS"] != "2026-11-16" || got.Days["XTKS"] != "2026-11-17" {
+		t.Errorf("Days = %v", got.Days)
+	}
+
+	bad := defaultInput(fakeEval{got: &got})
+	bad.Cov = fakeCov{sessionErr: errors.New("down")}
+	m, _ = build(t, bad)
+	if r := gapReasons(m); len(r) != 1 || r[0] != "coverage_unavailable" {
+		t.Fatalf("gaps = %v", r)
+	}
+	if len(got.Days) != 2 || len(got.Sessions) != 2 || len(rowIDs(m)) != len(basecheckapi.Rows) {
+		t.Fatalf("Days %v Sessions %v rows %v", got.Days, got.Sessions, rowIDs(m))
+	}
+}
+
+// TestBuildStepTwoFromStepOnePayload: the check list of a row is built from the row payload of the table: the
+// checks of the row come with their label and the hint of "<row>.<rule>", and the summary names the failed ones.
+func TestBuildStepTwoFromStepOnePayload(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, defaultInput(fakeEval{}))
+	var chains map[string]any
+	for _, g := range m["groups"].([]any) {
+		for _, r := range g.(map[string]any)["rows"].([]any) {
+			if row := r.(map[string]any); row["dataset"] == "chains" {
+				chains = row
+			}
+		}
+	}
+	checks := chains["checks"].([]any)
+	if len(checks) != 2 {
+		t.Fatalf("checks = %v", checks)
+	}
+	crossed := checks[1].(map[string]any)
+	hint, _ := Hint("chains.crossed")
+	if crossed["rule"] != "crossed" || crossed["hint_zh"] != hint || crossed["label"] != "Crossed quotes" || crossed["bad"] != float64(2352) {
+		t.Fatalf("crossed = %v", crossed)
+	}
+	if chains["failed_summary"] != "crossed 2.1%" || chains["age_text"] != "1 s" {
+		t.Fatalf("row = %v", chains)
+	}
+	label, _ := Hint("chains")
+	if chains["label_zh"] != label {
+		t.Fatalf("label_zh = %v", chains["label_zh"])
+	}
+}

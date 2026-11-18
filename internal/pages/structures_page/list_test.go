@@ -58,7 +58,7 @@ func TestRowFieldsFromFigures(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	r := groupRows(t, m, 0)[0]
-	if r["kind_text"] != "Short put" || r["expiry_text"] != "2026-12-18" || r["distance"] != "-9.1200%" || r["earned"] != "52.0000%" {
+	if r["kind_text"] != "Short put" || r["expiry_text"] != "2026-12-18" || r["distance"] != "9.1200%" || r["earned"] != "52.0000%" {
 		t.Fatalf("row = %v", r)
 	}
 	if r["moneyness"] != "out of the money" || r["ex_dividend"] != nil {
@@ -368,4 +368,13 @@ func TestOtherReasonIsChinese(t *testing.T) {
 		}
 	}
 	t.Fatalf("reason %q has no Chinese text", r)
+}
+
+func TestShortPutMoneynessMatchesSign(t *testing.T) {
+	t.Parallel()
+	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
+	r := groupRows(t, m, 0)[0]
+	if r["kind_text"] != "Short put" || r["distance"] != "9.1200%" || r["moneyness"] != "out of the money" {
+		t.Fatalf("row = %v", r)
+	}
 }

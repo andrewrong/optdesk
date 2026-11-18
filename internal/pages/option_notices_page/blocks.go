@@ -90,13 +90,29 @@ func noCaptureBlock(alias string, main bool) aliasBlock {
 		CashByDate: []cashRow{}, Note: &note}
 }
 
+// staleBy reports whether dataDay is stale on buildDay. With session days it is fresh only when it
+// is the last session not after buildDay or the session just before it; with none, or with no
+// session on or before buildDay, it is stale when older than buildDay.
+func staleBy(dataDay, buildDay contracts.Day, sessions []contracts.Day) bool {
+	pos := -1
+	for i, s := range sessions {
+		if s <= buildDay {
+			pos = i
+		}
+	}
+	if pos < 0 {
+		return dataDay < buildDay
+	}
+	return sessions[pos] != dataDay && (pos == 0 || sessions[pos-1] != dataDay)
+}
+
 // okBlock writes the block of an alias from the rule's result, in the rule's order. The status is
-// stale when the data day is older than the build day. note is empty for no note.
-func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compute.NoticeResult, note string,
+// stale by staleBy over sessions, the session days up to the build day. note is empty for no note.
+func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, sessions []contracts.Day, res compute.NoticeResult, note string,
 	positions []store.Position, params compute.NoticeParams) aliasBlock {
 	b := aliasBlock{Alias: clip(alias), Main: main, Status: "ok", Notices: make([]noticeRow, 0, len(res.Notices)),
 		CashByDate: make([]cashRow, 0, len(res.CashByDate))}
-	if dataDay < buildDay {
+	if staleBy(dataDay, buildDay, sessions) {
 		b.Status = "stale"
 	}
 	dd := string(dataDay)

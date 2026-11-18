@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -361,5 +362,120 @@ func TestBuiltPageHasPutsAndHints(t *testing.T) {
 		if !strings.HasPrefix(string(acc[k]), `"`) {
 			t.Errorf("%s = %s", k, acc[k])
 		}
+	}
+}
+
+// fakeSessions answers the given days as session days and records the calendar asked for.
+type fakeSessions struct {
+	days []string
+	err  error
+	mu   sync.Mutex
+	cals []string
+}
+
+func (f *fakeSessions) SessionDays(_ context.Context, cal string, _, _ contracts.Day) ([]contracts.SessionDay, error) {
+	f.mu.Lock()
+	f.cals = append(f.cals, cal)
+	f.mu.Unlock()
+	if f.err != nil {
+		return nil, f.err
+	}
+	out := []contracts.SessionDay{}
+	for _, d := range f.days {
+		tm, _ := time.Parse("2006-01-02", d)
+		out = append(out, contracts.SessionDay{SessionDay: types.SerializableDate{Time: tm}, IsSession: true})
+	}
+	// a non-session day that must be ignored
+	tm, _ := time.Parse("2006-01-02", "2026-11-17")
+	return append(out, contracts.SessionDay{SessionDay: types.SerializableDate{Time: tm}, IsSession: false}), nil
+}
+
+// buildOn builds the page of day with main captured on captureDay.
+func buildOn(t *testing.T, s store.SessionDayReader, day, captureDay string) outPage {
+	t.Helper()
+	a := fakeAccount{positions: map[string][]store.Position{"main/" + captureDay: {stock("ACME")}}}
+	c := testConfig(a, &fakeRule{})
+	c.Sessions = s
+	b, err := Build(context.Background(), c, nil, contracts.Day(day), time.Date(2026, 11, 18, 8, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p outPage
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+var wedSessions = []string{"2026-11-12", "2026-11-13", "2026-11-16", "2026-11-17", "2026-11-18"}
+
+func TestPreviousSessionCaptureIsFresh(t *testing.T) {
+	t.Parallel()
+	fs := &fakeSessions{days: wedSessions}
+	p := buildOn(t, fs, "2026-11-18", "2026-11-17")
+	if p.Accounts[0].Status != "ok" || p.Stale != nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+	if len(fs.cals) != 1 || fs.cals[0] != "XNYS" {
+		t.Errorf("calendars = %v", fs.cals)
+	}
+}
+
+func TestTwoSessionsOldCaptureIsStale(t *testing.T) {
+	t.Parallel()
+	p := buildOn(t, &fakeSessions{days: wedSessions}, "2026-11-18", "2026-11-16")
+	if p.Accounts[0].Status != "stale" || p.Stale == nil || !strings.Contains(p.Stale.Text, "2026-11-16") {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+}
+
+func TestMondayAcceptsFridayCapture(t *testing.T) {
+	t.Parallel()
+	s := &fakeSessions{days: []string{"2026-11-05", "2026-11-06", "2026-11-09"}}
+	p := buildOn(t, s, "2026-11-09", "2026-11-06")
+	if p.Accounts[0].Status != "ok" || p.Stale != nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+	if p = buildOn(t, s, "2026-11-09", "2026-11-05"); p.Accounts[0].Status != "stale" {
+		t.Errorf("Thursday status = %s", p.Accounts[0].Status)
+	}
+}
+
+func TestNilSessionsKeepsOldComparison(t *testing.T) {
+	t.Parallel()
+	p := buildOn(t, nil, "2026-11-18", "2026-11-17")
+	if p.Accounts[0].Status != "stale" || p.Stale == nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+	p = buildOn(t, &fakeSessions{}, "2026-11-18", "2026-11-17")
+	if p.Accounts[0].Status != "stale" {
+		t.Errorf("empty sessions: status = %s", p.Accounts[0].Status)
+	}
+}
+
+func TestSessionReaderErrorFailsBuild(t *testing.T) {
+	t.Parallel()
+	c := testConfig(fakeAccount{}, &fakeRule{})
+	c.Sessions = &fakeSessions{err: errors.New("boom")}
+	_, err := Build(context.Background(), c, nil, buildDay, time.Time{})
+	if err == nil || !strings.Contains(err.Error(), "option_notices_page") || !strings.Contains(err.Error(), "boom") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestBuildDaySessionCaptureIsFresh(t *testing.T) {
+	t.Parallel()
+	p := buildOn(t, &fakeSessions{days: wedSessions}, "2026-11-18", "2026-11-18")
+	if p.Accounts[0].Status != "ok" || p.Stale != nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+}
+
+func TestOffListCaptureIsStale(t *testing.T) {
+	t.Parallel()
+	// 2026-11-14 is a Saturday: not on the session list, so stale even though it is after the Friday session.
+	p := buildOn(t, &fakeSessions{days: wedSessions}, "2026-11-18", "2026-11-14")
+	if p.Accounts[0].Status != "stale" || p.Stale == nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
 	}
 }
