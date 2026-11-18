@@ -1,6 +1,9 @@
 package contracts_test
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 const baseDataPageV1 = "page.base_data_page.v1.json"
 
@@ -150,5 +153,21 @@ func TestSkippedNotNegative(t *testing.T) {
 	delete(cc(m), "skipped")
 	if !pageV1Valid(t, baseDataPageV1, m) {
 		t.Error("cross_check without skipped refused")
+	}
+}
+
+// TestCrossTextsBounded: company and reason_zh follow the text maximum of 600.
+func TestCrossTextsBounded(t *testing.T) {
+	t.Parallel()
+	m := baseDataFixture(t, "cross")
+	cc := baseDataRows(m)[0]["cross_check"].(map[string]any)
+	cc["items"].([]any)[0].(map[string]any)["company"] = strings.Repeat("x", 601)
+	if pageV1Valid(t, baseDataPageV1, m) {
+		t.Error("company of 601 chars accepted")
+	}
+	m = baseDataFixture(t, "cross")
+	baseDataRows(m)[0]["cross_check"].(map[string]any)["reason_zh"] = strings.Repeat("原", 601)
+	if pageV1Valid(t, baseDataPageV1, m) {
+		t.Error("reason_zh of 601 chars accepted")
 	}
 }

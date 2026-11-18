@@ -113,7 +113,7 @@
         "diff": {"$ref": "#/$defs/Optional"},
         "kind": {"$ref": "#/$defs/Text"},
         "hint_zh": {"$ref": "#/$defs/Optional"},
-        "company": {"type": "string"}
+        "company": {"$ref": "#/$defs/Optional"}
       }
     },
     "CrossCheck": {
@@ -129,7 +129,7 @@
         "missing": {"$ref": "#/$defs/Count"},
         "skipped": {"$ref": "#/$defs/Count"},
         "reason": {"type": "string", "enum": ["no_run", "rate_limited", "network", "timeout", "source_changed"]},
-        "reason_zh": {"type": "string"},
+        "reason_zh": {"$ref": "#/$defs/Optional"},
         "tolerance_text": {"$ref": "#/$defs/Optional"},
         "source_id": {"$ref": "#/$defs/Text"},
         "run_at": {"oneOf": [{"$ref": "common.v2.json#/$defs/Timestamp"}, {"type": "null"}]},
