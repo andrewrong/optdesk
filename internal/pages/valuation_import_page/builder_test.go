@@ -267,3 +267,17 @@ func TestEveryReasonHasChineseHint(t *testing.T) {
 		}
 	}
 }
+
+func TestOlderReasonFromImporterKeepsHint(t *testing.T) {
+	t.Parallel()
+	in := previewInput()
+	in.Plan.Rows[3].Reason = "older than stored"
+	in.Plan.Rows[4].Reason = "unmatched name"
+	rows := decode(t, build(t, in))["rows"].([]any)
+	if got := rows[3].(map[string]any)["reason"]; got != TextOlder {
+		t.Errorf("reason %v, want %q", got, TextOlder)
+	}
+	if got := rows[4].(map[string]any)["reason"]; got != TextUnmatched {
+		t.Errorf("reason %v, want %q", got, TextUnmatched)
+	}
+}
