@@ -162,6 +162,16 @@
         },
         "gap": {
           "$ref": "#/$defs/OptGap"
+        },
+        "ledger": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Ledger"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -294,6 +304,87 @@
             "bad",
             "muted"
           ]
+        }
+      }
+    },
+    "Ledger": {
+      "description": "The ended-lot ledger of one account: one view per grouping. Optional on Account; null when the account has a gap.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "note",
+        "views"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "note": {
+          "$ref": "#/$defs/Text"
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LedgerView"
+          }
+        }
+      }
+    },
+    "LedgerView": {
+      "description": "One grouping of the ledger: by month or by company.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "groups"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "by_month",
+            "by_company"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Group"
+          }
+        }
+      }
+    },
+    "Group": {
+      "description": "One month or one company of a ledger view, with its books (one per currency).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "summary",
+        "books"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^grp-[A-Za-z0-9:_-]{1,96}$"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "summary": {
+          "$ref": "#/$defs/Text"
+        },
+        "books": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Book"
+          }
         }
       }
     }

@@ -100,6 +100,7 @@ export interface Account {
   lots: Lot[];
   sample_note: Text1;
   gap: OptGap;
+  ledger?: Ledger | null;
 }
 /**
  * The sum of the lots of one currency. left_out is the line naming the lots left out of the sums, or null when none.
@@ -136,4 +137,29 @@ export interface Lot {
   recon: Line[];
   badges: Text1[];
   gap: OptGap;
+}
+/**
+ * The ended-lot ledger of one account: one view per grouping. Optional on Account; null when the account has a gap.
+ */
+export interface Ledger {
+  title: Text1;
+  note: Text1;
+  views: LedgerView[];
+}
+/**
+ * One grouping of the ledger: by month or by company.
+ */
+export interface LedgerView {
+  id: "by_month" | "by_company";
+  label: Text1;
+  groups: Group[];
+}
+/**
+ * One month or one company of a ledger view, with its books (one per currency).
+ */
+export interface Group {
+  id: string;
+  label: Text1;
+  summary: Text1;
+  books: Book[];
 }
