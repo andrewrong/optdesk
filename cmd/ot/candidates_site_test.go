@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
 	"github.com/andrewrong/optdesk/internal/store/strategyresultpg"
 )
@@ -26,6 +27,7 @@ type candidatesFixture struct {
 	days     []contracts.Day
 	got      store.CandidateReader
 	gotNames store.InstrumentNameReader
+	gotAll   candidateReaders
 	err      error
 }
 
@@ -33,9 +35,10 @@ func newCandidatesFixture(t *testing.T, env string) *candidatesFixture {
 	t.Helper()
 	f := &candidatesFixture{}
 	f.a, _ = testApp(t, env)
-	f.a.deps.optionCandidatesPage = func(_ *time.Location, _, _, _ string, c store.CandidateReader, n store.InstrumentNameReader) pages.Page {
-		f.got = c
-		f.gotNames = n
+	f.a.deps.optionCandidatesPage = func(_ *time.Location, _, _, _ string, r candidateReaders) pages.Page {
+		f.gotAll = r
+		f.got = r.Cands
+		f.gotNames = r.Names
 		build := func(_ context.Context, _ store.SeriesReader, day contracts.Day, _ time.Time) ([]byte, error) {
 			f.builds.Add(1)
 			f.days = append(f.days, day)
@@ -330,7 +333,7 @@ func TestCandidatesPageSameRowsFromEitherReader(t *testing.T) {
 	}
 	fromOld := shortPutOnly{rows: rows}
 	render := func(c store.CandidateReader) string {
-		p := newOptionCandidatesPage(time.UTC, "ot-page", "b", "option", c, namesNone{})
+		p := newOptionCandidatesPage(time.UTC, "ot-page", "b", "option", candidateReaders{Cands: c, Names: namesNone{}})
 		b, err := p.Build(t.Context(), seriesNone{}, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
 		if err != nil {
 			t.Fatal(err)
@@ -340,5 +343,55 @@ func TestCandidatesPageSameRowsFromEitherReader(t *testing.T) {
 	a, b := render(fromResult), render(fromOld)
 	if a != b || !strings.Contains(a, `"kind":"short_put"`) {
 		t.Fatalf("pages differ:\n%s\n%s", a, b)
+	}
+}
+
+func TestCandidatesWiresEvidence(t *testing.T) {
+	t.Parallel()
+	f := newCandidatesFixture(t, "")
+	rd := siteReaders{cands: demoCandidates{}, names: demoOption{}, view: demoView{}, terms: demoOption{}, days: &recordDays{}}
+	h := siteHandler(f.a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := candidatesGet(t, h, http.MethodGet, "/"+siteCandidatesRoute)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"schema":"option_candidates_page"`) {
+		t.Fatalf("%d %q", rec.Code, rec.Body)
+	}
+	g := f.gotAll
+	if g.View == nil || g.Terms == nil || g.Days == nil || g.View != store.ReadingViewReader(rd.view) || g.Days != rd.days {
+		t.Fatalf("readers %+v", g)
+	}
+}
+
+func TestCandidatesNamedNoEvidence(t *testing.T) {
+	t.Parallel()
+	f := newCandidatesFixture(t, store.DSNEnvPages+"=pages-dsn\n")
+	f.a.profile.Name = "real"
+	var closed atomic.Int32
+	cc := closeCounter{&closed}
+	f.a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
+		return cCandsReader{demoCandidates: demoCandidates{}, closeCounter: cc}, nil
+	}
+	f.a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
+		return cNames{closeCounter: cc}, nil
+	}
+	f.a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
+		t.Error("reading view opened")
+		return nil, errors.New("opened")
+	}
+	f.a.deps.openOptionTerms = func(context.Context, string) (store.OptionTermsStore, error) {
+		t.Error("terms store opened")
+		return nil, errors.New("opened")
+	}
+	f.a.deps.openOptionDay = func(context.Context, string) (optionday.DayReader, error) {
+		t.Error("day reader opened")
+		return nil, errors.New("opened")
+	}
+	p, closeFn, err := candidatesPageNamed(t.Context(), f.a)
+	if err != nil || p.Meta.Name != candidatesName {
+		t.Fatalf("%v %+v", err, p.Meta)
+	}
+	closeFn()
+	g := f.gotAll
+	if g.View != nil || g.Terms != nil || g.Days != nil || g.Cands == nil || g.Names == nil || closed.Load() != 2 {
+		t.Fatalf("readers %+v closed %d", g, closed.Load())
 	}
 }
