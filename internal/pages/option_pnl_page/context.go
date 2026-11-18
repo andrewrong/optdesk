@@ -89,7 +89,8 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day, seri
 	if err != nil {
 		return g, err
 	}
-	for _, p := range shown {
+	for _, l := range shown {
+		p := l.pos
 		if m, ok := markOf(p, rows[p.Contract]); ok && p.Status == statusOpen {
 			in.Marks = append(in.Marks, m)
 		}
@@ -99,11 +100,12 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day, seri
 	for _, p := range second {
 		byID[p.PositionID] = p
 	}
-	for _, p := range shown {
+	for _, l := range shown {
+		p := l.pos
 		if q, ok := byID[p.PositionID]; ok {
 			p = q
 		}
-		g.lots = append(g.lots, pnlLot{pos: p, rows: rows[p.Contract]})
+		g.lots = append(g.lots, pnlLot{pos: p, rows: rows[p.Contract], card: l.card})
 	}
 	if len(g.lots) == 0 {
 		return g, nil
@@ -114,25 +116,32 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day, seri
 	return g, closesOf(ctx, c, g.lots)
 }
 
-// selectLots keeps the short puts that are open or ended within RecentDays, counts the calls and the long puts it
-// skips, and returns the oldest open day of the kept lots.
-func selectLots(c Config, positions []compute.LedgerPosition, d time.Time, g *gathered) ([]compute.LedgerPosition, contracts.Day) {
+// selectLots keeps the short puts that are open, ended within RecentDays (the cards) or ended on or after the
+// first day of the oldest ledger month (the ledger only); card is true for the first two. It counts the
+// calls and the long puts of the card rule only, and returns the oldest open day of the kept lots.
+func selectLots(c Config, positions []compute.LedgerPosition, d time.Time, g *gathered) ([]pnlLot, contracts.Day) {
 	since := dayText(d, c.RecentDays)
-	var out []compute.LedgerPosition
+	ledgerSince := ledgerFirst(d)
+	var out []pnlLot
 	var from contracts.Day
 	for _, p := range positions {
-		if p.Status != statusOpen && p.ClosedOn < since {
+		card := p.Status == statusOpen || p.ClosedOn >= since
+		if !card && p.ClosedOn < ledgerSince {
 			continue
 		}
 		if strings.ToUpper(p.Right) != "P" {
-			g.calls++
+			if card {
+				g.calls++
+			}
 			continue
 		}
 		if q := strings.TrimSpace(p.Quantity); q != "" && !strings.HasPrefix(q, "-") {
-			g.longs++
+			if card {
+				g.longs++
+			}
 			continue
 		}
-		out = append(out, p)
+		out = append(out, pnlLot{pos: p, card: card})
 		if from == "" || p.OpenedOn < from {
 			from = p.OpenedOn
 		}
@@ -141,12 +150,12 @@ func selectLots(c Config, positions []compute.LedgerPosition, d time.Time, g *ga
 }
 
 // rowsOf reads the option_day rows of the conids of the lots in chunks of 500, keyed by contract text.
-func rowsOf(ctx context.Context, c Config, lots []compute.LedgerPosition, from, to contracts.Day) (map[string][]optionday.Day, error) {
+func rowsOf(ctx context.Context, c Config, lots []pnlLot, from, to contracts.Day) (map[string][]optionday.Day, error) {
 	out := map[string][]optionday.Day{}
 	var ids []int64
 	seen := map[int64]bool{}
-	for _, p := range lots {
-		if id, err := strconv.ParseInt(p.Contract, 10, 64); err == nil && !seen[id] {
+	for _, l := range lots {
+		if id, err := strconv.ParseInt(l.pos.Contract, 10, 64); err == nil && !seen[id] {
 			seen[id] = true
 			ids = append(ids, id)
 		}
