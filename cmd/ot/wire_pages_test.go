@@ -103,3 +103,28 @@ func TestPnlWiresAttributorBooker(t *testing.T) {
 		t.Fatalf("meta %+v", p.Meta)
 	}
 }
+
+// recordingSessions records the calendar the page asks for.
+type recordingSessions struct {
+	store.SessionDayReader
+	cals []string
+}
+
+func (r *recordingSessions) SessionDays(_ context.Context, cal string, _, _ contracts.Day) ([]contracts.SessionDay, error) {
+	r.cals = append(r.cals, cal)
+	return nil, nil
+}
+
+func TestOptionNoticesPageReadsSessionDays(t *testing.T) {
+	t.Parallel()
+	d := newDeps()
+	s := &recordingSessions{}
+	p := d.optionNoticesPage(time.UTC, "ot-page", "dev", "notices", demoNoticesMain, []string{demoNoticesMain}, demoNoticeAccount{}, nil, nil, s,
+		d.newOptionNotices(), d.noticeParams())
+	if _, err := p.Build(t.Context(), nil, "2026-11-18", time.Date(2026, 11, 18, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.cals) == 0 || s.cals[0] != "XNYS" {
+		t.Fatalf("session reader calendars %v, want XNYS", s.cals)
+	}
+}
