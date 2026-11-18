@@ -30,19 +30,16 @@ const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]
   [
     'Options',
     [
-      ['Overview', '/options'],
-      ['Data', '/options/data'],
       ['Candidates', '/options/candidates'],
       ['Structures', '/options/structures'],
       ['Result', '/options/result'],
       ['Notices', '/options/notices'],
       ['Tracking', '/options/tracking'],
       ['P&L split', '/options/pnl'],
-      ['Advice', '/advice'],
     ],
   ],
   ['Companies', [['Watch list', '/underlyings'], ['Price lines', '/plan/price-lines'], ['Valuation', '/valuation'], ['Data', '/company-data']]],
-  ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Data health', '/data-health']]],
+  ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Data health', '/data-health'], ['Option data', '/options/data']]],
 ]
 
 const triggers = () => [...host.querySelectorAll('nav > div > button')] as HTMLElement[]
@@ -81,16 +78,16 @@ describe('TestTopNavGroupMenus', () => {
     if (name === 'Options') {
       const texts = [...menu.querySelectorAll('a, [data-slot="dropdown-menu-label"]')].map((e) => e.textContent)
       expect(texts).toEqual([
-        'Overview', 'Data', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split', 'Advice',
+        'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split',
       ])
     }
   })
 
-  it('marks Data in the Options menu at options/data/9001', async () => {
+  it('marks Option data in the System menu at options/data/9001', async () => {
     await showAt('/options/data/9001')
-    const menu = await openMenu('Options')
+    const menu = await openMenu('System')
     const marked = [...menu.querySelectorAll('a[aria-current="page"]')]
-    expect(marked.map((a) => a.textContent)).toEqual(['Data'])
+    expect(marked.map((a) => a.textContent)).toEqual(['Option data'])
   })
 })
 
@@ -99,10 +96,8 @@ describe('TestTopNavMarksGroup', () => {
     ['/home', 'Home', 'page'],
     ['/macro', 'Market', 'true'],
     ['/risk/', 'Portfolio', 'true'],
-    ['/options', 'Options', 'true'],
-    ['/options/data/9001', 'Options', 'true'],
+    ['/options/data/9001', 'System', 'true'],
     ['/options/structures', 'Options', 'true'],
-    ['/advice', 'Options', 'true'],
     ['/plan/price-lines', 'Companies', 'true'],
     ['/valuation', 'Companies', 'true'],
     ['/job-console', 'System', 'true'],
@@ -158,9 +153,9 @@ describe('TopNav', () => {
       'Home',
       'Market', 'Macro', 'Market state',
       'Portfolio', 'Household', 'Positions', 'Risk',
-      'Options', 'Overview', 'Data', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split', 'Advice',
+      'Options', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split',
       'Companies', 'Watch list', 'Price lines', 'Valuation', 'Data',
-      'System', 'Settings', 'Job console', 'Data health',
+      'System', 'Settings', 'Job console', 'Data health', 'Option data',
     ])
     const expected = [['Home', '/home'], ...GROUPS.flatMap(([, l]) => l)].map(([l, h]) => [l, h])
     expect(pairs(sheet?.querySelectorAll('a') ?? [])).toEqual(expected)
@@ -168,11 +163,11 @@ describe('TopNav', () => {
     expect(structures?.className).toContain('pl-6')
   })
 
-  it('TestTopNavSheetGroups: marks the link Data at options/data/9001', async () => {
+  it('TestTopNavSheetGroups: marks the link Option data at options/data/9001', async () => {
     await showAt('/options/data/9001')
     const sheet = await openSheet()
     const marked = [...(sheet?.querySelectorAll('[aria-current]') ?? [])]
-    expect(marked.map((a) => [a.textContent, a.getAttribute('aria-current')])).toEqual([['Data', 'page']])
+    expect(marked.map((a) => [a.textContent, a.getAttribute('aria-current')])).toEqual([['Option data', 'page']])
   })
 })
 
