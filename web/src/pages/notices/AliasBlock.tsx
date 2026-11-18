@@ -1,6 +1,5 @@
 // One card per alias: status, data day, notices, the "cash by date" table and the cushion text. A `no_capture` block
 // shows its note and no table. Text as sent; nothing is compared, summed, sorted or formatted here.
-import { Fragment } from 'react'
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -55,27 +54,31 @@ export function AliasBlock({ block }: { block: Block }) {
                 <AlertDescription>No short put is open: no cash is due.</AlertDescription>
               </Alert>
             ) : (
-              <Table data-cash>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead>Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {block.cash_by_date.map((row, index) => (
-                    <Fragment key={`${index}-${row.day}-${row.currency}`}>
-                      <TableRow>
-                        <TableCell>{row.day}</TableCell>
-                        <TableCell>{row.currency}</TableCell>
-                        <TableCell>{row.amount_text}</TableCell>
-                      </TableRow>
-                      <CashPuts puts={row.puts} />
-                    </Fragment>
-                  ))}
-                </TableBody>
-              </Table>
+              <div data-cash>
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Currency</TableHead>
+                      <TableHead>Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                </Table>
+                {block.cash_by_date.map((row, index) => (
+                  <div key={`${index}-${row.day}-${row.currency}`} data-cash-day>
+                    <Table className="table-fixed">
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>{row.day}</TableCell>
+                          <TableCell>{row.currency}</TableCell>
+                          <TableCell>{row.amount_text}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                    <CashPuts puts={row.puts} />
+                  </div>
+                ))}
+              </div>
             )}
             {block.cushion_text ? (
               <p className="text-sm" data-cushion>

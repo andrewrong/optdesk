@@ -68,9 +68,9 @@ describe('OptionNoticesPage', () => {
   it('shows the cash by date table in payload order and the cushion text', async () => {
     const page = await show(ok)
     const block = page.querySelector('[data-alias=ok-main]')!
-    const days = [...block.querySelectorAll('[data-cash] tbody tr:not([data-cash-puts])')].map((tr) => tr.querySelector('td')!.textContent)
+    const days = [...block.querySelectorAll('[data-cash] tbody tr')].map((tr) => tr.querySelector('td')!.textContent)
     expect(days).toEqual(ok.accounts[0]!.cash_by_date.map((r) => r.day))
-    const amounts = [...block.querySelectorAll('[data-cash] tbody tr:not([data-cash-puts])')].map((tr) => tr.lastElementChild!.textContent)
+    const amounts = [...block.querySelectorAll('[data-cash] tbody tr')].map((tr) => tr.lastElementChild!.textContent)
     expect(amounts).toEqual(ok.accounts[0]!.cash_by_date.map((r) => r.amount_text))
     expect(block.querySelector('[data-cushion]')!.textContent).toBe(ok.accounts[0]!.cushion_text)
     expect(page.querySelector('[data-alias=ok-second] table')).toBeNull()
@@ -78,15 +78,19 @@ describe('OptionNoticesPage', () => {
 
   it('lists the puts under each cash day', async () => {
     const page = await show(ok)
-    const rows = [...page.querySelectorAll('[data-alias=ok-main] [data-cash] tbody tr')]
-    expect(rows.map((r) => r.hasAttribute('data-cash-puts'))).toEqual([false, true, false])
-    const puts = [...rows[1]!.querySelectorAll('[data-cash-put]')].map((li) =>
+    const block = page.querySelector('[data-alias=ok-main]')!
+    const days = [...block.querySelectorAll('[data-cash-day]')]
+    expect(days.map((d) => d.querySelectorAll('[data-cash-put]').length)).toEqual([2, 0, 0])
+    expect(days.map((d) => d.querySelector('[data-cash-puts]') === null)).toEqual([false, true, true])
+    const puts = [...days[0]!.querySelectorAll('[data-cash-put]')].map((li) =>
       [...li.querySelectorAll('span')].map((s) => s.textContent),
     )
     expect(puts).toEqual(
-      ok.accounts[0]!.cash_by_date[0]!.puts.map((p) => [p.symbol, p.expiry, p.strike_text, p.right, p.quantity_text]),
+      ok.accounts[0]!.cash_by_date[0]!.puts!.map((p) => [p.symbol, p.expiry, p.strike_text, p.right, p.quantity_text]),
     )
-    expect(rows[1]!.querySelector('td')!.getAttribute('colspan')).toBe('3')
+    expect(block.querySelector('[data-cash-put]')!.closest('div')!.querySelector('td')!.textContent).toBe(
+      ok.accounts[0]!.cash_by_date[0]!.day,
+    )
   })
 
   it('shows the cushion and no-guard-record hints', async () => {

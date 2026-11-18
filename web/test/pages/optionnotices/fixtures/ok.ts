@@ -61,6 +61,7 @@ export const ok = {
           ],
         },
         { day: '2026-11-14', currency: 'USD', amount_text: 'ok Amount A', puts: [] },
+        { day: '2026-11-30', currency: 'USD', amount_text: 'ok Amount C' },
       ],
       cushion_text: 'ok Buffer text',
       cushion_hint: 'ok Cushion hint',
