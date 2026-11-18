@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
+	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -129,16 +130,52 @@ func TestConfigTierFieldsNilBuild(t *testing.T) {
 	}
 }
 
+type putRows struct{}
+
+func (putRows) Candidates(_ context.Context, _ contracts.Day, kind string) ([]store.Candidate, error) {
+	if kind != "short_put" {
+		return []store.Candidate{}, nil
+	}
+	spot, buy := "96.50", "90.00"
+	return []store.Candidate{{
+		Kind: "short_put", InstrumentID: 7, Issuer: "AAA", Expiry: "2026-12-18", DTE: 39, Right: "put",
+		Strike: "85.00", BidEod: "0.42", BreakEven: "84.58", Status: "ok", Gates: "[]", Marks: "[]", Fits: "{}",
+		EarningsState: "listed", RuleVersion: "r1", Spot: &spot, BuyPrice: &buy, UnderlyingID: 7, Multiplier: 100,
+		ComputedAt: time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC),
+	}}, nil
+}
+
+// oneFit judges every row it is given as fitting, whatever the row holds.
+type oneFit struct{}
+
+func (oneFit) Judge(in optiontierapi.Input) (optiontierapi.Result, error) {
+	res := optiontierapi.Result{
+		CashBuilt: true,
+		Params:    optiontierapi.Params{DeltaMax: "0.3", ThinDelta: "0.15", MaxCashAgeDays: 3, DaysInYear: 365},
+		Companies: []optiontierapi.CompanyCount{{Company: "7", Fits: len(in.Rows)}},
+	}
+	for i, r := range in.Rows {
+		res.Order = append(res.Order, r.Key)
+		res.Verdicts = append(res.Verdicts, optiontierapi.Verdict{
+			Key: r.Key, Tier: "fits", Place: i + 1, Badges: []string{}, Infos: []string{}, Notes: []string{},
+			BreakEven: "84.58", BelowBuy: "5.42", MarginPct: "6.0111", BelowSpotPct: "12.3834", Moves: "1.2900",
+			PerContract: "42.00", Intrinsic: "0", TimeValue: "0.42", YieldPct: "5.8000",
+			Cash: []optiontierapi.CashCell{}, FitAlias: "",
+		})
+	}
+	return res, nil
+}
+
 func TestConfigValuationFieldsNilBuild(t *testing.T) {
 	t.Parallel()
 	c := option_candidates_page.Config{
 		RunID: "r", BuildID: "b", Scope: "s",
-		Zone: time.UTC, Candidates: fakeCandidates{},
+		Zone: time.UTC, Candidates: putRows{}, Tiers: oneFit{},
 		Valuation: nil, ValueLines: nil,
 	}
-	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	out, err := option_candidates_page.Build(context.Background(), c, noSeries{}, contracts.Day("2026-01-02"), at)
-	if err != nil || !json.Valid(out) || !strings.Contains(string(out), `"schema":"option_candidates_page"`) {
+	at := time.Date(2026, 11, 9, 22, 0, 0, 0, time.UTC)
+	out, err := option_candidates_page.Build(context.Background(), c, nil, contracts.Day("2026-11-09"), at)
+	if err != nil || !json.Valid(out) {
 		t.Fatalf("Build = %q, %v", out, err)
 	}
 	var page struct {
@@ -149,11 +186,12 @@ func TestConfigValuationFieldsNilBuild(t *testing.T) {
 	if err := json.Unmarshal(out, &page); err != nil {
 		t.Fatal(err)
 	}
-	if page.Tiers != nil {
-		for _, co := range page.Tiers.Companies {
-			if v, ok := co["valuation"]; ok && v != nil {
-				t.Fatalf("valuation = %v, want null", v)
-			}
+	if page.Tiers == nil || len(page.Tiers.Companies) != 1 {
+		t.Fatalf("short_put_tiers = %+v, want one company: %s", page.Tiers, out)
+	}
+	for _, co := range page.Tiers.Companies {
+		if v, ok := co["valuation"]; ok && v != nil {
+			t.Fatalf("valuation = %v, want null", v)
 		}
 	}
 }
