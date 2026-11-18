@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "as_of": "2026-03-01",
+    "R_note": "Synthetic note: invented numbers only.",
+    "R_table_current": {"US": 0.90, "JP": 0.80, "HK": 0.70, "CN": 0.70},
+    "params_by_P": {
+      ">=4.5": [0.30, 0.10, 0.40, 0.15],
+      "4": [0.25, 0.10, 0.35, 0.15],
+      "3-3.5": [0.20, 0.10, 0.30, 0.15],
+      "<=2.5": [0.15, 0.10, 0.25, 0.15]
+    },
+    "removed": [{"name": "SynthGone", "ticker": "SYNG", "reason": "invented"}],
+    "unvalued": ["SYNU"],
+    "unknown_extra": {"a": 1}
+  },
+  "companies": [
+    {"ticker": "SYNA", "name": "SynthAlpha", "market": "US", "currency": "USD", "v_version": "2026-02-20",
+     "V": 100.00, "P": 4.5, "R": 0.90, "B_hi": 63.0, "note": "alpha note", "q_note": "alpha quarter", "source_report": "synthetic report A", "breakpoint_flag": "ok"},
+    {"ticker": "SYNB.B", "name": "SynthBravo", "market": "US", "currency": "USD", "v_version": "2026-02-21",
+     "V": 50.50, "P": 4, "R": 0.90, "B_hi": 34.09, "breakpoint_flag": "check"},
+    {"ticker": "7001.T", "name": "SynthCedar", "market": "JP", "currency": "JPY", "v_version": "2026-02-22",
+     "V": 2000, "P": 3, "R": 0.80, "B_hi": 1280},
+    {"ticker": "9001.HK", "name": "SynthDelta", "market": "HK", "currency": "HKD", "v_version": "2026-02-23",
+     "V": 80, "P": 3.5, "R": 0.70, "B_hi": 44.8},
+    {"ticker": "SYNF", "name": "SynthFoxtrot", "market": "US", "currency": "USD", "v_version": "2026-02-24",
+     "V": 20, "P": 4, "R": 0.90, "B_hi": 13.5}
+  ]
+}

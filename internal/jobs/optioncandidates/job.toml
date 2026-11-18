@@ -22,6 +22,15 @@ max_rate_age_days = 7
 max_event_age_sessions = 2
 min_report_gap_days = 60
 
+# Where the chain of an underlying comes from (design candidates-at-open, Decision 1): the option_open rows of the
+# day when at least open_min_rows put rows of the DTE window are quotes and, with a buy price, at most need_high
+# times it (the high of the short_put [[need]] row below); else option_eod. oi_lookback_sessions is the session
+# days searched back in option_eod for the open interest of an open row.
+[source]
+open_min_rows = 1
+need_high = "1.05"
+oi_lookback_sessions = 3
+
 # What this strategy needs of the stored option chains (design option-capture-need, Decision 2). The DTE window
 # is the [params] one. Every number below is trial.
 # Short put: the top is the rule strike - bid <= BuyPrice read with a bid up to 5% of the buy price (Decision 6,

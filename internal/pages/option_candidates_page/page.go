@@ -7,6 +7,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
+	"github.com/andrewrong/optdesk/internal/compute/optionshortlistapi"
 	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/compute/valuelinesapi"
@@ -40,6 +41,8 @@ type Config struct {
 	Valuation valuation.Reader
 	// ValueLines computes B_hi from a review; nil gives no valuation block on the strips.
 	ValueLines valuelinesapi.Calculator
+	// Shortlist selects the short-put shortlist; nil gives no short_put_list.
+	Shortlist optionshortlistapi.Shortlister
 }
 
 // NewPage is the option_candidates_page page for c.

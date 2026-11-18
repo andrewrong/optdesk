@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -143,51 +142,6 @@ func (j *job) priorChainDay(ctx context.Context, id int64, day contracts.Day) (c
 		}
 	}
 	return best, nil
-}
-
-// quotes reads the rows of the chain day, the terms of their contracts (in chunks of 500 ids) and joins them
-// into the puts of the chain. spot is the underlying price of the chain, empty when no row carries one.
-func (j *job) quotes(ctx context.Context, ul underlyingRef) (spot string, out []compute.OptionQuote, err error) {
-	rows, err := j.st.OptionEod.OptionEod(ctx, ul.id, ul.chainDay, ul.chainDay)
-	if err != nil {
-		return "", nil, err
-	}
-	// The last row of an instrument (by generation, then capture) is its newest capture of the day.
-	best := map[int]contracts.OptionEod{}
-	for _, r := range rows {
-		if old, ok := best[r.InstrumentID]; !ok || r.Generation > old.Generation ||
-			(r.Generation == old.Generation && r.CaptureID >= old.CaptureID) {
-			best[r.InstrumentID] = r
-		}
-		if spot == "" {
-			spot = optText(r.UnderlyingPrice)
-		}
-	}
-	ids := make([]int64, 0, len(best))
-	for id := range best {
-		ids = append(ids, int64(id))
-	}
-	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
-	for start := 0; start < len(ids); start += termsChunk {
-		end := min(start+termsChunk, len(ids))
-		terms, err := j.st.Terms.OptionTerms(ctx, ids[start:end])
-		if err != nil {
-			return "", nil, err
-		}
-		for _, t := range terms {
-			if t.Right != "P" {
-				continue
-			}
-			r := best[int(t.InstrumentID)]
-			out = append(out, compute.OptionQuote{
-				InstrumentID: strconv.FormatInt(t.InstrumentID, 10), Expiry: t.ExpirationDate, Right: t.Right,
-				Strike: t.Strike, Multiplier: t.Multiplier, Bid: optText(r.Bid), Ask: optText(r.Ask),
-				BidSize: intOf(r.BidSize), OpenInterest: intOf(r.OpenInterest), Delta: optText(r.Delta),
-				IV: optText(r.IvDecimal), MarketDataType: r.MarketDataType, QuoteOK: r.Status == 1,
-			})
-		}
-	}
-	return spot, out, nil
 }
 
 func intOf(v *float64) int {

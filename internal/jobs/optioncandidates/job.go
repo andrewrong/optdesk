@@ -79,6 +79,9 @@ func New(st CandidateStores, rule compute.OptionCandidates, entries []jobs.Watch
 	if err != nil {
 		return nil, err
 	}
+	if err := checkSource(m.Source); err != nil {
+		return nil, err
+	}
 	seen := map[string]bool{}
 	for _, e := range entries {
 		if e.Issuer == "" {
@@ -162,7 +165,9 @@ func (j *job) Plan(_ context.Context, day contracts.Day) ([]contracts.ExpectedKe
 //nolint:funlen // the shadow adds three statements to a body that is otherwise unchanged
 func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	us, skipped := j.split()
+	src := newSourceRun(j, day)
 	defer func() {
+		skipped = append(skipped, src.finish()...)
 		j.mu.Lock()
 		j.skipped = skipped
 		j.mu.Unlock()
@@ -178,6 +183,8 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	for _, s := range missing {
 		skipped = append(skipped, "US entry "+s+": no chain day of option_eod, no row")
 	}
+	src.nNone = len(missing)
+	src.begin(ctx, days)
 	rate, rateDay, err := j.rate(ctx, day)
 	if err != nil {
 		return fail("read_rate_failed", err)
@@ -187,10 +194,12 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	shadow := newShadow(j.st)
 	for _, ul := range ulist {
 		entry := entryOf(us, ul.issuer)
-		spot, quotes, err := j.quotes(ctx, ul)
+		ch, err := src.chain(ctx, ul, entry, false)
 		if err != nil {
 			return fail("read_chain_failed", err)
 		}
+		ul.chainDay = ch.chainDay
+		spot, quotes := ch.spot, ch.quotes
 		info, ev, err := j.earnings(ctx, entry, ul.chainDay)
 		if err != nil {
 			return fail("read_earnings_failed", err)
@@ -213,6 +222,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 		}
 		shadow.add(in, ul, ev)
 		for _, c := range j.rule.Evaluate(in, j.params) {
+			ch.addMarks(&c)
 			row, err := toStoreRow(c, day, ul, ev, now)
 			if err != nil {
 				return fail("map_candidate_failed", err)
