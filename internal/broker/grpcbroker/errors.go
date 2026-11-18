@@ -26,9 +26,10 @@ func permanent(text string) error {
 	return &brokerError{kind: contracts.Permanent, text: "broker: " + text}
 }
 
-// kindOf maps a gRPC code: UNAVAILABLE and DEADLINE_EXCEEDED are Retryable, every other code Permanent.
+// kindOf maps a gRPC code: INTERNAL, UNAVAILABLE and DEADLINE_EXCEEDED are Retryable, every other code
+// Permanent. INTERNAL is what pyside answers for an unexpected exception, so a retry may succeed.
 func kindOf(c codes.Code) contracts.ErrorKind {
-	if c == codes.Unavailable || c == codes.DeadlineExceeded {
+	if c == codes.Internal || c == codes.Unavailable || c == codes.DeadlineExceeded {
 		return contracts.Retryable
 	}
 	return contracts.Permanent
