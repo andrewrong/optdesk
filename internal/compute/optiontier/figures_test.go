@@ -56,3 +56,18 @@ func TestEmptyFiguresHaveWhy(t *testing.T) {
 		t.Errorf("no buy price: %+v", v)
 	}
 }
+
+func TestBidBelowIntrinsicHasNoTimeValue(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	v := one(t, f, func(r *optiontierapi.Row) {
+		*r = f.ITM
+		r.Strike, r.Spot, r.Bid = "100.00", "96.50", "3.00"
+	}, "main")
+	if v.Intrinsic != "3.5" || v.TimeValue != "" || v.YieldPct != "" {
+		t.Fatalf("verdict = %+v", v)
+	}
+	if v.Why["time_value"] != "bid_below_intrinsic" || v.Why["yield"] != "bid_below_intrinsic" {
+		t.Errorf("Why = %v", v.Why)
+	}
+}
