@@ -117,6 +117,28 @@ describe('DataTable', () => {
     expect(headers[1]!.querySelector('button svg')).not.toBeNull()
   })
 
+  it('unsortable header has the size of the sort button', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    const columns = [
+      { id: 'gap', label: 'Gap' },
+      { id: 'val', label: 'Val' },
+    ]
+    const rows: Record<string, Cell>[] = [
+      { gap: { reason: 'no_data', text: 'no data' }, val: { text: '1', value: 1 } },
+      { gap: { reason: 'no_data', text: 'no data' }, val: { text: '2', value: 2 } },
+    ]
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<DataTable columns={columns} rows={rows} />)
+    })
+    const heads = [...host.querySelectorAll('[data-slot="table-head"]')]
+    const span = heads[0]!.querySelector('span')!
+    expect(span.className).toContain('text-[0.8rem]')
+    expect(span.className).not.toContain('text-sm')
+    expect(heads[1]!.querySelector('button')!.className).toContain('text-[0.8rem]')
+  })
+
   it('applies the tone class that names its token for up, down and flat, and none has no tag', async () => {
     await show()
     const cell = (text: string) =>
