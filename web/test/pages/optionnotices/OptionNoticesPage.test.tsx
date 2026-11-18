@@ -76,6 +76,33 @@ describe('OptionNoticesPage', () => {
     expect(page.querySelector('[data-alias=ok-second] table')).toBeNull()
   })
 
+  it('lists the puts under each cash day', async () => {
+    const page = await show(ok)
+    const block = page.querySelector('[data-alias=ok-main]')!
+    const days = [...block.querySelectorAll('[data-cash-day]')]
+    expect(days.map((d) => d.querySelectorAll('[data-cash-put]').length)).toEqual([2, 0, 0])
+    expect(days.map((d) => d.querySelector('[data-cash-puts]') === null)).toEqual([false, true, true])
+    const puts = [...days[0]!.querySelectorAll('[data-cash-put]')].map((li) =>
+      [...li.querySelectorAll('span')].map((s) => s.textContent),
+    )
+    expect(puts).toEqual(
+      ok.accounts[0]!.cash_by_date[0]!.puts!.map((p) => [p.symbol, p.expiry, p.strike_text, p.right, p.quantity_text]),
+    )
+    expect(block.querySelector('[data-cash-put]')!.closest('div')!.querySelector('td')!.textContent).toBe(
+      ok.accounts[0]!.cash_by_date[0]!.day,
+    )
+  })
+
+  it('shows the cushion and no-guard-record hints', async () => {
+    const page = await show(ok)
+    const block = page.querySelector('[data-alias=ok-main]')!
+    expect(block.querySelector('[data-cushion-hint]')!.textContent).toBe(ok.accounts[0]!.cushion_hint)
+    expect(block.querySelector('[data-note-hint]')!.textContent).toBe(ok.accounts[0]!.note_hint)
+    const second = page.querySelector('[data-alias=ok-second]')!
+    expect(second.querySelector('[data-cushion-hint]')).toBeNull()
+    expect(second.querySelector('[data-note-hint]')).toBeNull()
+  })
+
   it('new: the cash title, its gloss and the empty line', async () => {
     const page = await show(ok)
     const first = page.querySelector('[data-alias=ok-main]')!
