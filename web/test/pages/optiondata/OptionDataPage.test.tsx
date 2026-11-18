@@ -168,6 +168,15 @@ describe('option data page', () => {
     expect(host.querySelector('[data-earnings]')?.getAttribute('data-variant')).toBe('secondary')
   })
 
+  it('earnings field without a date says so in Chinese and not No data source', async () => {
+    const payload = fixture('ok')
+    delete payload.underlying.earnings_text
+    await show(payload)
+    const earn = host.querySelector('[data-field="earnings_text"]')!
+    expect(earn.textContent).toBe('无财报日期（指数或未登记发行人）')
+    expect(host.textContent).not.toContain('No data source')
+  })
+
   it('terms shows the missing texts, every strike, the caption and the slots', async () => {
     const payload = fixture('terms')
     await show(payload)
@@ -175,7 +184,7 @@ describe('option data page', () => {
     const vol = host.querySelector('[data-field="vol_line"]')!
     expect(count(vol.textContent ?? '', 'n/a')).toBe(1)
     const earn = host.querySelector('[data-field="earnings_text"]')!
-    expect(count(earn.textContent ?? '', 'No data source')).toBe(1)
+    expect(count(earn.textContent ?? '', '无财报日期（指数或未登记发行人）')).toBe(1)
     expect(earn.hasAttribute('data-earnings')).toBe(false)
     expect(earn.querySelector('[data-earnings]')).toBeNull()
     const rows: { strike: { text: string } }[] = payload.chain.rows
