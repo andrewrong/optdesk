@@ -16,10 +16,14 @@ func gate(name string, st compute.GateStatus, reason string) compute.GateResult 
 	return compute.GateResult{Gate: name, Status: st, Reason: reason}
 }
 
-// chainFresh reports whether the chain day is the latest session day on or before the run day.
+// chainFresh reports whether the chain day is the run day's session or the session just
+// before it; a chain two or more sessions old, after the run day or off the list is stale.
 func chainFresh(in compute.CandidateInput) bool {
 	pos := sessionPos(in.SessionDays, in.RunDay)
-	return pos >= 0 && in.SessionDays[pos] == in.ChainDay
+	if pos < 0 {
+		return false
+	}
+	return in.SessionDays[pos] == in.ChainDay || (pos > 0 && in.SessionDays[pos-1] == in.ChainDay)
 }
 
 // eventsGate judges the earnings dates for a contract expiring on expiry; mark is the
