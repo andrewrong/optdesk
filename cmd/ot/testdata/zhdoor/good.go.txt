@@ -1,0 +1,6 @@
+package demo
+
+const (
+	TierOne = "第一档：先等一等。"
+	TierTwo = "第二档：可以卖出。"
+)
