@@ -27,16 +27,13 @@ function SeriesBlock({ series }: { series: Series }) {
       {series.points.length === 0 ? (
         <p className="text-sm text-muted-foreground">{series.empty}</p>
       ) : (
-        <>
-          <DataTable
-            columns={POINT_COLUMNS}
-            rows={series.points.map((point) => ({
-              label: { text: point.label, value: point.label },
-              text: { text: point.text, value: point.value, tone: point.muted ? 'flat' : 'none' },
-            }))}
-          />
-          <p className="text-xs text-muted-foreground">{series.summary}</p>
-        </>
+        <DataTable
+          columns={POINT_COLUMNS}
+          rows={series.points.map((point) => ({
+            label: { text: point.label, value: point.label },
+            text: { text: point.text, value: point.value, tone: point.muted ? 'flat' : 'none' },
+          }))}
+        />
       )}
     </div>
   )
@@ -69,11 +66,6 @@ function SectionCard({ section }: { section: Section }) {
         <SeriesBlock series={section.running} />
         <Separator />
         <h4 className="text-sm font-medium">{section.endings_title}</h4>
-        {section.endings_lines.map((line) => (
-          <p key={line} className="text-sm">
-            {line}
-          </p>
-        ))}
         <SeriesBlock series={section.endings} />
         {section.assignment ? <p className="text-sm">{section.assignment}</p> : null}
         {section.protection ? <p className="text-sm">{section.protection}</p> : null}
@@ -91,9 +83,15 @@ function SectionCard({ section }: { section: Section }) {
 }
 
 export function OptionResultView({ payload }: { payload: Payload }) {
+  const [scopeNote, ...rest] = payload.notes
   return (
     <div className="min-w-0 space-y-6" data-page="option-result-page">
       <h1 className="text-2xl font-semibold">{payload.title}</h1>
+      {scopeNote ? (
+        <Alert data-scope-note>
+          <AlertDescription>{scopeNote}</AlertDescription>
+        </Alert>
+      ) : null}
       {payload.stale ? (
         <Alert data-stale>
           <Info aria-hidden />
@@ -120,25 +118,11 @@ export function OptionResultView({ payload }: { payload: Payload }) {
       {payload.sections.map((section) => (
         <SectionCard key={section.key} section={section} />
       ))}
-      {payload.reliability.map((block) => (
-        <Card key={block.key}>
-          <CardHeader>
-            <CardTitle>{block.heading}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {block.lines.map((line) => (
-              <p key={line} className="text-sm">
-                {line}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
-      {payload.notes.length > 0 ? (
+      {rest.length > 0 ? (
         <>
           <Separator />
           <ul className="space-y-1 text-xs text-muted-foreground">
-            {payload.notes.map((note) => (
+            {rest.map((note) => (
               <li key={note}>{note}</li>
             ))}
           </ul>
