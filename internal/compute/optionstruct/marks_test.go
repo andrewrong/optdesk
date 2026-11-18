@@ -267,7 +267,7 @@ func TestExpiryDistanceIsShareOfClose(t *testing.T) {
 // divided by 100 is the ratio of the structure.
 func TestTrackAndStructureAgree(t *testing.T) {
 	t.Parallel()
-	for _, c := range []struct{ right, strike, close string }{{"P", "340", "359.24"}, {"C", "25", "20"}, {"P", "380", "367.71"}} {
+	for _, c := range []struct{ right, strike, close string }{{"P", "90", "100"}, {"C", "25", "20"}, {"P", "380", "400"}, {"C", "120", "100"}} {
 		lp := pos("s1", c.right, c.strike, "-1", "1.50")
 		q := quote(c.right, c.strike, "2026-12-18", "0.55", "0.65")
 		q.UnderlyingClose = c.close
@@ -284,12 +284,11 @@ func TestTrackAndStructureAgree(t *testing.T) {
 			t.Fatalf("open rows = %d", len(res.Open))
 		}
 		pct, _ := new(big.Rat).SetString(res.Open[0].OtmPercent)
+		// the percent has two places (item 1), so six-place equality holds where the share has
+		// at most four: the closes above are chosen so.
 		pct.Quo(pct, big.NewRat(100, 1))
-		// the percent has two places, so its hundredth is exact to half of 0.0001.
-		want, _ := new(big.Rat).SetString(st.Figures.ExpiryDistance.Value)
-		diff := new(big.Rat).Sub(pct, want)
-		if diff.Abs(diff).Cmp(big.NewRat(1, 20000)) > 0 {
-			t.Errorf("%s: track %s/100 = %s, structure %s", c.right, res.Open[0].OtmPercent, pct.FloatString(6), st.Figures.ExpiryDistance.Value)
+		if got := pct.FloatString(6); got != st.Figures.ExpiryDistance.Value {
+			t.Errorf("%s: track %s/100 = %s, structure %s", c.right, res.Open[0].OtmPercent, got, st.Figures.ExpiryDistance.Value)
 		}
 	}
 }
