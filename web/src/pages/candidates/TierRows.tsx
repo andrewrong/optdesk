@@ -156,18 +156,39 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
           </TableBody>
         </Table>
         <AccordionContent data-expand>
-          <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-            {row.fields.map((f) => (
-              <FieldItem key={f.id} field={f} />
-            ))}
-          </div>
+          {tier.collapsed ? (
+            <p data-line className="p-3 text-sm">
+              {row.line}
+            </p>
+          ) : (
+            <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
+              {row.fields.map((f) => (
+                <FieldItem key={f.id} field={f} />
+              ))}
+            </div>
+          )}
         </AccordionContent>
       </AccordionItem>
     </Accordion>
   )
 }
 
-function GreyGroup({ tier }: { tier: Tier }) {
+function TierTable({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="sm:min-w-[60rem]">
+        <div className="max-sm:hidden">
+          <TierHead columns={columns} />
+        </div>
+        {tier.rows.map((row) => (
+          <DataRow key={row.id} tier={tier} row={row} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function GreyGroup({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
   return (
     <Accordion type="single" collapsible data-tier={tier.id}>
       <AccordionItem value={tier.id}>
@@ -178,11 +199,7 @@ function GreyGroup({ tier }: { tier: Tier }) {
         </AccordionTrigger>
         <AccordionContent>
           <p className="mb-2 text-xs text-muted-foreground">{tier.explain}</p>
-          {tier.rows.map((row) => (
-            <p key={row.id} data-row={row.id} className="border-l-4 border-l-muted py-1 pl-2 text-sm">
-              {row.line}
-            </p>
-          ))}
+          <TierTable tier={tier} columns={columns} />
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -190,23 +207,13 @@ function GreyGroup({ tier }: { tier: Tier }) {
 }
 
 export function TierSection({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
-  if (tier.collapsed) return <GreyGroup tier={tier} />
+  if (tier.collapsed) return <GreyGroup tier={tier} columns={columns} />
   return (
     <section data-tier={tier.id} className="min-w-0 space-y-1">
       <h3 className={cn('flex items-center gap-2 text-base font-semibold', titleTones[tier.id])}>
         <TierTitle tier={tier} />
       </h3>
-      <p className="text-xs text-muted-foreground">{tier.explain}</p>
-      <div className="overflow-x-auto">
-        <div className="sm:min-w-[60rem]">
-          <div className="max-sm:hidden">
-            <TierHead columns={columns} />
-          </div>
-          {tier.rows.map((row) => (
-            <DataRow key={row.id} tier={tier} row={row} />
-          ))}
-        </div>
-      </div>
+      <TierTable tier={tier} columns={columns} />
     </section>
   )
 }

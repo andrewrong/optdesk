@@ -27,6 +27,11 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
             {tiers.kept}
           </p>
         ) : null}
+        {tiers.kept !== null && tiers.kept_note ? (
+          <p className="text-xs text-muted-foreground" data-kept-note>
+            {tiers.kept_note}
+          </p>
+        ) : null}
         <TierLegend items={tiers.legend} />
         {tiers.tiers.map((tier) => (
           <TierSection key={tier.id} tier={tier} columns={tiers.columns} />
