@@ -128,3 +128,32 @@ func TestConfigTierFieldsNilBuild(t *testing.T) {
 		t.Fatalf("short_put_tiers is not null: %s", s[i:])
 	}
 }
+
+func TestConfigValuationFieldsNilBuild(t *testing.T) {
+	t.Parallel()
+	c := option_candidates_page.Config{
+		RunID: "r", BuildID: "b", Scope: "s",
+		Zone: time.UTC, Candidates: fakeCandidates{},
+		Valuation: nil, ValueLines: nil,
+	}
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	out, err := option_candidates_page.Build(context.Background(), c, noSeries{}, contracts.Day("2026-01-02"), at)
+	if err != nil || !json.Valid(out) || !strings.Contains(string(out), `"schema":"option_candidates_page"`) {
+		t.Fatalf("Build = %q, %v", out, err)
+	}
+	var page struct {
+		Tiers *struct {
+			Companies []map[string]any `json:"companies"`
+		} `json:"short_put_tiers"`
+	}
+	if err := json.Unmarshal(out, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Tiers != nil {
+		for _, co := range page.Tiers.Companies {
+			if v, ok := co["valuation"]; ok && v != nil {
+				t.Fatalf("valuation = %v, want null", v)
+			}
+		}
+	}
+}

@@ -9,10 +9,12 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
 	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
+	"github.com/andrewrong/optdesk/internal/compute/valuelinesapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/store/valuation"
 )
 
 // ATMFunc returns the implied volatility and the strike of the at-the-money put of one expiry of one
@@ -34,6 +36,10 @@ type Config struct {
 	Aliases               []string                    // the account aliases whose cash is read; nil gives the gap no_reader
 	Owner                 ownerset.Reader             // the stored rule parameters; nil gives the default 0.3
 	RuleParams            settingsapi.RuleParams      // resolves the stored parameters; nil gives the default 0.3
+	// Valuation reads the current valuation of each company; nil gives no valuation block on the strips.
+	Valuation valuation.Reader
+	// ValueLines computes B_hi from a review; nil gives no valuation block on the strips.
+	ValueLines valuelinesapi.Calculator
 }
 
 // NewPage is the option_candidates_page page for c.
