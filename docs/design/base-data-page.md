@@ -1,0 +1,375 @@
+# base data page: one page that shows only base data and says, per dataset, whether it is correct; version 1 checks values, version 2 reconciles against the broker and a second source
+
+Author: the optdesk designer (draft, fix round 2026-11-18 after adversarial.md)
+Date: 2026-11-18
+
+Owner decision: route a, 2026-11-18, asks optdesk-4921 and 4924 (plan item P1): version 1 now, version 2 designed in full here and cut into issues after the owner's source word. The design review of this file is the crew's; the owner decides only the second source (Version 2, owner question).
+
+Source: `state/optdesk-data-health-audit-2026-11-18.md` (gaps 1 to 9) and the read-only review `state/optdesk-drafts/designs/base-data-page/adversarial.md` (answered in `## Adversarial`). Owner principles used: start from how he uses the page; a technical word is explained next to it in Chinese; the front end computes nothing; dev mode has no time guards; every job runs alone and twice with the same result; own glue sits behind an interface (2026-11-08); an outside source or a new account is the owner's word (2026-11-18). Every path, view, table and column below was read on origin/main `c16ebc95` after `git fetch`; nothing was run and no database was read.
+
+## Goal
+
+The owner builds strategies on base data (stock bars, quotes, option chains, rates, fundamentals, FX, events, the account's own facts). Today `/data-health` proves that a job ran and stored the keys it planned (`rd.coverage_day_r1`); it does not look at a value. This design adds one page, `/base-data`, that answers one question per base dataset: "is what is stored right, and how fresh is it?", with one verdict (pass, warn, fail, unknown), the newest value with its date and age, and the checks that failed. Version 1 runs value-level checks (ordered, plausible, fresh, complete against the expected universe). Version 2 reconciles against the broker's own statement and against a second market source.
+
+## Page
+
+How he uses it: opens `/base-data` once a day before looking at candidates. He reads the top line, scans one column of verdicts, and opens the one red row to see which check failed, with a Chinese sentence saying what it means and a link to `/data-health` where the repair button lives.
+
+Sketch (labels English, hints Chinese; the numbers are invented):
+
+    Base data                                  as of 2026-11-18 (last closed session US 2026-11-17, JP 2026-11-18)
+    ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+    │ FAIL   12 datasets: 8 pass, 2 warn, 1 fail, 1 unknown      基础数据共 12 项：8 项正常 ...      │
+    └──────────────────────────────────────────────────────────────────────────────────────────┘
+    Market data                         Verdict  Newest value        Date        Age     Failed checks
+    Stock bars, US and JP (日线)         WARN     NVDA close 181.42   2026-11-17  0 s     coverage_gap 3 days
+    Quotes         (报价快照)            PASS     SPY last 590.10     2026-11-17  0 s     -
+    Option chains end of day (期权链)    FAIL     rows 112,004        2026-11-16  1 s     age; crossed 2.1%
+    ...
+    Rates and events                     (FRED, FX USDJPY, earnings dates, dividends, macro events, calendar)
+    Company facts                        (fundamentals)
+    Account facts from the broker        (positions, cash and value tags, Flex statement)
+    Derived data (readings, candidates, strategy, plan) is not checked here: 在「采集记录」页查看.
+
+    Click a row: the checks of that dataset, one line each: rule id, English label, what it means in Chinese,
+    rows examined, rows bad, share, threshold used, one example (symbol and day).
+    Below the table: a glossary (term, Chinese explanation) and the thresholds table (each marked "trial value"
+    or its source). Age "s" means sessions (交易日).
+
+The 12 rows, their groups and where each reads (the one table the builder, `rules.go` and the tests share). "Ledger datasets" are the dataset ids of the coverage ledger (`dataHealthManifests` in `cmd/ot/data_health_site.go`); the builder sums the cells of these ids into one cell named by the row id. "Subjects" are the values the SQL puts in `Fact.Subject` for `newest`; compute maps a subject to its calendar for ages.
+
+| row id | group | ledger datasets | subjects and calendar | facts read |
+|---|---|---|---|---|
+| bars | Market data | `obs.price_bar` (one ledger row for US and JP; the ledger cannot split it, so the row is one) | `USD` XNYS, `JPY` XTKS | `rd.price_bar_r1` with `master.instrument` (symbol, currency) |
+| quotes | Market data | `obs.quote_snapshot` | `USD` XNYS | `rd.quote_snapshot_r1` |
+| chains | Market data | `obs.option_eod`, `obs.option_eod_jp`, `obs.option_eod_index` | `USD` XNYS (stock and index chains), `JPY` XTKS | `rd.option_eod_r1` |
+| open | Market data | `obs.option_open`, `obs.option_open.jp` | `USD` XNYS, `JPY` XTKS | `rd.option_open_r1` |
+| contracts | Market data | `master.option_list`, `master.option_list.jp`, `master.option_contract`, `master.option_contract.jp`, `master.option_contract.gap` | none (calendar days) | `rd.option_terms_r1` |
+| rates | Rates and events | `obs.series_point` | none | `rd.series_point_r1`, `obs.series_definition` |
+| fx | Rates and events | `obs.fx_rate` | `USDJPY` XNYS | `rd.fx_rate_r1` |
+| events | Rates and events | `obs.earnings_date`, `obs.dividend_expectation`, `obs.macro_event` | none | `rd.earnings_date_r1`, `rd.dividend_expectation_r1`, `obs.macro_event` (table) |
+| calendar | Rates and events | `master.session_day`, `master.session_hours_notice` | none | `rd.session_day_r1` |
+| facts | Company facts | `obs.fundamental_fact` | none | `rd.fundamental_fact_r2` |
+| account | Account facts | `account.capture`, `account.position_mark` | `USD` XNYS | `rd.account_capture_r1`, `rd.account_position_r1`, `rd.account_value_r1` |
+| flex | Account facts | `optionledger.flex_trade_row` | none | `rd.flex_trade_row_r1`, `rd.flex_section_status_r1` |
+
+Not rows, on purpose: `settings.underlying` (the owner's own input, shown and edited on `/underlyings`, not base data), and the derived datasets `readings.reading`, `candidates.option_candidate`, `strategy.result`, `plan.option_open_item(.jp)`. `account.execution` is read by version 2 only.
+
+Decisions:
+
+1. Keep `/data-health`; add `/base-data` as a new page. Why: `/data-health` holds the repair button (`POST /owner-job-console`) and the coverage grid of every dataset including derived ones (`cmd/ot/data_health_site.go`, route `data-health`, order 130); replacing it would drop both. The owner's "one page" is about correctness: the new page is the only place that says correct or not and names `/data-health` as the place of the repair. `/data-health` gets no change in version 1.
+2. Base and derived are separated by page: this page has the 12 base rows only; the page says in one line that derived data is on `/data-health`.
+3. Where checks run: in the page builder of each request, not in a job and not stored. SQL views count bad rows per rule and return one fact row per (dataset, rule, subject). Cost, stated honestly: the keys of the big tables are not led by the day (`obs.price_bar` key is `(instrument_id, basis, session_day)`, `obs.fx_rate` `(pair, rate_day)`), so the bars view scans the last 45 calendar days with a window function; its bound is (instruments with bars) x about 31 sessions x 2 bases (`trades`, `adjusted_last`), and the number of instruments is the size of the watch list, which I have not measured. The chain, quote and open tables are keyed from `session_day`. Page time on production is unverified: it is read once after the deploy; if it is slow the fix is an index or a narrower window in a later migration, and a job with a stored result is the version 2 shape anyway. One failing view must not blank the page: `Facts` reads the four views one by one, each under its own timeout (10 seconds, trial); a view that fails or times out makes only its rows `not judged` (level `unknown`, check `not_read`) and puts one gap in words on the page; the other rows stay. The view groups and their rows: bars (bars); option (quotes, chains, open); other (contracts, rates, fx, events, calendar, facts); account (account, flex). The four views are in one migration, so one deploy hold for the owner and no window in which a view exists without its reader.
+4. The arithmetic is in two modules: SQL views (store) count bad rows by a rule; `internal/compute/basecheck` (compute, no I/O) turns counts, thresholds and the sessions into verdicts, ages and the top line; the page builder (pages) only lays out and adds Chinese text from `zh_texts.go`. The web shows the payload and computes nothing.
+5. Verdicts: a check is `pass`, `warn`, `fail` or `unknown` (no fact for it). A row takes the worst of its checks in the order fail, unknown, warn, pass. A row with no usable row at all is `fail` (rule `rows`). The top line takes the worst row and says "pass" only when no row is warn, fail or unknown.
+6. Age is in sessions of the subject's calendar, counted from the newest stored day to the last closed session of that calendar. The builder gives compute `Days` (calendar to last closed session) and `Sessions` (calendar to its session days from `coverage.Reader.Sessions`). The last closed session of a calendar is its newest session day strictly before the current date in the calendar's zone (America/New_York for XNYS, Asia/Tokyo for XTKS; the day of the close counts from the next morning; trial). Constants for the two calendar ids and zones live in the page package (`calUS`, `calJP` are in `cmd/ot/data_health_site.go`, package main, and cannot be imported). A row with several subjects takes the worst age of its subjects. Pass 0, warn 1, fail 2 or more sessions (trial). A newest day later than the last closed session (JP data on a US morning, a quote of the running session) gives age 0, never a negative number. Both calendars are always in `Days` and `Sessions`; a row whose subjects have no calendar uses calendar days. Rows without a calendar use calendar days and the limit named in their rule.
+7. One row per contract, by the documented status (`docs/contracts/datasets/obs.option_eod.md`: 1 ok, 2 no quote, 3 not listed, 4 stale, 5 error; `statusOf` in `internal/jobs/optioneod/map.go` sets `error_code` only for 5 and maps an all-empty quote to 2; the quote snapshot uses the same codes, `internal/jobs/quotesnapshot/map.go`; the option open table has its own list, 1 ok, 2 partial, 3 no_data, 4 not_listed, 5 no_subscription, 6 deadline, 7 deferred, 8 error, 9 disconnected, `docs/contracts/datasets/obs.option_open.md`). For chains, quotes and open: the newest `session_day` of the subject's currency; per `instrument_id` the picked row is the newest `received_at` among the rows with status 1 (`DISTINCT ON (instrument_id)`). N of `crossed` and `bad_iv` is the picked rows. A contract with no status-1 row that day is classified by its newest row: no quote (status 2 for chains and quotes, 3 for open) is counted in `empty`; error (5 for chains and quotes, 5 to 9 for open) in `errors`; not listed and stale (3 and 4 for chains and quotes, 4 for open, 2 partial of open) are counted in the fact `not_judged` (a number shown on the row, in no verdict). `empty` and `errors` use all contracts of the day as N. `non_live` is the share of picked rows whose `market_data_type` is not 1 (2 frozen, 3 delayed, 4 delayed frozen; the column is in `rd.option_eod_r1`, `rd.quote_snapshot_r1` and `rd.option_open_r1`).
+8. Language: labels, column names and numbers English; every hint, risk text and glossary entry Chinese, as Go constants in `internal/pages/base_data_page/zh_texts.go`.
+9. Ids cannot drift: every SQL block that emits a rule carries a comment line `-- rule <row> <rule>`; `rules.go` marks each rule `sql`, `ledger`, `derived` or `note` (a note is shown on the row and never judged); a test in `cmd/ot` (the one place that sees migrations, compute and pages together) requires the set of `-- rule` lines of the four migrations to equal the `sql` rules of `rules.go`, and a test in the pages package requires a Chinese hint for every rule id and row id.
+
+## Checks
+
+Notation: N = rows examined, Bad = rows that break the rule, share = Bad / N. A threshold pair is (warn at, fail at): warn when Bad (or share) reaches the first, fail when it reaches the second; "any" means Bad >= 1. Source of a threshold: "def" = definitional (a price cannot break it), "trial" = our choice, tuned on live numbers after the first reads, in `rules.go` only. Window: the one row per contract of Decision 7 for chains, quotes and open; the last 45 calendar days for bars. "Day" in the views is `(now() at time zone 'America/New_York')::date`.
+
+Rules that a table constraint already enforces are not repeated: positive open, high, low, close of a bar (`price_bar_positive_ck`, migration 0041; it excepts rows of status `no_value`, which `rd.price_bar_r1` hides with `WHERE status = 'ok'`); a positive FX rate (`fx_rate_rate_ck`, 0039, same exception); the number shape of a fundamental value (`fundamental_fact_value_ck`, 0046, added NOT VALID, so only new rows). `status` codes of the option tables are read (Decision 7). Dropped as not worth a rule: strike and multiplier of terms, `nonpositive` quotes, `bad_delta`, `no_oi`, `outside_band`, `position_zero`, `exec_bad`, `series_null` (void points are hidden by the view), `filed_early`.
+
+Generic rules:
+
+- `rows` (sql) N = usable rows of the subject; fail when 0 (def).
+- `newest` (sql) not a check: the newest day, subject and value shown on the row.
+- `age` (derived by compute from `newest`): Decision 6.
+- `coverage_gap` (ledger, W30): from the ledger cells of the row (`coverage.Reader.Cells`, 30 session days): Bad = days with missing > 0; warn any, fail 5 days (trial). Days before 2026-11-07 are shown apart as the fact `history_lost` (audit gap 6).
+- `coverage_latest` (ledger): Bad = missing + expired keys of the newest closed session of the row's first subject calendar (XNYS if none); N = keys; warn any, fail share 0.05 (trial). This is gap 5.
+- `bar_gap` is not a rule: the ledger rules already say which keys are missing, and the table status that would tell a no_value day apart is not readable by the pages role.
+- Silent drops (gap 7): `crossed` and `empty` counts are the rule results; the `no_value` keys of the newest cell are shown as a fact from the ledger.
+
+Rules per row (dataset ids as in the table above; thresholds in the last column):
+
+| row | rule (source) | Bad is | (warn, fail) |
+|---|---|---|---|
+| bars | `ohlc_order` (sql) | high < low, or high < max(open, close), or low > min(open, close), on `rd.price_bar_r1` rows of basis trades in the window | (any, any) def |
+| bars | `bar_jump` (sql) | close differs from the previous stored close of the same instrument and basis by more than 40 percent (no split is stored anywhere, so a split looks exactly like this) | (any, none): warn only, never fail, until splits are stored; the hint says "a split looks like this" |
+| quotes | `crossed` (sql) | bid > ask, both not null and above 0 | (share 0.001, 0.02) trial |
+| quotes | `empty` (sql) | contracts whose newest row has no status-1 row that day and is status 2 (no quote); N = all contracts of the day | (share 0.1, 0.4) trial |
+| quotes | `errors` (sql) | contracts with no status-1 row whose newest row is status 5; N = all contracts | (share 0.05, 0.3) trial |
+| quotes | `non_live` (sql) | picked rows with market_data_type not 1 (frozen or delayed) | (share 0.1, 0.5) trial |
+| chains | `crossed` (sql) | as quotes (crossed quotes of the snapshot instant are expected at a small share; a normal day should be pass) | (share 0.01, 0.05) trial |
+| chains | `bad_iv` (sql) | iv_decimal not null and (<= 0 or > 5) | (any, share 0.01) trial |
+| chains | `empty` (sql) | as quotes (far strikes have no quote) | (share 0.5, 0.9) trial |
+| chains | `errors` (sql) | as quotes | (share 0.05, 0.3) trial |
+| chains | `non_live` (sql) | as quotes (an off-session snapshot is frozen or delayed by design: warn, read the hint) | (share 0.1, 0.5) trial |
+| open | `crossed`, `bad_iv`, `empty`, `errors`, `non_live` (sql) | as chains, with the open status list of Decision 7 (empty = status 3, errors = 5 to 9) | as chains |
+| contracts | `newest` (sql) | newest `valid_from` of `rd.option_terms_r1` | `age` 7 days warn, 30 fail (trial) |
+| rates | `series_age` (sql) | N = active series (`obs.series_definition.active`); Bad = series whose newest observation_date is older than 4 days (daily), 14 (weekly), 45 (monthly), 120 (quarterly) from Day (the first two are the trial values of `liquidityapi.Params`) | (any, share 0.1) trial |
+| fx | `fx_band` (sql) | rate not in 80..250 (JPY per USD; wide) | (any, any) trial |
+| fx | `fx_jump` (sql) | moves more than 5 percent from the previous rate_day | (any, any) trial |
+| events | `earnings_past` (sql) | N = issuers whose newest check has status listed; Bad = those whose report_date is before Day (the NVDA 2026-11-17 case of ui-check round 7) | (any, share 0.1) trial |
+| events | `dividend_past` (sql) | the same on next_ex_date of `rd.dividend_expectation_r1` | (any, share 0.1) trial |
+| events | `macro_exhausted` (sql) | N = kinds of `obs.macro_event`; Bad = kinds with no event_date on or after Day (columns kind, event_date, run_day, held_day; no observed_on) | (any, any) trial |
+| events | `age` | newest `observed_on` of `rd.earnings_date_r1`, 3 days warn, 10 fail | trial |
+| calendar | `calendar_horizon` (sql) | N = calendars (XNYS, XTKS); Bad = those whose last stored session_day is less than 30 days after Day | (any, any) trial |
+| facts | `period_order` (sql) | period_start not null and period_end < period_start (`rd.fundamental_fact_r2`) | (any, any) def |
+| facts | `subject_stale` (sql) | N = subjects; Bad = subjects whose newest `filed` is older than 135 days (a 10-Q is due 45 days after a quarter, plus one quarter) | (share 0.2, 0.5) trial |
+| facts | `age` | newest `filed`, 30 days warn, 100 fail | trial |
+| account | `capture_age` | newest `rd.account_capture_r1`, `age` in sessions | (1, 3) trial |
+| account | `no_netliq` (sql) | N = aliases; Bad = aliases whose newest capture has no `rd.account_value_r1` row with tag NetLiquidation | (any, any) def |
+| account | `position_expired` (sql) | sec_type option with expiry (text; if it is not an ISO date the fact is absent and the check `unknown`) before Day | (any, any) def |
+| flex | `flex_age` | newest `recorded_at` of `rd.flex_trade_row_r1`, 3 days warn, 7 fail | trial |
+| flex | `flex_section_absent` (sql, note) | N = sections wanted by version 2 (OpenPosition, EquitySummaryByReportDateInBase, ConversionRate); Bad = those with state absent in the newest fetch (`rd.flex_section_status_r1`) | a setup note on the row, never in the verdict |
+
+Where results live: nowhere. Each request recomputes. `symbol` in an example comes from `master.instrument.symbol` joined on `instrument_id` inside the view (the migration runs as the owner; the `rd` views carry only `instrument_id`).
+
+The first live read tunes `rules.go`; before the issues are cut the dispatcher may run one read-only query per rule on the production database (owner allows schema reads) to see that the first page is not red from a bad trial value.
+
+Gap table (audit gaps): 1 value checks: the rules above; 2 cross-source: version 2; 3 latest value, date, age: `newest` and Decision 6; 4 base against derived and one verdict: Decisions 2 and 5; 5 expected universe: `coverage_latest`; 6 old gaps: `coverage_gap` with `history_lost` apart; 7 silent drops: `crossed`, `empty`, `no_value` fact; 8 earnings and close plausibility: `earnings_past`, `bar_jump`; 9 Chinese hints: Decision 8.
+
+## Version 2
+
+Principle: a number is trusted when two routes that do not share a fault agree. Version 2 reconciles pairs (ours, other) inside a tolerance, stores each run's result, and shows on the dataset row of this page the worst result of its pairs next to the version 1 checks.
+
+Pairs (id, ours, other, key, tolerance; every tolerance is a trial value to be tuned after two weeks of live runs):
+
+| id | ours | other route | key and compared value | tolerance |
+|---|---|---|---|---|
+| R1 positions | `account.position` of the newest capture of the session day | Flex `OpenPosition` rows (`rd.flex_section_row_r1`, section OpenPosition, newest revision, report date = session day) | (alias, symbol, sec_type, expiry, strike, right); quantity | quantity exact; avg_cost 0.1 percent (R1 to R5: any item of kind `diff`, `missing_ours` or `missing_other` is a fail) |
+| R2 trades | `rd.account_execution_r1` | `rd.flex_trade_row_r1` | (alias, executed day, symbol, expiry, strike, right, side); sum of quantity and mean price; the exec id spaces differ, so ids are not used | quantity exact; price 0.0001 absolute; commission 0.01 |
+| R3 cash and value | `rd.account_value_r1` tags NetLiquidation and TotalCashValue of the capture nearest after the close | Flex `EquitySummaryByReportDateInBase` (total and cash) at the report date | (alias, tag, currency); amount | max(1 unit, 0.05 percent): the API value is taken after the close, the statement at the end of day |
+| R4 FX | `rd.fx_rate_r1` USDJPY | Flex `ConversionRate` JPY to USD at the report date | (rate_day); rate | 0.3 percent (fixing time differs) |
+| R5 live positions | stored positions | the live gateway `broker.AccountReader.Account` (port 4001 read only), run once after each capture | the same key as R1 | quantity exact; detects a capture that dropped or doubled a line |
+| R6 bars | `rd.price_bar_r1` USD, basis trades, last 5 sessions, for the stocks of `rd.underlying_r1` with options true (the watch list) | a second market source (below) | (symbol, session_day); close | 0.1 percent pass, above warn, above 1 percent fail; volume is not compared (venues differ) |
+| R7 chain parity | `rd.option_eod_r1`, one call and one put of the same strike and expiry | put-call parity inside the stored chain: abs(C - P - (S - K)) <= (spread of C + spread of P) + 0.02 x S, with S = underlying_price; no outside source | (expiry, strike); the gap | the bound itself; share of pairs broken warn 0.02, fail 0.1 |
+| R8 bar against quote | `rd.price_bar_r1` close of the newest session | `rd.quote_snapshot_r1` last of the newest slot after the close | (instrument); close against last | 0.5 percent |
+| R9 FRED refetch | `rd.series_point_r1` newest 5 points of each active series | a fresh fetch through `sources.Source` (FRED) | (series, observation_date); value | exact; a difference is a vintage revision and is shown as warn, never fail |
+
+R1 to R4 need no new source: the Flex statement is the broker's back-office route, independent of the API route that wrote our rows, and the Flex fetch and its sections already exist (`internal/jobs/optionledger/registry.go`, `optionledger.flex_section_row`, `optionledger.flex_section_status`). They need the sections OpenPosition, EquitySummaryByReportDateInBase and ConversionRate in the Flex query of the account; version 1's `flex_section_absent` tells whether they are there. If absent, the owner adds them in the IBKR Flex query screen (an owner action, no code).
+
+Second source for R6 (the owner's choice; the design recommends one). Recommended: Tiingo end-of-day prices. Reasons: a plain key and a JSON endpoint, daily bars both raw (`close`) and split-adjusted (`adjClose`) so the `trades` basis compares like with like, 30 years of history, one key. Cost and limits read on its pricing page on 2026-11-18: Starter free ($0): 50 requests an hour, 1,000 a day, 500 unique symbols a month, internal use only (no display to others, which is our case); the page does not say whether Japanese stocks or adjusted prices are in Starter; paid from $30 a month. The watch list is well under the 500 symbols a month, one request per symbol per day is under 1,000, so the job asks 40 symbols per run in rotation under the hourly limit. Alternatives: Alpha Vantage (the key already exists for earnings; free is 25 requests a day, too few for a rotation, paid from $49.99 a month); a J-Quants plan for JP bars (the account exists for fundamentals; the free tier is delayed, which I have not verified, so JP bars stay "not cross-checked, no second source" until the owner chooses); Stooq stays dropped (alignment-v25, 2026-11-09); a new broker account is not needed because Flex is already an independent route for the account's facts. No source is chosen in this design: the owner's word picks one or none; with none, R6 is not built and the bars rows show "no second source" as an honest unknown.
+
+Source interface (own glue behind an interface, so a source change touches one adapter): `internal/sources/api.go` gains `BarSource` (`DailyBars(ctx, BarRequest) ([]RefBar, error)`, typed errors only, no key in an error text, like `EarningsSource`) and `NewBarSourceFunc`; the one adapter is `internal/sources/tiingo` (or the other source's package); the job reads the source id from its manifest `[source] id` and takes the adapter from `cmd/ot`, as `fxrefresh.AttachSecondary` does for FRED. A different source means one new adapter package and one line in the manifest; the job, the compare function and the page do not change.
+
+Compare logic: a pure function in `internal/compute/recon` (module compute): input two keyed lists and a tolerance, output items (key, ours, other, diff, kind) with kind `match`, `diff`, `missing_ours`, `missing_other`. One function serves R1 to R9, so tolerances are data (`rules.go` of `recon`), not code.
+
+Storage: migration `0060_recon.sql`: `recon.run (run_id, pair_id, session_day, started_at, finished_at, status, n, matched, diff, missing_ours, missing_other, tolerance_text, source_id)` and `recon.item (run_id, key, ours, other, diff, kind)`, insert-only; a rerun is a new run_id and the view `rd.recon_latest_r1` takes the newest finished run per (pair_id, session_day), as `strategy.result` does. A role `ot_w_recon` (INSERT, SELECT on both tables, SELECT on the rd views the jobs read) and the line `OT_PG_DSN_RECON` follow `internal/store/setup`; the pages role gets SELECT on the view only. The owner runs setup pg and migrate after the merge (owner rule 2026-11-09).
+
+Jobs (each runnable alone for any day, idempotent: running twice leaves one newest run per pair and day, dev mode no time guard, one run of the same job at a time):
+
+| job id | pairs | schedule (manifest) | table row in `jobTable` |
+|---|---|---|---|
+| recon_flex | R1, R2, R3, R4 | XNYS, after option_ledger finishes | anyDay, force allowed |
+| recon_live | R5 | XNYS, 20 minutes after account_capture | todayOnly, no force (the gateway shows the present only; the owner can still run it from the console on the day) |
+| recon_bars | R6 | XNYS, after bars_refresh | anyDay, force allowed |
+| recon_internal | R7, R8, R9 | XNYS, after option_eod and fred_series | anyDay, force allowed |
+
+Page rows: the row of version 1 gains the optional payload field `cross_check` (already in the v1 schema, Interface 3, so no version bump) shown as a column "Cross-check" with the worst pair verdict and the pair ids; opening a row shows, per pair: verdict, compared N, matched, differences, missing on either side, tolerance in words, source id, run time, and the first 20 items as a table (key, ours, other, difference, tolerance, kind in Chinese). A pair that has not run for the day is `unknown`, never pass.
+
+How a mismatch is shown: a `diff` or `missing` item is a red line with both numbers side by side and the difference in the unit and in percent; the Chinese line says which side to trust first: for R1 to R4 and R5 "券商对账单为准，检查采集" (the statement wins, check our capture); for R6 "两个来源不一致，先看是否复权/拆股"; for R7 "期权链内部自相矛盾，检查报价时间"; for R9 "FRED 修订值，非错误". The pair verdict: R1 to R5 are exact on quantity, so any item that is not `match` is fail; R6 is warn when the share of `diff` items is above 0.001 and fail above 0.01; R7 warn 0.02, fail 0.1; R8 warn 0.005, fail 0.02; R9 never fails, any `diff` is warn. The row verdict is the worst of the version 1 checks and the pair verdicts.
+
+Order of work after the owner's word: (a) R1 to R4 and R5 (no source needed); (b) R7, R8, R9; (c) R6 after the owner names the source. Cut at that time into issues: sources interface and adapter, compute recon, store recon migration and reader, jobs, pages and web columns, ot wiring; each under the same modules as below.
+
+Owner question (one line, his word needed): which second source for US stock bars: a) Tiingo free (recommended: $0, 1,000 requests a day, internal use), b) Alpha Vantage paid ($49.99 a month), c) none, R6 stays unbuilt.
+
+## Modules
+
+`docs/design/modules.md` changes in two cells:
+
+- `store` row, entry cell: add `internal/store/basefact` (declarations only; implementation `internal/store/basefactpg`, a sub-package component). Paths unchanged: `migrations/**` and `internal/store/**` cover entries 4 to 6.
+- `compute` row, entry cell: add `internal/compute/basecheckapi`. Paths unchanged.
+
+Other paths are in rows that exist: `contracts/**`, `web/src/generated/**`, `internal/contracts/**`, `docs/contracts/page-schemas.md` are contracts (entry 3); store (entries 1, 4, 5, 6); compute (entries 2, 7, 8); pages `internal/pages/**` and `docs/contracts/pages.md` (entry 9); ot `cmd/**` and `docs/contracts/ot/**` (entry 10); web (entry 11). No dependency edge is added: pages already depends on contracts, store and compute.
+
+## Interface
+
+Contracts wording: new schema `page.base_data_page.v1` (`schema_version` 1; a new page, no bump of an existing id).
+
+1. (interface) `internal/store/basefact/api.go`, declarations only: `type Fact struct { Dataset, Rule, Subject string; N, Bad int64; Day contracts.Day; Value string }` (one row per row-id, rule and subject; `Dataset` is the row id of the table in Page; `Subject` is empty for a rule of the whole row; `Day` and `Value` are set for the rule id `newest`; `rows` uses N), `type Result struct { Facts []Fact; Failed []string }` (`Failed` are the names of the view groups that failed or timed out: `bars`, `option`, `other`, `account`), `type Reader interface { Facts(ctx context.Context) (Result, error); Close() error }` (no day parameter: each view works out its own newest day and uses the New York date as Day; `Facts` slice non-nil; the error is returned only when all four views failed; the reader runs as `ot_ro_pages`), `type OpenFunc func(ctx context.Context, dsn string) (Reader, error)`. The reader selects the columns `(dataset text, rule text, subject text, n bigint, bad bigint, day date, value text)` from the four views, one query each, `rd.base_fact_bars_r1`, `rd.base_fact_option_r1`, `rd.base_fact_other_r1`, `rd.base_fact_account_r1`. Owner: store.
+2. (interface) `internal/compute/basecheckapi/api.go`, declarations only: `type Level string` (`pass`, `warn`, `fail`, `unknown`); `type Fact` (the same fields as 1, copied because compute imports no store; the page builder converts, entry 9); `type Cell struct { Day contracts.Day; Dataset string; Keys, Missing, Expired int }` (`Dataset` is the row id); `type Input struct { Facts []Fact; NotRead []string; Cells []Cell; Days map[string]contracts.Day; Sessions map[string][]contracts.Day }` (`NotRead` are the row ids of a view that failed: their rows are `unknown`; `Days` and `Sessions` by calendar id XNYS and XTKS, both always present); `type Check struct { Rule string; Level Level; N, Bad int64; Share string; Example string; WarnAt, FailAt string; ThresholdSource string }` (decimal text written by compute); `type Row struct { Dataset, Group string; Level Level; Newest, NewestValue, NewestSubject string; AgeDays, AgeSessions int; Checks []Check }`; `type Output struct { Level Level; Counts map[Level]int; Rows []Row }`; `type Func func(Input) Output`; `type RuleList func() []string` (the ids as `<row>.<rule>`, implemented by `basecheck.RuleIDs`). Owner: compute.
+3. (interface) `contracts/schemas/page.base_data_page.v1.json` with `web/src/generated/base_data_page.v1.ts`: `schema` const `base_data_page`, `schema_version` const 1; `run_id`, `built_at`, `as_of`, `last_sessions` {XNYS, XTKS}, `top` {level, text_zh, counts}, `groups[]` {name, rows[]}, row {dataset, label, label_zh, level, newest_value, newest_day, newest_subject, age_text, failed_summary, checks[], optional `cross_check`}, check {rule, label, hint_zh, level, n, bad, share, warn_at, fail_at, threshold_source, example}, `glossary[]`, `derived_note`, `repair_path` const `/data-health`, `gaps[]` {kind gap, reason enum `facts_unavailable` (all four views failed), `view_unavailable` (one or more), `coverage_unavailable`, text}, and the version 2 slot: optional `cross_check` on a row {pair_id, level, n, matched, diff, missing, tolerance_text, source_id, run_at, items[] {key, ours, other, diff, kind, hint_zh}} and optional top-level `cross_checks[]` of the same object; version 1 never writes them. Text maximum 600. Owner: contracts.
+
+## Issues
+
+Each entry is one module; none spans two. `(interface)` entries land first; the numbers name entries of this design. All entries: `Plan: P1`, `Design: docs/design/base-data-page.md#<n>`. Migration number 0056 is free on origin/main `c16ebc95` (last is 0055) and no open pull request claims it. The nav entry of `docs/design/option-pages-r7.md` (its 13, pull request #2909) is merged at that head, so entry 11 has no order against it.
+
+### 1 basefact-api (interface)
+
+Module: store. Size: S. Order: first.
+Files: `internal/store/basefact/api.go`, `internal/store/basefact/api_test.go`
+Contracts: unchanged
+The declarations of Interface 1 and a test of the contract from both sides (a fake reader and a caller).
+Acceptance:
+1. `api.go` declares `Fact`, `Result` (`Facts` and `Failed`), `Reader` (`Facts(ctx)` without a day, returning `Result`, and `Close`) and `OpenFunc` as Interface 1 gives them, no function body, imports only `context` and `internal/contracts`.
+2. `api_test.go` has `TestFakeReaderServesCaller` (new), `TestFactsNonNilWithoutRows` (new) and `TestFailedNamesAreTheFourGroups` (new: the constants for `bars`, `option`, `other`, `account`).
+3. The result matches docs/design/base-data-page.md#1.
+
+### 2 basecheck-api (interface)
+
+Module: compute. Size: S. Order: first.
+Files: `internal/compute/basecheckapi/api.go`, `internal/compute/basecheckapi/api_test.go`
+Contracts: unchanged
+The declarations of Interface 2.
+Acceptance:
+1. `api.go` declares `Level` with the four constants, `Fact`, `Cell`, `Input` (with `NotRead`, `Days` and `Sessions` by calendar id), `Check`, `Row`, `Output`, `Func` and `RuleList`, no body and no variable with a value, imports only `internal/contracts`.
+2. `api_test.go` has `TestFuncServesCaller` (new) and `TestLevelValues` (new: the four strings).
+3. The result matches docs/design/base-data-page.md#2.
+
+### 3 base-data-contract (interface)
+
+Module: contracts. Size: M. Order: first.
+Files: `contracts/schemas/page.base_data_page.v1.json`, `web/src/generated/base_data_page.v1.ts`, `contracts/fixtures/page.base_data_page.v1.ok.json`, `contracts/fixtures/page.base_data_page.v1.gap.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/base_data_page_v1_test.go`, `docs/contracts/page-schemas.md`
+Contracts: page.base_data_page v1 (new)
+The schema of Interface 3 including the optional version 2 slot (`cross_check` on a row and `cross_checks`), the generated type and two fixtures with invented numbers.
+Acceptance:
+1. The schema has the properties and the `required` list of Interface 3; `schema` and `schema_version` are const; `repair_path` is const `/data-health`; `gaps.reason` is the enum of three values `facts_unavailable`, `view_unavailable`, `coverage_unavailable`; `cross_check` and `cross_checks` are optional and not in `required`.
+2. `web/src/generated/base_data_page.v1.ts` is generated from the schema; `git diff --name-only BASE` lists it with the schema.
+3. The fixtures `ok` and `gap` are listed in `MANIFEST.synthetic-v1.json` with their sha256 as the other fixtures are; `gap` has no groups and one gap.
+4. `base_data_page_v1_test.go` has `TestBaseDataPageOkValid` (new), `TestBaseDataPageGapValid` (new), `TestBaseDataPageRejectsBadLevel` (new), `TestBaseDataPageAcceptsCrossCheckSlot` (new: a row with a `cross_check` validates, one without it validates).
+5. `page-schemas.md` lists `page.base_data_page.v1 | 1` in the table and one paragraph naming `docs/design/base-data-page.md#Interface`.
+6. `git diff --name-only BASE -- contracts/schemas/carryover.sha256 internal/contracts/common_test.go` prints nothing.
+7. The result matches docs/design/base-data-page.md#3.
+
+### 4 basefact-reader
+
+Module: store. Size: M. Order: after 1.
+Files: `internal/store/basefactpg/reader.go`, `internal/store/basefactpg/reader_test.go`
+Contracts: unchanged
+The implementation of `basefact.Reader` over the four views, as the page role, each view on its own.
+Acceptance:
+1. `reader.go` declares `Open` of the type `basefact.OpenFunc` and a reader whose `Facts` runs one query per view (`rd.base_fact_bars_r1`, `rd.base_fact_option_r1`, `rd.base_fact_other_r1`, `rd.base_fact_account_r1`, columns `dataset, rule, subject, n, bad, day, value`, no parameter), each under its own context timeout of 10 seconds from one constant; a view that fails or times out adds its group name to `Result.Failed` and its facts are left out; the other views still give their facts; the error is returned only when all four fail; the slices are non-nil; a null `day` gives the empty `contracts.Day`; results are merged in dataset, rule and subject order.
+2. `reader_test.go` has `TestFactsMergeFourViews` (new, with a fake row source), `TestFactsOrder` (new), `TestFactsNullDay` (new), `TestOneViewFailsOthersStay` (new: the failed group is in `Failed`, the other facts arrive), `TestOneViewTimesOut` (new, a fake source that waits for the context), `TestAllViewsFailReturnsError` (new); each uses `t.Parallel()` and no sleep.
+3. The result matches docs/design/base-data-page.md#4.
+
+### 5 basefact-migration
+
+Module: store. Size: L. Order: after 1.
+Files: `migrations/0056_base_fact.sql`
+Contracts: unchanged
+One migration with the four views `rd.base_fact_bars_r1`, `rd.base_fact_option_r1`, `rd.base_fact_other_r1` and `rd.base_fact_account_r1`, the rules of the Checks table, the grants and the Down, so the owner holds one deploy and the reader never meets a missing view.
+Acceptance:
+1. The migration creates the four views with the columns `dataset, rule, subject, n, bad, day, value` owned by `ot_owner`, grants SELECT on each to `ot_ro_pages`, has a Down that revokes and drops all four, and changes no table.
+2. Each SQL block carries the comment line `-- rule <row> <rule>` for the rules marked `sql` in the Checks table, including `rows` and `newest` of each row, and none for `age`, `coverage_gap`, `coverage_latest` or `flex_section_absent` (the last has the line `-- note flex flex_section_absent`).
+3. The bars view reads `rd.price_bar_r1` rows of basis trades of the last 45 calendar days and joins `master.instrument` for `symbol`; it has no rule `bar_gap`; the option view picks per `instrument_id` the newest `received_at` among the rows of status 1 of the newest `session_day` of each currency and classifies a contract without such a row by its newest row (Decision 7); `no_netliq` reads the tag `NetLiquidation` of `rd.account_value_r1`.
+4. `git diff --numstat BASE -- migrations/0056_base_fact.sql` shows one file and nothing else under `migrations` changes; if the file would pass 600 lines the worker reports it in the pull request description and does not split it.
+5. The result matches docs/design/base-data-page.md#5.
+
+### 6 basefact-views-pg
+
+Module: store. Size: M. Order: after 4 and 5.
+Files: `internal/store/basefactpg/bars_pg_test.go`, `internal/store/basefactpg/option_pg_test.go`, `internal/store/basefactpg/other_pg_test.go`, `internal/store/basefactpg/account_pg_test.go`, `internal/store/basefactpg/reader_pg_test.go`
+Contracts: unchanged
+The pg tests of the four views and of the reader against them; they run in GitHub CI only.
+Acceptance:
+1. Each file carries the build tag `pg`, uses `t.Parallel()`, its own database and invented rows.
+2. `bars_pg_test.go` has `TestBarsViewOhlcOrder` (new), `TestBarsViewJumpAcrossStoredDays` (new), `TestBarsViewNewestPerCurrency` (new); `option_pg_test.go` has `TestOptionViewCountsOneRowPerContract` (new: two captures of one contract count once), `TestOptionViewPicksStatusOne` (new: a status-2 row newer than a status-1 row does not replace it), `TestOptionViewEmptyOnlyWithoutStatusOne` (new), `TestOptionViewNonLiveShare` (new), `TestOptionViewCrossedShare` (new).
+3. `other_pg_test.go` has `TestOtherViewSeriesAge` (new), `TestOtherViewEarningsPast` (new), `TestOtherViewMacroExhausted` (new); `account_pg_test.go` has `TestAccountViewNoNetLiq` (new), `TestAccountViewPositionExpired` (new), `TestAccountViewFlexSectionAbsentIsNote` (new).
+4. `reader_pg_test.go` has `TestReaderReadsTheFourRealViews` (new: after the migration of entry 5 `Facts` returns facts of every group and an empty `Failed`).
+5. The result matches docs/design/base-data-page.md#6.
+
+### 7 basecheck-rules
+
+Module: compute. Size: M. Order: after 2.
+Files: `internal/compute/basecheck/rules.go`, `internal/compute/basecheck/rules_test.go`
+Contracts: unchanged
+The rule table: row id, group, rule id, source (`sql`, `ledger`, `derived`, `note`), thresholds (a fail threshold may be none), threshold source, subject calendars, as the Checks and Page tables give them.
+Acceptance:
+1. `rules.go` declares `RuleIDs` of the type `basecheckapi.RuleList` and one table of rules and one table of the 12 rows with groups, ledger datasets, view group and subject calendars; no threshold number is written anywhere else in the package; `bars.bar_jump` has no fail threshold and `flex.flex_section_absent` has source `note`.
+2. `rules_test.go` has `TestRuleIDsUnique` (new), `TestEveryRuleHasSource` (new), `TestRowsAreTheTwelveOfTheDesign` (new: ids and groups equal the Page table), `TestCheckedRulesAreNotTableConstraints` (new: none of the dropped rule ids is in the table), `TestEveryRowHasAViewGroup` (new).
+3. The result matches docs/design/base-data-page.md#7.
+
+### 8 basecheck-eval
+
+Module: compute. Size: M. Order: after 7.
+Files: `internal/compute/basecheck/eval.go`, `internal/compute/basecheck/age.go`, `internal/compute/basecheck/eval_test.go`, `internal/compute/basecheck/age_test.go`, `internal/compute/basecheck/testdata/facts.json`
+Contracts: unchanged
+`Evaluate` of the type `basecheckapi.Func`: levels, ages per subject calendar, the top line.
+Acceptance:
+1. `Evaluate` gives each check the level by the thresholds (any, share; a rule without a fail threshold is at most warn), `unknown` for a rule without a fact, a row listed in `Input.NotRead` level `unknown` with the one check `not_read`, a row the worst level in the order fail, unknown, warn, pass, a row whose `rows` N is 0 fail, a `note` rule never in the level, and `Output.Level` the worst row; shares are decimal text made with `math/big`.
+2. `age.go` counts the sessions of `Input.Sessions[calendar]` between the newest day of a subject and `Input.Days[calendar]`; 0 pass, 1 warn, 2 or more fail; a newest day after `Days` gives 0; a row with several subjects takes the worst.
+3. `git grep -n 'time.Now\|net/http\|database/sql' -- internal/compute/basecheck` prints nothing.
+4. `eval_test.go` has `TestWorstLevelWins` (new), `TestNoRowsIsFail` (new), `TestMissingFactIsUnknown` (new), `TestTopLinePassOnlyWhenAllPass` (new), `TestShareThresholds` (new), `TestBarJumpNeverFails` (new), `TestNoteDoesNotDriveVerdict` (new), `TestNotReadRowIsUnknown` (new); `age_test.go` has `TestAgeInSessions` (new), `TestAgeAcrossHoliday` (new), `TestJpAgeUsesJpCalendar` (new: JP newest 2026-11-18 with `Days` XTKS 2026-11-18 and XNYS 2026-11-17 gives age 0), `TestAgeNeverNegative` (new: a newest day after the last closed session gives 0); the testdata holds invented numbers.
+5. The result matches docs/design/base-data-page.md#8.
+
+### 9 base-data-page
+
+Module: pages. Size: L. Order: after 1, 2, 3.
+Files: `internal/pages/base_data_page/page.go`, `internal/pages/base_data_page/builder.go`, `internal/pages/base_data_page/rows.go`, `internal/pages/base_data_page/convert.go`, `internal/pages/base_data_page/text.go`, `internal/pages/base_data_page/zh_texts.go`, `internal/pages/base_data_page/purity_test.go`, `internal/pages/base_data_page/builder_test.go`, `internal/pages/base_data_page/rows_test.go`, `internal/pages/base_data_page/convert_test.go`, `internal/pages/base_data_page/zh_texts_test.go`, `internal/pages/base_data_page/testdata/ok.json`, `internal/pages/base_data_page/testdata/gap.json`, `docs/contracts/pages.md`
+Contracts: unchanged
+The builder: reads `basefact.Reader` and `coverage.Reader`, converts the facts, sums the ledger cells per row, derives `Days` and `Sessions`, maps `Result.Failed` to the row ids of those view groups, calls the injected `basecheckapi.Func`, lays out groups, rows, checks and glossary with Chinese texts from `zh_texts.go`.
+Acceptance:
+1. `Build` takes an `Input` with `Now`, `Facts basefact.Reader`, `Cov coverage.Reader` and `Eval basecheckapi.Func`; the page package declares its own constants for the calendar ids XNYS and XTKS and their zones; `Days` of a calendar is its newest session day before the current date in its zone, from `Cov.Sessions`, and both calendars are always in `Days` and `Sessions`; a failed view group gives its rows in `NotRead` and one gap `view_unavailable` that names the group in words, the other rows stay; all four views failing gives the gap `facts_unavailable` and no rows; a failed `Cov` read gives the gap `coverage_unavailable` with the other rules still evaluated.
+2. `convert.go` converts `basefact.Fact` to `basecheckapi.Fact` field by field (`Dataset, Rule, Subject, N, Bad, Day, Value`) in one function, and sums the `coverage.Cell` values of the ledger datasets of a row into one `basecheckapi.Cell` named by the row id, using the table of ledger datasets of the Page section; `convert_test.go` has `TestFactConversionKeepsEveryField` (new: every field set to a distinct value arrives unchanged) and `TestCellsSumLedgerDatasetsPerRow` (new: `obs.option_eod`, `obs.option_eod_jp` and `obs.option_eod_index` sum into the row `chains`).
+3. `zh_texts.go` holds string constants only: one hint per rule id of `basecheckapi.RuleList` and one per row id, the glossary and the `derived_note`; labels in `text.go` are English; the hint of `bar_jump` says that a split looks like this.
+4. `zh_texts_test.go` has `TestEveryRuleAndRowHasChineseHint` (new: each id of `RuleList` and each row id has a text with a CJK rune) and `TestGlossaryExplainsEveryTerm` (new).
+5. `purity_test.go` is as the other pages (no clock, no database); `builder_test.go` has `TestBuildGroupsAreFour` (new), `TestBuildPayloadMatchesFixture` (new: the output of a fake `Eval` equals `testdata/ok.json` and validates against the schema of entry 3), `TestBuildOneViewFailsOthersStay` (new), `TestBuildAllViewsFailGap` (new), `TestBuildGivesBothCalendars` (new), `TestBuildStepTwoFromStepOnePayload` (new: the check list of a row is built from the row payload of the table).
+6. `docs/contracts/pages.md` gains one line for `base_data_page.Build(ctx, in Input) ([]byte, error)` with the schema name, as the line of `data_health_page.Build` does.
+7. The result matches docs/design/base-data-page.md#9.
+
+### 10 base-data-wire
+
+Module: ot. Size: M. Order: after 4, 5, 8 and 9.
+Files: `cmd/ot/base_data_site.go`, `cmd/ot/base_data_site_test.go`, `cmd/ot/base_data_ids_test.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/valuation_site_test.go`, `docs/contracts/ot/pages/base_data_page.md`
+Contracts: unchanged
+The route `base-data` (name `base_data_page`, order 135): openers for `basefactpg.Open` and the coverage reader, `basecheck.Evaluate` injected; and the tests that ids agree.
+Acceptance:
+1. `base_data_site.go` registers the page family with `registerPage` (route `base-data`, name `base_data_page`, order 135) and puts the openers in `extDeps` and `siteOpeners` as `data_health_site.go` does; no logic beyond wiring.
+2. `pagereg_test.go` lists `{"base-data", "base_data_page", 135}` and the name in the registered names; both `known pages:` lists of `pagelist_test.go` name `base_data_page`; `valuation_site_test.go` keeps its assertion that the valuation pages and the two company pages are the last names true with the new page in order 135.
+3. `base_data_ids_test.go` has `TestSqlRuleCommentsEqualRulesTable` (new: the `-- rule <row> <rule>` lines of `migrations/0056_base_fact.sql` equal the rules marked `sql` of `basecheck.RuleIDs`, both ways), `TestEveryRuleAndRowHasZhText` (new: the ids of `basecheck.RuleIDs` and the row ids each have a hint in the page package) and `TestEveryLedgerDatasetIsInARowOrNamedOut` (new: every dataset id of `dataHealthManifests` is in the ledger datasets of one of the 12 rows or in the fixed list of derived and owner-input datasets of the Page section).
+4. `base_data_site_test.go` has `TestBaseDataRouteServesGetAndHead` (new), `TestBaseDataRouteWithoutDSNIsGap` (new).
+5. `docs/contracts/ot/pages/base_data_page.md` states route, order, the three gaps and that the `/data-health` route stays without a redirect.
+6. The result matches docs/design/base-data-page.md#10.
+
+### 11 base-data-web
+
+Module: web. Size: M. Order: after 3.
+Files: `web/src/pages/base_data/BaseDataPage.tsx`, `web/src/pages/base_data/DatasetTable.tsx`, `web/src/pages/base_data/CheckList.tsx`, `web/src/types/base_data_page.ts`, `web/src/shell/TopNav.tsx`, `web/test/shell/TopNav.test.tsx`, `web/test/pages/base_data/base_data.test.tsx`, `web/test/pages/base_data/fixtures/ok.ts`, `web/test/pages/base_data/fixtures/gap.ts`
+Contracts: unchanged
+The page: top verdict, one table of rows by group, an opened row shows the checks, glossary and thresholds under it, gaps in words; menu entry `Base data` under System before `Data health`, written against the System group of `c16ebc95` (Settings, Job console, Data health, Option data).
+UI:
+- 按 frontend-stack：用 shadcn `Alert` 与 `Badge` 做 顶部结论与每行的判定色（pass、warn、fail、unknown）。
+- 按 frontend-stack：用 @tanstack/react-table 与 shadcn `Table` 做 数据集表（按判定排序，展开行）。
+- 按 frontend-stack：用 shadcn `Accordion` 做 每个数据集的检查明细。
+- 按 frontend-stack：用 Tailwind `text-muted-foreground` 做 中文说明的次要文字。
+Acceptance:
+1. `BaseDataPage.tsx` is registered with `registration = { schema: 'base_data_page', page: page(validate, View) }`; `types/base_data_page.ts` follows `types/data_health_page.ts` with `SUPPORTED_VERSIONS = [1]`.
+2. The table has the columns Dataset, Verdict, Newest value, Date, Age, Failed checks, in the order of the payload groups; every text shown is a payload field; `git grep -n 'reduce\|parseFloat\|Number(' -- web/src/pages/base_data` prints nothing.
+3. `TopNav.tsx` lists `{ label: 'Base data', path: '/base-data' }` before `Data health` in System; `TopNav.test.tsx` lists `['Base data', '/base-data']` in the System tuple and `'Base data'` in the label list that holds `'Data health'`.
+4. `base_data.test.tsx` has `renders one row per dataset with its verdict` (new), `opens a row to show its checks` (new), `renders a view gap and the other rows` (new), `renders the gap payload` (new).
+5. The screenshot of the page against the sketch of the design is taken by the `ui-shots` check (UI rule).
+6. The result matches docs/design/base-data-page.md#11.
+
+## Checked by CI
+
+
+`ci-go`: `go build ./...`, `go test` of the packages of each Go entry, `golangci-lint`, the arch derivation; the `pg` tests run in GitHub CI only. `ci-web`: `tsc`, `eslint`, `vitest`, build. `ui-shots`: the screenshot of `/base-data` at both widths. After merge of entry 5 the window runs migrate (owner rule 2026-11-09).
+
+## Left out
+
+- Version 2 (the section Version 2) is not cut now. After the owner's source word it is cut into: sources `BarSource` and the adapter; compute `recon`; store migration `0060_recon.sql`, role `ot_w_recon`, reader; the four jobs with manifests and `jobTable` rows; pages and web fields; ot wiring. R1 to R5 and R7 to R9 need no word and may be cut at once if the owner wants them first.
+- `settings.underlying` is not a base row (owner input, on `/underlyings`); `account.execution` is read by version 2 only.
+- A hint line on `/data-health` pointing to `/base-data` (a change of a merged design's page; later, small).
+- A stored history of verdicts and a chart over time: needs a job and a table.
+- A job in place of the page-time views if the page is slow: the same `Evaluate`, a job and a table.
+- `no_value` and not-refetchable history is shown as a fact, not repaired (the repair is `/data-health`).
+- JP bars cross-check: no second source until the owner decides (J-Quants plan unverified).
+- Not rows and not judged in version 1, with the reason: `master.instrument` (a registry of ids and symbols, no value to judge; its `symbol` is only joined for examples); `valuation.company_profile` (the owner's own valuation input, edited on its page, not base data); stock splits (no table stores them, so `bar_jump` is warn only until one does); `adjusted_last` bars (a second basis for which no page reads a value yet; R6 of version 2 compares `trades` only).
+- Thresholds are trial values; tuning is a later change of `rules.go` only.
+
+## Adversarial
+
+Reviews: `state/optdesk-drafts/designs/base-data-page/adversarial.md` (read on `8ce1059b`, answered in round one) and the five blocking points of optdesk-advisor against `c16ebc95` (round two, answered here). Re-verified on `c16ebc95`. One line per point.
+
+Round one, six questions:
+1. Gap against the goal: adopted. Merged `bars` row and the ledger table of Page; `obs.option_eod_index` in `chains`, `master.option_*` in `contracts`; `bar_gap` dropped; per-calendar `Days` and `Sessions`; `settings.underlying` in Left out.
+2. Biggest risk (views unspecified, unbounded cost): adopted in part. Four views, one migration; the cost is stated in Decision 3 with the bars bound (instruments x 31 sessions x 2 bases, instruments not measured). Page time on production is unverified and is read once after the deploy; a cache or job is not adopted now.
+3. Simpler way: adopted (table-constraint rules dropped with their constraint names; 12 rows). A page without a migration is not adopted: the `rd` views hide symbol, the bar status and the per-contract pick.
+4. Lock-in: adopted (`-- rule` lines, rule marks `sql`, `ledger`, `derived`, `note`, tests in entries 7 and 10, the v2 slot in the schema, migration order).
+5. False claims: adopted (`calUS`/`calJP` in `cmd/ot`, `price_bar_positive_ck`, keys of bars and fx, `macro_event` columns, symbol from `master.instrument`).
+6. Likeliest slip (a view failing in CI): adopted in part. The first split into four migrations is replaced in round two by one migration entry (5) plus one pg-test entry (6); a failing view no longer blanks the page (point 3 below).
+
+Round one, blocking defects 1 to 9: all adopted as in round one; the one change since: defect 8 (size of the SQL) is now answered by one migration entry with the worker told to report, not split, a file over 600 lines, and by pg tests in a separate entry.
+
+Round two, advisor points:
+1. Status: adopted. The codes are read from `docs/contracts/datasets/obs.option_eod.md` and `statusOf`; the pick is the newest status-1 row; `empty` counts no-quote contracts only when no status-1 row exists; errors have their rule; not listed and stale are the fact `not_judged`; `non_live` is added for chains, quotes and open. The sentence "I have not read the meaning of the codes" is deleted. For the option open table I used its own code list from its dataset doc.
+2. Entry 4 pg test: adopted. `reader_pg_test.go` moved to entry 6, ordered after 4 and 5.
+3. One failing view must not blank the page: adopted (Decision 3; `Result.Failed`; `NotRead`; gap `view_unavailable`; entries 4, 8, 9, 11).
+4. Entry 3 Contracts grammar: adopted (`page.base_data_page v1 (new)`).
+5. (a) `bar_jump` warn only: adopted. (b) `flex_section_absent` a setup note, source `note`, never in the verdict: adopted. (c) Left out names `master.instrument`, `valuation.company_profile`, splits and `adjusted_last` bars with reasons: adopted.
+Also: one migration with four views: adopted. Nav order against the r7 nav entry: dropped, since #2909 is merged at `c16ebc95`. Age never negative, both calendars always present, rows against `dataHealthManifests`: adopted as tests in entries 8, 9 and 10. Not adopted: none.
