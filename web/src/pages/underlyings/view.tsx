@@ -30,6 +30,22 @@ const TEXT_FIELDS = [
 ] as const
 const SWITCH_FIELDS = ['options', 'fundamentals'] as const
 
+// The gloss shown next to the field name in the label of an edit form, keyed by the field name.
+const GLOSS: Record<string, string> = {
+  buy_price: 'price you would buy at',
+  sale_price: 'price you would sell at',
+  report_date_override: 'your own report date, YYYY-MM-DD',
+  issuer: 'company id for filings and calendars',
+  status: 'whether the name is followed',
+  options: 'sell puts on this name',
+  fundamentals: 'read its filings',
+}
+
+function labelText(name: string, gloss: boolean) {
+  const g = gloss ? GLOSS[name] : undefined
+  return g ? `${name} (${g})` : name
+}
+
 function Token({ form }: { form: Form }) {
   return (
     <>
@@ -128,10 +144,20 @@ function NamesTable({ rows, editable }: { rows: Name[]; editable: boolean }) {
   )
 }
 
-function Field({ id, name, defaultValue }: { id: string; name: string; defaultValue: string }) {
+function Field({
+  id,
+  name,
+  defaultValue,
+  gloss = false,
+}: {
+  id: string
+  name: string
+  defaultValue: string
+  gloss?: boolean
+}) {
   return (
     <div className="space-y-1">
-      <Label htmlFor={id}>{name}</Label>
+      <Label htmlFor={id}>{labelText(name, gloss)}</Label>
       <Input id={id} name={name} defaultValue={defaultValue} />
     </div>
   )
@@ -172,18 +198,18 @@ function EditForm({ row, form }: { row: Name; form: Form }) {
       id={editId(row.key)}
       tabIndex={-1}
       data-row={row.key}
-      className="grid gap-3 border-t pt-3 sm:grid-cols-3"
+      className="hidden gap-3 border-t pt-3 target:grid sm:grid-cols-3"
     >
       <Token form={form} />
       <input type="hidden" name="key" value={row.key} />
       <div className="sm:col-span-3 font-medium">{row.key}</div>
       {TEXT_FIELDS.filter(has).map((f) => (
-        <Field key={f} id={`${row.key}-${f}`} name={f} defaultValue={values[f]} />
+        <Field key={f} id={`${row.key}-${f}`} name={f} defaultValue={values[f]} gloss />
       ))}
       {SWITCH_FIELDS.filter(has).map((f) => (
         <div key={f} className="flex items-center gap-2">
           <Switch id={`${row.key}-${f}`} name={f} defaultChecked={row[f]} />
-          <Label htmlFor={`${row.key}-${f}`}>{f}</Label>
+          <Label htmlFor={`${row.key}-${f}`}>{labelText(f, true)}</Label>
         </div>
       ))}
       <div className="flex items-end">

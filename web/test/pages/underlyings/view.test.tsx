@@ -90,6 +90,32 @@ describe('underlyings view', () => {
     }
   })
 
+  it('new: each edit form is hidden unless targeted', async () => {
+    const p = fixture('golden')
+    const el = await render(p)
+    const forms = [...el.querySelectorAll('form[data-row]')]
+    expect(forms.length).toBe(p.rows.length)
+    for (const f of forms) {
+      expect(f.classList.contains('hidden')).toBe(true)
+      expect(f.classList.contains('target:grid')).toBe(true)
+    }
+    const add = el.querySelector('form[data-add-form]')!
+    expect(add.classList.contains('hidden')).toBe(false)
+    expect(add.classList.contains('target:grid')).toBe(false)
+  })
+
+  it('new: edit labels carry a gloss and keep the posted names', async () => {
+    const p = fixture('golden')
+    const el = await render(p)
+    const r = p.rows.find((x) => x.editable.includes('buy_price') && x.editable.includes('report_date_override'))!
+    const f = el.querySelector(`form[data-row="${r.key}"]`)!
+    const label = (name: string) => f.querySelector(`label[for="${r.key}-${name}"]`)!.textContent
+    expect(label('buy_price')).toContain('buy_price (price you would buy at)')
+    expect(label('report_date_override')).toContain('(your own report date, YYYY-MM-DD)')
+    expect(f.querySelector('input[name="buy_price"]')).not.toBeNull()
+    expect(f.querySelector('input[name="report_date_override"]')).not.toBeNull()
+  })
+
   it('new: the table has no switch and no Edit link without a form', async () => {
     const golden = await render(fixture('golden'))
     expect(golden.querySelector('[data-names] button[role=switch]')).toBeNull()
