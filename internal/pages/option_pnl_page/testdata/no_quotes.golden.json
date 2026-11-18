@@ -71,7 +71,7 @@
               "id": "b0-main-entry",
               "label": "Entry vs mid",
               "text": "$0.00",
-              "hint": "fill price against the stored mid of bid and ask",
+              "hint": "fill price against the stored mid of bid and ask · 0 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
               "tone": "none"
             },
             {
@@ -156,7 +156,7 @@
           "gap": null
         }
       ],
-      "sample_note": "1 ended lots: fewer than 20 ended lots: no conclusion about what pays",
+      "sample_note": "1 ended lots, 0 split lots: fewer than 20 split lots: no conclusion about what pays",
       "gap": null,
       "ledger": {
         "title": "Ledger",
@@ -168,8 +168,8 @@
             "groups": [
               {
                 "id": "grp-a0m0",
-                "label": "2026-11",
-                "summary": "USD, 0 split lots, 1 ended lot",
+                "label": "无拆分的月份 2026-11 · 1 lot",
+                "summary": "USD, 0 split lots, 1 ended lot · 2026-11-07 之前没有存档报价，这些仓位只有账本数字，无法拆分",
                 "books": [
                   {
                     "id": "book-lg-a0m-0-0",
