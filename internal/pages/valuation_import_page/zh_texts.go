@@ -27,9 +27,5 @@ const (
 	ReasonBadKey   = "the key picked is not valid (所选 key 不合规)"
 )
 
-// Texts the builder writes of its own.
-const (
-	textFlagged   = " rows carry a breakpoint flag other than ok (断点标记不是 ok 的行数)"
-	defaultName   = "upload"
-	reasonStoreNA = "store_unavailable"
-)
+// textFlagged follows the count of rows with a breakpoint flag other than ok.
+const textFlagged = " rows carry a breakpoint flag other than ok (断点标记不是 ok 的行数)"

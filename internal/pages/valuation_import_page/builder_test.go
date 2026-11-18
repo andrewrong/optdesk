@@ -261,7 +261,7 @@ func TestEveryReasonHasChineseHint(t *testing.T) {
 			t.Errorf("no Chinese hint: %q", s)
 		}
 	}
-	for en, zh := range importerReasons {
+	for en, zh := range hinted {
 		if !strings.HasPrefix(zh, en) {
 			t.Errorf("sentence %q does not keep %q", zh, en)
 		}

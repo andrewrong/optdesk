@@ -110,18 +110,15 @@ func count(c *countsJSON, action string, needsTick bool) {
 }
 
 func reviewType(t string) string {
-	switch t {
-	case "first":
-		return TextFirst
-	case "event":
-		return TextEvent
+	if h, ok := hinted[t]; ok {
+		return h
 	}
 	return t
 }
 
 // reason gives the sentence with its hint for a reason of the importer; an unknown text is shown as it is.
 func reason(s string) string {
-	if t, ok := importerReasons[s]; ok {
+	if t, ok := hinted[s]; ok {
 		return t
 	}
 	return cut(s)
