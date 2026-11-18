@@ -71,6 +71,12 @@ func TestTiererContractFake(t *testing.T) {
 	for _, v := range res.Verdicts {
 		by[v.Key] = v
 	}
+	checkRows(t, by)
+	checkResult(t, res)
+}
+
+func checkRows(t *testing.T, by map[string]optiontierapi.Verdict) {
+	t.Helper()
 	if g := by["a"]; g.Tier != "fits" || g.Place != 1 || g.FitAlias != "main" || len(g.Cash) != 1 || g.Cash[0].Verdict != "fits" {
 		t.Errorf("green row = %+v", g)
 	}
@@ -80,6 +86,10 @@ func TestTiererContractFake(t *testing.T) {
 	if g := by["c"]; g.Tier != "grey" || g.Grey != "no_bid" {
 		t.Errorf("grey row = %+v", g)
 	}
+}
+
+func checkResult(t *testing.T, res optiontierapi.Result) {
+	t.Helper()
 	if want := []string{"a", "b", "c"}; !reflect.DeepEqual(res.Order, want) {
 		t.Errorf("Order = %v, want %v", res.Order, want)
 	}
