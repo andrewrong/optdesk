@@ -86,7 +86,7 @@ func moneyText(s, currency string) string {
 	return out
 }
 
-// orGap is s, or the gap text when s is empty.
+// orGap is s, or the gap text when s is "".
 func orGap(s string) string {
 	if s == "" {
 		return gapText
