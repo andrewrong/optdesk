@@ -195,7 +195,10 @@ var Rows = []RowInfo{
 	{"quotes", "Market data", "option", []string{"obs.quote_snapshot"}, map[string]string{"USD": "XNYS"}},
 	{"chains", "Market data", "option", []string{"obs.option_eod", "obs.option_eod_jp", "obs.option_eod_index"}, map[string]string{"USD": "XNYS", "JPY": "XTKS"}},
 	{"open", "Market data", "option", []string{"obs.option_open", "obs.option_open.jp"}, map[string]string{"USD": "XNYS", "JPY": "XTKS"}},
-	{"contracts", "Market data", "other", []string{"master.option_list", "master.option_list.jp", "master.option_contract", "master.option_contract.jp", "master.option_contract.gap"}, nil},
+	{"contracts", "Market data", "other", []string{
+		"master.option_list", "master.option_list.jp", "master.option_contract",
+		"master.option_contract.jp", "master.option_contract.gap",
+	}, nil},
 	{"rates", "Rates and events", "other", []string{"obs.series_point"}, nil},
 	{"fx", "Rates and events", "other", []string{"obs.fx_rate"}, map[string]string{"USDJPY": "XNYS"}},
 	{"events", "Rates and events", "other", []string{"obs.earnings_date", "obs.dividend_expectation", "obs.macro_event"}, nil},
