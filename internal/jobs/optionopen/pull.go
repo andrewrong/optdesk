@@ -265,7 +265,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok, unread := 0, 0, 0
+	planned, ok, unread, partial := 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -288,6 +288,8 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 			switch {
 			case r.Status == stOK:
 				ok++
+			case r.Status == stPartial:
+				partial++
 			case r.Status == stDisconnected, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
 				unread++
 			}
@@ -300,6 +302,12 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 			return withErr(res, newErr(contracts.Retryable,
 				"%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot was not read or the broker was unavailable",
 				ok, planned, p.m.MinOKShare, unread))
+		}
+		if partial > 0 {
+			// Rows with only some of bid, ask and IV (a slow broker): the key is run again, the same captureID keeps the run idempotent.
+			return withErr(res, newErr(contracts.Retryable,
+				"%d of %d planned items ok, under the share %.2f; %d rows partial",
+				ok, planned, p.m.MinOKShare, partial))
 		}
 		return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, p.m.MinOKShare))
 	}
