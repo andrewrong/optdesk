@@ -25,19 +25,18 @@ func TestOptionPageRoute(t *testing.T) {
 	a, _ := optionPageApp(t, "")
 	rd := siteReaders{cands: demoCandidates{}, eod: demoOption{}}
 	h := siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
-	rec := candidatesGet(t, h, http.MethodGet, "/"+siteOptionRoute)
-	body := rec.Body.String()
-	if rec.Code != 200 || !strings.Contains(body, `"schema":"option_page"`) || !strings.Contains(body, `"run_id":"ot-serve"`) {
-		t.Fatalf("%d %q", rec.Code, body)
+	for _, m := range []string{http.MethodGet, http.MethodHead} {
+		rec := candidatesGet(t, h, m, "/"+siteOptionRoute)
+		if rec.Code != 302 || rec.Header().Get("Location") != "/options/candidates" {
+			t.Errorf("%s: %d %q", m, rec.Code, rec.Header().Get("Location"))
+		}
 	}
-	if rec := candidatesGet(t, h, http.MethodHead, "/"+siteOptionRoute); rec.Code != 200 {
-		t.Errorf("HEAD: %d", rec.Code)
+	body, err := buildOptionPage(t.Context(), a, candidatesClock, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if rec := candidatesGet(t, h, http.MethodPost, "/"+siteOptionRoute); rec.Code != 405 {
-		t.Errorf("POST: %d", rec.Code)
-	}
-	if rec := candidatesGet(t, h, http.MethodGet, "/"+siteOptionRoute+"/x"); rec.Code == 200 && strings.Contains(rec.Body.String(), `"schema":"option_page"`) {
-		t.Errorf("sub path served the page")
+	if !strings.Contains(string(body), `"schema":"option_page"`) || !strings.Contains(string(body), `"run_id":"ot-serve"`) {
+		t.Fatalf("%q", body)
 	}
 }
 
@@ -141,10 +140,12 @@ func TestOptionPageScope(t *testing.T) {
 	t.Parallel()
 	a, _ := optionPageApp(t, "")
 	rd := siteReaders{cands: demoCandidates{}, eod: demoOption{}}
-	h := siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
-	rec := candidatesGet(t, h, http.MethodGet, "/options")
-	if !strings.Contains(rec.Body.String(), `"scope":"options"`) {
-		t.Fatalf("scope: %s", rec.Body.String())
+	body, err := buildOptionPage(t.Context(), a, candidatesClock, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `"scope":"options"`) {
+		t.Fatalf("scope: %s", body)
 	}
 }
 
@@ -279,15 +280,20 @@ func TestOptionPageCarriesTheRefreshState(t *testing.T) {
 	t.Parallel()
 	a, _ := optionPageApp(t, "")
 	rd := siteReaders{cands: demoCandidates{}, eod: demoOption{}, names: demoOption{}}
-	h := siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
-	body := candidatesGet(t, h, http.MethodGet, "/"+siteOptionRoute).Body.String()
+	build := func() string {
+		b, err := buildOptionPage(t.Context(), a, candidatesClock, "2026-11-05", rd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	body := build()
 	if !strings.Contains(body, `"notice":"live quotes are off (ot serve --live-quotes)"`) {
 		t.Fatalf("flag off: %s", body)
 	}
 	r := newLiveRig(t, true, liveItems(1, 3), liveNoon)
 	rd.live = r.l
-	h = siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
-	body = candidatesGet(t, h, http.MethodGet, "/"+siteOptionRoute).Body.String()
+	body = build()
 	if !strings.Contains(body, `"notice":"no symbols on this page"`) {
 		t.Fatalf("flag on: %s", body)
 	}
