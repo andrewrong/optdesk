@@ -194,3 +194,27 @@ func TestBlockCarriesCashGlossAndPerDateCash(t *testing.T) {
 		t.Errorf("no capture = %+v", nc)
 	}
 }
+
+func TestStaleByCases(t *testing.T) {
+	t.Parallel()
+	s := []contracts.Day{"2026-11-13", "2026-11-16", "2026-11-17", "2026-11-18"}
+	for _, c := range []struct {
+		name        string
+		data, build contracts.Day
+		sessions    []contracts.Day
+		stale       bool
+	}{
+		{"build day session", "2026-11-18", "2026-11-18", s, false},
+		{"session before", "2026-11-17", "2026-11-18", s, false},
+		{"two sessions behind", "2026-11-16", "2026-11-18", s, true},
+		{"after build day", "2026-11-19", "2026-11-18", s, true},
+		{"off the list", "2026-11-15", "2026-11-18", s, true},
+		{"saturday build accepts friday", "2026-11-13", "2026-11-14", s, false},
+		{"empty list keeps old rule, older", "2026-11-17", "2026-11-18", nil, true},
+		{"empty list keeps old rule, same", "2026-11-18", "2026-11-18", nil, false},
+	} {
+		if got := staleBy(c.data, c.build, c.sessions); got != c.stale {
+			t.Errorf("%s: staleBy = %v, want %v", c.name, got, c.stale)
+		}
+	}
+}

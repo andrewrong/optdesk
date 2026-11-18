@@ -462,3 +462,20 @@ func TestSessionReaderErrorFailsBuild(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestBuildDaySessionCaptureIsFresh(t *testing.T) {
+	t.Parallel()
+	p := buildOn(t, &fakeSessions{days: wedSessions}, "2026-11-18", "2026-11-18")
+	if p.Accounts[0].Status != "ok" || p.Stale != nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+}
+
+func TestOffListCaptureIsStale(t *testing.T) {
+	t.Parallel()
+	// 2026-11-14 is a Saturday: not on the session list, so stale even though it is after the Friday session.
+	p := buildOn(t, &fakeSessions{days: wedSessions}, "2026-11-18", "2026-11-14")
+	if p.Accounts[0].Status != "stale" || p.Stale == nil {
+		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
+	}
+}
