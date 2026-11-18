@@ -119,7 +119,7 @@ func buildDetail(ctx context.Context, c Config, alias, structureID string, day c
 		vm.gapPage("failed", mkGap(reasonNoReader), "Cannot read the position structures", structureID)
 		return json.Marshal(vm)
 	}
-	in, err := c.load(ctx, alias, day)
+	in, _, err := c.load(ctx, alias, day)
 	if err != nil {
 		return nil, err
 	}

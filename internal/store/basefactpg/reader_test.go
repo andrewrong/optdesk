@@ -43,9 +43,11 @@ func day(s string) *time.Time {
 	return &t
 }
 
+var v = "v"
+
 func four() map[string][]record {
 	return map[string][]record{
-		basefact.GroupBars:    {{Dataset: "bars", Rule: "newest", Subject: "USD", N: 1, Day: day("2026-11-17"), Value: "v"}},
+		basefact.GroupBars:    {{Dataset: "bars", Rule: "newest", Subject: "USD", N: 1, Day: day("2026-11-17"), Value: &v}},
 		basefact.GroupOption:  {{Dataset: "quotes", Rule: "rows", N: 5, Bad: 1}},
 		basefact.GroupOther:   {{Dataset: "rates", Rule: "rows", N: 3}},
 		basefact.GroupAccount: {{Dataset: "account", Rule: "rows", N: 2}},
@@ -104,6 +106,18 @@ func TestFactsNullDay(t *testing.T) {
 	}
 	if len(res.Facts) != 1 || res.Facts[0].Day != "" {
 		t.Fatalf("facts = %+v, want empty day", res.Facts)
+	}
+}
+
+func TestNullValueIsEmpty(t *testing.T) {
+	t.Parallel()
+	rows := map[string][]record{basefact.GroupBars: {{Dataset: "bars", Rule: "rows", Value: nil, Day: nil}}}
+	res, err := newTest(fakeSource{rows: rows}).Facts(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Facts) != 1 || res.Facts[0].Value != "" || res.Facts[0].Day != "" || len(res.Failed) != 0 {
+		t.Fatalf("facts = %+v failed = %v, want one fact with empty value and day", res.Facts, res.Failed)
 	}
 }
 

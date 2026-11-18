@@ -63,7 +63,7 @@ func TestMissingMarkIsGapCell(t *testing.T) {
 	if g.Kind != "gap" || g.Reason != "missing_quote" || g.Text != "No fresh closing price" {
 		t.Fatalf("gap = %+v", g)
 	}
-	for _, d := range openColumns("") {
+	for _, d := range openColumns("", nil) {
 		if v, ok := d.cell(o).(valueCell); ok && v.Text == "0" {
 			t.Fatalf("column %s has the text 0", d.ID)
 		}
@@ -76,9 +76,9 @@ func TestMarkOnlyRowText(t *testing.T) {
 	o.MarkStatus, o.Mid = "ok", "1.2500"
 	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
 	want := markOnlyZh
-	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
+	for _, id := range []string{"moneyness", "delta", "iv"} {
 		var cell any
-		for _, d := range openColumns("") {
+		for _, d := range openColumns("", nil) {
 			if d.ID == id {
 				cell = d.cell(o)
 			}
@@ -88,7 +88,7 @@ func TestMarkOnlyRowText(t *testing.T) {
 			t.Fatalf("%s = %+v", id, g)
 		}
 	}
-	for _, d := range openColumns("") {
+	for _, d := range openColumns("", nil) {
 		if d.ID == "mid" {
 			if c := asValue(t, d.cell(o)); c.Value == nil || *c.Value != "1.2500" {
 				t.Fatalf("mid = %+v", c)
@@ -106,9 +106,9 @@ func TestMarkOnlyTextIsChinese(t *testing.T) {
 	o := sampleOpen("c")
 	o.MarkStatus, o.Mid = "ok", "1.2500"
 	o.Spot, o.Delta, o.Iv, o.OtmPercent = "", "", "", ""
-	for _, id := range []string{"moneyness", "spot", "delta", "iv"} {
+	for _, id := range []string{"moneyness", "delta", "iv"} {
 		found := false
-		for _, d := range openColumns("") {
+		for _, d := range openColumns("", nil) {
 			if d.ID == id {
 				found = true
 				if g := asGap(t, d.cell(o)); g.Text != markOnlyZh {
@@ -187,7 +187,7 @@ func TestEmptyStringIsNeverZero(t *testing.T) {
 	t.Parallel()
 	for _, status := range []string{"ok", "no_mark"} {
 		o := opt{MarkStatus: status, Right: "C", Guard: "ok", EventStatus: "ok"}
-		for _, d := range openColumns("") {
+		for _, d := range openColumns("", nil) {
 			switch d.ID {
 			case "mid", "spot", "premium", "kept", "kept_percent", "delta", "iv", "moneyness", "qty":
 				g := asGap(t, d.cell(o))

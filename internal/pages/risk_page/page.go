@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 // Config is what the builder needs; the first fields are those of the positions page. Zone is the owner's
@@ -31,6 +32,7 @@ type Config struct {
 	Holdings       blockapi.NewHoldingFiguresFunc
 	Eod            store.OptionEodReader
 	Terms          store.OptionTermsReader
+	Bars           bar.PriceBarReader // nil gives no bars: the close then comes from the option_eod prints
 	Structures     compute.NewOptionStructuresFunc
 }
 

@@ -142,7 +142,7 @@ func buildAccounts(ctx context.Context, c Config, day contracts.Day, vm *viewMod
 	}
 	seenGap := map[string]bool{}
 	for _, alias := range aliases {
-		in, gs, err := gather(ctx, c, alias, day)
+		in, closes, gs, err := gather(ctx, c, alias, day)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func buildAccounts(ctx context.Context, c Config, day contracts.Day, vm *viewMod
 			vm.Gaps = append(vm.Gaps, codeGap(codeNoAccount))
 		}
 		res := c.Tracker.Track(in, c.Params)
-		a, stale := formatAccount(alias, res, in.HeldKnown, day)
+		a, stale := formatAccount(alias, res, in.HeldKnown, day, closes)
 		covNote, err := attachCoverage(ctx, c, in, res.Open, &a)
 		if err != nil {
 			return err

@@ -288,3 +288,17 @@ func TestGoldenBars(t *testing.T) {
 		t.Fatalf("output differs from %s:\n%s", golden, out.Bytes())
 	}
 }
+
+func TestBarFallbackUsesPickedBar(t *testing.T) {
+	t.Parallel()
+	c, _ := noMarks(pos("2026-11-10", "AAA", "stock", "USD", 1, "10", "100"))
+	ids := &fakeStockIDs{rows: []store.InstrumentName{idOf(11, "AAA")}}
+	bars := &fakeBars{byID: map[int64][]contracts.PriceBar{
+		11: {bar(11, "2026-11-06", "100", "USD"), bar(11, "2026-11-09", "110", "USD"), bar(11, "2026-11-10", "0", "USD")},
+	}}
+	m, b := build(t, withBars(c, ids, bars), "main")
+	validate(t, b)
+	if got := cellText(t, m, 0, "price"); got != "$110.00" {
+		t.Fatalf("price = %q, want the newest bar with a positive close", got)
+	}
+}

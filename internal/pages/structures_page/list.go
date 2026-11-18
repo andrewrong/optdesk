@@ -11,6 +11,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 )
 
 const (
@@ -113,7 +114,7 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 		vm.RunStatus, vm.Sentence, vm.Note = "failed", "Cannot read the position structures", ptr(noReaderNote)
 		return json.Marshal(vm)
 	}
-	in, err := c.load(ctx, alias, day)
+	in, closes, err := c.load(ctx, alias, day)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +141,40 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 	if vm.Note != nil || gaps > 0 {
 		vm.RunStatus = "partial"
 	}
+	if line := closeNote(res, closes); line != "" {
+		vm.Note = ptr(joinNote(vm.Note, line))
+	}
 	return json.Marshal(vm)
+}
+
+// closeNote is the line that names the price and day behind each distance of the page: one entry per
+// underlying whose structure shows a distance, in the order of the rows. It is empty when none is shown.
+func closeNote(res compute.StructureResult, closes map[string]shared.Close) string {
+	var parts []string
+	seen := map[string]bool{}
+	for _, s := range append(append([]compute.Structure{}, res.Structures...), res.Other...) {
+		cl, ok := closes[s.Underlying]
+		if !ok || seen[s.Underlying] || s.Figures.ExpiryDistance.Value == "" || s.Figures.ExpiryDistance.Gap != "" {
+			continue
+		}
+		seen[s.Underlying] = true
+		word := closeWord
+		if cl.Via != "bar" {
+			word = printWord
+		}
+		parts = append(parts, s.Underlying+" "+word+" "+string(cl.Day))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return closeNotePrefix + strings.Join(parts, closeNoteSep)
+}
+
+func joinNote(note *string, line string) string {
+	if note == nil {
+		return clip(line)
+	}
+	return clip(*note + "; " + line)
 }
 
 // fillRows puts each structure in its group, in the order Evaluate gave, and counts the gap cells.

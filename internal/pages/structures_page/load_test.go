@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -259,5 +260,80 @@ func TestQuotesFromStockRowWhenNoCatalog(t *testing.T) {
 	r.build(t, "main")
 	if len(r.in.Quotes) != 0 {
 		t.Fatalf("quotes without stock row or catalog = %+v", r.in.Quotes)
+	}
+}
+
+type stubBars struct {
+	rows []contracts.PriceBar
+	err  error
+	id   *int64
+}
+
+func (s stubBars) PriceBars(_ context.Context, id int64, basis string, _, _ contracts.Day) ([]contracts.PriceBar, error) {
+	if s.id != nil {
+		*s.id = id
+	}
+	if basis != "trades" {
+		return nil, nil
+	}
+	return s.rows, s.err
+}
+
+func barOn(d int, closeText string) contracts.PriceBar {
+	return contracts.PriceBar{SessionDay: types.SerializableDate{Time: time.Date(2026, 11, d, 0, 0, 0, 0, time.UTC)}, Close: closeText}
+}
+
+// printsRig is heldPutRig whose option_eod holds rows of two contracts, only one of them held, each with an
+// underlying price: 91.5 on 2026-11-05 (held contract), 93.25 on 2026-11-06 (another contract).
+func printsRig() *rig {
+	r := heldPutRig(false)
+	r.cfg.Catalog = stubCatalog{latest: []store.OptionEodLatest{{UnderlyingID: 77}}}
+	r.cfg.Names = stubNames{names: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}}
+	bid, p1, p2 := 1.1, 91.5, 93.25
+	day := func(d int) types.SerializableDate {
+		return types.SerializableDate{Time: time.Date(2026, 11, d, 0, 0, 0, 0, time.UTC)}
+	}
+	r.cfg.Eod = stubEod{byUnderlying: map[int64][]contracts.OptionEod{77: {
+		{InstrumentID: 5, SessionDay: day(5), Bid: &bid, UnderlyingPrice: &p1},
+		{InstrumentID: 6, SessionDay: day(6), UnderlyingPrice: &p2},
+	}}}
+	return r
+}
+
+func TestSourcesCarryBarsAndPrints(t *testing.T) {
+	t.Parallel()
+	r := printsRig()
+	var id int64
+	r.cfg.Bars = stubBars{rows: []contracts.PriceBar{barOn(6, "94.1")}, id: &id}
+	r.build(t, "main")
+	if len(r.in.Quotes) != 1 || r.in.Quotes[0].UnderlyingClose != "94.1" {
+		t.Fatalf("quotes = %+v, want the bar of the same day as the newest print", r.in.Quotes)
+	}
+	if id != 77 {
+		t.Errorf("bars read for instrument %d, want 77", id)
+	}
+	// a bar older than a print loses to the print, which also comes from a row of a contract that is not held
+	r.cfg.Bars = stubBars{rows: []contracts.PriceBar{barOn(5, "90")}}
+	r.build(t, "main")
+	if r.in.Quotes[0].UnderlyingClose != "93.25" {
+		t.Fatalf("close = %q, want the print of the other contract 93.25", r.in.Quotes[0].UnderlyingClose)
+	}
+}
+
+func TestNilBarsGivesPrintsOnly(t *testing.T) {
+	t.Parallel()
+	r := printsRig()
+	r.build(t, "main")
+	if len(r.in.Quotes) != 1 || r.in.Quotes[0].UnderlyingClose != "93.25" {
+		t.Fatalf("quotes = %+v, want the newest print 93.25", r.in.Quotes)
+	}
+}
+
+func TestBarsErrorNamesThePage(t *testing.T) {
+	t.Parallel()
+	r := printsRig()
+	r.cfg.Bars = stubBars{err: context.DeadlineExceeded}
+	if _, err := buildList(context.Background(), r.cfg, "main", testDay, testAt); err == nil || !strings.Contains(err.Error(), "structures_page") {
+		t.Fatalf("err = %v", err)
 	}
 }

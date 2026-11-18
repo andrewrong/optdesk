@@ -33,12 +33,12 @@ var views = []view{
 	{basefact.GroupAccount, "rd.base_fact_account_r1"},
 }
 
-// record is one row of a view as the database gives it: a null day is nil.
+// record is one row of a view as the database gives it: a null day or a null value is nil.
 type record struct {
 	Dataset, Rule, Subject string
 	N, Bad                 int64
 	Day                    *time.Time
-	Value                  string
+	Value                  *string
 }
 
 // source is the seam under the reader: the one place pgx is touched, replaced by a fake in unit tests.
@@ -88,7 +88,10 @@ func (r *reader) Facts(ctx context.Context) (basefact.Result, error) {
 			continue
 		}
 		for _, rc := range recs {
-			f := basefact.Fact{Dataset: rc.Dataset, Rule: rc.Rule, Subject: rc.Subject, N: rc.N, Bad: rc.Bad, Value: rc.Value}
+			f := basefact.Fact{Dataset: rc.Dataset, Rule: rc.Rule, Subject: rc.Subject, N: rc.N, Bad: rc.Bad}
+			if rc.Value != nil {
+				f.Value = *rc.Value
+			}
 			if rc.Day != nil {
 				f.Day = contracts.Day(rc.Day.Format("2006-01-02"))
 			}
