@@ -125,10 +125,10 @@ func noSplit(outs []outcome) bool {
 
 // foldedLabel names the folded months by the first and the last of them and the lot count.
 func foldedLabel(months []string, lots int) string {
-	first, last := months[len(months)-1], months[0]
-	span := first
-	if last != first {
-		span += " ~ " + last
+	oldest, newest := months[len(months)-1], months[0] // months run newest first
+	span := oldest
+	if newest != oldest {
+		span += " ~ " + newest
 	}
 	return foldedMonthsZh + " " + span + " · " + plural(lots, "lot", "lots")
 }
@@ -256,7 +256,7 @@ func ledgerBook(tok string, gi, ci int, cur string, outs []outcome, b optionattr
 	for i := range lines {
 		lines[i].Hint = hintOf(prefix, lines[i].ID)
 	}
-	withEntryHint(lines, prefix+"-entry", lateEntryHint(outs))
+	withEntryHint(lines, prefix+"-entry", lateEntryHint(outs, len(outs)))
 	v.Headline.Hint = hintOf(prefix, v.Headline.ID)
 	v.Lines = lines
 	return v

@@ -71,7 +71,7 @@
               "id": "b0-main-entry",
               "label": "Entry vs mid",
               "text": "−$30.00",
-              "hint": "fill price against the stored mid of bid and ask · 4 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
+              "hint": "fill price against the stored mid of bid and ask · 2 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
               "tone": "bad"
             },
             {

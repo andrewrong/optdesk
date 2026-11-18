@@ -102,3 +102,23 @@ func TestLateEntryHintOnLotAndBook(t *testing.T) {
 		t.Errorf("plain lot hint = %v", l.Hint)
 	}
 }
+
+func TestBookLateEntryHintCountsBookLots(t *testing.T) {
+	t.Parallel()
+	mk := func(late, gap bool) outcome {
+		o := outcome{lot: pnlLot{pos: compute.LedgerPosition{Currency: "USD", Status: "closed"}},
+			res: optionattrapi.Result{Currency: "USD", Entry: "1", LateEntry: late, LedgerPnL: "1"}}
+		if gap {
+			o.res.Entry = ""
+			o.reason = "no quotes" // a gap lot, which the Booker does not count
+		}
+		return o
+	}
+	outs := []outcome{mk(true, false), mk(false, false), mk(false, true)}
+	books := bookCards("a", outs, []optionattrapi.Book{{Currency: "USD", Lots: 2, Entry: "1", Total: "1"}})
+	for _, l := range books[0].Lines {
+		if l.Label == "Entry vs mid" && (l.Hint == nil || !strings.Contains(*l.Hint, "2 个仓位中有 1 个")) {
+			t.Fatalf("hint = %v, want M = book lots 2", l.Hint)
+		}
+	}
+}

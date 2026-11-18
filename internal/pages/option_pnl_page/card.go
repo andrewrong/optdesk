@@ -247,7 +247,7 @@ func bookCards(alias string, outs []outcome, books []optionattrapi.Book) []bookV
 		f := figuresOfBook(b)
 		v.Headline = mkLine(prefix+"-head", "Rent minus move cost", money(f.RentMinusCost, cur), "rent").tone(toneOf(f.RentMinusCost))
 		v.Lines = append(splitLines(prefix, f, cur, true), ledgerLine(prefix, f, cur, true, true))
-		withEntryHint(v.Lines, prefix+"-entry", lateEntryHint(curOutcomes(outs, cur)))
+		withEntryHint(v.Lines, prefix+"-entry", lateEntryHint(curOutcomes(outs, cur), b.Lots))
 		out = append(out, v)
 	}
 	return out

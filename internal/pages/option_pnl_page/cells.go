@@ -186,16 +186,16 @@ func ledgerLine(prefix string, f figures, cur string, assigned, book bool) line 
 // split is true when the Booker adds the lot to the split: not a gap lot, with quotes and reconciled.
 func (o outcome) split() bool { return !o.isGap() && !o.res.NoQuotes && o.res.Difference != "" }
 
-// lateEntryHint is the hint of the Entry vs mid line of a group of lots: how many of them entered before
-// the first stored quote. A count of flags; no figure.
-func lateEntryHint(outs []outcome) string {
+// lateEntryHint is the hint of the Entry vs mid line: how many of the outcomes entered before the first
+// stored quote, of lots lots. A count of flags; no figure.
+func lateEntryHint(outs []outcome, lots int) string {
 	late := 0
 	for _, o := range outs {
 		if !o.isGap() && o.res.LateEntry {
 			late++
 		}
 	}
-	return strings.NewReplacer("{N}", strconv.Itoa(late), "{M}", strconv.Itoa(len(outs))).Replace(lateEntryBookZh)
+	return strings.NewReplacer("{N}", strconv.Itoa(late), "{M}", strconv.Itoa(lots)).Replace(lateEntryBookZh)
 }
 
 // withEntryHint appends extra to the hint of the Entry vs mid line with id.
