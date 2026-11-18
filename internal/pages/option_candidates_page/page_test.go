@@ -199,3 +199,20 @@ func TestConfigValuationFieldsNilBuild(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigShortlistNilBuild(t *testing.T) {
+	t.Parallel()
+	c := option_candidates_page.Config{
+		RunID: "r", BuildID: "b", Scope: "s",
+		Zone: time.UTC, Candidates: putRows{}, Tiers: oneFit{},
+		Shortlist: nil,
+	}
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	out, err := option_candidates_page.Build(context.Background(), c, nil, contracts.Day("2026-01-02"), at)
+	if err != nil || !json.Valid(out) || !strings.Contains(string(out), `"schema":"option_candidates_page"`) {
+		t.Fatalf("Build = %q, %v", out, err)
+	}
+	if strings.Contains(string(out), "short_put_list") {
+		t.Fatalf("output has short_put_list: %s", out)
+	}
+}
