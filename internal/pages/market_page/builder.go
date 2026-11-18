@@ -82,7 +82,7 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 	if !weatherOK {
 		failed++
 	}
-	idx, rankGaps, err := buildIndices(ctx, c, d, days)
+	idx, rankGaps, err := buildIndices(ctx, c, r, d, days)
 	if err != nil {
 		return nil, err
 	}
