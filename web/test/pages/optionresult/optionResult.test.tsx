@@ -31,7 +31,7 @@ afterEach(async () => {
   host?.remove()
 })
 
-it('shows the title, facts, sections, reliability and notes of ok', async () => {
+it('shows the title, facts, sections and notes of ok, without reliability cards', async () => {
   const text = await show(ok)
   expect(text).toContain(ok.title)
   for (const fact of ok.facts) expect(text).toContain(fact.label + fact.value)
@@ -42,12 +42,39 @@ it('shows the title, facts, sections, reliability and notes of ok', async () => 
     expect(text).toContain(section.books_lines[1])
   }
   for (const block of ok.reliability) {
-    expect(text).toContain(block.heading)
-    for (const line of block.lines) expect(text).toContain(line)
+    expect(text).not.toContain(block.heading)
+    for (const line of block.lines) expect(text).not.toContain(line)
   }
   for (const note of ok.notes) expect(text).toContain(note)
   expect(host.querySelector('[data-stale]')).toBeNull()
   expect(host.querySelector('[data-nothing]')).toBeNull()
+})
+
+function count(text: string, needle: string): number {
+  return text.split(needle).length - 1
+}
+
+it('each figure of a section appears once', async () => {
+  const text = await show(ok)
+  for (const section of ok.sections) {
+    const texts = [
+      ...section.months.points.map((p) => p.text),
+      ...section.endings.points.map((p) => p.text),
+      ...section.books_lines,
+    ]
+    for (const t of texts) expect(count(text, t), t).toBe(1)
+  }
+})
+
+it('scope note is the first block under the title', async () => {
+  const text = await show(ok)
+  const alert = host.querySelector('[data-scope-note]')
+  expect(alert?.textContent).toBe(ok.notes[0])
+  const title = host.querySelector('h1')!
+  expect(title.nextElementSibling).toBe(alert)
+  expect(count(text, ok.notes[0]!)).toBe(1)
+  expect(count(text, ok.notes[1]!)).toBe(1)
+  expect(host.querySelector('[data-scope-note]')?.getAttribute('role')).toBe('alert')
 })
 
 it('shows the nothing line and the empty text of a gap', async () => {
