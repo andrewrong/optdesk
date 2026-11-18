@@ -325,3 +325,33 @@ func TestNoClockNoIO(t *testing.T) {
 		})
 	}
 }
+
+func TestUnidentifiedHasReason(t *testing.T) {
+	t.Parallel()
+	leg := func(right, expiry, qty string) compute.StructureLeg {
+		return compute.StructureLeg{Right: right, Expiry: expiry, Quantity: qty}
+	}
+	cases := []struct {
+		name string
+		legs []compute.StructureLeg
+		want string
+	}{
+		{"opposite sides at different expiries", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("P", "2027-01-15", "1")}, reasonCalendar},
+		{"put and call at one expiry", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("C", "2026-12-18", "-1")}, reasonStraddle},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			res := compute.StructureResult{Other: []compute.Structure{{ID: "main:T9:1", Underlying: "AMD", Kind: "other", Legs: tc.legs}}}
+			m := decode(t, newRig(res).build(t, "main"))
+			note := m["note"].(string)
+			if !strings.Contains(note, "AMD: "+tc.want) {
+				t.Fatalf("note = %q, want reason %q", note, tc.want)
+			}
+		})
+	}
+	single := compute.StructureResult{Other: []compute.Structure{{ID: "x", Underlying: "AMD", Kind: "other", Legs: []compute.StructureLeg{leg("P", "2026-12-18", "-1")}}}}
+	if n := decode(t, newRig(single).build(t, "main"))["note"].(string); strings.Contains(n, "AMD:") {
+		t.Fatalf("single-leg note = %q", n)
+	}
+}

@@ -124,7 +124,9 @@ func rightLetter(r string) string {
 }
 
 // quotes reads the newest option_eod row of each contract of the held underlyings and matches it to its
-// terms. A held underlying with no stock row in the capture has no quotes.
+// terms. The instrument id of an underlying comes from the catalog and the names when both are set (the way
+// the tracking page finds it), else from the stock rows of the capture, and a held underlying with neither
+// has no quotes.
 func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks map[string]int64, day contracts.Day) ([]compute.StructureQuote, error) {
 	if c.Eod == nil || c.Terms == nil {
 		return nil, nil
@@ -132,6 +134,11 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 	from, err := shiftDay(day, -quoteLookback)
 	if err != nil {
 		return nil, err
+	}
+	if c.Catalog != nil && c.Names != nil {
+		if stocks, err = c.catalogIDs(ctx, ps, from); err != nil {
+			return nil, err
+		}
 	}
 	newest := map[int]contracts.OptionEod{}
 	under := map[int]string{}
@@ -170,6 +177,40 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, stocks 
 		}
 		for _, t := range terms {
 			out = append(out, quoteOf(under[int(t.InstrumentID)], t, newest[int(t.InstrumentID)]))
+		}
+	}
+	return out, nil
+}
+
+// catalogIDs maps the symbol of each open position to the underlying id of option_eod whose name equals it.
+func (c Config) catalogIDs(ctx context.Context, ps []compute.LedgerPosition, since contracts.Day) (map[string]int64, error) {
+	symbols := map[string]bool{}
+	for _, p := range ps {
+		if p.Status == "open" {
+			symbols[p.Underlying] = true
+		}
+	}
+	out := map[string]int64{}
+	if len(symbols) == 0 {
+		return out, nil
+	}
+	latest, err := c.Catalog.OptionEodLatest(ctx, since)
+	if err != nil {
+		return nil, fmt.Errorf("structures_page: read option_eod catalog: %w", err)
+	}
+	ids := make([]int64, 0, len(latest))
+	for _, l := range latest {
+		ids = append(ids, l.UnderlyingID)
+	}
+	for lo := 0; lo < len(ids); lo += termsBatch {
+		rows, err := c.Names.InstrumentNames(ctx, ids[lo:min(lo+termsBatch, len(ids))])
+		if err != nil {
+			return nil, fmt.Errorf("structures_page: read instrument names: %w", err)
+		}
+		for _, n := range rows {
+			if symbols[n.Name] {
+				out[n.Name] = n.InstrumentID
+			}
 		}
 	}
 	return out, nil

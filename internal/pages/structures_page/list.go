@@ -170,6 +170,11 @@ func (c Config) noteOf(res compute.StructureResult) string {
 	var parts []string
 	if len(res.Other) > 0 {
 		parts = append(parts, otherNote)
+		for _, s := range res.Other {
+			if r := otherReason(s.Legs); r != "" {
+				parts = append(parts, s.Underlying+": "+r)
+			}
+		}
 	}
 	d := res.Diff
 	switch {
@@ -187,6 +192,31 @@ func (c Config) noteOf(res compute.StructureResult) string {
 		parts = append(parts, "Flex positions missing from the position snapshot: "+contractList(d.LedgerOnly))
 	}
 	return clip(strings.Join(parts, "; "))
+}
+
+// otherReason names the tie that made a multi-leg unit of kind other, from the stored Right and Expiry of its
+// legs; a unit that matches neither has no reason.
+func otherReason(legs []compute.StructureLeg) string {
+	if len(legs) < 2 {
+		return ""
+	}
+	rights, expiries := map[string]bool{}, map[string]bool{}
+	long, short := false, false
+	for _, l := range legs {
+		rights[l.Right], expiries[l.Expiry] = true, true
+		if strings.HasPrefix(l.Quantity, "-") {
+			short = true
+		} else {
+			long = true
+		}
+	}
+	switch {
+	case len(rights) == 1 && len(expiries) > 1 && long && short:
+		return reasonCalendar
+	case len(rights) == 2 && rights["P"] && rights["C"] && len(expiries) == 1:
+		return reasonStraddle
+	}
+	return ""
 }
 
 func contractList(ids []string) string {

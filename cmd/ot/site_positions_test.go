@@ -319,3 +319,19 @@ func TestOpenedReadersReachPositionsPages(t *testing.T) {
 		}
 	}
 }
+
+func TestStructuresConfigHasCatalogAndNames(t *testing.T) {
+	t.Parallel()
+	a, rec := positionsApp(t)
+	rd := positionsReaders()
+	rd.catalog, rd.names = &fakeCatalog{}, &fakeNames{}
+	h := siteHandler(a, positionsClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute)
+	if c := rec.last(t); c.cfg.Catalog == nil || c.cfg.Names == nil {
+		t.Errorf("stored readers: catalog %v, names %v", c.cfg.Catalog, c.cfg.Names)
+	}
+	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute+"?account=nobody")
+	if c := rec.last(t); c.cfg.Catalog != nil || c.cfg.Names != nil {
+		t.Errorf("gap case: catalog %v, names %v", c.cfg.Catalog, c.cfg.Names)
+	}
+}
