@@ -1,0 +1,434 @@
+{
+  "schema": "base_data_page",
+  "schema_version": 1,
+  "run_id": "base_data",
+  "built_at": "2026-11-18T09:30:00Z",
+  "as_of": "2026-11-18",
+  "last_sessions": {
+    "XNYS": "2026-11-17",
+    "XTKS": "2026-11-17"
+  },
+  "top": {
+    "level": "fail",
+    "text_zh": "基础数据共 12 项：10 项正常，1 项警告，1 项失败，0 项未知。",
+    "counts": {
+      "pass": 10,
+      "warn": 1,
+      "fail": 1,
+      "unknown": 0
+    }
+  },
+  "groups": [
+    {
+      "name": "Market data",
+      "rows": [
+        {
+          "dataset": "bars",
+          "label": "Stock bars, US and JP",
+          "label_zh": "日线：美股和日股的每日开高低收价。",
+          "level": "warn",
+          "newest_value": "value of bars",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 s",
+          "failed_summary": "bar_jump 0.33%",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            },
+            {
+              "rule": "bar_jump",
+              "label": "Close jump",
+              "hint_zh": "收盘价与上一根相比变动超过 40%。系统里没有存储拆股信息，所以拆股（split）看起来正是这个样子；只提醒，不判失败。",
+              "level": "warn",
+              "n": 900,
+              "bad": 3,
+              "share": "0.0033",
+              "warn_at": "1",
+              "fail_at": "",
+              "threshold_source": "trial",
+              "example": "NVDA 2026-11-10"
+            }
+          ]
+        },
+        {
+          "dataset": "quotes",
+          "label": "Quotes",
+          "label_zh": "报价快照：期权合约在取数时刻的买卖报价。",
+          "level": "pass",
+          "newest_value": "value of quotes",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 s",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        },
+        {
+          "dataset": "chains",
+          "label": "Option chains end of day",
+          "label_zh": "期权链（收盘）：每个交易日收盘后存下的期权链，含美股、日股和指数。",
+          "level": "fail",
+          "newest_value": "value of chains",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "1 s",
+          "failed_summary": "crossed 2.1%",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            },
+            {
+              "rule": "crossed",
+              "label": "Crossed quotes",
+              "hint_zh": "买价高于卖价的行占比。少量属于取快照瞬间的正常现象，占比过高说明报价有问题。",
+              "level": "fail",
+              "n": 112004,
+              "bad": 2352,
+              "share": "0.021",
+              "warn_at": "0.01",
+              "fail_at": "0.02",
+              "threshold_source": "trial",
+              "example": "NVDA 2026-12-18 C 200"
+            }
+          ]
+        },
+        {
+          "dataset": "open",
+          "label": "Option quotes at the open",
+          "label_zh": "开盘期权报价：开盘时取的期权报价。",
+          "level": "pass",
+          "newest_value": "value of open",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 s",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        },
+        {
+          "dataset": "contracts",
+          "label": "Option contracts",
+          "label_zh": "期权合约表：每个标的有哪些合约的清单与条款。",
+          "level": "pass",
+          "newest_value": "value of contracts",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 d",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rates and events",
+      "rows": [
+        {
+          "dataset": "rates",
+          "label": "Rates (FRED)",
+          "label_zh": "利率序列：来自 FRED 的利率与流动性序列。",
+          "level": "pass",
+          "newest_value": "value of rates",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 d",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        },
+        {
+          "dataset": "fx",
+          "label": "FX USDJPY",
+          "label_zh": "汇率：美元兑日元的每日汇率。",
+          "level": "pass",
+          "newest_value": "value of fx",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 s",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        },
+        {
+          "dataset": "events",
+          "label": "Earnings, dividends and macro events",
+          "label_zh": "事件：财报日期、预计除息日和宏观事件日历。",
+          "level": "pass",
+          "newest_value": "value of events",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 d",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        },
+        {
+          "dataset": "calendar",
+          "label": "Session calendar",
+          "label_zh": "交易日历：美股和日股的开市日。",
+          "level": "pass",
+          "newest_value": "value of calendar",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 d",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Company facts",
+      "rows": [
+        {
+          "dataset": "facts",
+          "label": "Company fundamentals",
+          "label_zh": "公司基本面：财报里取出的财务数据。",
+          "level": "pass",
+          "newest_value": "value of facts",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 d",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Account facts",
+      "rows": [
+        {
+          "dataset": "account",
+          "label": "Account capture",
+          "label_zh": "账户快照：券商账户的持仓、现金和净值。",
+          "level": "pass",
+          "newest_value": "value of account",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 s",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        },
+        {
+          "dataset": "flex",
+          "label": "Flex statement",
+          "label_zh": "Flex 对账单：券商出具的成交记录。",
+          "level": "pass",
+          "newest_value": "value of flex",
+          "newest_day": "2026-11-17",
+          "newest_subject": "SUB",
+          "age_text": "0 d",
+          "failed_summary": "",
+          "checks": [
+            {
+              "rule": "rows",
+              "label": "Rows",
+              "hint_zh": "已检查的数据行数；为 0 表示这一项没有任何可用数据，判为失败。",
+              "level": "pass",
+              "n": 40,
+              "bad": 0,
+              "share": "",
+              "warn_at": "",
+              "fail_at": "",
+              "threshold_source": "def",
+              "example": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "pass",
+      "text": "正常：所有检查通过。"
+    },
+    {
+      "term": "warn",
+      "text": "警告：有检查越过了提醒线，但还没到失败。"
+    },
+    {
+      "term": "fail",
+      "text": "失败：至少一项检查越过了失败线，请到「采集记录」页修复。"
+    },
+    {
+      "term": "unknown",
+      "text": "未知：没有可用的事实来判定，或者存放它的数据视图读取失败。"
+    },
+    {
+      "term": "session",
+      "text": "交易日：交易所开市的一天。年龄里的 s 就是交易日数。"
+    },
+    {
+      "term": "ledger",
+      "text": "台账：运行器记录的每个交易日应当采集的键和已经存下的键。"
+    },
+    {
+      "term": "trial",
+      "text": "试用值：我们自己定的阈值，读到真实数据后再调整；def 表示定义上就不能违反。"
+    },
+    {
+      "term": "share",
+      "text": "占比：出问题的行数除以检查的行数。"
+    },
+    {
+      "term": "split",
+      "text": "拆股：一股拆成几股，价格会一次性大幅下跌，看起来像是数据跳变。"
+    },
+    {
+      "term": "crossed",
+      "text": "买卖倒挂：买价高于卖价。"
+    },
+    {
+      "term": "non_live",
+      "text": "非实时：行情是冻结或延迟的，不是当时的实时报价。"
+    },
+    {
+      "term": "coverage",
+      "text": "覆盖：计划采集的键里实际存下了多少。"
+    }
+  ],
+  "derived_note": "派生数据（读数、候选、策略、计划）不在这里检查：请到「采集记录」页查看。",
+  "repair_path": "/data-health",
+  "gaps": []
+}
