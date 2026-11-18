@@ -398,12 +398,13 @@ func lastEmptyFinish(runs []store.Run) time.Time {
 
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
-// error with no window). Runs that are empty_before_close (before the close one is also spaced by emptyRetryGap), retryable before the close, crashed
-// or abandoned_stop do not count. A run starts when no run is running, fewer than two runs count,
-// the key is not stopped by the brake (three crashed or abandoned_stop runs: crashed_repeatedly,
-// written by expireIfClosed at the close) and either no run counts or the latest counted run is
-// RunPartial: the second run is only for a partial. A running run with a live lease is pending:
-// nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
+// error with no window). Runs that are empty_before_close, retryable before the close, crashed
+// or abandoned_stop do not count; before the close, an empty_before_close run also holds the key
+// back until emptyRetryGap has passed since the newest one finished. A run starts when no run is
+// running, fewer than two runs count, the key is not stopped by the brake (three crashed or
+// abandoned_stop runs: crashed_repeatedly, written by expireIfClosed at the close) and either no
+// run counts or the latest counted run is RunPartial: the second run is only for a partial. A
+// running run with a live lease is pending: nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
 // the same rule. closeAt is the close of the key's dataset window, zero when it has none.
 func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
 	now := r.clk.Now()

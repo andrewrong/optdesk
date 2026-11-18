@@ -382,7 +382,8 @@ func TestCloseTableRows(t *testing.T) {
 	t.Run("only empty_before_close runs get a late run", func(t *testing.T) {
 		t.Parallel()
 		e := newPlainEnv(t, "2026-11-04T22:00:00Z", outRetryable)
-		empty := store.Run{Status: store.RunDone, ReasonCode: reasonEmptyBeforeClose}
+		// finished in the early hours of the day, as the morning runs do
+		empty := store.Run{Status: store.RunDone, ReasonCode: reasonEmptyBeforeClose, FinishedAt: utc("2026-11-04T08:00:00Z")}
 		e.seed(empty, empty)
 		e.tick()
 		e.wantCalls(1)
