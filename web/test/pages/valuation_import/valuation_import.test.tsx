@@ -129,6 +129,15 @@ describe('valuation import page', () => {
     expect(form.querySelector('input[type="file"]')).not.toBeNull()
   })
 
+  it('lets the owner change the R market of an unmatched row', async () => {
+    const el = await render(preview())
+    const rm = el.querySelector('[name="r_market.QQB"]') as HTMLInputElement
+    expect(rm.type).not.toBe('hidden')
+    await type(rm, 'US')
+    const form = el.querySelector('form[data-form="confirm"]') as HTMLFormElement
+    expect(new FormData(form).get('r_market.QQB')).toBe('US')
+  })
+
   it('renders the result outcomes', async () => {
     const r = result()
     const el = await render(r)

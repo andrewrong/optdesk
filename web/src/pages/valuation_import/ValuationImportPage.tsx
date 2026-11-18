@@ -95,6 +95,7 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
   const [general, setGeneral] = useState(false)
   const [ticks, setTicks] = useState<Record<string, boolean>>({})
   const [keys, setKeys] = useState<Record<string, string>>({})
+  const [markets, setMarkets] = useState<Record<string, string>>({})
 
   const canConfirm = general && payload.rows.some((r) => r.action === 'insert')
 
@@ -155,8 +156,10 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
               <PlanTable
                 rows={payload.rows}
                 keys={keys}
+                markets={markets}
                 ticks={ticks}
                 onKey={(t, k) => setKeys((s) => ({ ...s, [t]: k }))}
+                onMarket={(t, m) => setMarkets((s) => ({ ...s, [t]: m }))}
                 onTick={(t, on) => setTicks((s) => ({ ...s, [t]: on }))}
               />
               <div className="flex items-center gap-2">

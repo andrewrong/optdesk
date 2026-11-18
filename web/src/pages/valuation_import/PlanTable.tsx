@@ -9,8 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 interface Props {
   rows: Row[]
   keys: Record<string, string>
+  markets: Record<string, string>
   ticks: Record<string, boolean>
   onKey: (ticker: string, key: string) => void
+  onMarket: (ticker: string, market: string) => void
   onTick: (ticker: string, on: boolean) => void
 }
 
@@ -20,7 +22,7 @@ function variant(action: Row['action']) {
   return 'secondary'
 }
 
-export function PlanTable({ rows, keys, ticks, onKey, onTick }: Props) {
+export function PlanTable({ rows, keys, markets, ticks, onKey, onMarket, onTick }: Props) {
   return (
     <Table>
       <TableHeader>
@@ -56,7 +58,15 @@ export function PlanTable({ rows, keys, ticks, onKey, onTick }: Props) {
               ) : (
                 r.key
               )}
-              {r.unmatched ? <input type="hidden" name={`r_market.${r.ticker}`} value={r.r_market} /> : null}
+              {r.unmatched ? (
+                <Input
+                  name={`r_market.${r.ticker}`}
+                  aria-label={`R market ${r.ticker}`}
+                  className="mt-1"
+                  value={markets[r.ticker] ?? r.r_market}
+                  onChange={(e) => onMarket(r.ticker, e.target.value)}
+                />
+              ) : null}
             </TableCell>
             <TableCell>
               <Badge variant={variant(r.action)}>{r.action}</Badge>
