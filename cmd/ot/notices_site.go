@@ -20,9 +20,10 @@ const noticesName = "option_notices_page"
 
 // noticesReaders are the three stores of the page; a nil one gives the gap no_reader.
 type noticesReaders struct {
-	account store.AccountReader
-	cands   store.CandidateReader
-	earn    store.EarningsDateReader
+	account  store.AccountReader
+	cands    store.CandidateReader
+	earn     store.EarningsDateReader
+	sessions store.SessionDayReader
 }
 
 // noticeAliases reads the main alias and the aliases to show as the account job reads them: the main alias
@@ -54,7 +55,7 @@ func buildNotices(ctx context.Context, a *app, clk clock.Clock, dayFlag string, 
 	if err != nil {
 		return nil, err
 	}
-	p, err := newNoticesPage(a, "ot-serve", noticesReaders{account: rd.noticeAccount, cands: rd.cands, earn: rd.earnings})
+	p, err := newNoticesPage(a, "ot-serve", noticesReaders{account: rd.noticeAccount, cands: rd.cands, earn: rd.earnings, sessions: rd.sessions})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func newNoticesPage(a *app, runID string, r noticesReaders) (pages.Page, error) 
 		rule, params = a.deps.newOptionNotices(), a.deps.noticeParams()
 	}
 	return a.deps.optionNoticesPage(a.profile.Zone, runID, buildIDOf(version), "notices", main, aliases,
-		r.account, r.cands, r.earn, rule, params), nil
+		r.account, r.cands, r.earn, r.sessions, rule, params), nil
 }
 
 // noticesPageNamed returns option_notices_page for ot page and a close function: the account, candidate and

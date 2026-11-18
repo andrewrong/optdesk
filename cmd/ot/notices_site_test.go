@@ -20,16 +20,17 @@ import (
 // noticesFixture is an app whose optionNoticesPage fake builds {"schema":"option_notices_page"} and records
 // the arguments and the days it was given.
 type noticesFixture struct {
-	a       *app
-	builds  atomic.Int32
-	days    []contracts.Day
-	main    string
-	aliases []string
-	acct    store.AccountReader
-	cands   store.CandidateReader
-	earn    store.EarningsDateReader
-	params  compute.NoticeParams
-	err     error
+	a        *app
+	builds   atomic.Int32
+	days     []contracts.Day
+	main     string
+	aliases  []string
+	acct     store.AccountReader
+	cands    store.CandidateReader
+	earn     store.EarningsDateReader
+	sessions store.SessionDayReader
+	params   compute.NoticeParams
+	err      error
 }
 
 func newNoticesFixture(t *testing.T, env string) *noticesFixture {
@@ -40,8 +41,8 @@ func newNoticesFixture(t *testing.T, env string) *noticesFixture {
 	f.a.deps.newOptionNotices = func() compute.OptionNotices { return demoNoticeRule{} }
 	f.a.deps.noticeParams = func() compute.NoticeParams { return compute.NoticeParams{ExpiryDays: 9} }
 	f.a.deps.optionNoticesPage = func(_ *time.Location, _, _, _, main string, aliases []string, acct store.AccountReader,
-		cands store.CandidateReader, earn store.EarningsDateReader, _ compute.OptionNotices, p compute.NoticeParams) pages.Page {
-		f.main, f.aliases, f.acct, f.cands, f.earn, f.params = main, aliases, acct, cands, earn, p
+		cands store.CandidateReader, earn store.EarningsDateReader, sess store.SessionDayReader, _ compute.OptionNotices, p compute.NoticeParams) pages.Page {
+		f.main, f.aliases, f.acct, f.cands, f.earn, f.sessions, f.params = main, aliases, acct, cands, earn, sess, p
 		build := func(_ context.Context, _ store.SeriesReader, day contracts.Day, _ time.Time) ([]byte, error) {
 			f.builds.Add(1)
 			f.days = append(f.days, day)
@@ -300,5 +301,18 @@ func TestNoticeAliasesLeaveStatementAlias(t *testing.T) {
 	}
 	if main != "m" || !reflect.DeepEqual(aliases, []string{"m", "b"}) {
 		t.Fatalf("main %q aliases %v", main, aliases)
+	}
+}
+
+func TestNoticesServePassesSessions(t *testing.T) {
+	t.Parallel()
+	f := newNoticesFixture(t, noticesEnv(t))
+	f.a.profile.Name = "real"
+	s := &fakeSessions{}
+	if _, err := buildNotices(t.Context(), f.a, noticesClock, "", siteReaders{sessions: s}); err != nil {
+		t.Fatal(err)
+	}
+	if f.sessions != store.SessionDayReader(s) {
+		t.Fatalf("sessions %v, want the reader of the site", f.sessions)
 	}
 }
