@@ -67,6 +67,15 @@ describe('base data page', () => {
     expect(h.querySelector('[data-checks]')).toBeNull()
   })
 
+  it('sorts by verdict worst first and shows no repeated group name', async () => {
+    const h = await render(ok)
+    const head = h.querySelector('th[aria-sort], th[tabindex="0"]') as HTMLElement
+    await act(async () => head.click())
+    expect([...h.querySelectorAll('tr[data-dataset]')].map((r) => r.getAttribute('data-dataset'))).toEqual(['option_chains', 'fx', 'quotes'])
+    expect(h.querySelectorAll('tr[data-group]').length).toBe(0)
+    expect(rowOf(h, 'fx').textContent).toContain('Rates and events')
+  })
+
   it('renders a view gap and the other rows', async () => {
     const h = await render(viewGap)
     expect(h.querySelector('[data-gap="view_unavailable"]')?.textContent).toContain('The option view did not answer in time')

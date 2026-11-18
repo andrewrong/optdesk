@@ -8,6 +8,8 @@ import { validate, type Payload } from '@/types/base_data_page'
 import { DatasetTable } from './DatasetTable'
 import { LevelBadge } from './LevelBadge'
 
+// The Alert has three tones (neutral, destructive, success), the Badge has one per level (LevelBadge); warn and unknown
+// show as the neutral Alert because the Badge beside the text already carries their colour.
 const ALERT_VARIANT = { pass: 'success', warn: 'default', fail: 'destructive', unknown: 'default' } as const
 
 export function BaseDataView({ payload }: { payload: Payload }) {

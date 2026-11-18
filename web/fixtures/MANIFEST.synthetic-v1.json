@@ -5,6 +5,7 @@
     "advice-page/gap.json",
     "advice-page/ok.json",
     "advice-page/stale.json",
+    "base-data-page/ok.json",
     "companies-page/bad-version.json",
     "companies-page/gap.json",
     "companies-page/ok.json",

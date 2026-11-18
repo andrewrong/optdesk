@@ -27,7 +27,7 @@ const columns: ColumnDef<Dataset>[] = [
     id: 'dataset',
     header: 'Dataset',
     enableSorting: false,
-    cell: ({ row }) => (
+    cell: ({ row, table }) => (
       <button
         type="button"
         data-toggle
@@ -39,6 +39,7 @@ const columns: ColumnDef<Dataset>[] = [
         <span>
           {row.original.label}
           <span className="block text-xs text-muted-foreground">{row.original.label_zh}</span>
+          {table.getState().sorting.length > 0 ? <span className="block text-xs text-muted-foreground">{row.original.group}</span> : null}
         </span>
       </button>
     ),
@@ -68,6 +69,9 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
     getSortedRowModel: getSortedRowModel(),
   })
   const rows = table.getRowModel().rows
+  // A group name row stands only while the rows are in payload order; once sorted, a group's rows are apart, so the
+  // name moves into the row itself and no group label repeats.
+  const sorted = table.getState().sorting.length > 0
   return (
     <Table>
       <TableHeader>
@@ -104,7 +108,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
       <TableBody>
         {rows.map((row, i) => (
           <Fragment key={row.id}>
-            {i === 0 || rows[i - 1]!.original.group !== row.original.group ? (
+            {!sorted && (i === 0 || rows[i - 1]!.original.group !== row.original.group) ? (
               <TableRow data-group={row.original.group} className="bg-muted/40">
                 <TableCell colSpan={columns.length} className="font-medium">
                   {row.original.group}
