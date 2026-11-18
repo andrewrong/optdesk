@@ -128,6 +128,17 @@
     "stale_after": {
       "$ref": "common.v2.json#/$defs/Timestamp"
     },
+    "short_put_list": {
+      "description": "The grouped short put list, or null. Additive and optional; every figure is text.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ShortList"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "short_put_tiers": {
       "description": "The tier view of the stored short puts, or null. Additive and optional; every figure is text.",
       "oneOf": [
@@ -141,6 +152,221 @@
     }
   },
   "$defs": {
+    "ShortList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_day",
+        "counts",
+        "caveat",
+        "filters",
+        "dropped",
+        "dropped_items",
+        "columns",
+        "groups",
+        "folded_title"
+      ],
+      "properties": {
+        "run_day": {
+          "$ref": "#/$defs/Text"
+        },
+        "counts": {
+          "$ref": "#/$defs/Text"
+        },
+        "caveat": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Filter"
+          }
+        },
+        "dropped": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dropped_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DroppedItem"
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TierColumn"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShortGroup"
+          }
+        },
+        "folded_title": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "description": "The grouped short put list, or null. Additive and optional; every figure is text."
+    },
+    "Filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "value",
+        "hint"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "value": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "DroppedItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "count",
+        "hint"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "count": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "ShortGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ticker",
+        "spot",
+        "summary",
+        "rows"
+      ],
+      "properties": {
+        "ticker": {
+          "$ref": "#/$defs/Text"
+        },
+        "spot": {
+          "$ref": "#/$defs/Text"
+        },
+        "summary": {
+          "$ref": "#/$defs/Text"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShortRow"
+          }
+        }
+      }
+    },
+    "ShortRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "strike",
+        "expiry",
+        "otm",
+        "delta",
+        "premium",
+        "annualized",
+        "buy",
+        "buy_source",
+        "buy_link",
+        "badges"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/Text"
+        },
+        "strike": {
+          "$ref": "#/$defs/Pair"
+        },
+        "expiry": {
+          "$ref": "#/$defs/Pair"
+        },
+        "otm": {
+          "$ref": "#/$defs/Pair"
+        },
+        "delta": {
+          "$ref": "#/$defs/Pair"
+        },
+        "premium": {
+          "$ref": "#/$defs/Pair"
+        },
+        "annualized": {
+          "$ref": "#/$defs/Pair"
+        },
+        "buy": {
+          "$ref": "#/$defs/Pair"
+        },
+        "buy_source": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Badge"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "buy_link": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "badges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Badge"
+          }
+        }
+      }
+    },
     "Text": {
       "type": "string",
       "minLength": 1,

@@ -33,6 +33,7 @@ var (
 	_ contracts.TypedError           = (*refused)(nil)
 	_ interface{ Close() error }     = (*fake)(nil)
 	_ openquote.OptionOpenStore      = (*fake)(nil)
+	_ openquote.OptionOpenSlotReader = (*fake)(nil)
 	_ error                          = (*refused)(nil)
 )
 
@@ -81,6 +82,34 @@ func (f *fake) OptionOpen(_ context.Context, d contracts.Day) ([]contracts.Optio
 		}
 	}
 	out := []contracts.OptionOpen{}
+	for _, r := range best {
+		out = append(out, r)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].InstrumentID < out[j].InstrumentID })
+	return out, nil
+}
+
+func (f *fake) OptionOpenSlot(_ context.Context, d contracts.Day, slot string, ids []int64) ([]contracts.OptionOpen, error) {
+	out := []contracts.OptionOpen{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	if slot == openquote.SlotRefresh {
+		return nil, &refused{}
+	}
+	best := map[int]contracts.OptionOpen{}
+	for _, r := range f.open {
+		if r.SessionDay.Format(time.DateOnly) != string(d) || r.Slot != slot {
+			continue
+		}
+		for _, id := range ids {
+			if int64(r.InstrumentID) == id {
+				if o, ok := best[r.InstrumentID]; !ok || r.ReceivedAt.After(o.ReceivedAt) {
+					best[r.InstrumentID] = r
+				}
+			}
+		}
+	}
 	for _, r := range best {
 		out = append(out, r)
 	}
@@ -435,5 +464,30 @@ func TestListRecordBandEmptyIsNone(t *testing.T) {
 	got, _ := s.Lists(ctx, 5)
 	if len(got) != 1 || got[0].BandLo != "" || got[0].BandHi != "" || got[0].SigmaSource != "" || got[0].InBand != 0 {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestOptionOpenSlotReaderContractBothSides(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := &fake{}
+	var s openquote.Stores = f
+	var r openquote.OptionOpenSlotReader = f
+	t0 := time.Date(2026, 11, 11, 14, 45, 0, 0, time.UTC)
+	mk := func(slot string, inst int) contracts.OptionOpen {
+		return contracts.OptionOpen{SessionDay: day("2026-11-11"), CaptureID: "c-" + slot, Slot: slot, InstrumentID: inst, ReceivedAt: t0}
+	}
+	if err := s.InsertOptionOpen(ctx, []contracts.OptionOpen{mk("0945", 3), mk("0945", 1), mk("1000", 2)}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.OptionOpenSlot(ctx, "2026-11-11", "0945", []int64{3, 2, 1, 9})
+	if err != nil || len(got) != 2 || got[0].InstrumentID != 1 || got[1].InstrumentID != 3 {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	if none, err := r.OptionOpenSlot(ctx, "2026-11-11", "0945", nil); err != nil || len(none) != 0 {
+		t.Fatalf("no ids = %#v, %v", none, err)
+	}
+	if _, err := r.OptionOpenSlot(ctx, "2026-11-11", openquote.SlotRefresh, []int64{1}); err == nil {
+		t.Fatal("a refresh slot must be an error")
 	}
 }

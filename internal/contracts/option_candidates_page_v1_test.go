@@ -344,3 +344,80 @@ func TestOptionCandidatesTierViewWithoutIdleFieldsValid(t *testing.T) {
 		t.Fatal("a tier view without idle_note, buy_hint and spot_hint is invalid")
 	}
 }
+
+func shortPair(main string) map[string]any {
+	return map[string]any{"main": main, "sub": nil, "gap": nil}
+}
+
+func shortList() map[string]any {
+	row := map[string]any{
+		"key": "r1", "strike": shortPair("95"), "expiry": shortPair("2026-12-18"), "otm": shortPair("6.1%"),
+		"delta": shortPair("0.21"), "premium": shortPair("1.20"), "annualized": shortPair("14%"),
+		"buy":        map[string]any{"main": "no buy price", "sub": nil, "gap": pageV1Gap()},
+		"buy_source": map[string]any{"code": "buy_source", "label": "your price", "gloss": "typed by you", "tone": "info"},
+		"buy_link":   nil,
+		"badges":     []any{map[string]any{"code": "wide_spread", "label": "wide spread", "gloss": "bid and ask are far apart", "tone": "warn"}},
+	}
+	return map[string]any{
+		"run_day": "2026-11-18", "counts": "1 of 40", "caveat": nil,
+		"filters": []any{map[string]any{"id": "otm", "label": "OTM", "value": "5 to 15%", "hint": "distance"}},
+		"dropped": nil, "dropped_items": []any{map[string]any{"code": "no_spot", "label": "no spot", "count": "2", "hint": "no price"}},
+		"columns": []any{map[string]any{"id": "strike", "label": "Strike", "hint": nil}},
+		"groups": []any{map[string]any{
+			"ticker": "AAPL", "spot": "100", "summary": "best 14%", "rows": []any{row},
+		}},
+		"folded_title": "more",
+	}
+}
+
+func shortListRow(inst map[string]any) map[string]any {
+	g := inst["short_put_list"].(map[string]any)["groups"].([]any)[0].(map[string]any)
+	return g["rows"].([]any)[0].(map[string]any)
+}
+
+func TestShortListNullValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_list"] = nil
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a null short_put_list is invalid")
+	}
+}
+
+func TestShortListAbsentValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	delete(inst, "short_put_list")
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a page without short_put_list is invalid")
+	}
+}
+
+func TestShortListOneGroupValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_list"] = shortList()
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("one group with a gap pair, a buy_source badge and a liquidity badge is invalid")
+	}
+}
+
+func TestShortListUnknownFieldFails(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_list"] = shortList()
+	shortListRow(inst)["extra"] = "x"
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an extra field of a ShortRow validates")
+	}
+}
+
+func TestShortListNumberFails(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_list"] = shortList()
+	shortListRow(inst)["strike"].(map[string]any)["main"] = 95.0
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a JSON number for strike.main validates")
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
 	"github.com/andrewrong/optdesk/internal/strategy"
 )
@@ -30,6 +31,9 @@ type CandidateStores struct {
 	Aliases     []string
 	Candidates  store.CandidateWriter
 	SessionDays store.SessionDayReader
+	// Open reads the option_open snapshot of the day (docs/design/candidates-at-open.md Decision 1): an underlying
+	// with a usable open chain takes it, every other takes the option_eod chain. Nil is the job of today.
+	Open openquote.OptionOpenReader
 	// Strategy and Results are the shadow (docs/design/strategy-framework.md Decision 6): with both set, each run also
 	// evaluates the put through Strategy and inserts the rows into Results after the old insert; a failure of the
 	// shadow is logged and never fails the run. Both nil is the job of today.
