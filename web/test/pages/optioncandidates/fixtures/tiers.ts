@@ -49,6 +49,9 @@ export const tiers: TierView = {
   kept: '未进入 Fits 的原因（行数）：没有买入价 1',
   kept_note: 'tiers 一行可以有几个原因',
   stored_title: 'tiers 原始表格',
+  idle_note: 'tiers 2 家公司没有买入价和估值档案：ZZA, ZZB',
+  buy_hint: 'tiers 未设买入价，请到 Companies > Watch list 的 Buy 列填写',
+  spot_hint: 'tiers 现价是任务运行时取的价格，不是当日收盘',
   legend: [
     { tier: 'fits', title: 'tiers legend Fits', text: 'tiers 满足你的全部条件' },
     { tier: 'check', title: 'tiers legend Check', text: 'tiers 有需要再看一眼的徽标' },

@@ -1,5 +1,5 @@
-// The short-put tier view (Decisions 10 and 13 of docs/design/candidates-tiers.md): company strips, the common marks,
-// the legend, then the tiers in payload order. It renders payload texts and computes nothing.
+// The short-put tier view (Decisions 10 and 13 of docs/design/candidates-tiers.md): buy hint, the common marks,
+// the legend, the tiers in payload order, then the idle line and the company strips. It renders payload texts and computes nothing.
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -12,9 +12,16 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
   return (
     <TooltipProvider>
       <section className="min-w-0 space-y-3" data-tier-view>
-        {tiers.companies.map((company) => (
-          <CompanyStrip key={company.key} company={company} />
-        ))}
+        {typeof tiers.buy_hint === 'string' ? (
+          <Alert data-buy-hint>
+            <Info aria-hidden />
+            <AlertDescription>
+              <a href="/underlyings" className="underline underline-offset-2">
+                {tiers.buy_hint}
+              </a>
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {tiers.common.map((mark) => (
           <Alert key={mark.code} data-common-mark={mark.code}>
             <Info aria-hidden />
@@ -35,6 +42,14 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
         <TierLegend items={tiers.legend} />
         {tiers.tiers.map((tier) => (
           <TierSection key={tier.id} tier={tier} columns={tiers.columns} />
+        ))}
+        {typeof tiers.idle_note === 'string' ? (
+          <p className="text-sm text-muted-foreground" data-idle-note>
+            {tiers.idle_note}
+          </p>
+        ) : null}
+        {tiers.companies.map((company) => (
+          <CompanyStrip key={company.key} company={company} spotHint={tiers.spot_hint ?? null} />
         ))}
       </section>
     </TooltipProvider>

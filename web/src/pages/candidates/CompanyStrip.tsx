@@ -22,7 +22,7 @@ function Label({ text, hint }: { text: string; hint: string | null }) {
   )
 }
 
-export function CompanyStrip({ company }: { company: Company }) {
+export function CompanyStrip({ company, spotHint = null }: { company: Company; spotHint?: string | null }) {
   const v = company.valuation
   return (
     <Card data-company={company.key}>
@@ -30,7 +30,7 @@ export function CompanyStrip({ company }: { company: Company }) {
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <span className="font-semibold">{company.ticker}</span>
           <span>
-            Spot {company.spot} ({company.spot_day})
+            <Label text="Spot" hint={spotHint} /> {company.spot} (rows of {company.spot_day})
           </span>
           <span>
             Buy price {company.buy_price ?? company.buy_price_note}

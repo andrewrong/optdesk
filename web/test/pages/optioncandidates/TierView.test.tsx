@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { OptionCandidatesPage } from '@/pages/candidates/OptionCandidatesPage'
 import { TierView } from '@/pages/candidates/TierView'
 import { tiers } from './fixtures/tiers'
-import { tiersNull } from './fixtures/tiers-null'
+import { tiersNull, tiersTextsNull } from './fixtures/tiers-null'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | undefined
@@ -186,5 +186,45 @@ describe('TierView', () => {
     }
     const normal = page.querySelector('[data-tier=fits] [data-row] [data-cell=margin] div')!
     expect(normal.className).not.toContain('text-muted-foreground')
+  })
+
+  it('renders the buy hint as a link to the watch list', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const link = page.querySelector('[data-buy-hint] a')!
+    expect(link.getAttribute('href')).toBe('/underlyings')
+    expect(link.textContent).toBe(tiers.buy_hint)
+    const legend = page.querySelector('[data-legend-item]')!
+    expect(page.querySelector('[data-buy-hint]')!.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await act(async () => root?.unmount())
+    host.remove()
+    const none = await show(<TierView tiers={tiersTextsNull} />)
+    expect(none.querySelector('[data-buy-hint]')).toBeNull()
+  })
+
+  it('renders the idle line once', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const lines = page.querySelectorAll('[data-idle-note]')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]!.textContent).toBe(tiers.idle_note)
+    const lastTier = [...page.querySelectorAll('[data-tier]')].at(-1)!
+    expect(lastTier.compareDocumentPosition(lines[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const strip = page.querySelector('[data-company]')!
+    expect(lines[0]!.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(strip.textContent).toContain(`rows of ${tiers.companies[0]!.spot_day}`)
+    await act(async () => root?.unmount())
+    host.remove()
+    const none = await show(<TierView tiers={tiersTextsNull} />)
+    expect(none.querySelector('[data-idle-note]')).toBeNull()
+  })
+
+  it('renders no table header for an empty tier', async () => {
+    const empty = { ...tiers, tiers: tiers.tiers.map((t) => (t.id === 'check' ? { ...t, rows: [], explain: 'tiers None: nothing to check' } : t)) }
+    const page = await show(<TierView tiers={empty} />)
+    const scope = page.querySelector('[data-tier=check]')!
+    expect(scope.querySelector('thead')).toBeNull()
+    expect(scope.querySelector('table')).toBeNull()
+    expect(scope.textContent).toContain(tiers.tiers[1]!.title)
+    expect(scope.textContent).toContain('tiers None: nothing to check')
+    expect(page.querySelector('[data-tier=fits] thead')).not.toBeNull()
   })
 })

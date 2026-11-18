@@ -174,6 +174,7 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
 }
 
 function TierTable({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
+  if (tier.rows.length === 0) return null
   return (
     <div className="overflow-x-auto">
       <div className="sm:min-w-[60rem]">
@@ -213,6 +214,7 @@ export function TierSection({ tier, columns }: { tier: Tier; columns: TierColumn
       <h3 className={cn('flex items-center gap-2 text-base font-semibold', titleTones[tier.id])}>
         <TierTitle tier={tier} />
       </h3>
+      {tier.rows.length === 0 ? <p className="text-xs text-muted-foreground">{tier.explain}</p> : null}
       <TierTable tier={tier} columns={columns} />
     </section>
   )
