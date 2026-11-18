@@ -10,6 +10,7 @@ import { blocked } from './fixtures/blocked'
 import { gap } from './fixtures/gap'
 import { ok } from './fixtures/ok'
 import { stale } from './fixtures/stale'
+import { tiers } from './fixtures/tiers'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const badVersion = JSON.parse(
@@ -112,5 +113,16 @@ describe('OptionCandidatesPage', () => {
     const page = await show(ok)
     expect(page.querySelector('input, select, textarea')).toBeNull()
     expect(page.querySelectorAll('[data-table=main] thead button').length).toBeGreaterThan(0)
+  })
+})
+
+describe('OptionCandidatesPage tiers', () => {
+  it('TestStoredTablesBelowTiers', async () => {
+    const page = await show({ ...ok, short_put_tiers: tiers } as never)
+    const view = page.querySelector('[data-tier-view]')!
+    const heading = [...page.querySelectorAll('h2')].find((h) => h.textContent === 'Stored tables')!
+    const tabs = page.querySelector('[data-tab]')!
+    expect(view.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(heading.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
