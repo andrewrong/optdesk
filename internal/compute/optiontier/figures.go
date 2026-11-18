@@ -17,6 +17,7 @@ const (
 	figYield       = "yield"
 	whyNoIV        = "no_iv"
 	whyZeroDTE     = "zero_dte"
+	whyBelowIntr   = "bid_below_intrinsic"
 	whyNotEvaled   = "not_judged"
 	percentPlaces  = 4
 	yieldScale     = 16
@@ -78,6 +79,11 @@ func writeTimeValue(v *optiontierapi.Verdict, r optiontierapi.Row, n numbers, p 
 	if !n.okBid {
 		v.Why[figTimeValue] = orElse(grey, greyNoBid)
 		v.Why[figYield] = orElse(grey, greyNoBid)
+		return
+	}
+	if n.bid.IsPositive() && n.bid.LessThan(intrinsic) {
+		v.Why[figTimeValue] = whyBelowIntr
+		v.Why[figYield] = whyBelowIntr
 		return
 	}
 	tv := n.bid.Sub(intrinsic)
