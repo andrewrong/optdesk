@@ -114,13 +114,17 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 		vm.RunStatus, vm.Sentence, vm.Note = "failed", "Cannot read the position structures", ptr(noReaderNote)
 		return json.Marshal(vm)
 	}
-	in, closes, err := c.load(ctx, alias, day)
+	in, closes, ids, err := c.loadIDs(ctx, alias, day)
 	if err != nil {
 		return nil, err
 	}
 	res := c.Structures().Evaluate(in, compute.StructureParams{MarkMaxAgeSessions: markMaxAgeSessions,
 		CaptureTarget: captureTarget, ExitDTE: exitDTE, CommissionDays: commissionDays})
-	gaps := fillRows(&vm, res, cells{noQuotes: c.Eod == nil || c.Terms == nil})
+	exDiv, err := c.exDividends(ctx, res, ids, day)
+	if err != nil {
+		return nil, err
+	}
+	gaps := fillRows(&vm, res, cells{noQuotes: c.Eod == nil || c.Terms == nil, exDiv: exDiv})
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_ledger", DataTime: dayAt})
 	if in.HeldDay != "" {
 		held, err := midnight(in.HeldDay, c.Zone)
@@ -284,10 +288,73 @@ func (c cells) rowOf(s compute.Structure) row {
 	return row{
 		Symbol: symbol, Href: hrefOf(s.ID), KindText: kind, ExpiryText: expiry,
 		Moneyness: c.moneyness(s), Distance: c.percent(s.Figures.ExpiryDistance), Earned: c.percent(s.Figures.EarnedShare),
-		Compare: c.compare(s),
+		ExDividend: c.exDiv[s.ID], Compare: c.compare(s),
 		MaxLoss: c.listMaxLossCell(s),
 		MaxGain: c.listMoney(s.Figures.MaxGain), PnL: c.listMoney(s.Figures.UnrealizedPnL),
 	}
+}
+
+// exDividends is the ex_dividend cell of each structure of res by structure id (Decision 7), never nil.
+// ids is the instrument id of each underlying.
+func (c Config) exDividends(ctx context.Context, res compute.StructureResult, ids map[string]int64,
+	day contracts.Day) (map[string]any, error) {
+	out := map[string]any{}
+	from, err := shiftDay(day, -exDividendLookback)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range append(append([]compute.Structure{}, res.Structures...), res.Other...) {
+		switch {
+		case !hasSoldCall(s):
+			out[s.ID] = gap{Reason: reasonNoRule, Text: exNotApplicableText}
+		case c.Dividends == nil:
+			out[s.ID] = gap{Reason: reasonNoReader, Text: exNoReaderText}
+		default:
+			cell, err := c.exDividendOf(ctx, ids[s.Underlying], from, day)
+			if err != nil {
+				return nil, err
+			}
+			out[s.ID] = cell
+		}
+	}
+	return out, nil
+}
+
+// exDividendOf is the cell of a structure with a sold call: the newest stored row of the underlying id.
+func (c Config) exDividendOf(ctx context.Context, id int64, from, day contracts.Day) (any, error) {
+	noRow := gap{Reason: reasonNoData, Text: exNoRowText}
+	if id == 0 {
+		return noRow, nil
+	}
+	rows, err := c.Dividends.Dividends(ctx, int(id), from, day)
+	if err != nil {
+		return nil, fmt.Errorf("structures_page: read dividends: %w", err)
+	}
+	if len(rows) == 0 {
+		return noRow, nil
+	}
+	r := rows[len(rows)-1] // ascending by day: the newest
+	if string(r.Status) != "present" || r.NextExDate == nil {
+		return noRow, nil
+	}
+	date := r.NextExDate.Format(dayLayout)
+	if date < string(day) {
+		return gap{Reason: reasonNoData, Text: exPassedText}, nil
+	}
+	if r.NextAmount != nil && *r.NextAmount != "" {
+		date += " · " + *r.NextAmount
+	}
+	return date, nil
+}
+
+// hasSoldCall reports whether a leg of s is a call held short.
+func hasSoldCall(s compute.Structure) bool {
+	for _, l := range s.Legs {
+		if l.Right == "C" && strings.HasPrefix(l.Quantity, "-") {
+			return true
+		}
+	}
+	return false
 }
 
 // gapCount is the number of gap cells of the row, compare included.

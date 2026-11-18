@@ -10,12 +10,16 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 
+	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
 func groupRows(t *testing.T, m map[string]any, i int) []map[string]any {
@@ -62,8 +66,8 @@ func TestRowFieldsFromFigures(t *testing.T) {
 	if r["kind_text"] != "Short put" || r["expiry_text"] != "2026-12-18" || r["distance"] != "9.1200%" || r["earned"] != "52.0000%" {
 		t.Fatalf("row = %v", r)
 	}
-	if r["moneyness"] != "out of the money" || r["ex_dividend"] != nil {
-		t.Fatalf("moneyness = %v, ex_dividend = %v", r["moneyness"], r["ex_dividend"])
+	if r["moneyness"] != "out of the money" {
+		t.Fatalf("moneyness = %v", r["moneyness"])
 	}
 	loss := r["max_loss"].(map[string]any)
 	if loss["value"] != -14750.0 || loss["text"] != "−$14,750.00" || loss["unit"] != "usd" {
@@ -431,5 +435,109 @@ func TestFullPageWithCloseNoteStaysOk(t *testing.T) {
 	n, _ := m["note"].(string)
 	if m["run_status"] != "partial" || !strings.Contains(n, "Positions not yet in Flex") || !strings.HasSuffix(n, "AAPL 最近成交 2026-11-06") {
 		t.Fatalf("status = %v, note = %q", m["run_status"], n)
+	}
+}
+
+type stubDividends struct {
+	dividend.Reader
+	rows     []contracts.DividendExpectation
+	id       *int
+	from, to *contracts.Day
+}
+
+func (s stubDividends) Dividends(_ context.Context, id int, from, to contracts.Day) ([]contracts.DividendExpectation, error) {
+	*s.id, *s.from, *s.to = id, from, to
+	return s.rows, nil
+}
+
+func exDay(d string) *types.SerializableDate {
+	tm, _ := time.Parse(dayLayout, d)
+	return &types.SerializableDate{Time: tm}
+}
+
+// exRig is a rig with one AAPL structure whose only leg has the right and quantity given; the id of AAPL is 77.
+func exRig(right, qty string, reader dividend.Reader) *rig {
+	res := compute.StructureResult{Structures: []compute.Structure{{ID: "s1", Underlying: "AAPL", Kind: "naked_call",
+		Legs: []compute.StructureLeg{{Right: right, Quantity: qty, Expiry: "2026-12-18"}}}}}
+	r := newRig(res)
+	r.cfg.Dividends = reader
+	r.cfg.Account = stubAccount{byDay: map[string][]store.Position{"2026-11-09": {{SecType: "stock", Symbol: "AAPL", ConID: 77}}}}
+	return r
+}
+
+func exCell(t *testing.T, r *rig) any {
+	t.Helper()
+	return groupRows(t, decode(t, r.build(t, "main")), 1)[0]["ex_dividend"]
+}
+
+func wantGap(t *testing.T, cell any, reason, text string) {
+	t.Helper()
+	g, ok := cell.(map[string]any)
+	if !ok || g["reason"] != reason || g["text"] != text {
+		t.Fatalf("cell = %v, want gap %s %q", cell, reason, text)
+	}
+}
+
+func TestExDividendGapReasons(t *testing.T) {
+	t.Parallel()
+	wantGap(t, exCell(t, exRig("C", "-1", nil)), "no_reader", "没有除息数据来源")
+	var id int
+	var from, to contracts.Day
+	passed := contracts.DividendExpectation{Status: "present", NextExDate: exDay("2026-11-08")}
+	wantGap(t, exCell(t, exRig("C", "-1", stubDividends{rows: []contracts.DividendExpectation{passed}, id: &id, from: &from, to: &to})),
+		"no_data", "除息日已过，等待下次采集")
+	wantGap(t, exCell(t, exRig("C", "-1", stubDividends{id: &id, from: &from, to: &to})),
+		"no_data", "没有除息预期记录（该股可能不派息，或尚未采集）")
+	wantGap(t, exCell(t, exRig("P", "-1", nil)), "no_rule", "不适用：没有卖出认购腿")
+}
+
+func TestExDividendFromStoredRow(t *testing.T) {
+	t.Parallel()
+	var id int
+	var from, to contracts.Day
+	amt := "0.25"
+	old := contracts.DividendExpectation{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: ptr("0.20")}
+	cur := contracts.DividendExpectation{Status: "present", NextExDate: exDay("2026-11-09"), NextAmount: &amt}
+	r := exRig("C", "-1", stubDividends{rows: []contracts.DividendExpectation{old, cur}, id: &id, from: &from, to: &to})
+	if got := exCell(t, r); got != "2026-11-09 · 0.25" {
+		t.Fatalf("cell = %v", got)
+	}
+	if id != 77 || from != "2026-10-30" || to != testDay {
+		t.Fatalf("read id %d from %s to %s", id, from, to)
+	}
+}
+
+func TestExDividendNoRowIsChineseGap(t *testing.T) {
+	t.Parallel()
+	var id int
+	var from, to contracts.Day
+	for _, rows := range [][]contracts.DividendExpectation{{{Status: "no_value"}}, {{Status: "unsupported"}}, {{Status: "error"}}} {
+		wantGap(t, exCell(t, exRig("C", "-1", stubDividends{rows: rows, id: &id, from: &from, to: &to})),
+			"no_data", "没有除息预期记录（该股可能不派息，或尚未采集）")
+	}
+	wantGap(t, exCell(t, exRig("C", "-1", stubDividends{id: &id, from: &from, to: &to})),
+		"no_data", "没有除息预期记录（该股可能不派息，或尚未采集）")
+}
+
+func TestExDividendPassedDateIsChineseGap(t *testing.T) {
+	t.Parallel()
+	var id int
+	var from, to contracts.Day
+	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-08"), NextAmount: ptr("0.25")}}
+	wantGap(t, exCell(t, exRig("C", "-1", stubDividends{rows: rows, id: &id, from: &from, to: &to})),
+		"no_data", "除息日已过，等待下次采集")
+}
+
+func TestExDividendPutOnlyIsNotApplicable(t *testing.T) {
+	t.Parallel()
+	var id int
+	var from, to contracts.Day
+	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: ptr("0.25")}}
+	for _, leg := range [][2]string{{"P", "-1"}, {"C", "1"}} {
+		wantGap(t, exCell(t, exRig(leg[0], leg[1], stubDividends{rows: rows, id: &id, from: &from, to: &to})),
+			"no_rule", "不适用：没有卖出认购腿")
+	}
+	if id != 0 {
+		t.Fatalf("reader was called for id %d", id)
 	}
 }
