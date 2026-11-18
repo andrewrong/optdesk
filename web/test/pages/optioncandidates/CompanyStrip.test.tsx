@@ -42,7 +42,7 @@ describe('CompanyStrip', () => {
 
   it('TestStripNoValuationUnchanged', async () => {
     const expected = (c: typeof withNull) =>
-      `${c.ticker}Spot ${c.spot} (${c.spot_day})Buy price ${c.buy_price}Next earnings ${c.next_earnings}${c.counts}`
+      `${c.ticker}Spot ${c.spot} (rows of ${c.spot_day})Buy price ${c.buy_price}Next earnings ${c.next_earnings}${c.counts}`
     for (const c of [withNull, withoutKey]) {
       const page = await show(<CompanyStrip company={c} />)
       expect(page.textContent).toBe(expected(c))
@@ -61,5 +61,11 @@ describe('CompanyStrip', () => {
     const gateHint = page.querySelector('[data-gate] [data-hint]')!
     expect(gateHint.getAttribute('data-hint')).toBe(withLine.valuation!.gate_hint)
     expect(gateHint.textContent).toBe('Buy price used by the gate (hand-typed)')
+  })
+
+  it('shows the spot hint on the word Spot', async () => {
+    const page = await show(<CompanyStrip company={withNull} spotHint="hint 中文" />)
+    expect(page.querySelector('[data-hint="hint 中文"]')!.textContent).toBe('Spot')
+    expect(page.textContent).toContain(`rows of ${withNull.spot_day}`)
   })
 })
