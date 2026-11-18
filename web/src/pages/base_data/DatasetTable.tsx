@@ -44,6 +44,11 @@ const columns: ColumnDef<Dataset>[] = [
           {row.original.label}
           <span className="block text-xs text-muted-foreground">{row.original.label_zh}</span>
           {isSorted(table) ? <span className="block text-xs text-muted-foreground">{row.original.group}</span> : null}
+          <span className="mt-1 block space-y-0.5 text-xs md:hidden">
+            <span className="block">{row.original.newest_day ?? DASH}</span>
+            <span className="block">{row.original.age_text || DASH}</span>
+            <span className="block">{row.original.failed_summary || DASH}</span>
+          </span>
         </span>
       </button>
     ),
@@ -60,6 +65,10 @@ const columns: ColumnDef<Dataset>[] = [
   { id: 'age', header: 'Age', enableSorting: false, cell: ({ row }) => row.original.age_text || DASH },
   { id: 'failed', header: 'Failed checks', enableSorting: false, cell: ({ row }) => row.original.failed_summary || DASH },
 ]
+
+// Below md these columns show inside the dataset cell instead.
+const NARROW_HIDDEN = new Set(['date', 'age', 'failed'])
+const narrowClass = (id: string) => (NARROW_HIDDEN.has(id) ? 'hidden md:table-cell' : '')
 
 export function DatasetTable({ groups }: { groups: readonly Group[] }) {
   // Memoised: a new `data` array on every render would reset the opened rows.
@@ -89,7 +98,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
                   key={h.id}
                   aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
                   tabIndex={sortable ? 0 : undefined}
-                  className={sortable ? 'cursor-pointer' : undefined}
+                  className={[sortable ? 'cursor-pointer' : '', narrowClass(h.column.id)].filter(Boolean).join(' ') || undefined}
                   onClick={sortable ? h.column.getToggleSortingHandler() : undefined}
                   onKeyDown={
                     sortable
@@ -121,7 +130,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
             ) : null}
             <TableRow data-dataset={row.original.dataset}>
               {row.getVisibleCells().map((c) => (
-                <TableCell key={c.id} className="align-top whitespace-normal">
+                <TableCell key={c.id} className={`align-top whitespace-normal ${narrowClass(c.column.id)}`.trim()}>
                   {flexRender(c.column.columnDef.cell, c.getContext())}
                 </TableCell>
               ))}

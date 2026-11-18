@@ -50,6 +50,17 @@ describe('base data page', () => {
     expect(h.textContent).toContain('Rates and events')
   })
 
+  it('shows date, age and failed checks inside the dataset cell', async () => {
+    const h = await render(ok)
+    const cell = rowOf(h, 'option_chains').querySelector('td') as HTMLElement
+    const block = cell.querySelector('.md\\:hidden') as HTMLElement
+    expect(block).not.toBeNull()
+    expect(block.textContent).toContain('1 s')
+    expect(block.textContent).toContain('age; crossed 2.1%')
+    const age = [...h.querySelectorAll('th')].find((c) => c.textContent === 'Age') as HTMLElement
+    expect(age.classList.contains('hidden')).toBe(true)
+  })
+
   it('opens a row to show its checks', async () => {
     const h = await render(ok)
     expect(h.querySelector('[data-checks]')).toBeNull()

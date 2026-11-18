@@ -19,8 +19,8 @@ export function BaseDataView({ payload }: { payload: Payload }) {
     g.rows.flatMap((r) => r.checks.filter((c) => c.warn_at !== '' || c.fail_at !== '').map((c) => ({ ...c, dataset: r.dataset }))),
   )
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="min-w-0 space-y-4">
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle>
             <h1 className="text-xl font-semibold">Base data</h1>
@@ -52,7 +52,7 @@ export function BaseDataView({ payload }: { payload: Payload }) {
         </CardContent>
       </Card>
       {payload.glossary.length > 0 ? (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Glossary</CardTitle>
           </CardHeader>
@@ -68,7 +68,7 @@ export function BaseDataView({ payload }: { payload: Payload }) {
         </Card>
       ) : null}
       {thresholds.length > 0 ? (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Thresholds</CardTitle>
           </CardHeader>
