@@ -287,6 +287,22 @@ func moneyOf(title, meaning string, lines []blockapi.MoneyLine) moneyBlock {
 	return b
 }
 
+// stressOf builds the stress block from its first row, cash after all assignments. The step rows
+// have no underlying price: the first row's note names them, the block has no gap and the gap of
+// the steps is returned for the page gaps. A first row that is itself a gap keeps the block gap.
+func stressOf(lines []blockapi.MoneyLine) (moneyBlock, *gapJSON) {
+	if len(lines) == 0 {
+		return moneyOf(titleStress, meaningStress, lines), nil
+	}
+	head := append([]blockapi.MoneyLine(nil), lines[:1]...)
+	b := moneyOf(titleStress, meaningStress, head)
+	if b.Gap != nil || len(lines) == 1 {
+		return b, nil
+	}
+	b.Rows[0].Note = joinNote(b.Rows[0].Note, noteStressSteps)
+	return b, moneyOf(titleStress, meaningStress, lines).Gap
+}
+
 func gapBlock(title, meaning string, g gapJSON) moneyBlock {
 	return moneyBlock{Title: title, Meaning: meaning, Rows: []moneyRow{}, Totals: []moneyCell{}, Gap: &g}
 }

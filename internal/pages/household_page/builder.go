@@ -95,7 +95,8 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		UsdJpy: h.usdJpy, Positions: h.positionsIn(), PositionsRead: c.Marks != nil,
 	})
 	missing, notStored := missingFromLedger(h.positions, ledgerPuts), notInSnapshot(h.positions, ledgerPuts)
-	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, c.holdings(alias, snap, h), mv, missing, notStored, at))
+	unmatched := unmatchedLedger(h.positions, ledgerPuts)
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, c.holdings(alias, snap, h), mv, unmatched, missing, notStored, at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
@@ -247,29 +248,74 @@ func putName(underlying, strike, expiry string) string {
 // notInSnapshot lists the open short puts of the ledger that no stored short put matches; each stored
 // put matches one ledger put.
 func notInSnapshot(positions []store.Position, ledger []ledgerPut) []string {
+	var out []string
+	for i, un := range unmatchedLedger(positions, ledger) {
+		if un {
+			out = append(out, ledger[i].name)
+		}
+	}
+	return out
+}
+
+// unmatchedLedger flags, per ledger put, whether no stored short put matches it.
+func unmatchedLedger(positions []store.Position, ledger []ledgerPut) []bool {
 	left := map[string]int{}
 	for _, p := range positions {
 		if p.SecType == secTypeOption && p.Right == "put" && strings.HasPrefix(p.Quantity, "-") {
 			left[putKey(p.Symbol, p.Strike, p.Expiry)]++
 		}
 	}
-	var out []string
-	for _, l := range ledger {
+	out := make([]bool, len(ledger))
+	for i, l := range ledger {
 		if left[l.key] > 0 {
 			left[l.key]--
 			continue
 		}
-		out = append(out, l.name)
+		out[i] = true
 	}
 	return out
 }
 
-// withLedgerGap marks the obligations, income and cash after blocks as gaps when the stored short puts
-// and the ledger puts disagree in either direction; the rows stay as they are.
-func withLedgerGap(p *pageJSON, missing, notStored []string) {
-	if len(missing) == 0 && len(notStored) == 0 {
-		return
+// joinNote adds a sentence to a note that may be empty, within the schema length of a note.
+func joinNote(note, add string) string {
+	if note != "" {
+		add = note + "; " + add
 	}
+	if r := []rune(add); len(r) > maxGapRunes {
+		add = string(r[:maxGapRunes])
+	}
+	return add
+}
+
+// ledgerNotes writes the put mismatch on the rows it belongs to: a ledger put missing from the
+// snapshot on its obligation row, stored puts missing from the ledger on the income and cash after
+// rows. It returns the one line of the page gaps, empty when the puts agree.
+func ledgerNotes(res *blockapi.HouseholdResult, unmatched []bool, missing, notStored []string) string {
+	if len(missing) == 0 && len(notStored) == 0 {
+		return ""
+	}
+	for i := range res.Obligations {
+		if i < len(unmatched) && unmatched[i] {
+			res.Obligations[i].Note = joinNote(res.Obligations[i].Note, noteNotInSnapshot)
+		}
+	}
+	if len(missing) > 0 {
+		names := missing
+		if len(names) > maxListedPuts {
+			names = names[:maxListedPuts]
+		}
+		add := fmt.Sprintf(noteNotInLedger, len(missing), strings.Join(names, ", "))
+		for _, lines := range [][]blockapi.MoneyLine{res.Income, res.CashAfter} {
+			if len(lines) > 0 {
+				lines[0].Note = joinNote(lines[0].Note, add)
+			}
+		}
+	}
+	return ledgerLine(missing, notStored)
+}
+
+// ledgerLine is the page gaps line of the put mismatch, at most maxBlockGapRunes long.
+func ledgerLine(missing, notStored []string) string {
 	a, b := missing, notStored
 	if len(a) > maxListedPuts {
 		a = a[:maxListedPuts]
@@ -292,8 +338,7 @@ func withLedgerGap(p *pageJSON, missing, notStored []string) {
 	if r := []rune(text); len(r) > maxBlockGapRunes {
 		text = string(r[:maxBlockGapRunes])
 	}
-	g := gapJSON{Reason: "no_data", Text: text}
-	p.Obligations.Gap, p.Income.Gap, p.CashAfter.Gap = &g, &g, &g
+	return text
 }
 
 func ledgerGapText(nMissing int, missing []string, nNotStored int, notStored []string) string {
@@ -309,13 +354,15 @@ func ledgerGapText(nMissing int, missing []string, nNotStored int, notStored []s
 // assemble writes the page from the figures; without hb the mark blocks are the gap missing_quote,
 // movers is the block of the two mark days. The run is ok when no block has a gap.
 func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp capture, ledgerAt time.Time,
-	res blockapi.HouseholdResult, hb *holdingBlocks, mv moversPart, missing, notStored []string, at time.Time) pageJSON {
+	res blockapi.HouseholdResult, hb *holdingBlocks, mv moversPart, unmatched []bool, missing, notStored []string, at time.Time) pageJSON {
 	p := base(c, scopes, alias, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = pageTitle, pageSentence
 	p.Overview = moneyOf(titleOverview, meaningOverview, res.Overview)
+	ledgerText := ledgerNotes(&res, unmatched, missing, notStored)
+	var stressGap *gapJSON
+	p.Stress, stressGap = stressOf(res.Stress)
 	p.CashAfter = moneyOf(titleCashAfter, meaningCashAfter, res.CashAfter)
-	p.Stress = moneyOf(titleStress, meaningStress, res.Stress)
 	p.Obligations = moneyOf(titleObligations, meaningObligations, res.Obligations)
 	p.Income = moneyOf(titleIncome, meaningIncome, res.Income)
 	p.MonthChange = waterfallOf(res.MonthChange)
@@ -323,7 +370,6 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 		p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{},
 			Gap: &gapJSON{Reason: "missing_input", Text: fmt.Sprintf(textNoMonthStart, cp.day[:7]+"-01")}}
 	}
-	withLedgerGap(&p, missing, notStored)
 	p.Trend = trendOf(alias, tag.Label, res.Trend)
 	p.Accounts = accountsOf(alias, tag.Label, tag.Whose, cp.day, res.Accounts)
 	if hb != nil {
@@ -365,6 +411,12 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 		if b.gap != nil {
 			p.Gaps = append(p.Gaps, gapJSON{Reason: b.gap.Reason, Text: b.title + ": " + b.gap.Text})
 		}
+	}
+	if stressGap != nil {
+		p.Gaps = append(p.Gaps, gapJSON{Reason: stressGap.Reason, Text: titleStress + ": " + stressGap.Text})
+	}
+	if ledgerText != "" {
+		p.Gaps = append(p.Gaps, gapJSON{Reason: "no_data", Text: ledgerText})
 	}
 	if len(p.Gaps) == 0 {
 		p.RunStatus = "ok"
