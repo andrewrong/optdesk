@@ -1,0 +1,19 @@
+{
+  "main": {
+    "Alias": "main", "Cash": "120000.00", "Currency": "USD", "CaptureDay": "2026-11-16", "AgeDays": 1,
+    "Positions": [
+      {"SecType": "OPT", "Right": "put", "Strike": "90.00", "Multiplier": "100", "Quantity": "-10", "Currency": "USD"},
+      {"SecType": "OPT", "Right": "put", "Strike": "50.00", "Multiplier": "100", "Quantity": "3", "Currency": "USD"},
+      {"SecType": "OPT", "Right": "call", "Strike": "50.00", "Multiplier": "100", "Quantity": "-3", "Currency": "USD"},
+      {"SecType": "STK", "Right": "", "Strike": "", "Multiplier": "1", "Quantity": "-5", "Currency": "USD"}
+    ]
+  },
+  "small": {"Alias": "small", "Cash": "5000.00", "Currency": "USD", "CaptureDay": "2026-11-17", "AgeDays": 0, "Positions": []},
+  "empty": {"Alias": "empty", "Cash": "", "Currency": "USD", "CaptureDay": "2026-11-17", "AgeDays": 0},
+  "eur": {"Alias": "eur", "Cash": "50000.00", "Currency": "EUR", "CaptureDay": "2026-11-17", "AgeDays": 0},
+  "stale": {"Alias": "stale", "Cash": "50000.00", "Currency": "USD", "CaptureDay": "2026-11-10", "AgeDays": 4},
+  "foreign": {
+    "Alias": "foreign", "Cash": "50000.00", "Currency": "USD", "CaptureDay": "2026-11-17", "AgeDays": 0,
+    "Positions": [{"SecType": "OPT", "Right": "put", "Strike": "10.00", "Multiplier": "100", "Quantity": "-1", "Currency": "EUR"}]
+  }
+}
