@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.base_data_page.v1.json",
+  "title": "BaseDataPage",
+  "description": "View model of the base data page: one verdict per base dataset, its newest value with date and age, and the checks that failed. Version 2 may add a cross-check against the broker or a second source (optional cross_check on a row and cross_checks); version 1 never writes them. The builder computes every level, count, age and text; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "built_at", "as_of", "last_sessions", "top", "groups", "glossary", "derived_note", "repair_path", "gaps"],
+  "properties": {
+    "schema": {"const": "base_data_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "run_id": {"$ref": "common.v2.json#/$defs/Id"},
+    "built_at": {"$ref": "common.v2.json#/$defs/Timestamp"},
+    "as_of": {"$ref": "#/$defs/Day"},
+    "last_sessions": {"$ref": "#/$defs/LastSessions"},
+    "top": {"$ref": "#/$defs/Top"},
+    "groups": {"type": "array", "items": {"$ref": "#/$defs/Group"}},
+    "glossary": {"type": "array", "items": {"$ref": "#/$defs/GlossaryRow"}},
+    "derived_note": {"type": "string", "maxLength": 600},
+    "repair_path": {"const": "/data-health", "type": "string"},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "cross_checks": {"type": "array", "items": {"$ref": "#/$defs/CrossCheck"}}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Optional": {"type": "string", "maxLength": 600},
+    "Day": {"type": "string", "format": "date"},
+    "Count": {"type": "integer", "minimum": 0},
+    "Level": {"enum": ["pass", "warn", "fail", "unknown"]},
+    "LastSessions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["XNYS", "XTKS"],
+      "properties": {
+        "XNYS": {"$ref": "#/$defs/Day"},
+        "XTKS": {"$ref": "#/$defs/Day"}
+      }
+    },
+    "Counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "warn", "fail", "unknown"],
+      "properties": {
+        "pass": {"$ref": "#/$defs/Count"},
+        "warn": {"$ref": "#/$defs/Count"},
+        "fail": {"$ref": "#/$defs/Count"},
+        "unknown": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "Top": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "text_zh", "counts"],
+      "properties": {
+        "level": {"$ref": "#/$defs/Level"},
+        "text_zh": {"$ref": "#/$defs/Text"},
+        "counts": {"$ref": "#/$defs/Counts"}
+      }
+    },
+    "Group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "rows"],
+      "properties": {
+        "name": {"$ref": "#/$defs/Text"},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/Row"}}
+      }
+    },
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset", "label", "label_zh", "level", "newest_value", "newest_day", "newest_subject", "age_text", "failed_summary", "checks"],
+      "properties": {
+        "dataset": {"$ref": "#/$defs/Text"},
+        "label": {"$ref": "#/$defs/Text"},
+        "label_zh": {"$ref": "#/$defs/Text"},
+        "level": {"$ref": "#/$defs/Level"},
+        "newest_value": {"$ref": "#/$defs/Optional"},
+        "newest_day": {"oneOf": [{"$ref": "#/$defs/Day"}, {"type": "null"}]},
+        "newest_subject": {"$ref": "#/$defs/Optional"},
+        "age_text": {"$ref": "#/$defs/Optional"},
+        "failed_summary": {"$ref": "#/$defs/Optional"},
+        "checks": {"type": "array", "items": {"$ref": "#/$defs/Check"}},
+        "cross_check": {"$ref": "#/$defs/CrossCheck"}
+      }
+    },
+    "Check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "label", "hint_zh", "level", "n", "bad", "share", "warn_at", "fail_at", "threshold_source", "example"],
+      "properties": {
+        "rule": {"$ref": "#/$defs/Text"},
+        "label": {"$ref": "#/$defs/Text"},
+        "hint_zh": {"$ref": "#/$defs/Text"},
+        "level": {"$ref": "#/$defs/Level"},
+        "n": {"$ref": "#/$defs/Count"},
+        "bad": {"$ref": "#/$defs/Count"},
+        "share": {"$ref": "#/$defs/Optional"},
+        "warn_at": {"$ref": "#/$defs/Optional"},
+        "fail_at": {"$ref": "#/$defs/Optional"},
+        "threshold_source": {"$ref": "#/$defs/Optional"},
+        "example": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "CrossCheckItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "ours", "other", "diff", "kind", "hint_zh"],
+      "properties": {
+        "key": {"$ref": "#/$defs/Text"},
+        "ours": {"$ref": "#/$defs/Optional"},
+        "other": {"$ref": "#/$defs/Optional"},
+        "diff": {"$ref": "#/$defs/Optional"},
+        "kind": {"$ref": "#/$defs/Text"},
+        "hint_zh": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "CrossCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pair_id", "level", "n", "matched", "diff", "missing", "tolerance_text", "source_id", "run_at", "items"],
+      "properties": {
+        "pair_id": {"$ref": "#/$defs/Text"},
+        "level": {"$ref": "#/$defs/Level"},
+        "n": {"$ref": "#/$defs/Count"},
+        "matched": {"$ref": "#/$defs/Count"},
+        "diff": {"$ref": "#/$defs/Count"},
+        "missing": {"$ref": "#/$defs/Count"},
+        "tolerance_text": {"$ref": "#/$defs/Optional"},
+        "source_id": {"$ref": "#/$defs/Text"},
+        "run_at": {"oneOf": [{"$ref": "common.v2.json#/$defs/Timestamp"}, {"type": "null"}]},
+        "items": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/CrossCheckItem"}}
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"enum": ["facts_unavailable", "view_unavailable", "coverage_unavailable"]},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "GlossaryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "text"],
+      "properties": {
+        "term": {"$ref": "#/$defs/Text"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    }
+  }
+}
