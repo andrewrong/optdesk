@@ -10,8 +10,8 @@ const (
 	callsTail    = " call lots skipped: this page shows short puts only"
 	longsTail    = " long put lots skipped: " + longPutSkippedZh
 
-	sampleFew  = "fewer than 20 ended lots: no conclusion about what pays"
-	sampleEnuf = "20 or more ended lots"
+	sampleFew  = "fewer than 20 split lots: no conclusion about what pays"
+	sampleEnuf = "20 or more split lots"
 
 	defaultName = "main"
 

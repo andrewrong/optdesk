@@ -345,7 +345,7 @@ func TestLotsOlderThan30DaysNotShown(t *testing.T) {
 
 func TestFewerThan20EndedLots(t *testing.T) {
 	t.Parallel()
-	for n, want := range map[int]string{19: "19 ended lots: fewer than 20 ended lots: no conclusion about what pays", 20: "20 ended lots: 20 or more ended lots"} {
+	for n, want := range map[int]string{19: "19 ended lots, 0 split lots: fewer than 20 split lots: no conclusion about what pays", 20: "20 ended lots, 0 split lots: fewer than 20 split lots: no conclusion about what pays"} {
 		r := newRig()
 		for i := 0; i < n; i++ {
 			r.replay.positions = append(r.replay.positions, lotPos("p"+itoa(i), "BBB", itoa(1000+i), "38.00", "closed"))
@@ -450,5 +450,39 @@ func TestNoQuotesTextsAreChinese(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 long put lots skipped: "+longPutSkippedZh) {
 		t.Errorf("notes = %v", vm.Notes)
+	}
+}
+
+// oldLot is an ended lot closed outside the 30-day card window, so only the ledger sees it.
+func (r *rig) oldLot(id string, gap bool) {
+	p := lotPos(id, "BBB", "c"+id, "38.00", "closed")
+	p.ClosedOn = "2026-10-01"
+	if gap {
+		p.RealizedPnL = ""
+	}
+	r.replay.positions = append(r.replay.positions, p)
+}
+
+func TestSampleNoteCountsEndedAndSplit(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	r.oldLot("p1", false)
+	r.oldLot("p2", true)
+	r.attr.results["38.00"] = res("20", "-8", "4", "2", "-2", "", "-2", "0", "14")
+	if got := r.build(t).Accounts[0].SampleNote; !strings.HasPrefix(got, "2 ended lots, 1 split lots: ") {
+		t.Fatalf("sample_note = %q", got)
+	}
+}
+
+func TestSampleThresholdCountsSplit(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	for i := 0; i < 25; i++ {
+		r.oldLot("p"+itoa(i), i >= 5)
+	}
+	r.attr.results["38.00"] = res("20", "-8", "4", "2", "-2", "", "-2", "0", "14")
+	want := "25 ended lots, 5 split lots: fewer than 20 split lots: no conclusion about what pays"
+	if got := r.build(t).Accounts[0].SampleNote; got != want {
+		t.Fatalf("sample_note = %q, want %q", got, want)
 	}
 }

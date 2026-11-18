@@ -71,7 +71,7 @@
               "id": "b0-main-entry",
               "label": "Entry vs mid",
               "text": "$10.00",
-              "hint": "fill price against the stored mid of bid and ask",
+              "hint": "fill price against the stored mid of bid and ask · 4 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
               "tone": "good"
             },
             {
@@ -485,7 +485,7 @@
           }
         }
       ],
-      "sample_note": "2 ended lots: fewer than 20 ended lots: no conclusion about what pays",
+      "sample_note": "2 ended lots, 1 split lots: fewer than 20 split lots: no conclusion about what pays",
       "gap": null,
       "ledger": {
         "title": "Ledger",
@@ -566,7 +566,7 @@
                         "id": "lga0m0-0-entry",
                         "label": "Entry vs mid",
                         "text": "−$20.00 · 1 lot",
-                        "hint": "成交价与存档的买卖中间价之差",
+                        "hint": "成交价与存档的买卖中间价之差 · 2 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
                         "tone": "muted"
                       },
                       {
@@ -685,7 +685,7 @@
                         "id": "lga0c0-0-entry",
                         "label": "Entry vs mid",
                         "text": "−$20.00 · 1 lot",
-                        "hint": "成交价与存档的买卖中间价之差",
+                        "hint": "成交价与存档的买卖中间价之差 · 1 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
                         "tone": "muted"
                       },
                       {

@@ -440,7 +440,7 @@ func TestCardsStayThirtyDays(t *testing.T) {
 	r.replay.positions = append(r.replay.positions, call, long)
 	vm := r.build(t)
 	a := vm.Accounts[0]
-	if len(a.Lots) != 1 || !strings.HasPrefix(a.SampleNote, "1 ended lots") || len(a.Books) != 1 ||
+	if len(a.Lots) != 1 || !strings.HasPrefix(a.SampleNote, "2 ended lots, 2 split lots") || len(a.Books) != 1 ||
 		!strings.HasPrefix(a.Books[0].Counts, "USD book, 1 lot counted") {
 		t.Fatalf("lots = %d, note = %q, books = %+v", len(a.Lots), a.SampleNote, a.Books)
 	}
@@ -501,5 +501,74 @@ func TestLedgerValidatesSchema(t *testing.T) {
 	}
 	if all, _ := b.line("Ledger P&L, every ended lot counted"); all.Text != "$537.80 · 6 lots" {
 		t.Errorf("ledger-all = %q", all.Text)
+	}
+}
+
+// unsplit adds an ended lot with no stored quotes (no split) closed on closedOn.
+func (r *rig) unsplit(id, closedOn, ledger string) {
+	r.closed(id, "AAA", "nq"+id, closedOn)
+	r.attr.results["nq"+id] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: ledger, Commission: "-1"}
+}
+
+func TestLedgerFoldsMonthsWithoutSplit(t *testing.T) {
+	t.Parallel()
+	r := ledgerRig()
+	r.closed("p1", "AAA", "38.00", "2026-11-13")
+	r.unsplit("u1", "2026-08-10", "10")
+	r.unsplit("u2", "2026-09-10", "20")
+	r.unsplit("u3", "2026-10-10", "30")
+	m := r.ledger(t).view("by_month")
+	if len(m.Groups) != 2 || m.Groups[0].Label != "2026-11" || !strings.HasPrefix(m.Groups[1].Label, foldedMonthsZh) {
+		t.Fatalf("groups = %v", groupLabels(m))
+	}
+	if !strings.Contains(m.Groups[1].Label, "2026-08") || !strings.Contains(m.Groups[1].Label, "2026-10") || !strings.Contains(m.Groups[1].Summary, foldedNoteZh) {
+		t.Errorf("folded group = %+v", m.Groups[1])
+	}
+}
+
+func TestLedgerFoldedGroupSumsMonths(t *testing.T) {
+	t.Parallel()
+	r := ledgerRig()
+	r.unsplit("u1", "2026-08-10", "10")
+	r.unsplit("u2", "2026-09-10", "20")
+	r.unsplit("u3", "2026-10-10", "30")
+	r.ledger(t)
+	var folded []optionattrapi.Result
+	for _, call := range r.book.calls {
+		if len(call) == 3 {
+			folded = call
+		}
+	}
+	if folded == nil {
+		t.Fatalf("no Combine call with the three lots: %d calls", len(r.book.calls))
+	}
+	b := (&allBooker{}).Combine(folded)[0]
+	if b.AllLots != 3 || b.LedgerAllPnL != "60" {
+		t.Fatalf("book = %+v", b)
+	}
+	g := r.ledger(t).view("by_month").Groups
+	line, _ := g[len(g)-1].Books[0].line("Ledger P&L, every ended lot counted")
+	if line.Text != "$60.00 · 3 lots" {
+		t.Errorf("ledger-all = %q", line.Text)
+	}
+}
+
+func TestLedgerGroupLateEntryCount(t *testing.T) {
+	t.Parallel()
+	r := ledgerRig()
+	for i := 0; i < 4; i++ {
+		strike := "38.00"
+		if i < 2 {
+			strike = "late"
+		}
+		r.closed("p"+itoa(i), "AAA", strike, "2026-11-13")
+	}
+	x := splitResult()
+	x.LateEntry = true
+	r.attr.results["late"] = x
+	g := r.ledger(t).view("by_month").Groups[0]
+	entry, ok := g.Books[0].line("Entry vs mid")
+	if !ok || entry.Hint == nil || *entry.Hint != ledgerHintEntryZh+" · 4 个仓位中有 2 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）" {
+		t.Fatalf("entry = %+v", entry)
 	}
 }

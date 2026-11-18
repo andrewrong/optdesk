@@ -71,7 +71,7 @@
               "id": "b0-main-entry",
               "label": "Entry vs mid",
               "text": "−$31.00",
-              "hint": "fill price against the stored mid of bid and ask",
+              "hint": "fill price against the stored mid of bid and ask · 8 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
               "tone": "bad"
             },
             {
@@ -777,7 +777,7 @@
           }
         }
       ],
-      "sample_note": "6 ended lots: fewer than 20 ended lots: no conclusion about what pays",
+      "sample_note": "9 ended lots, 5 split lots: fewer than 20 split lots: no conclusion about what pays",
       "gap": null,
       "ledger": {
         "title": "Ledger",
@@ -858,7 +858,7 @@
                         "id": "lga0m0-0-entry",
                         "label": "Entry vs mid",
                         "text": "−$31.00 · 5 lots",
-                        "hint": "成交价与存档的买卖中间价之差",
+                        "hint": "成交价与存档的买卖中间价之差 · 6 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
                         "tone": "muted"
                       },
                       {
@@ -902,8 +902,8 @@
               },
               {
                 "id": "grp-a0m1",
-                "label": "2026-10",
-                "summary": "USD, 0 split lots, 3 ended lots",
+                "label": "无拆分的月份 2026-10 · 3 lots",
+                "summary": "USD, 0 split lots, 3 ended lots · 2026-11-07 之前没有存档报价，这些仓位只有账本数字，无法拆分",
                 "books": [
                   {
                     "id": "book-lg-a0m-1-0",
@@ -1013,7 +1013,7 @@
                         "id": "lga0c0-0-entry",
                         "label": "Entry vs mid",
                         "text": "−$26.00 · 4 lots",
-                        "hint": "成交价与存档的买卖中间价之差",
+                        "hint": "成交价与存档的买卖中间价之差 · 4 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
                         "tone": "muted"
                       },
                       {
@@ -1126,7 +1126,7 @@
                         "id": "lga0c1-0-entry",
                         "label": "Entry vs mid",
                         "text": "−$5.00 · 1 lot",
-                        "hint": "成交价与存档的买卖中间价之差",
+                        "hint": "成交价与存档的买卖中间价之差 · 1 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
                         "tone": "muted"
                       },
                       {
