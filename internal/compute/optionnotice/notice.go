@@ -41,7 +41,7 @@ func (rule) Evaluate(in compute.NoticeInput, p compute.NoticeParams) compute.Not
 	ns = append(ns, cn...)
 	ns = append(ns, staleNotice(in, day, dayOK)...)
 	order(ns)
-	return compute.NoticeResult{RuleVersion: ruleVersion, Notices: ns, CashByDate: cashByDate(cur, day, dayOK), Cushion: cushion}
+	return compute.NoticeResult{RuleVersion: ruleVersion, Notices: ns, CashByDate: cashByDate(cur, day, dayOK, in.Values), Cushion: cushion}
 }
 
 // held is one parsed option position.

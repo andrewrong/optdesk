@@ -813,10 +813,10 @@ type NoticeFact struct {
 	Label, Value string
 }
 
-// CashDay is the assignment cash due on a day, in one currency, as decimal text.
+// CashDay is the assignment cash due on a day, in one currency, as decimal text; Available and Left are empty unless the cash row has this currency.
 type CashDay struct {
-	Day              contracts.Day
-	Currency, Amount string
+	Day                               contracts.Day
+	Currency, Amount, Available, Left string
 }
 
 // NoticeResult is the notices of one alias in the rule's order.
