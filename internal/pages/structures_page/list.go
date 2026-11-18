@@ -212,9 +212,9 @@ func otherReason(legs []compute.StructureLeg) string {
 	}
 	switch {
 	case len(rights) == 1 && len(expiries) > 1 && long && short:
-		return reasonCalendar
+		return reasonOppositeSidesExpiries
 	case len(rights) == 2 && rights["P"] && rights["C"] && len(expiries) == 1:
-		return reasonStraddle
+		return reasonPutCallOneExpiry
 	}
 	return ""
 }

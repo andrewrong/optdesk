@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -336,8 +337,8 @@ func TestUnidentifiedHasReason(t *testing.T) {
 		legs []compute.StructureLeg
 		want string
 	}{
-		{"opposite sides at different expiries", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("P", "2027-01-15", "1")}, reasonCalendar},
-		{"put and call at one expiry", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("C", "2026-12-18", "-1")}, reasonStraddle},
+		{"opposite sides at different expiries", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("P", "2027-01-15", "1")}, reasonOppositeSidesExpiries},
+		{"put and call at one expiry", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("C", "2026-12-18", "-1")}, reasonPutCallOneExpiry},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -355,4 +356,16 @@ func TestUnidentifiedHasReason(t *testing.T) {
 	if n := decode(t, newRig(single).build(t, "main"))["note"].(string); strings.Contains(n, "AMD:") {
 		t.Fatalf("single-leg note = %q", n)
 	}
+}
+
+func TestOtherReasonIsChinese(t *testing.T) {
+	t.Parallel()
+	legs := []compute.StructureLeg{{Right: "P", Expiry: "2026-12-18", Quantity: "-1"}, {Right: "C", Expiry: "2026-12-18", Quantity: "-1"}}
+	r := otherReason(legs)
+	for _, c := range r {
+		if unicode.Is(unicode.Han, c) {
+			return
+		}
+	}
+	t.Fatalf("reason %q has no Chinese text", r)
 }
