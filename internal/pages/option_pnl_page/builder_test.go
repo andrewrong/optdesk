@@ -219,7 +219,7 @@ func TestNoQuotesCardNoZeroLines(t *testing.T) {
 			t.Errorf("line %s reads %q", l.Label, l.Text)
 		}
 	}
-	if texts["Ledger says"] != "$50.00" || texts["Commissions"] != "−$1.30" || texts["Reason"] != "no stored quotes: no split" ||
+	if texts["Ledger says"] != "$50.00" || texts["Commissions"] != "−$1.30" || texts["Reason"] != noQuotesZh ||
 		len(card.Lines) != 3 || card.DaysLine.Text != "no stored quote days" {
 		t.Fatalf("card = %+v", card)
 	}
@@ -294,7 +294,7 @@ func TestLeftOutNamesEveryClass(t *testing.T) {
 	r.cfg.Booker = &fixedBooker{books: []optionattrapi.Book{{Currency: "USD", Lots: 3, NoQuoteLots: 2, NoQuoteLedgerPnL: "5",
 		UnreconciledLots: 1, UnreconciledLedgerPnL: "7", Total: "1", LedgerPnL: "1", Difference: "0"}}}
 	got := *r.build(t).Accounts[0].Books[0].LeftOut
-	for _, w := range []string{"1 with no stored close (DDD, ledger $12.00)", "2 with no stored quotes (ledger $5.00)",
+	for _, w := range []string{"1 with no stored close (DDD, ledger $12.00)", "2 with no stored quotes (ledger $5.00; " + leftOutNoQuotesZh + ")",
 		"1 not reconciled (ledger $7.00)", "4 of 7 lots left out"} {
 		if !strings.Contains(got, w) {
 			t.Errorf("left_out %q lacks %q", got, w)
@@ -402,8 +402,53 @@ func TestLongPutNoteCount(t *testing.T) {
 		r.replay.positions = append(r.replay.positions, p)
 	}
 	vm := r.build(t)
-	want := "main: 2 long put lots skipped: this page shows short puts only"
+	want := "main: 2 long put lots skipped: " + longPutSkippedZh
 	if !strings.Contains(strings.Join(vm.Notes, "|"), want) || len(vm.Accounts[0].Lots) != 0 {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
+	}
+}
+
+func TestNoQuotesTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	r := sampleRig()
+	r.attr.results["38.00"] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: "50", Commission: "-1.30"}
+	r.cfg.Booker = &fixedBooker{books: []optionattrapi.Book{{Currency: "USD", Lots: 3, NoQuoteLots: 2, NoQuoteLedgerPnL: "5",
+		Total: "1", LedgerPnL: "1", Difference: "0"}}}
+	long := lotPos("p9", "LLL", "909", "90.00", "open")
+	long.Quantity = "2"
+	r.replay.positions = append(r.replay.positions, long)
+	vm := r.build(t)
+	acc := vm.Accounts[0]
+	var bbb, aaa *lotView
+	for i := range acc.Lots {
+		switch {
+		case strings.Contains(acc.Lots[i].Title, "BBB"):
+			bbb = &acc.Lots[i]
+		case strings.Contains(acc.Lots[i].Title, "AAA"):
+			aaa = &acc.Lots[i]
+		}
+	}
+	if bbb == nil || aaa == nil {
+		t.Fatalf("lots = %+v", acc.Lots)
+	}
+	reason := ""
+	for _, l := range bbb.Lines {
+		if l.Label == "Reason" {
+			reason = l.Text
+		}
+	}
+	if reason != noQuotesZh {
+		t.Errorf("reason = %q", reason)
+	}
+	for _, l := range aaa.Lines {
+		if l.Label == "Reason" && l.Text == noQuotesZh {
+			t.Errorf("card with quotes shows the no-quotes text")
+		}
+	}
+	if got := *acc.Books[0].LeftOut; !strings.Contains(got, "2 with no stored quotes (ledger $5.00; "+leftOutNoQuotesZh+")") {
+		t.Errorf("left_out = %q", got)
+	}
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 long put lots skipped: "+longPutSkippedZh) {
+		t.Errorf("notes = %v", vm.Notes)
 	}
 }
