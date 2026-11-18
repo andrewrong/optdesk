@@ -116,7 +116,7 @@
         {
           "id": "lot-main-p2",
           "title": "BBB put 38.00 exp 2026-12-18",
-          "summary": "short 2 opened 2026-11-03 at 1.80   expired 2026-11-13",
+          "summary": "short 2 opened 2026-11-03 at $1.80   expired 2026-11-13",
           "lines": [
             {
               "id": "a0l0-ledger",

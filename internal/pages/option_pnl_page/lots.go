@@ -3,6 +3,7 @@ package option_pnl_page
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/optionattrapi"
@@ -50,7 +51,7 @@ func inputOf(c Config, l pnlLot, rates []optionattrapi.Rate) optionattrapi.Input
 	}
 	for _, f := range p.Fills {
 		if f.Action == "open" || f.Action == "close" {
-			lot.Fills = append(lot.Fills, optionattrapi.Fill{Day: f.Day, Side: f.Action, Quantity: f.Quantity,
+			lot.Fills = append(lot.Fills, optionattrapi.Fill{Day: f.Day, Side: f.Action, Quantity: strings.TrimPrefix(f.Quantity, "-"),
 				Price: f.Price, Commission: f.Commission})
 		}
 	}

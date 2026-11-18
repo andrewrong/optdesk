@@ -23,7 +23,7 @@
           "id": "book-main-USD",
           "currency": "USD",
           "counts": "USD book, 2 lots counted (1 open, 1 assigned)",
-          "left_out": "2 of 4 lots left out of the sums: 1 with no stored quote (EEE, ledger ledger P\u0026L not stored); 1 with no stored close (DDD, ledger $12.00)",
+          "left_out": "2 of 4 lots left out of the sums: 1 with no stored quote (EEE, ledger not stored); 1 with no stored close (DDD, ledger $12.00)",
           "headline": {
             "id": "b0-main-head",
             "label": "Rent minus move cost",
@@ -116,7 +116,7 @@
         {
           "id": "lot-main-p1",
           "title": "AAA put 90.00 exp 2026-12-18",
-          "summary": "short 2 opened 2026-11-03 at 1.80   open (marked at the stored mid of 2026-11-17)",
+          "summary": "short 2 opened 2026-11-03 at $1.80   open (marked at the stored mid of 2026-11-17)",
           "lines": [
             {
               "id": "a0l0-time",
@@ -228,7 +228,7 @@
         {
           "id": "lot-main-p2",
           "title": "BBB put 38.00 exp 2026-12-18",
-          "summary": "short 2 opened 2026-11-03 at 1.80   assigned 2026-11-13",
+          "summary": "short 2 opened 2026-11-03 at $1.80   assigned 2026-11-13",
           "lines": [
             {
               "id": "a0l1-time",
@@ -353,7 +353,7 @@
         {
           "id": "lot-main-p4",
           "title": "DDD put 70.00 exp 2026-12-18",
-          "summary": "short 2 opened 2026-11-03 at 1.80   expired 2026-11-13 · Ledger says $12.00, commission $1.30",
+          "summary": "short 2 opened 2026-11-03 at $1.80   expired 2026-11-13 · Ledger says $12.00, commission $1.30",
           "lines": [],
           "days_line": {
             "id": "a0l2-days",
@@ -375,7 +375,7 @@
         {
           "id": "lot-main-p5",
           "title": "EEE put 80.00 exp 2026-12-18",
-          "summary": "short 2 opened 2026-11-03 at 1.80   open · Ledger says ledger P\u0026L not stored, commission $1.30",
+          "summary": "short 2 opened 2026-11-03 at $1.80   open · Ledger says not stored, commission $1.30",
           "lines": [],
           "days_line": {
             "id": "a0l3-days",

@@ -114,3 +114,18 @@ func TestBadInputBecomesLotGap(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestFillQuantityIsUnsigned(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	p := lotPos("p1", "BBB", "202", "38.00", "closed")
+	p.Fills = []compute.LedgerFill{{Day: "2026-11-03", Action: "open", Quantity: "-2", Price: "1.80", Commission: "1.30"},
+		{Day: "2026-11-10", Action: "close", Quantity: "2", Price: "0.5", Commission: "0.6"}}
+	r.replay.positions = []compute.LedgerPosition{p}
+	r.attr.results["38.00"] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: "50"}
+	r.build(t)
+	f := r.attr.ins[0].Lot.Fills
+	if len(f) != 2 || f[0].Quantity != "2" || f[1].Quantity != "2" {
+		t.Fatalf("fills = %+v", f)
+	}
+}

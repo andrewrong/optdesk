@@ -90,7 +90,11 @@ func money(text, currency string) string {
 		return text
 	}
 	prefix := "$"
-	if currency != "USD" {
+	switch currency {
+	case "USD":
+	case "JPY":
+		prefix = "¥"
+	default:
 		prefix = currency + " "
 	}
 	return signedText(d, 2, prefix, "")

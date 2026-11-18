@@ -53,7 +53,7 @@ const (
 	refusedPrefix  = "input refused: "
 	noQuotesText   = "no stored quotes: no split"
 	noQuotesBadge  = "no quotes"
-	ledgerMissing  = "ledger P&L not stored"
+	ledgerMissing  = "not stored"
 	markedAtMid    = "marked at the stored mid of "
 	circularNote   = "The open-lot check is circular: our stored mid is on both sides, so it checks fills, commissions and the charge, not the market value"
 	leftOutHead    = " lots left out of the sums: "
