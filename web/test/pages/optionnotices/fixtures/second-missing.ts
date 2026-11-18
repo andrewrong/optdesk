@@ -13,6 +13,7 @@ export const secondMissing = {
       status: 'no_capture',
       data_day: null,
       notices: [],
+      cash_gloss: null,
       cash_by_date: [],
       cushion_text: null,
       note: 'miss no snapshot of this account in the last 7 days',
