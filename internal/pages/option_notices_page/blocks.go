@@ -37,6 +37,9 @@ type cashRow struct {
 	Currency   string   `json:"currency"`
 	AmountText string   `json:"amount_text"`
 	Puts       []putRow `json:"puts"`
+
+	AvailableText *string `json:"available_text"`
+	LeftText      *string `json:"left_text"`
 }
 
 // putRow is one stored short put behind a cash day, as stored text; no per-put figure.
@@ -77,6 +80,7 @@ type aliasBlock struct {
 	Note        *string     `json:"note"`
 	CushionHint *string     `json:"cushion_hint"`
 	NoteHint    *string     `json:"note_hint"`
+	CashGloss   *string     `json:"cash_gloss"`
 }
 
 // noCaptureBlock is the block of an alias with no stored capture.
@@ -101,9 +105,16 @@ func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compu
 		b.Notices = append(b.Notices, noticeRowOf(alias, i, n))
 	}
 	for _, c := range res.CashByDate {
-		b.CashByDate = append(b.CashByDate, cashRow{Day: string(c.Day), Currency: clip(c.Currency),
-			AmountText: clip(amountText(c.Amount, c.Currency)), Puts: putsOf(positions, c.Day, c.Currency)})
+		row := cashRow{Day: string(c.Day), Currency: clip(c.Currency),
+			AmountText: clip(amountText(c.Amount, c.Currency)), Puts: putsOf(positions, c.Day, c.Currency)}
+		if c.Available != "" && c.Left != "" {
+			a, l := clip(amountText(c.Available, c.Currency)), clip(amountText(c.Left, c.Currency))
+			row.AvailableText, row.LeftText = &a, &l
+		}
+		b.CashByDate = append(b.CashByDate, row)
 	}
+	gloss := cashGlossZh
+	b.CashGloss = &gloss
 	if res.Cushion != "" {
 		t := clip(cushionHead + percentText(res.Cushion))
 		b.CushionText = &t
