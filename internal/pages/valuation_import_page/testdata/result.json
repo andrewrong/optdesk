@@ -1,0 +1,187 @@
+{
+  "schema": "valuation_import_page",
+  "schema_version": 1,
+  "view": "result",
+  "post_path": "valuation-import-post",
+  "max_file_bytes": 1048576,
+  "file": {
+    "name": "sample-valuations.json",
+    "sha256": "abababababababababababababababababababababababababababababababab",
+    "as_of": "2026-01-15"
+  },
+  "r": {
+    "action": "insert",
+    "file_us": "0.08",
+    "file_jp": "0.07",
+    "file_hkcn": "0.09",
+    "stored_us": "",
+    "stored_jp": "",
+    "stored_hkcn": "",
+    "note": "invented note",
+    "latest_yield": "0.041",
+    "problem": ""
+  },
+  "margin": {
+    "action": "same",
+    "rows": [
+      {
+        "p_from": "4.5",
+        "m": "0.10",
+        "w": "0.15",
+        "h": "0.20",
+        "s": "0.25"
+      },
+      {
+        "p_from": "3.0",
+        "m": "0.15",
+        "w": "0.20",
+        "h": "0.25",
+        "s": "0.30"
+      }
+    ]
+  },
+  "rows": [
+    {
+      "key": "US:ZZA",
+      "ticker": "ZZA",
+      "name": "Zeta Alpha Corp",
+      "currency": "USD",
+      "r_market": "US",
+      "new_profile": false,
+      "unmatched": false,
+      "proposed_key": "",
+      "action": "insert",
+      "reason": "",
+      "review_type": "event (事件重估)",
+      "v": "120.00",
+      "p": "4.5",
+      "version_date": "2026-01-10",
+      "file_buy_top": "96.00",
+      "site_buy_top": "96.10",
+      "needs_tick": false
+    },
+    {
+      "key": "JP:9901",
+      "ticker": "9901.T",
+      "name": "Yamabiko Example KK",
+      "currency": "JPY",
+      "r_market": "JP",
+      "new_profile": false,
+      "unmatched": false,
+      "proposed_key": "",
+      "action": "same",
+      "reason": "",
+      "review_type": "",
+      "v": "3400.00",
+      "p": "4.0",
+      "version_date": "2025-12-20",
+      "file_buy_top": "2600",
+      "site_buy_top": "2600",
+      "needs_tick": false
+    },
+    {
+      "key": "",
+      "ticker": "QQB",
+      "name": "Quartz Beta Ltd",
+      "currency": "HKD",
+      "r_market": "HKCN",
+      "new_profile": true,
+      "unmatched": true,
+      "proposed_key": "HK:0999",
+      "action": "refused",
+      "reason": "the site computes another buy-zone top (站点算出的买入区间上沿与文件不同)",
+      "review_type": "",
+      "v": "55.00",
+      "p": "3.5",
+      "version_date": "2026-01-12",
+      "file_buy_top": "40.00",
+      "site_buy_top": "44.00",
+      "needs_tick": true
+    },
+    {
+      "key": "US:ZZC",
+      "ticker": "ZZC",
+      "name": "Zenith Gamma Inc",
+      "currency": "USD",
+      "r_market": "US",
+      "new_profile": false,
+      "unmatched": false,
+      "proposed_key": "",
+      "action": "older",
+      "reason": "older than stored (比库内已有的更旧)",
+      "review_type": "",
+      "v": "80.00",
+      "p": "4.0",
+      "version_date": "2025-11-01",
+      "file_buy_top": "60.00",
+      "site_buy_top": "60.00",
+      "needs_tick": false
+    },
+    {
+      "key": "",
+      "ticker": "NNE",
+      "name": "Nova Epsilon Ltd",
+      "currency": "HKD",
+      "r_market": "HKCN",
+      "new_profile": true,
+      "unmatched": true,
+      "proposed_key": "HK:0555",
+      "action": "insert",
+      "reason": "unmatched name (未匹配的名称,需自选 key 并勾选)",
+      "review_type": "first (首次估值)",
+      "v": "20.00",
+      "p": "4.0",
+      "version_date": "2026-01-11",
+      "file_buy_top": "15.00",
+      "site_buy_top": "15.00",
+      "needs_tick": true
+    }
+  ],
+  "not_in_file": [
+    "US:ZZD"
+  ],
+  "unvalued": [
+    "ZZE"
+  ],
+  "removed": [
+    "ZZF"
+  ],
+  "counts": {
+    "insert": 2,
+    "same": 1,
+    "older": 1,
+    "refused": 1,
+    "needs_tick": 2
+  },
+  "flagged_note": "2 rows carry a breakpoint flag other than ok (断点标记不是 ok 的行数)",
+  "result": [
+    {
+      "key": "US:ZZA",
+      "outcome": "inserted",
+      "text": ""
+    },
+    {
+      "key": "JP:9901",
+      "outcome": "same",
+      "text": ""
+    },
+    {
+      "key": "QQB",
+      "outcome": "refused",
+      "text": "the site computes another buy-zone top"
+    },
+    {
+      "key": "US:ZZC",
+      "outcome": "older",
+      "text": ""
+    },
+    {
+      "key": "NNE",
+      "outcome": "not_confirmed",
+      "text": ""
+    }
+  ],
+  "problems": [],
+  "gaps": [],
+  "error": null
+}
