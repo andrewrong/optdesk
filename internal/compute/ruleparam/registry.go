@@ -6,7 +6,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 )
 
-// ErrUnknownKey is returned for a key that is not one of the twelve.
+// ErrUnknownKey is returned for a key that is not one of the thirteen.
 var ErrUnknownKey = errors.New("ruleparam: unknown key")
 
 // ErrRefused is returned for a text the kind or the range of its key refuses.
@@ -35,6 +35,7 @@ var specs = []settingsapi.RuleParamSpec{
 	{Key: "max_strikes", Label: "Maximum strikes per expiry", Unit: "strikes", Kind: kindInt, Default: "24", Min: "4", Max: "60"},
 	{Key: "capture_target", Label: "Premium capture target", Unit: "ratio", Kind: kindDecimal, Default: "0.5", Min: "0.1", Max: "0.95"},
 	{Key: "exit_dte", Label: "Exit days to expiry", Unit: "days", Kind: kindInt, Default: "21", Min: "1", Max: "45"},
+	{Key: "put_delta_max", Label: "Maximum put delta", Unit: "delta", Kind: kindDecimal, Default: "0.3", Min: "0.05", Max: "0.5"},
 }
 
 type registry struct{}
@@ -42,7 +43,7 @@ type registry struct{}
 // New builds the registry; it is a settingsapi.NewRuleParamsFunc.
 func New() settingsapi.RuleParams { return registry{} }
 
-// Specs returns a copy of the twelve keys in their fixed order.
+// Specs returns a copy of the thirteen keys in their fixed order.
 func (registry) Specs() []settingsapi.RuleParamSpec {
 	return append([]settingsapi.RuleParamSpec(nil), specs...)
 }

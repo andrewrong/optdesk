@@ -39,7 +39,7 @@ func TestTwelveKeysInOrder(t *testing.T) {
 	}
 	want := []string{"min_dte", "max_dte", "min_bid_size", "max_spread", "min_open_interest",
 		"div_guard_factor", "max_rate_age_days", "max_event_age_sessions", "min_report_gap_days",
-		"max_strikes", "capture_target", "exit_dte"}
+		"max_strikes", "capture_target", "exit_dte", "put_delta_max"}
 	if !reflect.DeepEqual(keys, want) {
 		t.Fatalf("keys = %v", keys)
 	}
@@ -79,7 +79,7 @@ func TestResolveFillsDefaults(t *testing.T) {
 	t.Parallel()
 	p := New()
 	got := p.Resolve(map[string]string{"min_dte": "30", "max_spread": "", "nope": "1"})
-	if len(got) != 12 {
+	if len(got) != 13 {
 		t.Fatalf("len = %d", len(got))
 	}
 	if got["min_dte"] != "30" || got["max_spread"] != "0.1" || got["exit_dte"] != "21" {
@@ -88,7 +88,7 @@ func TestResolveFillsDefaults(t *testing.T) {
 	if _, ok := got["nope"]; ok {
 		t.Fatal("unknown key kept")
 	}
-	if len(p.Resolve(nil)) != 12 {
+	if len(p.Resolve(nil)) != 13 {
 		t.Fatal("nil stored")
 	}
 }
@@ -101,5 +101,16 @@ func TestUnknownKeyRefused(t *testing.T) {
 	}
 	if _, err := New().Normalize("", ""); !errors.Is(err, ErrUnknownKey) {
 		t.Fatalf("empty key err = %v", err)
+	}
+}
+
+func TestSpecsThirteenWithPutDeltaMax(t *testing.T) {
+	t.Parallel()
+	specs := New().Specs()
+	if len(specs) != 13 {
+		t.Fatalf("len = %d", len(specs))
+	}
+	if last := specs[len(specs)-1]; last.Key != "put_delta_max" {
+		t.Fatalf("last = %q", last.Key)
 	}
 }

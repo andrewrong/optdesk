@@ -12,7 +12,7 @@ type RuleParamSpec struct{ Key, Label, Unit, Kind, Default, Min, Max string }
 
 // RuleParams is the registry of the owner rule parameters.
 type RuleParams interface {
-	// Specs returns the twelve keys in a fixed order.
+	// Specs returns the thirteen keys in a fixed order.
 	Specs() []RuleParamSpec
 	// Normalize returns the canonical text of a value; "" is valid and means
 	// the default.
