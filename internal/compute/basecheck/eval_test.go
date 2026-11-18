@@ -255,3 +255,24 @@ func TestCoverageGapSkipsDaysBeforeHistoryStart(t *testing.T) {
 		t.Errorf("only before start: level=%s, want unknown", c.Level)
 	}
 }
+
+func TestRowsIgnoresSubjectOutsideRow(t *testing.T) {
+	t.Parallel()
+	in := load(t)
+	drop(&in, "quotes", "rows")
+	drop(&in, "chains", "rows")
+	in.Facts = append(in.Facts,
+		basecheckapi.Fact{Dataset: "quotes", Rule: "rows", Subject: "USD", N: 1},
+		basecheckapi.Fact{Dataset: "quotes", Rule: "rows", Subject: "JPY", N: 0},
+		basecheckapi.Fact{Dataset: "chains", Rule: "rows", Subject: "USD", N: 5},
+		basecheckapi.Fact{Dataset: "chains", Rule: "rows", Subject: "JPY", N: 0},
+	)
+	out := Evaluate(in)
+	q := checkOf(t, rowOf(t, out, "quotes"), "rows")
+	if q.Level != basecheckapi.Pass || q.N != 1 {
+		t.Errorf("quotes rows = %s N %d, want pass N 1", q.Level, q.N)
+	}
+	if c := checkOf(t, rowOf(t, out, "chains"), "rows"); c.Level != basecheckapi.Fail {
+		t.Errorf("chains rows with a bare JPY = %s, want fail", c.Level)
+	}
+}

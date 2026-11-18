@@ -101,7 +101,11 @@ func evalRow(in basecheckapi.Input, info basecheckapi.RowInfo, facts map[key][]b
 			c = ageCheck(in, info, r.Rule, th, newest)
 			row.AgeDays, row.AgeSessions = ageNumbers(in, info, newest)
 		default:
-			c = sqlCheck(r.Rule, th, facts[key{info.ID, r.Rule}])
+			fs := facts[key{info.ID, r.Rule}]
+			if th.Fail.Kind == Empty {
+				fs = declaredSubjects(fs, info.Calendars)
+			}
+			c = sqlCheck(r.Rule, th, fs)
 		}
 		row.Checks = append(row.Checks, c)
 		if r.Source != "note" {
@@ -109,6 +113,22 @@ func evalRow(in basecheckapi.Input, info basecheckapi.RowInfo, facts map[key][]b
 		}
 	}
 	return row
+}
+
+// declaredSubjects leaves out the facts of a subject the row does not declare (not a key of
+// calendars), so a view that emits a bare subject the row never fetches does not fail the row. With
+// no calendars, or for a fact with an empty subject, every fact is kept.
+func declaredSubjects(fs []basecheckapi.Fact, calendars map[string]string) []basecheckapi.Fact {
+	if len(calendars) == 0 {
+		return fs
+	}
+	var out []basecheckapi.Fact
+	for _, f := range fs {
+		if _, ok := calendars[f.Subject]; ok || f.Subject == "" {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // newestFacts keeps the newest facts that carry a day.
