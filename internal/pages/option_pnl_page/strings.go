@@ -8,7 +8,7 @@ const (
 		"the early-exercise premium is not modelled"
 	quoteDayNote = "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
 	callsTail    = " call lots skipped: this page shows short puts only"
-	longsTail    = " long put lots skipped: this page shows short puts only"
+	longsTail    = " long put lots skipped: " + longPutSkippedZh
 
 	sampleFew  = "fewer than 20 ended lots: no conclusion about what pays"
 	sampleEnuf = "20 or more ended lots"
@@ -52,7 +52,6 @@ const (
 	classNoLedger  = "no_ledger"
 	classRefused   = "refused"
 	refusedPrefix  = "input refused: "
-	noQuotesText   = "no stored quotes: no split"
 	noQuotesBadge  = "no quotes"
 	ledgerMissing  = "not stored"
 	markedAtMid    = "marked at the stored mid of "

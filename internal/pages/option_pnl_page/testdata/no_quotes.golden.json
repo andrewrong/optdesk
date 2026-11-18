@@ -23,7 +23,7 @@
           "id": "book-main-USD",
           "currency": "USD",
           "counts": "USD book, 0 lots counted",
-          "left_out": "1 of 1 lots left out of the sums: 1 with no stored quotes (ledger $50.00)",
+          "left_out": "1 of 1 lots left out of the sums: 1 with no stored quotes (ledger $50.00; 多为 2026-11-07 前已结束的仓位，当时还没有报价存档)",
           "headline": {
             "id": "b0-main-head",
             "label": "Rent minus move cost",
@@ -135,7 +135,7 @@
             {
               "id": "a0l0-reason",
               "label": "Reason",
-              "text": "no stored quotes: no split",
+              "text": "该合约在仓位持有期间没有存档报价（报价从 2026-11-07 起才开始存档），所以无法拆分，只显示账本数字。",
               "hint": null,
               "tone": "none"
             }

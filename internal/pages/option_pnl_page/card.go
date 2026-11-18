@@ -37,7 +37,7 @@ func lotCard(c Config, prefix, alias string, o outcome, isRoll bool) (lotView, e
 		card.Lines = []line{
 			mkLine(prefix+"-ledger", "Ledger says", money(res.LedgerPnL, cur), "ledger"),
 			mkLine(prefix+"-comm", "Commissions", money(res.Commission, cur), ""),
-			mkLine(prefix+"-reason", "Reason", noQuotesText, ""),
+			mkLine(prefix+"-reason", "Reason", noQuotesZh, ""),
 		}
 		return card, nil
 	case res.Difference == "":
@@ -289,7 +289,7 @@ func leftOut(outs []outcome, b optionattrapi.Book, cur string) *string {
 		}
 	}
 	if b.NoQuoteLots > 0 {
-		parts = append(parts, strconv.Itoa(b.NoQuoteLots)+" with no stored quotes (ledger "+ledgerText(b.NoQuoteLedgerPnL, cur)+")")
+		parts = append(parts, strconv.Itoa(b.NoQuoteLots)+" with no stored quotes (ledger "+ledgerText(b.NoQuoteLedgerPnL, cur)+"; "+leftOutNoQuotesZh+")")
 	}
 	if b.UnreconciledLots > 0 {
 		parts = append(parts, strconv.Itoa(b.UnreconciledLots)+" not reconciled (ledger "+ledgerText(b.UnreconciledLedgerPnL, cur)+")")
