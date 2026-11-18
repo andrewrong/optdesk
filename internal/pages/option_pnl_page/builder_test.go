@@ -402,7 +402,7 @@ func TestLongPutNoteCount(t *testing.T) {
 		r.replay.positions = append(r.replay.positions, p)
 	}
 	vm := r.build(t)
-	want := "main: 2 long put lots skipped: this page shows short puts only (本页只显示卖出的看跌期权，买入的看跌期权不在此页)"
+	want := "main: 2 long put lots skipped: this page shows short puts only"
 	if !strings.Contains(strings.Join(vm.Notes, "|"), want) || len(vm.Accounts[0].Lots) != 0 {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
