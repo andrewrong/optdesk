@@ -24,7 +24,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/optioncand"
-	"github.com/andrewrong/optdesk/internal/compute/optionfig"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
@@ -61,7 +60,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
-	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_notices_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
@@ -182,7 +180,7 @@ type deps struct {
 	openUnderlying          underlying.OpenFunc
 	openValuation           valuation.OpenFunc
 	settingsPage            func(c settings_page.Config) pages.Page
-	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page
+	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, r candidateReaders) pages.Page
 	optionNoticesPage       optionNoticesPageFunc
 	optionTrackingPage      func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page
 	optionPnlPage           pnlPageFunc
@@ -369,15 +367,6 @@ func openBarStore(ctx context.Context, dsn string) (bar.BarStore, error) {
 // newMarketPageOf builds the page market_page in zone from the plain arguments; the one place that names market_page.Config.
 func newMarketPageOf(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page {
 	return market_page.NewPage(market_page.Config{RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Readings: readings})
-}
-
-// newOptionCandidatesPage builds the page option_candidates_page in zone from the plain arguments; the one
-// place that names option_candidates_page.Config.
-func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page {
-	return option_candidates_page.NewPage(option_candidates_page.Config{
-		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands, Names: names,
-		Figures: optionfig.New(),
-	})
 }
 
 // newOptionTrackingPage builds the page option_tracking_page in zone from the plain arguments; the one place

@@ -16,6 +16,12 @@ The stores and `.env` lines are given in the paragraphs below; the page opens no
 
 The company name of a row is the ticker, read from the instrument-name reader (`store.InstrumentNameReader`) by the underlying id; a row whose underlying has no name keeps the stored issuer text. `ot serve` passes `rd.names`; `ot page` opens the instrument-name store with `OT_PG_DSN_PAGES` (closed with the page; a missing line gives a nil reader, the demo profile uses the demo names).
 
+## Evidence readers
+
+`ot serve` passes the readers of the site in `candidateReaders` (`cmd/ot/evidence_site.go`): the candidate reader `rd.cands`, the name reader `rd.names`, the reading reader `rd.view`, the option terms reader `rd.terms` and the option day reader `rd.days`. The route is the live path of the evidence cells. `ot page --name option_candidates_page` passes only the candidate and name readers, so there the evidence cells are gaps `no_reader`; the demo profile builds with the evaluator and no day reader, so its evidence cells are gaps `no_reader` or figures of the demo rows.
+
+The ATM row of the skew is chosen by `newATMFor` (`cmd/ot/evidence_site.go`): one `ChainDay` per underlying and day, `OptionTerms` in chunks of at most 500 ids, one `ChainQuote` per chain row that has terms, and the picker `optionevidence.NewATMPicker()` called with the Source `option_eod`, the capture of the candidates' own quote. A nil day reader, terms reader or picker gives no function, and the page shows the gap `no_reader`. `Evidence` is `optionevidence.New` over the `bsm` pricer with `DefaultParams()`.
+
 ## Left out
 
 With no reader for a store the page shows its own gap (`no_reader`); a nil zone is an error. The demo profile opens no store.
