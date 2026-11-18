@@ -31,6 +31,7 @@ type gathered struct {
 	lots  []pnlLot
 	rates []optionattrapi.Rate
 	calls int
+	longs int
 	gap   string
 }
 
@@ -113,7 +114,7 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day, seri
 	return g, closesOf(ctx, c, g.lots)
 }
 
-// selectLots keeps the short puts that are open or ended within RecentDays, counts the calls it
+// selectLots keeps the short puts that are open or ended within RecentDays, counts the calls and the long puts it
 // skips, and returns the oldest open day of the kept lots.
 func selectLots(c Config, positions []compute.LedgerPosition, d time.Time, g *gathered) ([]compute.LedgerPosition, contracts.Day) {
 	since := dayText(d, c.RecentDays)
@@ -125,6 +126,10 @@ func selectLots(c Config, positions []compute.LedgerPosition, d time.Time, g *ga
 		}
 		if strings.ToUpper(p.Right) != "P" {
 			g.calls++
+			continue
+		}
+		if q := strings.TrimSpace(p.Quantity); q != "" && !strings.HasPrefix(q, "-") {
+			g.longs++
 			continue
 		}
 		out = append(out, p)

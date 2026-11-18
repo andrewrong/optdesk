@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -358,5 +359,19 @@ func TestReaderErrorIsReturned(t *testing.T) {
 	r.days.err = errors.New("boom")
 	if _, err := Build(context.Background(), r.cfg, nil, buildDay, buildAt); err == nil {
 		t.Fatal("want the reader error")
+	}
+}
+
+func TestLongPutIsSkipped(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	long := lotPos("p2", "AAA", "202", "85.00", "open")
+	long.Quantity = "2"
+	r.replay.positions = []compute.LedgerPosition{lotPos("p1", "AAA", "101", "90.00", "open"), long}
+	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-17", "1.20", "1.30", "95")}
+	r.attr.results["90.00"] = res("1", "1", "1", "1", "1", "", "-1", "0", "100")
+	vm := r.build(t)
+	if len(vm.Accounts[0].Lots) != 1 || !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 long put lots skipped: this page shows short puts only") {
+		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
 }

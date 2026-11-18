@@ -159,6 +159,9 @@ func buildAccounts(ctx context.Context, c Config, r store.SeriesReader, day cont
 		if g.calls > 0 {
 			vm.Notes = append(vm.Notes, alias+": "+strconv.Itoa(g.calls)+callsTail)
 		}
+		if g.longs > 0 {
+			vm.Notes = append(vm.Notes, alias+": "+strconv.Itoa(g.longs)+longsTail)
+		}
 		vm.Accounts = append(vm.Accounts, a)
 	}
 	return nil
