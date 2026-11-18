@@ -410,8 +410,8 @@ type AliasFunds struct {
 // CandidateInput is everything Evaluate needs for one underlying; the rule has no calendar,
 // no clock and no store. Days are YYYY-MM-DD texts; money, rates and prices are decimal
 // text. RunDay is the day of the run, ChainDay the day of the quotes (gate events and
-// every row: a ChainDay that is not the latest session day on or before RunDay gives
-// unknown stale_chain). SessionDays are the XNYS session days in ascending order, from
+// every row: a ChainDay that is neither the latest session day on or before RunDay nor
+// the session before it gives unknown stale_chain). SessionDays are the XNYS session days in ascending order, from
 // the oldest input date (earnings row, account capture, chain day) to RunDay, supplied by
 // the caller; every age in sessions is a difference of positions in this list. Rate is
 // DGS3MO in percent (4.20 means 4.2 percent) with RateDay its day; empty when absent.

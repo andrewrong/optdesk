@@ -2,6 +2,7 @@ package optioncand
 
 import (
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -135,7 +136,7 @@ func TestEventAgeInSessions(t *testing.T) {
 func TestStaleChain(t *testing.T) {
 	t.Parallel()
 	in := baseInput()
-	in.ChainDay = "2026-11-06" // Friday; the latest session on or before the Monday run is Monday
+	in.ChainDay = "2026-11-05" // Thursday; two sessions before the Monday run
 	in.Quotes[0].Expiry = addDays(in.ChainDay, 30)
 	c := only(t, eval(in))
 	wantGate(t, c, "events", compute.GateUnknown, "stale_chain")
@@ -143,10 +144,57 @@ func TestStaleChain(t *testing.T) {
 		t.Errorf("status %s", c.Status)
 	}
 	// a Sunday run reads Friday's chain as fresh
+	in.ChainDay = "2026-11-06"
 	in.RunDay = "2026-11-08"
 	if fresh := only(t, eval(in)); gateOf(t, fresh, "events").Reason == "stale_chain" {
 		t.Errorf("friday chain on a sunday run is fresh")
 	}
 	in.SessionDays = nil
 	wantGate(t, only(t, eval(in)), "events", compute.GateUnknown, "stale_chain")
+}
+
+func chainGateReason(t *testing.T, run, chain contracts.Day) string {
+	t.Helper()
+	in := baseInput()
+	in.RunDay = run
+	in.ChainDay = chain
+	in.SessionDays = nil
+	for _, d := range weekdays() {
+		if d <= run {
+			in.SessionDays = append(in.SessionDays, d)
+		}
+	}
+	for d := addDays(runDay, 1); d <= run; d = addDays(d, 1) {
+		if wd := weekdayOf(d); wd != time.Saturday && wd != time.Sunday {
+			in.SessionDays = append(in.SessionDays, d)
+		}
+	}
+	in.Quotes[0].Expiry = addDays(chain, 30)
+	return gateOf(t, only(t, eval(in)), "events").Reason
+}
+
+func TestChainFreshPreviousSessionIsFresh(t *testing.T) {
+	t.Parallel()
+	if r := chainGateReason(t, "2026-11-11", "2026-11-10"); r == "stale_chain" {
+		t.Errorf("tuesday chain on a wednesday run is fresh")
+	}
+}
+
+func TestChainFreshWeekendRun(t *testing.T) {
+	t.Parallel()
+	if r := chainGateReason(t, "2026-11-09", "2026-11-06"); r == "stale_chain" {
+		t.Errorf("friday chain on a monday run is fresh")
+	}
+}
+
+func TestChainFreshTwoSessionsBehindIsStale(t *testing.T) {
+	t.Parallel()
+	if r := chainGateReason(t, "2026-11-11", "2026-11-09"); r != "stale_chain" {
+		t.Errorf("monday chain on a wednesday run: reason %q", r)
+	}
+}
+
+func weekdayOf(d contracts.Day) time.Weekday {
+	t, _ := time.Parse(dayLayout, string(d))
+	return t.Weekday()
 }
