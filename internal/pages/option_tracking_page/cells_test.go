@@ -289,3 +289,16 @@ func TestMoneynessTextOneDecimalMinus(t *testing.T) {
 		}
 	}
 }
+
+func TestMoneynessGaps(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.OtmPercent = "abc"
+	if g := asGap(t, moneynessCell(o)); g.Text != "Unreadable" {
+		t.Fatalf("unreadable gap = %+v", g)
+	}
+	o.OtmPercent = ""
+	if g := asGap(t, moneynessCell(o)); g.Text == "Unreadable" || g.Kind != "gap" {
+		t.Fatalf("empty gap = %+v", g)
+	}
+}
