@@ -22,10 +22,12 @@ const SlotRefresh = "refresh"
 
 // OptionOpenWriter appends the rows of obs.option_open.
 type OptionOpenWriter interface {
-	// InsertOptionOpen writes the rows in one transaction (all rows or none); a row whose key (session day,
-	// capture id, slot, instrument id) exists is left as it is. A -1, NaN or infinity in a numeric column is stored
-	// as null. A row whose slot is SlotRefresh is a Permanent error and nothing is written. No rows make no
-	// database call.
+	// InsertOptionOpen writes the rows in one transaction (all rows or none). The write is an upsert guarded by
+	// rank on the key (session day, capture id, slot, instrument id): status 1 beats status 2, which beats any other
+	// status; a row of the same rank replaces a stored one only when it differs and is not thinner. So the write of
+	// the same item twice is idempotent and a stored not-ok row never blocks a later ok one. A -1, NaN or infinity
+	// in a numeric column is stored as null. A row whose slot is SlotRefresh is a Permanent error and nothing is
+	// written. No rows make no database call.
 	InsertOptionOpen(ctx context.Context, rows []contracts.OptionOpen) error
 }
 
@@ -35,6 +37,16 @@ type OptionOpenReader interface {
 	// received_at, ties by slot and capture id; ordered by instrument id. A day with no rows gives an empty slice.
 	// Instants are UTC.
 	OptionOpen(ctx context.Context, day contracts.Day) ([]contracts.OptionOpen, error)
+}
+
+// OptionOpenSlotReader reads the rows one slot stored, for the items of a batch; the pull of the open reads it
+// before it asks the broker. It is not part of Stores: the store that optionopenpg.Open returns implements it.
+type OptionOpenSlotReader interface {
+	// OptionOpenSlot returns the rows stored for the session day and the slot whose instrument id is in
+	// instrumentIDs: one row for each instrument that has one (the newest by received_at), ordered by instrument id;
+	// an instrument with no row gives none. No ids make no database call. A slot of SlotRefresh is a Permanent
+	// error. Instants are UTC. It reads through rd.option_open_r1.
+	OptionOpenSlot(ctx context.Context, day contracts.Day, slot string, instrumentIDs []int64) ([]contracts.OptionOpen, error)
 }
 
 // OptionOpenStore is the writer and the reader of obs.option_open.

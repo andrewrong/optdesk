@@ -125,6 +125,10 @@ export interface OptionCandidatesPage {
   groups: [Group] | [Group, Group] | [Group, Group, Group];
   stale_after?: Timestamp;
   /**
+   * The grouped short put list, or null. Additive and optional; every figure is text.
+   */
+  short_put_list?: ShortList | null;
+  /**
    * The tier view of the stored short puts, or null. Additive and optional; every figure is text.
    */
   short_put_tiers?: TierView | null;
@@ -215,6 +219,70 @@ export interface Counts {
   unknown: number;
 }
 /**
+ * The grouped short put list, or null. Additive and optional; every figure is text.
+ */
+export interface ShortList {
+  run_day: Text1;
+  counts: Text1;
+  caveat: Text1 | null;
+  filters: Filter[];
+  dropped: Text1 | null;
+  dropped_items: DroppedItem[];
+  columns: TierColumn[];
+  groups: ShortGroup[];
+  folded_title: Text1;
+}
+export interface Filter {
+  id: Text1;
+  label: Text1;
+  value: Text1;
+  hint: Text1;
+}
+export interface DroppedItem {
+  code: Text1;
+  label: Text1;
+  count: Text1;
+  hint: Text1;
+}
+export interface TierColumn {
+  id: Text1;
+  label: Text1;
+  hint: Text1 | null;
+}
+export interface ShortGroup {
+  ticker: Text1;
+  spot: Text1;
+  summary: Text1;
+  rows: ShortRow[];
+}
+export interface ShortRow {
+  key: Text1;
+  strike: Pair;
+  expiry: Pair;
+  otm: Pair;
+  delta: Pair;
+  premium: Pair;
+  annualized: Pair;
+  buy: Pair;
+  buy_source: Badge | null;
+  buy_link: Text1 | null;
+  badges: Badge[];
+}
+/**
+ * A Pair with a gap has the gap text in main and sub null.
+ */
+export interface Pair {
+  main: Text1;
+  sub: Text1 | null;
+  gap: Gap | null;
+}
+export interface Badge {
+  code: Text1;
+  label: Text1;
+  gloss: Text1;
+  tone: "warn" | "info" | "none";
+}
+/**
  * The short puts sorted into tiers, from docs/design/candidates-tiers.md#Interface.
  */
 export interface TierView {
@@ -272,11 +340,6 @@ export interface LegendItem {
   title: Text1;
   text: Text1;
 }
-export interface TierColumn {
-  id: Text1;
-  label: Text1;
-  hint: Text1 | null;
-}
 export interface Tier {
   id:
     | "fits"
@@ -314,20 +377,6 @@ export interface Contract {
   strike: Text1;
   expiry: Text1;
   dte: Text1;
-}
-/**
- * A Pair with a gap has the gap text in main and sub null.
- */
-export interface Pair {
-  main: Text1;
-  sub: Text1 | null;
-  gap: Gap | null;
-}
-export interface Badge {
-  code: Text1;
-  label: Text1;
-  gloss: Text1;
-  tone: "warn" | "info" | "none";
 }
 export interface Field {
   id: Text1;
