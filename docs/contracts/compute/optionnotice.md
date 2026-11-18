@@ -1,0 +1,3 @@
+# compute/optionnotice
+
+Each `CashByDate` row (assignment cash due on a day in one currency) also carries `Available` and `Left`. When the account has a `TotalCashValue` row (the first parsable one) of the same currency as the cash row, `Available` is that value and `Left` is `Available` minus the `Amount` of this row and of the earlier rows of the same currency (a negative `Left` is a shortfall, written with its sign); a row of another currency, and every row when there is no `TotalCashValue` row, has both empty; with several `TotalCashValue` rows, each currency uses its own row and its own running dues. No currency is converted.

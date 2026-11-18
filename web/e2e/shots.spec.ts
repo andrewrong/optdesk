@@ -24,12 +24,25 @@ const fixtureDirs = readdirSync(fixturesDir, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort()
 
+const readJson = (file: string): unknown => JSON.parse(readFileSync(file, 'utf8'))
+
+// Pages whose web/fixtures/<dir>/ok.json is of an older schema_version than the page reads: the payload
+// of the version the page reads (SUPPORTED_VERSIONS in web/src/types/<schema>.ts) comes from here.
+const current: Record<string, () => Promise<unknown>> = {
+  'macro-summary': async () => (await import('../test/pages/home/macro-v2/fixtures/ok')).ok,
+  'held-companies-summary': async () => (await import('../test/pages/home/held-v2/fixtures/ok')).ok,
+  'household-summary': async () => (await import('../test/pages/home/household-v2/fixtures/ok')).ok,
+  tracking: async () => (await import('../test/pages/options/tracking-v2/fixtures/ok')).ok,
+  'market-summary': async () => readJson(path.join(fixturesDir, 'v3/market-summary/ok.json')),
+  'options-summary': async () =>
+    readJson(path.join(webDir, '../contracts/fixtures/page.options_summary.v4.ok.json')),
+}
+
 // The built index.html with the empty `<script id="vm">` replaced by the fixture as its payload.
-function pageWithPayload(fixture: string): string {
+async function pageWithPayload(fixture: string): Promise<string> {
   const html = readFileSync(path.join(distDir, 'index.html'), 'utf8')
-  const payload = JSON.stringify(
-    JSON.parse(readFileSync(path.join(fixturesDir, fixture, 'ok.json'), 'utf8')),
-  ).replaceAll('<', '\\u003c')
+  const load = current[fixture] ?? (async () => readJson(path.join(fixturesDir, fixture, 'ok.json')))
+  const payload = JSON.stringify(await load()).replaceAll('<', '\\u003c')
   const pattern = /(<script\b[^>]*\bid="vm"[^>]*>)[\s\S]*?(<\/script>)/
   if (!pattern.test(html)) throw new Error('built index.html has no <script id="vm">')
   return html.replace(pattern, (_all, open: string, close: string) => `${open}${payload}${close}`)
@@ -46,7 +59,7 @@ test('there is a fixture page to render', () => {
 for (const fixture of fixtureDirs) {
   for (const width of widths) {
     test(`${fixture} at ${width}`, async ({ page }) => {
-      const html = pageWithPayload(fixture)
+      const html = await pageWithPayload(fixture)
       await page.route(`${origin}/**`, async (route) => {
         const { pathname } = new URL(route.request().url())
         if (pathname === '/' || pathname === '/index.html') {

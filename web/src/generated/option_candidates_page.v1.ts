@@ -224,6 +224,9 @@ export interface TierView {
   kept: Text1 | null;
   kept_note?: Text1 | null;
   stored_title?: Text1 | null;
+  idle_note?: Text1 | null;
+  buy_hint?: Text1 | null;
+  spot_hint?: Text1 | null;
   legend: LegendItem[];
   columns: TierColumn[];
   tiers: Tier[];

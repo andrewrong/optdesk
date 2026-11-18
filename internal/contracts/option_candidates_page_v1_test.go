@@ -316,3 +316,31 @@ func TestOptionCandidatesValueLineUnknownField(t *testing.T) {
 		t.Fatal("an extra key of ValueLine validates")
 	}
 }
+
+func TestOptionCandidatesTierViewIdleFieldsValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	view := tiersView()
+	view["idle_note"] = "two companies have no buy price"
+	view["buy_hint"] = "type the buy price on the notices page"
+	view["spot_hint"] = "the spot is the last close"
+	inst["short_put_tiers"] = view
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("idle_note, buy_hint and spot_hint as texts are invalid")
+	}
+	view["idle_note"] = nil
+	view["buy_hint"] = nil
+	view["spot_hint"] = nil
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("null idle_note, buy_hint and spot_hint are invalid")
+	}
+}
+
+func TestOptionCandidatesTierViewWithoutIdleFieldsValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a tier view without idle_note, buy_hint and spot_hint is invalid")
+	}
+}
