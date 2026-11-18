@@ -1,0 +1,721 @@
+{
+  "Facts": [
+    {
+      "Dataset": "bars",
+      "Rule": "rows",
+      "Subject": "JPY",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "bars",
+      "Rule": "newest",
+      "Subject": "JPY",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "bars",
+      "Rule": "rows",
+      "Subject": "USD",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "bars",
+      "Rule": "newest",
+      "Subject": "USD",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "quotes",
+      "Rule": "rows",
+      "Subject": "USD",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "quotes",
+      "Rule": "newest",
+      "Subject": "USD",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "rows",
+      "Subject": "JPY",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "newest",
+      "Subject": "JPY",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "rows",
+      "Subject": "USD",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "newest",
+      "Subject": "USD",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "open",
+      "Rule": "rows",
+      "Subject": "JPY",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "newest",
+      "Subject": "JPY",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "open",
+      "Rule": "rows",
+      "Subject": "USD",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "newest",
+      "Subject": "USD",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "contracts",
+      "Rule": "rows",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "contracts",
+      "Rule": "newest",
+      "Subject": "",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "rates",
+      "Rule": "rows",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "rates",
+      "Rule": "newest",
+      "Subject": "",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "fx",
+      "Rule": "rows",
+      "Subject": "USDJPY",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "fx",
+      "Rule": "newest",
+      "Subject": "USDJPY",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "events",
+      "Rule": "rows",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "events",
+      "Rule": "newest",
+      "Subject": "",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "calendar",
+      "Rule": "rows",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "calendar",
+      "Rule": "newest",
+      "Subject": "",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "facts",
+      "Rule": "rows",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "facts",
+      "Rule": "newest",
+      "Subject": "",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "account",
+      "Rule": "rows",
+      "Subject": "USD",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "account",
+      "Rule": "newest",
+      "Subject": "USD",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "flex",
+      "Rule": "rows",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "flex",
+      "Rule": "newest",
+      "Subject": "",
+      "N": 0,
+      "Bad": 0,
+      "Day": "2026-11-17",
+      "Value": "181.42"
+    },
+    {
+      "Dataset": "bars",
+      "Rule": "ohlc_order",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "bars",
+      "Rule": "bar_jump",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "quotes",
+      "Rule": "crossed",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "quotes",
+      "Rule": "empty",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "quotes",
+      "Rule": "errors",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "quotes",
+      "Rule": "non_live",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "crossed",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "bad_iv",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "empty",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "errors",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "chains",
+      "Rule": "non_live",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "crossed",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "bad_iv",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "empty",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "errors",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "open",
+      "Rule": "non_live",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "rates",
+      "Rule": "series_age",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "fx",
+      "Rule": "fx_band",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "fx",
+      "Rule": "fx_jump",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "events",
+      "Rule": "earnings_past",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "events",
+      "Rule": "dividend_past",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "events",
+      "Rule": "macro_exhausted",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "calendar",
+      "Rule": "calendar_horizon",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "facts",
+      "Rule": "period_order",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "facts",
+      "Rule": "subject_stale",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "account",
+      "Rule": "no_netliq",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "account",
+      "Rule": "position_expired",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    },
+    {
+      "Dataset": "flex",
+      "Rule": "flex_section_absent",
+      "Subject": "",
+      "N": 1000,
+      "Bad": 0,
+      "Day": "",
+      "Value": ""
+    }
+  ],
+  "NotRead": null,
+  "Cells": [
+    {
+      "Day": "2026-11-16",
+      "Dataset": "bars",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "bars",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "quotes",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "quotes",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "chains",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "chains",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "open",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "open",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "contracts",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "contracts",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "rates",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "rates",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "fx",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "fx",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "events",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "events",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "calendar",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "calendar",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "facts",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "facts",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "account",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "account",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-16",
+      "Dataset": "flex",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    },
+    {
+      "Day": "2026-11-17",
+      "Dataset": "flex",
+      "Keys": 200,
+      "Missing": 0,
+      "Expired": 0
+    }
+  ],
+  "Days": {
+    "XNYS": "2026-11-17",
+    "XTKS": "2026-11-17"
+  },
+  "Sessions": {
+    "XNYS": [
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13",
+      "2026-11-16",
+      "2026-11-17"
+    ],
+    "XTKS": [
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13",
+      "2026-11-16",
+      "2026-11-17"
+    ]
+  }
+}
