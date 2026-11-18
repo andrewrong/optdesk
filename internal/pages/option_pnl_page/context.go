@@ -128,7 +128,7 @@ func selectLots(c Config, positions []compute.LedgerPosition, d time.Time, g *ga
 			g.calls++
 			continue
 		}
-		if !strings.HasPrefix(strings.TrimSpace(p.Quantity), "-") && strings.TrimSpace(p.Quantity) != "" {
+		if q := strings.TrimSpace(p.Quantity); q != "" && !strings.HasPrefix(q, "-") {
 			g.longs++
 			continue
 		}
