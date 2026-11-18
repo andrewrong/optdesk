@@ -248,3 +248,71 @@ func TestOptionCandidatesTiersNoteTitleValid(t *testing.T) {
 		t.Fatal("kept_note and stored_title as null are invalid")
 	}
 }
+
+func valueLineView(reason any) map[string]any {
+	return map[string]any{
+		"label": "Value line", "text": "$91.20 (review 2026-11-10)", "hint": nil, "reason": reason,
+		"gate_label": "Gate", "gate_text": "$90.00", "gate_hint": nil,
+	}
+}
+
+func valueLineInst(t *testing.T, set func(company map[string]any)) map[string]any {
+	t.Helper()
+	inst := candidatesMinimal(t)
+	view := tiersView()
+	set(view["companies"].([]any)[0].(map[string]any))
+	inst["short_put_tiers"] = view
+	return inst
+}
+
+func TestOptionCandidatesValueLineValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { c["valuation"] = valueLineView(nil) })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a valuation with a figure and a null reason is invalid")
+	}
+}
+
+func TestOptionCandidatesValueLineReasonValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { c["valuation"] = valueLineView("no_review") })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a valuation with reason no_review is invalid")
+	}
+}
+
+func TestOptionCandidatesValueLineNullValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { c["valuation"] = nil })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a null valuation is invalid")
+	}
+}
+
+func TestOptionCandidatesNoValuationStillValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { delete(c, "valuation") })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a company without the valuation key is invalid")
+	}
+}
+
+func TestOptionCandidatesValueLineReasonEnum(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { c["valuation"] = valueLineView("stale") })
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("reason stale validates")
+	}
+}
+
+func TestOptionCandidatesValueLineUnknownField(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) {
+		v := valueLineView(nil)
+		v["extra"] = "x"
+		c["valuation"] = v
+	})
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an extra key of ValueLine validates")
+	}
+}
