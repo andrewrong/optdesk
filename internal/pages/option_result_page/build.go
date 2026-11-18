@@ -91,7 +91,7 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		rels = append(rels, s.Reliability)
 	}
 	vm.Reliability = reliabilityOf(vm.Sections, rels)
-	vm.Notes = append(vm.Notes, scopeOf(alias, c.Aliases))
+	vm.Notes = append(vm.Notes, scopeOf(alias, c.Aliases), countGloss)
 	if len(vm.Sections) == 0 {
 		vm.Nothing = ptr(nothingText)
 	}
