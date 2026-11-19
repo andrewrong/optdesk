@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionevidence"
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfig"
+	"github.com/andrewrong/optdesk/internal/compute/optionshortlistapi"
 	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -47,6 +48,8 @@ type candidateReaders struct {
 	// Valuation is the valuation reader of the site, for the valuation line of the company strips; nil on the
 	// named path (ot page), in the demo profile and on a site with no pages line.
 	Valuation valuation.Reader
+	// Shortlist is the short-put shortlist rule; nil on the named path (ot page), where short_put_list is omitted.
+	Shortlist optionshortlistapi.Shortlister
 }
 
 // bsmValuer adapts the Black-Scholes pricer to optionevidenceapi.Valuer, so cmd/ot is the place that joins the
@@ -80,6 +83,7 @@ func candidatesConfig(zone *time.Location, runID, buildID, scope string, r candi
 		Readings: r.View,
 		Tiers:    r.Tiers, Account: r.Account, Aliases: r.Aliases, Owner: r.Owner, RuleParams: r.RuleParams,
 		Valuation: r.Valuation, ValueLines: newValueLines(),
+		Shortlist: r.Shortlist,
 	}
 }
 

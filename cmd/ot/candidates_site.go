@@ -45,7 +45,8 @@ func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	if err != nil {
 		return nil, err
 	}
-	readers := candidateReaders{Cands: rd.cands, Names: rd.names, View: rd.view, Terms: rd.terms, Days: rd.days}
+	readers := candidateReaders{Cands: rd.cands, Names: rd.names, View: rd.view, Terms: rd.terms, Days: rd.days,
+		Shortlist: newShortlister()}
 	if a.profile.Name != "demo" {
 		// The tier view: the demo profile has no stored cash or rule parameters, so it builds none.
 		readers.Tiers, readers.Account, readers.Aliases = newTierer(), rd.account, rd.aliasList()
