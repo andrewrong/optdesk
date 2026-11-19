@@ -491,15 +491,21 @@ func TestIssuerlessEntrySkippedByName(t *testing.T) {
 	}
 }
 
-func TestAfterIsComputeFigures(t *testing.T) {
+func TestAfterIsOptionOpen(t *testing.T) {
 	t.Parallel()
 	f := newFakes()
-	d, ok := build(t, f.stores(), f, usEntry()).(interface{ After() []string })
-	if !ok {
-		t.Fatal("option_candidates has no After")
+	cases := map[string]contracts.Job{
+		"New":          build(t, f.stores(), f, usEntry()),
+		"NewWithCalls": buildCalls(t, f.stores(), &fakeDividends{}, f),
 	}
-	if got := d.After(); len(got) != 1 || got[0] != "compute_figures" {
-		t.Fatalf("After() = %v", got)
+	for name, j := range cases {
+		d, ok := j.(interface{ After() []string })
+		if !ok {
+			t.Fatalf("%s: option_candidates has no After", name)
+		}
+		if got := d.After(); len(got) != 1 || got[0] != "option_open" {
+			t.Fatalf("%s: After() = %v", name, got)
+		}
 	}
 }
 

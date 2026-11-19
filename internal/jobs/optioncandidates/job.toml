@@ -1,12 +1,12 @@
-# Manifest of the option_candidates job: once per XNYS session day, thirty minutes after the close.
+# Manifest of the option_candidates job: once per XNYS session day, five minutes after the open and after option_open.
 version = 1
 id = "option_candidates"
 
 [schedule]
 calendar = "XNYS"
-anchor = "session_close"
+anchor = "session_open"
 zone = "America/New_York"
-offset = "30m"
+offset = "5m"
 run_bound = "10m"
 restart_sensitive = false
 
