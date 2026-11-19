@@ -233,9 +233,10 @@ func TestBlockCountsAddUp(t *testing.T) {
 		mk("high", "A", strike("84")),
 		mk("nodelta", "A", func(r *optiontierapi.Row) { r.Delta = "" }),
 		mk("oi", "A", rowCheck),
+		mk("deltaout", "A", func(r *optiontierapi.Row) { r.Delta = "-0.05" }),
 		mk("other", "B", rowITM),
 	}
-	counts := map[string]int{"A": 12, "B": 1}
+	counts := map[string]int{"A": 13, "B": 1}
 	for _, b := range blocksOf(t, DefaultParams(), rows...) {
 		n := counts[b.Company]
 		if len(b.Shown)+len(b.Folded) != n {
@@ -258,7 +259,7 @@ func TestBlockCountsAddUp(t *testing.T) {
 		codes = append(codes, w.Code)
 	}
 	want := []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "above_buy_price", "bad_input",
-		"no_open_interest", "otm_low", "otm_high", "no_delta"}
+		"no_open_interest", "otm_low", "otm_high", "no_delta", "delta_out"}
 	if !reflect.DeepEqual(codes, want) {
 		t.Errorf("Why order = %v, want %v", codes, want)
 	}
