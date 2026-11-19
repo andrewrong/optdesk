@@ -50,8 +50,8 @@ type crossCheckVM struct {
 
 // reasonNames are the Chinese names of the reason codes of a run.
 var reasonNames = map[string]string{
-	"rate_limited": "被限流", "network": "网络错误", "timeout": "超时", "source_changed": "数据源格式变了",
-	"no_data": "数据源没有数据", "source_lacks": "数据源没有这一天",
+	"rate_limited": nameRateLimited, "network": nameNetwork, "timeout": nameTimeout,
+	"source_changed": nameSourceChange, "no_data": nameNoData, "source_lacks": nameSourceLacks,
 }
 
 func reasonName(code string) string {
@@ -131,7 +131,7 @@ func comparedText(tol string, n, skipped int) string {
 	if tol == "" {
 		return t
 	}
-	return tol + "；" + t
+	return tol + toleranceJoinZh + t
 }
 
 func crossItemOf(it reconstore.Item) crossItemVM {
