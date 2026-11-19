@@ -9,6 +9,33 @@ const fig = (v: string | null) => v ?? 'n/a'
 
 const COUNTS = ['lots', 'lots_with_quote', 'still_open', 'lot_days', 'quote_days'] as const
 
+type ColumnKey = keyof NonNullable<Report['hints']>['columns']
+
+// [hint key, English word, right aligned]
+const COLUMNS: [ColumnKey, string, boolean][] = [
+  ['set', 'set', false],
+  ['variant', 'variant', false],
+  ['currency', 'ccy', false],
+  ['lots', 'lots', true],
+  ['cycles', 'cycles', true],
+  ['closed_early', 'closed early', true],
+  ['held', 'held', true],
+  ['assigned', 'assigned', true],
+  ['rolled', 'rolled', true],
+  ['in_the_money', 'ITM', true],
+  ['kept_share', 'kept share', true],
+  ['mean_gross', 'mean gross', true],
+  ['worst_gross', 'worst gross', true],
+  ['hold_kept_share', 'hold kept share', true],
+  ['actual_kept_share', 'actual kept share', true],
+]
+
+// The payload's Chinese hint, muted; nothing when the payload has none.
+function Hint({ text, block }: { text?: string; block?: boolean }) {
+  if (!text) return null
+  return <span className={block ? 'block font-normal text-muted-foreground' : 'ml-1 text-muted-foreground'}>{text}</span>
+}
+
 function LineRow({ line }: { line: Line }) {
   return (
     <TableRow data-set={line.set} data-variant={line.variant}>
@@ -46,10 +73,22 @@ export function ReplayReport({ report }: { report: Report }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm">
-          {COUNTS.map((k) => `${k} ${report.counts[k]}`).join(' · ')}
+          {COUNTS.map((k, i) => (
+            <span key={k}>
+              {i > 0 ? ' · ' : ''}
+              {`${k} ${report.counts[k]}`}
+              <Hint text={report.hints?.counts[k]} />
+            </span>
+          ))}
         </p>
         <p className="text-sm text-muted-foreground">
-          {report.variants.map((v) => `${v.name} ${v.params_hash}`).join(' · ')}
+          {report.variants.map((v, i) => (
+            <span key={v.name}>
+              {i > 0 ? ' · ' : ''}
+              {`${v.name} ${v.params_hash}`}
+              <Hint text={v.hint} />
+            </span>
+          ))}
         </p>
         {report.excluded.map((x) => (
           <p key={x.reason} className="text-sm" data-excluded={x.reason}>
@@ -62,21 +101,12 @@ export function ReplayReport({ report }: { report: Report }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>set</TableHead>
-                <TableHead>variant</TableHead>
-                <TableHead>ccy</TableHead>
-                <TableHead className="text-right">lots</TableHead>
-                <TableHead className="text-right">cycles</TableHead>
-                <TableHead className="text-right">closed early</TableHead>
-                <TableHead className="text-right">held</TableHead>
-                <TableHead className="text-right">assigned</TableHead>
-                <TableHead className="text-right">rolled</TableHead>
-                <TableHead className="text-right">ITM</TableHead>
-                <TableHead className="text-right">kept share</TableHead>
-                <TableHead className="text-right">mean gross</TableHead>
-                <TableHead className="text-right">worst gross</TableHead>
-                <TableHead className="text-right">hold kept share</TableHead>
-                <TableHead className="text-right">actual kept share</TableHead>
+                {COLUMNS.map(([key, word, right]) => (
+                  <TableHead key={key} className={right ? 'text-right' : undefined}>
+                    {word}
+                    <Hint text={report.hints?.columns[key]} block />
+                  </TableHead>
+                ))}
                 <TableHead />
               </TableRow>
             </TableHeader>
