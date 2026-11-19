@@ -40,6 +40,7 @@ func newRunsDatabase(t *testing.T) string {
 	if _, err := c.Exec(ctx, up); err != nil {
 		t.Fatalf("apply 0036: %v", err)
 	}
+	applyMigration(t, connURL(t, name, ""), "0061_capture_run_view_run_id.sql")
 	return name
 }
 
