@@ -1,0 +1,20 @@
+# Manifest of the recon_bars job (pair R6, docs/design/base-data-page.md entry 21): once per XNYS session day, after
+# bars_refresh has finished (it closes at 10m plus its 10m bound), one run that compares our bars with the second source.
+version = 1
+id = "recon_bars"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "30m" # after bars_refresh: its slot is 10m and its run bound 10m
+run_bound = "30m"
+
+# The one source setting: the id of the bar source the wiring picks (a registry key in cmd/ot).
+[source]
+id = "yfinance"
+
+# The room inside which two closes match, a share of the larger one (0.001 is 0.1 percent); the same value as the
+# R6 rule of internal/compute/recon. The job makes no level from it.
+[compare]
+close_rel = "0.001"
+tolerance_text = "close within 0.1 percent"

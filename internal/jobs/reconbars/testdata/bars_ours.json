@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {"symbol": "AAPL", "currency": "USD", "day": "2026-11-06", "close": "100.0000"},
+    {"symbol": "AAPL", "currency": "USD", "day": "2026-11-09", "close": "101.0000"},
+    {"symbol": "MSFT", "currency": "USD", "day": "2026-11-09", "close": "200.0000"},
+    {"symbol": "7203", "currency": "JPY", "day": "2026-11-09", "close": "3000.0000"},
+    {"symbol": "7203", "currency": "JPY", "day": "2026-11-02", "close": "2900.0000"}
+  ]
+}
