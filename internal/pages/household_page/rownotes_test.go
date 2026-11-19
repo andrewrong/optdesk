@@ -1,6 +1,7 @@
 package household_page_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -56,4 +57,84 @@ func TestStressStepsAreInTheNoteNotTheGap(t *testing.T) {
 		t.Fatalf("gaps = %v", m["gaps"])
 	}
 	validate(t, b)
+}
+
+// lots replays open short puts of one underlying, strike and expiry, one position per quantity.
+type lots []string
+
+func (l lots) Replay(compute.LedgerInput, compute.LedgerParams) compute.LedgerResult {
+	var ps []compute.LedgerPosition
+	for _, q := range l {
+		ps = append(ps, compute.LedgerPosition{Underlying: "7974", Status: "open", Right: "P", Quantity: q,
+			Strike: "7250", Expiry: "20261112", Multiplier: "1", Currency: "JPY"})
+	}
+	return compute.LedgerResult{Positions: ps}
+}
+
+func storedPut(qty string) store.Position {
+	p := shortPut("7974", "7250")
+	p.Quantity = qty
+	return p
+}
+
+func buildLots(t *testing.T, ledger lots, stored ...store.Position) (map[string]any, []any) {
+	t.Helper()
+	acc := account()
+	acc.stored = stored
+	var ls []blockapi.MoneyLine
+	for range ledger {
+		ls = append(ls, ok("7974 short put", "7250"))
+	}
+	c := figuresConfig(moneyFigures{lines: ls})
+	c.Account = acc
+	c.Ledgers = func() compute.OptionLedger { return ledger }
+	m, _ := build(t, c, "main")
+	return m, m["obligations"].(map[string]any)["rows"].([]any)
+}
+
+func TestTwoLotsAgainstOneStoredRowAreMatched(t *testing.T) {
+	t.Parallel()
+	m, rows := buildLots(t, lots{"-1", "-1"}, storedPut("-2"))
+	if len(rows) != 2 {
+		t.Fatalf("rows = %v", rows)
+	}
+	for _, r := range rows {
+		if n := rowNote(r); strings.Contains(n, "snapshot") {
+			t.Fatalf("row note = %q", n)
+		}
+	}
+	if hasGapLine(m, "7974 P7250") {
+		t.Fatalf("gaps = %v", m["gaps"])
+	}
+}
+
+func TestOneLotAgainstTwoStoredRowsIsMatched(t *testing.T) {
+	t.Parallel()
+	m, rows := buildLots(t, lots{"-2"}, storedPut("-1"), storedPut("-1"))
+	if len(rows) != 1 || strings.Contains(rowNote(rows[0]), "snapshot") {
+		t.Fatalf("rows = %v", rows)
+	}
+	if hasGapLine(m, "7974 P7250") {
+		t.Fatalf("gaps = %v", m["gaps"])
+	}
+	b, _ := json.Marshal(m)
+	if strings.Contains(string(b), "not in the option ledger yet") {
+		t.Fatalf("page = %s", b)
+	}
+}
+
+func TestUnreadableQuantityCountsAsOneContract(t *testing.T) {
+	t.Parallel()
+	// two unreadable ledger lots count 1 each, so one stored row of -2 covers both
+	_, rows := buildLots(t, lots{"-x", "-x"}, storedPut("-2"))
+	for _, r := range rows {
+		if n := rowNote(r); strings.Contains(n, "snapshot") {
+			t.Fatalf("row note = %q", n)
+		}
+	}
+	// an unreadable stored row counts 1, so it covers only one of two lots of 1
+	_, rows = buildLots(t, lots{"-1", "-1"}, storedPut("-x"))
+	if len(rows) != 2 || strings.Contains(rowNote(rows[0]), "snapshot") || !strings.Contains(rowNote(rows[1]), "not in the position snapshot") {
+		t.Fatalf("rows = %v", rows)
+	}
 }

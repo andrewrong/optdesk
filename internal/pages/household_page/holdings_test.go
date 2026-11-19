@@ -70,7 +70,7 @@ func holdingsConfig(positions []store.Position, marks *fakeMarks) (household_pag
 }
 
 func twoStocks() []store.Position {
-	opt := store.Position{Symbol: "AAA", SecType: "option", Right: "put", Strike: "50", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-1"}
+	opt := store.Position{Symbol: "AAA", SecType: "option", Right: "put", Strike: "50", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-2"}
 	return []store.Position{stock("AAA", 1, "100", "200"), stock("BBB", 2, "50", "10"), opt}
 }
 

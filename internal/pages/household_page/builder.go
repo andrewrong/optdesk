@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -193,10 +194,12 @@ func (c Config) obligations(ctx context.Context, alias string, sessions []contra
 		if p.Status != "open" || p.Right != "P" || !strings.HasPrefix(p.Quantity, "-") {
 			continue
 		}
-		keys = append(keys, ledgerPut{key: putKey(p.Underlying, p.Strike, p.Expiry), name: putName(p.Underlying, p.Strike, p.Expiry)})
+		contracts := strings.TrimPrefix(p.Quantity, "-")
+		keys = append(keys, ledgerPut{key: putKey(p.Underlying, p.Strike, p.Expiry),
+			name: putName(p.Underlying, p.Strike, p.Expiry), contracts: contractsOf(contracts)})
 		out = append(out, blockapi.ObligationIn{
 			Underlying: p.Underlying, Currency: p.Currency, Strike: p.Strike, Multiplier: p.Multiplier,
-			Contracts: strings.TrimPrefix(p.Quantity, "-"), PremiumIncome: p.PremiumIncome,
+			Contracts: contracts, PremiumIncome: p.PremiumIncome,
 		})
 	}
 	return out, keys, newest, nil
@@ -217,20 +220,48 @@ func putKey(underlying, strike, expiry string) string {
 	return underlying + "|" + strike + "|" + strings.ReplaceAll(expiry, "-", "")
 }
 
-// missingFromLedger lists the stored short puts (symbol, strike, expiry) that no open short put of the
-// ledger matches; each ledger put matches one stored put.
+// contractsOf reads a quantity as a number of contracts (its absolute value); a quantity that is not a
+// decimal number counts as one contract.
+func contractsOf(q string) decimal.Decimal {
+	v, err := decimal.NewFromString(strings.TrimSpace(q))
+	if err != nil {
+		return decimal.NewFromInt(1)
+	}
+	return v.Abs()
+}
+
+// isShortPut reports whether a stored position is a short put.
+func isShortPut(p store.Position) bool {
+	return p.SecType == secTypeOption && p.Right == "put" && strings.HasPrefix(p.Quantity, "-")
+}
+
+// storedShortPuts counts the contracts of the stored short put rows per key.
+func storedShortPuts(positions []store.Position) map[string]decimal.Decimal {
+	left := map[string]decimal.Decimal{}
+	for _, p := range positions {
+		if isShortPut(p) {
+			k := putKey(p.Symbol, p.Strike, p.Expiry)
+			left[k] = left[k].Add(contractsOf(p.Quantity))
+		}
+	}
+	return left
+}
+
+// missingFromLedger lists the stored short puts (symbol, strike, expiry) that the open short puts of the
+// ledger do not cover; the contracts of each ledger put are taken out of the count of its key.
 func missingFromLedger(positions []store.Position, ledgerKeys []ledgerPut) []string {
-	left := map[string]int{}
+	left := map[string]decimal.Decimal{}
 	for _, k := range ledgerKeys {
-		left[k.key]++
+		left[k.key] = left[k.key].Add(k.contracts)
 	}
 	var missing []string
 	for _, p := range positions {
-		if p.SecType != secTypeOption || p.Right != "put" || !strings.HasPrefix(p.Quantity, "-") {
+		if !isShortPut(p) {
 			continue
 		}
-		if k := putKey(p.Symbol, p.Strike, p.Expiry); left[k] > 0 {
-			left[k]--
+		k, n := putKey(p.Symbol, p.Strike, p.Expiry), contractsOf(p.Quantity)
+		if left[k].GreaterThanOrEqual(n) {
+			left[k] = left[k].Sub(n)
 			continue
 		}
 		missing = append(missing, putName(p.Symbol, p.Strike, p.Expiry))
@@ -238,15 +269,18 @@ func missingFromLedger(positions []store.Position, ledgerKeys []ledgerPut) []str
 	return missing
 }
 
-// ledgerPut is an open short put of the ledger: its match key and the name the page lists it by.
-type ledgerPut struct{ key, name string }
+// ledgerPut is an open short put of the ledger: its match key, the name the page lists it by and the
+// contracts of its lot.
+type ledgerPut struct {
+	key, name string
+	contracts decimal.Decimal
+}
 
 func putName(underlying, strike, expiry string) string {
 	return strings.TrimSpace(underlying + " P" + strike + " " + expiry)
 }
 
-// notInSnapshot lists the open short puts of the ledger that no stored short put matches; each stored
-// put matches one ledger put.
+// notInSnapshot lists the open short puts of the ledger that the stored short puts do not cover.
 func notInSnapshot(positions []store.Position, ledger []ledgerPut) []string {
 	var out []string
 	for i, un := range unmatchedLedger(positions, ledger) {
@@ -257,18 +291,14 @@ func notInSnapshot(positions []store.Position, ledger []ledgerPut) []string {
 	return out
 }
 
-// unmatchedLedger flags, per ledger put, whether no stored short put matches it.
+// unmatchedLedger flags, per ledger put, whether the contracts left in the stored short puts of its key
+// are fewer than its own; each matched lot takes its contracts out of that count, in ledger order.
 func unmatchedLedger(positions []store.Position, ledger []ledgerPut) []bool {
-	left := map[string]int{}
-	for _, p := range positions {
-		if p.SecType == secTypeOption && p.Right == "put" && strings.HasPrefix(p.Quantity, "-") {
-			left[putKey(p.Symbol, p.Strike, p.Expiry)]++
-		}
-	}
+	left := storedShortPuts(positions)
 	out := make([]bool, len(ledger))
 	for i, l := range ledger {
-		if left[l.key] > 0 {
-			left[l.key]--
+		if left[l.key].GreaterThanOrEqual(l.contracts) {
+			left[l.key] = left[l.key].Sub(l.contracts)
 			continue
 		}
 		out[i] = true
