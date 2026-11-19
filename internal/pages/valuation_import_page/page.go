@@ -121,10 +121,28 @@ type gapJSON struct {
 }
 
 type labelsJSON struct {
-	R              string `json:"r"`
-	BuyZoneTopSite string `json:"buy_zone_top_site"`
-	BuyZoneTopFile string `json:"buy_zone_top_file"`
-	GeneralTick    string `json:"general_tick"`
+	R               string `json:"r"`
+	BuyZoneTopSite  string `json:"buy_zone_top_site"`
+	BuyZoneTopFile  string `json:"buy_zone_top_file"`
+	GeneralTick     string `json:"general_tick"`
+	Title           string `json:"title"`
+	Intro           string `json:"intro"`
+	File            string `json:"file"`
+	Preview         string `json:"preview"`
+	NotInFile       string `json:"not_in_file"`
+	Unvalued        string `json:"unvalued"`
+	Removed         string `json:"removed"`
+	CountInsert     string `json:"count_insert"`
+	CountSame       string `json:"count_same"`
+	CountOlder      string `json:"count_older"`
+	CountRefused    string `json:"count_refused"`
+	CountNeedsTick  string `json:"count_needs_tick"`
+	Stored          string `json:"stored"`
+	OlderThanStored string `json:"older_than_stored"`
+	MarginTable     string `json:"margin_table"`
+	Result          string `json:"result"`
+	SameFileAgain   string `json:"same_file_again"`
+	Confirm         string `json:"confirm"`
 }
 
 type pageJSON struct {

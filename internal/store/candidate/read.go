@@ -10,7 +10,7 @@ import (
 )
 
 // selectSQL reads the rows of one day and one kind through the view, ranked rows first.
-const selectSQL = `SELECT ` + columns + ` FROM rd.option_candidate_r1 WHERE session_day = $1 AND kind = $2 ` +
+const selectSQL = `SELECT ` + columns + ` FROM rd.option_candidate_r1 WHERE session_day = $1 AND kind = $2 AND (currency IS NULL OR currency = 'USD') ` +
 	`ORDER BY rank ASC NULLS LAST, instrument_id, alias, run_id`
 
 // Candidates returns the rows of one kind of one day written by the newest run of that day (the latest
