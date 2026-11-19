@@ -5,6 +5,7 @@ import (
 	"context"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -142,4 +143,12 @@ func TestHoursFamilyOrders(t *testing.T) {
 	if got["calendar_hours_us"] != 85 || got["calendar_hours_jp"] != 86 {
 		t.Fatalf("orders us %d jp %d, want 85 and 86", got["calendar_hours_us"], got["calendar_hours_jp"])
 	}
+}
+
+// withoutRecon is a copy of disabled without recon_bars: the fixtures set no OT_PG_DSN_RECON, so it is always held
+// (TestReconBarsHeldWithoutDSN covers that reason).
+func withoutRecon(disabled map[string]string) map[string]string {
+	out := maps.Clone(disabled)
+	delete(out, jobReconBars)
+	return out
 }
