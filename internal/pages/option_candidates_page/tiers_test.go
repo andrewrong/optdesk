@@ -236,7 +236,7 @@ func TestKeptLine(t *testing.T) {
 	res := resultOf(fitsVerdict(keyOf(rows, 0)))
 	res.Kept = []optiontierapi.Kept{{Code: "no_buy_price", N: 1, Every: true}, {Code: "in_the_money", N: 2}, {Code: "no_open_interest", N: 3}}
 	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: res}))
-	want := "未进入 Fits 的原因（行数）：没有买入价 1（每一行）；价内 2；" + zhKeptLabel_no_open_interest + " 3"
+	want := "未进入“适合”的原因（行数）：没有买入价 1（每一行）；价内 2；" + zhKeptLabel_no_open_interest + " 3"
 	if view.Kept == nil || *view.Kept != want {
 		t.Errorf("kept = %v, want %s", view.Kept, want)
 	}
@@ -342,7 +342,7 @@ func keptOf(t *testing.T, kept ...optiontierapi.Kept) *tiersView {
 func TestKeptLineChineseNames(t *testing.T) {
 	t.Parallel()
 	view := keptOf(t, optiontierapi.Kept{Code: "no_open_interest", N: 3, Every: true}, optiontierapi.Kept{Code: "wide_quote", N: 2})
-	want := "未进入 Fits 的原因（行数）：" + zhKeptLabel_no_open_interest + " 3（每一行）；" + zhKeptLabel_wide_quote + " 2"
+	want := "未进入“适合”的原因（行数）：" + zhKeptLabel_no_open_interest + " 3（每一行）；" + zhKeptLabel_wide_quote + " 2"
 	if view.Kept == nil || *view.Kept != want {
 		t.Fatalf("kept = %v, want %s", view.Kept, want)
 	}
@@ -418,7 +418,7 @@ func TestIdleCompaniesOneLine(t *testing.T) {
 	if view.IdleNote == nil || *view.IdleNote != "1 家公司没有买入价和估值档案：BBB" {
 		t.Errorf("idle_note = %v", view.IdleNote)
 	}
-	if view.BuyHint == nil || !strings.Contains(*view.BuyHint, "Watch list") || !strings.Contains(*view.BuyHint, "Buy") {
+	if view.BuyHint == nil || !strings.Contains(*view.BuyHint, "公司 > 关注列表") {
 		t.Errorf("buy_hint = %v", view.BuyHint)
 	}
 	// every company has a buy price: no idle line and no hint
@@ -499,5 +499,50 @@ func TestSpotHintSet(t *testing.T) {
 	}
 	if view.Companies[0].SpotDay != "2026-11-09" {
 		t.Errorf("spot_day = %q", view.Companies[0].SpotDay)
+	}
+}
+
+func TestColumnHintsShort(t *testing.T) {
+	t.Parallel()
+	cols := columnsOf("2026-11-09")
+	want := []struct {
+		id   string
+		hint *string
+	}{
+		{colArrowID, nil}, {colTierID, nil},
+		{colContractID, ptr("标的、行权价、到期日、剩余天数")},
+		{colMarginID, ptr("保本点比买入价低多少")},
+		{colBelowSpotID, ptr("保本点比现价低多少")},
+		{colPremiumID, ptr("每份合约的钱 / 年化收益")},
+		{colBadgesID, ptr("需要再看一眼的地方")},
+	}
+	if len(cols) != len(want) {
+		t.Fatalf("columns = %d", len(cols))
+	}
+	for i, w := range want {
+		got := cols[i]
+		if got.ID != w.id || (got.Hint == nil) != (w.hint == nil) || (w.hint != nil && *got.Hint != *w.hint) {
+			t.Errorf("column %d %s hint = %v, want %v", i, got.ID, got.Hint, w.hint)
+		}
+	}
+}
+
+func TestTierNotesNoEnglish(t *testing.T) {
+	t.Parallel()
+	c, _ := tierScenario("tiers_ok")
+	idle := buildTiersOf(t, c)
+	rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+	res := resultOf(checkVerdict(keyOf(rows, 0), "wide_quote"))
+	res.Kept = []optiontierapi.Kept{{Code: "in_the_money", N: 2}}
+	empty := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: res}))
+	if idle.BuyHint == nil || empty.Kept == nil || len(empty.Tiers) == 0 {
+		t.Fatalf("hint = %v kept = %v tiers = %d", idle.BuyHint, empty.Kept, len(empty.Tiers))
+	}
+	for name, s := range map[string]string{"buy_hint": *idle.BuyHint, "kept": *empty.Kept, "none_fits": tierByID(empty, "fits").Explain} {
+		for _, w := range []string{"Fits", "Check", "Watch list", "Buy"} {
+			if strings.Contains(s, w) {
+				t.Errorf("%s %q has %q", name, s, w)
+			}
+		}
 	}
 }
