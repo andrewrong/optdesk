@@ -4,6 +4,7 @@
     "blocked.ts",
     "bad-version.json",
     "gap.ts",
+    "jp.ts",
     "ok.ts",
     "shortlist.ts",
     "stale.ts",

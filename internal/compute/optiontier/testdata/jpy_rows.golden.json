@@ -1,0 +1,19 @@
+{
+  "params": {"DeltaMax": "0.3", "ThinDelta": "0.15", "MaxCashAgeDays": 3, "DaysInYear": 365},
+  "jpy": {
+    "Key": "jp", "Company": "JJJ", "Currency": "JPY", "ChainDay": "2026-11-17", "Expiry": "2026-12-18", "DTE": 31,
+    "Spot": "9500", "Strike": "8950", "Bid": "60", "BuyPrice": "8950",
+    "IV": "0.305", "Delta": "-0.22", "Multiplier": "100"
+  },
+  "usd": {
+    "Key": "us", "Company": "AAA", "ChainDay": "2026-11-17", "Expiry": "2026-12-18", "DTE": 31,
+    "Spot": "96.50", "Strike": "90.00", "Bid": "0.94", "BuyPrice": "90.00",
+    "IV": "0.305", "Delta": "-0.22", "Multiplier": "100"
+  },
+  "expect": {
+    "mark_rate": {"Tier": "check", "Badges": ["no_jpy_rate"]},
+    "mark_funds": {"Tier": "check", "Badges": ["no_jpy_funds"]},
+    "mark_both": {"Tier": "check", "Badges": ["no_jpy_rate", "no_jpy_funds"]},
+    "no_mark": {"Tier": "fits", "Badges": []}
+  }
+}
