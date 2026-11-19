@@ -144,7 +144,29 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
             </Button>
           )}
         </div>
+        {payload.views != null && (
+          <nav className="mt-2 flex flex-wrap gap-2" data-household-views>
+            {payload.views.map((view) =>
+              view.current ? (
+                <Badge key={view.key} data-view={view.key} aria-current="page">
+                  {view.label}
+                </Badge>
+              ) : (
+                <Button key={view.key} asChild variant="link" size="sm">
+                  <a href={view.href} data-view={view.key}>
+                    {view.label}
+                  </a>
+                </Button>
+              ),
+            )}
+          </nav>
+        )}
         <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
+        {payload.lead_notes?.map((note, i) => (
+          <p key={i} className="mt-1 text-sm text-muted-foreground" data-lead-note>
+            {note}
+          </p>
+        ))}
       </header>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
