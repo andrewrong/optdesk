@@ -2,7 +2,11 @@
 
 Design: `docs/design/strategy-replay.md#3 ot-strategy-replay` (Decisions 1, 2, 7, 8, 10 and 11). Files:
 `cmd/ot/strategy_replay.go` (flags, wiring), `strategy_replay_lots.go` (the lots), `strategy_replay_market.go`
-(quotes and closes), `strategy_replay_print.go` (the output).
+(quotes and closes), `strategy_replay_print.go` (the output), `strategy_replay_run.go` (`replayRun`).
+
+The report is also shown on the page `/strategy-replay` (`docs/contracts/ot/pages/strategy_replay_page.md`).
+`replayRun` is the one function: the command parses its flags, calls `replayRun` and prints the result; the page post
+calls the same function.
 
 ## Nothing is written
 
