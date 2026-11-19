@@ -92,3 +92,23 @@ func TestEveryRowHasAViewGroup(t *testing.T) {
 		}
 	}
 }
+
+// TestRulesHistoryLostNotes: the note rule history_lost is on chains, contracts, calendar, flex and open, and on no other row.
+func TestRulesHistoryLostNotes(t *testing.T) {
+	t.Parallel()
+	var got []string
+	for _, r := range basecheckapi.Rules {
+		if r.Rule != "history_lost" {
+			continue
+		}
+		if r.Source != "note" {
+			t.Errorf("%s.history_lost has source %q", r.Row, r.Source)
+		}
+		got = append(got, r.Row)
+	}
+	slices.Sort(got)
+	want := []string{"calendar", "chains", "contracts", "flex", "open"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("rows with history_lost = %v, want %v", got, want)
+	}
+}

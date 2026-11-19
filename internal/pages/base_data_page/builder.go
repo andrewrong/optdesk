@@ -24,7 +24,8 @@ var ruleHints = map[string]string{
 	"macro_exhausted": hintMacroExhausted, "calendar_horizon": hintCalendarHorizon, "period_order": hintPeriodOrder,
 	"subject_stale": hintSubjectStale, "capture_age": hintCaptureAge, "no_netliq": hintNoNetliq,
 	"position_expired": hintPositionExpired, "flex_age": hintFlexAge, "flex_section_absent": hintFlexSection,
-	"not_read": hintNotRead,
+	"history_lost": hintHistoryLost,
+	"not_read":     hintNotRead,
 }
 
 // rowHints are the Chinese texts of the rows, by row id.
