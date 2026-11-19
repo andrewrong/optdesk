@@ -111,3 +111,11 @@ func TestNeedFromBothSides(t *testing.T) {
 		t.Fatalf("fields lost: %+v", n)
 	}
 }
+
+func TestWatchEntryBuySourceZero(t *testing.T) {
+	t.Parallel()
+	var e jobs.WatchEntry
+	if e.BuySource != "" {
+		t.Fatalf("zero BuySource = %q, want empty", e.BuySource)
+	}
+}
