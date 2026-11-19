@@ -195,6 +195,11 @@ var Rules = []RuleInfo{
 	{"flex", "coverage_latest", "ledger"},
 	{"flex", "flex_age", "derived"},
 	{"flex", "flex_section_absent", "note"},
+	{"chains", "history_lost", "note"},
+	{"contracts", "history_lost", "note"},
+	{"calendar", "history_lost", "note"},
+	{"flex", "history_lost", "note"},
+	{"open", "history_lost", "note"},
 }
 
 // Rows is the table of the rows of the page, in page order.

@@ -71,3 +71,26 @@ func TestGlossaryExplainsEveryTerm(t *testing.T) {
 		}
 	}
 }
+
+// TestHistoryLostLabelAndHint: history_lost has the label "History lost" and the hint that says no repair is needed, on each of its five rows.
+func TestHistoryLostLabelAndHint(t *testing.T) {
+	t.Parallel()
+	for _, row := range []string{"chains", "contracts", "calendar", "flex", "open"} {
+		h, ok := Hint(row + ".history_lost")
+		if !ok || h != "历史缺口，无法补采，无需处理" {
+			t.Errorf("Hint(%s.history_lost) = %q, %v", row, h, ok)
+		}
+	}
+	if l := ruleLabel("history_lost"); l != "History lost" {
+		t.Errorf("label = %q", l)
+	}
+}
+
+// TestErrorsHintSaysDeferredIsNotError: the hint of errors says that for the open table a deferred contract is not an error.
+func TestErrorsHintSaysDeferredIsNotError(t *testing.T) {
+	t.Parallel()
+	h, ok := Hint("open.errors")
+	if !ok || !strings.Contains(h, "open") || !strings.Contains(h, "不问") || !strings.Contains(h, "不算出错") {
+		t.Fatalf("hint = %q, %v", h, ok)
+	}
+}

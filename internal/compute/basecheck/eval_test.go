@@ -356,3 +356,87 @@ func TestUnknownPairMakesRowUnknown(t *testing.T) {
 		t.Errorf("top = %s, want unknown", out.Level)
 	}
 }
+
+func ratesCell(day string, missing int) basecheckapi.Cell {
+	return basecheckapi.Cell{Day: contracts.Day(day), Dataset: "rates", Keys: 10, Missing: missing}
+}
+
+func TestRatesLatestJudgesPreviousSession(t *testing.T) {
+	t.Parallel()
+	latest := func(cells ...basecheckapi.Cell) basecheckapi.Check {
+		in := load(t)
+		in.Cells = cells
+		return checkOf(t, rowOf(t, Evaluate(in), "rates"), "coverage_latest")
+	}
+	c := latest(ratesCell("2026-11-16", 0), ratesCell("2026-11-17", 3))
+	if c.Bad != 0 || c.Example != "2026-11-16" {
+		t.Errorf("newest day missing: Bad=%d example=%q, want 0 2026-11-16", c.Bad, c.Example)
+	}
+	c = latest(ratesCell("2026-11-16", 1), ratesCell("2026-11-17", 0))
+	if c.Bad != 1 {
+		t.Errorf("previous day missing: Bad=%d, want 1", c.Bad)
+	}
+	// Another row still reads the newest closed session.
+	in := load(t)
+	in.Cells = []basecheckapi.Cell{{Day: "2026-11-17", Dataset: "bars", Keys: 10, Missing: 2}}
+	if b := checkOf(t, rowOf(t, Evaluate(in), "bars"), "coverage_latest"); b.Bad != 2 {
+		t.Errorf("bars Bad=%d, want 2", b.Bad)
+	}
+	// The newest closed session is the first of the list: not judged.
+	in = load(t)
+	in.Sessions = map[string][]contracts.Day{"XNYS": {"2026-11-17"}, "XTKS": {"2026-11-17"}}
+	in.Cells = []basecheckapi.Cell{ratesCell("2026-11-17", 3)}
+	r := rowOf(t, Evaluate(in), "rates")
+	if c := checkOf(t, r, "coverage_latest"); c.Level != basecheckapi.Unknown || c.N != 0 {
+		t.Errorf("first session latest: %+v", c)
+	}
+	if c := checkOf(t, r, "coverage_gap"); c.Level != basecheckapi.Unknown || c.N != 0 {
+		t.Errorf("first session gap: %+v", c)
+	}
+}
+
+func TestRatesGapStopsAtLag(t *testing.T) {
+	t.Parallel()
+	in := load(t)
+	in.Cells = []basecheckapi.Cell{ratesCell("2026-11-13", 0), ratesCell("2026-11-16", 0), ratesCell("2026-11-17", 4)}
+	c := checkOf(t, rowOf(t, Evaluate(in), "rates"), "coverage_gap")
+	if c.N != 2 || c.Bad != 0 || c.Level != basecheckapi.Pass {
+		t.Errorf("rates gap: N=%d Bad=%d level=%s, want 2 0 pass", c.N, c.Bad, c.Level)
+	}
+}
+
+func TestGapSkipsDaysBeforeRowHistoryStart(t *testing.T) {
+	t.Parallel()
+	in := load(t)
+	cell := func(day string, missing int) basecheckapi.Cell {
+		return basecheckapi.Cell{Day: contracts.Day(day), Dataset: "contracts", Keys: 10, Missing: missing}
+	}
+	in.Cells = []basecheckapi.Cell{cell("2026-11-09", 3), cell("2026-11-12", 3), cell("2026-11-13", 0), cell("2026-11-16", 1)}
+	c := checkOf(t, rowOf(t, Evaluate(in), "contracts"), "coverage_gap")
+	if c.N != 2 || c.Bad != 1 || c.Example != "2026-11-16" {
+		t.Errorf("contracts gap: N=%d Bad=%d example=%q, want 2 1 2026-11-16", c.N, c.Bad, c.Example)
+	}
+}
+
+func TestHistoryLostNote(t *testing.T) {
+	t.Parallel()
+	in := load(t)
+	cell := func(day string, missing int) basecheckapi.Cell {
+		return basecheckapi.Cell{Day: contracts.Day(day), Dataset: "chains", Keys: 10, Missing: missing}
+	}
+	base := Evaluate(in)
+	in.Cells = []basecheckapi.Cell{cell("2026-11-06", 5), cell("2026-11-08", 0), cell("2026-11-09", 2), cell("2026-11-16", 0), cell("2026-11-17", 0)}
+	r := rowOf(t, Evaluate(in), "chains")
+	c := checkOf(t, r, "history_lost")
+	if c.N != 2 || c.Bad != 1 || c.Example != "2026-11-09" || c.Level != "" {
+		t.Errorf("history_lost: %+v, want N 2 Bad 1 example 2026-11-09 level empty", c)
+	}
+	if r.Level != rowOf(t, base, "chains").Level {
+		t.Errorf("row level changed: %s", r.Level)
+	}
+	in = load(t)
+	c = checkOf(t, rowOf(t, Evaluate(in), "chains"), "history_lost")
+	if c.N != 0 || c.Bad != 0 || c.Level != "" {
+		t.Errorf("no day: %+v", c)
+	}
+}
