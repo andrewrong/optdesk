@@ -8,6 +8,7 @@ import { OptionCandidatesPage, registration, validateOptionCandidatesPage } from
 import { pages } from '@/shell/pages'
 import { blocked } from './fixtures/blocked'
 import { gap } from './fixtures/gap'
+import { jp } from './fixtures/jp'
 import { ok } from './fixtures/ok'
 import { stale } from './fixtures/stale'
 import { shortlist } from './fixtures/shortlist'
@@ -154,5 +155,33 @@ describe('OptionCandidatesPage tiers', () => {
     await open(trigger)
     expect(page.querySelector('[data-tier-view]')).not.toBeNull()
     expect(page.querySelector('[data-stored-tables]')).not.toBeNull()
+  })
+
+  it('renders the JP group after the US short-put group with its currency, note, limit counts and yen lists', async () => {
+    const page = await show(jp as never)
+    const tabs = [...page.querySelectorAll('[data-tab]')]
+    expect(tabs.map((t) => t.getAttribute('data-currency'))).toEqual([null, 'JPY', null])
+    await act(async () => {
+      tabs[1]!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+    })
+    const jpGroup = page.querySelector('[role=tabpanel][data-state=active]')!
+    expect(jpGroup.querySelector('[data-group-currency]')!.textContent).toBe('JPY')
+    expect(jpGroup.querySelector('[data-group-note]')!.textContent).toBe(jp.groups[1]!.note)
+    const counts = [...jpGroup.querySelectorAll('[data-limit-count]')]
+    expect(counts.map((c) => c.textContent)).toEqual(
+      jp.groups[1]!.limit_counts!.map((l) => `${l.text} ${l.count}`),
+    )
+    expect(jpGroup.querySelector('[data-short-counts]')!.textContent).toContain('jp yen list counts')
+    expect(jpGroup.querySelector('[data-tier-view]')).not.toBeNull()
+    expect(jpGroup.textContent).toContain('jp yen tiers kept')
+  })
+
+  it('renders a document without a JPY group with no currency label, note, limit counts or yen list', async () => {
+    const page = await show(ok)
+    expect(page.querySelector('[data-group-currency]')).toBeNull()
+    expect(page.querySelector('[data-group-note]')).toBeNull()
+    expect(page.querySelector('[data-limit-counts]')).toBeNull()
+    expect(page.querySelectorAll('[data-tab]')).toHaveLength(2)
+    expect(page.querySelector('[data-short-list]')).toBeNull()
   })
 })
