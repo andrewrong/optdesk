@@ -103,3 +103,17 @@ func TestJPLeftOutWithoutCurrencyWriter(t *testing.T) {
 		t.Fatalf("job %v err %v", j, err)
 	}
 }
+
+func TestJPLeftOutWithoutRuleLogsOneLine(t *testing.T) {
+	t.Parallel()
+	h := jpHarness(t)
+	h.jc.f.candOpen = stubOpen{}
+	h.jc.f.candidates = jpWriter{}
+	h.jc.f.d.newCurrencyRule = nil
+	if j, _, err := jobFamilies[jobOptionCandidatesJP].build(t.Context(), h.a, h.jc); j != nil || err != nil {
+		t.Fatalf("job %v err %v", j, err)
+	}
+	if n := strings.Count(h.log.String(), jobOptionCandidatesJP); n != 1 || !strings.Contains(h.log.String(), reasonJPNoRule) {
+		t.Fatalf("log %q", h.log.String())
+	}
+}

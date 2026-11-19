@@ -23,7 +23,8 @@ const (
 	reasonJPHeld = "option_candidates_jp is held in the scheduler until the schedule entry of candidates-jp"
 	// reasonJPNoOpen and reasonJPNoWriter are the lines logged when the job is left out.
 	reasonJPNoOpen   = openquote.DSNEnvOptionOpen + " is not set or the option open store could not be opened"
-	reasonJPNoWriter = "the candidate store cannot write the currency of a row"
+	reasonJPNoRule   = "no currency rule is set in deps"
+	reasonJPNoWriter ="the candidate store cannot write the currency of a row"
 )
 
 func init() {
@@ -44,13 +45,15 @@ func init() {
 // line and the others still run.
 func buildCandidatesJP(a *app, jc *jobCtx) (contracts.Job, string, error) {
 	f := jc.f
-	if f.d.newCurrencyRule == nil {
-		return nil, "", nil
-	}
 	left := func(key, why string) (contracts.Job, string, error) {
 		a.log.Warn("job left out", "component", "ot", "job", jobOptionCandidatesJP, "status", why)
-		jc.notWired.record(jobOptionCandidatesJP, key)
+		if key != "" {
+			jc.notWired.record(jobOptionCandidatesJP, key)
+		}
 		return nil, "", nil
+	}
+	if f.d.newCurrencyRule == nil {
+		return left("", reasonJPNoRule)
 	}
 	if f.candOpen == nil {
 		return left(openquote.DSNEnvOptionOpen, reasonJPNoOpen)
