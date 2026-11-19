@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -118,5 +119,18 @@ func TestJPLeftOutWithoutRuleLogsOneLine(t *testing.T) {
 	}
 	if n := strings.Count(h.log.String(), "option_candidates_jp not built"); n != 1 || !strings.Contains(h.log.String(), reasonJPNoRule) {
 		t.Fatalf("log %q", h.log.String())
+	}
+}
+
+// TestJPDataHealthRow: the data-health table carries the job over the Tokyo calendar and the candidates dataset,
+// as a today-only job of the Tokyo zone.
+func TestJPDataHealthRow(t *testing.T) {
+	t.Parallel()
+	j := dataHealthJobOf(t, dataHealthJobs(), jobOptionCandidatesJP)
+	if j.Calendar != "XTKS" || !slices.Equal(j.Datasets, []string{"candidates.option_candidate"}) {
+		t.Fatalf("calendar %q datasets %v", j.Calendar, j.Datasets)
+	}
+	if j.Kind != kindTodayOnly || j.Zone != "Asia/Tokyo" {
+		t.Fatalf("kind %v zone %q", j.Kind, j.Zone)
 	}
 }
