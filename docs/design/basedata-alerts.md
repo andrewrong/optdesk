@@ -125,9 +125,9 @@ Acceptance:
 
 ## Checked by CI
 
-- ci-go runs `go test ./internal/compute/... ./internal/runner/... ./internal/pages/... ./internal/store/...`, `scripts/arch` and the lint.
-- The `pg` tests of entry 3 run in GitHub CI only.
-- Not CI, after the deploy the window forces a backfill of the days already closed `expired` (the account capture and the bars keys of the red days; a stored day needs `-force`), then reads:  `/base-data` shows no red row for the day above, and the page time is read once.
+- ci-go runs `go test ./cmd/ot/... ./internal/compute/... ./internal/runner/... ./internal/pages/... ./internal/store/...`, `scripts/arch` and the lint.
+- The `pg` tests of entry 5 run in GitHub CI only.
+- Not CI, after the deploy the window forces a backfill of the days already closed `expired` (the account capture and the bars keys of the red days; a stored day needs `-force`), then reads: `/base-data` shows no red row for the day above, and the page time is read once.
 
 ## Adversarial
 
