@@ -1,0 +1,13 @@
+# option_candidates_jp
+
+## Yen put candidates
+
+- `optioncandidates.NewJP(st JPStores, rule optioncandapi.CurrencyRule, entries []jobs.WatchEntry, clk clock.Clock)` (design `docs/design/candidates-jp.md`, Decisions 1, 3, 5, 10, 11 and 12) builds the job `option_candidates_jp` from the embedded `job_jp.toml`. `JPStores` is `CandidateStores` plus `Rows candidatecur.Writer`; `Open`, `OptionEod`, `Terms`, `Names`, `SessionDays`, `Rows`, the rule and the clock are required.
+- Schedule: calendar `XTKS`, zone `Asia/Tokyo`, anchor `session_open`, offset 5 minutes, `run_bound` 10 minutes, `After()` is `option_open_jp`. A day that is not an XTKS session gives no run. A day on which a key of the pull failed starts marked `upstream_missing` and is repeated by the runner when the pull is complete (`candidates-at-open.md` Decision 12). The `sessionDays` of the run are XTKS days.
+- `Plan` returns one key per JP stock entry with an issuer, dataset `candidates.option_candidate`; it reads no list of another jobs package.
+- Currency rule: the chain is the `option_open` rows of the day with currency `[source] currency` (`JPY`); open rows of another currency are never read, and the US job (`USD`) never reads JPY rows. The rule is called as `EvaluateIn` with currency `JPY`; rows are written through `candidatecur.Writer.InsertCandidatesIn` with currency `JPY`, one run id per `Run`.
+- A name with no JPY open row of the day is named in `Skipped()` with "no option chain"; a name whose open rows are not usable (status ok, or partial with a bid and an ask; DTE inside the window; status 7 and 4 dropped) is named with "no usable open quote". Neither has a row; the other names still write theirs. An unreadable open pull fails the run (`read_open_failed`).
+- Trial limits, in the `[params]` of `job_jp.toml`: DTE 21 to 45, `max_spread` 0.10, `min_bid_size` 1, `min_open_interest` 10. Every one is a trial value; `Params()` still reads the US manifest.
+- No eod fallback: `[source] eod_fallback` is false (true in `job.toml`), so no row carries `eod_fallback`. The open interest of a put is the newest `option_eod` row of the same instrument within `oi_lookback_sessions` (3) XTKS sessions, marked `oi_prior_session`.
+- Log: one `slog` line per name with the contracts outside the DTE window, the rows with an unusable quote, the blocked gate counts and the multiplier of the stored terms.
+- Contract tests: `internal/jobs/optioncandidates/jp_test.go` `TestNewJPPlanKeys`, `TestJPManifestKeys`, `TestJPSessionDaysUseXTKS`, `TestJPSkippedNoChain`, `TestJPNoUsableQuote`, `TestJPCurrencySeparation`, `TestJPOpenInterestPrior`, `TestJPFailedKeyOtherNamesWrite`; `source_test.go` `TestSourceIgnoresJPYOpenRowsOfTheUSJob`; `job_test.go` `TestUSPlanHashUnchanged`.
