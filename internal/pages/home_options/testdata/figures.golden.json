@@ -32,7 +32,7 @@
           "text": "3",
           "unit": "structures"
         },
-        "caption": "Ledger as of 11-04, all accounts combined; lots opened this month"
+        "caption": "Ledger as of 11-04, account main; lots opened this month"
       },
       "premium_month_usd": {
         "label": "Closed premium",
@@ -53,7 +53,7 @@
           "text": "$1,234.50",
           "unit": "usd"
         },
-        "caption": "Ledger as of 11-04, all accounts combined; remaining part of each lot"
+        "caption": "Ledger as of 11-04, account main; remaining part of each lot"
       },
       "max_loss_usd": {
         "label": "Max loss",
@@ -63,7 +63,7 @@
           "text": "$4,000.00",
           "unit": "usd"
         },
-        "caption": "Ledger as of 11-04, all accounts combined"
+        "caption": "Ledger as of 11-04, account main"
       }
     },
     "premium_series_6m": [
