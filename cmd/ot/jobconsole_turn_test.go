@@ -607,7 +607,7 @@ func TestFailedBackfillLogsErrorLine(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("ERROR lines %q, want one", got)
 	}
-	for _, w := range []string{`msg="console request failed"`, "component=ot", "status=failed", "job=fred_series", "day=" + jcDay, `error="dayState: boom"`} {
+	for _, w := range []string{`msg="console request failed"`, "component=ot", "status=failed", "job=fred_series", "day=" + jcDay, `err="dayState: boom"`} {
 		if !strings.Contains(got[0], w) {
 			t.Fatalf("line %q lacks %s", got[0], w)
 		}
@@ -625,7 +625,7 @@ func TestPlanFailedLogsErrorLine(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("ERROR lines %q, want one", got)
 	}
-	for _, w := range []string{`msg="console request failed"`, "job=fred_series", "day=" + jcDay, `error="plan: boom"`} {
+	for _, w := range []string{`msg="console request failed"`, "job=fred_series", "day=" + jcDay, `err="plan: boom"`} {
 		if !strings.Contains(got[0], w) {
 			t.Fatalf("line %q lacks %s", got[0], w)
 		}
