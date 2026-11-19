@@ -489,11 +489,15 @@ func base(c Config, scopes []accountScope, alias string, at time.Time) pageJSON 
 // viewsOf is the row of links of a book of two or more aliases: the family and each account, the
 // page's own marked current. A smaller book has none.
 func viewsOf(aliases []string, current string) []viewJSON {
+	aliases = distinctAliases(aliases)
 	if len(aliases) < 2 {
 		return nil
 	}
 	out := []viewJSON{{Key: familyAliasKey, Label: viewFamily, Href: "/household", Current: current == familyAliasKey}}
 	for _, a := range aliases {
+		if a == familyAliasKey { // ?account=household is the family page, never an account
+			continue
+		}
 		out = append(out, viewJSON{Key: a, Label: familyAccountLabel(a), Href: "/household?account=" + url.QueryEscape(a), Current: current == a})
 	}
 	return out

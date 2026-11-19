@@ -25,7 +25,8 @@ func familyAccountLabel(alias string) string { return familyLabelOpen + alias + 
 // the session days, is an error; any other alias that fails is left out as read_error. A book of one
 // alias gets the page of Build with the alias "".
 func BuildFamily(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]byte, error) {
-	if len(c.Aliases) <= 1 {
+	distinct := distinctAliases(c.Aliases)
+	if len(distinct) <= 1 {
 		return Build(ctx, c, "", day, at)
 	}
 	if c.Zone == nil {
@@ -36,12 +37,6 @@ func BuildFamily(ctx context.Context, c Config, day contracts.Day, at time.Time)
 		return nil, fmt.Errorf("household_page: bad day %q: %w", day, err)
 	}
 	at = at.In(c.Zone)
-	var distinct []string
-	for _, a := range c.Aliases {
-		if !slices.Contains(distinct, a) {
-			distinct = append(distinct, a)
-		}
-	}
 	scopes := familyScopes(distinct)
 	if c.Account == nil || c.Ledger == nil || c.Sessions == nil || c.Ledgers == nil || c.Figures == nil || c.Family == nil {
 		p := gapPage(c, familyAliasKey, scopes, at, "no_reader", textNoReader)
@@ -104,6 +99,17 @@ func (c Config) readBook(ctx context.Context, distinct []string, sessions []cont
 		}
 	}
 	return in, caps, nil
+}
+
+// distinctAliases is the book without repeats, in order: the one list of accounts of every page.
+func distinctAliases(aliases []string) []string {
+	var out []string
+	for _, a := range aliases {
+		if !slices.Contains(out, a) {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 func whoseOf(i int) string {
@@ -175,7 +181,7 @@ func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps
 	}
 	p.Accounts = acc
 
-	lines := familyLeadNotes(&p, res, newest)
+	lines := familyNotesAndGaps(&p, res, newest)
 	p.Gaps = append(lines, p.Gaps...)
 	detailGaps(&p)
 	p.Notes = append(p.Notes, familyCashNote)
@@ -196,7 +202,7 @@ func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps
 	}
 	if !oldestAt.IsZero() {
 		p.Stale = staleLabel{DataTime: oldestAt.Format(timeLayout), StaleAfter: oldestAt.AddDate(0, 0, staleAfterDays).Format(timeLayout),
-			Text: textStaleLabel + res.OldestDay}
+			Text: familyStaleText + res.OldestDay}
 	}
 	return p
 }
@@ -228,8 +234,8 @@ func familyFigureOf(f compute.FigureValue) accountFigure {
 	return accountFigure{Gap: familyCellMissing}
 }
 
-// familyLeadNotes writes the lead_notes of p and returns the page gaps of the accounts left out.
-func familyLeadNotes(p *pageJSON, res blockapi.FamilyResult, newest string) []gapJSON {
+// familyNotesAndGaps writes the lead_notes of p and returns the page gaps of the accounts left out.
+func familyNotesAndGaps(p *pageJSON, res blockapi.FamilyResult, newest string) []gapJSON {
 	var lines []gapJSON
 	for _, x := range res.Excluded {
 		who := familyAccountLabel(x.Alias)

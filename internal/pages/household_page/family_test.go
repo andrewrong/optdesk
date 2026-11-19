@@ -412,3 +412,31 @@ func TestFamilyPageOneAliasIsNamedPage(t *testing.T) {
 		t.Fatalf("one-alias family page differs from Build:\n%s\n%s", b, want)
 	}
 }
+
+func TestFamilyViewsOnePerDistinctAlias(t *testing.T) {
+	t.Parallel()
+	r := rig(famResult("100000.00", "42000.00", "42",
+		counted("main", "2026-11-10", "100000.00", "42000.00"), left("household", "read_error", "")), "main", "household", "main")
+	m, _ := r.build(t)
+	cur := 0
+	for _, v := range m["views"].([]any) {
+		if v.(map[string]any)["current"] == true {
+			cur++
+		}
+	}
+	if n := len(m["views"].([]any)); n != 2 || cur != 1 {
+		t.Fatalf("views = %v", m["views"])
+	}
+}
+
+func TestFamilyPageRepeatedOnlyAliasIsNamedPage(t *testing.T) {
+	t.Parallel()
+	r := rig(blockapi.FamilyResult{}, "main", "main")
+	m, _ := r.build(t)
+	if m["scope"] != "main" || *r.calls != 0 {
+		t.Fatalf("scope = %v", m["scope"])
+	}
+	if _, ok := m["views"]; ok {
+		t.Fatalf("views = %v", m["views"])
+	}
+}

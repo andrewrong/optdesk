@@ -18,6 +18,7 @@ const (
 	familyCellError   = "读取失败"
 	familyCellMissing = "数据不全"
 
+	familyStaleText  = "最早数据日 "
 	familyCashNote   = "现金分放在各账户，只担保本账户的卖出看跌；合计现金不是可共用的保证金"
 	familyRateLine   = "日元账户按 USDJPY 汇率 %s（日期 %s，来源 %s）折成美元"
 	familyDetailGap  = "家庭合计页不拆分这一块，请在单个账户页查看"
