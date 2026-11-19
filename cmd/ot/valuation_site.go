@@ -270,6 +270,8 @@ func valuationPostOf(path string) func(*app, clock.Clock, siteReaders, pages.New
 		return postOwnerValuation
 	case valuationParamsPostRoute:
 		return postOwnerValuationParams
+	case valuationImportPostRoute:
+		return postOwnerValuationImport
 	}
 	return nil
 }
