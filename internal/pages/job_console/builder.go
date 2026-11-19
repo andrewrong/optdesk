@@ -326,10 +326,20 @@ func readRuns(ctx context.Context, runs Runs, now time.Time) openRuns {
 	for i, u := range usuals {
 		us[i] = jobrunapi.Usual{JobID: u.JobID, Median: u.Median, Samples: u.Samples}
 	}
-	for i, f := range runs.Figures(now, in, us) {
-		if i >= len(open) {
-			break
+	used := make([]bool, len(open))
+	for _, f := range runs.Figures(now, in, us) {
+		// a figure belongs to the first unused open run of its own job, whatever the order it comes in
+		i := -1
+		for k, o := range open {
+			if !used[k] && o.JobID == f.JobID {
+				i = k
+				break
+			}
 		}
+		if i < 0 {
+			continue
+		}
+		used[i] = true
 		out.jobs[f.JobID] = true
 		out.rows = append(out.rows, runningJSON{
 			Line: runningLine(f, open[i].StartedAt), Job: f.JobID, StartedAt: open[i].StartedAt.UTC().Format(time.RFC3339),

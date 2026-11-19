@@ -286,19 +286,19 @@ func failedText(in stateIn) (string, bool) {
 
 // waitingLine is the line of a request that waits for its own job.
 func waitingLine(since time.Time) string {
-	return fmt.Sprintf(zhAlreadyRunningFmt, hhmm(since), hhmm(since))
+	return fmt.Sprintf(zhAlreadyRunningFmt, hhmm(since))
 }
 
 // runningLine is one line of "Running now".
 func runningLine(f jobrunapi.Figure, startedAt time.Time) string {
-	parts := []string{f.JobID, "started " + hhmm(startedAt) + " UTC", fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal, f.KeysDone, f.KeysTotal)}
+	parts := []string{f.JobID, "started " + hhmm(startedAt) + " UTC", fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal)}
 	if f.Step != "" {
 		parts = append(parts, f.Step)
 	}
 	if f.HasUsual {
-		parts = append(parts, fmt.Sprintf(zhRanUsuallyFmt, f.ElapsedMinutes, f.UsualMinutes, f.ElapsedMinutes, f.UsualMinutes))
+		parts = append(parts, fmt.Sprintf(zhRanUsuallyFmt, f.ElapsedMinutes, f.UsualMinutes))
 	} else {
-		parts = append(parts, fmt.Sprintf(zhRanNoHistoryFmt, f.ElapsedMinutes, f.ElapsedMinutes))
+		parts = append(parts, fmt.Sprintf(zhRanNoHistoryFmt, f.ElapsedMinutes))
 	}
 	if f.Slow {
 		parts = append(parts, zhSlowNote)

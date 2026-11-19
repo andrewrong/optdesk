@@ -653,18 +653,61 @@ func TestRunningLinesDoNoArithmetic(t *testing.T) {
 	}
 }
 
-func TestBuildWithoutRunsIsBuildWithZeroRuns(t *testing.T) {
+func TestBuildWithoutRunsSameBytes(t *testing.T) {
 	t.Parallel()
-	rd := &fakeReader{recent: []jobrequest.Row{row(1, jobrequest.StateDone)}}
-	a, err := Build(context.Background(), rd, fixedNow, nil, 0, nil)
+	want := `{
+  "schema": "job_console",
+  "schema_version": 1,
+  "generated_at": "2026-11-12T14:06:00Z",
+  "title": "Job console",
+  "sentence": "Run a job for one day; the scheduler does the work.",
+  "form": null,
+  "gaps": [
+    {
+      "kind": "gap",
+      "reason": "job_requests_unavailable",
+      "text": "The job requests cannot be read now."
+    }
+  ],
+  "jobs": [],
+  "requests": [],
+  "selected": null,
+  "refresh_seconds": 0
+}`
+	got, err := Build(context.Background(), nil, fixedNow, nil, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := BuildWithRuns(context.Background(), rd, fixedNow, nil, 0, nil, Runs{})
-	if err != nil {
-		t.Fatal(err)
+	if string(got) != want {
+		t.Errorf("Build output changed:\n%s", got)
 	}
-	if !bytes.Equal(a, b) || bytes.Contains(a, []byte("running")) || bytes.Contains(a, []byte("waiting_for")) {
-		t.Errorf("Build output changed:\n%s", a)
+}
+
+func TestWaitingForOnlyForOwnJob(t *testing.T) {
+	t.Parallel()
+	own := row(7, jobrequest.StateQueued)
+	own.HoldJob, own.HoldAt = "compute_figures", runStart
+	other := row(8, jobrequest.StateQueued)
+	other.Request.JobID = "other_job"
+	other.HoldJob, other.HoldAt = "compute_figures", runStart // holds for a slot of another job
+	idle := row(9, jobrequest.StateQueued)                    // no hold at all
+	runs := Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(jobrunapi.Figure{JobID: "compute_figures"})}
+	p := buildRuns(t, []jobrequest.Row{own, other, idle}, runs)
+	if p.Requests[0].WaitingFor == nil || p.Requests[1].WaitingFor != nil || p.Requests[2].WaitingFor != nil {
+		t.Errorf("waiting_for: %+v %+v %+v", p.Requests[0].WaitingFor, p.Requests[1].WaitingFor, p.Requests[2].WaitingFor)
+	}
+}
+
+func TestRunningPairsFigureWithItsOwnRun(t *testing.T) {
+	t.Parallel()
+	a := time.Date(2026, 11, 12, 13, 0, 0, 0, time.UTC)
+	b := time.Date(2026, 11, 12, 14, 0, 0, 0, time.UTC)
+	reader := fakeRuns{open: []jobrun.JobRun{{JobID: "a", StartedAt: a}, {JobID: "b", StartedAt: b}}}
+	figs := fixedFigures(jobrunapi.Figure{JobID: "b"}, jobrunapi.Figure{JobID: "a"})
+	p := buildRuns(t, nil, Runs{Reader: reader, Figures: figs})
+	for _, r := range p.Running {
+		if (r.Job == "a") != (r.StartedAt == "2026-11-12T13:00:00Z") {
+			t.Errorf("job %s shows start %s", r.Job, r.StartedAt)
+		}
 	}
 }
