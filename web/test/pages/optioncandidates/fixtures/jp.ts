@@ -41,6 +41,7 @@ export const jp = {
     ...tiers,
     kept: 'jp yen tiers kept',
     card_note: 'jp 日元卡片说明',
+    heads: { companies: 'jp 公司', companies_note: 'jp 每家公司两行', tiers: 'jp 合约分档' },
     strip_labels: { ...tiers.strip_labels!, spot: 'jp 现价' },
   },
 } as unknown as OptionCandidatesPage

@@ -84,6 +84,7 @@ export const tiers: TierView = {
     grey_hint: 'tiers 折叠 = 未判定',
   },
   card_note: 'tiers 卡片说明：闸门用上面的买入价',
+  heads: { companies: 'tiers 公司', companies_note: 'tiers 每家公司两行', tiers: 'tiers 合约分档' },
   legend: [
     { tier: 'fits', title: 'tiers legend Fits', text: 'tiers 满足你的全部条件' },
     { tier: 'check', title: 'tiers legend Check', text: 'tiers 有需要再看一眼的徽标' },

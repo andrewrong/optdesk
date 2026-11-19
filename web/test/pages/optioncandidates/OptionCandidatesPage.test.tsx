@@ -183,4 +183,22 @@ describe('OptionCandidatesPage tiers', () => {
     expect(page.querySelectorAll('[data-tab]')).toHaveLength(2)
     expect(page.querySelector('[data-short-list]')).toBeNull()
   })
+
+  it('prints the subtitle in a plain paragraph right after the title', async () => {
+    const page = await show(ok)
+    const h1 = page.querySelector('h1')!
+    expect(h1.textContent).toBe(ok.title)
+    const sub = page.querySelector('[data-subtitle]')!
+    expect(sub.tagName).toBe('P')
+    expect(sub.textContent).toBe(ok.subtitle)
+    expect(sub.hasAttribute('title')).toBe(false)
+    expect(h1.compareDocumentPosition(sub) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(sub.compareDocumentPosition(page.querySelector('[data-estimate-note]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('prints no subtitle paragraph and no error when the payload has none', async () => {
+    const page = await show({ ...ok, subtitle: undefined } as never)
+    expect(page.querySelector('[data-subtitle]')).toBeNull()
+    expect(page.querySelector('h1')!.textContent).toBe(ok.title)
+  })
 })
