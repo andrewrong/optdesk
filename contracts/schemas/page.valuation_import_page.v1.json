@@ -41,7 +41,25 @@
         "r": {"$ref": "#/$defs/Text"},
         "buy_zone_top_site": {"$ref": "#/$defs/Text"},
         "buy_zone_top_file": {"$ref": "#/$defs/Text"},
-        "general_tick": {"$ref": "#/$defs/Text"}
+        "general_tick": {"$ref": "#/$defs/Text"},
+        "title": {"$ref": "#/$defs/Text"},
+        "intro": {"$ref": "#/$defs/Text"},
+        "file": {"$ref": "#/$defs/Text"},
+        "preview": {"$ref": "#/$defs/Text"},
+        "not_in_file": {"$ref": "#/$defs/Text"},
+        "unvalued": {"$ref": "#/$defs/Text"},
+        "removed": {"$ref": "#/$defs/Text"},
+        "count_insert": {"$ref": "#/$defs/Text"},
+        "count_same": {"$ref": "#/$defs/Text"},
+        "count_older": {"$ref": "#/$defs/Text"},
+        "count_refused": {"$ref": "#/$defs/Text"},
+        "count_needs_tick": {"$ref": "#/$defs/Text"},
+        "stored": {"$ref": "#/$defs/Text"},
+        "older_than_stored": {"$ref": "#/$defs/Text"},
+        "margin_table": {"$ref": "#/$defs/Text"},
+        "result": {"$ref": "#/$defs/Text"},
+        "same_file_again": {"$ref": "#/$defs/Text"},
+        "confirm": {"$ref": "#/$defs/Text"}
       }
     },
     "File": {
