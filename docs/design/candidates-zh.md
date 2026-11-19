@@ -101,11 +101,11 @@ No store, dataset or migration change; nothing holds the auto-deploy.
     TierView  += strip_labels?: { spot, buy_price, next_earnings, contracts, fits, check, grey, grey_hint: Text }
                  card_note?:    Text | null
 
-Generated type `web/src/generated/option_candidates_page.v1.ts` (never edited by hand; regenerate with `pnpm --dir web run generate:types`, and run `sh contracts/generate.sh` for the Go records, as CI does): the types gain the optional members and nothing else changes, so `CompanyStrip.tsx` and the other readers compile unchanged. The contract test `internal/contracts/option_candidates_page_v1_test.go` builds its instance by hand (`tiersRow`, `tiersView`, the valuation map) and is the test of the contract from both sides. `docs/contracts/page-schemas.md` (the page entry) gets one sentence on the new fields.
+Generated type `web/src/generated/option_candidates_page.v1.ts` (never edited by hand; regenerate with `pnpm --dir web run generate:types`): the types gain the optional members and nothing else changes, so `CompanyStrip.tsx` and the other readers compile unchanged. The contract test `internal/contracts/option_candidates_page_v1_test.go` builds its instance by hand (`tiersRow`, `tiersView`, the valuation map) and is the test of the contract from both sides. `docs/contracts/page-schemas.md` (the page entry) gets one sentence on the new fields.
 
 ## Issues
 
-Build order: entry 1 first, entry 2 after entry 1 (it emits the new fields), entry 3 after entry 2 (the page needs the fields in the payload). Entries are not merged (contracts, pages and web are three modules). The old fields are kept by all three, so each merge leaves main green and the site readable.
+Build order: entry 1 first, entry 2 after entry 1 (it emits the new fields), entry 3 after entry 1 only (its tests read the TypeScript fixtures and type-check against the regenerated types, so it needs no output of entry 2; entries 2 and 3 run in parallel). Entries are not merged (contracts, pages and web are three modules). The old fields are kept by all three, so each merge leaves main green and the site readable.
 
 ### 1 candidates-zh-contract (interface)
 
@@ -118,7 +118,7 @@ Plan: P7
 Acceptance:
 1. The schema has the optional properties of the Interface section on `Page`, `Company`, `ValueLine` and `TierView`, each text typed `$ref: #/$defs/Text` (no reference to `Text1`), and every `required` list is exactly what it is on main today; no property is removed and `additionalProperties` is false on each new object.
 2. `run_state` is an enum of exactly `used`, `not_used`, `none`; `tier.id` is an enum of exactly `fits`, `check`, `grey`; no new property has a JSON number type.
-3. `web/src/generated/option_candidates_page.v1.ts` is regenerated with `pnpm --dir web run generate:types` (and the Go records with `sh contracts/generate.sh`) in the same change and holds the new optional members and nothing removed, so `tsc` passes with no change to `web/src`.
+3. `web/src/generated/option_candidates_page.v1.ts` is regenerated with `pnpm --dir web run generate:types` in the same change and holds the new optional members and nothing removed, so `tsc` passes with no change to `web/src`.
 4. `internal/contracts/option_candidates_page_v1_test.go` has `TestTiersNewFieldsValidate` (new: an instance with all new fields passes), `TestTiersOldShapeStillValidates` (new: an instance with only the old fields passes), `TestRunStateEnum` (new: `"maybe"` fails) and `TestTierIDEnum` (new: `"fit"` fails); the existing tests still pass.
 5. `docs/contracts/page-schemas.md` names the new fields in one sentence under the page entry.
 6. The result matches docs/design/candidates-zh.md#Interface.
@@ -143,9 +143,9 @@ Acceptance:
 6. `valuation.run_state` is `used` when a figure is shown and the company's `buySourceCode` is the valuation code, `not_used` when a figure is shown and it is not, `none` when `reason` is non-null; `line_label` is "估值买入线", `line_text` is the figure alone (or the reason sentence), and `note` is the sentence of Decision 3 for each state (new tests `TestValueRunStateUsed`, `TestValueRunStateNotUsed`, `TestValueRunStateNone`; the not-used case is a figure with a company whose stored rows carry no buy price, and `note` contains "最近一次运行没用到"). The old `label`, `text`, `hint` and `gate_*` have the values they have on main (existing `TestValueLineFromCalculator` and `TestValueLineTextsFromZhConsts` pass unchanged).
 7. `head_labels` has the four words of Decision 3, `run_status_text` is "完成" for `ok` and "部分完成" for `partial`, and `short_put_tiers.stored_title` is "已存表格" (new test `TestHeadLabels`).
 8. The page title is "期权候选"; the group titles are "先卖出看跌", "备兑看涨", "持仓看涨保护"; the legend titles, `tiers[].word`, tier titles, column labels, column hints (one line of at most 40 characters before the day), row sub texts and the sixteen badge labels are the Chinese of Decision 5 (new test `TestTierViewZhWords`: each word of the list is compared to its exact string; no label or title of the tier view has an ASCII letter except the allowed terms `Delta`, `DGS3MO`, `IV`, a price, a day or a symbol).
-9. Every new Chinese string is a const in `zh_texts.go` or in `tierstrings.go` (const-only, no `+`; a text with a day is made in `valueline.go` or `tiers.go` from two consts), and `TestZhTextsDoor` of `cmd/ot` passes.
+9. Every new Chinese string is a const in `zh_texts.go` (the CJK guard of cmd/ot accepts Chinese only there; `tierstrings.go` refers to those consts; const-only, no `+`; a text with a day is made in `valueline.go` or `tiers.go` from two consts), and `TestZhTextsDoor` of `cmd/ot` passes.
 10. The short list rows keep every text they have on main (new test `TestShortListTextsUnchanged`: the none badge reads "Not judged" and the source labels read "Hand price" and "Valuation buy zone").
-11. The eight goldens hold the new fields and words and the old fields as before. There is no update flag: the tests only compare, so the goldens are edited by hand from a dump of `Build` output printed by a throwaway program outside the repository, and the dump is read before it is pasted; `TestEvidenceValidatesSchema` and the golden comparison pass on the result.
+11. The eight goldens hold the new fields and words and the old fields as before. There is no update flag: the tests only compare, so the goldens are edited by hand from a dump of `Build` output printed by a temporary test in the package that is not committed, and the dump is read before it is pasted; `TestEvidenceValidatesSchema` and the golden comparison pass on the result.
 12. No file is over 600 lines that was not before and no file over 800 lines grows.
 13. The result matches docs/design/candidates-zh.md#Decisions.
 Checked by CI: `go test ./internal/pages/... ./cmd/ot/...`.
@@ -155,7 +155,7 @@ Left out: the 23-column main table, its expanded-row labels and lines, the evide
 ### 3 candidates-zh-web
 
 Module: web. Size: M.
-Order: after 2.
+Order: after 1.
 Files: `web/src/pages/candidates/CompanyStrip.tsx`, `web/src/pages/candidates/TierView.tsx`, `web/src/pages/candidates/TierRows.tsx`, `web/src/pages/candidates/OptionCandidatesPage.tsx`, `web/test/pages/optioncandidates/CompanyStrip.test.tsx`, `web/test/pages/optioncandidates/TierView.test.tsx`, `web/test/pages/optioncandidates/OptionCandidatesPage.test.tsx`, `web/test/pages/optioncandidates/fixtures/tiers.ts`, `web/test/pages/optioncandidates/fixtures/tiers-null.ts`, `web/test/pages/optioncandidates/fixtures/valueline.ts`, `web/test/pages/optioncandidates/fixtures/ok.ts`, `web/test/pages/optioncandidates/fixtures/jp.ts`
 Contracts: unchanged
 Design: docs/design/candidates-zh.md#What-you-see
@@ -206,7 +206,7 @@ Read: `docs/design/candidates-zh.md` at head acd5078a against `adversarial.md` i
 - 5.8 `zhstrip_test.go` not marked new: adopted. Pages acceptance 5 says the file is new and names the tests in it.
 - 6.1 missing Files: adopted: `TierRows.tsx`, `OptionCandidatesPage.tsx`, `tiers-null.ts` added.
 - 6.2 diff-shape acceptance: adopted. No `git diff` item remains; every item states a result. The ASCII whitelist is named (`Delta`, `DGS3MO`, `IV`, a price, a day, a symbol).
-- 6.3 generated type command: adopted: `pnpm --dir web run generate:types` and `sh contracts/generate.sh`.
+- 6.3 generated type command: adopted: `pnpm --dir web run generate:types` (page types do not come from `contracts/generate.sh`, docs/contracts/page-schemas.md).
 - 6.4 golden command: adopted (5.5).
 - 6.5 badge words invented by the worker: adopted. The sixteen badge labels are given exactly (Decision 5).
 - 6.6 modules touched twice and the door: adopted. The drop pair is gone, so pages is one entry; `TestNoArithmeticInValueLine` is kept (the day cut is string slicing, in `valueline.go` and `tiers.go`).
