@@ -71,7 +71,8 @@
       "step": "US:MSFT",
       "elapsed_minutes": 4,
       "usual_minutes": 3,
-      "slow": false
+      "slow": false,
+      "line": "已完成 3 / 7，跑了 4 分钟，平常 3 分钟，14:02 UTC"
     },
     {
       "job": "quote_snapshot",
@@ -81,7 +82,8 @@
       "step": "US:AAPL",
       "elapsed_minutes": 66,
       "usual_minutes": 3,
-      "slow": true
+      "slow": true,
+      "line": "已完成 1 / 3，跑了 66 分钟，平常 3 分钟，13:00 UTC"
     }
   ],
   "requests": [
@@ -97,7 +99,8 @@
       "keys": [],
       "waiting_for": {
         "job": "compute_figures",
-        "since": "2026-11-12T14:02:00Z"
+        "since": "2026-11-12T14:02:00Z",
+        "line": "已在运行，自 14:02 UTC"
       }
     },
     {

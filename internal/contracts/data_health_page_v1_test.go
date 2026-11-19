@@ -204,7 +204,7 @@ func TestDataHealthFailureDayLength(t *testing.T) {
 func dhRunning() map[string]any {
 	return map[string]any{
 		"job": "statement_capture", "started_at": "2026-11-17T09:20:00Z", "keys_done": 2, "keys_total": 5,
-		"step": "invented-key", "elapsed_minutes": 10, "usual_minutes": 8, "slow": true,
+		"step": "invented-key", "elapsed_minutes": 10, "usual_minutes": 8, "slow": true, "line": "running line",
 	}
 }
 
@@ -245,5 +245,17 @@ func TestDataHealthRunningNullFails(t *testing.T) {
 	m["running"] = []any{it}
 	if pageV1Valid(t, dataHealthPageV1, m) {
 		t.Error("item with an extra key accepted")
+	}
+}
+
+// TestDataHealthRunningWithoutLineFails: a running item without line is refused.
+func TestDataHealthRunningWithoutLineFails(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "ok")
+	it := dhRunning()
+	delete(it, "line")
+	m["running"] = []any{it}
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Error("running item without line accepted")
 	}
 }
