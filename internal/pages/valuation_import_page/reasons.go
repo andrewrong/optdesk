@@ -14,6 +14,6 @@ var hinted = map[string]string{
 
 // Reasons lists every sentence above, for the test that each has a Chinese hint.
 var Reasons = []string{
-	TextR, TextBuyZoneTop, TextFirst, TextEvent, TextGeneralTick, TextOlder, TextUnmatched,
+	TextR, TextBuyZoneTop, TextBuyZoneTopSite, TextBuyZoneTopFile, TextFirst, TextEvent, TextGeneralTick, TextOlder, TextUnmatched,
 	ReasonOtherTop, ReasonHKCN, ReasonRMarket, ReasonBadKey,
 }

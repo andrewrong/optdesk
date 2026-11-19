@@ -120,12 +120,20 @@ type gapJSON struct {
 	Text   string `json:"text"`
 }
 
+type labelsJSON struct {
+	R              string `json:"r"`
+	BuyZoneTopSite string `json:"buy_zone_top_site"`
+	BuyZoneTopFile string `json:"buy_zone_top_file"`
+	GeneralTick    string `json:"general_tick"`
+}
+
 type pageJSON struct {
 	Schema        string        `json:"schema"`
 	SchemaVersion int           `json:"schema_version"`
 	View          string        `json:"view"`
 	PostPath      string        `json:"post_path"`
 	MaxFileBytes  int           `json:"max_file_bytes"`
+	Labels        labelsJSON    `json:"labels"`
 	File          *fileJSON     `json:"file"`
 	R             *rJSON        `json:"r"`
 	Margin        *marginJSON   `json:"margin"`

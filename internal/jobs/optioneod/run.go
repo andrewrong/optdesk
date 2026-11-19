@@ -37,6 +37,10 @@ type job struct {
 
 	reasons runview.ReasonWriter // nil: no reasons are written; set by WithReasons
 
+	logger *slog.Logger           // nil: slog.Default; set by tests
+	stored ContractReader         // nil: every pair is resolved at run time; set by WithContracts
+	insts  store.InstrumentReader // the instruments of the stored contracts
+
 	cal         string
 	open, close time.Duration
 }
@@ -196,16 +200,25 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	if terr != nil {
 		return terr
 	}
-	listed, terr := r.listed(ctx, pairs)
+	var undID int64
+	if r.j.stored != nil {
+		var terr contracts.TypedError
+		if undID, terr = r.underlyingID(ctx, u); terr != nil {
+			return terr
+		}
+	}
+	listed, terr := r.listed(ctx, u, undID, pairs)
 	if terr != nil {
 		return terr
 	}
 	if _, ok := r.j.m.indexOf(u.Symbol); ok {
 		listed = completePairs(listed)
 	}
-	undID, err := r.j.res.ResolveInstrument(ctx, store.Identifier{Scheme: "ibkr_conid", Value: strconv.FormatInt(u.ConID, 10)}, u.spec(), nil)
-	if err != nil {
-		return asTyped(err, contracts.Permanent)
+	if r.j.stored == nil {
+		var terr contracts.TypedError
+		if undID, terr = r.underlyingID(ctx, u); terr != nil {
+			return terr
+		}
 	}
 	capture := captureID(r.day, k, r.j.m.Slot)
 	var tl tally
@@ -368,27 +381,12 @@ func (j *job) stockChain(chains []broker.Chain, u underlying) (broker.Chain, con
 	return broker.Chain{}, j.noValue("no listed options", u)
 }
 
-// listed resolves every pair; a pair that is not listed is dropped.
-func (r *runState) listed(ctx context.Context, pairs []broker.Contract) ([]broker.Contract, contracts.TypedError) {
-	var out []broker.Contract
-	for _, p := range pairs {
-		if terr := r.checkBudget(); terr != nil {
-			return nil, terr
-		}
-		got, err := r.j.b.ResolveContract(ctx, p)
-		if err != nil {
-			return nil, asTyped(err, contracts.Permanent)
-		}
-		if !got.Listed {
-			continue
-		}
-		c := got.Contract
-		if c.Multiplier == "" {
-			c.Multiplier = p.Multiplier
-		}
-		out = append(out, c)
+func (r *runState) underlyingID(ctx context.Context, u underlying) (int64, contracts.TypedError) {
+	id, err := r.j.res.ResolveInstrument(ctx, store.Identifier{Scheme: "ibkr_conid", Value: strconv.FormatInt(u.ConID, 10)}, u.spec(), nil)
+	if err != nil {
+		return 0, asTyped(err, contracts.Permanent)
 	}
-	return out, nil
+	return id, nil
 }
 
 // chunk resolves the instruments of cs, asks their quotes and writes the rows; price fills underlying_price where a quote has none.

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,6 +58,7 @@ type snapCall struct {
 }
 
 type fakeBroker struct {
+	mu          sync.Mutex // guards resolves, resolved, snaps and optionCalls
 	price       *float64
 	noUndPrice  bool // option quotes carry no UndPrice
 	chains      []broker.Chain
@@ -104,8 +107,12 @@ func (b *fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chai
 }
 
 func (b *fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+	b.mu.Lock()
 	b.resolves++
 	b.resolved = append(b.resolved, c)
+	// a test reads resolved sorted by expiry, strike and right, whatever order the asks ran in
+	sort.SliceStable(b.resolved, func(i, j int) bool { return resolvedLess(b.resolved[i], b.resolved[j]) })
+	b.mu.Unlock()
 	if b.resolveErr != nil {
 		return broker.Resolved{}, b.resolveErr
 	}
@@ -117,14 +124,19 @@ func (b *fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (brok
 }
 
 func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
+	b.mu.Lock()
 	b.snaps = append(b.snaps, snapCall{kind, cs})
+	b.mu.Unlock()
 	if b.snapErr != nil {
 		return nil, b.snapErr
 	}
 	if kind == broker.KindSnapshot {
 		return []broker.Quote{{Contract: cs[0], Last: b.price}}, nil
 	}
+	b.mu.Lock()
 	b.optionCalls++
+	n := b.optionCalls
+	b.mu.Unlock()
 	out := make([]broker.Quote, len(cs))
 	for i, c := range cs {
 		out[i] = broker.Quote{Contract: c, Status: b.status[c.ConID], Generation: 7, MarketDataType: 1,
@@ -142,14 +154,31 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 		}
 	}
 	if b.afterSnap != nil {
-		b.afterSnap(b.optionCalls)
+		b.afterSnap(n)
 	}
 	return out, nil
 }
 
 func (b *fakeBroker) Close() error { return nil }
 
-func (b *fakeBroker) calls() int { return len(b.snaps) + b.resolves }
+func (b *fakeBroker) calls() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return len(b.snaps) + b.resolves
+}
+
+// resolvedLess orders contracts by expiry, strike (numeric) and right.
+func resolvedLess(a, b broker.Contract) bool {
+	if a.Expiry != b.Expiry {
+		return a.Expiry < b.Expiry
+	}
+	sa, _ := strconv.ParseFloat(a.Strike, 64)
+	sb, _ := strconv.ParseFloat(b.Strike, 64)
+	if sa != sb {
+		return sa < sb
+	}
+	return a.Right < b.Right
+}
 
 type resolveCall struct {
 	key   store.Identifier
