@@ -4,6 +4,12 @@
   "post_path": "valuation-import-post",
   "max_file_bytes": 1048576,
   "view": "preview",
+  "labels": {
+    "r": "R (估值倍数 R)",
+    "buy_zone_top_site": "Buy zone top, site (站内买入区上沿)",
+    "buy_zone_top_file": "Buy zone top, file (文件买入区上沿)",
+    "general_tick": "General tick (通用勾选: 站内检查与文件一致)"
+  },
   "file": {
     "name": "sample-valuations.json",
     "sha256": "ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12",

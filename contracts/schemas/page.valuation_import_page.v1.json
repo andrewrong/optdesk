@@ -24,7 +24,8 @@
     "result": {"type": "array", "items": {"$ref": "#/$defs/ResultItem"}},
     "problems": {"type": "array", "items": {"$ref": "#/$defs/Problem"}},
     "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
-    "error": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]}
+    "error": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]},
+    "labels": {"$ref": "#/$defs/Labels"}
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
@@ -32,6 +33,17 @@
     "Figure": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
     "Day": {"type": "string", "format": "date"},
     "Action": {"enum": ["insert", "same", "older", "refused", "profile_only"]},
+    "Labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["r", "buy_zone_top_site", "buy_zone_top_file", "general_tick"],
+      "properties": {
+        "r": {"$ref": "#/$defs/Text"},
+        "buy_zone_top_site": {"$ref": "#/$defs/Text"},
+        "buy_zone_top_file": {"$ref": "#/$defs/Text"},
+        "general_tick": {"$ref": "#/$defs/Text"}
+      }
+    },
     "File": {
       "type": "object",
       "additionalProperties": false,
