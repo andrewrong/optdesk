@@ -4,6 +4,7 @@ Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-13
 Revision: 2
+Scope superseded in part 2026-11-19: the default `/household` view is the family total of `docs/design/household-family-total.md`; the figures here stay per account.
 
 Source: UI check round 4 of `/household` (deployed e560294), rows 3.3, 3.10, 3.11 (yen amounts labelled USD; allocation a gap) and row 3.13 (the Stock and Option cells of accounts are always `missing_quote`). Row 3.5 (stress rows) is split off (see Left out).
 
