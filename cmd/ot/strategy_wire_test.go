@@ -307,8 +307,6 @@ func TestShadowThroughRealReaderEqualsOldRows(t *testing.T) {
 		if !ok {
 			t.Fatalf("row %d has no old row", g.InstrumentID)
 		}
-		// the shadow strategy does not write the buy source mark; the job does, last
-		w.Marks = strings.Replace(w.Marks, `,"buy_from_hand"]`, `]`, 1)
 		if !reflect.DeepEqual(g, w) {
 			t.Errorf("row %d differs:\nresult %+v\nold    %+v", g.InstrumentID, g, w)
 		}
