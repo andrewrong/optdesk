@@ -344,8 +344,7 @@ func TestSlowNotifierContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sn notify.SlowNotifier = n
-	got, err := sn.NotifySlowRuns(context.Background())
+	got, err := n.NotifySlowRuns(context.Background())
 	if err != nil || got != 1 {
 		t.Fatalf("NotifySlowRuns = %d, %v", got, err)
 	}
