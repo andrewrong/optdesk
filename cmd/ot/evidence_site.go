@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
@@ -34,10 +35,12 @@ const termsChunk = 500
 // (ot page) and in the demo profile, where the evidence cells are gaps.
 type candidateReaders struct {
 	Cands store.CandidateReader
-	Names store.InstrumentNameReader
-	View  store.ReadingViewReader
-	Terms store.OptionTermsReader
-	Days  optionday.DayReader
+	// CandCur reads the yen rows for the Japan group; nil on the named path (ot page) and in the demo profile.
+	CandCur candidatecur.Reader
+	Names   store.InstrumentNameReader
+	View    store.ReadingViewReader
+	Terms   store.OptionTermsReader
+	Days    optionday.DayReader
 	// The five fields of the tier view; all nil on the named path (ot page) and in the demo profile, where
 	// short_put_tiers is null.
 	Tiers      optiontierapi.Tierer
@@ -76,7 +79,7 @@ func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, 
 // candidatesConfig is the Config newOptionCandidatesPage builds.
 func candidatesConfig(zone *time.Location, runID, buildID, scope string, r candidateReaders) option_candidates_page.Config {
 	return option_candidates_page.Config{
-		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: r.Cands, Names: r.Names,
+		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: r.Cands, CandCur: r.CandCur, Names: r.Names,
 		Figures:  optionfig.New(),
 		Evidence: newEvaluator(),
 		ATMFor:   newATMFor(r.Days, r.Terms, optionevidence.NewATMPicker()),

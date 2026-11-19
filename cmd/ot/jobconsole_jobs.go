@@ -51,6 +51,8 @@ const (
 	needsHeavyAndCap   = "a console run must have a budget and a cap of its own"
 	textCachesFailures = "a failed result is cached for the day, so a run neither retries nor can be forced"
 	needsCachesFailure = "the cache must keep only successes, or Run must take a force flag"
+	textHeldJP         = "the Japan candidates job is held in the scheduler until its first checked run (ot run-once --job option_candidates_jp)"
+	needsHeldJP        = "the schedule entry of candidates-jp must remove the hold"
 	noteQuoteSnapshot  = "its three keys, 09:45, 12:30 and 15:30 ET, share one scheduled instant, 15:30 ET, so all three wait for it; " +
 		"only the 15:30 key can produce, and only until ten minutes after it; a 09:45 or 12:30 key that is still missing " +
 		"ends no value (missed slot), as the scheduler's own tick at 15:30 would write"
@@ -105,6 +107,7 @@ var jobTable = []jobRow{
 	listedOnly("option_open_resolve", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
 	listedOnly("option_open_resolve_jp", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
 	listedOnly("option_open_resolve_gap", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
+	listedOnly("option_candidates_jp", "held_in_scheduler", textHeldJP, needsHeldJP),
 	listedOnly("option_ledger", "caches_failures", textCachesFailures, needsCachesFailure),
 	{ID: "macro_events", Kind: kindAnyDay, Force: true},
 	{ID: "recon_bars", Kind: kindAnyDay, Force: true},

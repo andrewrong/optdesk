@@ -8,8 +8,11 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
+	"github.com/andrewrong/optdesk/internal/compute/ruleparam"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 )
 
@@ -156,5 +159,68 @@ func TestEvidenceConfigWired(t *testing.T) {
 	}
 	if bare := candidatesConfig(time.UTC, "r", "b", "candidates", candidateReaders{}); bare.Evidence == nil || bare.ATMFor != nil {
 		t.Fatalf("bare config %+v", bare)
+	}
+}
+
+// jpReader is a candidate reader of yen rows.
+type jpReader struct{}
+
+func (jpReader) CandidatesIn(context.Context, contracts.Day, string, string) ([]candidatecur.Row, error) {
+	return nil, nil
+}
+
+// capturePage replaces the page builder of a with one that records the readers it is given.
+func capturePage(a *app) *candidateReaders {
+	var got candidateReaders
+	a.deps.optionCandidatesPage = func(zone *time.Location, runID, buildID, scope string, r candidateReaders) pages.Page {
+		got = r
+		return newOptionCandidatesPage(zone, runID, buildID, scope, r)
+	}
+	a.deps.newRuleParams = ruleparam.New
+	return &got
+}
+
+func TestCandidatesConfigHasJPReader(t *testing.T) {
+	t.Parallel()
+	if cfg := candidatesConfig(time.UTC, "r", "b", "candidates", candidateReaders{CandCur: jpReader{}}); cfg.CandCur == nil {
+		t.Fatal("config has no JP reader for a store that has one")
+	}
+	if cfg := candidatesConfig(time.UTC, "r", "b", "candidates", candidateReaders{}); cfg.CandCur != nil {
+		t.Fatal("config has a JP reader without one")
+	}
+	clk := fakeClock{time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)}
+
+	// The real store: buildCandidates copies siteReaders.candCur.
+	a, _ := testApp(t, "")
+	got := capturePage(a)
+	if _, err := buildCandidates(t.Context(), a, clk, "2026-11-05", siteReaders{cands: demoCandidates{}, candCur: jpReader{}}); err != nil {
+		t.Fatal(err)
+	}
+	if got.CandCur == nil {
+		t.Error("buildCandidates dropped the JP reader")
+	}
+
+	// The demo profile builds from readers that hold none.
+	d, _ := testApp(t, "")
+	d.profile.Name = "demo"
+	got = capturePage(d)
+	if _, err := buildCandidates(t.Context(), d, clk, "2026-11-05", siteReaders{cands: demoCandidates{}}); err != nil {
+		t.Fatal(err)
+	}
+	if got.CandCur != nil {
+		t.Error("demo profile has a JP reader")
+	}
+
+	// The named path (ot page) never sets it.
+	n, _ := testApp(t, "")
+	n.profile.Name = "demo"
+	got = capturePage(n)
+	_, closeFn, err := candidatesPageNamed(t.Context(), n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeFn()
+	if got.CandCur != nil {
+		t.Error("the named path has a JP reader")
 	}
 }
