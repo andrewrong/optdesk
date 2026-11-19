@@ -224,10 +224,10 @@ func reportDoc(r ReportInput) (*reportJSON, error) {
 		Notes: []string{noteAssignment, noteGap, noteSnapshot, noteRolled},
 	}
 	for _, v := range r.Variants {
-		d.Variants = append(d.Variants, variantJSON{Name: v.Name, ParamsHash: v.ParamsHash})
+		d.Variants = append(d.Variants, variantJSON(v))
 	}
 	for _, e := range r.Excluded {
-		d.Excluded = append(d.Excluded, excludedJSON{Reason: e.Reason, Text: e.Text, Lots: e.Lots})
+		d.Excluded = append(d.Excluded, excludedJSON(e))
 	}
 	for _, l := range r.Lines {
 		lj := lineJSON{
