@@ -632,3 +632,52 @@ func TestTierIDEnum(t *testing.T) {
 		t.Fatal("tier id fit validates")
 	}
 }
+
+func headsView() map[string]any {
+	return map[string]any{"companies": "公司", "companies_note": "每家公司两行", "tiers": "合约分档"}
+}
+
+func TestHeadingsFieldsValidate(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["subtitle"] = "先卖出看跌期权的候选合约"
+	view := tiersView()
+	view["heads"] = headsView()
+	inst["short_put_tiers"] = view
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an instance with subtitle and heads is invalid")
+	}
+}
+
+func TestHeadingsOldShapeStillValidates(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	inst["short_put_tiers"] = tiersView()
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an instance without subtitle and heads is invalid")
+	}
+}
+
+func TestHeadsNeedAllThree(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	view := tiersView()
+	heads := headsView()
+	delete(heads, "tiers")
+	view["heads"] = heads
+	inst["short_put_tiers"] = view
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("heads without tiers validates")
+	}
+}
+
+func TestHeadsNullFails(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	view := tiersView()
+	view["heads"] = nil
+	inst["short_put_tiers"] = view
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("heads null validates")
+	}
+}
