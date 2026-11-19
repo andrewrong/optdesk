@@ -283,7 +283,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok := 0, 0
+	planned, ok, unread, partial := 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -303,14 +303,19 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		}
 		res.Returned += len(rows)
 		for _, r := range rows {
-			if r.Status == stOK {
+			switch {
+			case r.Status == stOK:
 				ok++
+			case r.Status == stPartial:
+				partial++
+			case r.Status == stDisconnected, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
+				unread++
 			}
 		}
 		res.Usable = ok
 	}
 	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
-		return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, p.m.MinOKShare))
+		return underShare(res, ok, planned, unread, partial, p.m.MinOKShare)
 	}
 	return res
 }
