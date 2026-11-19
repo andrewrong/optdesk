@@ -96,6 +96,7 @@ GRANT USAGE ON SCHEMA rd TO ot_ro_pages;
 
 var viewMigrations = []string{
 	"0056_base_fact_bars.sql", "0057_base_fact_option.sql", "0058_base_fact_other.sql", "0059_base_fact_account.sql",
+	"0062_base_fact_option_open.sql",
 }
 
 // newViewsDatabase makes a throwaway database with the roles, the stand-in tables and the four view migrations,
