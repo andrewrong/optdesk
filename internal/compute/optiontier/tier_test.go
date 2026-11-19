@@ -118,7 +118,8 @@ func has(list []string, s string) bool {
 
 func TestDefaultParamsAreTrialValues(t *testing.T) {
 	t.Parallel()
-	want := optiontierapi.Params{DeltaMax: "0.3", ThinDelta: "0.15", MaxCashAgeDays: 3, DaysInYear: 365}
+	want := optiontierapi.Params{DeltaMax: "0.3", ThinDelta: "0.15", MaxCashAgeDays: 3, DaysInYear: 365,
+		BandOTMMinPct: "5", BandOTMMaxPct: "15", BandDeltaMin: "0.15", PerCompany: 3}
 	if got := DefaultParams(); got != want {
 		t.Errorf("DefaultParams = %+v, want %+v", got, want)
 	}
