@@ -81,18 +81,6 @@ func storedRig(t *testing.T, stored int, strikesPerSide int) (*rig, *fakeContrac
 	return r, rd, pairs
 }
 
-func quotedConIDs(b *fakeBroker) []int64 {
-	var out []int64
-	for _, s := range b.snaps {
-		if s.kind == broker.KindOptionEod {
-			for _, c := range s.cs {
-				out = append(out, c.ConID)
-			}
-		}
-	}
-	return out
-}
-
 func TestStoredContractsNotResolved(t *testing.T) {
 	t.Parallel()
 	base := newRig(t, "2026-11-06 17:00")
