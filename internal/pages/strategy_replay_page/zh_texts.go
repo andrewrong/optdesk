@@ -59,3 +59,37 @@ const (
 	emptyTo     = " 至 "
 	emptyNone   = "无"
 )
+
+// The hints of the count keys of the report, the Chinese text and the English word the web prints.
+const (
+	hintCountLots          = "取到的单子数（lots）"
+	hintCountLotsWithQuote = "其中有已存报价的单子数（lots with quote）"
+	hintCountStillOpen     = "还没到期的单子数（still open）"
+	hintCountLotDays       = "所有单子持有的天数之和（lot days）"
+	hintCountQuoteDays     = "有已存报价的天数（quote days）"
+)
+
+// The hints of the columns of the lines table.
+const (
+	hintColSet             = "分组（set）：全部账户或某个账户别名"
+	hintColVariant         = "做法（variant）：持有到期（hold）或早平（early）"
+	hintColCurrency        = "币种（currency）"
+	hintColLots            = "单子数（lots）"
+	hintColCycles          = "回放的周期数（cycles）"
+	hintColClosedEarly     = "提前平仓的笔数（closed early）"
+	hintColHeld            = "持有到期的笔数（held）"
+	hintColAssigned        = "被指派的笔数（assigned）"
+	hintColRolled          = "展期的笔数（rolled）"
+	hintColInTheMoney      = "到期时在价内的笔数（in the money）"
+	hintColKeptShare       = "留存比例（kept share）：赚到的权利金占收到的权利金的比例"
+	hintColMeanGross       = "平均毛收益（mean gross）"
+	hintColWorstGross      = "最差一笔的毛收益（worst gross）"
+	hintColHoldKeptShare   = "持有到期（hold）的留存比例（hold kept share）：赚到的权利金占收到的权利金的比例"
+	hintColActualKeptShare = "他实际的留存比例（actual kept share）：赚到的权利金占收到的权利金的比例"
+)
+
+// The hints of the two kinds of variant.
+const (
+	hintVariantHold  = "持有到期（hold）：不提前平仓"
+	hintVariantEarly = "早平（early）：权利金赚到一定比例或离到期不足若干天就买回；留存比例（kept share）：赚到的权利金占收到的权利金的比例；[T]：试用值，不是定论"
+)

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -182,5 +183,96 @@ func TestOffPageHoldsOneFormOffNotice(t *testing.T) {
 	}
 	if d.View != ViewForm || d.Form != nil || d.Report != nil || len(d.Notices) != 2 || d.Notices[0].Key != NoticeFormOff {
 		t.Errorf("off page: %+v", d)
+	}
+}
+
+func hasHan(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestBuildReportHints(t *testing.T) {
+	t.Parallel()
+	form := DefaultForm()
+	cases := map[string]*ReportInput{"report": sampleReport(), "empty": emptyReport()}
+	for name, rep := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, err := Build(context.Background(), Input{GeneratedAt: generated, View: ViewReport, Form: &form, Report: rep})
+			if err != nil {
+				t.Fatal(err)
+			}
+			doc := decode(t, got).(map[string]any)["report"].(map[string]any)
+			hints, ok := doc["hints"].(map[string]any)
+			if !ok {
+				t.Fatal("report has no hints")
+			}
+			counts, _ := hints["counts"].(map[string]any)
+			columns, _ := hints["columns"].(map[string]any)
+			need := func(where string, m map[string]any, key string) {
+				s, _ := m[key].(string)
+				if !hasHan(s) {
+					t.Errorf("%s hint %q = %q: want a Chinese text", where, key, s)
+				}
+			}
+			for k := range doc["counts"].(map[string]any) {
+				need("counts", counts, k)
+			}
+			for k := range counts {
+				if _, ok := doc["counts"].(map[string]any)[k]; !ok {
+					t.Errorf("hints.counts has key %q the report lacks", k)
+				}
+			}
+			lineKeys := map[string]bool{}
+			for _, l := range doc["lines"].([]any) {
+				for k := range l.(map[string]any) {
+					if k == "minimum_text" || k == "under_minimum" {
+						continue
+					}
+					lineKeys[k] = true
+					need("columns", columns, k)
+				}
+			}
+			if name == "empty" {
+				// no line: the columns are still all there
+				if len(columns) != 15 {
+					t.Errorf("columns has %d keys, want 15", len(columns))
+				}
+			}
+			for k := range columns {
+				if len(lineKeys) > 0 && !lineKeys[k] {
+					t.Errorf("hints.columns has key %q no line has", k)
+				}
+			}
+			for _, v := range doc["variants"].([]any) {
+				vm := v.(map[string]any)
+				if h, _ := vm["hint"].(string); !hasHan(h) {
+					t.Errorf("variant %v hint = %q: want a Chinese text", vm["name"], h)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildVariantHintByName(t *testing.T) {
+	t.Parallel()
+	form := DefaultForm()
+	rep := emptyReport()
+	rep.Variants = []Variant{{"hold", "h"}, {"early_50_21", "e"}, {"other", "o"}}
+	got, err := Build(context.Background(), Input{GeneratedAt: generated, View: ViewReport, Form: &form, Report: rep})
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, got)
+	vs := decode(t, got).(map[string]any)["report"].(map[string]any)["variants"].([]any)
+	for i, wantHint := range []bool{true, true, false} {
+		_, has := vs[i].(map[string]any)["hint"]
+		if has != wantHint {
+			t.Errorf("variant %d: hint present = %v, want %v", i, has, wantHint)
+		}
 	}
 }
