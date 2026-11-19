@@ -72,7 +72,7 @@ func TestStripFigureEqualsResolver(t *testing.T) {
 	v := companiesOfBuild(t, c)[0].Valuation
 	zones, tables := zonesOf(st)
 	res := calc.Resolve(buypriceapi.Input{Symbol: "AAA", Currency: "USD", Zones: zones, Tables: tables})
-	m, ok := moneyText(res.Price)
+	m, ok := moneyText(res.Price, "USD")
 	if !ok || v.Text != m+" (review "+res.ReviewDay+")" || v.Text != "$91.24 (review 2026-11-10)" {
 		t.Errorf("text = %q, resolver price %q", v.Text, res.Price)
 	}

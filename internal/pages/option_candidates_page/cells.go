@@ -87,7 +87,10 @@ func deltaCell(p *string) any {
 
 func ivCell(p *string) any { return formatCellPtr(p, percentText) }
 
-func moneyCell(text string) any { return textCellOf(text, moneyText) }
+// moneyCell is a USD money cell; moneyCellIn writes it in the currency of the row.
+func moneyCell(text string) any { return moneyCellIn(text, currencyUSD) }
+
+func moneyCellIn(text, currency string) any { return textCellOf(text, moneyIn(currency)) }
 
 func plainCell(s string) any {
 	if s == "" {

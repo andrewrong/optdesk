@@ -144,3 +144,21 @@ const (
 	zhBuySourceNone      = "没有估值买入区间，也没有手填价格，所以没有评判。"
 	zhWideSpread         = "买卖价差大：bid 偏低，实际可挂在中间价附近成交，别按 bid 成交。"
 )
+
+// Chinese texts of the Japanese group (candidates-jp.md Decisions 12, 16, 18, 24 and 26).
+const (
+	jpGroupNoteZh        = "日本：东证开盘行情，金额为日元，1 张合约 = 100 股（乘数以合约资料为准）"
+	markHintNoJPYRateZh  = "日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”"
+	markHintNoJPYFundsZh = "没有日元账户，资金检查按通过处理，不代表日元资金够用；指定日元账户后才真正检查"
+	jpNotComputedZh      = "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+	jpSecuredHintZh      = "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料"
+	jpNoMultiplierZh     = "没有乘数，算不出全额行权价现金"
+	limitTailZh          = " 行"
+	limitHeadWideZh      = "价差超限，剔除 "
+	limitHeadLowOIZh     = "未平仓量不足，剔除 "
+	limitHeadSmallBidZh  = "bid 数量太少，剔除 "
+	limitHeadNoBidZh     = "没有 bid，剔除 "
+	limitHeadNoQuoteZh   = "没有报价，剔除 "
+	badgeLabelNoJPYRate  = "没有日元利率"
+	badgeLabelNoJPYFunds = "没有日元账户"
+)

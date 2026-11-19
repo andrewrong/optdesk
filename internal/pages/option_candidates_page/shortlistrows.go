@@ -40,28 +40,28 @@ func buySourceOf(c store.Candidate) string {
 }
 
 // shortRowOf writes one placed row from its stored row and, when the tier view has it, its tier row.
-func shortRowOf(p optionshortlistapi.Placed, c store.Candidate, t *tierRow) shortRow {
+func shortRowOf(p optionshortlistapi.Placed, c store.Candidate, t *tierRow, cur string) shortRow {
 	r := shortRow{
-		Key: p.Key, Strike: moneyPair(c.Strike, unreadable),
+		Key: p.Key, Strike: moneyPair(c.Strike, unreadable, cur),
 		Expiry:     pairView{Main: string(c.Expiry), Sub: subOf(strconv.Itoa(c.DTE) + dteSuffix)},
 		OTM:        otmPair(p.OTM),
 		Delta:      deltaPair(c, p.AbsDelta),
 		Annualized: annualizedPair(c),
-		Premium:    premiumOf(c, t),
+		Premium:    premiumOf(c, t, cur),
 		Badges:     []badgeView{},
 	}
-	r.Buy, r.BuySource, r.BuyLink = buyOf(c, t)
+	r.Buy, r.BuySource, r.BuyLink = buyOf(c, t, cur)
 	if p.Liquidity == slWideSpreadID {
 		r.Badges = append(r.Badges, badgeView{Code: slWideSpreadID, Label: slWideSpread, Gloss: zhWideSpread, Tone: badgeToneWarn})
 	}
 	return r
 }
 
-func moneyPair(text, none string) pairView {
+func moneyPair(text, none, cur string) pairView {
 	if text == "" {
 		return gapPair("no_data", none)
 	}
-	m, ok := moneyText(text)
+	m, ok := moneyText(text, cur)
 	if !ok {
 		return gapPair("unreadable", unreadable)
 	}
@@ -103,8 +103,8 @@ func annualizedPair(c store.Candidate) pairView {
 }
 
 // premiumOf is the bid with the money per contract of the tier verdict under it.
-func premiumOf(c store.Candidate, t *tierRow) pairView {
-	p := moneyPair(c.BidEod, gapNoBid)
+func premiumOf(c store.Candidate, t *tierRow, cur string) pairView {
+	p := moneyPair(c.BidEod, gapNoBid, cur)
 	if p.Gap == nil && t != nil && t.Premium.Gap == nil {
 		p.Sub = subOf(t.Premium.Main)
 	}
@@ -113,13 +113,13 @@ func premiumOf(c store.Candidate, t *tierRow) pairView {
 
 // buyOf is the buy price with its break-even and margin under it, the source badge, and the link to the
 // price lines, which exists only when no source gives a price.
-func buyOf(c store.Candidate, t *tierRow) (pairView, *badgeView, *string) {
+func buyOf(c store.Candidate, t *tierRow, cur string) (pairView, *badgeView, *string) {
 	code := buySourceOf(c)
 	if code == "" {
 		link := slPriceLines
 		return gapPair("no_data", slNoBuyPrice), nil, &link
 	}
-	p := moneyPair(deref(c.BuyPrice), slNoBuyPrice)
+	p := moneyPair(deref(c.BuyPrice), slNoBuyPrice, cur)
 	if p.Gap == nil && t != nil && t.Margin.Gap == nil && t.Margin.Sub != nil {
 		p.Sub = subOf(*t.Margin.Sub + slMarginJoin + t.Margin.Main)
 	}

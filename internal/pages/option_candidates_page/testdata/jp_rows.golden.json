@@ -1,0 +1,2172 @@
+{
+ "group": {
+  "kind": "short_put",
+  "title": "Short put",
+  "day": "2026-11-19",
+  "stale": false,
+  "counts": {
+   "ok": 2,
+   "blocked": 4,
+   "unknown": 0
+  },
+  "main": {
+   "columns": [
+    {
+     "id": "rank",
+     "label": "Rank",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "company",
+     "label": "Company",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "expiry",
+     "label": "Expiry",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "dte",
+     "label": "DTE",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "strike",
+     "label": "Strike",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "bid",
+     "label": "Bid (EOD estimate)",
+     "align": "right",
+     "hint": "Closing bid, sold on the next trading day, not a traded price"
+    },
+    {
+     "id": "yield",
+     "label": "Annualised yield",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "excess",
+     "label": "Vs cash",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "break_even",
+     "label": "Break-even",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "cash_secured",
+     "label": "Cash to secure",
+     "align": "right",
+     "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料"
+    },
+    {
+     "id": "delta",
+     "label": "Delta",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "iv",
+     "label": "IV",
+     "align": "right",
+     "hint": null
+    },
+    {
+     "id": "itm",
+     "label": "ITM probability",
+     "align": "right",
+     "hint": "Model estimate of the chance the put ends in the money; not an assignment probability"
+    },
+    {
+     "id": "marks",
+     "label": "Marks",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "fit",
+     "label": "Account cash",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "next_earnings",
+     "label": "Next earnings",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "below_buy",
+     "label": "Below buy",
+     "align": "right",
+     "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19"
+    },
+    {
+     "id": "one_sigma",
+     "label": "One-sigma move",
+     "align": "right",
+     "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19"
+    },
+    {
+     "id": "bid_vs_forecast",
+     "label": "Bid vs forecast price",
+     "align": "right",
+     "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none"
+    },
+    {
+     "id": "skew",
+     "label": "Skew",
+     "align": "right",
+     "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19"
+    },
+    {
+     "id": "forecast_vol",
+     "label": "Forecast vol",
+     "align": "right",
+     "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge"
+    },
+    {
+     "id": "ivp",
+     "label": "IVP",
+     "align": "right",
+     "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge"
+    },
+    {
+     "id": "vol_edge",
+     "label": "Name IV vs forecast",
+     "align": "right",
+     "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge"
+    },
+    {
+     "id": "labels",
+     "label": "Labels",
+     "align": "right",
+     "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19"
+    }
+   ],
+   "rows": [
+    {
+     "id": "cand-short_put-0-0",
+     "cells": {
+      "below_buy": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "bid": {
+       "text": "¥35",
+       "value": 35,
+       "badges": [],
+       "tone": "none"
+      },
+      "bid_vs_forecast": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "break_even": {
+       "text": "¥2,865",
+       "value": 2865,
+       "badges": [],
+       "tone": "none"
+      },
+      "cash_secured": {
+       "text": "¥290,000 = ¥2,900 x 100",
+       "value": 290000,
+       "badges": [],
+       "tone": "none"
+      },
+      "company": {
+       "text": "7203",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "delta": {
+       "text": "−0.21",
+       "value": -0.21,
+       "badges": [],
+       "tone": "none"
+      },
+      "dte": {
+       "text": "29",
+       "value": 29,
+       "badges": [],
+       "tone": "none"
+      },
+      "excess": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "expiry": {
+       "text": "2026-12-18",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "fit": {
+       "text": "—",
+       "value": null,
+       "badges": [
+        "A Unknown"
+       ],
+       "tone": "none"
+      },
+      "forecast_vol": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "itm": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "iv": {
+       "text": "28.0%",
+       "value": 0.28,
+       "badges": [],
+       "tone": "none"
+      },
+      "ivp": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "labels": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "marks": {
+       "text": "—",
+       "value": null,
+       "badges": [
+        "no_jpy_rate 日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”",
+        "no_jpy_funds 没有日元账户，资金检查按通过处理，不代表日元资金够用；指定日元账户后才真正检查"
+       ],
+       "tone": "none"
+      },
+      "next_earnings": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "No earnings date known"
+      },
+      "one_sigma": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "rank": {
+       "text": "1",
+       "value": 1,
+       "badges": [],
+       "tone": "none"
+      },
+      "skew": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "strike": {
+       "text": "¥2,900",
+       "value": 2900,
+       "badges": [],
+       "tone": "none"
+      },
+      "vol_edge": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "yield": {
+       "text": "3.0%",
+       "value": 0.0301,
+       "badges": [],
+       "tone": "none"
+      }
+     },
+     "reasons": []
+    },
+    {
+     "id": "cand-short_put-1-1",
+     "cells": {
+      "below_buy": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "bid": {
+       "text": "¥250",
+       "value": 250,
+       "badges": [],
+       "tone": "none"
+      },
+      "bid_vs_forecast": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "break_even": {
+       "text": "¥17,650",
+       "value": 17650,
+       "badges": [],
+       "tone": "none"
+      },
+      "cash_secured": {
+       "text": "¥1,790,000 = ¥17,900 x 100",
+       "value": 1790000,
+       "badges": [],
+       "tone": "none"
+      },
+      "company": {
+       "text": "6954",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "delta": {
+       "text": "−0.21",
+       "value": -0.21,
+       "badges": [],
+       "tone": "none"
+      },
+      "dte": {
+       "text": "29",
+       "value": 29,
+       "badges": [],
+       "tone": "none"
+      },
+      "excess": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "expiry": {
+       "text": "2026-12-18",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "fit": {
+       "text": "—",
+       "value": null,
+       "badges": [
+        "A Unknown"
+       ],
+       "tone": "none"
+      },
+      "forecast_vol": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "itm": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "iv": {
+       "text": "28.0%",
+       "value": 0.28,
+       "badges": [],
+       "tone": "none"
+      },
+      "ivp": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "labels": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "marks": {
+       "text": "—",
+       "value": null,
+       "badges": [
+        "no_jpy_rate 日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”"
+       ],
+       "tone": "none"
+      },
+      "next_earnings": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "No earnings date known"
+      },
+      "one_sigma": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "rank": {
+       "text": "2",
+       "value": 2,
+       "badges": [],
+       "tone": "none"
+      },
+      "skew": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "strike": {
+       "text": "¥17,900",
+       "value": 17900,
+       "badges": [],
+       "tone": "none"
+      },
+      "vol_edge": {
+       "kind": "gap",
+       "reason": "no_data",
+       "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+      },
+      "yield": {
+       "text": "3.0%",
+       "value": 0.0301,
+       "badges": [],
+       "tone": "none"
+      }
+     },
+     "reasons": []
+    }
+   ]
+  },
+  "other": {
+   "columns": [
+    {
+     "id": "company",
+     "label": "Company",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "contract",
+     "label": "Contract",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "alias",
+     "label": "Account",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "status",
+     "label": "Status",
+     "align": "left",
+     "hint": null
+    },
+    {
+     "id": "reasons",
+     "label": "Reasons",
+     "align": "left",
+     "hint": null
+    }
+   ],
+   "rows": [
+    {
+     "id": "cand-short_put-2-0",
+     "cells": {
+      "alias": {
+       "text": "—",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "company": {
+       "text": "6758",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "contract": {
+       "text": "put 3000 2026-12-18",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "reasons": {
+       "text": "Gap between bid and ask is too wide;Too few contracts at the bid",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "status": {
+       "text": "blocked",
+       "value": null,
+       "badges": [
+        "blocked"
+       ],
+       "tone": "down"
+      }
+     },
+     "reasons": [
+      {
+       "gate": "quote",
+       "status": "block",
+       "code": "wide_spread",
+       "text": "Gap between bid and ask is too wide"
+      },
+      {
+       "gate": "quote",
+       "status": "block",
+       "code": "small_bid_size",
+       "text": "Too few contracts at the bid"
+      }
+     ]
+    },
+    {
+     "id": "cand-short_put-3-1",
+     "cells": {
+      "alias": {
+       "text": "—",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "company": {
+       "text": "6758",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "contract": {
+       "text": "put 3100 2026-12-18",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "reasons": {
+       "text": "No bid price",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "status": {
+       "text": "blocked",
+       "value": null,
+       "badges": [
+        "blocked"
+       ],
+       "tone": "down"
+      }
+     },
+     "reasons": [
+      {
+       "gate": "quote",
+       "status": "block",
+       "code": "no_bid",
+       "text": "No bid price"
+      }
+     ]
+    },
+    {
+     "id": "cand-short_put-4-2",
+     "cells": {
+      "alias": {
+       "text": "—",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "company": {
+       "text": "6758",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "contract": {
+       "text": "put 3200 2026-12-18",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "reasons": {
+       "text": "No quote for this contract",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "status": {
+       "text": "blocked",
+       "value": null,
+       "badges": [
+        "blocked"
+       ],
+       "tone": "down"
+      }
+     },
+     "reasons": [
+      {
+       "gate": "quote",
+       "status": "block",
+       "code": "no_quote",
+       "text": "No quote for this contract"
+      }
+     ]
+    },
+    {
+     "id": "cand-short_put-5-3",
+     "cells": {
+      "alias": {
+       "text": "—",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "company": {
+       "text": "6758",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "contract": {
+       "text": "put 3250 2026-12-18",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "reasons": {
+       "text": "Gap between bid and ask is too wide;Too few open contracts",
+       "value": null,
+       "badges": [],
+       "tone": "none"
+      },
+      "status": {
+       "text": "blocked",
+       "value": null,
+       "badges": [
+        "blocked"
+       ],
+       "tone": "down"
+      }
+     },
+     "reasons": [
+      {
+       "gate": "quote",
+       "status": "block",
+       "code": "wide_spread",
+       "text": "Gap between bid and ask is too wide"
+      },
+      {
+       "gate": "quote",
+       "status": "block",
+       "code": "low_open_interest",
+       "text": "Too few open contracts"
+      }
+     ]
+    }
+   ]
+  },
+  "gap": null,
+  "currency": "JPY",
+  "note": "日本：东证开盘行情，金额为日元，1 张合约 = 100 股（乘数以合约资料为准）",
+  "limit_counts": [
+   {
+    "limit": "wide_spread",
+    "count": 2,
+    "text": "价差超限，剔除 2 行"
+   },
+   {
+    "limit": "low_open_interest",
+    "count": 1,
+    "text": "未平仓量不足，剔除 1 行"
+   },
+   {
+    "limit": "small_bid_size",
+    "count": 1,
+    "text": "bid 数量太少，剔除 1 行"
+   },
+   {
+    "limit": "no_bid",
+    "count": 1,
+    "text": "没有 bid，剔除 1 行"
+   },
+   {
+    "limit": "no_quote",
+    "count": 1,
+    "text": "没有报价，剔除 1 行"
+   }
+  ]
+ },
+ "short_put_list_jpy": {
+  "run_day": "Run day 2026-11-19",
+  "counts": "Scanned 1 puts / Shown 1 rows, 1 underlyings",
+  "caveat": null,
+  "filters": [
+   {
+    "id": "expiry",
+    "label": "Expiry",
+    "value": "21-45 d",
+    "hint": "到期天数的范围取自本次扫描的行；窗口是任务 job.toml 里的 min_dte 和 max_dte，不是设置页的设置。"
+   },
+   {
+    "id": "strike",
+    "label": "Strike below spot",
+    "value": "5-15%",
+    "hint": "行权价低于现价的百分比范围，由 optionshortlist 的常量决定，不是设置。"
+   },
+   {
+    "id": "delta",
+    "label": "|Delta|",
+    "value": "0.15-0.30",
+    "hint": "put delta 的绝对值范围，由 optionshortlist 的常量决定，不跟随设置里的 put_delta_max。"
+   },
+   {
+    "id": "cap",
+    "label": "Max per underlying",
+    "value": "3",
+    "hint": "每个标的最多显示的行数，按存储的年化收益取最高的；这是已批准的设计稿的补充，被隐藏的行会计入未显示。"
+   },
+   {
+    "id": "bid",
+    "label": "Bid",
+    "value": "present",
+    "hint": "bid 存在且大于 0 才会显示。"
+   },
+   {
+    "id": "open_interest",
+    "label": "Open interest",
+    "value": "present",
+    "hint": "未平仓量存在且不低于最小值才会显示。"
+   }
+  ],
+  "dropped": null,
+  "dropped_items": [],
+  "columns": [
+   {
+    "id": "strike",
+    "label": "Strike",
+    "hint": "行权价：卖出的 put 的行权价。"
+   },
+   {
+    "id": "expiry",
+    "label": "Expiry",
+    "hint": "到期日，下面是剩余天数。"
+   },
+   {
+    "id": "otm",
+    "label": "OTM %",
+    "hint": "价外幅度：行权价低于现价的百分比，用存储的行权价和现价算出。"
+   },
+   {
+    "id": "delta",
+    "label": "Delta",
+    "hint": "|delta| 的绝对值，约等于被指派的粗略概率。"
+   },
+   {
+    "id": "premium",
+    "label": "Premium (bid)",
+    "hint": "权利金：bid，下面是每份合约的钱，来自档位判断。"
+   },
+   {
+    "id": "annualized",
+    "label": "Annualized",
+    "hint": "年化收益：存储的数字，bid 除以行权价乘以 365 除以到期天数。"
+   },
+   {
+    "id": "buy",
+    "label": "Buy price",
+    "hint": "买入价和它的来源；下面是保本点和它与买入价的差距，来自档位判断。"
+   },
+   {
+    "id": "liquidity",
+    "label": "Liquidity",
+    "hint": "流动性：报价价差大的行会带徽标。"
+   }
+  ],
+  "groups": [
+   {
+    "ticker": "7203",
+    "spot": "¥3,100",
+    "summary": "1 row, best 10.0%",
+    "rows": [
+     {
+      "key": "tier-short_put-0-0",
+      "strike": {
+       "main": "¥2,900",
+       "sub": null,
+       "gap": null
+      },
+      "expiry": {
+       "main": "2026-12-18",
+       "sub": "29d",
+       "gap": null
+      },
+      "otm": {
+       "main": "6.5%",
+       "sub": null,
+       "gap": null
+      },
+      "delta": {
+       "main": "0.19",
+       "sub": null,
+       "gap": null
+      },
+      "premium": {
+       "main": "¥35",
+       "sub": "¥42",
+       "gap": null
+      },
+      "annualized": {
+       "main": "3.0%",
+       "sub": null,
+       "gap": null
+      },
+      "buy": {
+       "main": "¥2,950",
+       "sub": "BE ¥85 vs ¥2,950, margin 6.0%",
+       "gap": null
+      },
+      "buy_source": {
+       "code": "hand",
+       "label": "Hand price",
+       "gloss": "你自己在 Plan 的价格线里手填的买入价。",
+       "tone": "info"
+      },
+      "buy_link": null,
+      "badges": []
+     }
+    ]
+   }
+  ],
+  "folded_title": "All 6 puts (tier view and stored tables)"
+ },
+ "short_put_tiers_jpy": {
+  "chain_day": "2026-11-19",
+  "companies": [
+   {
+    "key": "21",
+    "ticker": "7203",
+    "spot": "¥3,100",
+    "spot_day": "2026-11-19",
+    "buy_price": "¥2,950",
+    "buy_price_note": null,
+    "next_earnings": "unknown",
+    "counts": "0 fit, 6 check, 0 collapsed",
+    "valuation": null,
+    "buy_source": {
+     "code": "hand",
+     "label": "Hand price",
+     "gloss": "你自己在 Plan 的价格线里手填的买入价。",
+     "tone": "info"
+    }
+   }
+  ],
+  "common": [],
+  "kept": null,
+  "kept_note": null,
+  "legend": [
+   {
+    "tier": "fits",
+    "title": "✓ Fits (3)",
+    "text": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。|delta| 低于 0.15 时权利金薄，仍然满足条件。"
+   },
+   {
+    "tier": "check",
+    "title": "! Check (3)",
+    "text": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
+   },
+   {
+    "tier": "grey",
+    "title": "– Not judged (0)",
+    "text": "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。"
+   },
+   {
+    "tier": "cash",
+    "title": "Account cash",
+    "text": "现金：每一行单独对照一个账户的可用现金（已扣除已卖出的 put 占用的行权价），截至 2026-11-19；不在各行之间扣减，也不替你选账户。现金记录最多早 3 天。"
+   }
+  ],
+  "columns": [
+   {
+    "id": "arrow",
+    "label": "Details",
+    "hint": null
+   },
+   {
+    "id": "tier",
+    "label": "Tier",
+    "hint": "档位：满足条件、需要再看，或未评判。；数据日 2026-11-19"
+   },
+   {
+    "id": "contract",
+    "label": "Contract",
+    "hint": "合约：标的、行权价、到期日和剩余天数。；数据日 2026-11-19"
+   },
+   {
+    "id": "margin",
+    "label": "Margin of safety",
+    "hint": "安全边际：保本点（行权价减 bid）比你的买入价低多少，占买入价的百分比。；数据日 2026-11-19"
+   },
+   {
+    "id": "below_spot",
+    "label": "Below spot",
+    "hint": "距现价：保本点比现价低多少；moves* = (现价 − 保本点) / (现价 × 本合约 IV × sqrt(年数))，即几个预期波动。；数据日 2026-11-19"
+   },
+   {
+    "id": "premium",
+    "label": "Premium / yield",
+    "hint": "权利金：bid 乘以乘数得每份合约的钱；年化收益只按时间价值除以行权价计算。；数据日 2026-11-19"
+   },
+   {
+    "id": "badges",
+    "label": "Badges",
+    "hint": "徽标：需要再看一眼的地方；琥珀色的会让这一行落到 Check。；数据日 2026-11-19"
+   }
+  ],
+  "tiers": [
+   {
+    "id": "fits",
+    "word": "Fits",
+    "icon": "check",
+    "title": "3 fit your conditions",
+    "explain": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。",
+    "collapsed": false,
+    "rows": [
+     {
+      "id": "tier-short_put-3-3",
+      "company": "23",
+      "contract": {
+       "name": "6758",
+       "strike": "¥3,100",
+       "expiry": "2026-12-18",
+       "dte": "29d"
+      },
+      "margin": {
+       "main": "6.0%",
+       "sub": null,
+       "gap": null
+      },
+      "below_spot": {
+       "main": "12.4%",
+       "sub": "1.3 moves*",
+       "gap": null
+      },
+      "premium": {
+       "main": "¥42",
+       "sub": "5.8%/yr",
+       "gap": null
+      },
+      "badges": [],
+      "notes": [],
+      "fields": [
+       {
+        "id": "iv",
+        "label": "IV (this contract)",
+        "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-19",
+        "value": "28.0%",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "delta",
+        "label": "Delta (rough chance of assignment)",
+        "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-19",
+        "value": "−0.21",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "itm_probability",
+        "label": "ITM probability",
+        "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vs_cash",
+        "label": "Vs cash",
+        "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "account_cash",
+        "label": "Account cash",
+        "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-19",
+        "value": "fits: A",
+        "gap": null,
+        "badges": [
+         {
+          "code": "cash_A",
+          "label": "A: enough, ¥120,000 free after ¥0 committed ()",
+          "gloss": "各账户的现金情况：每一行单独对照，不在各行之间扣减。",
+          "tone": "none"
+         }
+        ]
+       },
+       {
+        "id": "bid_per_share",
+        "label": "Bid per share",
+        "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "unreadable",
+         "text": "Unreadable"
+        },
+        "badges": []
+       },
+       {
+        "id": "cash_secured",
+        "label": "Cash to secure",
+        "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料",
+        "value": "¥310,000 = ¥3,100 x 100",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "below_buy",
+        "label": "Below buy",
+        "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "one_sigma",
+        "label": "One-sigma move",
+        "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "bid_vs_forecast",
+        "label": "Bid vs forecast price",
+        "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "skew",
+        "label": "Skew",
+        "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "forecast_vol",
+        "label": "Forecast vol",
+        "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "ivp",
+        "label": "IVP",
+        "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vol_edge",
+        "label": "Name IV vs forecast",
+        "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "labels",
+        "label": "Labels",
+        "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       }
+      ],
+      "line": null
+     },
+     {
+      "id": "tier-short_put-4-4",
+      "company": "23",
+      "contract": {
+       "name": "6758",
+       "strike": "¥3,200",
+       "expiry": "2026-12-18",
+       "dte": "29d"
+      },
+      "margin": {
+       "main": "6.0%",
+       "sub": null,
+       "gap": null
+      },
+      "below_spot": {
+       "main": "12.4%",
+       "sub": "1.3 moves*",
+       "gap": null
+      },
+      "premium": {
+       "main": "¥42",
+       "sub": "5.8%/yr",
+       "gap": null
+      },
+      "badges": [],
+      "notes": [],
+      "fields": [
+       {
+        "id": "iv",
+        "label": "IV (this contract)",
+        "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-19",
+        "value": "28.0%",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "delta",
+        "label": "Delta (rough chance of assignment)",
+        "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-19",
+        "value": "−0.21",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "itm_probability",
+        "label": "ITM probability",
+        "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vs_cash",
+        "label": "Vs cash",
+        "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "account_cash",
+        "label": "Account cash",
+        "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-19",
+        "value": "fits: A",
+        "gap": null,
+        "badges": [
+         {
+          "code": "cash_A",
+          "label": "A: enough, ¥120,000 free after ¥0 committed ()",
+          "gloss": "各账户的现金情况：每一行单独对照，不在各行之间扣减。",
+          "tone": "none"
+         }
+        ]
+       },
+       {
+        "id": "bid_per_share",
+        "label": "Bid per share",
+        "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "unreadable",
+         "text": "Unreadable"
+        },
+        "badges": []
+       },
+       {
+        "id": "cash_secured",
+        "label": "Cash to secure",
+        "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料",
+        "value": "¥320,000 = ¥3,200 x 100",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "below_buy",
+        "label": "Below buy",
+        "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "one_sigma",
+        "label": "One-sigma move",
+        "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "bid_vs_forecast",
+        "label": "Bid vs forecast price",
+        "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "skew",
+        "label": "Skew",
+        "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "forecast_vol",
+        "label": "Forecast vol",
+        "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "ivp",
+        "label": "IVP",
+        "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vol_edge",
+        "label": "Name IV vs forecast",
+        "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "labels",
+        "label": "Labels",
+        "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       }
+      ],
+      "line": null
+     },
+     {
+      "id": "tier-short_put-5-5",
+      "company": "23",
+      "contract": {
+       "name": "6758",
+       "strike": "¥3,250",
+       "expiry": "2026-12-18",
+       "dte": "29d"
+      },
+      "margin": {
+       "main": "6.0%",
+       "sub": null,
+       "gap": null
+      },
+      "below_spot": {
+       "main": "12.4%",
+       "sub": "1.3 moves*",
+       "gap": null
+      },
+      "premium": {
+       "main": "¥42",
+       "sub": "5.8%/yr",
+       "gap": null
+      },
+      "badges": [],
+      "notes": [],
+      "fields": [
+       {
+        "id": "iv",
+        "label": "IV (this contract)",
+        "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-19",
+        "value": "28.0%",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "delta",
+        "label": "Delta (rough chance of assignment)",
+        "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-19",
+        "value": "−0.21",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "itm_probability",
+        "label": "ITM probability",
+        "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vs_cash",
+        "label": "Vs cash",
+        "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "account_cash",
+        "label": "Account cash",
+        "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-19",
+        "value": "fits: A",
+        "gap": null,
+        "badges": [
+         {
+          "code": "cash_A",
+          "label": "A: enough, ¥120,000 free after ¥0 committed ()",
+          "gloss": "各账户的现金情况：每一行单独对照，不在各行之间扣减。",
+          "tone": "none"
+         }
+        ]
+       },
+       {
+        "id": "bid_per_share",
+        "label": "Bid per share",
+        "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-19",
+        "value": "¥5",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "cash_secured",
+        "label": "Cash to secure",
+        "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料",
+        "value": "¥325,000 = ¥3,250 x 100",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "below_buy",
+        "label": "Below buy",
+        "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "one_sigma",
+        "label": "One-sigma move",
+        "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "bid_vs_forecast",
+        "label": "Bid vs forecast price",
+        "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "skew",
+        "label": "Skew",
+        "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "forecast_vol",
+        "label": "Forecast vol",
+        "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "ivp",
+        "label": "IVP",
+        "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vol_edge",
+        "label": "Name IV vs forecast",
+        "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "labels",
+        "label": "Labels",
+        "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       }
+      ],
+      "line": null
+     }
+    ]
+   },
+   {
+    "id": "check",
+    "word": "Check",
+    "icon": "alert",
+    "title": "3 to check",
+    "explain": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。",
+    "collapsed": false,
+    "rows": [
+     {
+      "id": "tier-short_put-0-0",
+      "company": "21",
+      "contract": {
+       "name": "7203",
+       "strike": "¥2,900",
+       "expiry": "2026-12-18",
+       "dte": "29d"
+      },
+      "margin": {
+       "main": "6.0%",
+       "sub": "BE ¥85 vs ¥2,950",
+       "gap": null
+      },
+      "below_spot": {
+       "main": "12.4%",
+       "sub": "1.3 moves*",
+       "gap": null
+      },
+      "premium": {
+       "main": "¥42",
+       "sub": "5.8%/yr",
+       "gap": null
+      },
+      "badges": [
+       {
+        "code": "no_jpy_funds",
+        "label": "No yen account",
+        "gloss": "没有日元账户，资金检查按通过处理，不代表日元资金够用；指定日元账户后才真正检查",
+        "tone": "warn"
+       }
+      ],
+      "notes": [],
+      "fields": [
+       {
+        "id": "iv",
+        "label": "IV (this contract)",
+        "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-19",
+        "value": "28.0%",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "delta",
+        "label": "Delta (rough chance of assignment)",
+        "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-19",
+        "value": "−0.21",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "itm_probability",
+        "label": "ITM probability",
+        "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vs_cash",
+        "label": "Vs cash",
+        "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "account_cash",
+        "label": "Account cash",
+        "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-19",
+        "value": "fits: A",
+        "gap": null,
+        "badges": [
+         {
+          "code": "cash_A",
+          "label": "A: enough, ¥120,000 free after ¥0 committed ()",
+          "gloss": "各账户的现金情况：每一行单独对照，不在各行之间扣减。",
+          "tone": "none"
+         }
+        ]
+       },
+       {
+        "id": "bid_per_share",
+        "label": "Bid per share",
+        "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-19",
+        "value": "¥35",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "cash_secured",
+        "label": "Cash to secure",
+        "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料",
+        "value": "¥290,000 = ¥2,900 x 100",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "below_buy",
+        "label": "Below buy",
+        "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "one_sigma",
+        "label": "One-sigma move",
+        "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "bid_vs_forecast",
+        "label": "Bid vs forecast price",
+        "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "skew",
+        "label": "Skew",
+        "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "forecast_vol",
+        "label": "Forecast vol",
+        "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "ivp",
+        "label": "IVP",
+        "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vol_edge",
+        "label": "Name IV vs forecast",
+        "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "labels",
+        "label": "Labels",
+        "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       }
+      ],
+      "line": null
+     },
+     {
+      "id": "tier-short_put-1-1",
+      "company": "22",
+      "contract": {
+       "name": "6954",
+       "strike": "¥17,900",
+       "expiry": "2026-12-18",
+       "dte": "29d"
+      },
+      "margin": {
+       "main": "6.0%",
+       "sub": "BE ¥85 vs ¥18,000",
+       "gap": null
+      },
+      "below_spot": {
+       "main": "12.4%",
+       "sub": "1.3 moves*",
+       "gap": null
+      },
+      "premium": {
+       "main": "¥42",
+       "sub": "5.8%/yr",
+       "gap": null
+      },
+      "badges": [
+       {
+        "code": "no_jpy_rate",
+        "label": "No yen cash rate",
+        "gloss": "日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”",
+        "tone": "warn"
+       }
+      ],
+      "notes": [],
+      "fields": [
+       {
+        "id": "iv",
+        "label": "IV (this contract)",
+        "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-19",
+        "value": "28.0%",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "delta",
+        "label": "Delta (rough chance of assignment)",
+        "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-19",
+        "value": "−0.21",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "itm_probability",
+        "label": "ITM probability",
+        "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vs_cash",
+        "label": "Vs cash",
+        "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "account_cash",
+        "label": "Account cash",
+        "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-19",
+        "value": "fits: A",
+        "gap": null,
+        "badges": [
+         {
+          "code": "cash_A",
+          "label": "A: enough, ¥120,000 free after ¥0 committed ()",
+          "gloss": "各账户的现金情况：每一行单独对照，不在各行之间扣减。",
+          "tone": "none"
+         }
+        ]
+       },
+       {
+        "id": "bid_per_share",
+        "label": "Bid per share",
+        "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-19",
+        "value": "¥250",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "cash_secured",
+        "label": "Cash to secure",
+        "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料",
+        "value": "¥1,790,000 = ¥17,900 x 100",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "below_buy",
+        "label": "Below buy",
+        "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "one_sigma",
+        "label": "One-sigma move",
+        "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "bid_vs_forecast",
+        "label": "Bid vs forecast price",
+        "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "skew",
+        "label": "Skew",
+        "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "forecast_vol",
+        "label": "Forecast vol",
+        "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "ivp",
+        "label": "IVP",
+        "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vol_edge",
+        "label": "Name IV vs forecast",
+        "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "labels",
+        "label": "Labels",
+        "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       }
+      ],
+      "line": null
+     },
+     {
+      "id": "tier-short_put-2-2",
+      "company": "23",
+      "contract": {
+       "name": "6758",
+       "strike": "¥3,000",
+       "expiry": "2026-12-18",
+       "dte": "29d"
+      },
+      "margin": {
+       "main": "6.0%",
+       "sub": null,
+       "gap": null
+      },
+      "below_spot": {
+       "main": "12.4%",
+       "sub": "1.3 moves*",
+       "gap": null
+      },
+      "premium": {
+       "main": "¥42",
+       "sub": "5.8%/yr",
+       "gap": null
+      },
+      "badges": [
+       {
+        "code": "no_jpy_rate",
+        "label": "No yen cash rate",
+        "gloss": "日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”",
+        "tone": "warn"
+       }
+      ],
+      "notes": [],
+      "fields": [
+       {
+        "id": "iv",
+        "label": "IV (this contract)",
+        "hint": "本合约自己的隐含波动率，不是公司的整体 IV；数据日 2026-11-19",
+        "value": "28.0%",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "delta",
+        "label": "Delta (rough chance of assignment)",
+        "hint": "|delta| 约等于被指派的粗略概率，只是粗略估计；数据日 2026-11-19",
+        "value": "−0.21",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "itm_probability",
+        "label": "ITM probability",
+        "hint": "模型估计的到期价内概率，不是被指派的概率；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vs_cash",
+        "label": "Vs cash",
+        "hint": "存入的年化收益与短期国债利率的差，试用口径；数据日 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "account_cash",
+        "label": "Account cash",
+        "hint": "每个账户的可用现金，已扣除已卖出的 put 占用的行权价；数据日 2026-11-19",
+        "value": "fits: A",
+        "gap": null,
+        "badges": [
+         {
+          "code": "cash_A",
+          "label": "A: enough, ¥120,000 free after ¥0 committed ()",
+          "gloss": "各账户的现金情况：每一行单独对照，不在各行之间扣减。",
+          "tone": "none"
+         }
+        ]
+       },
+       {
+        "id": "bid_per_share",
+        "label": "Bid per share",
+        "hint": "收盘 bid，下一个交易日卖出的估计价，不是成交价；数据日 2026-11-19",
+        "value": "¥12",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "cash_secured",
+        "label": "Cash to secure",
+        "hint": "全额行权价现金：行权价乘以乘数，等号后是所用的乘数；乘数取自存储的合约资料",
+        "value": "¥300,000 = ¥3,000 x 100",
+        "gap": null,
+        "badges": []
+       },
+       {
+        "id": "below_buy",
+        "label": "Below buy",
+        "hint": "The break-even is this far below your buy price, in dollars and as a share of it; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "one_sigma",
+        "label": "One-sigma move",
+        "hint": "one-sigma = a one standard deviation move by expiry, from the contract's IV; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "bid_vs_forecast",
+        "label": "Bid vs forecast price",
+        "hint": "Bid minus a model price from the forecast vol (a proxy, sign often wrong; European, no dividends). DGS3MO is the cash rate for every currency (a trial). Data days: chain 2026-11-19, rate none",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "skew",
+        "label": "Skew",
+        "hint": "skew = this contract's IV minus the IV of the at-the-money put, in percentage points; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "forecast_vol",
+        "label": "Forecast vol",
+        "hint": "the mean of the 20-, 60- and 120-session realised volatility; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "ivp",
+        "label": "IVP",
+        "hint": "IV percentile: today's IV is at or above this share of the last year's days; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "vol_edge",
+        "label": "Name IV vs forecast",
+        "hint": "the name's implied volatility minus the forecast, in percentage points; data day data day in the badge",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       },
+       {
+        "id": "labels",
+        "label": "Labels",
+        "hint": "Soft labels; they never change which row passes or where it is shown; data day 2026-11-19",
+        "value": null,
+        "gap": {
+         "kind": "gap",
+         "reason": "no_data",
+         "text": "日本合约不计算：该列用美元口径的利率和保证金规则，日元行不显示美元数字"
+        },
+        "badges": []
+       }
+      ],
+      "line": null
+     }
+    ]
+   }
+  ],
+  "stored_title": "原始表格",
+  "idle_note": null,
+  "buy_hint": null,
+  "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
+ }
+}

@@ -69,6 +69,22 @@ type bucket struct {
 	keys     []string
 }
 
+// newRowEnv is what a tier row needs from its group: the evidence columns, the cash days of the accounts and,
+// for a US group only, the figures (a yen row has no US figure: its cells are the gap "not computed").
+func newRowEnv(c Config, gr groupRead, res optiontierapi.Result, f tierFacts, ev evidenceSet, judged []store.Candidate) rowEnv {
+	env := rowEnv{
+		day: string(gr.day), common: res.Common, cols: evidenceCols(withoutBand(ev)), cur: gr.cur,
+		cashDay: map[string]string{},
+	}
+	if gr.cur == "" {
+		env.figs = putFigures(c.Figures, gr.rate, gr.day, judged)
+	}
+	for _, a := range f.in.Accounts {
+		env.cashDay[a.Alias] = string(a.CaptureDay)
+	}
+	return env
+}
+
 // buildTiers sorts the stored short-put rows into the tiers of Config.Tiers. It calls Judge once and
 // the evidence builder and Config.Figures once for the rows of the Fits and Check tiers, whatever their stored
 // status, and writes the texts; day is the day Build was called for, which a past earnings date is compared
@@ -80,6 +96,9 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 	f, err := tierInputOf(ctx, c, gr.day, gr.rows, at)
 	if err != nil {
 		return nil, err
+	}
+	for i := range f.in.Rows {
+		f.in.Rows[i].Currency = gr.cur
 	}
 	res, err := c.Tiers.Judge(f.in)
 	if err != nil {
@@ -103,17 +122,11 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 			judged = append(judged, rowOf[k])
 		}
 	}
-	ev, err := evidenceOf(ctx, inputsOf(c), gr.tickers, gr.day, gr.rate, judged)
+	ev, err := evidenceOf(ctx, inputsOf(c, gr.cur), gr.tickers, gr.day, gr.rate, judged)
 	if err != nil {
 		return nil, err
 	}
-	env := rowEnv{
-		day: string(gr.day), common: res.Common, cols: evidenceCols(withoutBand(ev)),
-		figs: putFigures(c.Figures, gr.rate, gr.day, judged), cashDay: map[string]string{},
-	}
-	for _, a := range f.in.Accounts {
-		env.cashDay[a.Alias] = string(a.CaptureDay)
-	}
+	env := newRowEnv(c, gr, res, f, ev, judged)
 	v := &tiersView{
 		ChainDay: string(gr.day), Common: commonOf(res.Common),
 		Kept: keptLine(res.Kept), StoredTitle: storedTitle, Columns: columnsOf(string(gr.day)), Tiers: make([]tierView, 0, len(buckets)),
@@ -139,7 +152,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 		}
 		v.Tiers = append(v.Tiers, t)
 	}
-	fillStrips(ctx, c, v, companiesOf(res, gr.rows, gr.day, day))
+	fillStrips(ctx, c, v, companiesOf(res, gr.rows, gr.day, day, gr.cur), gr.cur)
 	v.Legend = legendOf(res, f, n)
 	v.KeptNote = keptNoteOf(v.Kept)
 	return v, nil
@@ -206,7 +219,7 @@ func tierOf(b bucket, res optiontierapi.Result, f tierFacts) tierView {
 // companiesOf is the strip of the answer's companies: ticker, stored spot and its day, buy price or "not judged", its source
 // and the next earnings, from the first row of the company. SpotDay is the day of the stored rows; an
 // earnings date before day, the data day, is shown as unknown.
-func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day contracts.Day) []companyView {
+func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day contracts.Day, cur string) []companyView {
 	out := make([]companyView, 0, len(res.Companies))
 	for _, cc := range res.Companies {
 		i := slices.IndexFunc(rows, func(r store.Candidate) bool { return strconv.Itoa(r.UnderlyingID) == cc.Company })
@@ -218,7 +231,7 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 			Key: cc.Company, Ticker: r.Issuer, Spot: noSpotText, SpotDay: string(rowsDay), NextEarnings: earningsUnknown,
 			Counts: strconv.Itoa(cc.Fits) + countFit + strconv.Itoa(cc.Check) + countCheck + strconv.Itoa(cc.Grey) + countCollapsed,
 		}
-		if m, ok := moneyText(deref(r.Spot)); deref(r.Spot) != "" && ok {
+		if m, ok := moneyText(deref(r.Spot), cur); deref(r.Spot) != "" && ok {
 			v.Spot = m
 		}
 		// The price and its source come from the first row of the company that has a price; the source is
@@ -230,7 +243,7 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 			priced = rows[j]
 		}
 		v.BuySource = buySourceBadge(buySourceCode(priced))
-		if m, ok := moneyText(deref(priced.BuyPrice)); deref(priced.BuyPrice) != "" && ok {
+		if m, ok := moneyText(deref(priced.BuyPrice), cur); deref(priced.BuyPrice) != "" && ok {
 			v.BuyPrice = &m
 		} else {
 			note := notJudged
@@ -361,8 +374,8 @@ func sayNone(ts []tierView) {
 }
 
 // fillStrips writes the company strips, the idle line, the hints and the None explanations of v from all.
-func fillStrips(ctx context.Context, c Config, v *tiersView, all []companyView) {
-	fillValuation(ctx, c, all)
+func fillStrips(ctx context.Context, c Config, v *tiersView, all []companyView, cur string) {
+	fillValuation(ctx, c, all, cur)
 	v.Companies, v.IdleNote, v.BuyHint = splitIdle(all)
 	sayNone(v.Tiers)
 	spot := spotHintZh

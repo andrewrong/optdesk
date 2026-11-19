@@ -20,17 +20,18 @@ const (
 )
 
 type groupSpec struct {
-	kind string
-	main []colDef
+	kind     string
+	main     []colDef
+	currency string // "" for the US groups, "JPY" for the yen group
 }
 
 // groupSpecs are the groups in page order with the columns of the main table (Decision 5).
 var groupSpecs = []groupSpec{
-	{kindShortPut, []colDef{colRank, colCompany, colExpiry, colDTE, colStrike, colBid, colYield, colExcess, colBreakEven,
+	{kind: kindShortPut, main: []colDef{colRank, colCompany, colExpiry, colDTE, colStrike, colBid, colYield, colExcess, colBreakEven,
 		colDelta, colIV, colITM, colMarks, colFit, colEarnings}},
-	{kindCoveredCall, []colDef{colRank, colCompany, colAlias, colExpiry, colDTE, colStrike, colBid, colYield,
+	{kind: kindCoveredCall, main: []colDef{colRank, colCompany, colAlias, colExpiry, colDTE, colStrike, colBid, colYield,
 		colBreakEven, colDelta, colIV, colExtrinsic, colMarks, colEarnings, colExDate, colExAmount}},
-	{kindHeldCallGuard, []colDef{colCompany, colAlias, colExpiry, colStrike, colExtrinsic, colExDate, colExAmount,
+	{kind: kindHeldCallGuard, main: []colDef{colCompany, colAlias, colExpiry, colStrike, colExtrinsic, colExDate, colExAmount,
 		colStatus, colGuard}},
 }
 
@@ -60,21 +61,31 @@ type group struct {
 	Main   *table  `json:"main"`
 	Other  *table  `json:"other"`
 	Gap    *gap    `json:"gap"`
+	// The yen group only (candidates-jp.md Decisions 12, 22): absent from the US groups.
+	Currency    *string      `json:"currency,omitempty"`
+	Note        *string      `json:"note,omitempty"`
+	LimitCounts []limitCount `json:"limit_counts,omitempty"`
 }
 
-func gapGroup(kind string, g gap) group {
-	return group{Kind: kind, Title: groupTitles[kind], Gap: &g}
+func gapGroup(s groupSpec, g gap) group {
+	out := group{Kind: s.kind, Title: groupTitles[s.kind], Gap: &g}
+	if s.currency != "" {
+		cur, note := s.currency, jpGroupNoteZh
+		out.Currency, out.Note = &cur, &note
+	}
+	return out
 }
 
-// readKind reads the rows of kind of the build day and, when there are none, of each earlier day
-// up to lookbackDays back; it returns the first day that has rows. A store error is returned.
-func readKind(ctx context.Context, r store.CandidateReader, kind string, day contracts.Day) (contracts.Day, []store.Candidate, error) {
+// readKind reads the rows of kind and currency of the build day and, when there are none, of each earlier day
+// up to lookbackDays back; it returns the first day that has rows. An empty currency reads the legacy
+// reader (the US rows), JPY reads the per-currency reader. A store error is returned.
+func readKind(ctx context.Context, c Config, kind, currency string, day contracts.Day) (contracts.Day, []store.Candidate, error) {
 	for i := 0; i <= lookbackDays; i++ {
 		d, err := daysBack(day, i)
 		if err != nil {
 			return "", nil, fmt.Errorf("option_candidates_page: bad day %q: %w", day, err)
 		}
-		rows, err := r.Candidates(ctx, d, kind)
+		rows, err := readDay(ctx, c, d, kind, currency)
 		if err != nil {
 			return "", nil, fmt.Errorf("option_candidates_page: read %s: %w", kind, err)
 		}
@@ -85,6 +96,18 @@ func readKind(ctx context.Context, r store.CandidateReader, kind string, day con
 	return "", nil, nil
 }
 
+func readDay(ctx context.Context, c Config, day contracts.Day, kind, currency string) ([]store.Candidate, error) {
+	if currency == "" {
+		return c.Candidates.Candidates(ctx, day, kind)
+	}
+	rows, err := c.CandCur.CandidatesIn(ctx, day, kind, currency)
+	out := make([]store.Candidate, len(rows))
+	for i, r := range rows {
+		out[i] = r.Candidate
+	}
+	return out, err
+}
+
 // buildGroup splits the rows of one group in their stored order: ok rows to the main table, the
 // others to the second table with their reasons. A group day before the build day is stale.
 func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.Candidate, figs optionfigapi.OptionFigures,
@@ -92,6 +115,11 @@ func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.C
 	g := group{Kind: spec.kind, Title: groupTitles[spec.kind], Stale: groupDay < buildDay}
 	d := string(groupDay)
 	g.Day = &d
+	if spec.currency != "" {
+		cur, note := spec.currency, jpGroupNoteZh
+		g.Currency, g.Note = &cur, &note
+		g.LimitCounts = limitCountsOf(rows)
+	}
 	var main, other []store.Candidate
 	for _, c := range rows {
 		switch c.Status {
@@ -119,15 +147,21 @@ func buildGroup(spec groupSpec, groupDay, buildDay contracts.Day, rows []store.C
 // the row's position. The static columns are returned as they are.
 func bindFigures(spec groupSpec, groupDay contracts.Day, main []store.Candidate, figs optionfigapi.OptionFigures, rate rateRead, ev evidenceSet) []colDef {
 	var res []optionfigapi.PutFigures
-	if spec.kind == kindShortPut {
+	if spec.kind == kindShortPut && spec.currency == "" {
 		res = putFigures(figs, rate, groupDay, main)
 	}
 	defs := make([]colDef, len(spec.main), len(spec.main)+8)
 	copy(defs, spec.main)
+	if spec.currency == currencyJPY {
+		defs = yenColumns(defs)
+	}
 	if spec.kind == kindShortPut {
 		defs = append(defs, evidenceCols(ev)...)
 	}
 	for i, d := range defs {
+		if spec.currency != "" {
+			break // the yen figures are the gap "not computed" of yenColumns
+		}
 		switch d.ID {
 		case itmID:
 			defs[i].cellAt = figureCell(res, itmFigure)

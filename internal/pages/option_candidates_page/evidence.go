@@ -15,10 +15,11 @@ import (
 type evState int
 
 const (
-	evOK         evState = iota
-	evNoReader           // nil Evaluator
-	evNoSpot             // no stored spot
-	evUnreadable         // Evaluate answered ErrBadInput
+	evOK          evState = iota
+	evNoReader            // nil Evaluator
+	evNoSpot              // no stored spot
+	evUnreadable          // Evaluate answered ErrBadInput
+	evNotComputed         // a yen row: the evidence rules are USD only
 )
 
 // rowEvidence is the evidence of one short-put row, as the Evaluator answered it with the readings
@@ -45,10 +46,11 @@ type evidenceInputs struct {
 	atm      ATMFunc
 	readings store.ReadingViewReader
 	names    store.InstrumentNameReader
+	currency string // the currency of the rows; JPY rows are not evaluated
 }
 
-func inputsOf(c Config) evidenceInputs {
-	return evidenceInputs{eval: c.Evidence, atm: c.ATMFor, readings: c.Readings, names: c.Names}
+func inputsOf(c Config, currency string) evidenceInputs {
+	return evidenceInputs{eval: c.Evidence, atm: c.ATMFor, readings: c.Readings, names: c.Names, currency: currency}
 }
 
 // evidenceOf evaluates the given short-put rows, whatever their stored status, once per row, in row order. Any reader error
@@ -64,6 +66,8 @@ func evidenceOf(ctx context.Context, in evidenceInputs, tickers map[int]string, 
 	for _, c := range rows {
 		r := rowEvidence{}
 		switch spot := deref(c.Spot); {
+		case in.currency == currencyJPY:
+			r.state = evNotComputed
 		case spot == "":
 			r.state = evNoSpot
 		case in.eval == nil:

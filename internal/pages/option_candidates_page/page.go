@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
 )
@@ -44,6 +45,8 @@ type Config struct {
 	ValueLines valuelinesapi.Calculator
 	// Buy resolves the buy price of a company from its zones; nil gives no valuation block on the strips.
 	Buy buypriceapi.Resolver
+	// CandCur reads the yen candidate rows; nil gives no yen group and the page without one.
+	CandCur candidatecur.Reader
 	// Shortlist selects the short-put shortlist; nil gives no short_put_list.
 	Shortlist optionshortlistapi.Shortlister
 }
