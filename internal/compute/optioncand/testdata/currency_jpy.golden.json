@@ -1,0 +1,246 @@
+{
+  "jpy_account_fits": [
+    {
+      "Kind": "short_put",
+      "Underlying": "XYZ",
+      "InstrumentID": "P100",
+      "Alias": "",
+      "Expiry": "2026-12-09",
+      "DTE": 30,
+      "Right": "P",
+      "Strike": "100",
+      "Multiplier": "100",
+      "Bid": "2.00",
+      "Ask": "2.05",
+      "Spot": "105",
+      "BuyPrice": "98",
+      "SalePrice": "",
+      "BreakEven": "98",
+      "AnnualizedYield": "0.243333",
+      "Delta": "",
+      "IV": "",
+      "Extrinsic": "",
+      "Status": "ok",
+      "Gates": [
+        {
+          "Gate": "buy_price",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "quote",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "events",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "funding",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "cash_rate",
+          "Status": "pass",
+          "Reason": ""
+        }
+      ],
+      "Marks": [
+        "earnings_unconfirmed",
+        "no_jpy_rate"
+      ],
+      "Fits": {
+        "A": "fit"
+      },
+      "GuardVerdict": "",
+      "Rank": 1,
+      "RankInUnderlying": 1
+    }
+  ],
+  "jpy_account_short": [
+    {
+      "Kind": "short_put",
+      "Underlying": "XYZ",
+      "InstrumentID": "P100",
+      "Alias": "",
+      "Expiry": "2026-12-09",
+      "DTE": 30,
+      "Right": "P",
+      "Strike": "100",
+      "Multiplier": "100",
+      "Bid": "2.00",
+      "Ask": "2.05",
+      "Spot": "105",
+      "BuyPrice": "98",
+      "SalePrice": "",
+      "BreakEven": "98",
+      "AnnualizedYield": "0.243333",
+      "Delta": "",
+      "IV": "",
+      "Extrinsic": "",
+      "Status": "blocked",
+      "Gates": [
+        {
+          "Gate": "buy_price",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "quote",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "events",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "funding",
+          "Status": "block",
+          "Reason": "no_fit"
+        },
+        {
+          "Gate": "cash_rate",
+          "Status": "pass",
+          "Reason": ""
+        }
+      ],
+      "Marks": [
+        "earnings_unconfirmed",
+        "no_jpy_rate"
+      ],
+      "Fits": {
+        "A": "no_fit"
+      },
+      "GuardVerdict": "",
+      "Rank": 0,
+      "RankInUnderlying": 0
+    }
+  ],
+  "no_account": [
+    {
+      "Kind": "short_put",
+      "Underlying": "XYZ",
+      "InstrumentID": "P100",
+      "Alias": "",
+      "Expiry": "2026-12-09",
+      "DTE": 30,
+      "Right": "P",
+      "Strike": "100",
+      "Multiplier": "100",
+      "Bid": "2.00",
+      "Ask": "2.05",
+      "Spot": "105",
+      "BuyPrice": "98",
+      "SalePrice": "",
+      "BreakEven": "98",
+      "AnnualizedYield": "0.243333",
+      "Delta": "",
+      "IV": "",
+      "Extrinsic": "",
+      "Status": "ok",
+      "Gates": [
+        {
+          "Gate": "buy_price",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "quote",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "events",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "funding",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "cash_rate",
+          "Status": "pass",
+          "Reason": ""
+        }
+      ],
+      "Marks": [
+        "earnings_unconfirmed",
+        "no_account",
+        "no_jpy_rate"
+      ],
+      "Fits": null,
+      "GuardVerdict": "",
+      "Rank": 1,
+      "RankInUnderlying": 1
+    }
+  ],
+  "usd_account_only": [
+    {
+      "Kind": "short_put",
+      "Underlying": "XYZ",
+      "InstrumentID": "P100",
+      "Alias": "",
+      "Expiry": "2026-12-09",
+      "DTE": 30,
+      "Right": "P",
+      "Strike": "100",
+      "Multiplier": "100",
+      "Bid": "2.00",
+      "Ask": "2.05",
+      "Spot": "105",
+      "BuyPrice": "98",
+      "SalePrice": "",
+      "BreakEven": "98",
+      "AnnualizedYield": "0.243333",
+      "Delta": "",
+      "IV": "",
+      "Extrinsic": "",
+      "Status": "ok",
+      "Gates": [
+        {
+          "Gate": "buy_price",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "quote",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "events",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "funding",
+          "Status": "pass",
+          "Reason": ""
+        },
+        {
+          "Gate": "cash_rate",
+          "Status": "pass",
+          "Reason": ""
+        }
+      ],
+      "Marks": [
+        "earnings_unconfirmed",
+        "no_jpy_funds",
+        "no_jpy_rate"
+      ],
+      "Fits": {
+        "B": "unknown"
+      },
+      "GuardVerdict": "",
+      "Rank": 1,
+      "RankInUnderlying": 1
+    }
+  ]
+}
