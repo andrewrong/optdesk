@@ -3,6 +3,7 @@ package option_candidates_page
 import (
 	"strconv"
 
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionshortlistapi"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -28,13 +29,14 @@ type shortGroup struct {
 	Rows    []shortRow `json:"rows"`
 }
 
-// buySourceOf is the code of the source of the row's buy price, "" when no source gives one. Today the only
-// source is the price the owner set by hand; a later design adds codes here and in buySourceTexts.
+// buySourceOf is the code of the source of the row's buy price, "" when no source gives one. The code is read
+// by buySourceCode from the stored marks (buy-price-source.md Decision 7).
 func buySourceOf(c store.Candidate) string {
-	if deref(c.BuyPrice) != "" {
-		return buySourceHand
+	code := buySourceCode(c)
+	if code == buypriceapi.SourceNone {
+		return ""
 	}
-	return ""
+	return code
 }
 
 // shortRowOf writes one placed row from its stored row and, when the tier view has it, its tier row.
@@ -121,6 +123,5 @@ func buyOf(c store.Candidate, t *tierRow) (pairView, *badgeView, *string) {
 	if p.Gap == nil && t != nil && t.Margin.Gap == nil && t.Margin.Sub != nil {
 		p.Sub = subOf(*t.Margin.Sub + slMarginJoin + t.Margin.Main)
 	}
-	txt := buySourceTexts[code]
-	return p, &badgeView{Code: code, Label: txt.label, Gloss: txt.gloss, Tone: badgeToneInfo}, nil
+	return p, buySourceBadge(code), nil
 }

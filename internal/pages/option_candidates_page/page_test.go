@@ -171,7 +171,7 @@ func TestConfigValuationFieldsNilBuild(t *testing.T) {
 	c := option_candidates_page.Config{
 		RunID: "r", BuildID: "b", Scope: "s",
 		Zone: time.UTC, Candidates: putRows{}, Tiers: oneFit{},
-		Valuation: nil, ValueLines: nil,
+		Valuation: nil, Buy: nil,
 	}
 	at := time.Date(2026, 11, 9, 22, 0, 0, 0, time.UTC)
 	out, err := option_candidates_page.Build(context.Background(), c, nil, contracts.Day("2026-11-09"), at)

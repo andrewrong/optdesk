@@ -28,7 +28,7 @@ const (
 	legendCashTier   = "cash"
 	legendGreyTier   = "grey"
 
-	notSet             = "not set"
+	notJudged          = "not judged"
 	earningsUnknown    = "unknown"
 	noSpotText         = "no spot"
 	countFit           = " fit, "

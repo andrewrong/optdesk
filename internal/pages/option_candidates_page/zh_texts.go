@@ -3,7 +3,7 @@ package option_candidates_page
 // Chinese texts of the tier view (candidates-tiers.md Decision 11): string constants only, so the
 // English guard of cmd/ot lets this file hold them. tierstrings.go joins them with the English labels.
 const (
-	explainFitsHead                      = "满足你的全部条件：已设买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 "
+	explainFitsHead                      = "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 "
 	explainFitsMid                       = "（"
 	explainFitsClose                     = "）；"
 	explainFitsTail                      = "。这不是买入建议。"
@@ -11,7 +11,7 @@ const (
 	deltaSourceFixed                     = "默认值"
 	cashClauseBuilt                      = "现金够付全额行权价（已扣除已卖出的 put 占用的行权价）"
 	cashClauseMark                       = "现金只做标记，现有数据算不出全额行权价覆盖"
-	explainCheck                         = "已设买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
+	explainCheck                         = "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
 	explainGrey                          = "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。"
 	thinSentenceHead                     = "|delta| 低于 "
 	thinSentenceTail                     = " 时权利金薄，仍然满足条件。"
@@ -47,7 +47,7 @@ const (
 	hintCash                             = "每个账户的可用现金，已扣除已卖出的 put 占用的行权价"
 	hintBid                              = "收盘 bid，下一个交易日卖出的估计价，不是成交价"
 	zhGreyLabel_no_buy_price             = "没有买入价"
-	zhGreyGloss_no_buy_price             = "没有设买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。"
+	zhGreyGloss_no_buy_price             = "没有估值买入区间，也没有手填买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。"
 	zhGreyLabel_no_spot                  = "没有现价"
 	zhGreyGloss_no_spot                  = "没有现价，无法判断是否价外。"
 	zhGreyLabel_in_the_money             = "价内"
@@ -85,14 +85,14 @@ const (
 
 // Chinese texts of the valuation line on the company strip (candidates-valuation-line.md Decision 6).
 const (
-	valueHintZh             = "估值买入线 B_hi 只是显示，不参与任何判断；闸门用的是你手填的买入价。B_hi 用今天的 R 版本和安全边际表，加上这次复核的 V 和 P 算出，所以旁边的复核日是 V 和 P 的日期，不是表的日期。"
-	gateHintZh              = "闸门用的买入价，是你手填的价格，档位只看它；它与估值买入线互不影响。"
+	valueHintZh             = "估值买入线 B_hi：有估值时，它就是闸门使用的买入价。B_hi 用今天的 R 版本和安全边际表，加上这次复核的 V 和 P 算出，所以旁边的复核日是 V 和 P 的日期，不是表的日期。"
+	gateHintZh              = "闸门用的买入价，取自最近一次运行：有估值买入区间就用它，没有再用手填价格；这里只显示到分，闸门用的是精确值。"
 	valueReasonNoProfileZh  = "没有找到这家公司的估值档案，不显示估值买入线。"
 	valueReasonAmbiguousZh  = "有两家公司用同一个代码，无法确定估值属于哪一家，不显示估值买入线。"
 	valueReasonRemovedZh    = "这家公司已移出估值池，不显示估值买入线。"
 	valueReasonNoReviewZh   = "这家公司还没有生效的估值复核，不显示估值买入线。"
 	valueReasonNoTablesZh   = "还没有存 R 版本或安全边际表，不显示估值买入线。"
-	valueReasonCurrencyZh   = "估值不是美元，页面不换算币种，不显示估值买入线。"
+	valueReasonCurrencyZh   = "估值币种与合约币种不同，页面不换算币种，不显示估值买入线。"
 	valueReasonBadInputZh   = "这次复核的 V 或 P 超出范围，算不出估值买入线。"
 	valueReasonReadFailedZh = "估值数据读不出来，不显示估值买入线；其他内容不受影响。"
 )
@@ -102,12 +102,12 @@ const (
 	idleNoteTail     = " 家公司没有买入价和估值档案："
 	idleNoteSep      = "、"
 	idleNoteEllipsis = "…"
-	buyHintZh        = "有公司没有设买入价：在 Companies > Watch list 的 Buy 列填写，填了才会被评判。"
+	buyHintZh        = "有公司没有买入价：导入估值，或在 Companies > Watch list 的 Buy 列手填一个价格，有了买入价才会被评判。"
 	spotHintZh       = "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
 	noneHead         = "无："
 	noneFitsAllGrey  = "所有行都未评判，原因见下方折叠的分组。"
 	noneFitsHasCheck = "满足条件的行都带有需要再看一眼的徽标，见 Check。"
-	noneFits         = "没有一行同时满足已设买入价、保本点不高于买入价、价外和 delta 上限。"
+	noneFits         = "没有一行同时满足有买入价、保本点不高于买入价、价外和 delta 上限。"
 	noneCheck        = "没有行满足三项条件却带有需要再看一眼的徽标。"
 )
 
@@ -140,5 +140,7 @@ const (
 	zhDropOverCap        = "同一标的超过每个标的的行数上限，年化收益较低的被隐藏。"
 	zhDropUnknown        = "这个原因没有收录说明。"
 	zhBuySourceHand      = "你自己在 Plan 的价格线里手填的买入价。"
+	zhBuySourceValuation = "取自估值的买入区间，由最近一次运行存下。"
+	zhBuySourceNone      = "没有估值买入区间，也没有手填价格，所以没有评判。"
 	zhWideSpread         = "买卖价差大：bid 偏低，实际可挂在中间价附近成交，别按 bid 成交。"
 )

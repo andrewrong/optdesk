@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionshortlistapi"
@@ -39,8 +40,10 @@ type Config struct {
 	RuleParams            settingsapi.RuleParams      // resolves the stored parameters; nil gives the default 0.3
 	// Valuation reads the current valuation of each company; nil gives no valuation block on the strips.
 	Valuation valuation.Reader
-	// ValueLines computes B_hi from a review; nil gives no valuation block on the strips.
+	// ValueLines is no longer read: B_hi comes from Buy (buy-price-source.md Decision 9).
 	ValueLines valuelinesapi.Calculator
+	// Buy resolves the buy price of a company from its zones; nil gives no valuation block on the strips.
+	Buy buypriceapi.Resolver
 	// Shortlist selects the short-put shortlist; nil gives no short_put_list.
 	Shortlist optionshortlistapi.Shortlister
 }

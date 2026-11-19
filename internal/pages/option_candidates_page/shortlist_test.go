@@ -148,7 +148,7 @@ func TestBuyLinkOnlyWithoutBuyPrice(t *testing.T) {
 
 func TestBuySourceSlotIsHand(t *testing.T) {
 	t.Parallel()
-	r := okList(t).Groups[1].Rows[0]
+	r := okList(t).Groups[1].Rows[1] // the row with no source mark: an old row with a price is hand
 	if r.BuySource == nil || r.BuySource.Code != "hand" || r.BuySource.Label == "" || r.BuySource.Gloss == "" || r.BuyLink != nil {
 		t.Errorf("row = %+v", r)
 	}

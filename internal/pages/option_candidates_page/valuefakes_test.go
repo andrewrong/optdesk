@@ -2,9 +2,10 @@ package option_candidates_page
 
 import (
 	"context"
+	"strings"
 	"sync"
 
-	"github.com/andrewrong/optdesk/internal/compute/valuelinesapi"
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
 )
@@ -25,23 +26,44 @@ func (f *fakeValuation) Current(context.Context) (valuation.State, error) {
 	return f.st, f.err
 }
 
-// fakeLines answers a BuyHigh the page cannot produce, or err, and records the inputs.
-type fakeLines struct {
-	valuelinesapi.Calculator
-	mu  sync.Mutex
-	in  []valuelinesapi.Input
-	buy string
-	err error
+// fakeBuy is a resolver that answers one price for a zone it can use and the reasons of the zone rule, in the
+// order of Decision 2, otherwise; it records every input. reason, when set, is answered for every company.
+type fakeBuy struct {
+	mu     sync.Mutex
+	in     []buypriceapi.Input
+	price  string
+	reason string
 }
 
-func (f *fakeLines) Lines(in valuelinesapi.Input) (valuelinesapi.Lines, error) {
+func (f *fakeBuy) Resolve(in buypriceapi.Input) buypriceapi.Result {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.in = append(f.in, in)
-	if f.err != nil {
-		return valuelinesapi.Lines{}, f.err
+	none := func(r string) buypriceapi.Result {
+		return buypriceapi.Result{Source: buypriceapi.SourceNone, ZoneReason: r}
 	}
-	return valuelinesapi.Lines{BuyHigh: f.buy}, nil
+	var z *buypriceapi.Zone
+	for i := range in.Zones {
+		if in.Symbol != "" && strings.EqualFold(in.Zones[i].Symbol, in.Symbol) {
+			z = &in.Zones[i]
+			break
+		}
+	}
+	switch {
+	case z == nil:
+		return none(buypriceapi.ReasonNoProfile)
+	case z.Pool == "removed":
+		return none(buypriceapi.ReasonRemoved)
+	case !z.Reviewed:
+		return none(buypriceapi.ReasonNoReview)
+	case !in.Tables.Present:
+		return none(buypriceapi.ReasonNoTables)
+	case z.Currency != in.Currency:
+		return none(buypriceapi.ReasonCurrency)
+	case f.reason != "":
+		return none(f.reason)
+	}
+	return buypriceapi.Result{Price: f.price, Source: buypriceapi.SourceValuation, ReviewDay: z.ReviewDay}
 }
 
 func valueEntry(symbol string, review *valuation.Review) valuation.Entry {
