@@ -309,6 +309,7 @@ export interface Company {
   next_earnings: Text1;
   counts: Text1;
   valuation?: ValueLine | null;
+  buy_source?: Badge | null;
 }
 /**
  * The valuation line and the gate buy price of a strip, from docs/design/candidates-valuation-line.md#Interface.

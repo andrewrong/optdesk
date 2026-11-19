@@ -1,0 +1,17 @@
+// zh_texts.go holds the Chinese hint texts of the repeated-failures table (docs/design/repeated-failures.md,
+// Decision 8): string constants only, the one door of the English guard of cmd/ot.
+package data_health_page
+
+const (
+	zhFailuresNote = "本表列出最近 14 个交易日中，至少 3 个不同交易日失败或返回了数据却一条也没保留的键，且该键最新一次完成的运行仍然是失败或空，不是成功：已经恢复的键不会出现。按天数、运行次数、最近日期从多到少排序，每个数据集最多列出 50 个键。"
+	zhFailuresNone = "没有键符合规则。被中断或被截断的运行不在这里统计，它们在上面的网格里显示为 expired。"
+	zhHiddenPrefix = "另有 "
+	zhHiddenSuffix = " 个符合规则的键没有列出（每个数据集最多列出 50 个）。"
+	zhGapText      = "无法读取重复失败的键，所以失败表是空的，不代表没有失败；覆盖网格不受影响。"
+
+	zhClassRetryable  = "retryable：可重试的错误，例如源站暂时不可用或超时。同一个键在多个交易日反复出现，说明重试没有解决问题。"
+	zhClassPermanent  = "permanent：永久性错误，重试不会改变结果，例如请求被源站拒绝或键本身无效。"
+	zhClassUnknownCal = "unknown_calendar：任务使用的交易日历未知，运行无法确定交易日。"
+	zhClassEmpty      = "empty：源站返回了数据行，但一条也没有保留。对没有新数据的源站，或自己检查结果的任务，这是正常现象；只有当该键同时在网格里是缺口时才值得查看。"
+	zhClassOther      = "其他错误类别：运行完成时带有这个错误代码，详细原因只在日志里。"
+)
