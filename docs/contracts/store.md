@@ -123,6 +123,18 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 - Grants (recorded here, made by migration `0012` in another entry): both views belong to `ot_owner`, which can read `ops`; `SELECT` on both views to `ot_ro_pages` and `ot_runner`. `ot_ro_pages` reads views of `rd` only and has no grant on an `ops` table, as schema v3 says.
 - Constructors: `OpenFenceFunc`, `OpenSchedulerLedgerFunc`, `OpenGapReaderFunc` (the last opens with the line `DSNEnvPages`).
 
+## Job runs
+
+`internal/store/jobrun` declares `JobRunLedger` and `JobRunReader`; `internal/store/jobrunpg` (`Open(ctx, dsn)`, one `Store` that is both) implements them over migration `0063_job_run.sql` (`docs/design/scheduler-per-job.md#issues`, entry 5). The deploy of that migration waits for the window's `migrate`, which runs before the wiring issue merges.
+
+- Which role reaches which interface: `ot_runner` reaches the ledger (`JobRunLedger`: `Start`, `Progress`, `Close`, `CloseOpen`, `MarkSlowNotified`); `ot_ro_pages` reaches the reader (`JobRunReader`: `Running`, `Usuals`) through the two views only. `ot_runner` may read through the views too.
+- Table `ops.job_run` (owner `ot_owner`), one row per run of a whole job: `id`, `job_id`, `source`, `started_at`, `heartbeat_at`, `finished_at`, `slow_notified_at`, `keys_done`, `keys_total`, `step`, `outcome` (empty while open, then `ok`, `failed` or `cut`). There is no unique index on `job_id`: a second `Start` for the same job id succeeds.
+- A row left open (a crash, a deploy kill) is closed `cut` by `CloseOpen` at start-up. The row is a record and a guard for nothing: the in-memory lock per job id is the guard, and a `cut` row counts toward nothing.
+- View `rd.job_run_r1`: the open rows. View `rd.job_usual_r1`: per job id the median (`median_seconds`) of the duration of the last 20 `ok` rows, newest `finished_at` first, with the sample count; `cut` and `failed` rows are no sample. Both owned by `ot_owner`, `SELECT` to `ot_ro_pages` and `ot_runner`.
+- Grants on the table: `ot_runner` only, `INSERT` and `UPDATE`, and `SELECT` (the `WHERE` of its updates; `0003` granted `SELECT` only on the tables that existed then). `ot_ro_pages` has no grant on the table and no `USAGE` on schema `ops`. No role has `DELETE`.
+- `Close`, `Progress` and `MarkSlowNotified` of an unknown id return an error.
+- Tests (build tag `pg`, `internal/store/jobrunpg/store_pg_test.go`): `TestCloseOpenClosesCut`, `TestStartTwiceForOneJobSucceeds`, `TestUsualMedianIgnoresCutAndFailed`, `TestRolesGrants`.
+
 ## Fundamental facts
 
 Declared in `internal/store/api.go`: `FactWriter` (`InsertFacts`), `FactReader` (`FactsFiledBy`), `FactStore` (both and `Close`), `OpenFactStoreFunc` and `DSNEnvFundamental` (`OT_PG_DSN_FUNDAMENTAL`). `internal/store/fundamental.Open` is the implementation. Design: `docs/design/valuation.md#Decisions` (6).
