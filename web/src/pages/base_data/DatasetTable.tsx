@@ -15,6 +15,7 @@ import { Fragment, useMemo } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/base_data_page'
 import { CheckList } from './CheckList'
+import { CrossCheck } from './CrossCheck'
 import { LevelBadge, type Level } from './LevelBadge'
 
 type Group = Payload['groups'][number]
@@ -64,6 +65,24 @@ const columns: ColumnDef<Dataset>[] = [
   { id: 'date', header: 'Date', enableSorting: false, cell: ({ row }) => row.original.newest_day ?? DASH },
   { id: 'age', header: 'Age', enableSorting: false, cell: ({ row }) => row.original.age_text || DASH },
   { id: 'failed', header: 'Failed checks', enableSorting: false, cell: ({ row }) => row.original.failed_summary || DASH },
+  {
+    id: 'cross_check',
+    header: 'Cross-check',
+    enableSorting: false,
+    cell: ({ row }) => {
+      const cc = row.original.cross_check
+      return (
+        <span data-cross-check-cell className="flex items-center gap-2">
+          {cc ? (
+            <>
+              <LevelBadge level={cc.level} />
+              <span className="font-mono text-xs">{cc.pair_id}</span>
+            </>
+          ) : null}
+        </span>
+      )
+    },
+  },
 ]
 
 // Below md these columns show inside the dataset cell instead.
@@ -139,6 +158,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
               <TableRow>
                 <TableCell colSpan={columns.length} className="whitespace-normal">
                   <CheckList dataset={row.original.dataset} checks={row.original.checks} />
+                  {row.original.cross_check ? <CrossCheck pair={row.original.cross_check} /> : null}
                 </TableCell>
               </TableRow>
             ) : null}
