@@ -13,6 +13,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/optioncand"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -499,5 +500,54 @@ func TestAfterIsComputeFigures(t *testing.T) {
 	}
 	if got := d.After(); len(got) != 1 || got[0] != "compute_figures" {
 		t.Fatalf("After() = %v", got)
+	}
+}
+
+// chainDayRows runs the job with the real rule over a chain of the given day and returns the stored rows.
+func chainDayRows(t *testing.T, chain contracts.Day) []store.Candidate {
+	t.Helper()
+	f := newFakes()
+	f.chainDay = chain
+	j, err := New(f.stores(), optioncand.New(), []jobs.WatchEntry{usEntry()}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	var rows []store.Candidate
+	for _, w := range f.written {
+		rows = append(rows, w...)
+	}
+	if len(rows) == 0 {
+		t.Fatal("no row stored")
+	}
+	return rows
+}
+
+func TestRunChainOnRunDayNotStale(t *testing.T) {
+	t.Parallel()
+	for _, r := range chainDayRows(t, "2026-11-09") {
+		if strings.Contains(r.Gates, "stale_chain") {
+			t.Fatalf("fresh chain marked stale: %s", r.Gates)
+		}
+	}
+}
+
+func TestRunChainOfPreviousSessionNotStale(t *testing.T) {
+	t.Parallel()
+	for _, r := range chainDayRows(t, "2026-11-06") {
+		if strings.Contains(r.Gates, "stale_chain") {
+			t.Fatalf("chain of the previous session marked stale: %s", r.Gates)
+		}
+	}
+}
+
+func TestRunChainTwoSessionsOldIsStale(t *testing.T) {
+	t.Parallel()
+	for _, r := range chainDayRows(t, "2026-11-05") {
+		if !strings.Contains(r.Gates, "stale_chain") {
+			t.Fatalf("chain two sessions old not marked stale: %s", r.Gates)
+		}
 	}
 }

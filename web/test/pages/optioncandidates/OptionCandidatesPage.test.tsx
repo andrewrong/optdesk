@@ -10,6 +10,7 @@ import { blocked } from './fixtures/blocked'
 import { gap } from './fixtures/gap'
 import { ok } from './fixtures/ok'
 import { stale } from './fixtures/stale'
+import { shortlist } from './fixtures/shortlist'
 import { tiers } from './fixtures/tiers'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -141,5 +142,17 @@ describe('OptionCandidatesPage tiers', () => {
     host.remove()
     const plain = await show({ ...ok, short_put_tiers: { ...tiers, stored_title: null } } as never)
     expect(plain.querySelector('[data-stored-tables] button')!.textContent).toBe('Stored tables')
+  })
+
+  it('folds the tier view under the closed accordion', async () => {
+    const page = await show({ ...ok, short_put_list: shortlist, short_put_tiers: tiers } as never)
+    expect(page.querySelector('[data-short-list]')).not.toBeNull()
+    const trigger = page.querySelector('[data-folded] button')!
+    expect(trigger.textContent).toBe(shortlist.folded_title)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(page.querySelector('[data-tier-view]')).toBeNull()
+    await open(trigger)
+    expect(page.querySelector('[data-tier-view]')).not.toBeNull()
+    expect(page.querySelector('[data-stored-tables]')).not.toBeNull()
   })
 })

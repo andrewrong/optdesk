@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -127,8 +128,8 @@ func (t *ticker) Run(ctx context.Context) error {
 	start := t.clk.Now()
 	runCtx, stop := context.WithCancel(ctx)
 	defer stop()
-	workCtx, cancelWork := context.WithCancel(context.WithoutCancel(ctx))
-	defer cancelWork()
+	workCtx, cancelWork := context.WithCancelCause(context.WithoutCancel(ctx))
+	defer cancelWork(nil)
 	// The console context outlives runCtx like workCtx: the drain below cancels it, a lost fence at once.
 	consoleCtx, cancelConsole := context.WithCancel(context.WithoutCancel(ctx))
 	defer cancelConsole()
@@ -155,7 +156,7 @@ func (t *ticker) Run(ctx context.Context) error {
 	}
 	stop()
 	if errors.Is(runErr, ErrLoopFrozen) {
-		cancelWork()
+		cancelWork(nil)
 		cancelConsole()
 		return t.finish(runErr)
 	}
@@ -167,7 +168,12 @@ func (t *ticker) Run(ctx context.Context) error {
 		close(allDone)
 	}()
 	if !t.waitDone(allDone, drainGrace) {
-		cancelWork()
+		// An ordered stop (an interrupt, a replaced executable) says so to the runs it cuts; a lost fence does not.
+		if runErr == nil || errors.Is(runErr, ErrExecutableChanged) {
+			cancelWork(shared.ErrOrderedStop)
+		} else {
+			cancelWork(nil)
+		}
 		cancelConsole()
 		t.waitDone(allDone, killGrace)
 	}

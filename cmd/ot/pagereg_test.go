@@ -31,6 +31,7 @@ func TestPageRegistryRoutes(t *testing.T) {
 		{"valuation", "valuation_table", 150},
 		{"valuation-company", "valuation_company", 160},
 		{"valuation-form", "valuation_form", 170},
+		{"valuation-import", "valuation_import_page", 175},
 		{"company-quarters", "company_quarters_page", 180},
 		{"company-data", "company_data_page", 190},
 		{"settings", "", 0},
@@ -53,7 +54,7 @@ func TestPageRegistryRoutes(t *testing.T) {
 	got := registeredPageNames()
 	wantNames := "option_candidates_page,option_notices_page,option_tracking_page,option_pnl_page,option_page,companies_page,household_page,advice_page," +
 		"household_risk,positions_page,home_page,ops_today_page,market_state_page,data_health_page,base_data_page," +
-		"valuation_params,valuation_table,valuation_company,valuation_form,company_quarters_page,company_data_page"
+		"valuation_params,valuation_table,valuation_company,valuation_form,valuation_import_page,company_quarters_page,company_data_page"
 	if strings.Join(got, ",") != wantNames {
 		t.Errorf("registered names %v", got)
 	}
@@ -100,7 +101,7 @@ func TestUnknownPageText(t *testing.T) {
 		`market_state_page, ` +
 		`ops_today_page, ` +
 		`option_candidates_page, option_notices_page, option_page, option_pnl_page, option_tracking_page, positions_page, report_page, ` +
-		`valuation_company, valuation_form, valuation_params, valuation_table`
+		`valuation_company, valuation_form, valuation_import_page, valuation_params, valuation_table`
 	if err == nil || err.Error() != want {
 		t.Fatalf("err %v, want %s", err, want)
 	}
