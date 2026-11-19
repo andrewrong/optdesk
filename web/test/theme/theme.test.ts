@@ -50,19 +50,31 @@ describe('theme.css', () => {
     expect(dark.get(name), `dark ${name}`).toBeTruthy()
   })
   it('defines the radius', () => {
-    expect(light.get('radius')).toBe('0.625rem')
+    expect(light.get('radius')).toBe('0.5rem')
   })
-  // Source: the :root variables of docs/design/v2/design-set-shadcn.html (issue #1769), light / dark.
+  // Source: docs/design/site-look.md Decision 6 (the candidates mockup), light / dark.
   it.each([
-    ['success', 'hsl(142 64% 29%)', 'hsl(142 55% 52%)'],
-    ['warn', 'hsl(32 92% 33%)', 'hsl(38 92% 58%)'],
-    ['down', 'hsl(0 72% 46%)', 'hsl(0 80% 66%)'],
-    ['muted', 'hsl(0 0% 96.1%)', 'hsl(0 0% 14.9%)'],
-    ['muted-foreground', 'hsl(0 0% 42%)', 'hsl(0 0% 66%)'],
-    ['border', 'hsl(0 0% 89.8%)', 'hsl(0 0% 17%)'],
+    ['background', '#f6f7f9', '#10151c'],
+    ['card', '#ffffff', '#171e28'],
+    ['foreground', '#1b2430', '#e4e9f0'],
+    ['muted-foreground', '#5f6c7e', '#8f9db0'],
+    ['border', '#e3e7ed', '#283140'],
+    ['primary', '#1f5fbf', '#7aa8f0'],
+    ['success', '#14794a', '#5fd39a'],
+    ['ok', '#e3f4ea', '#173326'],
+    ['warn', '#8a5a00', '#e8b85a'],
+    ['unknown', '#fdf0d5', '#3a2e12'],
+    ['down', '#b3261e', '#f08a82'],
+    ['hold', '#fbe4e2', '#3d1b19'],
+    ['muted', '#eceff3', '#252e3b'],
   ])('sets --%s to the design values', (name, lightValue, darkValue) => {
     expect(light.get(name)).toBe(lightValue)
     expect(dark.get(name)).toBe(darkValue)
+  })
+  it('keeps no oklch or hsl for a surface, text or line token', () => {
+    for (const theme of [light, dark])
+      for (const [name, v] of theme)
+        if (!/^(chart-|sidebar)/.test(name)) expect(v, name).not.toMatch(/oklch\(|hsl\(/)
   })
   it('maps warning and destructive to the design tokens and registers warn and down as colours', () => {
     expect(light.get('warning')).toBe('var(--warn)')
@@ -74,10 +86,32 @@ describe('theme.css', () => {
     expect(css).toContain('@custom-variant dark (@media (prefers-color-scheme: dark));')
     expect(css).not.toMatch(/data-theme|\.dark\s*\{/)
   })
-  it('sets the 44 px target and the 16 px body', () => {
+  it('sets the 44 px target and the 14 px body', () => {
     expect(css).toContain('--target-min: 2.75rem;') // 2.75 * 16 = 44
-    expect(css).toContain('--text-sm: 1rem;')
-    expect(css).toMatch(/body\s*\{[^}]*font-size:\s*1rem/)
+    expect(css).not.toMatch(/--text-[a-z0-9]+:\s*1rem;/)
+    expect(css).toMatch(/body\s*\{[^}]*font-size:\s*0\.875rem;[^}]*line-height:\s*1\.45/)
+  })
+  it('keeps the 44 px minimum height of button, toggle, tabs and accordion', () => {
+    for (const slot of ['button', 'toggle', 'tabs-trigger', 'accordion-trigger'])
+      expect(css).toContain(`[data-slot='${slot}']`)
+    expect(css).toContain('min-height: var(--target-min);')
+  })
+  it('sets tabular numbers for tables and .num, and .num is mono 13 px', () => {
+    expect(css).toMatch(/table,\s*td,\s*th,\s*\.num\s*\{\s*font-variant-numeric:\s*tabular-nums;/)
+    expect(css).toMatch(/\.num\s*\{\s*font-family:\s*var\(--font-mono\);\s*font-size:\s*0\.8125rem;/)
+  })
+})
+
+describe('new theme tokens', () => {
+  it('has the six tier tokens in light and dark, no URL import, and a 14 px --text-base', () => {
+    for (const name of ['fit', 'check', 'grey'])
+      for (const suffix of ['', '-soft']) {
+        expect(light.get(`tier-${name}${suffix}`), `light ${name}${suffix}`).toBeTruthy()
+        expect(dark.get(`tier-${name}${suffix}`), `dark ${name}${suffix}`).toBeTruthy()
+      }
+    for (const m of css.matchAll(/@import[^;]*;/g)) expect(m[0]).not.toContain('http')
+    expect(css).not.toContain('@font-face')
+    expect(css).toMatch(/--text-base:\s*0\.875rem;/)
   })
 })
 
@@ -93,7 +127,7 @@ interface Row {
 }
 const rows: Row[] = mapping
   .split('\n')
-  .filter((line) => /^\|\s*`--/.test(line))
+  .filter((line) => /^\|\s*`--/.test(line)) // the old-variable table; the new-token table starts with a kind word
   .map((line) => {
     const c = line
       .split('|')
@@ -162,4 +196,26 @@ describe('contrast of the other pairs', () => {
       }
     })
   }
+})
+
+// The new-token table of THEME-MAPPING.md: tier colours, the two font stacks and the text scale.
+const newRows = mapping
+  .split('\n')
+  .filter((line) => /^\|\s*(tier|font|scale)\s*\|/.test(line))
+  .map((line) => line.split('|').slice(1, -1).map((s) => s.trim().replace(/^`|`$/g, '')))
+
+describe('THEME-MAPPING.md new tokens', () => {
+  it('lists the six tier tokens, both font stacks and the six text sizes', () => {
+    expect(newRows.map((r) => r[0])).toEqual([...Array(6).fill('tier'), 'font', 'font', ...Array(6).fill('scale')])
+  })
+  it.each(newRows)('%s %s: values are those of theme.css', (kind, name, lightValue, darkValue) => {
+    const key = (name as string).slice(2)
+    if (kind === 'tier') {
+      expect(value('light', key)).toBe(lightValue?.replace(/`/g, ''))
+      expect(value('dark', key)).toBe(darkValue?.replace(/`/g, ''))
+    } else {
+      const decl = new RegExp(`^\\s*--${key}:\\s*([^;]+);`, 'm').exec(css)
+      expect(decl?.[1]?.trim()).toBe(lightValue?.replace(/`/g, ''))
+    }
+  })
 })
