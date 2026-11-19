@@ -62,6 +62,7 @@ func New(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, ca
 		tasks:      make(chan turn, 1),
 		wake:       make(chan struct{}, 1),
 		consoleSig: make(chan struct{}, 1),
+		group:      newJobGroup(clk),
 	}
 	if t.disabled == nil {
 		t.disabled = map[string]string{}
@@ -113,6 +114,7 @@ type ticker struct {
 	// consoleSig is the loop's console turn for the console goroutine: a non-blocking send, so a signal
 	// during a claim is kept as one pending signal.
 	consoleSig chan struct{}
+	group      *jobGroup // the runs of a DetachedReconciler
 }
 
 func (t *ticker) LastTick() time.Time { return time.Unix(0, t.lastTick.Load()).UTC() }
@@ -133,9 +135,10 @@ func (t *ticker) Run(ctx context.Context) error {
 	// The console context outlives runCtx like workCtx: the drain below cancels it, a lost fence at once.
 	consoleCtx, cancelConsole := context.WithCancel(context.WithoutCancel(ctx))
 	defer cancelConsole()
+	defer t.group.cancel(nil)
 
 	fail := make(chan error, 4)
-	go t.watchFence(runCtx, stop, cancelConsole, fail)
+	go t.watchFence(runCtx, stop, func() { cancelConsole(); t.group.cancel(nil) }, fail)
 	go t.watchdog(runCtx, fail)
 	workerDone := make(chan struct{})
 	go t.worker(runCtx, workCtx, workerDone)
@@ -158,6 +161,7 @@ func (t *ticker) Run(ctx context.Context) error {
 	if errors.Is(runErr, ErrLoopFrozen) {
 		cancelWork(nil)
 		cancelConsole()
+		t.group.cancel(nil)
 		return t.finish(runErr)
 	}
 	// Drain: the worker and the console runs finish within the grace, then they are cancelled.
@@ -165,14 +169,17 @@ func (t *ticker) Run(ctx context.Context) error {
 	go func() {
 		<-workerDone
 		<-consoleDone
+		<-t.group.done()
 		close(allDone)
 	}()
 	if !t.waitDone(allDone, drainGrace) {
 		// An ordered stop (an interrupt, a replaced executable) says so to the runs it cuts; a lost fence does not.
 		if runErr == nil || errors.Is(runErr, ErrExecutableChanged) {
 			cancelWork(shared.ErrOrderedStop)
+			t.group.cancel(shared.ErrOrderedStop)
 		} else {
 			cancelWork(nil)
+			t.group.cancel(nil)
 		}
 		cancelConsole()
 		t.waitDone(allDone, killGrace)
@@ -544,7 +551,12 @@ func (t *ticker) reconcileAndSync(ctx context.Context, day contracts.Day) {
 		cursor, haveCursor = cur.Day, err == nil
 	}
 	rctx, cancel := context.WithTimeout(ctx, reconcileTimeout)
-	err := t.rec.Reconcile(rctx, day)
+	var err error
+	if d, ok := t.rec.(runner.DetachedReconciler); ok {
+		err = d.ReconcileDetached(rctx, day, t.group.spawn) // a launch: the runs are the group's
+	} else {
+		err = t.rec.Reconcile(rctx, day)
+	}
 	cancel()
 	if err != nil {
 		kind := "error"
