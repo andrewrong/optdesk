@@ -174,11 +174,11 @@ func TestHeldCallGuardRows(t *testing.T) {
 		exAmount string
 	}{
 		{"block", 10.40, dividendRow("present", "2026-11-19", "0.50"), "blocked",
-			`{"gate":"guard","status":"block","reason":"early_assignment_risk"}`, "[]", "0.50"},
+			`{"gate":"guard","status":"block","reason":"early_assignment_risk"}`, `["buy_from_hand"]`, "0.50"},
 		{"ok", 10.60, dividendRow("present", "2026-11-19", "0.50"), "ok",
-			`{"gate":"guard","status":"pass","reason":""}`, "[]", "0.50"},
+			`{"gate":"guard","status":"pass","reason":""}`, `["buy_from_hand"]`, "0.50"},
 		{"no_value", 10.40, dividendRow("no_value", "", ""), "ok",
-			`{"gate":"guard","status":"pass","reason":""}`, `["no_dividend"]`, ""},
+			`{"gate":"guard","status":"pass","reason":""}`, `["no_dividend","buy_from_hand"]`, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

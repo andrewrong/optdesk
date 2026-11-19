@@ -171,6 +171,7 @@ func (j *callsJob) underlying(
 	var rows []store.Candidate
 	for _, c := range j.rule.Evaluate(in, j.params) {
 		ch.addMarks(&c)
+		addBuySourceMark(&c, entry)
 		row, err := toStoreRow(c, rc.day, ul, ev, rc.now)
 		if err != nil {
 			return failWith("map_candidate_failed", err)
