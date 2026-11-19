@@ -12,6 +12,23 @@ import (
 // expected keys but no record of what was stored, so coverage_gap does not count them.
 const HistoryStart contracts.Day = "2026-11-07"
 
+// RowHistoryStart is the first counted day of a row whose first stored day is later than
+// HistoryStart; a row with no entry uses HistoryStart. Days before it can never be fetched again.
+// The values are trial: they come from the read of the stored days of 2026-11-19 by the designer's
+// check, to be corrected by the first owner read (docs/design/basedata-alerts.md, Decision 4).
+var RowHistoryStart = map[string]contracts.Day{
+	"chains":    "2026-11-11",
+	"contracts": "2026-11-13",
+	"calendar":  "2026-11-11",
+	"flex":      "2026-11-11",
+	"open":      "2026-11-10",
+}
+
+// PublishLag is the publication lag in sessions of a row: coverage_latest and coverage_gap judge
+// up to that many sessions before the newest closed one. rates is FRED, published the day after
+// (trial, docs/design/basedata-alerts.md, Decision 3).
+var PublishLag = map[string]int{"rates": 1}
+
 // Kind says how a Limit reads its Value.
 type Kind string
 
