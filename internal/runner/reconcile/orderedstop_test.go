@@ -27,7 +27,7 @@ func TestOrderedStopPartialIsNoAttemptAndNoStrike(t *testing.T) {
 	if _, start, _ := rec.nextAttempt(ordered, time.Time{}); !start {
 		t.Fatal("three ordered_stop runs stop the key or use up its attempts")
 	}
-	if _, _, ok := closeRow(ordered); ok {
+	if _, _, ok := closeRow(ordered, time.Time{}); ok {
 		t.Fatal("closeRow finds an ordered_stop run")
 	}
 	if _, start, _ := rec.nextAttempt(mk("abandoned_stop"), time.Time{}); start {

@@ -128,20 +128,29 @@ func TestRetryableAtOrAfterCloseExpired(t *testing.T) {
 			if err := rec.Reconcile(ctx, day); err != nil {
 				t.Fatal(err)
 			}
+			// The run of 15:00 ended before the close, so it does not count: one late run starts.
 			clk.Advance(closeAt.Add(tc.after).Sub(clk.Now()))
 			if err := rec.Reconcile(ctx, day); err != nil {
 				t.Fatal(err)
 			}
-			if job.calls() != 1 {
-				t.Fatalf("calls = %d, want 1: no new run", job.calls())
+			if job.calls() != 2 {
+				t.Fatalf("calls = %d, want 2: one late run", job.calls())
+			}
+			// That run ended at or after the close: the next tick expires the key.
+			clk.Advance(time.Minute)
+			if err := rec.Reconcile(ctx, day); err != nil {
+				t.Fatal(err)
+			}
+			if job.calls() != 2 {
+				t.Fatalf("calls = %d, want 2: no third run", job.calls())
 			}
 			present, _ := led.Present(ctx, day)
 			if present[keyA] != store.StatusNoValue {
 				t.Fatalf("keyA = %q, want no_value", present[keyA])
 			}
 			runs, _ := led.Runs(ctx, day)
-			if len(runs) != 1 || runs[0].ReasonCode != "expired" {
-				t.Fatalf("runs = %+v, want one run with reason expired", runs)
+			if len(runs) != 2 || runs[1].ReasonCode != "expired" {
+				t.Fatalf("runs = %+v, want two runs, the late one expired", runs)
 			}
 		})
 	}
@@ -171,6 +180,14 @@ func TestExpiredDayCompletesCursorAdvances(t *testing.T) {
 			t.Fatalf("cursor = %s, want held at 2026-11-03", led.cursor.Day)
 		}
 		clk.Advance(utc("2026-11-05T22:00:00Z").Sub(clk.Now()))
+		if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
+			t.Fatal(err)
+		}
+		// The run of 11-04 ended before its close: the first tick after it starts a late run.
+		if led.cursor.Day != "2026-11-03" {
+			t.Fatalf("cursor = %s, want held at 2026-11-03 after the late run", led.cursor.Day)
+		}
+		clk.Advance(time.Minute)
 		if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
 			t.Fatal(err)
 		}
