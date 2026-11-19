@@ -275,3 +275,63 @@ func TestYoungListingWithEmptyAdjustedAskedOncePerWeek(t *testing.T) {
 		t.Fatalf("asked %d times in 2 days: %+v", len(ps), ps)
 	}
 }
+
+const noData162 = "broker: bars: Unknown: broker error 162: Historical Market Data Service error message:" +
+	"HMDS query returned no data"
+
+type textErr struct {
+	text string
+	kind contracts.ErrorKind
+}
+
+func (e textErr) Error() string             { return e.text }
+func (e textErr) Kind() contracts.ErrorKind { return e.kind }
+
+func TestDeepenNoDataEndsWithoutError(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
+		switch {
+		case q.End == "":
+			return []broker.Bar{mkbar(string(runDay), "10.0000")}, nil
+		case q.End == dayOf(-401):
+			return []broker.Bar{mkbar(dayOf(-1000), "5.0000"), mkbar(q.End, "6.0000")}, nil
+		}
+		return nil, textErr{noData162, contracts.Permanent}
+	}}
+	st := &memBars{rows: storedFor(101, 400, 1)}
+	j := deepenJob(t, h, st, 1, nil)
+	if res := j.Run(context.Background(), runDay, allKeys(1)); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	var older int
+	for _, r := range st.rows {
+		if r.Basis == "trades" && r.SessionDay.Format(dayLayout) < dayOf(-400) {
+			older++
+		}
+	}
+	if older != 2 {
+		t.Fatalf("older rows %d, want 2", older)
+	}
+	if ps := pieces(h); len(ps) != 2 {
+		t.Fatalf("pieces %+v", ps)
+	}
+	if res := j.Run(context.Background(), "2026-11-10", allKeys(1)); res.Err != nil || len(pieces(h)) != 2 {
+		t.Fatalf("asked again within the week: %v %+v", res.Err, pieces(h))
+	}
+}
+
+func TestDeepenOtherErrorStillFails(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
+		if q.End == "" {
+			return []broker.Bar{mkbar(string(runDay), "10.0000")}, nil
+		}
+		return nil, textErr{"broker: bars: ResourceExhausted: pacing violation", contracts.Retryable}
+	}}
+	st := &memBars{rows: storedFor(101, 400, 1)}
+	j := deepenJob(t, h, st, 1, nil)
+	res := j.Run(context.Background(), runDay, allKeys(1))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("result %+v", res)
+	}
+}
