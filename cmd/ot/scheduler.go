@@ -92,7 +92,7 @@ func schedulerCmd(a *app, args []string) error {
 	defer func() { _ = fence.Close() }() // the ticker closes it on drain too; Close is safe twice
 	cfg.scheduler = true                 // the one place a job left out is recorded as not_wired
 	err = withWiring(ctx, a, a.deps.newClock(), cfg, nil, func(w wiring) error {
-		if err := closeRunningAtStart(ctx, a, fw, w.ledger); err != nil {
+		if err := closeRunningAtStart(ctx, a, fw, w.ledger, cfg.runnerDSN); err != nil {
 			return err
 		}
 		return runScheduler(ctx, a, fw, cfg, fence, ln, sender, w, alertsDSN, rules)
@@ -113,20 +113,45 @@ func schedulerCmd(a *app, args []string) error {
 // reasonCrashed is the reason of a run the start of the scheduler closes: the one the lapsed-lease path writes.
 const reasonCrashed = "crashed"
 
+// reasonOrderedStop is the reason of a run the start closes when the previous process was of another build: a
+// restart by a deploy is no strike (docs/design/restart-resume.md Decision 4). The runner writes the same text.
+const reasonOrderedStop = "ordered_stop"
+
 // closeRunningAtStart closes every running row the previous process left (docs/design/single-runner.md Decisions 4
 // and 5). It runs with the fence held and before the ticker is built; an error stops the start. No error text holds
-// a DSN.
-func closeRunningAtStart(ctx context.Context, a *app, clk clockwork.Clock, ledger store.OpsLedger) error {
+// a DSN. The reason is ordered_stop when the previous process recorded another build, crashed otherwise.
+func closeRunningAtStart(ctx context.Context, a *app, clk clockwork.Clock, ledger store.OpsLedger, dsn string) error {
 	rc, ok := ledger.(store.RunCloser)
 	if !ok {
 		return errors.New("the ledger cannot close running runs: scheduler not started")
 	}
-	n, err := rc.CloseRunning(ctx, clk.Now(), reasonCrashed)
+	reason := closeReason(ctx, a, dsn)
+	n, err := rc.CloseRunning(ctx, clk.Now(), reason)
 	if err != nil {
 		return errors.New("close running runs at start failed: scheduler not started")
 	}
-	a.log.Info("closed running runs left by the previous process", "component", "ot", "status", reasonCrashed, "closed", n)
+	a.log.Info("closed running runs left by the previous process", "component", "ot", "status", reason, "closed", n)
 	return nil
+}
+
+// closeReason reads the build of the previous process before this one records its own. An empty, an equal or an
+// unreadable build gives crashed; a read error is logged and does not stop the start.
+func closeReason(ctx context.Context, a *app, dsn string) string {
+	sl, err := a.deps.openSchedulerLedger(ctx, dsn)
+	if err != nil {
+		a.log.Warn("read the previous build failed: closing running runs as crashed", "component", "ot", "stage", "open")
+		return reasonCrashed
+	}
+	defer func() { _ = sl.Close() }()
+	st, err := sl.Status(ctx)
+	if err != nil {
+		a.log.Warn("read the previous build failed: closing running runs as crashed", "component", "ot", "stage", "status")
+		return reasonCrashed
+	}
+	if st.Build != "" && st.Build != buildIDOf(version) {
+		return reasonOrderedStop
+	}
+	return reasonCrashed
 }
 
 // lockFence takes the instance fence before anything else is opened. It retries every lockEvery of the clock
