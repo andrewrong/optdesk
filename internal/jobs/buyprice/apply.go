@@ -15,7 +15,7 @@ import (
 
 // Apply returns a copy of entries with BuyPrice and BuySource set and no other field changed;
 // the input slice is not changed. It calls rd.Current once, then r.Resolve once per entry with
-// the entry's Issuer, its Contract.Currency and its hand BuyPrice. A Current error is returned
+// the entry's Contract.Symbol, its Contract.Currency and its hand BuyPrice. A Current error is returned
 // wrapped and no entry is returned. A nil rd resolves with no zones and makes no read. A nil r
 // leaves each price as it is and gives BuySource hand where a price exists.
 func Apply(ctx context.Context, rd valuation.Reader, r buypriceapi.Resolver, entries []jobs.WatchEntry) ([]jobs.WatchEntry, error) {
@@ -40,7 +40,7 @@ func Apply(ctx context.Context, rd valuation.Reader, r buypriceapi.Resolver, ent
 			continue
 		}
 		res := r.Resolve(buypriceapi.Input{
-			Symbol: e.Issuer, Currency: e.Contract.Currency, Hand: hand, Zones: zones, Tables: tables,
+			Symbol: e.Contract.Symbol, Currency: e.Contract.Currency, Hand: hand, Zones: zones, Tables: tables,
 		})
 		e.BuyPrice, e.BuySource = res.Price, res.Source
 		if res.Source == buypriceapi.SourceNone {
