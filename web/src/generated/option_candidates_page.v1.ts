@@ -57,6 +57,24 @@ export type Group = (
   main: null | Table;
   other: null | Table;
   gap: Gap | null;
+  /**
+   * Currency of the rows of this group as three upper-case letters (JPY for the Japanese group); null or absent for the US groups. Additive and optional.
+   */
+  currency?: string | null;
+  /**
+   * One-line note of the group, or null. Additive and optional.
+   */
+  note?: Text1 | null;
+  /**
+   * Counts of the rows by limit, or null. Additive and optional.
+   */
+  limit_counts?:
+    | {
+        limit: Text1;
+        count: number;
+        text: Text1;
+      }[]
+    | null;
 } & {
   kind: "short_put" | "covered_call" | "held_call_guard";
   title: Text1;
@@ -72,6 +90,24 @@ export type Group = (
   main: null | Table;
   other: null | Table;
   gap: Gap | null;
+  /**
+   * Currency of the rows of this group as three upper-case letters (JPY for the Japanese group); null or absent for the US groups. Additive and optional.
+   */
+  currency?: string | null;
+  /**
+   * One-line note of the group, or null. Additive and optional.
+   */
+  note?: Text1 | null;
+  /**
+   * Counts of the rows by limit, or null. Additive and optional.
+   */
+  limit_counts?:
+    | {
+        limit: Text1;
+        count: number;
+        text: Text1;
+      }[]
+    | null;
 } & {
   kind: "short_put" | "covered_call" | "held_call_guard";
   title: Text1;
@@ -87,6 +123,24 @@ export type Group = (
   main: null | Table;
   other: null | Table;
   gap: Gap | null;
+  /**
+   * Currency of the rows of this group as three upper-case letters (JPY for the Japanese group); null or absent for the US groups. Additive and optional.
+   */
+  currency?: string | null;
+  /**
+   * One-line note of the group, or null. Additive and optional.
+   */
+  note?: Text1 | null;
+  /**
+   * Counts of the rows by limit, or null. Additive and optional.
+   */
+  limit_counts?:
+    | {
+        limit: Text1;
+        count: number;
+        text: Text1;
+      }[]
+    | null;
 };
 export type Cell = ValueCell | Gap;
 
@@ -132,6 +186,14 @@ export interface OptionCandidatesPage {
    * The tier view of the stored short puts, or null. Additive and optional; every figure is text.
    */
   short_put_tiers?: TierView | null;
+  /**
+   * The yen tier view of the stored yen short puts, or null. Built from the JP group; additive and optional; every figure is text.
+   */
+  short_put_tiers_jpy?: TierView | null;
+  /**
+   * The yen grouped short put list, or null. Built from the JP group; additive and optional; every figure is text.
+   */
+  short_put_list_jpy?: ShortList | null;
 }
 /**
  * The data time of one source behind the card.

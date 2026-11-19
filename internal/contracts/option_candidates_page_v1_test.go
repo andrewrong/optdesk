@@ -461,3 +461,46 @@ func TestBuySourceUnknownField(t *testing.T) {
 		t.Fatal("an extra key of the buy_source badge validates")
 	}
 }
+
+func jpLimitCounts() []any {
+	return []any{
+		map[string]any{"limit": "5", "count": float64(3), "text": "3 within the 5 limit"},
+	}
+}
+
+func TestJPGroupValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	group := candidatesGroup(inst)
+	group["currency"] = "JPY"
+	group["note"] = "yen quotes"
+	group["limit_counts"] = jpLimitCounts()
+	inst["short_put_tiers_jpy"] = tiersView()
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a document with the JP group fields and short_put_tiers_jpy is invalid")
+	}
+	group["currency"] = nil
+	group["note"] = nil
+	group["limit_counts"] = nil
+	inst["short_put_tiers_jpy"] = nil
+	inst["short_put_list_jpy"] = nil
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("null JP fields are invalid")
+	}
+	group["limit_counts"] = jpLimitCounts()
+	group["limit_counts"].([]any)[0].(map[string]any)["extra"] = "x"
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an extra key inside a limit_counts entry is valid")
+	}
+}
+
+func TestNoJPFieldsStillValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesMinimal(t)
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a document without the JP fields is invalid")
+	}
+	if _, ok := candidatesGroup(inst)["currency"]; ok {
+		t.Fatal("the minimal group already carries currency")
+	}
+}

@@ -149,6 +149,28 @@
           "type": "null"
         }
       ]
+    },
+    "short_put_tiers_jpy": {
+      "description": "The yen tier view of the stored yen short puts, or null. Built from the JP group; additive and optional; every figure is text.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TierView"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "short_put_list_jpy": {
+      "description": "The yen grouped short put list, or null. Built from the JP group; additive and optional; every figure is text.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ShortList"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "$defs": {
@@ -440,6 +462,61 @@
           "oneOf": [
             {
               "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "description": "Currency of the rows of this group as three upper-case letters (JPY for the Japanese group); null or absent for the US groups. Additive and optional.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "description": "One-line note of the group, or null. Additive and optional.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit_counts": {
+          "description": "Counts of the rows by limit, or null. Additive and optional.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "limit",
+                  "count",
+                  "text"
+                ],
+                "properties": {
+                  "limit": {
+                    "$ref": "#/$defs/Text"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "text": {
+                    "$ref": "#/$defs/Text"
+                  }
+                }
+              }
             },
             {
               "type": "null"
