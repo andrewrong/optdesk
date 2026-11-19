@@ -227,6 +227,7 @@ export interface OptionCandidatesPage {
    * The yen grouped short put list, or null. Built from the JP group; additive and optional; every figure is text.
    */
   short_put_list_jpy?: ShortList | null;
+  subtitle?: Text1;
   /**
    * The words of the page head, in Chinese; additive and optional.
    */
@@ -413,6 +414,11 @@ export interface TierView {
     grey_hint: Text1;
   };
   card_note?: Text1 | null;
+  heads?: {
+    companies: Text1;
+    companies_note: Text1;
+    tiers: Text1;
+  };
 }
 export interface Company {
   key: Text1;

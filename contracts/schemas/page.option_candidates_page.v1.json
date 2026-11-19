@@ -172,6 +172,9 @@
         }
       ]
     },
+    "subtitle": {
+      "$ref": "#/$defs/Text"
+    },
     "head_labels": {
       "description": "The words of the page head, in Chinese; additive and optional.",
       "oneOf": [
@@ -987,6 +990,26 @@
               "type": "null"
             }
           ]
+        },
+        "heads": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "companies",
+            "companies_note",
+            "tiers"
+          ],
+          "properties": {
+            "companies": {
+              "$ref": "#/$defs/Text"
+            },
+            "companies_note": {
+              "$ref": "#/$defs/Text"
+            },
+            "tiers": {
+              "$ref": "#/$defs/Text"
+            }
+          }
         }
       }
     },
