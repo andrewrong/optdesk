@@ -201,6 +201,16 @@ type pageJSON struct {
 	Gaps          []gapJSON       `json:"gaps"`
 	Scopes        []accountScope  `json:"scopes"`
 	Stale         staleLabel      `json:"stale"`
+	Views         []viewJSON      `json:"views,omitempty"`
+	LeadNotes     []string        `json:"lead_notes,omitempty"`
+}
+
+// viewJSON is one link of the row between the family and each account.
+type viewJSON struct {
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Href    string `json:"href"`
+	Current bool   `json:"current"`
 }
 
 var decimalText = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
