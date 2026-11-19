@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -133,3 +135,33 @@ type MorningNotifier interface {
 // NewMorningNotifierFunc is the constructor of the morning notifier (internal/notify/core.NewMorning);
 // it fails only on a bad Config or an incomplete MorningDeps.
 type NewMorningNotifierFunc func(MorningDeps, Sender, clockwork.Clock, Config) (MorningNotifier, error)
+
+// SlowMarker is the one method of store/jobrun.JobRunLedger that the slow notifier needs.
+type SlowMarker interface {
+	// MarkSlowNotified records that the slow notice of run id was sent at at.
+	MarkSlowNotified(ctx context.Context, id string, at time.Time) error
+}
+
+// SlowDeps are the inputs of the slow-run pass besides the sender, the clock and the Config.
+type SlowDeps struct {
+	// Runs reads the open runs and the usual durations (store/jobrun.JobRunReader).
+	Runs jobrun.JobRunReader
+	// Mark records the notice of a run (the ledger's MarkSlowNotified).
+	Mark SlowMarker
+	// Figures says which runs are slow (compute/jobrunapi.FiguresFunc); the notifier copies Slow and applies no rule of its own.
+	Figures jobrunapi.FiguresFunc
+}
+
+// SlowNotifier makes one pass over the open runs, in the quiet window of Config.
+//
+// NotifySlowRuns sends at most one text per slow run that has no slow_notified_at yet, and calls
+// MarkSlowNotified only for the run printed, after the send was confirmed (at-least-once
+// delivery). Inside the quiet window it returns 0 and reads nothing. It returns the number of runs
+// reported; there is no Run and no loop. It never stops, cancels or refuses a run: a slow run is a notice only.
+type SlowNotifier interface {
+	NotifySlowRuns(ctx context.Context) (int, error)
+}
+
+// NewSlowNotifierFunc is the constructor of the slow notifier (internal/notify/core.NewSlow);
+// it fails only on a bad Config or an incomplete SlowDeps.
+type NewSlowNotifierFunc func(SlowDeps, Sender, clockwork.Clock, Config) (SlowNotifier, error)
