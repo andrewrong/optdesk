@@ -2,8 +2,10 @@ package job_console
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
@@ -185,6 +187,7 @@ type stateIn struct {
 	Age         time.Duration // generated_at minus requested_at, for a queued request
 	StartedAt   string        // at_text of the start, for a running request
 	DueAt       time.Time     // the first instant a line of the request carries, zero when none
+	Waiting     bool          // the request waits for its own job, which has an open run
 }
 
 const staleAfter = 2 * time.Minute
@@ -221,6 +224,8 @@ func stateText(in stateIn) string {
 
 func queuedText(in stateIn) string {
 	switch {
+	case in.Waiting:
+		return waitingLine(in.HoldAt)
 	case in.HoldJob != "":
 		return "starts after " + hhmm(in.HoldAt) + " UTC (the slot of " + in.HoldJob + ")"
 	case !in.HoldAt.IsZero():
@@ -273,4 +278,30 @@ func failedText(in stateIn) (string, bool) {
 		return "the scheduler restarted while it ran", true
 	}
 	return "", false
+}
+
+// The lines of the running jobs: their Chinese phrases are the constants of zh_texts.go (the one door of the
+// English guard), each with its English beside it. The figures are copied from compute.FiguresFunc and hold_at;
+// nothing is computed here.
+
+// waitingLine is the line of a request that waits for its own job.
+func waitingLine(since time.Time) string {
+	return fmt.Sprintf(zhAlreadyRunningFmt, hhmm(since), hhmm(since))
+}
+
+// runningLine is one line of "Running now".
+func runningLine(f jobrunapi.Figure, startedAt time.Time) string {
+	parts := []string{f.JobID, "started " + hhmm(startedAt) + " UTC", fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal, f.KeysDone, f.KeysTotal)}
+	if f.Step != "" {
+		parts = append(parts, f.Step)
+	}
+	if f.HasUsual {
+		parts = append(parts, fmt.Sprintf(zhRanUsuallyFmt, f.ElapsedMinutes, f.UsualMinutes, f.ElapsedMinutes, f.UsualMinutes))
+	} else {
+		parts = append(parts, fmt.Sprintf(zhRanNoHistoryFmt, f.ElapsedMinutes, f.ElapsedMinutes))
+	}
+	if f.Slow {
+		parts = append(parts, zhSlowNote)
+	}
+	return strings.Join(parts, "; ")
 }

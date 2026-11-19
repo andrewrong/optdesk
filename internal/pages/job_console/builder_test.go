@@ -14,7 +14,9 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
 var fixedNow = time.Date(2026, 11, 12, 14, 6, 0, 0, time.UTC)
@@ -506,5 +508,163 @@ func TestNoSuchRequestGap(t *testing.T) {
 	p := build(t, r, nil, 99, nil)
 	if len(p.Gaps) != 1 || p.Gaps[0]["reason"] != "no_such_request" || p.Selected != nil || len(p.Requests) != 1 {
 		t.Errorf("gaps %v selected %v requests %d", p.Gaps, p.Selected, len(p.Requests))
+	}
+}
+
+type fakeRuns struct {
+	open   []jobrun.JobRun
+	usuals []jobrun.UsualStat
+}
+
+func (f fakeRuns) Running(context.Context) ([]jobrun.JobRun, error) { return f.open, nil }
+func (f fakeRuns) Usuals(context.Context) ([]jobrun.UsualStat, error) {
+	return f.usuals, nil
+}
+
+type runsPage struct {
+	Running []struct {
+		Line           string
+		Job            string
+		StartedAt      string `json:"started_at"`
+		KeysDone       int    `json:"keys_done"`
+		KeysTotal      int    `json:"keys_total"`
+		Step           string
+		ElapsedMinutes int  `json:"elapsed_minutes"`
+		UsualMinutes   int  `json:"usual_minutes"`
+		Slow           bool `json:"slow"`
+	}
+	Requests []struct {
+		ID         int64
+		StateText  string                             `json:"state_text"`
+		WaitingFor *struct{ Line, Job, Since string } `json:"waiting_for"`
+	}
+}
+
+// buildRuns runs BuildWithRuns, validates against the schema and decodes.
+func buildRuns(t *testing.T, rows []jobrequest.Row, runs Runs) runsPage {
+	t.Helper()
+	out, err := BuildWithRuns(context.Background(), &fakeReader{recent: rows}, fixedNow, nil, 0, nil, runs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := schema(t).Validate(doc); err != nil {
+		t.Fatalf("schema: %v\n%s", err, out)
+	}
+	var p runsPage
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func fixedFigures(figs ...jobrunapi.Figure) jobrunapi.FiguresFunc {
+	return func(time.Time, []jobrunapi.Input, []jobrunapi.Usual) []jobrunapi.Figure { return figs }
+}
+
+var runStart = time.Date(2026, 11, 12, 13, 30, 0, 0, time.UTC)
+
+func oneRun(job string) fakeRuns {
+	return fakeRuns{open: []jobrun.JobRun{{ID: "r1", JobID: job, StartedAt: runStart, KeysDone: 12, KeysTotal: 40, Step: "figures/US:AAPL"}}}
+}
+
+func TestRunningNowLine(t *testing.T) {
+	t.Parallel()
+	f := jobrunapi.Figure{JobID: "compute_figures", ElapsedMinutes: 36, UsualMinutes: 30, HasUsual: true, KeysDone: 12, KeysTotal: 40, Step: "figures/US:AAPL"}
+	p := buildRuns(t, nil, Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(f)})
+	if len(p.Running) != 1 {
+		t.Fatalf("running = %d", len(p.Running))
+	}
+	r := p.Running[0]
+	for _, want := range []string{"compute_figures", "started 13:30 UTC", "已完成 12 / 40", "figures/US:AAPL", "跑了 36 分钟，平常 30 分钟"} {
+		if !strings.Contains(r.Line, want) {
+			t.Errorf("line %q lacks %q", r.Line, want)
+		}
+	}
+	if r.Slow || r.StartedAt != "2026-11-12T13:30:00Z" || r.KeysDone != 12 || r.KeysTotal != 40 {
+		t.Errorf("fields: %+v", r)
+	}
+	if p := buildRuns(t, nil, Runs{}); len(p.Running) != 0 {
+		t.Errorf("zero Runs gave %d lines", len(p.Running))
+	}
+}
+
+func TestWaitingForLine(t *testing.T) {
+	t.Parallel()
+	waiting := row(7, jobrequest.StateQueued)
+	waiting.HoldJob = "compute_figures"
+	waiting.HoldAt = runStart
+	other := row(8, jobrequest.StateQueued)
+	other.Request.JobID = "other_job"
+	other.HoldJob = "compute_figures"
+	other.HoldAt = runStart
+	runs := Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(jobrunapi.Figure{JobID: "compute_figures"})}
+	p := buildRuns(t, []jobrequest.Row{waiting, other}, runs)
+	w := p.Requests[0].WaitingFor
+	if w == nil || w.Job != "compute_figures" || w.Since != "2026-11-12T13:30:00Z" || !strings.Contains(w.Line, "已在运行，自 13:30 UTC") {
+		t.Fatalf("waiting_for = %+v", w)
+	}
+	if p.Requests[0].StateText != w.Line {
+		t.Errorf("state text %q", p.Requests[0].StateText)
+	}
+	if p.Requests[1].WaitingFor != nil {
+		t.Errorf("a request holding for another job's slot got waiting_for")
+	}
+	p = buildRuns(t, []jobrequest.Row{waiting}, Runs{Reader: fakeRuns{}, Figures: fixedFigures()})
+	if p.Requests[0].WaitingFor != nil || !strings.HasPrefix(p.Requests[0].StateText, "starts after 13:30 UTC") {
+		t.Errorf("no open run: %+v %q", p.Requests[0].WaitingFor, p.Requests[0].StateText)
+	}
+}
+
+func TestSlowRunLine(t *testing.T) {
+	t.Parallel()
+	f := jobrunapi.Figure{JobID: "compute_figures", ElapsedMinutes: 95, UsualMinutes: 20, HasUsual: true, Slow: true, KeysDone: 3, KeysTotal: 40}
+	waiting := row(7, jobrequest.StateQueued)
+	waiting.HoldJob, waiting.HoldAt = "compute_figures", runStart
+	p := buildRuns(t, []jobrequest.Row{waiting}, Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(f)})
+	r := p.Running[0]
+	if !r.Slow || !strings.Contains(r.Line, "跑了 95 分钟，平常 20 分钟") || !strings.Contains(r.Line, "slow") {
+		t.Errorf("slow run: %+v", r)
+	}
+	if len(p.Requests) != 1 || p.Requests[0].WaitingFor == nil {
+		t.Errorf("slow run changed the requests: %+v", p.Requests)
+	}
+}
+
+func TestNoHistoryLine(t *testing.T) {
+	t.Parallel()
+	f := jobrunapi.Figure{JobID: "compute_figures", ElapsedMinutes: 4, KeysDone: 1, KeysTotal: 2}
+	p := buildRuns(t, nil, Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(f)})
+	if l := p.Running[0].Line; !strings.Contains(l, "跑了 4 分钟，没有历史") || strings.Contains(l, "平常") {
+		t.Errorf("line %q", l)
+	}
+}
+
+func TestRunningLinesDoNoArithmetic(t *testing.T) {
+	t.Parallel()
+	f := jobrunapi.Figure{JobID: "compute_figures", ElapsedMinutes: 777, UsualMinutes: 5, HasUsual: true, KeysDone: 9, KeysTotal: 2, Step: "s"}
+	p := buildRuns(t, nil, Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(f)})
+	r := p.Running[0]
+	if r.ElapsedMinutes != 777 || r.UsualMinutes != 5 || r.Slow || r.KeysDone != 9 || r.KeysTotal != 2 || r.Step != "s" {
+		t.Errorf("figures not copied as given: %+v", r)
+	}
+}
+
+func TestBuildWithoutRunsIsBuildWithZeroRuns(t *testing.T) {
+	t.Parallel()
+	rd := &fakeReader{recent: []jobrequest.Row{row(1, jobrequest.StateDone)}}
+	a, err := Build(context.Background(), rd, fixedNow, nil, 0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := BuildWithRuns(context.Background(), rd, fixedNow, nil, 0, nil, Runs{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a, b) || bytes.Contains(a, []byte("running")) || bytes.Contains(a, []byte("waiting_for")) {
+		t.Errorf("Build output changed:\n%s", a)
 	}
 }
