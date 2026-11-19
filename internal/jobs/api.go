@@ -21,7 +21,8 @@ type WatchEntry struct {
 	// any automatic value: the job writes only an owner row for such an entry and no vendor row.
 	ReportDateOverride string
 	// BuyPrice is the resolved price the owner would buy at: the valuation buy-zone top, else the hand price.
-	// Decimal text in the currency of the contract, positive, at most 4 places; empty is unset.
+	// Decimal text in the currency of the contract, positive; empty is unset. A hand price has at most 4 places;
+	// a valuation price is the calculator's exact decimal text and may have more.
 	BuyPrice string
 	// BuySource names where BuyPrice came from: "valuation", "hand" or empty (no price).
 	BuySource string
