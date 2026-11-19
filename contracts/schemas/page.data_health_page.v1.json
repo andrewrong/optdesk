@@ -15,7 +15,9 @@
     "datasets": {"type": "array", "items": {"$ref": "#/$defs/Dataset"}},
     "glossary": {"type": "array", "items": {"$ref": "#/$defs/GlossaryRow"}},
     "overwrite_note": {"type": "string", "maxLength": 600},
-    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}}
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "failures_note": {"$ref": "#/$defs/Text"},
+    "failures_none_text": {"$ref": "#/$defs/Text"}
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
@@ -38,7 +40,7 @@
       "required": ["kind", "reason", "text"],
       "properties": {
         "kind": {"const": "gap"},
-        "reason": {"enum": ["coverage_unavailable"]},
+        "reason": {"enum": ["coverage_unavailable", "failures_unavailable"]},
         "text": {"type": "string", "minLength": 1, "maxLength": 200}
       }
     },
@@ -73,7 +75,26 @@
         "gap_days": {"$ref": "#/$defs/Count"},
         "repair_all": {"enum": ["button", "none"]},
         "newest": {"type": "array", "items": {"$ref": "#/$defs/Newest"}},
-        "cells": {"type": "array", "items": {"$ref": "#/$defs/Cell"}}
+        "cells": {"type": "array", "items": {"$ref": "#/$defs/Cell"}},
+        "failures_total": {"$ref": "#/$defs/Count"},
+        "failures_hidden": {"$ref": "#/$defs/Count"},
+        "failures_hidden_text": {"$ref": "#/$defs/Optional"},
+        "repeated_failures": {"type": "array", "items": {"$ref": "#/$defs/RepeatedFailure"}}
+      }
+    },
+    "RepeatedFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "kind", "days", "runs", "first_day", "last_day", "last_class", "class_text"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1, "maxLength": 200},
+        "kind": {"enum": ["failed", "empty"]},
+        "days": {"type": "integer", "minimum": 3},
+        "runs": {"type": "integer", "minimum": 3},
+        "first_day": {"$ref": "#/$defs/Day"},
+        "last_day": {"$ref": "#/$defs/Day"},
+        "last_class": {"type": "string", "minLength": 1, "maxLength": 40},
+        "class_text": {"$ref": "#/$defs/Text"}
       }
     },
     "Cell": {

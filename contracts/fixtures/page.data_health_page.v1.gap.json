@@ -10,8 +10,8 @@
   "gaps": [
     {
       "kind": "gap",
-      "reason": "coverage_unavailable",
-      "text": "The coverage view could not be read."
+      "reason": "failures_unavailable",
+      "text": "The repeated failures could not be read."
     }
   ]
 }
