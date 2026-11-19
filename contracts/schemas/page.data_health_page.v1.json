@@ -27,7 +27,9 @@
     "Running": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["line"],
       "properties": {
+        "line": {"$ref": "#/$defs/Text"},
         "job": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
         "started_at": {"type": "string", "format": "date-time"},
         "keys_done": {"type": "integer", "minimum": 0},

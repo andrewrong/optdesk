@@ -17,7 +17,8 @@
       "step": "invented-key-0003",
       "elapsed_minutes": 10,
       "usual_minutes": 8,
-      "slow": false
+      "slow": false,
+      "line": "已完成 2 / 5，跑了 10 分钟，平常 8 分钟，09:20 UTC"
     }
   ],
   "datasets": [

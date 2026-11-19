@@ -76,7 +76,7 @@ const jobConsoleV1 = "page.job_console.v1.json"
 func runningItem() map[string]any {
 	return map[string]any{
 		"job": "compute_figures", "started_at": "2026-11-12T14:02:00Z", "keys_done": 1, "keys_total": 4,
-		"step": "US:AAPL", "elapsed_minutes": 4, "usual_minutes": 3, "slow": false,
+		"step": "US:AAPL", "elapsed_minutes": 4, "usual_minutes": 3, "slow": false, "line": "running line",
 	}
 }
 
@@ -86,7 +86,7 @@ func TestRunningFieldsValidate(t *testing.T) {
 	g := loadJobConsoleV1(t, "golden")
 	g["running"] = []any{runningItem()}
 	r := g["requests"].([]any)[0].(map[string]any)
-	r["waiting_for"] = map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z"}
+	r["waiting_for"] = map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z", "line": "waiting line"}
 	if !pageV1Valid(t, jobConsoleV1, g) {
 		t.Fatal("instance with running and waiting_for refused")
 	}
@@ -106,7 +106,7 @@ func TestRunningFieldsNullFail(t *testing.T) {
 	}
 	for _, k := range []string{"job", "since"} {
 		g := loadJobConsoleV1(t, "golden")
-		w := map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z"}
+		w := map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z", "line": "waiting line"}
 		w[k] = nil
 		g["requests"].([]any)[0].(map[string]any)["waiting_for"] = w
 		if pageV1Valid(t, jobConsoleV1, g) {
@@ -137,5 +137,33 @@ func TestOldShapeStillValidates(t *testing.T) {
 	}
 	if !pageV1Valid(t, jobConsoleV1, g) {
 		t.Fatal("old shape refused")
+	}
+}
+
+// TestRunningWithoutLineFails: a running item without line, or with an empty one, is refused.
+func TestRunningWithoutLineFails(t *testing.T) {
+	t.Parallel()
+	for _, drop := range []bool{true, false} {
+		g := loadJobConsoleV1(t, "golden")
+		it := runningItem()
+		if drop {
+			delete(it, "line")
+		} else {
+			it["line"] = ""
+		}
+		g["running"] = []any{it}
+		if pageV1Valid(t, jobConsoleV1, g) {
+			t.Errorf("running item without line accepted (dropped=%v)", drop)
+		}
+	}
+}
+
+// TestWaitingForWithoutLineFails: a waiting_for without line is refused.
+func TestWaitingForWithoutLineFails(t *testing.T) {
+	t.Parallel()
+	g := loadJobConsoleV1(t, "golden")
+	g["requests"].([]any)[0].(map[string]any)["waiting_for"] = map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z"}
+	if pageV1Valid(t, jobConsoleV1, g) {
+		t.Error("waiting_for without line accepted")
 	}
 }

@@ -235,10 +235,12 @@ export interface Key {
   reason: Optional;
 }
 export interface WaitingFor {
+  line: Text;
   job?: string;
   since?: string;
 }
 export interface Running {
+  line: Text;
   job?: string;
   started_at?: string;
   keys_done?: number;

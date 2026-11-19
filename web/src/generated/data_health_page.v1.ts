@@ -130,6 +130,7 @@ export interface Gap {
   text: string;
 }
 export interface Running {
+  line: Text;
   job?: string;
   started_at?: string;
   keys_done?: number;
