@@ -18,6 +18,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 )
 
 // env reads one process environment variable (the pg tests take their connection from PG*).
@@ -99,7 +100,7 @@ func newDatabase(t *testing.T) string {
 		t.Fatal(err)
 	}
 	defer func() { _ = c.Close(ctx) }()
-	for _, file := range []string{"0018_candidates.sql", "0027_candidate_settings_version.sql"} {
+	for _, file := range []string{"0018_candidates.sql", "0027_candidate_settings_version.sql", "0061_candidate_currency.sql"} {
 		raw, err := os.ReadFile("../../../migrations/" + file)
 		if err != nil {
 			t.Fatal(err)
@@ -269,5 +270,37 @@ func TestCandidateSecondInsertStoresNothing(t *testing.T) {
 	more = append(more, pgSample("r1", t0, 44, ptr(3)))
 	if n, err := st.InsertCandidates(ctx, more); err != nil || n != 1 {
 		t.Errorf("mixed call = (%d, %v); want (1, nil)", n, err)
+	}
+}
+
+func TestCandidatesInPerCurrencyRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, err := Open(ctx, connURL(t, name, "ot_w_candidate"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+
+	t0 := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
+	if _, err := st.InsertCandidates(ctx, []store.Candidate{pgSample("us", t0, 42, ptr(1))}); err != nil {
+		t.Fatal(err)
+	}
+	jp := candidatecur.Row{Candidate: pgSample("jp", t0.Add(11*time.Hour), 50, ptr(1)), Currency: "JPY"}
+	if n, err := st.InsertCandidatesIn(ctx, []candidatecur.Row{jp}); err != nil || n != 1 {
+		t.Fatalf("insert = %d, %v", n, err)
+	}
+	us, err := st.Candidates(ctx, "2026-11-06", "short_put")
+	if err != nil || len(us) != 1 || us[0].RunID != "us" {
+		t.Fatalf("Candidates = %+v, %v; want the null currency US run", us, err)
+	}
+	got, err := st.CandidatesIn(ctx, "2026-11-06", "short_put", "JPY")
+	if err != nil || len(got) != 1 || got[0].RunID != "jp" || got[0].Currency != "JPY" {
+		t.Fatalf("CandidatesIn JPY = %+v, %v", got, err)
+	}
+	usIn, err := st.CandidatesIn(ctx, "2026-11-06", "short_put", "USD")
+	if err != nil || len(usIn) != 1 || usIn[0].RunID != "us" {
+		t.Fatalf("CandidatesIn USD = %+v, %v", usIn, err)
 	}
 }
