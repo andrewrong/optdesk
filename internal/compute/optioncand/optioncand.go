@@ -75,7 +75,8 @@ func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute
 	return evaluatePutIn(in, p, q, dte, strike, spot, spotOK, currencyUSD)
 }
 
-func evaluatePutIn(in compute.CandidateInput, p compute.CandidateParams, q compute.OptionQuote, dte int, strike, spot *big.Rat, spotOK bool, cur string) scored {
+func evaluatePutIn(in compute.CandidateInput, p compute.CandidateParams, q compute.OptionQuote, dte int,
+	strike, spot *big.Rat, spotOK bool, cur string) scored {
 	bid, hasBid := parseDec(q.Bid)
 	ask, hasAsk := parseDec(q.Ask)
 	premium := bid
