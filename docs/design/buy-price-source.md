@@ -115,7 +115,7 @@ The `Config` field `Buy buypriceapi.Resolver` of `option_candidates_page` (entry
 
 ## Issues
 
-Build order: entries 1, 3 and 4 are the interface entries and land first, in parallel; every later entry needs only landed interfaces, and entry 10 needs entry 8. Entries are not merged: entries 1 and 2 are split because jobs and pages wait on the interface alone; entries 3, 5 and 6 are split because the job marks (6) need only the entry field (3); the ot entries are split because 7 waits on the jobs and 10 on the page. Between the merges of 8 and 10 the strip shows no valuation block (a nil `Buy`, as with no reader); entry 10 follows at once. Companies in every test and fixture are AAA, BBB, CCC with invented numbers (no valuation number of the owner appears in the repository). No migration. A test names a Chinese constant and never repeats its text. `BASE` is main when the entry is cut.
+Build order: entries 1, 3 and 4 are the interface entries and land first, in parallel; every later entry needs only landed interfaces, and entry 10 needs entries 2 and 8 (it constructs `buyprice.New`, declared by entry 2). Entries are not merged: entries 1 and 2 are split because jobs and pages wait on the interface alone; entries 3, 5 and 6 are split because the job marks (6) need only the entry field (3); the ot entries are split because 7 waits on the jobs and 10 on the page. Between the merges of 8 and 10 the strip shows no valuation block (a nil `Buy`, as with no reader); entry 10 follows at once. Companies in every test and fixture are AAA, BBB, CCC with invented numbers (no valuation number of the owner appears in the repository). No migration. A test names a Chinese constant and never repeats its text. `BASE` is main when the entry is cut.
 
 ### 1 buyprice-compute-if (interface)
 
@@ -200,7 +200,7 @@ Acceptance:
 ### 6 buyprice-job-marks
 
 Module: jobs. Size: M.
-Order: after 3.
+Order: after 1 and 3.
 Files: `internal/jobs/optioncandidates/buysource.go`, `internal/jobs/optioncandidates/buysource_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/job_test.go`, `docs/contracts/jobs/option_candidates.md`
 Contracts: unchanged
 Design: docs/design/buy-price-source.md#Decisions
@@ -273,7 +273,7 @@ Acceptance:
 ### 10 buyprice-ot-page
 
 Module: ot. Size: S.
-Order: after 8.
+Order: after 2 and 8.
 Files: `cmd/ot/valline_site.go`, `cmd/ot/valline_site_test.go`, `cmd/ot/evidence_site.go`, `docs/contracts/ot/pages/option_candidates_page.md`
 Contracts: unchanged
 Design: docs/design/buy-price-source.md#Decisions
