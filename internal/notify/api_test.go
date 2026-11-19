@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -273,5 +275,81 @@ func TestMorningContract(t *testing.T) {
 	ok, err = n.NotifyMorning(context.Background())
 	if err != nil || ok || len(snd.texts) != 1 {
 		t.Fatalf("second NotifyMorning = %v, %v, texts %d", ok, err, len(snd.texts))
+	}
+}
+
+type fakeRunReader struct{ runs []jobrun.JobRun }
+
+func (f fakeRunReader) Running(context.Context) ([]jobrun.JobRun, error) { return f.runs, nil }
+func (fakeRunReader) Usuals(context.Context) ([]jobrun.UsualStat, error) { return nil, nil }
+
+type fakeSlowMarker struct{ ids []string }
+
+func (f *fakeSlowMarker) MarkSlowNotified(_ context.Context, id string, _ time.Time) error {
+	f.ids = append(f.ids, id)
+	return nil
+}
+
+type fakeSlowNotifier struct {
+	deps   notify.SlowDeps
+	sender notify.Sender
+}
+
+func (n *fakeSlowNotifier) NotifySlowRuns(ctx context.Context) (int, error) {
+	runs, err := n.deps.Runs.Running(ctx)
+	if err != nil {
+		return 0, err
+	}
+	in := make([]jobrunapi.Input, 0, len(runs))
+	for _, r := range runs {
+		in = append(in, jobrunapi.Input{JobID: r.ID})
+	}
+	sent := 0
+	for i, f := range n.deps.Figures(time.Unix(0, 0), in, nil) {
+		if !f.Slow {
+			continue
+		}
+		if err := n.sender.Send(ctx, "slow run"); err != nil {
+			return sent, err
+		}
+		if err := n.deps.Mark.MarkSlowNotified(ctx, runs[i].ID, time.Unix(1, 0)); err != nil {
+			return sent, err
+		}
+		sent++
+	}
+	return sent, nil
+}
+
+var _ notify.NewSlowNotifierFunc = func(d notify.SlowDeps, s notify.Sender, _ clockwork.Clock, _ notify.Config) (notify.SlowNotifier, error) {
+	return &fakeSlowNotifier{deps: d, sender: s}, nil
+}
+
+func TestSlowNotifierContract(t *testing.T) {
+	t.Parallel()
+	mark := &fakeSlowMarker{}
+	snd := &fakeSender{}
+	deps := notify.SlowDeps{
+		Runs: fakeRunReader{runs: []jobrun.JobRun{{ID: "r1"}, {ID: "r2"}}},
+		Mark: mark,
+		Figures: func(_ time.Time, runs []jobrunapi.Input, _ []jobrunapi.Usual) []jobrunapi.Figure {
+			out := make([]jobrunapi.Figure, len(runs))
+			out[0].Slow = true
+			return out
+		},
+	}
+	var newFn notify.NewSlowNotifierFunc = func(d notify.SlowDeps, s notify.Sender, _ clockwork.Clock, _ notify.Config) (notify.SlowNotifier, error) {
+		return &fakeSlowNotifier{deps: d, sender: s}, nil
+	}
+	n, err := newFn(deps, snd, clockwork.NewFakeClock(), notify.Config{Zone: time.UTC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sn notify.SlowNotifier = n
+	got, err := sn.NotifySlowRuns(context.Background())
+	if err != nil || got != 1 {
+		t.Fatalf("NotifySlowRuns = %d, %v", got, err)
+	}
+	if len(snd.texts) != 1 || len(mark.ids) != 1 || mark.ids[0] != "r1" {
+		t.Fatalf("texts = %v, marked = %v", snd.texts, mark.ids)
 	}
 }
