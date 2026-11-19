@@ -25,7 +25,9 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 	p := &pageJSON{
 		Schema: "valuation_import_page", SchemaVersion: 1, View: in.View, PostPath: postPath,
 		MaxFileBytes: valueimportapi.MaxFileBytes,
-		Rows:         []rowJSON{}, NotInFile: []string{}, Unvalued: []string{}, Removed: []string{},
+		Labels: labelsJSON{R: TextR, BuyZoneTopSite: TextBuyZoneTopSite,
+			BuyZoneTopFile: TextBuyZoneTopFile, GeneralTick: TextGeneralTick},
+		Rows: []rowJSON{}, NotInFile: []string{}, Unvalued: []string{}, Removed: []string{},
 		Result: []resultJSON{}, Problems: []problemJSON{}, Gaps: []gapJSON{},
 		Error: optional(in.Error),
 	}

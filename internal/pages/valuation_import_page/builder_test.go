@@ -281,3 +281,28 @@ func TestOlderReasonFromImporterKeepsHint(t *testing.T) {
 		t.Errorf("reason %v, want %q", got, TextUnmatched)
 	}
 }
+
+func TestBuildLabelsInEveryView(t *testing.T) {
+	t.Parallel()
+	res := previewInput()
+	res.View = ViewResult
+	empty := Input{View: ViewEmpty}
+	for name, in := range map[string]Input{"empty": empty, "preview": previewInput(), "result": res} {
+		labels, ok := decode(t, build(t, in))["labels"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s: no labels", name)
+		}
+		want := map[string]string{
+			"r": TextR, "buy_zone_top_site": TextBuyZoneTopSite,
+			"buy_zone_top_file": TextBuyZoneTopFile, "general_tick": TextGeneralTick,
+		}
+		if len(labels) != len(want) {
+			t.Errorf("%s: labels %v", name, labels)
+		}
+		for k, v := range want {
+			if labels[k] != v {
+				t.Errorf("%s: labels[%s] = %v, want %q", name, k, labels[k], v)
+			}
+		}
+	}
+}

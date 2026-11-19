@@ -7,6 +7,10 @@ const (
 	TextR = "R (折现倍数 R)"
 	// TextBuyZoneTop is the buy-zone top with its hint.
 	TextBuyZoneTop = "buy-zone top (买入区间上沿)"
+	// TextBuyZoneTopSite is the buy-zone top the site computes, with its hint.
+	TextBuyZoneTopSite = "buy-zone top, site (站点算出的买入区间上沿)"
+	// TextBuyZoneTopFile is the buy-zone top the file carries, with its hint.
+	TextBuyZoneTopFile = "buy-zone top, file (文件中的买入区间上沿)"
 	// TextFirst is the review type first with its hint.
 	TextFirst = "first (首次估值)"
 	// TextEvent is the review type event with its hint.
