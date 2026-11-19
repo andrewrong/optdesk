@@ -43,7 +43,7 @@
           "unit": "usd_signed",
           "tone": "up"
         },
-        "caption": "All accounts combined: opening cash of closed sold positions totals; realised −$15.25; kept share 32.4%"
+        "caption": "Ledger as of 11-04, account main; all closed sold positions; realised −$15.25; kept share 32.4%"
       },
       "open_premium_usd": {
         "label": "Open premium",
