@@ -15,6 +15,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -268,8 +269,6 @@ func TestShadowRowsEqualOldRows(t *testing.T) {
 			r.ParamHash != st.Strategy.Params().Hash || r.ParamHash == "" {
 			t.Errorf("row %s: run %q at %v strategy %q version %q hash %q", r.Key, r.RunID, r.ComputedAt, r.Strategy, r.RuleVersion, r.ParamHash)
 		}
-		// the shadow strategy does not write the buy source mark; the job does, last (buysource.go)
-		o.Marks = strings.Replace(o.Marks, `,"buy_from_hand"]`, `]`, 1)
 		compareColumns(t, oldColumns(t, r), o)
 	}
 	if statuses["ok"] != 3 || statuses["blocked"] != 2 || statuses["unknown"] != 2 {
@@ -472,6 +471,74 @@ func TestShadowRowsCarryTheSettingsVersionOfTheOldRows(t *testing.T) {
 	for _, r := range old {
 		if r.SettingsVersion == nil || *r.SettingsVersion != 9 {
 			t.Fatalf("old row without the version")
+		}
+	}
+}
+
+// otherOpen is an open reader whose only row belongs to an underlying outside the watch list: the day has an open
+// snapshot, so every watched name takes the eod chain and carries the eod_fallback mark.
+type otherOpen struct{}
+
+func (otherOpen) OptionOpen(context.Context, contracts.Day) ([]contracts.OptionOpen, error) {
+	return []contracts.OptionOpen{openRowOf(99, 990, 1, 2.0, 2.1)}, nil
+}
+
+func shadowMarksRun(t *testing.T, source string) (*fakes, *fakeResults) {
+	t.Helper()
+	results := &fakeResults{}
+	f, st := shadowFixture(t, results)
+	st.Open = otherOpen{}
+	entries := threeEntries()
+	for i := range entries {
+		entries[i].BuySource = source
+	}
+	j, err := New(st, mixedRule{}, entries, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	return f, results
+}
+
+func TestShadowFactsCarryRowMarks(t *testing.T) {
+	t.Parallel()
+	f, results := shadowMarksRun(t, buypriceapi.SourceValuation)
+	old := putsOf(writtenRows(f))
+	got := results.all()
+	if len(got) != 7 || len(old) != 7 {
+		t.Fatalf("%d result rows, %d old rows", len(got), len(old))
+	}
+	for _, r := range got {
+		var facts map[string]string
+		if err := json.Unmarshal([]byte(r.Facts), &facts); err != nil {
+			t.Fatal(err)
+		}
+		marks := facts["marks"]
+		if !strings.Contains(marks, buypriceapi.MarkValuation) || !strings.Contains(marks, markEodFallback) {
+			t.Errorf("row %s marks %s", r.Key, marks)
+		}
+		if want := old[mustAtoi(t, r.Key)].Marks; marks != want {
+			t.Errorf("row %s marks %s, written row %s", r.Key, marks, want)
+		}
+	}
+}
+
+func TestShadowFactsCarryHandMark(t *testing.T) {
+	t.Parallel()
+	_, results := shadowMarksRun(t, buypriceapi.SourceHand)
+	got := results.all()
+	if len(got) != 7 {
+		t.Fatalf("%d result rows", len(got))
+	}
+	for _, r := range got {
+		var facts map[string]string
+		if err := json.Unmarshal([]byte(r.Facts), &facts); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(facts["marks"], buypriceapi.MarkHand) || strings.Contains(facts["marks"], buypriceapi.MarkValuation) {
+			t.Errorf("row %s marks %s", r.Key, facts["marks"])
 		}
 	}
 }
