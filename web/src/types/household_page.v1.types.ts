@@ -140,6 +140,16 @@ export type Totals2 = []|[MoneyCell]|[MoneyCell, MoneyCell]
  * @maxItems 20
  */
 export type Notes = string[]
+/**
+ * @minItems 2
+ * @maxItems 21
+ */
+export type Views = [View, View, ...(View)[]]
+/**
+ * @minItems 1
+ * @maxItems 20
+ */
+export type LeadNotes = [string, ...(string)[]]
 export type PositionsLink = (string | null)
 export type RiskLink = (string | null)
 export type RunId = string
@@ -218,6 +228,8 @@ stale: StaleLabel
 stress: MoneyBlock
 title: Title5
 trend: TrendBlock
+views?: Views
+lead_notes?: LeadNotes
 }
 /**
  * The account table: ``columns`` are the heads written by Python, six, in the order of the
@@ -468,7 +480,8 @@ value: Value6
 /**
  * A frame the accounts are counted in (issue #1680): ``household`` (the groups the group file
  * names, me and spouse together) or one scope for each other group (the daughter, apart).
- * Nothing is summed across scopes.
+ * The ``household`` scope is the family sum of the accounts of the book; every other scope is a single
+ * account.
  */
 export interface AccountScope {
 accounts: Accounts1
@@ -521,4 +534,14 @@ label: Label2
 rows: Rows6
 scope: Scope5
 window?: Window
+}
+/**
+ * One link of the row between the family and each account: ``key`` is ``household`` or an
+ * alias, ``href`` starts with ``/household`` and ``current`` marks the view the page shows.
+ */
+export interface View {
+key: string
+label: string
+href: string
+current: boolean
 }

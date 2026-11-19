@@ -8,6 +8,7 @@
     "ok.ts",
     "shortlist.ts",
     "stale.ts",
+    "bycompany.ts",
     "tiers-null.ts",
     "tiers.ts",
     "valueline.ts"

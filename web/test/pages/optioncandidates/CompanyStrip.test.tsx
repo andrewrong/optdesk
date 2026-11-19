@@ -172,6 +172,14 @@ describe('CompanyStrip', () => {
     expect(page.textContent).toContain(notJudgedSource.price_note!)
     expect(page.querySelector('[data-buy-source]')).toBeNull()
   })
+
+  it('TestNoCountLineWithVerdict', async () => {
+    const verdict = { id: 'sellable', word: 'v 有可卖', glyph: '✓', tone: 'success' } as const
+    const page = await show(<CompanyStrip company={withLine} labels={stripLabels} verdict={{ verdict, text: 'v text', bestYield: null }} />)
+    expect(page.querySelector('[data-counts]')).toBeNull()
+    expect(page.querySelector('[data-tier]')).toBeNull()
+    expect(page.querySelector('[data-pill]')!.textContent).toBe('✓ v 有可卖')
+  })
 })
 
 function notUsedCompany(): Company {

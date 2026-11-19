@@ -1,0 +1,380 @@
+{
+  "accounts": {
+    "columns": [
+      "账户",
+      "净值",
+      "现金",
+      "股票",
+      "期权",
+      "数据日"
+    ],
+    "meaning": "各账户的净值、现金、股票和期权，来自每日对账单。",
+    "rows": [
+      {
+        "cash": {
+          "cell": {
+            "currency": "USD",
+            "text": "$6,000.00",
+            "unit": "usd",
+            "value": 6000.0
+          }
+        },
+        "data_day": "数据日 10-30",
+        "name": "账户（main）",
+        "net_liquidation": {
+          "cell": {
+            "currency": "USD",
+            "text": "$60,000.00",
+            "unit": "usd",
+            "value": 60000.0
+          }
+        },
+        "options": {
+          "cell": null,
+          "gap": "见单个账户"
+        },
+        "scope": "household",
+        "stock": {
+          "cell": null,
+          "gap": "见单个账户"
+        },
+        "whose": "本人"
+      },
+      {
+        "cash": {
+          "cell": {
+            "currency": "USD",
+            "text": "$4,000.00",
+            "unit": "usd",
+            "value": 4000.0
+          }
+        },
+        "data_day": "数据日 10-31",
+        "name": "账户（daughter）",
+        "net_liquidation": {
+          "cell": {
+            "currency": "USD",
+            "text": "$40,000.00",
+            "unit": "usd",
+            "value": 40000.0
+          }
+        },
+        "options": {
+          "cell": null,
+          "gap": "见单个账户"
+        },
+        "scope": "household",
+        "stock": {
+          "cell": null,
+          "gap": "见单个账户"
+        },
+        "whose": "其他账户"
+      },
+      {
+        "cash": {
+          "cell": null,
+          "gap": "未采集到"
+        },
+        "name": "账户（wife）",
+        "net_liquidation": {
+          "cell": null,
+          "gap": "未采集到"
+        },
+        "options": {
+          "cell": null,
+          "gap": "见单个账户"
+        },
+        "scope": "household",
+        "stock": {
+          "cell": null,
+          "gap": "见单个账户"
+        },
+        "whose": "其他账户"
+      }
+    ],
+    "title": "账户"
+  },
+  "allocation": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "heads": [
+      "Category",
+      "Market value",
+      "Share",
+      "Target",
+      "Difference"
+    ],
+    "meaning": "Actual allocation against the target you set.",
+    "rows": [],
+    "title": "Allocation",
+    "totals": []
+  },
+  "build_id": "build-demo-0001",
+  "cash_after": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "Cash left in each account if assigned.",
+    "rows": [],
+    "title": "Cash after assignment",
+    "totals": []
+  },
+  "composition": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "heads": [
+      "Category",
+      "Amount",
+      "Share"
+    ],
+    "meaning": "Assets by category; shares are computed in approx. USD.",
+    "rows": [],
+    "title": "Composition",
+    "totals": []
+  },
+  "concentration": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "heads": [
+      "Company",
+      "Share of household net value",
+      "Market value"
+    ],
+    "meaning": "Share of net value of the largest items; each is computed on its own, the total can exceed 100%. Flex account (spouse) has data day 10-29 (Flex statement), the rest use this page's data day.",
+    "rows": [],
+    "title": "Concentration",
+    "totals": []
+  },
+  "data_times": [
+    {
+      "data_time": "2026-10-31T09:00:00+08:00",
+      "source": "oldest"
+    }
+  ],
+  "gaps": [
+    {
+      "reason": "no_data",
+      "text": "账户（wife）今天未采集到"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    }
+  ],
+  "generated_at": "2026-10-31T10:00:00+08:00",
+  "income": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "Income each month, USD and JPY listed apart. Open a month to see its items.",
+    "rows": [],
+    "title": "Monthly income",
+    "totals": []
+  },
+  "lead_notes": [
+    "账户（wife）今天未采集到，合计不含",
+    "账户（main）用的是 2026-10-30 的采集，早于最新交易日，已计入合计"
+  ],
+  "month_change": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "The change from month start to month end, step by step.",
+    "rows": [],
+    "title": "Why this month changed",
+    "total": {
+      "currency": "USD",
+      "text": "$205,999.50",
+      "unit": "usd",
+      "value": 205999.5
+    }
+  },
+  "movers": {
+    "columns": [
+      "Name",
+      "Previous trading day",
+      "Last price",
+      "Driver"
+    ],
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "Today's change of each asset, largest moves first, to see what drives it.",
+    "options": [],
+    "rows": [],
+    "stocks": [],
+    "title": "What moved today",
+    "totals": []
+  },
+  "notes": [
+    "现金分放在各账户，只担保本账户的卖出看跌；合计现金不是可共用的保证金"
+  ],
+  "obligations": {
+    "approx_usd_label": "Total ≈USD (for reference only)",
+    "columns": [
+      "Name",
+      "Expiry",
+      "Open price",
+      "Amount"
+    ],
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "Obligations due within 30 days that need cash.",
+    "rows": [],
+    "title": "Obligations due in the next 30 days",
+    "total_labels": [],
+    "totals": []
+  },
+  "overview": {
+    "meaning": "家庭合计净值，只含已计入的账户。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$100,000.00",
+          "unit": "usd",
+          "value": 100000.0
+        },
+        "name": "计入 2 / 3 个账户"
+      }
+    ],
+    "title": "概览",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$100,000.00",
+        "unit": "usd",
+        "value": 100000.0
+      }
+    ]
+  },
+  "positions_link": "Positions",
+  "risk_link": "Household risk",
+  "run_id": "run-demo-0001",
+  "run_status": "ok",
+  "schema": "household_page",
+  "schema_version": 1,
+  "scope": "household-page",
+  "scopes": [
+    {
+      "accounts": [
+        {
+          "label": "账户（main）",
+          "whose": "本人"
+        },
+        {
+          "label": "账户（daughter）",
+          "whose": "其他账户"
+        },
+        {
+          "label": "账户（wife）",
+          "whose": "其他账户"
+        }
+      ],
+      "key": "household",
+      "label": "家庭合计"
+    }
+  ],
+  "sentence": "全家合计净值 $100,000.00，现金分放在各账户。",
+  "stale": {
+    "data_time": "2026-10-31T09:00:00+08:00",
+    "stale_after": "2026-11-01T21:00:00+08:00",
+    "text": "Data day 2026-10-31, Data time 2026-10-31 09:00 (UTC+8)"
+  },
+  "stress": {
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "Estimated change under a few what-if cases, for reference only.",
+    "rows": [],
+    "title": "Stress",
+    "totals": []
+  },
+  "title": "家庭合计",
+  "trend": {
+    "change": {
+      "text": "+2.5%: last point against first",
+      "tone": "up",
+      "unit": "percent",
+      "value": 2.5
+    },
+    "gap": {
+      "reason": "not_built",
+      "text": "家庭合计暂不含此项，请看单个账户"
+    },
+    "meaning": "Household assets by day; the change is the last point against the first.",
+    "rows": [],
+    "series": [],
+    "title": "Trend",
+    "window": "2026-10-01 to 2026-10-03, last point against first"
+  },
+  "views": [
+    {
+      "current": true,
+      "href": "/household",
+      "key": "household",
+      "label": "全家"
+    },
+    {
+      "current": false,
+      "href": "/household?account=main",
+      "key": "main",
+      "label": "账户（main）"
+    },
+    {
+      "current": false,
+      "href": "/household?account=wife",
+      "key": "wife",
+      "label": "账户（wife）"
+    }
+  ]
+}

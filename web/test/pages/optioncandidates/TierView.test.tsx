@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { OptionCandidatesPage } from '@/pages/candidates/OptionCandidatesPage'
 import { TierView } from '@/pages/candidates/TierView'
 import { tiers } from './fixtures/tiers'
+import { bycompany } from './fixtures/bycompany'
 import { jp } from './fixtures/jp'
 import { tiersNoHeads, tiersNull, tiersTextsNull } from './fixtures/tiers-null'
 
@@ -318,5 +319,36 @@ describe('TierView', () => {
     const none = await show(<OptionCandidatesPage payload={tiersNull as never} />)
     expect(none.querySelector('[data-tier-view]')).toBeNull()
     expect(none.querySelector('[data-heads-note]')).toBeNull()
+  })
+
+  it('TestByCompanyReplacesBands', async () => {
+    const page = await show(<TierView tiers={bycompany} />)
+    expect(page.querySelector('[data-tier]')).toBeNull()
+    expect(page.querySelectorAll('[data-company-block]')).toHaveLength(4)
+    expect(page.querySelectorAll('[data-company]')).toHaveLength(4)
+    const text = page.textContent ?? ''
+    for (const item of bycompany.by_company!.legend) expect(text).toContain(item.text)
+    expect(text).not.toContain(bycompany.legend[0]!.text)
+    expect(text).toContain(bycompany.by_company!.heading_note)
+    expect(text).not.toContain(bycompany.heads!.companies_note)
+    expect(page.querySelectorAll('th[data-col]')).toHaveLength(bycompany.by_company!.columns.length)
+    const order = [...page.querySelectorAll('[data-company-block]')].map((b) => b.getAttribute('data-company-block'))
+    expect(order).toEqual(['AAA', 'BBB', 'CCC', 'DDD'])
+  })
+
+  it('TestNoTierTablesHeading', async () => {
+    const withBy = await show(<TierView tiers={bycompany} />)
+    expect(withBy.textContent).not.toContain('合约分档')
+    expect(withBy.querySelector('[data-heads-tiers]')).toBeNull()
+    const without = await show(<TierView tiers={tiers} />)
+    expect(without.textContent).toContain('合约分档')
+  })
+
+  it('TestNoByCompanyRendersAsToday', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    expect(page.querySelectorAll('section[data-tier]')).toHaveLength(2)
+    expect(page.querySelector('[data-tier=grey_in_the_money]')).not.toBeNull()
+    expect(page.querySelectorAll('[data-company]')).toHaveLength(tiers.companies.length)
+    expect(page.querySelector('[data-company-block]')).toBeNull()
   })
 })

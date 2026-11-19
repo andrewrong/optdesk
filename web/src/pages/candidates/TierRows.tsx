@@ -69,7 +69,7 @@ function TierTitle({ tier }: { tier: Tier }) {
   )
 }
 
-export function TierIcon({ tier }: { tier: Tier }) {
+export function TierIcon({ tier }: { tier: Pick<Tier, 'icon' | 'word'> }) {
   const Icon = icons[tier.icon]
   return <Icon aria-label={tier.word} role="img" data-icon={tier.icon} className="size-4" />
 }
@@ -120,14 +120,21 @@ export function TierHead({ columns }: { columns: TierColumn[] }) {
   )
 }
 
-function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
+// A row's own tier (the by_company layout) wins over the tier section it sits in.
+const ownIcons = { fits: 'check', check: 'alert' } as const
+
+export function DataRow({ tier, row }: { tier: Tier | null; row: TierRow }) {
+  const own = row.tier
+  const mark = own ? { id: own.id, word: own.word, icon: ownIcons[own.id] } : tier
+  if (!mark) return null
+  const wide = !own && tier !== null && tier.collapsed
   return (
     <Accordion type="single" collapsible data-row={row.id}>
       <AccordionItem value={row.id}>
         <Table className="table-fixed max-sm:block">
           <TierColgroup />
           <TableBody className="max-sm:block">
-            <TableRow className={cn('border-l-4 max-sm:flex max-sm:flex-wrap', borders[tier.id] ?? 'border-l-muted')}>
+            <TableRow className={cn('border-l-4 max-sm:flex max-sm:flex-wrap', borders[mark.id] ?? 'border-l-muted')}>
               <TableCell className="align-top max-sm:order-1 max-sm:w-10">
                 <AccordionTrigger
                   data-arrow
@@ -138,9 +145,9 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
                 </AccordionTrigger>
               </TableCell>
               <TableCell className="align-top max-sm:order-2">
-                <Badge variant={wordVariants[tier.id] ?? 'outline'} className="gap-1">
-                  <TierIcon tier={tier} />
-                  {tier.word}
+                <Badge variant={wordVariants[mark.id] ?? 'outline'} className="gap-1">
+                  <TierIcon tier={mark} />
+                  {mark.word}
                 </Badge>
               </TableCell>
               <TableCell data-cell="contract" className="align-top max-sm:order-3 max-sm:min-w-0 max-sm:flex-1 max-sm:whitespace-normal">
@@ -162,7 +169,7 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
           </TableBody>
         </Table>
         <AccordionContent data-expand>
-          {tier.collapsed ? (
+          {wide ? (
             <p data-line className="p-3 text-sm">
               {row.line}
             </p>
