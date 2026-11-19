@@ -1,12 +1,14 @@
 // The per-company preview table of the valuation import page: the action, the site's buy-zone top against the file's,
 // the key field of an unmatched name and the tick of a row that needs one. Every figure is a payload text.
-import type { Row } from '@/generated/valuation_import_page.v1'
+import type { Labels, Row } from '@/generated/valuation_import_page.v1'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Props {
+  labels?: Labels
   rows: Row[]
   keys: Record<string, string>
   markets: Record<string, string>
@@ -22,7 +24,7 @@ function variant(action: Row['action']) {
   return 'secondary'
 }
 
-export function PlanTable({ rows, keys, markets, ticks, onKey, onMarket, onTick }: Props) {
+export function PlanTable({ labels, rows, keys, markets, ticks, onKey, onMarket, onTick }: Props) {
   return (
     <Table>
       <TableHeader>
@@ -32,8 +34,8 @@ export function PlanTable({ rows, keys, markets, ticks, onKey, onMarket, onTick 
           <TableHead>Action</TableHead>
           <TableHead className="text-right">V</TableHead>
           <TableHead className="text-right">P</TableHead>
-          <TableHead className="text-right">Site buy-zone top</TableHead>
-          <TableHead className="text-right">File buy-zone top</TableHead>
+          <TableHead className="text-right">{labels?.buy_zone_top_site}</TableHead>
+          <TableHead className="text-right">{labels?.buy_zone_top_file}</TableHead>
           <TableHead>Tick</TableHead>
         </TableRow>
       </TableHeader>
@@ -59,10 +61,15 @@ export function PlanTable({ rows, keys, markets, ticks, onKey, onMarket, onTick 
                 r.key
               )}
               {r.unmatched ? (
+                <Label htmlFor={`r-market-${r.ticker}`} className="mt-1">
+                  {labels?.r}
+                </Label>
+              ) : null}
+              {r.unmatched ? (
                 <Input
+                  id={`r-market-${r.ticker}`}
                   name={`r_market.${r.ticker}`}
-                  aria-label={`R market ${r.ticker}`}
-                  className="mt-1"
+                  aria-label={`${labels?.r ?? ''} ${r.ticker}`}
                   value={markets[r.ticker] ?? r.r_market}
                   onChange={(e) => onMarket(r.ticker, e.target.value)}
                 />

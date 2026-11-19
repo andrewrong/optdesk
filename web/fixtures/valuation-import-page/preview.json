@@ -138,5 +138,11 @@
   "result": [],
   "problems": [],
   "gaps": [],
-  "error": null
+  "error": null,
+  "labels": {
+    "r": "invented r label",
+    "buy_zone_top_site": "invented site head",
+    "buy_zone_top_file": "invented file head",
+    "general_tick": "invented general tick"
+  }
 }
