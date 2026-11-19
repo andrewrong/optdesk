@@ -196,6 +196,17 @@ gateways are connected. Besides it, check:
 - A deploy is manual, after the required gateways are logged in. The optdesk project has no
   automatic deploy, and adding one would restart pyside on every merge.
 
+## After the lock changes
+
+pyside runs with `--no-sync`, so a change of `pyside/uv.lock` installs nothing by itself. After
+such a change run the build step `uv sync --locked --no-dev --project pyside` on every host that
+runs `python -m optdesk.refbars` (the ot host), not only on the host of the service.
+
+The command reaches Yahoo (yfinance). Egress was checked from the service host on 2026-11-18, not
+from inside the deployed pyside process: `GET
+https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d` answered 200, and so
+did the same request for `7203.T`.
+
 ## Left out
 
 An automatic fallback from one gateway to another
