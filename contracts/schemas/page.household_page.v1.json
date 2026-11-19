@@ -97,7 +97,7 @@
     },
     "AccountScope": {
       "additionalProperties": false,
-      "description": "A frame the accounts are counted in (issue #1680): ``household`` (the groups the group file\nnames, me and spouse together) or one scope for each other group (the daughter, apart).\nNothing is summed across scopes.",
+      "description": "A frame the accounts are counted in (issue #1680): ``household`` holds the accounts of the book\nsummed by the page figure (the family total) and every other scope is a single account. Nothing\nis summed across scopes other than that one.",
       "properties": {
         "accounts": {
           "items": {
@@ -1509,6 +1509,42 @@
       "title": "UsdFigure",
       "type": "object"
     },
+    "View": {
+      "additionalProperties": false,
+      "description": "One link of the row between the family and each account: ``key`` is ``household`` or an\nalias, ``href`` starts with ``/household`` and ``current`` marks the view the page shows.",
+      "properties": {
+        "current": {
+          "title": "Current",
+          "type": "boolean"
+        },
+        "href": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^/household",
+          "title": "Href",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "href",
+        "current"
+      ],
+      "title": "View",
+      "type": "object"
+    },
     "WaterfallBlock": {
       "additionalProperties": false,
       "description": "Month-over-month steps in one currency; ``total`` is the closing level.",
@@ -1693,6 +1729,17 @@
     "income": {
       "$ref": "#/$defs/MoneyBlock"
     },
+    "lead_notes": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Lead Notes",
+      "type": "array"
+    },
     "long_term": {
       "$ref": "#/$defs/MoneyBlock"
     },
@@ -1803,6 +1850,15 @@
     },
     "trend": {
       "$ref": "#/$defs/TrendBlock"
+    },
+    "views": {
+      "items": {
+        "$ref": "#/$defs/View"
+      },
+      "maxItems": 21,
+      "minItems": 2,
+      "title": "Views",
+      "type": "array"
     }
   },
   "required": [
