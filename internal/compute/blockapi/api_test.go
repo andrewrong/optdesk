@@ -411,3 +411,42 @@ func TestTechContract(t *testing.T) {
 		t.Fatal("Classify is not a TechFunc")
 	}
 }
+
+// fakeFamily keeps the promises of FamilyFigure: pure, one row per input account, USD result.
+type fakeFamily struct{}
+
+func (fakeFamily) Family(in blockapi.FamilyIn) blockapi.FamilyResult {
+	r := blockapi.FamilyResult{Currency: "USD", OldestDay: in.Accounts[0].Day, FxRate: in.UsdJpy, FxDay: in.RateDay, FxSource: in.RateSource}
+	for _, a := range in.Accounts {
+		row := blockapi.FamilyAccountOut{Alias: a.Alias, Reason: a.Reason, Day: a.Day, Net: fv(a.Values[0].Value), Cash: compute.FigureValue{Gap: "missing_input"}}
+		r.Rows = append(r.Rows, row)
+		if a.Reason != "" {
+			r.Excluded = append(r.Excluded, row)
+			continue
+		}
+		r.Included = append(r.Included, a.Alias)
+		r.Net = row.Net
+		r.DayAmount = fv(a.Prior[0].Value)
+		r.MonthAmount = fv(a.MonthStart[0].Value)
+	}
+	return r
+}
+
+func TestFamilyFigureContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewFamilyFigureFunc = func() blockapi.FamilyFigure { return fakeFamily{} }
+	r := mk().Family(blockapi.FamilyIn{
+		Accounts: []blockapi.FamilyAccountIn{{
+			Alias: "main", Whose: "self", Day: "2026-11-18",
+			Values:     []blockapi.ValueIn{{Tag: "NetLiquidation", Value: "100", Currency: "USD"}},
+			Prior:      []blockapi.ValueIn{{Tag: "NetLiquidation", Value: "90", Currency: "USD"}},
+			MonthStart: []blockapi.ValueIn{{Tag: "NetLiquidation", Value: "80", Currency: "USD"}},
+		}},
+		UsdJpy: "150", RateDay: "2026-11-18", RateSource: "fx",
+	})
+	if r.Currency != "USD" || len(r.Included) != 1 || r.Included[0] != "main" || r.Net.Value != "100" ||
+		r.DayAmount.Value != "90" || r.MonthAmount.Value != "80" || r.Rows[0].Cash.Gap != "missing_input" ||
+		r.OldestDay != "2026-11-18" || r.FxRate != "150" || r.FxDay != "2026-11-18" || r.FxSource != "fx" {
+		t.Fatalf("family %+v", r)
+	}
+}
