@@ -3,12 +3,12 @@ package home_household
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const (
@@ -147,7 +147,7 @@ func sayFamilyGap(t tile, reason string, in blockapi.FamilyIn, included []string
 	case "missing_input":
 		var names []string
 		for _, a := range in.Accounts {
-			if lacks(a) && contains(included, a.Alias) {
+			if lacks(a) && slices.Contains(included, a.Alias) {
 				names = append(names, fmt.Sprintf(familyAccountLabel, a.Alias))
 			}
 		}
@@ -161,15 +161,6 @@ func sayFamilyGap(t tile, reason string, in blockapi.FamilyIn, included []string
 	g := gapJSON{Reason: reason, Text: text}
 	t.Figure, t.Caption = g, g
 	return t
-}
-
-func contains(xs []string, s string) bool {
-	for _, x := range xs {
-		if x == s {
-			return true
-		}
-	}
-	return false
 }
 
 // familyNotes is one line per left-out alias, one per counted alias from an earlier day, the rate line
@@ -190,7 +181,7 @@ func familyNotes(res blockapi.FamilyResult, newest string) []string {
 		}
 	}
 	for _, r := range res.Rows {
-		if r.Reason == "" && r.Day != "" && r.Day != newest && contains(res.Included, r.Alias) {
+		if r.Reason == "" && r.Day != "" && r.Day != newest && slices.Contains(res.Included, r.Alias) {
 			notes = append(notes, fmt.Sprintf(familyLineEarlierDay, fmt.Sprintf(familyAccountLabel, r.Alias), r.Day))
 		}
 	}
@@ -199,8 +190,6 @@ func familyNotes(res blockapi.FamilyResult, newest string) []string {
 	}
 	return append(notes, familyCashLine)
 }
-
-var _ store.AccountReader // the readers are those of Config
 
 // readRate sets the USDJPY rate of the newest data day among days, with its day and its source; no rate
 // stored leaves the input without one.

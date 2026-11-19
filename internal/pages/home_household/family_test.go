@@ -365,3 +365,19 @@ func TestFamilyCardGolden(t *testing.T) {
 		t.Fatalf("golden differs:\n%s", pretty.Bytes())
 	}
 }
+
+// TestFamilyCardStaleCaptureIsMarkedAfterThreeSessionDays: a capture 3 session days before the day is
+// counted, one of 4 is passed to the family figure as stale_input and carries no values.
+func TestFamilyCardStaleCaptureIsMarkedAfterThreeSessionDays(t *testing.T) {
+	t.Parallel()
+	for _, k := range []struct{ capture, reason string }{{"2026-11-05", ""}, {"2026-11-04", "stale_input"}} {
+		rows := twoCaptured()
+		rows["wife"] = map[string][]store.AccountValue{k.capture: vals("150000.00", "58000.00")}
+		c, got, _ := book(twoOfThree(), rows)
+		build(t, c)
+		w := got.Accounts[1]
+		if w.Reason != k.reason || w.Day != k.capture || (k.reason != "" && w.Values != nil) || (k.reason == "" && len(w.Values) == 0) {
+			t.Errorf("capture %s: wife input = %+v, want reason %q", k.capture, w, k.reason)
+		}
+	}
+}
