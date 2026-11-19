@@ -1,19 +1,29 @@
-// The legend of the tier view: one card, one line per payload item. Every text is a payload field.
-import { cn } from '@/lib/utils'
+// The legend of the tier view: one bordered strip of four cells, divided by thin lines. Every text is a payload field.
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { TierView } from '@/generated/option_candidates_page.v1'
 
-const tints: Record<string, string> = { fits: 'bg-success/10', check: 'bg-warn/10' }
+const pills: Record<string, 'success' | 'warn' | 'outline'> = { fits: 'success', check: 'warn', grey: 'outline' }
 
 export function TierLegend({ items }: { items: TierView['legend'] }) {
   return (
-    <Card data-legend>
-      <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-        {items.map((item) => (
-          <p key={item.tier} data-legend-item={item.tier} className={cn('rounded-md p-2', tints[item.tier] ?? 'bg-muted')}>
-            <span className="font-medium">{item.title}</span> <span className="text-muted-foreground">{item.text}</span>
-          </p>
-        ))}
+    <Card data-legend className="py-0">
+      <CardContent className="grid grid-cols-1 divide-y px-0 text-sm sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+        {items.map((item) => {
+          const pill = pills[item.tier]
+          return (
+            <div key={item.tier} data-legend-item={item.tier} className="flex flex-col gap-1 p-3">
+              {pill ? (
+                <Badge variant={pill} className="h-auto w-fit whitespace-normal">
+                  {item.title}
+                </Badge>
+              ) : (
+                <span className="font-bold">{item.title}</span>
+              )}
+              <span className="text-muted-foreground">{item.text}</span>
+            </div>
+          )
+        })}
       </CardContent>
     </Card>
   )
