@@ -37,7 +37,7 @@ afterEach(async () => {
 })
 
 const button = (el: HTMLElement, name: string) =>
-  [...el.querySelectorAll('button')].find((b) => b.textContent === name) as HTMLButtonElement
+  [...el.querySelectorAll('button')].find((b) => b.textContent?.startsWith(`${name} (`) || b.textContent === name) as HTMLButtonElement
 const box = (el: HTMLElement, label: string) => el.querySelector(`[role="checkbox"][aria-label="${label}"]`) as HTMLElement
 const click = (n: Element) => act(async () => n.dispatchEvent(new MouseEvent('click', { bubbles: true })))
 
@@ -67,6 +67,25 @@ describe('valuation import page', () => {
     expect(el.querySelector('input[type="file"]')).not.toBeNull()
     expect(button(el, 'Preview')).toBeDefined()
     expect(el.querySelector('table')).toBeNull()
+  })
+
+  it('renders the empty state texts from the labels', async () => {
+    const p = empty()
+    const el = await render(p)
+    expect(el.querySelector('h1')?.textContent).toBe(p.labels?.title)
+    expect(el.querySelector('header p')?.textContent).toBe(p.labels?.intro)
+    expect(el.querySelector('label[for="valuation-file"]')?.textContent).toBe(p.labels?.file)
+    expect(el.querySelector('form[data-form="preview"] button')?.textContent).toBe(p.labels?.preview)
+  })
+
+  it('renders the count words, same file again and confirm from the labels', async () => {
+    const p = preview()
+    const el = await render(p)
+    const l = p.labels
+    expect(el.textContent).toContain(`${l?.count_insert} ${p.counts.insert}`)
+    expect(el.textContent).toContain(`${l?.count_needs_tick} ${p.counts.needs_tick}`)
+    expect(el.querySelector('label[for="valuation-file-confirm"]')?.textContent).toBe(l?.same_file_again)
+    expect(el.querySelector('form[data-form="confirm"] button[type="submit"]')?.textContent).toBe(l?.confirm)
   })
 
   it('prints the label texts of the payload', async () => {
