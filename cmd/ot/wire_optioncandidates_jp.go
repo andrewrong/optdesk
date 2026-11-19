@@ -45,6 +45,8 @@ func init() {
 // line and the others still run.
 func buildCandidatesJP(a *app, jc *jobCtx) (contracts.Job, string, error) {
 	f := jc.f
+	// left logs "option_candidates_jp not built", not the "job left out" line of the other families, on purpose:
+	// a test rig whose deps lack newCurrencyRule reaches it, and the scheduler tests count the "job left out" lines.
 	left := func(key, why string) (contracts.Job, string, error) {
 		a.log.Warn("option_candidates_jp not built", "component", "ot", "job", jobOptionCandidatesJP, "status", why)
 		if key != "" {
