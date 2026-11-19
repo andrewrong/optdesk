@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -123,6 +124,9 @@ func marksCell(c store.Candidate) any {
 	}
 	cell := textCell(dash)
 	for _, m := range marks {
+		if m == buypriceapi.MarkValuation || m == buypriceapi.MarkHand {
+			continue // the source of the price is the badge of the strip and the short list, not a mark
+		}
 		if h, ok := markHints[m]; ok {
 			m += fitSeparator + h
 		}

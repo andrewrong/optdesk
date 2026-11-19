@@ -935,7 +935,13 @@
         "buy_price_note": null,
         "next_earnings": "unknown",
         "counts": "2 fit, 1 check, 1 collapsed",
-        "valuation": null
+        "valuation": null,
+        "buy_source": {
+          "code": "hand",
+          "label": "Hand price",
+          "gloss": "你自己在 Plan 的价格线里手填的买入价。",
+          "tone": "info"
+        }
       }
     ],
     "common": [
@@ -951,12 +957,12 @@
       {
         "tier": "fits",
         "title": "✓ Fits (2)",
-        "text": "满足你的全部条件：已设买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。|delta| 低于 0.15 时权利金薄，仍然满足条件。"
+        "text": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。|delta| 低于 0.15 时权利金薄，仍然满足条件。"
       },
       {
         "tier": "check",
         "title": "! Check (1)",
-        "text": "已设买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
+        "text": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
       },
       {
         "tier": "grey",
@@ -1012,7 +1018,7 @@
         "word": "Fits",
         "icon": "check",
         "title": "2 fit your conditions",
-        "explain": "满足你的全部条件：已设买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。",
+        "explain": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。",
         "collapsed": false,
         "rows": [
           {
@@ -1437,7 +1443,7 @@
         "word": "Check",
         "icon": "alert",
         "title": "1 to check",
-        "explain": "已设买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。",
+        "explain": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。",
         "collapsed": false,
         "rows": [
           {
@@ -1705,7 +1711,7 @@
         "word": "Not judged",
         "icon": "minus",
         "title": "1 not judged: no buy price",
-        "explain": "没有设买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。",
+        "explain": "没有估值买入区间，也没有手填买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。",
         "collapsed": true,
         "rows": [
           {
@@ -1750,7 +1756,7 @@
     ],
     "stored_title": "原始表格",
     "idle_note": "1 家公司没有买入价和估值档案：BBB",
-    "buy_hint": "有公司没有设买入价：在 Companies \u003e Watch list 的 Buy 列填写，填了才会被评判。",
+    "buy_hint": "有公司没有买入价：导入估值，或在 Companies \u003e Watch list 的 Buy 列手填一个价格，有了买入价才会被评判。",
     "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
   }
 }

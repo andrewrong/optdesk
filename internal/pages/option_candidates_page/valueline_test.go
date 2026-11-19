@@ -13,16 +13,16 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/andrewrong/optdesk/internal/compute/valuelinesapi"
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // valueConfig is the tiers_ok page with the valuation readers set.
-func valueConfig(st valuation.State, calc valuelinesapi.Calculator) (Config, *fakeValuation) {
+func valueConfig(st valuation.State, calc buypriceapi.Resolver) (Config, *fakeValuation) {
 	c, _ := tierScenario("tiers_ok")
 	v := &fakeValuation{st: st}
-	c.Valuation, c.ValueLines = v, calc
+	c.Valuation, c.Buy = v, calc
 	return c, v
 }
 
@@ -40,25 +40,21 @@ func reasonOf(cv companyView) string {
 
 func TestValueLineFromCalculator(t *testing.T) {
 	t.Parallel()
-	calc := &fakeLines{buy: "91.2"}
+	calc := &fakeBuy{price: "91.2"}
 	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), calc)
 	cs := companiesOfBuild(t, c)
 	v := cs[0].Valuation
 	if v == nil || v.Reason != nil || v.Text != "$91.20 (review 2026-11-10)" {
 		t.Fatalf("valuation = %+v", v)
 	}
-	if v.Label != "Valuation buy line B_hi" || v.GateLabel != "Buy price used by the gate (hand-typed)" {
+	if v.Label != "Valuation buy line B_hi" || v.GateLabel != "Buy price used by the gate" {
 		t.Errorf("labels = %q, %q", v.Label, v.GateLabel)
 	}
-	if len(calc.in) != 1 {
-		t.Fatalf("Lines called %d times", len(calc.in))
+	if len(calc.in) != 2 {
+		t.Fatalf("Resolve called %d times, want once per strip", len(calc.in))
 	}
 	in := calc.in[0]
-	want := valuelinesapi.Input{
-		V: "100", P: "3", Market: "US", R: valuelinesapi.RValues{US: "0.9", JP: "0.8", HKCN: "0.7"},
-		Margin: []valuelinesapi.MarginRow{{PFrom: "1", M: "0.1", W: "0.2", H: "0.3", S: "0.4"}},
-	}
-	if !reflect.DeepEqual(in, want) || in.Close != "" {
+	if in.Symbol != "AAA" || in.Currency != "USD" || in.Hand != "" {
 		t.Errorf("input = %+v", in)
 	}
 	if len(cs) != 1 {
@@ -66,9 +62,28 @@ func TestValueLineFromCalculator(t *testing.T) {
 	}
 }
 
+// TestStripFigureEqualsResolver: the figure of the strip is moneyText of the resolver's price for the same
+// issuer and zones, and the review day is the resolver's.
+func TestStripFigureEqualsResolver(t *testing.T) {
+	t.Parallel()
+	st := valueState(valueEntry("AAA", valueReview()))
+	calc := &fakeBuy{price: "91.2399"}
+	c, _ := valueConfig(st, calc)
+	v := companiesOfBuild(t, c)[0].Valuation
+	zones, tables := zonesOf(st)
+	res := calc.Resolve(buypriceapi.Input{Symbol: "AAA", Currency: "USD", Zones: zones, Tables: tables})
+	m, ok := moneyText(res.Price)
+	if !ok || v.Text != m+" (review "+res.ReviewDay+")" || v.Text != "$91.24 (review 2026-11-10)" {
+		t.Errorf("text = %q, resolver price %q", v.Text, res.Price)
+	}
+	if !reflect.DeepEqual(calc.in[0], buypriceapi.Input{Symbol: "AAA", Currency: "USD", Zones: zones, Tables: tables}) {
+		t.Errorf("input = %+v", calc.in[0])
+	}
+}
+
 func TestValueLineMatchIgnoresCase(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("aaa", valueReview())), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(valueEntry("aaa", valueReview())), &fakeBuy{price: "91.2"})
 	if v := companiesOfBuild(t, c)[0].Valuation; v == nil || v.Reason != nil {
 		t.Fatalf("valuation = %+v", v)
 	}
@@ -76,7 +91,7 @@ func TestValueLineMatchIgnoresCase(t *testing.T) {
 
 func TestValueLineAmbiguousTicker(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeBuy{price: "91.2"})
 	c.Names = &namesFake{names: map[int]string{7: "AAA", 8: "AAA"}}
 	for i, cv := range companiesOfBuild(t, c) {
 		if reasonOf(cv) != "ambiguous" || cv.Valuation.Text != valueReasonAmbiguousZh {
@@ -89,7 +104,7 @@ func TestValueLineReasonOrder(t *testing.T) {
 	t.Parallel()
 	e := valueEntry("AAA", nil)
 	e.Profile.Pool = "removed"
-	c, _ := valueConfig(valueState(e), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(e), &fakeBuy{price: "91.2"})
 	if got := reasonOf(companiesOfBuild(t, c)[0]); got != "removed" {
 		t.Errorf("reason = %q", got)
 	}
@@ -97,7 +112,7 @@ func TestValueLineReasonOrder(t *testing.T) {
 
 func TestValueLineNoReview(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("AAA", nil)), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(valueEntry("AAA", nil)), &fakeBuy{price: "91.2"})
 	if got := reasonOf(companiesOfBuild(t, c)[0]); got != "no_review" {
 		t.Errorf("reason = %q", got)
 	}
@@ -111,7 +126,7 @@ func TestValueLineNoTables(t *testing.T) {
 	} {
 		st := valueState(valueEntry("AAA", valueReview()))
 		mod(&st)
-		c, _ := valueConfig(st, &fakeLines{buy: "91.2"})
+		c, _ := valueConfig(st, &fakeBuy{price: "91.2"})
 		if got := reasonOf(companiesOfBuild(t, c)[0]); got != "no_tables" {
 			t.Errorf("%s: reason = %q", name, got)
 		}
@@ -122,17 +137,17 @@ func TestValueLineCurrency(t *testing.T) {
 	t.Parallel()
 	e := valueEntry("AAA", valueReview())
 	e.Profile.Currency = "JPY"
-	calc := &fakeLines{buy: "91.2"}
+	calc := &fakeBuy{price: "91.2"}
 	c, _ := valueConfig(valueState(e), calc)
 	v := companiesOfBuild(t, c)[0].Valuation
-	if reasonOf(companiesOfBuild(t, c)[0]) != "currency" || v.Text != valueReasonCurrencyZh || len(calc.in) != 0 {
-		t.Errorf("valuation = %+v, calls %d", v, len(calc.in))
+	if reasonOf(companiesOfBuild(t, c)[0]) != "currency" || v.Text != valueReasonCurrencyZh {
+		t.Errorf("valuation = %+v", v)
 	}
 }
 
 func TestValueLineBadInput(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeLines{err: valuelinesapi.ErrBadInput})
+	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeBuy{reason: buypriceapi.ReasonBadInput})
 	if got := reasonOf(companiesOfBuild(t, c)[0]); got != "bad_input" {
 		t.Errorf("reason = %q", got)
 	}
@@ -140,7 +155,7 @@ func TestValueLineBadInput(t *testing.T) {
 
 func TestValueLineReadErrorIsSoft(t *testing.T) {
 	t.Parallel()
-	c, v := valueConfig(valueState(), &fakeLines{buy: "91.2"})
+	c, v := valueConfig(valueState(), &fakeBuy{price: "91.2"})
 	v.err = errors.New("db down")
 	cs := companiesOfBuild(t, c)
 	if len(cs) != 1 {
@@ -159,9 +174,10 @@ func TestValueLineReadErrorIsSoft(t *testing.T) {
 func TestValueLineNilReadersNull(t *testing.T) {
 	t.Parallel()
 	st := valueState(valueEntry("AAA", valueReview()))
-	c1, _ := valueConfig(st, &fakeLines{buy: "91.2"})
+	c1, _ := valueConfig(st, &fakeBuy{price: "91.2"})
 	c1.Valuation = nil
 	c2, _ := valueConfig(st, nil)
+	c2.Buy = nil
 	for _, c := range []Config{c1, c2} {
 		for i, cv := range companiesOfBuild(t, c) {
 			if cv.Valuation != nil {
@@ -173,19 +189,19 @@ func TestValueLineNilReadersNull(t *testing.T) {
 
 func TestValueLineGateTextIsBuyPrice(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview()), valueEntry("BBB", valueReview())), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(valueEntry("AAA", valueReview()), valueEntry("BBB", valueReview())), &fakeBuy{price: "91.2"})
 	cs := companiesOfBuild(t, c)
 	if cs[0].BuyPrice == nil || cs[0].Valuation.GateText != *cs[0].BuyPrice {
 		t.Errorf("AAA = %+v", cs[0])
 	}
-	if cs[1].BuyPrice != nil || cs[1].Valuation.GateText != "not set" {
+	if cs[1].BuyPrice != nil || cs[1].Valuation.GateText != "not judged" {
 		t.Errorf("BBB = %+v", cs[1])
 	}
 }
 
 func TestValueLineTextsFromZhConsts(t *testing.T) {
 	t.Parallel()
-	c, _ := valueConfig(valueState(valueEntry("AAA", nil)), &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(valueState(valueEntry("AAA", nil)), &fakeBuy{price: "91.2"})
 	v := companiesOfBuild(t, c)[0].Valuation
 	for what, pair := range map[string][2]string{
 		"hint": {deref(v.Hint), valueHintZh}, "gate hint": {deref(v.GateHint), gateHintZh}, "no_review": {v.Text, valueReasonNoReviewZh},
@@ -206,7 +222,7 @@ func TestValueLineTextsFromZhConsts(t *testing.T) {
 
 func TestValueLineDoesNotChangeTiers(t *testing.T) {
 	t.Parallel()
-	with, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeLines{buy: "91.2"})
+	with, _ := valueConfig(valueState(valueEntry("AAA", valueReview())), &fakeBuy{price: "91.2"})
 	without, _ := tierScenario("tiers_ok")
 	a, b := buildTiersOf(t, with), buildTiersOf(t, without)
 	for i := range a.Companies {
@@ -251,7 +267,7 @@ func TestValueLineValidatesSchema(t *testing.T) {
 		t.Error(err)
 	}
 	st := valueState(valueEntry("AAA", valueReview()), valueEntry("BBB", nil))
-	c, _ := valueConfig(st, &fakeLines{buy: "91.2"})
+	c, _ := valueConfig(st, &fakeBuy{price: "91.2"})
 	b, err := Build(context.Background(), c, nil, buildDay, testNow)
 	if err != nil {
 		t.Fatal(err)

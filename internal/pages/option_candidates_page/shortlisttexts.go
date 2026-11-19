@@ -1,5 +1,7 @@
 package option_candidates_page
 
+import "github.com/andrewrong/optdesk/internal/compute/buypriceapi"
+
 // English texts of the short put list (candidates-page-v2.md Decisions 2, 9, 10, 11 and 14). The Chinese hints
 // and glosses are in zh_texts.go.
 const (
@@ -62,9 +64,9 @@ var dropHints = map[string]string{
 	"over_cap": zhDropOverCap,
 }
 
-// buySourceTexts are the label and Chinese gloss of each code of buySourceOf.
+// buySourceTexts are the label and Chinese gloss of each source code of buySourceCode.
 var buySourceTexts = map[string]struct{ label, gloss string }{
-	buySourceHand: {"Hand price", zhBuySourceHand},
+	buypriceapi.SourceValuation: {"Valuation buy zone", zhBuySourceValuation},
+	buypriceapi.SourceHand:      {"Hand price", zhBuySourceHand},
+	buypriceapi.SourceNone:      {tierGreyWord, zhBuySourceNone},
 }
-
-const buySourceHand = "hand"

@@ -32,3 +32,21 @@ func TestMarksCellUnknownMarkStillAsStored(t *testing.T) {
 		t.Errorf("badges = %v", cell.Badges)
 	}
 }
+
+func TestMarksCellHidesSourceMarks(t *testing.T) {
+	t.Parallel()
+	c := cand("short_put", 1, "ok")
+	c.Marks = `["buy_from_valuation"]`
+	if cell := marksCell(c).(valueCell); len(cell.Badges) != 0 || cell.Text != dash {
+		t.Errorf("valuation only: %+v", cell)
+	}
+	c.Marks = `["buy_from_hand"]`
+	if cell := marksCell(c).(valueCell); len(cell.Badges) != 0 || cell.Text != dash {
+		t.Errorf("hand only: %+v", cell)
+	}
+	c.Marks = `["buy_from_valuation","eod_fallback","some_future_mark","buy_from_hand"]`
+	cell := marksCell(c).(valueCell)
+	if len(cell.Badges) != 2 || !strings.HasPrefix(cell.Badges[0], "eod_fallback") || cell.Badges[1] != "some_future_mark" {
+		t.Errorf("mixed: %v", cell.Badges)
+	}
+}
