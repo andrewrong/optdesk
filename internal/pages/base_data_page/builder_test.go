@@ -420,3 +420,54 @@ func TestNoReaderNoCrossCheck(t *testing.T) {
 		t.Fatalf("pairs %v gaps %v", got.Pairs, gapReasons(m))
 	}
 }
+
+// TestHistoryLostCheckNotJudged: a history_lost check of an empty level is built into the page with its label and
+// hint, and the level of its row is the level without the check.
+func TestHistoryLostCheckNotJudged(t *testing.T) {
+	t.Parallel()
+	base := fakeEval{}.Func()
+	with := func(in basecheckapi.Input) basecheckapi.Output {
+		out := base(in)
+		for i := range out.Rows {
+			if out.Rows[i].Dataset == "open" {
+				out.Rows[i].Checks = append(out.Rows[i].Checks, basecheckapi.Check{Rule: "history_lost", N: 5, Bad: 2})
+			}
+		}
+		return out
+	}
+	find := func(ev basecheckapi.Func) map[string]any {
+		in := defaultInput(fakeEval{})
+		in.Eval = ev
+		b, err := Build(context.Background(), in) // not validated: the schema may not know an empty level
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m map[string]any
+		if err := json.Unmarshal(b, &m); err != nil {
+			t.Fatal(err)
+		}
+		for _, g := range m["groups"].([]any) {
+			for _, r := range g.(map[string]any)["rows"].([]any) {
+				if row := r.(map[string]any); row["dataset"] == "open" {
+					return row
+				}
+			}
+		}
+		t.Fatal("no open row")
+		return nil
+	}
+	plain, got := find(base), find(with)
+	if plain["level"] != got["level"] {
+		t.Fatalf("level %v != %v", got["level"], plain["level"])
+	}
+	wantHint, _ := Hint("open.history_lost")
+	for _, c := range got["checks"].([]any) {
+		if c := c.(map[string]any); c["rule"] == "history_lost" {
+			if c["label"] != "History lost" || c["hint_zh"] != wantHint || wantHint == "" {
+				t.Fatalf("check = %v", c)
+			}
+			return
+		}
+	}
+	t.Fatalf("no history_lost check: %v", got["checks"])
+}

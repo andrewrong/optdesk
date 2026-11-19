@@ -85,3 +85,12 @@ func TestHistoryLostLabelAndHint(t *testing.T) {
 		t.Errorf("label = %q", l)
 	}
 }
+
+// TestErrorsHintSaysDeferredIsNotError: the hint of errors says that for the open table a deferred contract is not an error.
+func TestErrorsHintSaysDeferredIsNotError(t *testing.T) {
+	t.Parallel()
+	h, ok := Hint("open.errors")
+	if !ok || !strings.Contains(h, "open") || !strings.Contains(h, "不问") || !strings.Contains(h, "不算出错") {
+		t.Fatalf("hint = %q, %v", h, ok)
+	}
+}
