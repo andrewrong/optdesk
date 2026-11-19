@@ -18,6 +18,9 @@ import (
 // siteHouseholdRoute is the address of the page household_page under the site root.
 const siteHouseholdRoute = "household"
 
+// householdFamilyKey is the value of the query account that asks for the family page.
+const householdFamilyKey = "household"
+
 // householdName is the name of the page household_page, which pageNamed selects for ot page.
 const householdName = "household_page"
 
@@ -32,12 +35,13 @@ func householdConfig(a *app, rd siteReaders) household_page.Config {
 		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Marks: rd.marks, Holdings: pagefig.NewHoldings, Fx: rd.fx,
-		Statement: pageStatementAliases(a),
+		Statement: pageStatementAliases(a), Family: pagefig.NewFamily,
 	}
 }
 
 // buildHousehold builds household_page per request for the day of dayFlag or today and the account of the
-// query "account" (the first alias when absent); an alias not in the list gives the gap page no_data.
+// query "account": the family page when it is absent or "household", the page of that alias otherwise (an
+// alias not in the list gives the gap page no_data).
 func buildHousehold(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
 	if a.profile.Zone == nil {
 		return nil, errors.New(householdName + ": no zone")
@@ -47,13 +51,13 @@ func buildHousehold(ctx context.Context, a *app, clk clock.Clock, dayFlag string
 		return nil, err
 	}
 	alias := queryOf(ctx).Get(siteAccountQuery)
-	if alias == "" {
-		alias = rd.aliasList()[0]
+	if alias == "" || alias == householdFamilyKey {
+		return household_page.BuildFamily(ctx, householdConfig(a, rd), day, clk.Now().UTC())
 	}
 	return household_page.Build(ctx, householdConfig(a, rd), alias, day, clk.Now().UTC())
 }
 
-// householdPageNamed returns household_page of the main account for ot page and a close function: the stores
+// householdPageNamed returns the family household_page for ot page and a close function: the stores
 // opened once as the site opens them (no reader with a missing line of .env, the gap no_reader).
 func householdPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 	if a.profile.Zone == nil {
@@ -78,7 +82,7 @@ func householdPageNamed(ctx context.Context, a *app) (pages.Page, func(), error)
 	cfg := householdConfig(a, rd)
 	cfg.RunID = "ot-page"
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
-		return household_page.Build(ctx, cfg, rd.aliasList()[0], day, now)
+		return household_page.BuildFamily(ctx, cfg, day, now)
 	}
 	return pages.Page{Meta: pages.Meta{Name: householdName, Schema: "page.household_page.v1"}, Build: build}, closeFn, nil
 }
