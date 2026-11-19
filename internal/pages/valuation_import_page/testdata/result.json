@@ -4,6 +4,12 @@
   "view": "result",
   "post_path": "valuation-import-post",
   "max_file_bytes": 1048576,
+  "labels": {
+    "r": "R (折现倍数 R)",
+    "buy_zone_top_site": "buy-zone top, site (站点算出的买入区间上沿)",
+    "buy_zone_top_file": "buy-zone top, file (文件中的买入区间上沿)",
+    "general_tick": "V is per listed share, in the listing currency (V 按上市股份计,币种为上市币种)"
+  },
   "file": {
     "name": "sample-valuations.json",
     "sha256": "abababababababababababababababababababababababababababababababab",
