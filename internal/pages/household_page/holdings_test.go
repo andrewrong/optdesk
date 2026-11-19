@@ -461,3 +461,11 @@ func TestCompositionRowsTieBySymbol(t *testing.T) {
 		t.Fatalf("composition = %v, want %v", comp, want)
 	}
 }
+
+func TestCompositionRowsWithoutShareComeLastBySymbol(t *testing.T) {
+	t.Parallel()
+	comp, _ := compositionNames(t, "", "", "5.0")
+	if want := []string{"CCC", "AAA", "BBB"}; !slices.Equal(comp, want) {
+		t.Fatalf("composition = %v, want %v", comp, want)
+	}
+}
