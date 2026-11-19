@@ -402,6 +402,13 @@ func lastEmptyFinish(runs []store.Run) time.Time {
 	return last
 }
 
+// endedBeforeClose reports whether run finished before closeAt; false when either time is zero.
+// A retryable run for which it is true does not count (nextAttempt) and does not expire the key
+// (closeRow row 3): the key gets one late run first.
+func endedBeforeClose(run store.Run, closeAt time.Time) bool {
+	return !closeAt.IsZero() && !run.FinishedAt.IsZero() && run.FinishedAt.Before(closeAt)
+}
+
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
 // error with no window). Runs that are empty_before_close, retryable before the close, crashed
@@ -432,7 +439,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		case isCrash(run):
 			crashes++
 		case noRun(run): // a console_stop or ordered_stop run is no attempt and no crash
-		case run.ReasonCode == reasonEmptyBeforeClose, beforeClose && isRetryable(run):
+		case run.ReasonCode == reasonEmptyBeforeClose, isRetryable(run) && endedBeforeClose(run, closeAt):
 		default:
 			counted++
 			latest = &runs[i]
@@ -454,7 +461,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 // window has closed: the index of the run to rewrite, the reason it gets, or ok false when no
 // row matches. Retryable runs are not counted by rows 2 and 4, and a console_stop run is no run at all
 // for any row: a newest console_stop row never hides an earlier retryable run.
-func closeRow(runs []store.Run) (idx int, reason string, ok bool) {
+func closeRow(runs []store.Run, closeAt time.Time) (idx int, reason string, ok bool) {
 	crashes, latest := 0, -1
 	lastCrash, newest := -1, -1 // newest: the last run that is not console_stop
 	for i, run := range runs {
@@ -476,7 +483,7 @@ func closeRow(runs []store.Run) (idx int, reason string, ok bool) {
 		return lastCrash, reasonCrashedRepeatedly, true
 	case latest >= 0 && runs[latest].Status == store.RunPartial: // row 2
 		return latest, reasonExpired, true
-	case newest >= 0 && isRetryable(runs[newest]): // row 3
+	case newest >= 0 && isRetryable(runs[newest]) && !endedBeforeClose(runs[newest], closeAt): // row 3
 		return newest, reasonExpired, true
 	case latest >= 0: // row 4: done without a mark
 		return latest, reasonExpired, true
@@ -499,7 +506,7 @@ func (r *reconciler) expireIfClosed(
 			return false, nil
 		}
 	}
-	idx, reason, ok := closeRow(runs)
+	idx, reason, ok := closeRow(runs, closeAt)
 	if !ok {
 		return false, nil
 	}

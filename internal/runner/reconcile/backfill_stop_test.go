@@ -297,7 +297,7 @@ func TestConsoleStopDoesNotHideEarlierRetryableRun(t *testing.T) {
 		{ID: "1", Status: store.RunDone, ErrorCode: string(contracts.Retryable)},
 		{ID: "2", Status: store.RunAbandoned, ReasonCode: "console_stop"},
 	}
-	if idx, reason, ok := closeRow(runs); !ok || idx != 0 || reason != reasonExpired {
+	if idx, reason, ok := closeRow(runs, time.Time{}); !ok || idx != 0 || reason != reasonExpired {
 		t.Fatalf("closeRow = %d %q %v", idx, reason, ok)
 	}
 }
@@ -305,11 +305,11 @@ func TestConsoleStopDoesNotHideEarlierRetryableRun(t *testing.T) {
 func TestConsoleStopIgnoredByCloseRow(t *testing.T) {
 	t.Parallel()
 	stop := store.Run{ID: "s", Status: store.RunPartial, ReasonCode: "console_stop"}
-	if _, _, ok := closeRow([]store.Run{stop, stop}); ok {
+	if _, _, ok := closeRow([]store.Run{stop, stop}, time.Time{}); ok {
 		t.Fatal("console_stop rows alone match a row of the Close table")
 	}
 	verdict := store.Run{ID: "v", Status: store.RunDone}
-	if idx, _, ok := closeRow([]store.Run{verdict, stop}); !ok || idx != 0 {
+	if idx, _, ok := closeRow([]store.Run{verdict, stop}, time.Time{}); !ok || idx != 0 {
 		t.Fatalf("closeRow = %d %v, want the verdict run", idx, ok)
 	}
 }

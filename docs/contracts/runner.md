@@ -28,11 +28,11 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 |---|------|-------------------------------|-------------------------|----------|
 | 1 | three runs ended `crashed` or `abandoned_stop` (the brake); wins over row 2 | the latest of those runs | key `no_value`; run reason `crashed_repeatedly` | `crashed_repeatedly` |
 | 2 | else the latest counted run is `RunPartial` | that `partial` run | key `no_value`; run reason `expired`; run status stays `partial` | `partial` |
-| 3 | else the last run is retryable and not `crashed` | the last run | key `no_value`; run reason `expired` | `expired` |
+| 3 | else the last run is retryable, not `crashed`, and ended at or after the `CloseAt` (a zero `FinishedAt` counts as after) | the last run | key `no_value`; run reason `expired` | `expired` |
 | 4 | else the latest counted run ended `done` without a mark (`Permanent`, or a false or failing `Postcondition`) | that run | key `no_value`; run reason `expired` | `expired` |
 
   A key closed with reason `expired` or `crashed_repeatedly` is repaired by hand: `ot backfill` of the day enqueues a console request that the scheduler runs (the command runs no job itself and needs the console on), which needs no cursor and no stopped scheduler; the gap clears when the key is present, or `no_value` with another reason.
-- A retryable run before the `CloseAt` does not count, and the next call runs the key again; this is row 3 at the close, and an `ot backfill` request, which the scheduler runs, can repair the key behind the cursor. A `crashed` run is not a retryable answer and is never expired by row 3; v4 reverses v3 here: a crashed run no longer counts.
+- A retryable run that ended before the `CloseAt` does not count, also after the close: the key gets one late run (reason `late`), and only a retryable run that ended at or after the `CloseAt` expires it by row 3. A retryable run before the close runs the key again, and an `ot backfill` request, which the scheduler runs, can repair the key behind the cursor. A `crashed` run is not a retryable answer and is never expired by row 3; v4 reverses v3 here: a crashed run no longer counts.
 - Window rule: for a session day the window opens at the calendar's `OpenAt` plus the open offset and closes at the calendar's `CloseAt` plus the close offset; a non-session day (Thanksgiving) gets no window; an early close is carried by the calendar's `CloseAt` (13:00 ET). No open or close time is written in Go.
 - Window per job: the window of a dataset is built from the job that planned its keys (the first job to plan a dataset wins). A job that implements `runner.Windowed` (`Window() (calendarID, openOffset, closeOffset)`, plain values) gets that rule; a job without it gets the reconciler's `WindowRule`. An empty calendar id means the reconciler's calendar. Lateness counts from the session close: on an early close the offset is added to the early `CloseAt`, so an offset must hold on every session day.
 - Calendars: the calendars of a reconciler are the distinct calendars of its jobs (a job without `Window`, or with an empty calendar id, uses the reconciler's). `Reconcile` walks the union of the session days of those calendars after the cursor up to the day, in order; the cursor advances over the complete prefix of that one list. On a day a job is planned only when its own calendar has a session that day, and the window of each dataset is built from the session of the calendar of the job that planned it. A reconciler of one calendar walks and writes as before.
@@ -70,6 +70,7 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 - v2: `Backfill` of a day at or behind the cursor.
 - v3: a retryable run is retried until `CloseAt`, then expired (v2 is the `Backfill` line).
 - v4: only a `partial` run counts toward the second run (at most two counted runs); a `crashed` or `abandoned_stop` run no longer counts (reverses v3, where a crashed run still counted), and three of them stop the key with `crashed_repeatedly`; `expireIfClosed` follows the Close table of Decision 8.
+- v5: a retryable run that ended before the `CloseAt` does not count and does not expire the key (row 3); the key gets one late run first, and only a retryable run that ended at or after the close expires it.
 
 ## Contract tests
 
