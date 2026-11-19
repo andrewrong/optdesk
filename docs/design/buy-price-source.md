@@ -189,11 +189,11 @@ Contracts: unchanged
 Design: docs/design/buy-price-source.md#Decisions
 Plan: P5
 Acceptance:
-1. `apply.go` (new) declares `Apply(ctx, rd valuation.Reader, r buypriceapi.Resolver, entries []jobs.WatchEntry) ([]jobs.WatchEntry, error)`: one `rd.Current` call, the state copied field by field into `[]buypriceapi.Zone` and `buypriceapi.Tables`, and for each entry one `Resolve` with `Contract.Symbol` (amended 2026-11-19, Decision 2; landed as `Issuer` and fixed by its own issue), `Contract.Currency` and its hand `BuyPrice`; the result sets `BuyPrice` and `BuySource` and no other field; the input slice is not changed.
+1. `apply.go` (new) declares `Apply(ctx, rd valuation.Reader, r buypriceapi.Resolver, entries []jobs.WatchEntry) ([]jobs.WatchEntry, error)`: one `rd.Current` call, the state copied field by field into `[]buypriceapi.Zone` and `buypriceapi.Tables`, and for each entry one `Resolve` with `Contract.Symbol` (amended 2026-11-19, Decision 2; landed as `Issuer`, entry 13 changes it), `Contract.Currency` and its hand `BuyPrice`; the result sets `BuyPrice` and `BuySource` and no other field; the input slice is not changed.
 2. An entry resolved to `valuation` has `BuySource` `valuation` and the resolver's price; to `hand`, `hand` and its hand price; to `none`, an empty price and an empty source (a fake resolver shows the price is the resolver's text).
 3. A `Current` error is returned (wrapped) and no entry is returned. A nil reader resolves with no zones and no read, so a hand price gives `hand` and no price gives `none`; a nil resolver returns the entries unchanged with `BuySource` `hand` where a price exists.
 4. The valuation is read once per call, not once per entry (a counting fake).
-5. `apply_test.go` names `TestApplyValuationWins` (new), `TestApplyHandAndNone` (new), `TestApplyReadErrorReturned` (new), `TestApplyNilReaderKeepsHand` (new), `TestApplyOneRead` (new), `TestApplyDoesNotChangeInput` (new), `TestApplyKeyIsIssuer` (new; replaced after the 2026-11-19 amendment of Decision 2 by a test that the contract symbol is the key: a contract symbol that differs from the issuer does not change the match) and `TestApplyCopiesState` (new: the zone list holds the fields of each profile and review) and the package imports no other jobs package.
+5. `apply_test.go` names `TestApplyValuationWins` (new), `TestApplyHandAndNone` (new), `TestApplyReadErrorReturned` (new), `TestApplyNilReaderKeepsHand` (new), `TestApplyOneRead` (new), `TestApplyDoesNotChangeInput` (new), `TestApplyKeyIsIssuer` (new; replaced by entry 13 with a test that the contract symbol is the key: a contract symbol that differs from the issuer does not change the match) and `TestApplyCopiesState` (new: the zone list holds the fields of each profile and review) and the package imports no other jobs package.
 6. `docs/contracts/jobs/buyprice.md` (new) states the one read per Plan, the key, the currency and the nil-reader rule.
 7. The result matches docs/design/buy-price-source.md#Decisions.
 
@@ -314,6 +314,20 @@ Acceptance:
 2. `builder_test.go` is edited at the two lines that name the old texts (`builder_test.go:166-167`) and names `TestSentenceNamesValuationException` (new).
 3. `git diff --name-only BASE` lists only the two files.
 4. The result matches docs/design/buy-price-source.md#Decisions.
+
+### 13 buyprice-key-ticker
+
+Module: jobs. Size: S.
+Order: after 5.
+Files: `internal/jobs/buyprice/apply.go`, `internal/jobs/buyprice/apply_test.go`, `docs/contracts/jobs/buyprice.md`
+Contracts: unchanged
+Design: docs/design/buy-price-source.md#Decisions
+Plan: P5
+Acceptance:
+1. In `Apply` of `apply.go` the `Symbol` of `buypriceapi.Input` is `e.Contract.Symbol`, no longer `e.Issuer`; every other field is as before; an entry with an empty `Contract.Symbol` has no zone and keeps its hand price.
+2. `apply_test.go` replaces `TestApplyKeyIsIssuer` by `TestApplyKeyIsContractSymbol` (new: an entry whose issuer is `cik:` text and whose contract symbol equals a profile symbol gets source `valuation`; an entry whose issuer equals a profile symbol but whose contract symbol differs does not) and adds `TestApplyEmptySymbolKeepsHand` (new).
+3. `docs/contracts/jobs/buyprice.md` says the key of a company is the entry's `Contract.Symbol`, not the issuer.
+4. The result matches Decision 2.
 
 ## Checked by CI
 
