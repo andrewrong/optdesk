@@ -200,3 +200,50 @@ func TestDataHealthFailureDayLength(t *testing.T) {
 		t.Fatal("a long last_day was accepted")
 	}
 }
+
+func dhRunning() map[string]any {
+	return map[string]any{
+		"job": "statement_capture", "started_at": "2026-11-17T09:20:00Z", "keys_done": 2, "keys_total": 5,
+		"step": "invented-key", "elapsed_minutes": 10, "usual_minutes": 8, "slow": true,
+	}
+}
+
+// TestDataHealthRunningValidates: a page with running passes, and so does one without.
+func TestDataHealthRunningValidates(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "ok")
+	m["running"] = []any{dhRunning(), dhRunning()}
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("page with running refused")
+	}
+	delete(m, "running")
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("page without running refused")
+	}
+}
+
+// TestDataHealthRunningNullFails: a null in running, or an unknown key in an item, fails.
+func TestDataHealthRunningNullFails(t *testing.T) {
+	t.Parallel()
+	for _, k := range []string{"job", "started_at", "keys_done", "keys_total", "step", "elapsed_minutes", "usual_minutes", "slow"} {
+		m := dataHealthFixture(t, "ok")
+		it := dhRunning()
+		it[k] = nil
+		m["running"] = []any{it}
+		if pageV1Valid(t, dataHealthPageV1, m) {
+			t.Errorf("running.%s null accepted", k)
+		}
+	}
+	m := dataHealthFixture(t, "ok")
+	m["running"] = nil
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Error("running null accepted")
+	}
+	m = dataHealthFixture(t, "ok")
+	it := dhRunning()
+	it["extra"] = 1
+	m["running"] = []any{it}
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Error("item with an extra key accepted")
+	}
+}

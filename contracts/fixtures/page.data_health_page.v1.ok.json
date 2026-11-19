@@ -8,6 +8,18 @@
     "expires": "2026-11-17T10:00:00Z",
     "mac": "invented-mac-0001"
   },
+  "running": [
+    {
+      "job": "statement_capture",
+      "started_at": "2026-11-17T09:20:00Z",
+      "keys_done": 2,
+      "keys_total": 5,
+      "step": "invented-key-0003",
+      "elapsed_minutes": 10,
+      "usual_minutes": 8,
+      "slow": false
+    }
+  ],
   "datasets": [
     {
       "dataset_id": "account_statement",

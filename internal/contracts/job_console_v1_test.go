@@ -70,3 +70,72 @@ func TestJobConsoleAcceptsDesignGaps(t *testing.T) {
 		t.Error("gap reason no_data accepted")
 	}
 }
+
+const jobConsoleV1 = "page.job_console.v1.json"
+
+func runningItem() map[string]any {
+	return map[string]any{
+		"job": "compute_figures", "started_at": "2026-11-12T14:02:00Z", "keys_done": 1, "keys_total": 4,
+		"step": "US:AAPL", "elapsed_minutes": 4, "usual_minutes": 3, "slow": false,
+	}
+}
+
+// TestRunningFieldsValidate: an instance with running and waiting_for passes.
+func TestRunningFieldsValidate(t *testing.T) {
+	t.Parallel()
+	g := loadJobConsoleV1(t, "golden")
+	g["running"] = []any{runningItem()}
+	r := g["requests"].([]any)[0].(map[string]any)
+	r["waiting_for"] = map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z"}
+	if !pageV1Valid(t, jobConsoleV1, g) {
+		t.Fatal("instance with running and waiting_for refused")
+	}
+}
+
+// TestRunningFieldsNullFail: a null for any new field, or an unknown key inside one, fails.
+func TestRunningFieldsNullFail(t *testing.T) {
+	t.Parallel()
+	for _, k := range []string{"job", "started_at", "keys_done", "keys_total", "step", "elapsed_minutes", "usual_minutes", "slow"} {
+		g := loadJobConsoleV1(t, "golden")
+		it := runningItem()
+		it[k] = nil
+		g["running"] = []any{it}
+		if pageV1Valid(t, jobConsoleV1, g) {
+			t.Errorf("running.%s null accepted", k)
+		}
+	}
+	for _, k := range []string{"job", "since"} {
+		g := loadJobConsoleV1(t, "golden")
+		w := map[string]any{"job": "compute_figures", "since": "2026-11-12T14:02:00Z"}
+		w[k] = nil
+		g["requests"].([]any)[0].(map[string]any)["waiting_for"] = w
+		if pageV1Valid(t, jobConsoleV1, g) {
+			t.Errorf("waiting_for.%s null accepted", k)
+		}
+	}
+	g := loadJobConsoleV1(t, "golden")
+	g["running"] = nil
+	if pageV1Valid(t, jobConsoleV1, g) {
+		t.Error("running null accepted")
+	}
+	g = loadJobConsoleV1(t, "golden")
+	it := runningItem()
+	it["extra"] = 1
+	g["running"] = []any{it}
+	if pageV1Valid(t, jobConsoleV1, g) {
+		t.Error("running item with an extra key accepted")
+	}
+}
+
+// TestOldShapeStillValidates: a page without running and waiting_for still passes.
+func TestOldShapeStillValidates(t *testing.T) {
+	t.Parallel()
+	g := loadJobConsoleV1(t, "golden")
+	delete(g, "running")
+	for _, r := range g["requests"].([]any) {
+		delete(r.(map[string]any), "waiting_for")
+	}
+	if !pageV1Valid(t, jobConsoleV1, g) {
+		t.Fatal("old shape refused")
+	}
+}

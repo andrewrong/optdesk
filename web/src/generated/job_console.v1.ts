@@ -183,6 +183,7 @@ export interface JobConsole {
       ];
   selected: number | null;
   refresh_seconds: 0 | 5;
+  running?: Running[];
 }
 export interface Form {
   post_path: "/owner-job-console";
@@ -214,6 +215,7 @@ export interface Request {
   at_text: string;
   reason: Optional;
   keys: Key[];
+  waiting_for?: WaitingFor;
 }
 export interface Key {
   dataset: Text;
@@ -231,4 +233,18 @@ export interface Key {
   outcome_text: Text;
   present: Optional;
   reason: Optional;
+}
+export interface WaitingFor {
+  job?: string;
+  since?: string;
+}
+export interface Running {
+  job?: string;
+  started_at?: string;
+  keys_done?: number;
+  keys_total?: number;
+  step?: string;
+  elapsed_minutes?: number;
+  usual_minutes?: number;
+  slow?: boolean;
 }
