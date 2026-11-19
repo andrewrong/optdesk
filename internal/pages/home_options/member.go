@@ -182,9 +182,10 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	var sections []compute.ResultSection
 	var fs figureState
 	var recorded time.Time
+	var aliases []string
 	if c.Ledger != nil {
 		var structs []compute.Structure
-		if in, structs, recorded, err = replay(ctx, c, day); err != nil {
+		if in, structs, recorded, aliases, err = replay(ctx, c, day); err != nil {
 			return nil, err
 		}
 		if len(in.Positions) > 0 {
@@ -194,7 +195,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			sections = c.Results().Summarise(in).Sections
 		}
 		if c.Structures != nil && c.Tiles != nil {
-			fs = figureState{on: true, review: len(in.Unresolved) + len(in.Review)}
+			fs = figureState{on: true, review: len(in.Unresolved) + len(in.Review), aliases: aliases}
 			fs.out = c.Tiles().Tiles(blockapi.OptionTilesIn{Day: day, Positions: in.Positions, Structures: structs})
 		}
 	}
@@ -205,31 +206,31 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 // them are one ResultInput. The third result is the newest RecordedAt of the stored rows (zero when none is set).
 // With Structures and Tiles set, Evaluate runs once per alias and the structures
 // (Structures and Other) of every alias are returned.
-func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInput, []compute.Structure, time.Time, error) {
+func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInput, []compute.Structure, time.Time, []string, error) {
 	in := compute.ResultInput{AsOf: day}
 	var recorded time.Time
 	var structs []compute.Structure
 	aliases, err := c.Ledger.StoredAliases(ctx)
 	if err != nil {
-		return in, nil, recorded, fmt.Errorf("home_options: read aliases: %w", err)
+		return in, nil, recorded, nil, fmt.Errorf("home_options: read aliases: %w", err)
 	}
 	in.Alias = strings.Join(aliases, ",")
 	for _, alias := range aliases {
 		rows, err := c.Ledger.FlexTradeRows(ctx, alias)
 		if err != nil {
-			return in, nil, recorded, fmt.Errorf("home_options: read trades of %s: %w", alias, err)
+			return in, nil, recorded, nil, fmt.Errorf("home_options: read trades of %s: %w", alias, err)
 		}
 		if len(rows) == 0 {
 			continue
 		}
 		if c.Replay == nil {
-			return in, nil, recorded, errors.New("home_options: nil replay")
+			return in, nil, recorded, nil, errors.New("home_options: nil replay")
 		}
 		trades := make([]compute.LedgerTrade, 0, len(rows))
 		for _, r := range rows {
 			var m map[string]string
 			if err := json.Unmarshal([]byte(r.Attributes), &m); err != nil {
-				return in, nil, recorded, fmt.Errorf("home_options: attributes of %s: %w", r.TransactionID, err)
+				return in, nil, recorded, nil, fmt.Errorf("home_options: attributes of %s: %w", r.TransactionID, err)
 			}
 			if r.RecordedAt.After(recorded) {
 				recorded = r.RecordedAt
@@ -248,7 +249,7 @@ func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInp
 			structs = append(structs, sr.Other...)
 		}
 	}
-	return in, structs, recorded, nil
+	return in, structs, recorded, aliases, nil
 }
 
 // assemble builds the document from the sections of the summary. The freshness base is the day of the

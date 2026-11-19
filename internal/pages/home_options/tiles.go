@@ -29,7 +29,7 @@ const (
 	textOnlyOtherCcy  = "Only non-USD structures are open (%d), not converted"
 	textUncovered     = "%d calls without assigned shares in the ledger; other structures at least %s"
 	textReview        = "%d ledger rows need review, figures may be incomplete"
-	captionBase       = "%s, all accounts combined"
+	captionBase       = "%s, %s"
 	captionSep        = "; "
 	unitStructures    = "structures"
 )
@@ -55,11 +55,13 @@ type figureState struct {
 	on     bool
 	out    blockapi.OptionTilesOut
 	review int
+	// aliases are the ledger aliases that were replayed.
+	aliases []string
 }
 
 // placeFigures sets the three tiles from the figures; asOf is the text "Ledger as of MM-DD".
-func placeFigures(t *tiles, asOf string, o blockapi.OptionTilesOut) {
-	base := fmt.Sprintf(captionBase, asOf)
+func placeFigures(t *tiles, asOf string, aliases []string, o blockapi.OptionTilesOut) {
+	base := fmt.Sprintf(captionBase, asOf, scopeWords(aliases))
 	extra := ""
 	if o.OtherCurrency > 0 {
 		extra += captionSep + fmt.Sprintf(textOtherCurrency, o.OtherCurrency)
@@ -89,6 +91,18 @@ func placeFigures(t *tiles, asOf string, o blockapi.OptionTilesOut) {
 		loss += captionSep + fmt.Sprintf(textAtLeast, o.Unnumbered)
 	}
 	t.MaxLoss = tile{Label: t.MaxLoss.Label, Figure: lossFigure(o), Caption: loss + extra}
+}
+
+// scopeWords names the aliases, sorted: "account a" for one, "accounts a and b combined" for several.
+func scopeWords(aliases []string) string {
+	s := slices.Sorted(slices.Values(aliases))
+	switch len(s) {
+	case 0:
+		return "no accounts"
+	case 1:
+		return "account " + s[0]
+	}
+	return "accounts " + strings.Join(s[:len(s)-1], ", ") + " and " + s[len(s)-1] + " combined"
 }
 
 func openFigure(o blockapi.OptionTilesOut) any {
@@ -159,7 +173,7 @@ func placeFigureState(k *card, fs figureState, baseText string, d time.Time, noR
 	}
 	k.Gaps = slices.DeleteFunc(k.Gaps, func(g gap) bool { return g.Text == textMaxLoss })
 	if !noRows {
-		placeFigures(&k.Tiles, asOf, fs.out)
+		placeFigures(&k.Tiles, asOf, fs.aliases, fs.out)
 	}
 	if fs.review > 0 {
 		k.Gaps = append(k.Gaps, noData(fmt.Sprintf(textReview, fs.review)))

@@ -307,7 +307,7 @@ func (c Config) exDividends(ctx context.Context, res compute.StructureResult, id
 	for _, s := range append(append([]compute.Structure{}, res.Structures...), res.Other...) {
 		switch {
 		case !hasSoldCall(s):
-			out[s.ID] = gap{Reason: reasonNoRule, Text: exNotApplicableText}
+			// the rule is about a sold call: it does not apply, so the cell is empty, not a gap
 		case c.Dividends == nil:
 			out[s.ID] = gap{Reason: reasonNoReader, Text: exNoReaderText}
 		default:
