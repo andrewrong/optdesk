@@ -488,7 +488,9 @@ func TestExDividendGapReasons(t *testing.T) {
 		"no_data", "除息日已过，等待下次采集")
 	wantGap(t, exCell(t, exRig("C", "-1", stubDividends{id: &id, from: &from, to: &to})),
 		"no_data", "没有除息预期记录（该股可能不派息，或尚未采集）")
-	wantGap(t, exCell(t, exRig("P", "-1", nil)), "no_rule", "不适用：没有卖出认购腿")
+	if got := exCell(t, exRig("P", "-1", nil)); got != nil {
+		t.Fatalf("put cell = %v, want null", got)
+	}
 }
 
 func TestExDividendFromStoredRow(t *testing.T) {
@@ -534,10 +536,22 @@ func TestExDividendPutOnlyIsNotApplicable(t *testing.T) {
 	var from, to contracts.Day
 	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: ptr("0.25")}}
 	for _, leg := range [][2]string{{"P", "-1"}, {"C", "1"}} {
-		wantGap(t, exCell(t, exRig(leg[0], leg[1], stubDividends{rows: rows, id: &id, from: &from, to: &to})),
-			"no_rule", "不适用：没有卖出认购腿")
+		if got := exCell(t, exRig(leg[0], leg[1], stubDividends{rows: rows, id: &id, from: &from, to: &to})); got != nil {
+			t.Fatalf("cell of %v = %v, want null", leg, got)
+		}
 	}
 	if id != 0 {
 		t.Fatalf("reader was called for id %d", id)
+	}
+}
+
+func TestPutOnlyPageIsOk(t *testing.T) {
+	t.Parallel()
+	m := decode(t, newRig(aaplOnly(t)).build(t, "main"))
+	if m["run_status"] != "ok" {
+		t.Fatalf("run_status = %v, note = %v", m["run_status"], m["note"])
+	}
+	if got := groupRows(t, m, 0)[0]["ex_dividend"]; got != nil {
+		t.Fatalf("ex_dividend = %v, want null", got)
 	}
 }
