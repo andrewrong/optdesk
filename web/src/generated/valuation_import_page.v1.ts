@@ -103,4 +103,22 @@ export interface Labels {
   buy_zone_top_site: Text;
   buy_zone_top_file: Text;
   general_tick: Text;
+  title?: Text;
+  intro?: Text;
+  file?: Text;
+  preview?: Text;
+  not_in_file?: Text;
+  unvalued?: Text;
+  removed?: Text;
+  count_insert?: Text;
+  count_same?: Text;
+  count_older?: Text;
+  count_refused?: Text;
+  count_needs_tick?: Text;
+  stored?: Text;
+  older_than_stored?: Text;
+  margin_table?: Text;
+  result?: Text;
+  same_file_again?: Text;
+  confirm?: Text;
 }
