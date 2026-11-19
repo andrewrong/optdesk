@@ -66,20 +66,9 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 			}
 			return false, asTyped(err, contracts.Retryable)
 		}
-		older := make([]broker.Bar, 0, len(bars))
-		next := oldest
-		for _, b := range bars {
-			d, err := time.Parse(dayLayout, b.Day)
-			if err != nil {
-				return false, newErr(contracts.Permanent, "bad bar day")
-			}
-			if !d.Before(oldest) {
-				continue
-			}
-			older = append(older, b)
-			if d.Before(next) {
-				next = d
-			}
+		older, next, terr := olderThan(bars, oldest)
+		if terr != nil {
+			return false, terr
 		}
 		if len(older) == 0 {
 			return false, nil
@@ -94,6 +83,27 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 		oldest = next
 	}
 	return false, nil
+}
+
+// olderThan is the bars of a piece that lie before oldest, and the earliest of their days (oldest when
+// there is none).
+func olderThan(bars []broker.Bar, oldest time.Time) (older []broker.Bar, next time.Time, terr contracts.TypedError) {
+	older = make([]broker.Bar, 0, len(bars))
+	next = oldest
+	for _, b := range bars {
+		d, err := time.Parse(dayLayout, b.Day)
+		if err != nil {
+			return nil, oldest, newErr(contracts.Permanent, "bad bar day")
+		}
+		if !d.Before(oldest) {
+			continue
+		}
+		older = append(older, b)
+		if d.Before(next) {
+			next = d
+		}
+	}
+	return older, next, nil
 }
 
 // isNoData reports a broker answer of "no data" (error 162); the code is only in the error text of Bars.
