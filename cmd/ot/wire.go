@@ -35,6 +35,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/compute/settingsform"
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/compute/valueimport"
+	"github.com/andrewrong/optdesk/internal/compute/valueimportapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
@@ -182,6 +184,7 @@ type deps struct {
 	openOwnerSet            ownerset.OpenFunc
 	openUnderlying          underlying.OpenFunc
 	openValuation           valuation.OpenFunc
+	planValueImport         valueimportapi.PlanFunc
 	settingsPage            func(c settings_page.Config) pages.Page
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, r candidateReaders) pages.Page
 	optionNoticesPage       optionNoticesPageFunc
@@ -265,6 +268,7 @@ func newDeps() deps {
 	d.openOptionOpen = optionopenpg.Open
 	d.openUnderlying = underlyingpg.Open
 	d.openValuation = valuationpg.Open
+	d.planValueImport = valueimport.New().Plan
 	d.openBar, d.newBarsRefresh, d.newFxRefresh, d.newHistory = openBarStore, barsrefresh.New, fxrefresh.New, grpcbroker.DialHistory
 	d.openOptionLedgerRO = openOptionLedgerStore
 	d.settingsPage, d.reportPageBlocks = settings_page.NewPage, report_page.NewPage
