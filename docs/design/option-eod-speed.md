@@ -41,11 +41,11 @@ Module jobs. `internal/jobs/optioneod/run.go`, new `internal/jobs/optioneod/reso
 
 ### 2 eod-stored-contracts
 
-Module jobs. new `internal/jobs/optioneod/withcontracts.go`, new `internal/jobs/optioneod/stored.go`, `internal/jobs/optioneod/run.go`, new `internal/jobs/optioneod/stored_test.go`. Decisions 2, 3, 5, 6. Order: after entry 1 (both change `listed` of run.go). Size: M.
+Module jobs. new `internal/jobs/optioneod/withcontracts.go`, new `internal/jobs/optioneod/stored.go`, `internal/jobs/optioneod/run.go`, new `internal/jobs/optioneod/stored_test.go`. Decisions 2, 3, 5, 6. Order: after 1. Size: M.
 
 ### 3 eod-wire-stored
 
-Module ot. `cmd/ot/wire_optioneod.go`, new `cmd/ot/wire_optioneod_stored_test.go`. Decision 4. Order: after entry 2. Size: S.
+Module ot. `cmd/ot/wire_optioneod.go`, new `cmd/ot/wire_optioneod_stored_test.go`. Decision 4. Order: after 2. Size: S.
 
 ## Checked by CI
 
