@@ -78,11 +78,13 @@
     "variants": [
       {
         "name": "hold",
-        "params_hash": "a1b2c3d4"
+        "params_hash": "a1b2c3d4",
+        "hint": "持有到期（hold）：不提前平仓"
       },
       {
         "name": "early",
-        "params_hash": "e5f6a7b8"
+        "params_hash": "e5f6a7b8",
+        "hint": "早平（early）：权利金赚到一定比例或离到期不足若干天就买回；留存比例（kept share）：赚到的权利金占收到的权利金的比例；[T]：试用值，不是定论"
       }
     ],
     "counts": {
@@ -164,6 +166,32 @@
       "存的报价是开盘后 90 分钟的上午快照，结算用收盘价。",
       "展期单的实际结果不含它展期进去的那一笔。"
     ],
-    "empty_text": null
+    "empty_text": null,
+    "hints": {
+      "counts": {
+        "lots": "取到的单子数（lots）",
+        "lots_with_quote": "其中有已存报价的单子数（lots with quote）",
+        "still_open": "还没到期的单子数（still open）",
+        "lot_days": "所有单子持有的天数之和（lot days）",
+        "quote_days": "有已存报价的天数（quote days）"
+      },
+      "columns": {
+        "set": "分组（set）：全部账户或某个账户别名",
+        "variant": "做法（variant）：持有到期（hold）或早平（early）",
+        "currency": "币种（currency）",
+        "lots": "单子数（lots）",
+        "cycles": "回放的周期数（cycles）",
+        "closed_early": "提前平仓的笔数（closed early）",
+        "held": "持有到期的笔数（held）",
+        "assigned": "被指派的笔数（assigned）",
+        "rolled": "展期的笔数（rolled）",
+        "in_the_money": "到期时在价内的笔数（in the money）",
+        "kept_share": "留存比例（kept share）：赚到的权利金占收到的权利金的比例",
+        "mean_gross": "平均毛收益（mean gross）",
+        "worst_gross": "最差一笔的毛收益（worst gross）",
+        "hold_kept_share": "持有到期（hold）的留存比例（hold kept share）：赚到的权利金占收到的权利金的比例",
+        "actual_kept_share": "他实际的留存比例（actual kept share）：赚到的权利金占收到的权利金的比例"
+      }
+    }
   }
 }

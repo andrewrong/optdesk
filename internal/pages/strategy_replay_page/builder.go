@@ -8,6 +8,11 @@ import (
 )
 
 const (
+	variantHold  = "hold"
+	variantEarly = "early"
+)
+
+const (
 	postPath     = "strategy-replay-post"
 	defaultKeep  = "0.50"
 	defaultDTE   = "21"
@@ -47,6 +52,38 @@ type noticeJSON struct {
 type variantJSON struct {
 	Name       string `json:"name"`
 	ParamsHash string `json:"params_hash"`
+	Hint       string `json:"hint,omitempty"`
+}
+
+type countHintsJSON struct {
+	Lots          string `json:"lots"`
+	LotsWithQuote string `json:"lots_with_quote"`
+	StillOpen     string `json:"still_open"`
+	LotDays       string `json:"lot_days"`
+	QuoteDays     string `json:"quote_days"`
+}
+
+type columnHintsJSON struct {
+	Set             string `json:"set"`
+	Variant         string `json:"variant"`
+	Currency        string `json:"currency"`
+	Lots            string `json:"lots"`
+	Cycles          string `json:"cycles"`
+	ClosedEarly     string `json:"closed_early"`
+	Held            string `json:"held"`
+	Assigned        string `json:"assigned"`
+	Rolled          string `json:"rolled"`
+	InTheMoney      string `json:"in_the_money"`
+	KeptShare       string `json:"kept_share"`
+	MeanGross       string `json:"mean_gross"`
+	WorstGross      string `json:"worst_gross"`
+	HoldKeptShare   string `json:"hold_kept_share"`
+	ActualKeptShare string `json:"actual_kept_share"`
+}
+
+type hintsJSON struct {
+	Counts  countHintsJSON  `json:"counts"`
+	Columns columnHintsJSON `json:"columns"`
 }
 
 type countsJSON struct {
@@ -94,6 +131,7 @@ type reportJSON struct {
 	Lines         []lineJSON     `json:"lines"`
 	Notes         []string       `json:"notes"`
 	EmptyText     *string        `json:"empty_text"`
+	Hints         hintsJSON      `json:"hints"`
 }
 
 type pageJSON struct {
@@ -222,9 +260,17 @@ func reportDoc(r ReportInput) (*reportJSON, error) {
 		Counts: countsJSON{Lots: r.LotCount, LotsWithQuote: r.LotsWithQuote, StillOpen: r.StillOpen,
 			LotDays: r.LotDays, QuoteDays: r.QuoteDays},
 		Notes: []string{noteAssignment, noteGap, noteSnapshot, noteRolled},
+		Hints: hintsDoc(),
 	}
 	for _, v := range r.Variants {
-		d.Variants = append(d.Variants, variantJSON(v))
+		vj := variantJSON{Name: v.Name, ParamsHash: v.ParamsHash}
+		switch {
+		case v.Name == variantHold:
+			vj.Hint = hintVariantHold
+		case len(v.Name) >= len(variantEarly) && v.Name[:len(variantEarly)] == variantEarly:
+			vj.Hint = hintVariantEarly
+		}
+		d.Variants = append(d.Variants, vj)
 	}
 	for _, e := range r.Excluded {
 		d.Excluded = append(d.Excluded, excludedJSON(e))
@@ -248,6 +294,17 @@ func reportDoc(r ReportInput) (*reportJSON, error) {
 		d.EmptyText = &s
 	}
 	return d, nil
+}
+
+func hintsDoc() hintsJSON {
+	return hintsJSON{
+		Counts: countHintsJSON{Lots: hintCountLots, LotsWithQuote: hintCountLotsWithQuote, StillOpen: hintCountStillOpen,
+			LotDays: hintCountLotDays, QuoteDays: hintCountQuoteDays},
+		Columns: columnHintsJSON{Set: hintColSet, Variant: hintColVariant, Currency: hintColCurrency, Lots: hintColLots,
+			Cycles: hintColCycles, ClosedEarly: hintColClosedEarly, Held: hintColHeld, Assigned: hintColAssigned,
+			Rolled: hintColRolled, InTheMoney: hintColInTheMoney, KeptShare: hintColKeptShare, MeanGross: hintColMeanGross,
+			WorstGross: hintColWorstGross, HoldKeptShare: hintColHoldKeptShare, ActualKeptShare: hintColActualKeptShare},
+	}
 }
 
 func span(r ReportInput) string {
