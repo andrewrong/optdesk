@@ -194,7 +194,7 @@ Files: `cmd/ot/wire_optioncandidates_jp.go` (new), `cmd/ot/wire_optioncandidates
 ### 8 candidates-jp-web
 
 Module: web. Size: S. Order: after 1. Design: Decisions 22, 24, 26.
-Files: `web/src/types/option_candidates_page.ts`, `web/src/pages/candidates/OptionCandidatesPage.tsx`, `web/src/pages/candidates/CandidateGroup.tsx`, `web/src/pages/candidates/TierView.tsx`, `web/src/pages/candidates/ShortList.tsx`, `web/test/pages/optioncandidates/OptionCandidatesPage.test.tsx`, `web/test/pages/optioncandidates/fixtures/jp.ts` (new), `web/test/pages/optioncandidates/fixtures/MANIFEST.synthetic-v1.json`
+Files: `web/src/pages/candidates/OptionCandidatesPage.tsx`, `web/src/pages/candidates/CandidateGroup.tsx`, `web/test/pages/optioncandidates/OptionCandidatesPage.test.tsx`, `web/test/pages/optioncandidates/fixtures/jp.ts` (new), `web/test/pages/optioncandidates/fixtures/MANIFEST.synthetic-v1.json`
 - The page renders the group `note`, `limit_counts` and the JPY tier view and short list from the document, with the group `currency` as a label; it shows no text of its own and computes no sum, yield, count or conversion.
 - A document with a JPY group renders under the fixture `jp.ts`; a document without one renders as today; `tsc`, `eslint`, `vitest` and the build pass.
 - `web/fixtures/MANIFEST.synthetic-v1.json` holds no candidates fixture and is not edited; the fixture manifest of the page test directory is.
