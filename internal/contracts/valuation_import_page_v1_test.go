@@ -96,3 +96,28 @@ func TestValuationImportLabels(t *testing.T) {
 		}
 	}
 }
+
+// TestValuationImportLabelsEmptyState: labels that also hold the eighteen page texts validate, and the
+// four-key labels of the first version still validate.
+func TestValuationImportLabelsEmptyState(t *testing.T) {
+	t.Parallel()
+	m := valuationImportFixture(t, "preview")
+	labels, ok := m["labels"].(map[string]any)
+	if !ok || len(labels) != 4 {
+		t.Fatalf("preview fixture: labels = %v", m["labels"])
+	}
+	if !pageV1Valid(t, valuationImportPageV1, m) {
+		t.Fatal("four-key labels rejected")
+	}
+	for _, k := range []string{"title", "intro", "file", "preview", "not_in_file", "unvalued", "removed",
+		"count_insert", "count_same", "count_older", "count_refused", "count_needs_tick", "stored",
+		"older_than_stored", "margin_table", "result", "same_file_again", "confirm"} {
+		labels[k] = "文本 text"
+	}
+	if len(labels) != 22 {
+		t.Fatalf("labels = %d keys", len(labels))
+	}
+	if !pageV1Valid(t, valuationImportPageV1, m) {
+		t.Fatal("labels with the eighteen new texts rejected")
+	}
+}
