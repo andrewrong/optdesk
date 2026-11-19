@@ -4,6 +4,7 @@ import { Info, TriangleAlert } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { ReasonList } from '@/pages/candidates/ReasonList'
 import type { Payload } from '@/types/option_candidates_page'
 
@@ -38,6 +39,25 @@ export function CandidateGroup({ group, staleText }: { group: Group; staleText: 
           <TriangleAlert aria-hidden />
           <AlertDescription>{staleText}</AlertDescription>
         </Alert>
+      ) : null}
+      {group.currency ? (
+        <Badge variant="secondary" data-group-currency>
+          {group.currency}
+        </Badge>
+      ) : null}
+      {group.note ? (
+        <p className="text-sm text-muted-foreground" data-group-note>
+          {group.note}
+        </p>
+      ) : null}
+      {group.limit_counts && group.limit_counts.length > 0 ? (
+        <ul className="flex flex-wrap gap-2 text-sm" data-limit-counts>
+          {group.limit_counts.map((item) => (
+            <li key={item.limit} data-limit-count={item.limit}>
+              <span>{item.text}</span> <Badge variant="outline">{item.count}</Badge>
+            </li>
+          ))}
+        </ul>
       ) : null}
       {group.gap ? (
         <Alert data-group-gap={group.gap.reason}>

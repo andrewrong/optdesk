@@ -32,6 +32,7 @@ type AccountCash struct {
 // passed); Marks are the stored mark words.
 type Row struct {
 	Key, Company                string
+	Currency                    string // the currency of the strike and prices: "" or "USD" is USD; "JPY" is yen
 	ChainDay, Expiry            contracts.Day
 	DTE                         int
 	Spot, Strike, Bid, BuyPrice string

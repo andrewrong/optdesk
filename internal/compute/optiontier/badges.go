@@ -13,6 +13,8 @@ const (
 	badgeCashShort       = "cash_short"
 	badgeDeltaAboveBound = "delta_above_bound"
 	badgeDeltaUnknown    = "delta_unknown"
+	badgeNoJPYRate       = "no_jpy_rate"
+	badgeNoJPYFunds      = "no_jpy_funds"
 
 	infoEarningsUnconfirmed = "earnings_unconfirmed"
 	infoEarningsBeyond      = "earnings_beyond_horizon"
@@ -27,7 +29,8 @@ const (
 // lookOrder and infoOrder are the fixed order of the badges in a verdict, in Kept and in Common.
 var (
 	lookOrder = []string{badgeNoOpenInterest, badgeLowOpenInterest, badgeOneSidedQuote, badgeWideQuote, badgeStaleQuote,
-		badgeEarningsBefore, badgeCashShort, badgeDeltaAboveBound, badgeDeltaUnknown}
+		badgeEarningsBefore, badgeCashShort, badgeDeltaAboveBound, badgeDeltaUnknown,
+		badgeNoJPYRate, badgeNoJPYFunds}
 	infoOrder = []string{infoEarningsUnconfirmed, infoEarningsBeyond, infoEarningsUnknown, infoCashUnknown}
 )
 
@@ -74,8 +77,10 @@ func storedLookAt(r optiontierapi.Row) map[string]bool {
 	if b, ok := eventsLook[r.EventsReason]; ok {
 		set[b] = true
 	}
-	if hasMark(r.Marks, badgeNoOpenInterest) {
-		set[badgeNoOpenInterest] = true
+	for _, m := range []string{badgeNoOpenInterest, badgeNoJPYRate, badgeNoJPYFunds} {
+		if hasMark(r.Marks, m) {
+			set[m] = true
+		}
 	}
 	return set
 }

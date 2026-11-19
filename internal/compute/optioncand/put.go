@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	cashCurrency  = "USD"
 	maxAccountAge = 1
 	daysPerYear   = 365
 )
@@ -61,7 +60,7 @@ func quoteGate(q compute.OptionQuote, p compute.CandidateParams, bid, ask *big.R
 }
 
 // fundingGate checks strike x multiplier against each alias's available funds.
-func fundingGate(in compute.CandidateInput, strike *big.Rat, multiplier string) (compute.GateResult, map[string]string) {
+func fundingGate(in compute.CandidateInput, strike *big.Rat, multiplier, cashCurrency string) (compute.GateResult, map[string]string) {
 	accounts := append([]compute.AliasFunds(nil), in.Accounts...)
 	sort.SliceStable(accounts, func(i, j int) bool { return accounts[i].Alias < accounts[j].Alias })
 	if len(accounts) == 0 {
