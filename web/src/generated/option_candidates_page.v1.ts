@@ -419,6 +419,7 @@ export interface TierView {
     companies_note: Text1;
     tiers: Text1;
   };
+  by_company?: ByCompany;
 }
 export interface Company {
   key: Text1;
@@ -512,6 +513,11 @@ export interface TierRow {
   notes: Badge[];
   fields: Field[];
   line: Text1 | null;
+  tier?: {
+    id: "fits" | "check";
+    word: Text1;
+    glyph: Text1;
+  };
 }
 export interface Contract {
   name: Text1;
@@ -526,4 +532,40 @@ export interface Field {
   value: Text1 | null;
   gap: Gap | null;
   badges: Badge[];
+}
+/**
+ * The company-block layout of the tier view; absent means the flat tier bands. Blocks are in the order to draw.
+ */
+export interface ByCompany {
+  heading_note: Text1;
+  legend: LegendItem[];
+  columns: TierColumn[];
+  blocks: CompanyBlock[];
+}
+/**
+ * One company; row_ids are TierRow.id values of rows that stay in tiers[].rows.
+ */
+export interface CompanyBlock {
+  company: Text1;
+  verdict: Verdict;
+  verdict_text: Text1;
+  best_yield: Text1 | null;
+  row_ids: Text1[];
+  folded: Folded | null;
+}
+export interface Verdict {
+  id: "sellable" | "out_band" | "above_buy" | "no_buy_price" | "no_quote" | "blocked";
+  word: Text1;
+  glyph: Text1;
+  tone: "success" | "warn" | "muted";
+}
+export interface Folded {
+  title: Text1;
+  summary: Text1;
+  reasons: {
+    code: Text1;
+    label: Text1;
+    count: Text1;
+  }[];
+  row_ids: Text1[];
 }

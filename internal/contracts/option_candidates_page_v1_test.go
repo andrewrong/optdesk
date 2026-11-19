@@ -681,3 +681,94 @@ func TestHeadsNullFails(t *testing.T) {
 		t.Fatal("heads null validates")
 	}
 }
+
+// byCompanyView is a ByCompany with one block and one folded group.
+func byCompanyView() map[string]any {
+	return map[string]any{
+		"heading_note": "one block per company",
+		"legend":       []any{map[string]any{"tier": "fits", "title": "Fits", "text": "delta at most 0.3"}},
+		"columns":      []any{map[string]any{"id": "margin", "label": "Margin", "hint": nil}},
+		"blocks": []any{map[string]any{
+			"company":      "1",
+			"verdict":      map[string]any{"id": "sellable", "word": "sellable", "glyph": "check", "tone": "success"},
+			"verdict_text": "one fits",
+			"best_yield":   "12%",
+			"row_ids":      []any{"row-1"},
+			"folded": map[string]any{
+				"title":   "not shown 1",
+				"summary": "in the money 1",
+				"reasons": []any{map[string]any{"code": "in_the_money", "label": "in the money", "count": "1"}},
+				"row_ids": []any{"row-2"},
+			},
+		}},
+	}
+}
+
+func byCompanyInstance(t *testing.T) (map[string]any, map[string]any) {
+	t.Helper()
+	inst := candidatesMinimal(t)
+	view := tiersView()
+	view["by_company"] = byCompanyView()
+	tiersRowOf(view)["tier"] = map[string]any{"id": "fits", "word": "fits", "glyph": "check"}
+	inst["short_put_tiers"] = view
+	return inst, view
+}
+
+func tiersRowOf(view map[string]any) map[string]any {
+	return view["tiers"].([]any)[0].(map[string]any)["rows"].([]any)[0].(map[string]any)
+}
+
+func TestByCompanyValidates(t *testing.T) {
+	t.Parallel()
+	inst, _ := byCompanyInstance(t)
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a tier view with one block, one folded group and a row tier is invalid")
+	}
+}
+
+func TestByCompanyAbsentValidates(t *testing.T) {
+	t.Parallel()
+	inst, view := byCompanyInstance(t)
+	delete(view, "by_company")
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("the view without by_company is invalid")
+	}
+}
+
+func TestByCompanyNullFails(t *testing.T) {
+	t.Parallel()
+	inst, view := byCompanyInstance(t)
+	view["by_company"] = nil
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("by_company null is valid")
+	}
+}
+
+func TestVerdictIdEnum(t *testing.T) {
+	t.Parallel()
+	inst, view := byCompanyInstance(t)
+	block := view["by_company"].(map[string]any)["blocks"].([]any)[0].(map[string]any)
+	block["verdict"].(map[string]any)["id"] = "grey"
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("verdict id grey is valid")
+	}
+}
+
+func TestRowTierGreyFails(t *testing.T) {
+	t.Parallel()
+	inst, view := byCompanyInstance(t)
+	tiersRowOf(view)["tier"].(map[string]any)["id"] = "grey"
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("row tier id grey is valid")
+	}
+}
+
+func TestBlockNeedsRowIds(t *testing.T) {
+	t.Parallel()
+	inst, view := byCompanyInstance(t)
+	block := view["by_company"].(map[string]any)["blocks"].([]any)[0].(map[string]any)
+	delete(block, "row_ids")
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a block without row_ids is valid")
+	}
+}
