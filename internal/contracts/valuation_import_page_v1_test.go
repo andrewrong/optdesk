@@ -71,3 +71,28 @@ func TestValuationImportRejectsBadOutcome(t *testing.T) {
 		t.Fatal(`outcome "written" accepted`)
 	}
 }
+
+// TestValuationImportLabels: both fixtures validate with labels; labels without general_tick, and with an
+// unknown key, are rejected.
+func TestValuationImportLabels(t *testing.T) {
+	t.Parallel()
+	for _, view := range []string{"preview", "result"} {
+		m := valuationImportFixture(t, view)
+		labels, ok := m["labels"].(map[string]any)
+		if !ok || len(labels) != 4 {
+			t.Fatalf("%s fixture: labels = %v", view, m["labels"])
+		}
+		if !pageV1Valid(t, valuationImportPageV1, m) {
+			t.Fatalf("%s fixture with labels rejected", view)
+		}
+		delete(labels, "general_tick")
+		if pageV1Valid(t, valuationImportPageV1, m) {
+			t.Fatalf("%s: labels without general_tick accepted", view)
+		}
+		labels["general_tick"] = "x"
+		labels["extra"] = "x"
+		if pageV1Valid(t, valuationImportPageV1, m) {
+			t.Fatalf("%s: labels with an unknown key accepted", view)
+		}
+	}
+}

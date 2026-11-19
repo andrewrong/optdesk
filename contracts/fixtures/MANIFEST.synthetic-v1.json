@@ -80,7 +80,7 @@
     {"path": "page.company_quarters_page.v1.gap.json", "sha256": "c97969f6725f064c1c96a33a153e002a9c60d90beff54ce137c4d75271d58b34"},
     {"path": "page.company_data_page.v1.ok.json", "sha256": "2b90994a2508c9aa8257b2bea83151421472b890c11683e9897d52e79db05624"},
     {"path": "page.company_data_page.v1.gap.json", "sha256": "ade7cb4511537d75c07cca22e728d0c792e1b631c3cdba4c913a2853259fe2f5"},
-    {"path": "page.valuation_import_page.v1.preview.json", "sha256": "7e365c6724891ddc083b752d83073e8da3464b48619acca6a34f4411911273a6"},
-    {"path": "page.valuation_import_page.v1.result.json", "sha256": "f4996c3435e5af9c9e7360547a9554bb53c38b61637d3c5783b7ede017d1fa27"}
+    {"path": "page.valuation_import_page.v1.preview.json", "sha256": "98a49ef66be70334b2bc826495ce23a3c466091fc3d701d1d773cf714f87c494"},
+    {"path": "page.valuation_import_page.v1.result.json", "sha256": "9e7f38e1c18dcf39bcde1d1aa1f56c212a1cde1907633df0cb9eeb8ad3e004c2"}
   ]
 }

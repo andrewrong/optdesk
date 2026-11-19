@@ -29,6 +29,7 @@ export interface ValuationImportPage {
   problems: Problem[];
   gaps: Gap[];
   error: Text | null;
+  labels?: Labels;
 }
 export interface File {
   name: string;
@@ -96,4 +97,10 @@ export interface Gap {
   kind: "gap";
   reason: "store_unavailable";
   text: Text;
+}
+export interface Labels {
+  r: Text;
+  buy_zone_top_site: Text;
+  buy_zone_top_file: Text;
+  general_tick: Text;
 }

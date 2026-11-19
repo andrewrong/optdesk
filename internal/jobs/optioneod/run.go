@@ -370,25 +370,7 @@ func (j *job) stockChain(chains []broker.Chain, u underlying) (broker.Chain, con
 
 // listed resolves every pair; a pair that is not listed is dropped.
 func (r *runState) listed(ctx context.Context, pairs []broker.Contract) ([]broker.Contract, contracts.TypedError) {
-	var out []broker.Contract
-	for _, p := range pairs {
-		if terr := r.checkBudget(); terr != nil {
-			return nil, terr
-		}
-		got, err := r.j.b.ResolveContract(ctx, p)
-		if err != nil {
-			return nil, asTyped(err, contracts.Permanent)
-		}
-		if !got.Listed {
-			continue
-		}
-		c := got.Contract
-		if c.Multiplier == "" {
-			c.Multiplier = p.Multiplier
-		}
-		out = append(out, c)
-	}
-	return out, nil
+	return resolvePairs(ctx, r.j.b.ResolveContract, pairs, r.checkBudget)
 }
 
 // chunk resolves the instruments of cs, asks their quotes and writes the rows; price fills underlying_price where a quote has none.
