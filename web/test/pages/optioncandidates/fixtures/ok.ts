@@ -23,6 +23,7 @@ export const ok = {
   run_status: 'ok',
   stale: null,
   title: 'ok Option candidates title',
+  subtitle: 'ok 先卖出看跌期权的候选合约，按公司分组',
   chain_day: '2026-11-09',
   notes: ['ok Japan option candidates note', 'ok Second note'],
   gaps: [],

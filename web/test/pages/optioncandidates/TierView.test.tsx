@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { OptionCandidatesPage } from '@/pages/candidates/OptionCandidatesPage'
 import { TierView } from '@/pages/candidates/TierView'
 import { tiers } from './fixtures/tiers'
-import { tiersNull, tiersTextsNull } from './fixtures/tiers-null'
+import { jp } from './fixtures/jp'
+import { tiersNoHeads, tiersNull, tiersTextsNull } from './fixtures/tiers-null'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | undefined
@@ -287,5 +288,35 @@ describe('TierView', () => {
     expect(scope.textContent).toContain(tiers.tiers[1]!.title)
     expect(scope.textContent).toContain('tiers None: nothing to check')
     expect(page.querySelector('section[data-tier=fits] thead')).not.toBeNull()
+  })
+
+  it('prints the companies heading with its note and the tiers heading from heads', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const h2s = [...page.querySelectorAll('h2')].map((h) => h.textContent)
+    expect(h2s).toContain(tiers.heads!.companies)
+    expect(h2s).toContain(tiers.heads!.tiers)
+    expect(page.querySelector('[data-heads-note]')!.textContent).toBe(tiers.heads!.companies_note)
+    const first = page.querySelector('section[data-tier]')!
+    const tiersHeading = [...page.querySelectorAll('h2')].find((h) => h.textContent === tiers.heads!.tiers)!
+    expect(tiersHeading.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('prints the same two headings for the Japanese tier view from its own heads', async () => {
+    const jpTiers = jp.short_put_tiers_jpy!
+    const page = await show(<TierView tiers={jpTiers} />)
+    const h2s = [...page.querySelectorAll('h2')].map((h) => h.textContent)
+    expect(h2s).toContain(jpTiers.heads!.companies)
+    expect(h2s).toContain(jpTiers.heads!.tiers)
+    expect(page.querySelector('[data-heads-note]')!.textContent).toBe(jpTiers.heads!.companies_note)
+  })
+
+  it('draws no heading and no error when heads is absent', async () => {
+    const page = await show(<TierView tiers={tiersNoHeads} />)
+    expect(page.querySelector('h2')).toBeNull()
+    expect(page.querySelector('[data-heads-note]')).toBeNull()
+    expect(page.querySelector('[data-tier-view]')).not.toBeNull()
+    const none = await show(<OptionCandidatesPage payload={tiersNull as never} />)
+    expect(none.querySelector('[data-tier-view]')).toBeNull()
+    expect(none.querySelector('[data-heads-note]')).toBeNull()
   })
 })

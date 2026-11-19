@@ -81,6 +81,11 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
+          {payload.subtitle ? (
+            <p data-subtitle className="text-muted-foreground">
+              {payload.subtitle}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {payload.chain_day ? (
               <Badge data-chain-day>

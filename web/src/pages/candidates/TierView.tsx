@@ -40,6 +40,14 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
           </p>
         ) : null}
         <TierLegend items={tiers.legend} />
+        {tiers.heads ? (
+          <div className="flex flex-wrap items-baseline gap-2" data-heads-companies>
+            <h2 className="text-xl font-semibold">{tiers.heads.companies}</h2>
+            <span className="text-xs text-muted-foreground" data-heads-note>
+              {tiers.heads.companies_note}
+            </span>
+          </div>
+        ) : null}
         {tiers.companies.map((company) => (
           <CompanyStrip key={company.key} company={company} labels={tiers.strip_labels} />
         ))}
@@ -48,6 +56,7 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
             {tiers.card_note}
           </p>
         ) : null}
+        {tiers.heads ? <h2 className="text-xl font-semibold" data-heads-tiers>{tiers.heads.tiers}</h2> : null}
         {tiers.tiers.map((tier) => (
           <TierSection key={tier.id} tier={tier} columns={tiers.columns} />
         ))}
