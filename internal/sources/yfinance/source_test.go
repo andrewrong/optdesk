@@ -63,7 +63,7 @@ func request(n int) sources.BarRequest {
 }
 
 func newTest(f *fakeRun, clk *clockwork.FakeClock) *source {
-	return newSource(sources.BarConfig{Command: []string{"cmd", "run"}}, f.run, clk)
+	return newSource(sources.BarConfig{Command: []string{"cmd", "run"}}, f.run, func(d time.Time) time.Duration { return d.Sub(clk.Now()) })
 }
 
 func codes(r sources.BarResult) map[string]string {

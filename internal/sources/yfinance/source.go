@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/clock"
-	"github.com/andrewrong/optdesk/internal/clock/realclock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 )
@@ -24,27 +22,27 @@ var _ sources.NewBarSourceFunc = New
 
 // New is sources.NewBarSourceFunc: cfg.Command is the argv prefix of the refbars command and
 // cfg.PerPair the time allowed for one pair (zero means 15 seconds). It runs the real command and
-// reads the system time.
+// measures the time left of the context against the system time.
 func New(cfg sources.BarConfig) (sources.BarSource, error) {
 	if len(cfg.Command) == 0 {
 		return nil, &typedError{contracts.Permanent, "no command is configured"}
 	}
-	return newSource(cfg, Exec, realclock.NewReal()), nil
+	return newSource(cfg, Exec, time.Until), nil
 }
 
 type source struct {
 	argv    []string
 	perPair time.Duration
 	run     CommandFunc
-	clk     clock.Clock
+	until   func(time.Time) time.Duration // time left until a deadline; a test passes a fake clock
 }
 
-func newSource(cfg sources.BarConfig, run CommandFunc, clk clock.Clock) *source {
+func newSource(cfg sources.BarConfig, run CommandFunc, until func(time.Time) time.Duration) *source {
 	per := cfg.PerPair
 	if per <= 0 {
 		per = defaultPer
 	}
-	return &source{argv: append([]string(nil), cfg.Command...), perPair: per, run: run, clk: clk}
+	return &source{argv: append([]string(nil), cfg.Command...), perPair: per, run: run, until: until}
 }
 
 type typedError struct {
@@ -132,7 +130,7 @@ func (s *source) timeLeft(ctx context.Context) (time.Duration, bool) {
 	if !ok {
 		return 0, false
 	}
-	return d.Sub(s.clk.Now()), true
+	return s.until(d), true
 }
 
 // askBatch runs the command once; ok is true when it gave a readable answer.
