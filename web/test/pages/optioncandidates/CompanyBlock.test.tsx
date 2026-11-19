@@ -28,7 +28,7 @@ const draw = (key: string) => show(<CompanyBlock block={block(key)} tiers={bycom
 describe('CompanyBlock', () => {
   it('TestBlockRowsInPayloadOrder', async () => {
     const page = await draw('AAA')
-    const ids = [...page.querySelectorAll('[data-company-block] > div [data-row]')].map((r) => r.getAttribute('data-row'))
+    const ids = [...page.querySelectorAll('[data-company-block] > [data-row]')].map((r) => r.getAttribute('data-row'))
     expect(ids).toEqual(['a1', 'a2', 'a3'])
   })
 
@@ -69,9 +69,21 @@ describe('CompanyBlock', () => {
     const check = page.querySelector('[data-row=a3]')!
     expect(fits.textContent).toContain('bc 适合')
     expect(fits.querySelector('[data-icon]')!.getAttribute('data-icon')).toBe('check')
-    expect(fits.querySelector('tr')!.className).toContain('border-l-success')
+    expect(fits.querySelector('[data-fit-row]')!.className).toContain('border-l-success')
     expect(check.textContent).toContain('bc 待查')
     expect(check.querySelector('[data-icon]')!.getAttribute('data-icon')).toBe('alert')
-    expect(check.querySelector('tr')!.className).toContain('border-l-warn')
+    expect(check.querySelector('[data-fit-row]')!.className).toContain('border-l-warn')
+  })
+
+  it('TestBlockRowsFitWidth', async () => {
+    const page = await draw('AAA')
+    for (const el of page.querySelectorAll('[data-company-block], [data-company-block] *')) {
+      const cls = el.getAttribute('class') ?? ''
+      expect(cls).not.toContain('overflow-x-auto')
+      expect(cls).not.toContain('min-w-[66rem]')
+    }
+    const badges = page.querySelectorAll('[data-cell="badges"]')
+    expect(badges.length).toBeGreaterThan(0)
+    for (const cell of badges) expect(cell.className).not.toContain('min-w-64')
   })
 })

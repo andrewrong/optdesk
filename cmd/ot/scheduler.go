@@ -55,6 +55,8 @@ func schedulerCmd(a *app, args []string) error {
 			return schedStatusCmd(a, args[1:])
 		case "can-restart":
 			return schedCanRestartCmd(a, args[1:])
+		case "busy":
+			return schedBusyCmd(a, args[1:])
 		}
 		return fmt.Errorf("usage: ot scheduler")
 	}

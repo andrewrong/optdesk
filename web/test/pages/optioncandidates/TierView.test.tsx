@@ -331,7 +331,7 @@ describe('TierView', () => {
     expect(text).not.toContain(bycompany.legend[0]!.text)
     expect(text).toContain(bycompany.by_company!.heading_note)
     expect(text).not.toContain(bycompany.heads!.companies_note)
-    expect(page.querySelectorAll('th[data-col]')).toHaveLength(bycompany.by_company!.columns.length)
+    expect(page.querySelectorAll('[data-col]')).toHaveLength(bycompany.by_company!.columns.length)
     const order = [...page.querySelectorAll('[data-company-block]')].map((b) => b.getAttribute('data-company-block'))
     expect(order).toEqual(['AAA', 'BBB', 'CCC', 'DDD'])
   })
@@ -350,5 +350,19 @@ describe('TierView', () => {
     expect(page.querySelector('[data-tier=grey_in_the_money]')).not.toBeNull()
     expect(page.querySelectorAll('[data-company]')).toHaveLength(tiers.companies.length)
     expect(page.querySelector('[data-company-block]')).toBeNull()
+  })
+
+  it('TestByCompanyHeadFits', async () => {
+    const page = await show(<TierView tiers={bycompany} />)
+    const cols = bycompany.by_company!.columns
+    expect(page.querySelectorAll('[data-col]')).toHaveLength(cols.length)
+    expect(page.querySelectorAll('[data-col-head]')).toHaveLength(1)
+    for (const el of page.querySelectorAll('[data-col-head], [data-col-head] *, table')) {
+      const cls = el.getAttribute('class') ?? ''
+      expect(cls).not.toContain('min-w-[66rem]')
+      expect(cls).not.toContain('table-fixed')
+    }
+    const old = await show(<TierView tiers={tiers} />)
+    expect(old.querySelectorAll('th[data-col]').length).toBeGreaterThan(0)
   })
 })

@@ -38,6 +38,37 @@ const (
 func (r *reconciler) BackfillWith(
 	ctx context.Context, day contracts.Day, datasets []string, opt runner.BackfillOptions,
 ) (res runner.BackfillResult, err error) {
+	r.recordRun(ctx, opt.Job, sourceConsole, 0, func(rr *reconciler, c context.Context) string {
+		res, err = rr.backfillWith(c, day, datasets, opt)
+		return outcomeOf(c, notReachedIn(res), err != nil || failedIn(res))
+	})
+	return res, err
+}
+
+// notReachedIn reports whether the call left a key not reached: it was cut.
+func notReachedIn(res runner.BackfillResult) bool {
+	for _, l := range res.Keys {
+		if l.Group == runner.GroupNotReached {
+			return true
+		}
+	}
+	return false
+}
+
+// failedIn reports whether a key of the call ended with an error code.
+func failedIn(res runner.BackfillResult) bool {
+	for _, l := range res.Keys {
+		if l.ErrorCode != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// backfillWith is BackfillWith without the row of the run.
+func (r *reconciler) backfillWith(
+	ctx context.Context, day contracts.Day, datasets []string, opt runner.BackfillOptions,
+) (res runner.BackfillResult, err error) {
 	res = runner.BackfillResult{Day: day}
 	stored, _, err := r.ledger.Expected(ctx, day)
 	if err != nil {
@@ -58,6 +89,7 @@ func (r *reconciler) BackfillWith(
 	if opt.Job != "" {
 		keys = keysOfJob(keys, p, opt.Job)
 	}
+	noteTotal(ctx, len(keys))
 	present, byKey, err := r.dayState(ctx, day)
 	if err != nil {
 		return res, err
@@ -87,6 +119,7 @@ func (r *reconciler) BackfillWith(
 			r.notReached(&res, keys[i+1:], present, reasonStopped)
 			return res, err
 		}
+		noteKey(ctx, k)
 		fillLists(&res, k, line)
 		if quiet.note(id, line) {
 			r.logSilent(id, day, len(keysOfJob(keys[i+1:], p, id)))
