@@ -11,7 +11,9 @@ import (
 	"time"
 	_ "time/tzdata" // the zone database travels with the binary
 
+	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
 const (
@@ -48,6 +50,34 @@ type pageJSON struct {
 	Requests       []requestJSON `json:"requests"`
 	Selected       *int64        `json:"selected"`
 	RefreshSeconds int           `json:"refresh_seconds"`
+	Running        []runningJSON `json:"running,omitempty"`
+}
+
+// runningJSON is one line of "Running now": the figures are copied from compute.FiguresFunc, Line is text.go's.
+type runningJSON struct {
+	Line           string `json:"line"`
+	Job            string `json:"job"`
+	StartedAt      string `json:"started_at"`
+	KeysDone       int    `json:"keys_done"`
+	KeysTotal      int    `json:"keys_total"`
+	Step           string `json:"step"`
+	ElapsedMinutes int    `json:"elapsed_minutes"`
+	UsualMinutes   int    `json:"usual_minutes"`
+	Slow           bool   `json:"slow"`
+}
+
+// waitingJSON is the line of a request that waits for its own job: since is hold_at.
+type waitingJSON struct {
+	Line  string `json:"line"`
+	Job   string `json:"job"`
+	Since string `json:"since"`
+}
+
+// Runs is what the running-now and already-running lines read: the open runs and the usual durations, and the
+// function that turns them into figures (compute.FiguresFunc). The zero Runs gives a page without those lines.
+type Runs struct {
+	Reader  jobrun.JobRunReader
+	Figures jobrunapi.FiguresFunc
 }
 
 type formJSON struct {
@@ -83,6 +113,8 @@ type requestJSON struct {
 	AtText    string    `json:"at_text"`
 	Reason    string    `json:"reason"`
 	Keys      []keyJSON `json:"keys"`
+
+	WaitingFor *waitingJSON `json:"waiting_for,omitempty"`
 }
 
 type keyJSON struct {
@@ -99,6 +131,13 @@ type keyJSON struct {
 // for none): it is listed even when older than the newest 20 (which then give up their last place), and an unknown id
 // gives the gap no_such_request. form is nil when the route is off. generatedAt is the page's only clock.
 func Build(ctx context.Context, r jobrequest.Reader, generatedAt time.Time, form *Form, selected int64, jobs []JobInfo) ([]byte, error) {
+	return BuildWithRuns(ctx, r, generatedAt, form, selected, jobs, Runs{})
+}
+
+// BuildWithRuns is Build with the running-now lines and the already-running line of a waiting request. A request
+// carries waiting_for only when its hold_job is its own job and that job has an open run. A slow run only sets the
+// slow flag and its line; nothing here stops or hides a job. A failed read of the runs leaves the lines out.
+func BuildWithRuns(ctx context.Context, r jobrequest.Reader, generatedAt time.Time, form *Form, selected int64, jobs []JobInfo, runs Runs) ([]byte, error) {
 	now := generatedAt.UTC()
 	p := pageJSON{
 		Schema: "job_console", SchemaVersion: 1,
@@ -117,12 +156,15 @@ func Build(ctx context.Context, r jobrequest.Reader, generatedAt time.Time, form
 		p.Jobs = append(p.Jobs, jj)
 	}
 
+	open := readRuns(ctx, runs, now)
+	p.Running = open.rows
+
 	rows, sel, gap := readRows(ctx, r, selected)
 	if gap != nil {
 		p.Gaps = append(p.Gaps, *gap)
 	}
 	for _, row := range rows {
-		rj, err := requestRow(row, now)
+		rj, err := requestRow(row, now, open.waiting(row))
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +242,7 @@ func jobRow(j JobInfo, now time.Time) (jobJSON, error) {
 	return jj, nil
 }
 
-func requestRow(row jobrequest.Row, now time.Time) (requestJSON, error) {
+func requestRow(row jobrequest.Row, now time.Time, waiting *waitingJSON) (requestJSON, error) {
 	keys := make([]keyJSON, 0, len(row.Lines))
 	var due time.Time
 	for _, l := range row.Lines {
@@ -221,11 +263,12 @@ func requestRow(row jobrequest.Row, now time.Time) (requestJSON, error) {
 	}
 	return requestJSON{
 		ID: row.ID, Job: row.Request.JobID, Day: row.Request.Day, Force: row.Request.Force,
-		State: string(row.State), AtText: row.RequestedAt.UTC().Format(atLayout), Reason: row.Reason, Keys: keys,
+		WaitingFor: waiting,
+		State:      string(row.State), AtText: row.RequestedAt.UTC().Format(atLayout), Reason: row.Reason, Keys: keys,
 		StateText: stateText(stateIn{
 			State: row.State, Reason: row.Reason, HoldJob: row.HoldJob, HoldAt: row.HoldAt,
 			Withdrawing: !row.WithdrawnAt.IsZero(), Age: now.Sub(row.RequestedAt),
-			StartedAt: started.UTC().Format(atLayout), DueAt: due,
+			StartedAt: started.UTC().Format(atLayout), DueAt: due, Waiting: waiting != nil,
 		}),
 	}, nil
 }
@@ -253,4 +296,65 @@ func sentenceFor(reqs []requestJSON, sel *jobrequest.Row) string {
 		}
 	}
 	return fmt.Sprintf("Request %d (%s, %s): %s.", focus.ID, focus.Job, focus.Day, nothingProducedText)
+}
+
+// openRuns is the open runs as lines, and the jobs that have one.
+type openRuns struct {
+	rows []runningJSON
+	jobs map[string]bool
+}
+
+// readRuns copies the figures of runs.Figures for the open runs of runs.Reader at now. It does no arithmetic.
+func readRuns(ctx context.Context, runs Runs, now time.Time) openRuns {
+	out := openRuns{jobs: map[string]bool{}}
+	if runs.Reader == nil || runs.Figures == nil {
+		return out
+	}
+	open, err := runs.Reader.Running(ctx)
+	if err != nil {
+		return out
+	}
+	usuals, err := runs.Reader.Usuals(ctx)
+	if err != nil {
+		return out
+	}
+	in := make([]jobrunapi.Input, len(open))
+	for i, o := range open {
+		in[i] = jobrunapi.Input{JobID: o.JobID, StartedAt: o.StartedAt, KeysDone: o.KeysDone, KeysTotal: o.KeysTotal, Step: o.Step}
+	}
+	us := make([]jobrunapi.Usual, len(usuals))
+	for i, u := range usuals {
+		us[i] = jobrunapi.Usual{JobID: u.JobID, Median: u.Median, Samples: u.Samples}
+	}
+	used := make([]bool, len(open))
+	for _, f := range runs.Figures(now, in, us) {
+		// a figure belongs to the first unused open run of its own job, whatever the order it comes in
+		i := -1
+		for k, o := range open {
+			if !used[k] && o.JobID == f.JobID {
+				i = k
+				break
+			}
+		}
+		if i < 0 {
+			continue
+		}
+		used[i] = true
+		out.jobs[f.JobID] = true
+		out.rows = append(out.rows, runningJSON{
+			Line: runningLine(f, open[i].StartedAt), Job: f.JobID, StartedAt: open[i].StartedAt.UTC().Format(time.RFC3339),
+			KeysDone: f.KeysDone, KeysTotal: f.KeysTotal, Step: f.Step,
+			ElapsedMinutes: f.ElapsedMinutes, UsualMinutes: f.UsualMinutes, Slow: f.Slow,
+		})
+	}
+	return out
+}
+
+// waiting is the waiting_for of a queued request whose hold_job is its own job and that job has an open run.
+func (o openRuns) waiting(row jobrequest.Row) *waitingJSON {
+	job := row.Request.JobID
+	if row.State != jobrequest.StateQueued || row.HoldJob != job || !o.jobs[job] {
+		return nil
+	}
+	return &waitingJSON{Line: waitingLine(row.HoldAt), Job: job, Since: row.HoldAt.UTC().Format(time.RFC3339)}
 }
