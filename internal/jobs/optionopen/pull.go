@@ -305,21 +305,25 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		res.Usable = ok
 	}
 	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
-		if unread > 0 {
-			// Items not asked because the broker answered nothing at the moment: the key is run again.
-			return withErr(res, newErr(contracts.Retryable,
-				"%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot was not read or the broker was unavailable",
-				ok, planned, p.m.MinOKShare, unread))
-		}
-		if partial > 0 {
-			// Rows with only some of bid, ask and IV (a slow broker): the key is run again, the same captureID keeps the run idempotent.
-			return withErr(res, newErr(contracts.Retryable,
-				"%d of %d planned items ok, under the share %.2f; %d rows partial",
-				ok, planned, p.m.MinOKShare, partial))
-		}
-		return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, p.m.MinOKShare))
+		return underShare(res, ok, planned, unread, partial, p.m.MinOKShare)
 	}
 	return res
+}
+
+// underShare is the result of a batch that ended under the ok share: Retryable when rows were not asked (the broker
+// answered nothing at the moment) or are partial (a slow broker; the same captureID keeps the run idempotent), else Permanent.
+func underShare(res contracts.JobResult, ok, planned, unread, partial int, share float64) contracts.JobResult {
+	if unread > 0 {
+		return withErr(res, newErr(contracts.Retryable,
+			"%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot was not read or the broker was unavailable",
+			ok, planned, share, unread))
+	}
+	if partial > 0 {
+		return withErr(res, newErr(contracts.Retryable,
+			"%d of %d planned items ok, under the share %.2f; %d rows partial",
+			ok, planned, share, partial))
+	}
+	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, share))
 }
 
 func withErr(r contracts.JobResult, e contracts.TypedError) contracts.JobResult {
