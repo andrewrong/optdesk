@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -20,13 +21,13 @@ func TestRunTimeoutEndsCutAndLeavesKeys(t *testing.T) {
 	var mu sync.Mutex
 	marked := map[string]bool{}
 	outcome := ""
-	var cause error
+	var cause, errAt error
 	atKey := make(chan struct{})
 	g.spawn("J", func(ctx context.Context) {
 		for i, key := range []string{"k1", "k2", "k3"} {
 			if ctx.Err() != nil {
 				mu.Lock()
-				outcome, cause = "cut", context.Cause(ctx)
+				outcome, cause, errAt = "cut", context.Cause(ctx), ctx.Err()
 				mu.Unlock()
 				return
 			}
@@ -48,10 +49,33 @@ func TestRunTimeoutEndsCutAndLeavesKeys(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
+	if !errors.Is(errAt, context.DeadlineExceeded) {
+		t.Fatalf("ctx.Err() after the timeout = %v, want DeadlineExceeded", errAt)
+	}
 	if outcome != "cut" || !errors.Is(cause, context.DeadlineExceeded) {
 		t.Fatalf("outcome=%q cause=%v, want cut with DeadlineExceeded", outcome, cause)
 	}
 	if !marked["k1"] || marked["k2"] || marked["k3"] {
 		t.Fatalf("marked = %v, want only k1; the others stay for the next pass", marked)
 	}
+}
+
+// TestSpawnedRunHasDeadline (from the review): a spawned run carries the deadline of reconcileTimeout.
+func TestSpawnedRunHasDeadline(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(tickerStart)
+	g := newJobGroup(clk)
+	t.Cleanup(func() { g.cancel(nil) })
+	got := make(chan time.Time, 1)
+	g.spawn("J", func(ctx context.Context) {
+		d, ok := ctx.Deadline()
+		if !ok {
+			d = time.Time{}
+		}
+		got <- d
+	})
+	if d := <-got; !d.Equal(tickerStart.Add(reconcileTimeout)) {
+		t.Fatalf("deadline = %v, want %v", d, tickerStart.Add(reconcileTimeout))
+	}
+	<-g.done()
 }
