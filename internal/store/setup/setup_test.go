@@ -10,6 +10,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 )
 
 func TestEnvfile(t *testing.T) {
@@ -112,8 +113,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 20 {
-		t.Fatalf("%d roles, want 20", len(roles))
+	if len(roles) != 21 {
+		t.Fatalf("%d roles, want 21", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -351,4 +352,20 @@ func TestUnderlyingResolveRoleSpec(t *testing.T) {
 		}
 	}
 	t.Error("ot_w_underlying_resolve is not in the role list")
+}
+
+func TestReconRoleAndDsnLine(t *testing.T) {
+	t.Parallel()
+	if roleRecon != "ot_w_recon" || dsnEnvRecon != reconstore.DSNEnvRecon {
+		t.Fatalf("role %q, line %q", roleRecon, dsnEnvRecon)
+	}
+	for _, r := range roles {
+		if r.name == roleRecon {
+			if r.envKey != reconstore.DSNEnvRecon {
+				t.Errorf("ot_w_recon line = %q", r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_recon is not in the role list")
 }
