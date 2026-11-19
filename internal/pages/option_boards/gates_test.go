@@ -43,3 +43,22 @@ func TestParseMarks(t *testing.T) {
 		t.Error("null marks want an error")
 	}
 }
+
+func TestMarkBadgesHideBuySource(t *testing.T) {
+	t.Parallel()
+	got := markBadges([]string{"buy_from_valuation", "itm"})
+	if want := []string{"itm"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("badges = %v, want %v", got, want)
+	}
+	if got := markBadges([]string{"buy_from_hand", "buy_from_valuation"}); len(got) != 0 {
+		t.Errorf("only buy source marks: badges = %v, want none", got)
+	}
+}
+
+func TestMarkBadgesUnknownStillRaw(t *testing.T) {
+	t.Parallel()
+	got := markBadges([]string{"some_future_mark"})
+	if want := []string{"some_future_mark"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("badges = %v, want %v", got, want)
+	}
+}
