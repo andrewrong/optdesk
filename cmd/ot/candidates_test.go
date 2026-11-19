@@ -238,7 +238,8 @@ func TestCandidatesNamesJPEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 2 || lines[0] != "no candidates" || lines[1] != "7203: see the Japan group of the candidates page" || strings.Contains(out.String(), "no option route") {
+	if len(lines) != 2 || lines[0] != "no candidates" || lines[1] != "7203: see the Japan group of the candidates page" ||
+		strings.Contains(out.String(), "no option route") {
 		t.Fatalf("lines %q", lines)
 	}
 }
