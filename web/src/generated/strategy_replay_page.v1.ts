@@ -61,10 +61,37 @@ export interface Report {
   lines: Line[];
   notes: Text[];
   empty_text: Text | null;
+  hints?: {
+    counts: {
+      lots: Text;
+      lots_with_quote: Text;
+      still_open: Text;
+      lot_days: Text;
+      quote_days: Text;
+    };
+    columns: {
+      set: Text;
+      variant: Text;
+      currency: Text;
+      lots: Text;
+      cycles: Text;
+      closed_early: Text;
+      held: Text;
+      assigned: Text;
+      rolled: Text;
+      in_the_money: Text;
+      kept_share: Text;
+      mean_gross: Text;
+      worst_gross: Text;
+      hold_kept_share: Text;
+      actual_kept_share: Text;
+    };
+  };
 }
 export interface Variant {
   name: string;
   params_hash: string;
+  hint?: Text;
 }
 export interface Counts {
   lots: Count;

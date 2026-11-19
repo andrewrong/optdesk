@@ -78,11 +78,13 @@
     "variants": [
       {
         "name": "hold",
-        "params_hash": "a1b2c3d4"
+        "params_hash": "a1b2c3d4",
+        "hint": "持有到期：卖出后不动，一直拿到到期日"
       },
       {
         "name": "early",
-        "params_hash": "e5f6a7b8"
+        "params_hash": "e5f6a7b8",
+        "hint": "早平：权利金赚到一定比例或临近到期就买回"
       }
     ],
     "counts": {
@@ -164,6 +166,32 @@
       "存的报价是开盘后 90 分钟的上午快照，结算用收盘价。",
       "展期单的实际结果不含它展期进去的那一笔。"
     ],
-    "empty_text": null
+    "empty_text": null,
+    "hints": {
+      "counts": {
+        "lots": "回放的单子总数",
+        "lots_with_quote": "其中存有报价的单子数",
+        "still_open": "截止日仍未平掉的单子数",
+        "lot_days": "单子数乘以持有天数的合计",
+        "quote_days": "有存报价的交易日数"
+      },
+      "columns": {
+        "set": "分组：全部单子或某个账户别名",
+        "variant": "做法：持有到期或早平",
+        "currency": "币种",
+        "lots": "单子数",
+        "cycles": "回放的周期数",
+        "closed_early": "早平次数（提前买回）",
+        "held": "持有到期次数",
+        "assigned": "被指派次数",
+        "rolled": "展期次数",
+        "in_the_money": "到期时实值（价内）次数",
+        "kept_share": "留存比例：收到的权利金最终留下的份额",
+        "mean_gross": "平均毛利，未扣费用",
+        "worst_gross": "最差一笔的毛利，未扣费用",
+        "hold_kept_share": "持有到期做法的留存比例",
+        "actual_kept_share": "他实际结果的留存比例"
+      }
+    }
   }
 }

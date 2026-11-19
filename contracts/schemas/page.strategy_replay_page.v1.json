@@ -77,7 +77,8 @@
         "excluded": {"type": "array", "items": {"$ref": "#/$defs/Excluded"}},
         "lines": {"type": "array", "items": {"$ref": "#/$defs/Line"}},
         "notes": {"type": "array", "items": {"$ref": "#/$defs/Text"}},
-        "empty_text": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]}
+        "empty_text": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]},
+        "hints": {"type": "object", "additionalProperties": false, "required": ["counts", "columns"], "properties": {"counts": {"type": "object", "additionalProperties": false, "required": ["lots", "lots_with_quote", "still_open", "lot_days", "quote_days"], "properties": {"lots": {"$ref": "#/$defs/Text"}, "lots_with_quote": {"$ref": "#/$defs/Text"}, "still_open": {"$ref": "#/$defs/Text"}, "lot_days": {"$ref": "#/$defs/Text"}, "quote_days": {"$ref": "#/$defs/Text"}}}, "columns": {"type": "object", "additionalProperties": false, "required": ["set", "variant", "currency", "lots", "cycles", "closed_early", "held", "assigned", "rolled", "in_the_money", "kept_share", "mean_gross", "worst_gross", "hold_kept_share", "actual_kept_share"], "properties": {"set": {"$ref": "#/$defs/Text"}, "variant": {"$ref": "#/$defs/Text"}, "currency": {"$ref": "#/$defs/Text"}, "lots": {"$ref": "#/$defs/Text"}, "cycles": {"$ref": "#/$defs/Text"}, "closed_early": {"$ref": "#/$defs/Text"}, "held": {"$ref": "#/$defs/Text"}, "assigned": {"$ref": "#/$defs/Text"}, "rolled": {"$ref": "#/$defs/Text"}, "in_the_money": {"$ref": "#/$defs/Text"}, "kept_share": {"$ref": "#/$defs/Text"}, "mean_gross": {"$ref": "#/$defs/Text"}, "worst_gross": {"$ref": "#/$defs/Text"}, "hold_kept_share": {"$ref": "#/$defs/Text"}, "actual_kept_share": {"$ref": "#/$defs/Text"}}}}}
       }
     },
     "Variant": {
@@ -86,7 +87,8 @@
       "required": ["name", "params_hash"],
       "properties": {
         "name": {"type": "string", "minLength": 1, "maxLength": 64},
-        "params_hash": {"type": "string", "minLength": 1, "maxLength": 128}
+        "params_hash": {"type": "string", "minLength": 1, "maxLength": 128},
+        "hint": {"$ref": "#/$defs/Text"}
       }
     },
     "Counts": {
