@@ -51,6 +51,8 @@ type tierRow struct {
 	Notes     []badgeView  `json:"notes"`
 	Fields    []fieldView  `json:"fields"`
 	Line      *string      `json:"line"`
+	// Tier is the badge of a shown row of the company blocks; nil for every other row.
+	Tier *tierBadge `json:"tier,omitempty"`
 	// shortSub is the English margin sub text the short list prints under its buy price; the short list keeps
 	// its texts (candidates-zh.md Decision 4).
 	shortSub *string

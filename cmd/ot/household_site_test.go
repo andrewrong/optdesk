@@ -80,15 +80,76 @@ func TestHouseholdRouteReadsAliasesOfTheBook(t *testing.T) {
 	if rec.Code != 200 || len(asked) == 0 {
 		t.Fatalf("%d %v %q", rec.Code, asked, rec.Body)
 	}
+	got := map[string]bool{}
 	for _, al := range asked {
-		if al != "acct-a" {
-			t.Fatalf("asked %v", asked)
+		got[al] = true
+	}
+	if !got["acct-a"] || !got["acct-b"] || len(got) != 2 {
+		t.Fatalf("family page asked %v, want both aliases", asked)
+	}
+	asked = nil
+	rec = companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute+"?"+siteAccountQuery+"=acct-b")
+	if rec.Code != 200 || len(asked) == 0 {
+		t.Fatalf("acct-b: %d asked %v %q", rec.Code, asked, rec.Body)
+	}
+	for _, al := range asked {
+		if al != "acct-b" {
+			t.Fatalf("asked %v, want only acct-b", asked)
 		}
 	}
 	asked = nil
-	rec = companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute+"?"+siteAccountQuery+"=main")
+	rec = companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute+"?"+siteAccountQuery+"=stranger")
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"no_data"`) || len(asked) != 0 {
-		t.Fatalf("main: %d asked %v %q", rec.Code, asked, rec.Body)
+		t.Fatalf("stranger: %d asked %v %q", rec.Code, asked, rec.Body)
+	}
+}
+
+// familyBookHandler is a site of a book of main (with a capture) and other (with none).
+func familyBookHandler(t *testing.T, asked *[]string) http.Handler {
+	t.Helper()
+	a, _ := testApp(t, "")
+	rd := householdReaders(asked)
+	rd.aliases = []string{"main", "other"}
+	return siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+}
+
+func TestHouseholdRouteDefaultIsFamily(t *testing.T) {
+	t.Parallel()
+	for _, q := range []string{"", "?" + siteAccountQuery + "=household"} {
+		var asked []string
+		rec := companiesGet(t, familyBookHandler(t, &asked), http.MethodGet, "/"+siteHouseholdRoute+q)
+		body := rec.Body.String()
+		if rec.Code != 200 || !strings.Contains(body, "全家") || !strings.Contains(body, `"key":"household"`) {
+			t.Fatalf("%q: %d %s", q, rec.Code, body)
+		}
+		if len(asked) == 0 {
+			t.Fatalf("%q: no alias asked", q)
+		}
+	}
+}
+
+func TestHouseholdRouteNamedAliasKeepsSingleView(t *testing.T) {
+	t.Parallel()
+	var asked []string
+	rec := companiesGet(t, familyBookHandler(t, &asked), http.MethodGet, "/"+siteHouseholdRoute+"?"+siteAccountQuery+"=main")
+	body := rec.Body.String()
+	if rec.Code != 200 || strings.Contains(body, "全家合计") {
+		t.Fatalf("%d %s", rec.Code, body)
+	}
+	for _, al := range asked {
+		if al != "main" {
+			t.Fatalf("asked %v, want only main", asked)
+		}
+	}
+}
+
+func TestHouseholdRouteFamilyNamesAliasWithoutCapture(t *testing.T) {
+	t.Parallel()
+	var asked []string
+	rec := companiesGet(t, familyBookHandler(t, &asked), http.MethodGet, "/"+siteHouseholdRoute)
+	body := rec.Body.String()
+	if rec.Code != 200 || !strings.Contains(body, "other") || !strings.Contains(body, "no_data") {
+		t.Fatalf("%d %s", rec.Code, body)
 	}
 }
 
@@ -222,7 +283,7 @@ func jpyHouseholdBody(t *testing.T, withFx bool) string {
 		rd.fx = householdFx{}
 	}
 	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
-	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute)
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute+"?"+siteAccountQuery+"=main")
 	if rec.Code != 200 {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}

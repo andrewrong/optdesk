@@ -17,12 +17,27 @@
     "overwrite_note": {"type": "string", "maxLength": 600},
     "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
     "failures_note": {"$ref": "#/$defs/Text"},
-    "failures_none_text": {"$ref": "#/$defs/Text"}
+    "failures_none_text": {"$ref": "#/$defs/Text"},
+    "running": {"type": "array", "items": {"$ref": "#/$defs/Running"}}
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
     "Optional": {"type": "string", "maxLength": 600},
     "Day": {"type": "string", "format": "date"},
+    "Running": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "job": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "keys_done": {"type": "integer", "minimum": 0},
+        "keys_total": {"type": "integer", "minimum": 0},
+        "step": {"type": "string", "maxLength": 600},
+        "elapsed_minutes": {"type": "integer", "minimum": 0},
+        "usual_minutes": {"type": "integer", "minimum": 0},
+        "slow": {"type": "boolean"}
+      }
+    },
     "Count": {"type": "integer", "minimum": 0},
     "Form": {
       "type": "object",

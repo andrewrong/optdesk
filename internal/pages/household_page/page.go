@@ -1,7 +1,10 @@
-// Package household_page builds the page.household_page.v1 view model of one account per page: the
-// blocks that need only the account summary values and the replayed option ledger are built, the
-// blocks that need the price of a position are the gap missing_quote. It computes no figure (the
-// figures come from blockapi.PageFigures), pools no account, reads no clock and makes no request.
+// Package household_page builds the page.household_page.v1 view model. Build and NewPage give the page
+// of one account: the blocks that need only the account summary values and the replayed option ledger
+// are built, the blocks that need the price of a position are the gap missing_quote. BuildFamily gives
+// the family page of a book of two or more aliases: one row per account and the total of
+// blockapi.FamilyFigure, with a named line for every account the total does not hold. It computes no
+// figure (the figures come from blockapi.PageFigures and blockapi.FamilyFigure), reads no clock and
+// makes no request.
 package household_page
 
 import (
@@ -40,6 +43,8 @@ type Config struct {
 	// "From the broker statement of <data day>" to the page of such an alias when a capture was found.
 	// Read only by Build.
 	Statement []string
+	// Family is the figure of the family page; nil gives BuildFamily the gap page no_reader.
+	Family blockapi.NewFamilyFigureFunc
 }
 
 // NewPage is the household_page page of one account; alias "" means the main account.

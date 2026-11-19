@@ -15,6 +15,17 @@ const titleTones: Record<string, string> = { fits: 'text-success', check: 'text-
 const wordVariants: Record<string, 'success' | 'warn' | 'outline'> = { fits: 'success', check: 'warn' }
 const widths = ['w-10', 'w-28', 'w-56', 'w-64', 'w-32', 'w-36', 'sm:min-w-64']
 const numeric = new Set(['margin', 'below_spot', 'premium'])
+// The fit layout: a wrapping flex row below lg (badges on their own line), one line from lg up; no fixed widths.
+const fitCells: Record<string, string> = {
+  arrow: 'min-w-0 shrink-0 lg:basis-10',
+  tier: 'min-w-0 shrink-0 lg:basis-24',
+  contract: 'min-w-0 flex-1 basis-40 lg:basis-56',
+  margin: 'min-w-0 flex-1 basis-1/4 lg:basis-28',
+  below_spot: 'min-w-0 flex-1 basis-1/4 lg:basis-28',
+  premium: 'min-w-0 flex-1 basis-1/4 lg:basis-32',
+  badges: 'min-w-0 basis-full lg:flex-1 lg:basis-0',
+}
+const fitRow = 'flex min-w-0 flex-wrap items-start gap-x-2 border-l-4 px-2 py-2 lg:flex-nowrap'
 
 function Hint({ text, children }: { text: string | null; children: React.ReactNode }) {
   if (text === null) return <>{children}</>
@@ -44,17 +55,23 @@ function Badges({ items }: { items: BadgeT[] }) {
   )
 }
 
+function PairBody({ pair, wrap }: { pair: Pair; wrap?: boolean }) {
+  return pair.gap ? (
+    <span className="text-right text-muted-foreground">{pair.gap.text}</span>
+  ) : (
+    <>
+      <div className="num text-right">{pair.main}</div>
+      {pair.sub !== null ? (
+        <div className={cn('num text-right text-xs text-muted-foreground', wrap ? 'whitespace-normal' : 'sm:whitespace-nowrap')}>{pair.sub}</div>
+      ) : null}
+    </>
+  )
+}
+
 function PairCell({ id, pair }: { id: string; pair: Pair }) {
   return (
     <TableCell data-cell={id} className="text-right align-top max-sm:order-4 max-sm:basis-1/3 max-sm:whitespace-normal">
-      {pair.gap ? (
-        <span className="text-right text-muted-foreground">{pair.gap.text}</span>
-      ) : (
-        <>
-          <div className="num text-right">{pair.main}</div>
-          {pair.sub !== null ? <div className="num text-right text-xs text-muted-foreground sm:whitespace-nowrap">{pair.sub}</div> : null}
-        </>
-      )}
+      <PairBody pair={pair} />
     </TableCell>
   )
 }
@@ -69,7 +86,7 @@ function TierTitle({ tier }: { tier: Tier }) {
   )
 }
 
-export function TierIcon({ tier }: { tier: Tier }) {
+export function TierIcon({ tier }: { tier: Pick<Tier, 'icon' | 'word'> }) {
   const Icon = icons[tier.icon]
   return <Icon aria-label={tier.word} role="img" data-icon={tier.icon} className="size-4" />
 }
@@ -98,7 +115,31 @@ function TierColgroup() {
   )
 }
 
-export function TierHead({ columns }: { columns: TierColumn[] }) {
+function ColLabel({ c, first }: { c: TierColumn; first: boolean }) {
+  return (
+    <>
+      {first ? <span className="sr-only">{c.label}</span> : c.label}
+      {c.hint ? (
+        <span data-col-subtitle className="block text-xs font-normal whitespace-normal text-muted-foreground">
+          {c.hint}
+        </span>
+      ) : null}
+    </>
+  )
+}
+
+export function TierHead({ columns, fit }: { columns: TierColumn[]; fit?: boolean }) {
+  if (fit) {
+    return (
+      <div className={cn(fitRow, 'border-l-transparent text-sm font-medium text-muted-foreground')} data-col-head>
+        {columns.map((c, i) => (
+          <div key={c.id} data-col={c.id} className={cn(fitCells[c.id], numeric.has(c.id) && 'text-right')}>
+            <ColLabel c={c} first={i === 0} />
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <Table className="table-fixed">
       <TierColgroup />
@@ -120,14 +161,63 @@ export function TierHead({ columns }: { columns: TierColumn[] }) {
   )
 }
 
-function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
+// A row's own tier (the by_company layout) wins over the tier section it sits in.
+const ownIcons = { fits: 'check', check: 'alert' } as const
+
+function FitRow({ row, mark }: { row: TierRow; mark: Pick<Tier, 'id' | 'icon' | 'word'> }) {
+  return (
+    <div data-fit-row className={cn(fitRow, borders[mark.id] ?? 'border-l-muted')}>
+      <div className={fitCells.arrow}>
+        <AccordionTrigger
+          data-arrow
+          aria-label={row.contract.name}
+          className="w-fit flex-none p-1 no-underline **:data-[slot=accordion-trigger-icon]:hidden!"
+        >
+          <ChevronRight className="size-4 transition-transform group-aria-expanded/accordion-trigger:rotate-90" />
+        </AccordionTrigger>
+      </div>
+      <div className={fitCells.tier}>
+        <Badge variant={wordVariants[mark.id] ?? 'outline'} className="gap-1">
+          <TierIcon tier={mark} />
+          {mark.word}
+        </Badge>
+      </div>
+      <div data-cell="contract" className={fitCells.contract}>
+        <div className="font-medium">{row.contract.name}</div>
+        <div className="num text-xs text-muted-foreground">
+          {row.contract.strike} {row.contract.expiry} {row.contract.dte}
+        </div>
+      </div>
+      {(['margin', 'below_spot', 'premium'] as const).map((id) => (
+        <div key={id} data-cell={id} className={cn(fitCells[id], 'text-right')}>
+          <PairBody pair={row[id]} wrap />
+        </div>
+      ))}
+      <div data-cell="badges" className={fitCells.badges}>
+        <div className="flex flex-wrap gap-1">
+          <Badges items={row.badges} />
+          <Badges items={row.notes} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function DataRow({ tier, row, fit }: { tier: Tier | null; row: TierRow; fit?: boolean }) {
+  const own = row.tier
+  const mark = own ? { id: own.id, word: own.word, icon: ownIcons[own.id] } : tier
+  if (!mark) return null
+  const wide = !own && tier !== null && tier.collapsed
   return (
     <Accordion type="single" collapsible data-row={row.id}>
       <AccordionItem value={row.id}>
+        {fit ? (
+          <FitRow row={row} mark={mark} />
+        ) : (
         <Table className="table-fixed max-sm:block">
           <TierColgroup />
           <TableBody className="max-sm:block">
-            <TableRow className={cn('border-l-4 max-sm:flex max-sm:flex-wrap', borders[tier.id] ?? 'border-l-muted')}>
+            <TableRow className={cn('border-l-4 max-sm:flex max-sm:flex-wrap', borders[mark.id] ?? 'border-l-muted')}>
               <TableCell className="align-top max-sm:order-1 max-sm:w-10">
                 <AccordionTrigger
                   data-arrow
@@ -138,9 +228,9 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
                 </AccordionTrigger>
               </TableCell>
               <TableCell className="align-top max-sm:order-2">
-                <Badge variant={wordVariants[tier.id] ?? 'outline'} className="gap-1">
-                  <TierIcon tier={tier} />
-                  {tier.word}
+                <Badge variant={wordVariants[mark.id] ?? 'outline'} className="gap-1">
+                  <TierIcon tier={mark} />
+                  {mark.word}
                 </Badge>
               </TableCell>
               <TableCell data-cell="contract" className="align-top max-sm:order-3 max-sm:min-w-0 max-sm:flex-1 max-sm:whitespace-normal">
@@ -161,8 +251,9 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
             </TableRow>
           </TableBody>
         </Table>
+        )}
         <AccordionContent data-expand>
-          {tier.collapsed ? (
+          {wide ? (
             <p data-line className="p-3 text-sm">
               {row.line}
             </p>

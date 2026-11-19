@@ -5,10 +5,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { CompanyStrip } from '@/pages/candidates/CompanyStrip'
 import { TierLegend } from '@/pages/candidates/TierLegend'
-import { TierSection } from '@/pages/candidates/TierRows'
+import { CompanyBlock } from '@/pages/candidates/CompanyBlock'
+import { TierHead, TierSection } from '@/pages/candidates/TierRows'
 import type { TierView as TierViewPayload } from '@/generated/option_candidates_page.v1'
 
 export function TierView({ tiers }: { tiers: TierViewPayload }) {
+  const by = tiers.by_company
   return (
     <TooltipProvider>
       <section className="min-w-0 space-y-3" data-tier-view>
@@ -39,27 +41,26 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
             {tiers.kept_note}
           </p>
         ) : null}
-        <TierLegend items={tiers.legend} />
+        <TierLegend items={by ? by.legend : tiers.legend} />
         {tiers.heads ? (
           <div className="flex flex-wrap items-baseline gap-2" data-heads-companies>
             <h2 className="text-xl font-semibold">{tiers.heads.companies}</h2>
             <span className="text-xs text-muted-foreground" data-heads-note>
-              {tiers.heads.companies_note}
+              {by ? by.heading_note : tiers.heads.companies_note}
             </span>
           </div>
         ) : null}
-        {tiers.companies.map((company) => (
-          <CompanyStrip key={company.key} company={company} labels={tiers.strip_labels} />
-        ))}
+        {by ? <TierHead columns={by.columns} fit /> : null}
+        {by
+          ? by.blocks.map((block) => <CompanyBlock key={block.company} block={block} tiers={tiers} />)
+          : tiers.companies.map((company) => <CompanyStrip key={company.key} company={company} labels={tiers.strip_labels} />)}
         {typeof tiers.card_note === 'string' ? (
           <p className="text-sm text-muted-foreground" data-card-note>
             {tiers.card_note}
           </p>
         ) : null}
-        {tiers.heads ? <h2 className="text-xl font-semibold" data-heads-tiers>{tiers.heads.tiers}</h2> : null}
-        {tiers.tiers.map((tier) => (
-          <TierSection key={tier.id} tier={tier} columns={tiers.columns} />
-        ))}
+        {by || !tiers.heads ? null : <h2 className="text-xl font-semibold" data-heads-tiers>{tiers.heads.tiers}</h2>}
+        {by ? null : tiers.tiers.map((tier) => <TierSection key={tier.id} tier={tier} columns={tiers.columns} />)}
         {typeof tiers.idle_note === 'string' ? (
           <p className="text-sm text-muted-foreground" data-idle-note>
             {tiers.idle_note}

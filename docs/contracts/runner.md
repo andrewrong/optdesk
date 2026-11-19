@@ -64,6 +64,8 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 
 `Reconcile` and `Backfill` hold `ops.run_lease` and, when built by `reconcile.NewReconciler(ops, sched, cal, clk, jobs, rule, kr)` (`runner.NewReconcilerFunc`), renew it through `store.SchedulerLedger.RenewLease` every 30 s while they run; a failed renewal cancels the work and is the error of the call. The lease is released by `defer` with a context that outlives a cancel. `New`, `NewWithRule` and `NewBackfillerWithRule` stay for tests and renew nothing; no command runs a job in its own process, only `ot scheduler` does. Tests: `internal/runner/reconcile/runkey_test.go`.
 
+`ReconcileDetached(ctx, day, spawn)` (`runner.DetachedReconciler`, in `internal/runner/reconcile/detached.go`) is the pass of `ot scheduler` that launches and does not wait. It walks the days, plans and decides the due keys as `Reconcile` does, then calls `spawn(jobID, run)` once per due job whose `TryLock` it won, and returns. It holds `ops.run_lease` only while it plans and launches; a job run holds no `ops.run_lease`. Two runs of one job never overlap (the in-memory per-job lock, which the run holds until after its last key is marked present or closed), while different jobs run together. A job whose lock is held, asked through `runner.JobLockHolder.Holder` (implemented by `shared.NewJobLocks`), is not planned in that pass, so the expected keys of the day are not rewritten by a pass that left a job out. A day is done, and the cursor set, only when every expected key is marked present: a pass that launched runs sets no cursor, a later pass that finds the marks does. A slow run is a notice only; nothing here stops or refuses a job. `Reconcile` stays for `ot run-once` and the tests. Tests: `internal/runner/reconcile/detached_test.go`, `internal/runner/shared/joblocks_test.go`.
+
 ## Version history
 
 - v1: window materialisation, repair, crash re-run, cursor.
@@ -105,6 +107,12 @@ Fixed run reasons (Decision 7 of `docs/design/scheduler.md`):
 - `ordered_stop`: a run cut by an ordered stop of the process (SIGTERM, an interrupt, a replaced executable): the drain of the ticker cancels the worker with the cause `shared.ErrOrderedStop`; the status stays `partial` with rows and `abandoned` with none. A cancel for a lost fence or a frozen loop is a plain cancel and stays `abandoned_stop`.
 
 Counting: only `crashed` and `abandoned_stop` runs count toward the brake of three; `empty_before_close` runs and retryable runs before the close count for nothing, and `console_stop` and `ordered_stop` runs count for nothing, so they are no crash strike. An `ordered_stop` run counts toward neither the two-run cap nor the brake; only `crashed` and `abandoned_stop` count toward the brake. `Reconcile` counts the runs of the key that carry these reasons and starts no new run at three; the gap syncer counts the same runs through `store.OpsLedger` and writes the gap at three, and treats a run with `crashed_repeatedly` as proof of the stop.
+
+## Job run rows
+
+`WithJobRunLedger` gives a reconciler or backfiller a `jobrun.JobRunLedger`. With one, a run spawned by `ReconcileDetached` (source `scheduler`) and a `BackfillWith` call with `Job` set (source `console`) each write one row: `Start` when the run begins (the row has no day), `Progress` after each key with the keys done, the total and the key in hand (`dataset/subject`), and `Close` in a deferred call with `ok`, `failed` or `cut`, so every return closes the row, on a context that is not the cancelled one. `ot run-once` and the old `Reconcile` path record nothing, and so does a reconciler with no ledger or a console call with no `Job`.
+
+The row records; it is not a guard. The lock per job id is the guard: one run per job id at a time, different jobs together. A failed ledger write is logged and never stops, refuses or delays a run, and a slow run is a notice only.
 
 ## Forbidden
 
