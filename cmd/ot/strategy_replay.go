@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"os"
+	"os/signal"
 	"slices"
 	"strconv"
 	"strings"
@@ -91,8 +93,7 @@ func replayVariants(o replayOpts) (hold replayapi.Variant, early []replayapi.Var
 	return hold, early, nil
 }
 
-// strategyReplayCmd is `ot strategy-replay`: it builds his short lots from the option ledger, resolves their stored
-// options and closes, replays them under hold and the early rule of the flags and prints the report with a count
+// strategyReplayCmd is `ot strategy-replay`: it parses the flags, runs replayRun and prints the report with a count
 // beside every figure. It reads with OT_PG_DSN_OPTION_LEDGER, OT_PG_DSN_PAGES, OT_PG_DSN_RUNNER and OT_PG_DSN_BAR
 // and writes nothing.
 func strategyReplayCmd(a *app, args []string) error {
@@ -100,31 +101,13 @@ func strategyReplayCmd(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	if a.profile.Name == "demo" {
-		return errors.New("strategy-replay needs a real profile; the demo profile opens no store")
-	}
-	hold, early, err := replayVariants(o)
+	ctx, stop := signal.NotifyContext(context.TODO(), os.Interrupt)
+	defer stop()
+	res, err := replayRun(ctx, a, o)
 	if err != nil {
 		return err
 	}
-	asOf, err := replayAsOf(a, o.asOf)
-	if err != nil {
-		return err
-	}
-	env, err := a.replayEnv()
-	if err != nil {
-		return err
-	}
-	lots, mkt, sessions, err := a.replayLots(env, o.lots, o.alias, asOf)
-	if err != nil {
-		return err
-	}
-	rep := replay.New().Replay(lots, mkt, early, sessions, asOf, o.minLots)
-	names := []replayName{{Name: hold.Name, Hash: hold.Strategy.Params().Hash}}
-	for _, v := range early {
-		names = append(names, replayName{Name: v.Name, Hash: v.Strategy.Params().Hash})
-	}
-	printReplay(a.stdout, replayHeader{Lots: o.lots, AsOf: asOf, Variants: names, MinLots: o.minLots}, rep)
+	printReplay(a.stdout, res.Header, res.Report)
 	return nil
 }
 
@@ -255,8 +238,9 @@ func (a *app) replayEnv() (map[string]string, error) {
 
 // replayLots reads the ledger, the session days and the market and returns the priced lots; no short lot gives
 // none and the stores of the market are not opened.
-func (a *app) replayLots(env map[string]string, set, alias string, asOf contracts.Day) ([]replayapi.Lot, replayapi.Market, []contracts.Day, error) {
-	ctx := context.Background()
+func (a *app) replayLots(
+	ctx context.Context, env map[string]string, set, alias string, asOf contracts.Day,
+) ([]replayapi.Lot, replayapi.Market, []contracts.Day, error) {
 	var mkt replayapi.Market
 	positions, err := a.replayPositions(ctx, env[store.DSNEnvOptionLedger], alias, asOf)
 	if err != nil {

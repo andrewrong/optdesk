@@ -454,6 +454,9 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		build = extraPageBuilder(path, r.URL.Query(), a, clk, dayFlag, rd)
 		switch {
 		case path == "":
+		case path == strategyReplayPostRoute && rd.edit != nil:
+			postStrategyReplay(a, clk, rd, newHandler, w, r)
+			return
 		case path == "macro":
 			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
 		case path == siteMarketRoute:
