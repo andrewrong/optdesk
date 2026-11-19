@@ -66,6 +66,7 @@ func (r *reconciler) BackfillWith(
 	dc := newDayCtx(day, p, sess, true)
 	var order []string
 	ends := map[string]*jobEnd{}
+	quiet := unanswered{}
 	for i, k := range keys {
 		if stop, why := r.mustStop(ctx, i, opt, p.job[k]); stop {
 			r.notReached(&res, keys[i:], present, why)
@@ -75,6 +76,9 @@ func (r *reconciler) BackfillWith(
 			return res, err
 		}
 		id := p.job[k].ID()
+		if r.skipSilent(&res, quiet, id, k, present) {
+			continue
+		}
 		line, end, err := r.backfillOne(ctx, dc, k, byKey[k], present, opt)
 		if line.Group != "" {
 			res.Keys = append(res.Keys, line)
@@ -84,13 +88,10 @@ func (r *reconciler) BackfillWith(
 			return res, err
 		}
 		fillLists(&res, k, line)
-		if end.ran {
-			if ends[id] == nil {
-				ends[id] = &jobEnd{}
-				order = append(order, id)
-			}
-			ends[id].merge(end)
+		if quiet.note(id, line) {
+			r.logSilent(id, day, len(keysOfJob(keys[i+1:], p, id)))
 		}
+		order = mergeEnd(ends, order, id, end)
 	}
 	tctx, stop := consoleCtx(ctx)
 	defer stop()
@@ -101,6 +102,19 @@ func (r *reconciler) BackfillWith(
 	}
 	dc.wg.Wait()
 	return res, dc.firstErr()
+}
+
+// mergeEnd adds the end of a key to that of its job; a job's first end puts its id at the back of order.
+func mergeEnd(ends map[string]*jobEnd, order []string, id string, end jobEnd) []string {
+	if !end.ran {
+		return order
+	}
+	if ends[id] == nil {
+		ends[id] = &jobEnd{}
+		order = append(order, id)
+	}
+	ends[id].merge(end)
+	return order
 }
 
 // consoleCtx is the context of a console run: it outlives nothing of ctx but its cancel, which it tags
