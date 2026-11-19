@@ -3,8 +3,10 @@ package data_health_page
 import (
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
 // Input is what Build reads: the clock as a value (Now), the day, the coverage reader, the jobs and the owner's form.
@@ -14,6 +16,9 @@ type Input struct {
 	Cov   coverage.Reader
 	Jobs  []Job
 	Form  *Form // nil without owner edit
+
+	Runs    jobrun.JobRunReader   // nil: no running lines
+	Figures jobrunapi.FiguresFunc // the figures of the open runs at Now; nil: no running lines
 }
 
 // Newest is the newest observation of one FRED series and its age in days at Today.
@@ -65,6 +70,7 @@ type viewModel struct {
 	RunID         string        `json:"run_id"`
 	BuiltAt       string        `json:"built_at"`
 	Form          *formVM       `json:"form"`
+	Running       []runningVM   `json:"running,omitempty"`
 	Datasets      []Dataset     `json:"datasets"`
 	Glossary      []GlossaryRow `json:"glossary"`
 	OverwriteNote string        `json:"overwrite_note"`
