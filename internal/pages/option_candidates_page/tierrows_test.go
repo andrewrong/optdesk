@@ -101,8 +101,8 @@ func TestHintsEndWithDataDay(t *testing.T) {
 	view := buildTiersOf(t, c)
 	tail := "；数据日 2026-11-09"
 	for _, col := range view.Columns {
-		if col.Hint != nil && !strings.HasSuffix(*col.Hint, tail) {
-			t.Errorf("column %s hint %q", col.ID, *col.Hint)
+		if col.Hint != nil && strings.HasSuffix(*col.Hint, tail) {
+			t.Errorf("column %s hint %q keeps the data day", col.ID, *col.Hint)
 		}
 	}
 	r := tierByID(view, "fits").Rows[0]

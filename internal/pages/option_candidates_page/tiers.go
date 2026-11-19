@@ -386,16 +386,16 @@ func keptLabelOf(code string) string {
 	return code
 }
 
-// columnsOf are the seven columns of the first view with their hints, each ending with the data day.
+// columnsOf are the seven columns of the first view with their short hints; only the expanded-row hints end with the data day.
 func columnsOf(day string) []tierColumn {
 	return []tierColumn{
 		{ID: colArrowID, Label: colArrowLabel},
-		{ID: colTierID, Label: colTierLabel, Hint: dayHinted(hintTier, day)},
-		{ID: colContractID, Label: colContractLabel, Hint: dayHinted(hintContract, day)},
-		{ID: colMarginID, Label: colMarginLabel, Hint: dayHinted(hintMargin, day)},
-		{ID: colBelowSpotID, Label: colBelowLabel, Hint: dayHinted(hintBelow, day)},
-		{ID: colPremiumID, Label: colPremiumLabel, Hint: dayHinted(hintPremium, day)},
-		{ID: colBadgesID, Label: colBadgesLabel, Hint: dayHinted(hintBadges, day)},
+		{ID: colTierID, Label: colTierLabel},
+		{ID: colContractID, Label: colContractLabel, Hint: ptr(hintContract)},
+		{ID: colMarginID, Label: colMarginLabel, Hint: ptr(hintMargin)},
+		{ID: colBelowSpotID, Label: colBelowLabel, Hint: ptr(hintBelow)},
+		{ID: colPremiumID, Label: colPremiumLabel, Hint: ptr(hintPremium)},
+		{ID: colBadgesID, Label: colBadgesLabel, Hint: ptr(hintBadges)},
 	}
 }
 

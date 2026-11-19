@@ -35,28 +35,18 @@ func explainFits(res optiontierapi.Result, f tierFacts) string {
 		cashClause(res.CashBuilt) + explainFitsTail
 }
 
-// cashDayOf is the capture day of the first alias that has one, the chain day when none has.
-func cashDayOf(f tierFacts) string {
-	for _, a := range f.in.Accounts {
-		if a.CaptureDay != "" {
-			return string(a.CaptureDay)
-		}
-	}
-	return string(f.in.Day)
-}
-
-// legendOf is the four legend items of Decision 11 with the values of the rule in force: the delta bound
-// and its source, the thin-premium line, the cash age and the row counts.
+// legendOf is the four legend items as short sentences with the values of the rule in force: the delta
+// bound, whether the cash figure is built, and the row counts.
 func legendOf(res optiontierapi.Result, f tierFacts, n tierCounts) []legendItem {
-	cash := cashNoFigure
+	cash, cashClauseShort := cashNoFigure, legendCashMark
 	if res.CashBuilt {
-		cash = cashBasisHead + cashDayOf(f) + cashBasisTail + cashAgeHead + strconv.Itoa(res.Params.MaxCashAgeDays) + cashAgeTail
+		cash, cashClauseShort = legendCashText, legendCashBuilt
 	}
 	return []legendItem{
 		{Tier: tierFitsID, Title: legendFitsTitle + strconv.Itoa(n.fits),
-			Text: explainFits(res, f) + thinSentenceHead + res.Params.ThinDelta + thinSentenceTail},
-		{Tier: tierCheckID, Title: legendCheckTitle + strconv.Itoa(n.check), Text: explainCheck},
-		{Tier: legendGreyTier, Title: legendGreyTitle + strconv.Itoa(n.grey), Text: explainGrey},
+			Text: legendFitsHead + res.Params.DeltaMax + legendFitsMid + cashClauseShort + legendFitsTail},
+		{Tier: tierCheckID, Title: legendCheckTitle + strconv.Itoa(n.check), Text: legendCheckText},
+		{Tier: legendGreyTier, Title: legendGreyTitle + strconv.Itoa(n.grey), Text: legendGreyText},
 		{Tier: legendCashTier, Title: legendCashTitle, Text: cash},
 	}
 }
