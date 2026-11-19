@@ -892,6 +892,16 @@
               "type": "null"
             }
           ]
+        },
+        "buy_source": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Badge"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
