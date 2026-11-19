@@ -39,8 +39,8 @@ const (
 	// reasonNoCandidateDSN is the line logged when option_candidates is left out; it names the key, never a value.
 	reasonNoCandidateDSN = store.DSNEnvCandidate + " is not set"
 
-	// jpNoRoute is printed after the symbol of each JP name of the stored list: a JP name has no option route here.
-	jpNoRoute = "no option route: see option-candidates-jp"
+	// jpOnPage is printed after the symbol of each JP name of the stored list: its yen rows are on the page, not in this USD text.
+	jpOnPage = "see the Japan group of the candidates page"
 )
 
 // candidateRW is the candidate store as the job writes it: the writer and the close of the connections.
@@ -186,7 +186,7 @@ func candidatesCmd(a *app, args []string) error {
 		return err
 	}
 	for _, sym := range jp {
-		_, _ = fmt.Fprintf(a.stdout, "%s: %s\n", sym, jpNoRoute)
+		_, _ = fmt.Fprintf(a.stdout, "%s: %s\n", sym, jpOnPage)
 	}
 	return nil
 }

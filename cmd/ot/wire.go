@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/optioncand"
+	"github.com/andrewrong/optdesk/internal/compute/optioncandapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
@@ -141,6 +142,7 @@ type deps struct {
 	openCandidateRW         openCandidateRWFunc
 	newOptionCandidates     optioncandidates.NewOptionCandidatesJobFunc
 	newCandidateRule        compute.NewOptionCandidatesFunc
+	newCurrencyRule         optioncandapi.NewCurrencyRuleFunc
 	newQuoteSnapshot        quotesnapshot.NewQuoteSnapshotFunc
 	dialAccount             dialAccountFunc
 	openAccount             store.OpenAccountFunc
@@ -254,6 +256,7 @@ func newDeps() deps {
 	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
+	d.newCurrencyRule = optioncand.NewCurrency
 	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeldSymbols, optioncandidates.NewWithCalls
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	realMarkDeps(&d) // position_marks

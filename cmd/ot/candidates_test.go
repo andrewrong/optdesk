@@ -238,8 +238,30 @@ func TestCandidatesNamesJPEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 2 || lines[0] != "no candidates" || lines[1] != "7203: no option route: see option-candidates-jp" {
+	if len(lines) != 2 || lines[0] != "no candidates" || lines[1] != "7203: see the Japan group of the candidates page" || strings.Contains(out.String(), "no option route") {
 		t.Fatalf("lines %q", lines)
+	}
+}
+
+func TestCandidatesJPLinePointsToPage(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	var out bytes.Buffer
+	a.stdout = &out
+	var cl atomic.Int32
+	rw := &fakeCandidateRW{closed: &cl}
+	a.deps.openCandidate = func(context.Context, string) (candidateStore, error) { return rw, nil }
+	a.deps.openUnderlying = func(context.Context, string) (underlying.Store, error) {
+		return &fakeUnderlyingStore{rows: listRowsFromWatch(t, watchTwo)}, nil
+	}
+	if err := candidatesCmd(a, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "7203: see the Japan group of the candidates page") || strings.Contains(out.String(), "no option route") {
+		t.Fatalf("output %q", out.String())
+	}
+	if rw.kind != "short_put" {
+		t.Fatalf("the USD-only read asked for kind %q", rw.kind)
 	}
 }
 

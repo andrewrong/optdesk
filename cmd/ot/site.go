@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/hoursnoticepg"
@@ -121,6 +122,8 @@ type siteReaders struct {
 	names   store.InstrumentNameReader
 	view    store.ReadingViewReader
 	cands   store.CandidateReader
+	// candCur reads the yen candidate rows, from the store that opens cands; nil when that store is not one.
+	candCur candidatecur.Reader
 
 	// marks is the position mark reader of household_page, opened with the pages line (nil: no opener or a
 	// failed open, the blocks that need a mark stay gaps).
@@ -303,6 +306,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
+	rd.candCur, _ = opt.cands.(candidatecur.Reader)
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
 	}
