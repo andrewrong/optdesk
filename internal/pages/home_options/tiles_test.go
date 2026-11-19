@@ -84,13 +84,13 @@ func TestFiguresFromTheFakeTiles(t *testing.T) {
 
 func checkCaptions(t *testing.T, c map[string]any) {
 	t.Helper()
-	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, all accounts combined; lots opened this month" {
+	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; lots opened this month" {
 		t.Fatalf("sold caption = %v", got)
 	}
-	if got := tileOf(c, "open_premium_usd")["caption"]; got != "Ledger as of 11-04, all accounts combined; remaining part of each lot" {
+	if got := tileOf(c, "open_premium_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; remaining part of each lot" {
 		t.Fatalf("open caption = %v", got)
 	}
-	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, all accounts combined" {
+	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined" {
 		t.Fatalf("loss caption = %v", got)
 	}
 }
@@ -178,7 +178,7 @@ func TestNoOpenStructureIsZeroWithItsCaption(t *testing.T) {
 			t.Fatalf("%s = %v", k, f)
 		}
 		got := tileOf(c, k)["caption"].(string)
-		if !strings.Contains(got, "no open structures in the ledger") || !strings.HasPrefix(got, "Ledger as of 11-04, all accounts combined") {
+		if !strings.Contains(got, "no open structures in the ledger") || !strings.HasPrefix(got, "Ledger as of 11-04, account main") {
 			t.Fatalf("%s caption = %q", k, got)
 		}
 	}
@@ -353,5 +353,18 @@ func TestUsd2TwoDecimals(t *testing.T) {
 	g := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
 	if want := "2 calls without assigned shares in the ledger; other structures at least $100,000.50"; g["text"] != want {
 		t.Errorf("caption = %v", g["text"])
+	}
+}
+
+func TestCaptionNamesOneAlias(t *testing.T) {
+	t.Parallel()
+	var p probe
+	out := blockapi.OptionTilesOut{SoldCount: 1, OpenPremium: usd("1.00", "1"), MaxLossUsd: usd("2.00", "2"), OpenCount: 1}
+	c := card(t, withFigures(cfg(ledger{aliases: map[string]int{"a": 1}}, results{}, pos()), &p, compute.StructureResult{}, out))
+	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, account a; lots opened this month" {
+		t.Fatalf("sold caption = %v", got)
+	}
+	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, account a" {
+		t.Fatalf("loss caption = %v", got)
 	}
 }
