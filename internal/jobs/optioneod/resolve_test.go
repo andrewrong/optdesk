@@ -172,3 +172,28 @@ func TestResolvePairsBudget(t *testing.T) {
 		t.Fatalf("asked %d, want 0", r.b.resolves)
 	}
 }
+
+// Pair 9 fails first and pair 3 fails after it: the error returned is that of pair 3, the first in pair order.
+func TestResolvePairsEarlierPairErrorWins(t *testing.T) {
+	t.Parallel()
+	err3, err9 := errors.New("pair 3"), errors.New("pair 9")
+	ninthFailed := make(chan struct{})
+	resolve := func(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+		switch strikeOf(c) - 1 {
+		case 3:
+			<-ninthFailed // pair 3 stays in flight while the other workers reach pair 9
+			return broker.Resolved{}, err3
+		case 9:
+			close(ninthFailed)
+			return broker.Resolved{}, err9
+		}
+		return broker.Resolved{Listed: true, Contract: c}, nil
+	}
+	got, terr := resolvePairs(context.Background(), resolve, strikePairs(40), noBudget)
+	if !errors.Is(terr, err3) || errors.Is(terr, err9) {
+		t.Fatalf("error %v, want that of pair 3", terr)
+	}
+	if got != nil {
+		t.Fatalf("result %d pairs with an error", len(got))
+	}
+}
