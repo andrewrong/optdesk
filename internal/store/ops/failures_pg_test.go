@@ -119,3 +119,19 @@ func TestRepeatedFailuresPG(t *testing.T) {
 		t.Errorf("wide window should list I and J: %+v", all)
 	}
 }
+
+func TestRepeatedFailuresTieByRunID(t *testing.T) {
+	t.Parallel()
+	name := newRunsDatabase(t)
+	c := connectAs(t, name, "")
+	ins := `INSERT INTO ops.capture_run (run_id, session_day, dataset_id, subject_key, status, finished_at,
+		returned_n, usable_n, error_code, lease_until) VALUES ($1, $2, 'obs.bar', 'K', 'done',
+		timestamptz '2026-11-05 12:00+00', $3, $4, $5, timestamptz '2100-01-01')`
+	covExec(t, c, ins, "a1", "2026-11-03", 0, 0, "retryable")
+	covExec(t, c, ins, "a2", "2026-11-04", 0, 0, "retryable")
+	covExec(t, c, ins, "a3", "2026-11-05", 0, 0, "retryable")
+	covExec(t, c, ins, "z9", "2026-11-05", 5, 5, "") // same finished_at, larger run_id: the newest, ok
+	if got := failuresRead(t, name, "2026-11-01", "2026-11-12"); len(got) != 0 {
+		t.Fatalf("healed key listed: %+v", got)
+	}
+}

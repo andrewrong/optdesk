@@ -14,7 +14,9 @@ var _ coverage.FailureReader = (*coverageReader)(nil)
 // runs holds the counted done runs: failed (error code), empty (no error, returned_n > 0, usable_n = 0) or ok.
 // A done run with no error and nothing returned or usable, and every run not done, is left out of both the
 // counts and the choice of the newest run. $1 and $2 are the first and last session day, $3 the minimum days.
-// The view has no run_id, so equal finished_at is settled by session_day, then error_code.
+// The kind literals 'failed' and 'empty' are coverage.FailureFailed and coverage.FailureEmpty; only those two
+// reach the cast below. The view has no run_id, so equal finished_at is settled by session_day, then an ok run
+// wins (a key is not listed on a tie it may have healed in), then kind and error_code.
 const selectRepeatedFailuresSQL = `WITH runs AS (
   SELECT dataset_id, subject_key, session_day, finished_at, error_code,
     CASE WHEN error_code <> '' THEN 'failed'
@@ -26,7 +28,8 @@ const selectRepeatedFailuresSQL = `WITH runs AS (
 ), newest AS (
   SELECT DISTINCT ON (dataset_id, subject_key) dataset_id, subject_key, kind, error_code
   FROM runs
-  ORDER BY dataset_id, subject_key, finished_at DESC NULLS LAST, session_day DESC, error_code DESC
+  ORDER BY dataset_id, subject_key, finished_at DESC NULLS LAST, session_day DESC,
+    (kind = 'ok') DESC, kind, error_code
 )
 SELECT r.dataset_id, r.subject_key, r.kind, count(DISTINCT r.session_day)::int, count(*)::int,
   min(r.session_day), max(r.session_day),
