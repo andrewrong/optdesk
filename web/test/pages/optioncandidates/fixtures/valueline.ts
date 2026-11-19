@@ -39,3 +39,17 @@ export const withReason = base('BBB', {
 })
 export const withNull = base('CCC', { valuation: null })
 export const withoutKey = base('CCC')
+
+const badge = (code: string, label: string, gloss: string, tone: 'warn' | 'info' | 'none') => ({ code, label, gloss, tone })
+export const valuationSource = base('AAA', {
+  buy_price: '$91.20',
+  buy_source: badge('valuation', 'Valuation buy zone', 'valueline 来源：估值买入区上沿', 'info'),
+})
+export const handSource = base('BBB', {
+  buy_source: badge('hand', 'Hand price', 'valueline 来源：手工买入价', 'none'),
+})
+export const notJudgedSource = base('CCC', {
+  buy_price: null,
+  buy_price_note: 'not judged',
+  buy_source: badge('none', 'Not judged', 'valueline 来源：没有买入价，不评判', 'none'),
+})

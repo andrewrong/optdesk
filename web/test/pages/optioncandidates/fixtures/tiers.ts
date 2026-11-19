@@ -41,6 +41,7 @@ export const tiers: TierView = {
       spot_day: '2026-11-17',
       buy_price: '$90.00',
       buy_price_note: null,
+      buy_source: { code: 'hand', label: 'Hand price', gloss: 'tiers 来源：手工买入价', tone: 'none' },
       next_earnings: '2027-01-28',
       counts: '2 fit, 1 check, 1 collapsed',
     },
