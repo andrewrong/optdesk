@@ -168,13 +168,19 @@ func (s *sourceRun) countPuts(quotes []compute.OptionQuote) quoteCounts {
 	return c
 }
 
-// gateCounts counts, per gate and reason, the rows the rule blocked.
+// gateCounts counts, per gate and reason, the rows the rule blocked. A key is the
+// gate name, a colon and the reason (the gate name alone when the reason is empty);
+// the keys are sorted and printed as key=count joined by commas.
 func gateCounts(cs []compute.Candidate) string {
 	n := map[string]int{}
 	for _, c := range cs {
 		for _, g := range c.Gates {
 			if g.Status == compute.GateBlock {
-				n[g.Gate]++
+				k := g.Gate
+				if g.Reason != "" {
+					k += ":" + g.Reason
+				}
+				n[k]++
 			}
 		}
 	}
