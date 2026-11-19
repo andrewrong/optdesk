@@ -174,3 +174,29 @@ func TestDataHealthFailureFieldsOptional(t *testing.T) {
 		t.Fatal("a document without the failure fields was refused")
 	}
 }
+
+// TestDataHealthRunsBelowDaysRefused: a row with runs below days is refused, and runs equal to days is accepted.
+func TestDataHealthRunsBelowDaysRefused(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "ok")
+	r := failureRows(m)[0].(map[string]any)
+	r["days"] = 9
+	r["runs"] = 3
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("a row with runs below days was accepted")
+	}
+	r["runs"] = 9
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("a row with runs equal to days was refused")
+	}
+}
+
+// TestDataHealthFailureDayLength: a day string longer than 10 characters is refused.
+func TestDataHealthFailureDayLength(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "ok")
+	failureRows(m)[0].(map[string]any)["last_day"] = "2026-11-17T00:00:00Z"
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("a long last_day was accepted")
+	}
+}

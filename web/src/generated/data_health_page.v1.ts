@@ -10,6 +10,16 @@ export type Text = string;
 export type Count = number;
 export type Day = string;
 export type Optional = string;
+export type RepeatedFailure = {
+  key: string;
+  kind: "failed" | "empty";
+  days: number;
+  runs: number;
+  first_day: string;
+  last_day: string;
+  last_class: string;
+  class_text: Text;
+};
 
 /**
  * View model of the data health page: the coverage of each dataset over the window, cell by cell, and the repair each cell offers. The builder computes every state, count, age and text; the view computes nothing.
@@ -108,16 +118,6 @@ export interface Cell {
   repair: "none" | "button" | "not_refetchable";
   why_text: Optional;
   due_text: Optional;
-}
-export interface RepeatedFailure {
-  key: string;
-  kind: "failed" | "empty";
-  days: number;
-  runs: number;
-  first_day: Day;
-  last_day: Day;
-  last_class: string;
-  class_text: Text;
 }
 export interface GlossaryRow {
   term: Text;
