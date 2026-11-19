@@ -120,7 +120,14 @@ func (r *reconciler) detachedRun(
 	ctx context.Context, dc *dayCtx, job contracts.Job, keys []contracts.ExpectedKey, closes map[string]time.Time, unlock func(),
 ) {
 	id := job.ID()
-	t, end := r.lockedTurn(ctx, dc, job, keys, closes, unlock)
+	var (
+		t   jobTurn
+		end jobEnd
+	)
+	r.recordRun(ctx, id, sourceScheduler, len(keys), func(rr *reconciler, c context.Context) string {
+		t, end = rr.lockedTurn(c, dc, job, keys, closes, unlock)
+		return outcomeOf(c, end.cut, t.err != nil || end.failed)
+	})
 	dc.finish(id, false)
 	if t.err != nil {
 		r.log.Warn("detached run failed", slog.String("job", id), slog.String("day", string(dc.day)))
