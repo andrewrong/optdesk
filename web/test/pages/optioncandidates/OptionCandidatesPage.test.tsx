@@ -9,6 +9,7 @@ import { pages } from '@/shell/pages'
 import { blocked } from './fixtures/blocked'
 import { gap } from './fixtures/gap'
 import { jp } from './fixtures/jp'
+import { bycompany } from './fixtures/bycompany'
 import { ok } from './fixtures/ok'
 import { stale } from './fixtures/stale'
 import { shortlist } from './fixtures/shortlist'
@@ -153,6 +154,22 @@ describe('OptionCandidatesPage tiers', () => {
     expect(page.querySelector('[data-tier-view]')).toBeNull()
     await open(trigger)
     expect(page.querySelector('[data-tier-view]')).not.toBeNull()
+    expect(page.querySelector('[data-stored-tables]')).not.toBeNull()
+  })
+
+  it('hides ShortList for a tier view with by_company and shows it without', async () => {
+    const withBy = await show({ ...ok, short_put_list: shortlist, short_put_tiers: bycompany } as never)
+    expect(withBy.querySelector('[data-short-list]')).toBeNull()
+    const without = await show({ ...ok, short_put_list: shortlist, short_put_tiers: tiers } as never)
+    expect(without.querySelector('[data-short-list]')).not.toBeNull()
+  })
+
+  it('TestByCompanyNotFolded', async () => {
+    const page = await show({ ...ok, short_put_list: shortlist, short_put_tiers: bycompany } as never)
+    expect(page.querySelector('[data-folded]')).toBeNull()
+    const blocks = page.querySelectorAll('[data-company-block]')
+    expect(blocks).toHaveLength(4)
+    for (const b of blocks) expect(b.closest('[data-folded]')).toBeNull()
     expect(page.querySelector('[data-stored-tables]')).not.toBeNull()
   })
 
