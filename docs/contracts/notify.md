@@ -38,8 +38,16 @@ Says missed work once, as one plain-text message. The scheduler process calls `N
 - `Config` gains `MorningFrom` and `MorningUntil` ("HH:MM" in `Zone`; empty means `DefaultMorningFrom` 08:00 and `DefaultMorningUntil` 12:00). Outside that window the pass returns false and reads nothing.
 - One message per calendar day, sent even when nothing happened; the day is marked in `alerts.sent` under `MorningRuleID` (`morning_report`) only after a confirmed send. Design: `docs/design/option-notices.md`.
 
+## Slow-run notice
+
+- `SlowNotifier.NotifySlowRuns(ctx) (int, error)` is a fourth pass beside `NotifyAlerts`, built by `notify.NewSlowNotifierFunc(SlowDeps, Sender, clock, Config)` (`internal/notify/core.NewSlow`). `SlowDeps{Runs, Mark, Figures}` names `jobrun.JobRunReader`, `SlowMarker` (the `MarkSlowNotified` of the ledger) and `jobrunapi.FiguresFunc`. Design: `docs/design/scheduler-per-job.md`, Decision 7.
+- It reads `Running` and `Usuals`, asks the figures which runs without `slow_notified_at` are slow, and sends one text per such run. `MarkSlowNotified` is called only after the send was confirmed; a failed send marks nothing and the run is tried at the next pass. A marked run is never sent again, across restarts too. Inside the quiet window of `Config` it returns 0 and reads nothing.
+- Each notice writes one log line `job_run_slow` (`job`, `elapsed_s`, `usual_s`, `keys_done`, `keys_total`, `source`; no key text) that the dispatcher patrol reads.
+- It is a notice only: it holds no lock set and no cancel func, and the interface has no method that stops, cancels or refuses a run.
+
 ## Version history
 
 - v1: interface declared (stage 1).
 - v2: alert notifier interface declared (additions only).
 - v3: morning notifier interface declared (additions only).
+- v4: slow-run notifier interface declared (additions only).
