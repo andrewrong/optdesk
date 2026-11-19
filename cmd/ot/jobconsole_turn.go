@@ -217,7 +217,7 @@ func (h *consoleHost) logFailed(req jobrequest.Request, err error) {
 	if h.log == nil {
 		return
 	}
-	h.log.Error("console request failed", "component", "ot", "status", "failed", "job", req.JobID, "day", req.Day, "error", err.Error())
+	h.log.Error("console request failed", "component", "ot", "status", "failed", "job", req.JobID, "day", req.Day, "err", err.Error())
 }
 
 // classify gives the end state of a call in the precedence of Decision 9.
