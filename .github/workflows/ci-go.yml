@@ -139,9 +139,8 @@ jobs:
       # CI only: production keeps its own max_connections; this throwaway service
       # needs more slots because pg-tagged packages run in parallel.
       - name: raise max_connections
-        env:
-          CID: ${{ job.services.timescaledb.id }}
         run: |
+          CID="${{ job.services.timescaledb.id }}"
           docker exec "$CID" psql -U postgres -c "ALTER SYSTEM SET max_connections = 500"
           docker restart "$CID"
           tries=0
