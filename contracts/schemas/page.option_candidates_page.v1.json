@@ -117,10 +117,10 @@
       "maxLength": 200
     },
     "groups": {
-      "description": "One to three groups in the order short_put, covered_call, held_call_guard.",
+      "description": "One to four groups in the order short_put, the yen short_put when present, covered_call, held_call_guard.",
       "type": "array",
       "minItems": 1,
-      "maxItems": 3,
+      "maxItems": 4,
       "items": {
         "$ref": "#/$defs/Group"
       }
