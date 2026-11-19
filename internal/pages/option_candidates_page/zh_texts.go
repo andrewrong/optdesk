@@ -249,3 +249,11 @@ const (
 	zhRunStatusOK    = "完成"
 	zhRunStatusPart  = "部分完成"
 )
+
+// Chinese subtitle and headings of the page and its tier view (candidates-zh-headings.md Decisions 1 and 2).
+const (
+	zhSubtitle       = "先卖出看跌期权（short put）的候选合约，按公司分组；只有你设了买入价的公司才会被评判。"
+	zhHeadCompanies  = "公司"
+	zhHeadCompNote   = "每家公司两行：上行看价格，下行看估值和合约数量"
+	zhHeadTierTables = "合约分档"
+)

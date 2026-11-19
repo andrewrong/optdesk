@@ -99,6 +99,15 @@ type tiersView struct {
 	SpotHint    *string       `json:"spot_hint"`
 	StripLabels stripLabels   `json:"strip_labels"`
 	CardNote    *string       `json:"card_note"`
+	// Heads are the headings of the company cards and the tier tables, omitted on a page with no tier view.
+	Heads *tierHeads `json:"heads,omitempty"`
+}
+
+// tierHeads are the three headings of the tier view (candidates-zh-headings.md Decision 2).
+type tierHeads struct {
+	Companies     string `json:"companies"`
+	CompaniesNote string `json:"companies_note"`
+	Tiers         string `json:"tiers"`
 }
 
 // bucket is the rows (keys, in display order) of one tier of the answer.
@@ -463,4 +472,5 @@ func fillStrips(ctx context.Context, c Config, v *tiersView, all []companyView, 
 	sayNone(v.Tiers)
 	spot, card := spotHintZh, zhCardNote
 	v.SpotHint, v.CardNote, v.StripLabels = &spot, &card, stripLabelsOf()
+	v.Heads = &tierHeads{Companies: zhHeadCompanies, CompaniesNote: zhHeadCompNote, Tiers: zhHeadTierTables}
 }
