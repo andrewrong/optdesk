@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/jobs"
@@ -71,7 +72,7 @@ func (s *shadowRun) write(ctx context.Context, old []store.Candidate) {
 			s.logger().Error("shadow failed", "component", "jobs", "job", "option_candidates", "code", "shadow_panic", "run_id", runID)
 		}
 	}()
-	rows, err := s.rows(puts[0])
+	rows, err := s.rows(puts[0], puts)
 	if err != nil {
 		s.logger().Error("shadow failed", "component", "jobs", "job", "option_candidates", "code", "shadow_map_failed", "run_id", runID)
 		return
@@ -81,8 +82,14 @@ func (s *shadowRun) write(ctx context.Context, old []store.Candidate) {
 	}
 }
 
-// rows evaluates every snapshot, ranks the evaluations of the run and converts them.
-func (s *shadowRun) rows(first store.Candidate) ([]strategyresult.Row, error) {
+// rows evaluates every snapshot, ranks the evaluations of the run and converts them. The marks fact of a row is the
+// Marks text of the written short_put row of the same instrument id (the chain marks and the buy source mark the job
+// added after the rule); a row with no written row keeps the marks the rule gave.
+func (s *shadowRun) rows(first store.Candidate, puts []store.Candidate) ([]strategyresult.Row, error) {
+	written := make(map[string]string, len(puts))
+	for _, p := range puts {
+		written[strconv.Itoa(p.InstrumentID)] = p.Marks
+	}
 	var evals []strategy.Evaluation
 	owner := map[string]int{}
 	for _, snap := range s.snaps {
@@ -103,9 +110,12 @@ func (s *shadowRun) rows(first store.Candidate) ([]strategyresult.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		facts := e.Facts
-		if facts == nil {
-			facts = map[string]string{}
+		facts := make(map[string]string, len(e.Facts)+1)
+		for k, v := range e.Facts {
+			facts[k] = v
+		}
+		if m, ok := written[e.Key]; ok {
+			facts["marks"] = m
 		}
 		factsText, err := json.Marshal(facts) // map keys are sorted by encoding/json
 		if err != nil {
