@@ -23,6 +23,28 @@ const (
 	TextUnmatched = "unmatched name (未匹配的名称,需自选 key 并勾选)"
 )
 
+// The texts of the page that the web printed in English, each with its Chinese hint beside it.
+const (
+	TextTitle           = "Import valuations (导入估值)"
+	TextIntro           = "Pick the export file, read the preview, then pick it again to confirm (选择导出文件,查看预览,再选一次同一文件以确认)"
+	TextFile            = "File (文件)"
+	TextPreview         = "Preview (预览)"
+	TextNotInFile       = "Not in file (不在文件中)"
+	TextUnvalued        = "No valuation in the file (文件中没有估值)"
+	TextRemoved         = "Removed (已移除)"
+	TextCountInsert     = "insert (新增)"
+	TextCountSame       = "same (相同)"
+	TextCountOlder      = "older (更旧)"
+	TextCountRefused    = "refused (拒绝)"
+	TextCountNeedsTick  = "needs tick (需勾选)"
+	TextStored          = "stored (库内已有)"
+	TextOlderThanStored = "older than stored (比库内已有的更旧)"
+	TextMarginTable     = "Margin table (安全边际表)"
+	TextResult          = "Result (结果)"
+	TextSameFileAgain   = "Same file again (再选同一文件)"
+	TextConfirm         = "Confirm (确认)"
+)
+
 // The plain sentences of the refusal reasons, as the importer words them, each with its hint.
 const (
 	ReasonOtherTop = "the site computes another buy-zone top (站点算出的买入区间上沿与文件不同)"

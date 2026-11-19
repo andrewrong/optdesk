@@ -16,4 +16,7 @@ var hinted = map[string]string{
 var Reasons = []string{
 	TextR, TextBuyZoneTop, TextBuyZoneTopSite, TextBuyZoneTopFile, TextFirst, TextEvent, TextGeneralTick, TextOlder, TextUnmatched,
 	ReasonOtherTop, ReasonHKCN, ReasonRMarket, ReasonBadKey,
+	TextTitle, TextIntro, TextFile, TextPreview, TextNotInFile, TextUnvalued, TextRemoved,
+	TextCountInsert, TextCountSame, TextCountOlder, TextCountRefused, TextCountNeedsTick,
+	TextStored, TextOlderThanStored, TextMarginTable, TextResult, TextSameFileAgain, TextConfirm,
 }
