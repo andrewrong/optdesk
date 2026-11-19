@@ -67,6 +67,11 @@ func Evaluate(in basecheckapi.Input) basecheckapi.Output {
 		} else {
 			row = evalRow(in, info, facts, cells[info.ID])
 		}
+		for _, p := range in.Pairs {
+			if p.Dataset == info.ID {
+				row.Level = worse(row.Level, p.Level)
+			}
+		}
 		out.Rows = append(out.Rows, row)
 		out.Counts[row.Level]++
 		out.Level = worse(out.Level, row.Level)

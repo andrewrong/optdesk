@@ -3,6 +3,7 @@ package basecheck
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
@@ -294,5 +295,64 @@ func TestCoverageGapSkipsDaysNotClosed(t *testing.T) {
 	c = gap(cell("2026-11-18"))
 	if c.Level != basecheckapi.Unknown {
 		t.Errorf("only open day: level=%s, want unknown", c.Level)
+	}
+}
+
+func TestPairLevelFoldsIntoRow(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ pair, want basecheckapi.Level }{
+		{basecheckapi.Fail, basecheckapi.Fail},
+		{basecheckapi.Warn, basecheckapi.Warn},
+		{basecheckapi.Pass, basecheckapi.Pass},
+	} {
+		in := load(t)
+		in.Pairs = []basecheckapi.PairLevel{{Dataset: "bars", Pair: "R6", Level: tc.pair}}
+		out := Evaluate(in)
+		r := rowOf(t, out, "bars")
+		if r.Level != tc.want {
+			t.Errorf("pair %s: bars = %s, want %s", tc.pair, r.Level, tc.want)
+		}
+		if len(r.Checks) != len(rowOf(t, Evaluate(load(t)), "bars").Checks) {
+			t.Errorf("pair %s added a check to the row", tc.pair)
+		}
+		if tc.want != basecheckapi.Pass && out.Level != tc.want {
+			t.Errorf("pair %s: top = %s, want %s", tc.pair, out.Level, tc.want)
+		}
+	}
+	// a pair does not lower a worse check level
+	in := load(t)
+	set(&in, "bars", "ohlc_order", func(f *basecheckapi.Fact) { f.N, f.Bad = 100, 100 })
+	in.Pairs = []basecheckapi.PairLevel{{Dataset: "bars", Pair: "R6", Level: basecheckapi.Warn}}
+	if got := rowOf(t, Evaluate(in), "bars").Level; got != basecheckapi.Fail {
+		t.Errorf("bars = %s, want fail", got)
+	}
+}
+
+func TestRowWithoutPairUnchanged(t *testing.T) {
+	t.Parallel()
+	base := Evaluate(load(t))
+	in := load(t)
+	in.Pairs = []basecheckapi.PairLevel{{Dataset: "bars", Pair: "R6", Level: basecheckapi.Fail}}
+	out := Evaluate(in)
+	for i, r := range base.Rows {
+		if r.Dataset == "bars" {
+			continue
+		}
+		if !reflect.DeepEqual(r, out.Rows[i]) {
+			t.Errorf("row %s changed: %+v vs %+v", r.Dataset, r, out.Rows[i])
+		}
+	}
+}
+
+func TestUnknownPairMakesRowUnknown(t *testing.T) {
+	t.Parallel()
+	in := load(t)
+	in.Pairs = []basecheckapi.PairLevel{{Dataset: "bars", Pair: "R6", Level: basecheckapi.Unknown}}
+	out := Evaluate(in)
+	if got := rowOf(t, out, "bars").Level; got != basecheckapi.Unknown {
+		t.Errorf("bars = %s, want unknown", got)
+	}
+	if out.Level != basecheckapi.Unknown {
+		t.Errorf("top = %s, want unknown", out.Level)
 	}
 }
