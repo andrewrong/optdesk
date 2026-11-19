@@ -2,11 +2,13 @@ package option_candidates_page
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/optionshortlistapi"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -223,4 +225,55 @@ func TestShortListValidatesSchema(t *testing.T) {
 func TestShortListGapsGolden(t *testing.T) {
 	t.Parallel()
 	checkShortGolden(t, "shortlist_gaps")
+}
+
+// laterGroupsConfig is the shortlist page of shortRows with one stored row in each call group.
+func laterGroupsConfig(short []store.Candidate, f *fakeShortlister) Config {
+	c := shortConfig(short, f, true)
+	c.Candidates = fakeReader{rows: map[string][]store.Candidate{
+		"2026-11-09/short_put":       short,
+		"2026-11-09/covered_call":    {okPut(10)},
+		"2026-11-09/held_call_guard": {okPut(11)},
+	}}
+	return c
+}
+
+func TestShortListKeptByLaterGroups(t *testing.T) {
+	t.Parallel()
+	rows := shortRows()
+	f := &fakeShortlister{res: shortResult(rows)}
+	var p struct {
+		List   *shortListView `json:"short_put_list"`
+		Groups []struct {
+			Kind string `json:"kind"`
+			Gap  any    `json:"gap"`
+			Main *struct {
+				Rows []json.RawMessage `json:"rows"`
+			} `json:"main"`
+		} `json:"groups"`
+	}
+	if err := json.Unmarshal(buildShort(t, laterGroupsConfig(rows, f)), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.List == nil || len(p.List.Groups) != 2 || p.List.Groups[1].Ticker != "AAA" {
+		t.Fatalf("short_put_list = %+v", p.List)
+	}
+	got := map[string]int{}
+	for _, g := range p.Groups {
+		if g.Gap == nil && g.Main != nil {
+			got[g.Kind] = len(g.Main.Rows)
+		}
+	}
+	if got[kindShortPut] == 0 || got[kindCoveredCall] != 1 || got[kindHeldCallGuard] != 1 {
+		t.Errorf("rows per group = %v", got)
+	}
+}
+
+func TestShortListEmptyShortPutGroup(t *testing.T) {
+	t.Parallel()
+	f := &fakeShortlister{res: shortResult(shortRows())}
+	out := buildShort(t, laterGroupsConfig(nil, f))
+	if strings.Contains(string(out), "short_put_list") || f.calls() != 0 {
+		t.Errorf("list written or Select called (%d) with no short-put rows", f.calls())
+	}
 }
