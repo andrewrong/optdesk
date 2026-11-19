@@ -120,7 +120,7 @@ func TestRepeatedFailuresPG(t *testing.T) {
 	}
 }
 
-func TestRepeatedFailuresTieByRunID(t *testing.T) {
+func TestRepeatedFailuresTieOkRunWins(t *testing.T) {
 	t.Parallel()
 	name := newRunsDatabase(t)
 	c := connectAs(t, name, "")
@@ -130,24 +130,8 @@ func TestRepeatedFailuresTieByRunID(t *testing.T) {
 	covExec(t, c, ins, "a1", "2026-11-03", 0, 0, "retryable")
 	covExec(t, c, ins, "a2", "2026-11-04", 0, 0, "retryable")
 	covExec(t, c, ins, "a3", "2026-11-05", 0, 0, "retryable")
-	covExec(t, c, ins, "z9", "2026-11-05", 5, 5, "") // same finished_at, larger run_id: the newest, ok
+	covExec(t, c, ins, "z9", "2026-11-05", 5, 5, "") // same finished_at and day: no run_id in the view, so the ok run wins the tie
 	if got := failuresRead(t, name, "2026-11-01", "2026-11-12"); len(got) != 0 {
 		t.Fatalf("healed key listed: %+v", got)
-	}
-}
-
-func TestRepeatedFailuresTieFailedRunIDNewest(t *testing.T) {
-	t.Parallel()
-	name := newRunsDatabase(t)
-	c := connectAs(t, name, "")
-	ins := `INSERT INTO ops.capture_run (run_id, session_day, dataset_id, subject_key, status, finished_at,
-		returned_n, usable_n, error_code, lease_until) VALUES ($1, $2, 'obs.bar', 'K', 'done',
-		timestamptz '2026-11-05 12:00+00', $3, $4, $5, timestamptz '2100-01-01')`
-	covExec(t, c, ins, "a1", "2026-11-03", 0, 0, "retryable")
-	covExec(t, c, ins, "a2", "2026-11-04", 0, 0, "retryable")
-	covExec(t, c, ins, "a3", "2026-11-05", 5, 5, "")
-	covExec(t, c, ins, "z9", "2026-11-05", 0, 0, "retryable")
-	if got := failuresRead(t, name, "2026-11-01", "2026-11-12"); len(got) != 1 {
-		t.Fatalf("key K with newest run failed (by run_id) must be listed: %+v", got)
 	}
 }

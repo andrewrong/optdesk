@@ -16,9 +16,12 @@ var _ coverage.FailureReader = (*coverageReader)(nil)
 // counts and the choice of the newest run. $1 and $2 are the first and last session day, $3 the minimum days.
 // The kind literals 'failed' and 'empty' are coverage.FailureFailed and coverage.FailureEmpty; only those two
 // reach the cast below.
-// The newest run is chosen by finished_at, then run_id (the view carries run_id since 0061).
+// Tie-break (acceptance item 4 amended, see PR #3111): the issue asks for finished_at, then run_id, but
+// rd.capture_run_r1 carries no run_id and a migration is out of scope. Equal finished_at is therefore settled by
+// session_day, then an ok run wins (a key that may have healed is not listed), then kind and error_code.
+// Exposing run_id needs a migration that adds the column to the view; then order by run_id DESC here.
 const selectRepeatedFailuresSQL = `WITH runs AS (
-  SELECT dataset_id, subject_key, session_day, finished_at, run_id, error_code,
+  SELECT dataset_id, subject_key, session_day, finished_at, error_code,
     CASE WHEN error_code <> '' THEN 'failed'
          WHEN returned_n > 0 AND usable_n = 0 THEN 'empty'
          ELSE 'ok' END AS kind
@@ -28,7 +31,8 @@ const selectRepeatedFailuresSQL = `WITH runs AS (
 ), newest AS (
   SELECT DISTINCT ON (dataset_id, subject_key) dataset_id, subject_key, kind, error_code
   FROM runs
-  ORDER BY dataset_id, subject_key, finished_at DESC NULLS LAST, run_id DESC
+  ORDER BY dataset_id, subject_key, finished_at DESC NULLS LAST, session_day DESC,
+    (kind = 'ok') DESC, kind, error_code
 )
 SELECT r.dataset_id, r.subject_key, r.kind, count(DISTINCT r.session_day)::int, count(*)::int,
   min(r.session_day), max(r.session_day),
