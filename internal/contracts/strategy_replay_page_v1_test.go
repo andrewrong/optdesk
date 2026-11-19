@@ -1,6 +1,9 @@
 package contracts_test
 
-import "testing"
+import (
+	"testing"
+	"unicode"
+)
 
 // TestStrategyReplayPageFixturesValidate validates the four fixtures against the schema and
 // checks the view each one stands for.
@@ -86,5 +89,46 @@ func TestStrategyReplayOffFixture(t *testing.T) {
 	n := o["notices"].([]any)
 	if o["view"] != "form" || o["form"] != nil || len(n) != 1 || n[0].(map[string]any)["key"] != "form_off" {
 		t.Errorf("off = %v", o)
+	}
+}
+
+// TestStrategyReplayReportHints: the report fixture carries a Chinese hint for each count key,
+// each table column and each variant.
+func TestStrategyReplayReportHints(t *testing.T) {
+	t.Parallel()
+	rep := loadStrategyReplay(t, "report")["report"].(map[string]any)
+	hints, ok := rep["hints"].(map[string]any)
+	if !ok {
+		t.Fatal("report has no hints")
+	}
+	han := func(s string) bool {
+		for _, r := range s {
+			if unicode.Is(unicode.Han, r) {
+				return true
+			}
+		}
+		return false
+	}
+	counts := hints["counts"].(map[string]any)
+	reportCounts := rep["counts"].(map[string]any)
+	if len(counts) != len(reportCounts) {
+		t.Errorf("hints.counts has %d keys, counts has %d", len(counts), len(reportCounts))
+	}
+	for k := range reportCounts {
+		if _, ok := counts[k]; !ok {
+			t.Errorf("hints.counts lacks %q", k)
+		}
+	}
+	for group, m := range map[string]map[string]any{"counts": counts, "columns": hints["columns"].(map[string]any)} {
+		for k, v := range m {
+			if s, _ := v.(string); !han(s) {
+				t.Errorf("hints.%s.%s = %q has no Han character", group, k, v)
+			}
+		}
+	}
+	for i, v := range rep["variants"].([]any) {
+		if s, _ := v.(map[string]any)["hint"].(string); !han(s) {
+			t.Errorf("variant %d hint = %q has no Han character", i, s)
+		}
 	}
 }
