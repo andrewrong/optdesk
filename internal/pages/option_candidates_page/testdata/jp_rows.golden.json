@@ -1,7 +1,7 @@
 {
  "group": {
   "kind": "short_put",
-  "title": "Short put",
+  "title": "先卖出看跌",
   "day": "2026-11-19",
   "stale": false,
   "counts": {
@@ -866,6 +866,26 @@
      "label": "Hand price",
      "gloss": "你自己在 Plan 的价格线里手填的买入价。",
      "tone": "info"
+    },
+    "tier": {
+     "id": "check",
+     "word": "待查",
+     "glyph": "!"
+    },
+    "count_parts": {
+     "fits": "0",
+     "check": "6",
+     "grey": "0"
+    },
+    "spot_text": "¥3,100",
+    "spot_note": "存档 11-19",
+    "price_note": null,
+    "earnings_text": "未知",
+    "source_badge": {
+     "code": "hand",
+     "label": "手填",
+     "gloss": "你自己在 Plan 的价格线里手填的买入价。",
+     "tone": "info"
     }
    }
   ],
@@ -875,68 +895,68 @@
   "legend": [
    {
     "tier": "fits",
-    "title": "✓ Fits (3)",
+    "title": "✓ 适合 3",
     "text": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。|delta| 低于 0.15 时权利金薄，仍然满足条件。"
    },
    {
     "tier": "check",
-    "title": "! Check (3)",
+    "title": "! 待查 3",
     "text": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
    },
    {
     "tier": "grey",
-    "title": "– Not judged (0)",
+    "title": "– 未判定 0",
     "text": "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。"
    },
    {
     "tier": "cash",
-    "title": "Account cash",
+    "title": "账户现金",
     "text": "现金：每一行单独对照一个账户的可用现金（已扣除已卖出的 put 占用的行权价），截至 2026-11-19；不在各行之间扣减，也不替你选账户。现金记录最多早 3 天。"
    }
   ],
   "columns": [
    {
     "id": "arrow",
-    "label": "Details",
+    "label": "详情",
     "hint": null
    },
    {
     "id": "tier",
-    "label": "Tier",
+    "label": "档位",
     "hint": "档位：满足条件、需要再看，或未评判。；数据日 2026-11-19"
    },
    {
     "id": "contract",
-    "label": "Contract",
+    "label": "合约",
     "hint": "合约：标的、行权价、到期日和剩余天数。；数据日 2026-11-19"
    },
    {
     "id": "margin",
-    "label": "Margin of safety",
-    "hint": "安全边际：保本点（行权价减 bid）比你的买入价低多少，占买入价的百分比。；数据日 2026-11-19"
+    "label": "安全边际",
+    "hint": "安全边际：保本点比买入价低多少，占买入价的百分比。；数据日 2026-11-19"
    },
    {
     "id": "below_spot",
-    "label": "Below spot",
-    "hint": "距现价：保本点比现价低多少；moves* = (现价 − 保本点) / (现价 × 本合约 IV × sqrt(年数))，即几个预期波动。；数据日 2026-11-19"
+    "label": "距现价",
+    "hint": "距现价：保本点比现价低多少；* = 几个预期波动。；数据日 2026-11-19"
    },
    {
     "id": "premium",
-    "label": "Premium / yield",
-    "hint": "权利金：bid 乘以乘数得每份合约的钱；年化收益只按时间价值除以行权价计算。；数据日 2026-11-19"
+    "label": "权利金 / 年化",
+    "hint": "权利金：每份合约收到的钱，以及按时间价值算的年化。；数据日 2026-11-19"
    },
    {
     "id": "badges",
-    "label": "Badges",
-    "hint": "徽标：需要再看一眼的地方；琥珀色的会让这一行落到 Check。；数据日 2026-11-19"
+    "label": "徽标",
+    "hint": "徽标：需要再看一眼的地方；琥珀色的会让这一行落到待查。；数据日 2026-11-19"
    }
   ],
   "tiers": [
    {
     "id": "fits",
-    "word": "Fits",
+    "word": "适合",
     "icon": "check",
-    "title": "3 fit your conditions",
+    "title": "适合 3",
     "explain": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。",
     "collapsed": false,
     "rows": [
@@ -947,7 +967,7 @@
        "name": "6758",
        "strike": "¥3,100",
        "expiry": "2026-12-18",
-       "dte": "29d"
+       "dte": "29 天"
       },
       "margin": {
        "main": "6.0%",
@@ -956,12 +976,12 @@
       },
       "below_spot": {
        "main": "12.4%",
-       "sub": "1.3 moves*",
+       "sub": "1.3 个预期波动*",
        "gap": null
       },
       "premium": {
        "main": "¥42",
-       "sub": "5.8%/yr",
+       "sub": "5.8% / 年",
        "gap": null
       },
       "badges": [],
@@ -1148,7 +1168,7 @@
        "name": "6758",
        "strike": "¥3,200",
        "expiry": "2026-12-18",
-       "dte": "29d"
+       "dte": "29 天"
       },
       "margin": {
        "main": "6.0%",
@@ -1157,12 +1177,12 @@
       },
       "below_spot": {
        "main": "12.4%",
-       "sub": "1.3 moves*",
+       "sub": "1.3 个预期波动*",
        "gap": null
       },
       "premium": {
        "main": "¥42",
-       "sub": "5.8%/yr",
+       "sub": "5.8% / 年",
        "gap": null
       },
       "badges": [],
@@ -1349,7 +1369,7 @@
        "name": "6758",
        "strike": "¥3,250",
        "expiry": "2026-12-18",
-       "dte": "29d"
+       "dte": "29 天"
       },
       "margin": {
        "main": "6.0%",
@@ -1358,12 +1378,12 @@
       },
       "below_spot": {
        "main": "12.4%",
-       "sub": "1.3 moves*",
+       "sub": "1.3 个预期波动*",
        "gap": null
       },
       "premium": {
        "main": "¥42",
-       "sub": "5.8%/yr",
+       "sub": "5.8% / 年",
        "gap": null
       },
       "badges": [],
@@ -1543,9 +1563,9 @@
    },
    {
     "id": "check",
-    "word": "Check",
+    "word": "待查",
     "icon": "alert",
-    "title": "3 to check",
+    "title": "待查 3",
     "explain": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。",
     "collapsed": false,
     "rows": [
@@ -1556,27 +1576,27 @@
        "name": "7203",
        "strike": "¥2,900",
        "expiry": "2026-12-18",
-       "dte": "29d"
+       "dte": "29 天"
       },
       "margin": {
        "main": "6.0%",
-       "sub": "BE ¥85 vs ¥2,950",
+       "sub": "保本点 ¥85 / 买入价 ¥2,950",
        "gap": null
       },
       "below_spot": {
        "main": "12.4%",
-       "sub": "1.3 moves*",
+       "sub": "1.3 个预期波动*",
        "gap": null
       },
       "premium": {
        "main": "¥42",
-       "sub": "5.8%/yr",
+       "sub": "5.8% / 年",
        "gap": null
       },
       "badges": [
        {
         "code": "no_jpy_funds",
-        "label": "No yen account",
+        "label": "无日元账户",
         "gloss": "没有日元账户，资金检查按通过处理，不代表日元资金够用；指定日元账户后才真正检查",
         "tone": "warn"
        }
@@ -1760,27 +1780,27 @@
        "name": "6954",
        "strike": "¥17,900",
        "expiry": "2026-12-18",
-       "dte": "29d"
+       "dte": "29 天"
       },
       "margin": {
        "main": "6.0%",
-       "sub": "BE ¥85 vs ¥18,000",
+       "sub": "保本点 ¥85 / 买入价 ¥18,000",
        "gap": null
       },
       "below_spot": {
        "main": "12.4%",
-       "sub": "1.3 moves*",
+       "sub": "1.3 个预期波动*",
        "gap": null
       },
       "premium": {
        "main": "¥42",
-       "sub": "5.8%/yr",
+       "sub": "5.8% / 年",
        "gap": null
       },
       "badges": [
        {
         "code": "no_jpy_rate",
-        "label": "No yen cash rate",
+        "label": "无日元现金利率",
         "gloss": "日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”",
         "tone": "warn"
        }
@@ -1964,7 +1984,7 @@
        "name": "6758",
        "strike": "¥3,000",
        "expiry": "2026-12-18",
-       "dte": "29d"
+       "dte": "29 天"
       },
       "margin": {
        "main": "6.0%",
@@ -1973,18 +1993,18 @@
       },
       "below_spot": {
        "main": "12.4%",
-       "sub": "1.3 moves*",
+       "sub": "1.3 个预期波动*",
        "gap": null
       },
       "premium": {
        "main": "¥42",
-       "sub": "5.8%/yr",
+       "sub": "5.8% / 年",
        "gap": null
       },
       "badges": [
        {
         "code": "no_jpy_rate",
-        "label": "No yen cash rate",
+        "label": "无日元现金利率",
         "gloss": "日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”",
         "tone": "warn"
        }
@@ -2164,9 +2184,20 @@
     ]
    }
   ],
-  "stored_title": "原始表格",
+  "stored_title": "已存表格",
   "idle_note": null,
   "buy_hint": null,
-  "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
+  "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。",
+  "strip_labels": {
+   "spot": "现价",
+   "buy_price": "买入价",
+   "next_earnings": "下次财报",
+   "contracts": "合约",
+   "fits": "适合",
+   "check": "待查",
+   "grey": "折叠",
+   "grey_hint": "折叠 = 未判定"
+  },
+  "card_note": "现价是任务为这一天运行时取到的价格，不是当天收盘价。“闸门”用的买入价就是上面的买入价：有估值买入区间就用它，没有再用手填价格。"
  }
 }

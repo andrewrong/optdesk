@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -24,6 +25,41 @@ type companyView struct {
 	Counts       string         `json:"counts"`
 	Valuation    *valueLineView `json:"valuation"`
 	BuySource    *badgeView     `json:"buy_source"`
+	// The fields of the Chinese card (candidates-zh.md Decision 3); the old fields above keep their values.
+	Tier         tierBadge  `json:"tier"`
+	CountParts   countParts `json:"count_parts"`
+	SpotText     *string    `json:"spot_text"`
+	SpotNote     *string    `json:"spot_note"`
+	PriceNote    *string    `json:"price_note"`
+	EarningsText string     `json:"earnings_text"`
+	SourceBadge  *badgeView `json:"source_badge"`
+	source       string     // the buySourceCode of the company, kept as a value before any badge is made
+}
+
+// tierBadge is the verdict of a company: its id, the word and the glyph of the pill.
+type tierBadge struct {
+	ID    string `json:"id"`
+	Word  string `json:"word"`
+	Glyph string `json:"glyph"`
+}
+
+// countParts are the three counts of a company as whole-number texts.
+type countParts struct {
+	Fits  string `json:"fits"`
+	Check string `json:"check"`
+	Grey  string `json:"grey"`
+}
+
+// stripLabels are the words of the company card.
+type stripLabels struct {
+	Spot         string `json:"spot"`
+	BuyPrice     string `json:"buy_price"`
+	NextEarnings string `json:"next_earnings"`
+	Contracts    string `json:"contracts"`
+	Fits         string `json:"fits"`
+	Check        string `json:"check"`
+	Grey         string `json:"grey"`
+	GreyHint     string `json:"grey_hint"`
 }
 
 type markView struct {
@@ -61,6 +97,8 @@ type tiersView struct {
 	IdleNote    *string       `json:"idle_note"`
 	BuyHint     *string       `json:"buy_hint"`
 	SpotHint    *string       `json:"spot_hint"`
+	StripLabels stripLabels   `json:"strip_labels"`
+	CardNote    *string       `json:"card_note"`
 }
 
 // bucket is the rows (keys, in display order) of one tier of the answer.
@@ -141,7 +179,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 			}
 			t.Rows = append(t.Rows, env.tierRowOf(verdicts[k], rowOf[k], pos))
 		}
-		t.Title = strconv.Itoa(len(t.Rows)) + t.Title
+		t.Title = titleOf(i, t.Title, len(t.Rows))
 		switch i {
 		case 0:
 			n.fits = len(t.Rows)
@@ -156,6 +194,44 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 	v.Legend = legendOf(res, f, n)
 	v.KeptNote = keptNoteOf(v.Kept)
 	return v, nil
+}
+
+// titleOf is the title of tier i of the answer, whose tail is tail: the word and the count for Fits and Check,
+// the count and the reason for a grey tier.
+func titleOf(i int, tail string, n int) string {
+	if i < 2 {
+		return tail + strconv.Itoa(n)
+	}
+	return strconv.Itoa(n) + tail
+}
+
+// companyTierOf is the verdict of a company from its three counts: Fits when it has a fitting row, else Check
+// when it has one to check, else not judged.
+func companyTierOf(fits, check int) tierBadge {
+	switch {
+	case fits > 0:
+		return tierBadge{ID: tierFitsID, Word: tierFitsWord, Glyph: glyphFits}
+	case check > 0:
+		return tierBadge{ID: tierCheckID, Word: tierCheckWord, Glyph: glyphCheck}
+	}
+	return tierBadge{ID: legendGreyTier, Word: tierGreyView, Glyph: glyphGrey}
+}
+
+// spotNoteOf is the stored day without its year, cut as text.
+func spotNoteOf(day string) string {
+	_, md, ok := strings.Cut(day, "-")
+	if !ok {
+		md = day
+	}
+	return zhSpotArchive + md
+}
+
+// stripLabelsOf are the eight words of the card.
+func stripLabelsOf() stripLabels {
+	return stripLabels{
+		Spot: zhStripSpot, BuyPrice: zhStripBuyPrice, NextEarnings: zhStripEarnings, Contracts: zhStripContracts,
+		Fits: zhStripFits, Check: zhStripCheck, Grey: zhStripGrey, GreyHint: zhStripGreyHint,
+	}
 }
 
 // keptNoteOf is the note that one row can have several reasons; nil when there is no kept line.
@@ -211,7 +287,7 @@ func tierOf(b bucket, res optiontierapi.Result, f tierFacts) tierView {
 		t.Word, t.Icon, t.Title, t.Explain = tierCheckWord, iconAlert, titleCheckTail, explainCheck
 	default:
 		g := greySpecs[b.grey]
-		t.Word, t.Icon, t.Title, t.Explain, t.Collapsed = tierGreyWord, iconMinus, g.titleTail, g.gloss, true
+		t.Word, t.Icon, t.Title, t.Explain, t.Collapsed = tierGreyView, iconMinus, g.titleTail, g.gloss, true
 	}
 	return t
 }
@@ -229,10 +305,14 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 		r := rows[i]
 		v := companyView{
 			Key: cc.Company, Ticker: r.Issuer, Spot: noSpotText, SpotDay: string(rowsDay), NextEarnings: earningsUnknown,
-			Counts: strconv.Itoa(cc.Fits) + countFit + strconv.Itoa(cc.Check) + countCheck + strconv.Itoa(cc.Grey) + countCollapsed,
+			Tier: companyTierOf(cc.Fits, cc.Check), EarningsText: zhEarningsNone,
+			CountParts: countParts{Fits: strconv.Itoa(cc.Fits), Check: strconv.Itoa(cc.Check), Grey: strconv.Itoa(cc.Grey)},
+			Counts:     strconv.Itoa(cc.Fits) + countFit + strconv.Itoa(cc.Check) + countCheck + strconv.Itoa(cc.Grey) + countCollapsed,
 		}
 		if m, ok := moneyText(deref(r.Spot), cur); deref(r.Spot) != "" && ok {
 			v.Spot = m
+			note := spotNoteOf(string(rowsDay))
+			v.SpotText, v.SpotNote = &m, &note
 		}
 		// The price and its source come from the first row of the company that has a price; the source is
 		// read from the stored marks and never recomputed.
@@ -242,15 +322,18 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 		}); j >= 0 {
 			priced = rows[j]
 		}
-		v.BuySource = buySourceBadge(buySourceCode(priced))
+		v.source = buySourceCode(priced)
+		v.BuySource = buySourceBadge(v.source)
 		if m, ok := moneyText(deref(priced.BuyPrice), cur); deref(priced.BuyPrice) != "" && ok {
 			v.BuyPrice = &m
+			v.SourceBadge = stripSourceBadge(v.source)
 		} else {
-			note := notJudged
-			v.BuyPriceNote = &note
+			note, none := notJudged, zhNoBuyPrice
+			v.BuyPriceNote, v.PriceNote = &note, &none
 		}
 		if r.NextEarnings != nil && *r.NextEarnings >= day {
 			v.NextEarnings = string(*r.NextEarnings)
+			v.EarningsText = v.NextEarnings
 		}
 		out = append(out, v)
 	}
@@ -378,6 +461,6 @@ func fillStrips(ctx context.Context, c Config, v *tiersView, all []companyView, 
 	fillValuation(ctx, c, all, cur)
 	v.Companies, v.IdleNote, v.BuyHint = splitIdle(all)
 	sayNone(v.Tiers)
-	spot := spotHintZh
-	v.SpotHint = &spot
+	spot, card := spotHintZh, zhCardNote
+	v.SpotHint, v.CardNote, v.StripLabels = &spot, &card, stripLabelsOf()
 }

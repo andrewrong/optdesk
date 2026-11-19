@@ -120,8 +120,8 @@ func buyOf(c store.Candidate, t *tierRow, cur string) (pairView, *badgeView, *st
 		return gapPair("no_data", slNoBuyPrice), nil, &link
 	}
 	p := moneyPair(deref(c.BuyPrice), slNoBuyPrice, cur)
-	if p.Gap == nil && t != nil && t.Margin.Gap == nil && t.Margin.Sub != nil {
-		p.Sub = subOf(*t.Margin.Sub + slMarginJoin + t.Margin.Main)
+	if p.Gap == nil && t != nil && t.Margin.Gap == nil && t.shortSub != nil {
+		p.Sub = subOf(*t.shortSub + slMarginJoin + t.Margin.Main)
 	}
 	return p, buySourceBadge(code), nil
 }

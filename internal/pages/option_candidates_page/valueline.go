@@ -16,7 +16,22 @@ type valueLineView struct {
 	GateLabel string  `json:"gate_label"`
 	GateText  string  `json:"gate_text"`
 	GateHint  *string `json:"gate_hint"`
+	// The fields of the Chinese card (candidates-zh.md Decision 3); the old fields above keep their values.
+	LineLabel string  `json:"line_label"`
+	LineText  string  `json:"line_text"`
+	RunState  string  `json:"run_state"`
+	Note      *string `json:"note"`
 }
+
+// The states of the use of the valuation figure by the latest run.
+const (
+	runStateUsed    = "used"
+	runStateNotUsed = "not_used"
+	runStateNone    = "none"
+)
+
+// valueParts are the pieces of a strip's valuation: the figure and its review day, or the one reason it has none.
+type valueParts struct{ figure, day, reason string }
 
 const (
 	valueLabel     = "Valuation buy line B_hi"
@@ -60,50 +75,66 @@ func fillValuation(ctx context.Context, c Config, cs []companyView, cur string) 
 	zones, tables := zonesOf(st)
 	for i := range cs {
 		if err != nil {
-			cs[i].Valuation = valueLineOf(&cs[i], "", reasonReadFailed)
+			cs[i].Valuation = valueLineOf(&cs[i], valueParts{reason: reasonReadFailed})
 			continue
 		}
-		text, reason := valueFigure(c.Buy, zones, tables, cs, i, cur)
-		cs[i].Valuation = valueLineOf(&cs[i], text, reason)
+		cs[i].Valuation = valueLineOf(&cs[i], valuePartsOf(c.Buy, zones, tables, cs, i, cur))
 	}
 }
 
 // valueLineOf is the block of one strip: the figure text, or the sentence of the reason.
-func valueLineOf(cv *companyView, text, reason string) *valueLineView {
+func valueLineOf(cv *companyView, p valueParts) *valueLineView {
 	hint, gateHint := valueHintZh, gateHintZh
-	v := &valueLineView{Label: valueLabel, Text: text, Hint: &hint, GateLabel: gateLabel, GateText: notJudged, GateHint: &gateHint}
+	text := ""
+	if p.figure != "" {
+		text = p.figure + valueReviewTag + p.day + ")"
+	}
+	v := &valueLineView{Label: valueLabel, Text: text, Hint: &hint, GateLabel: gateLabel, GateText: notJudged, GateHint: &gateHint,
+		LineLabel: zhValueLineLabel, LineText: p.figure, RunState: runStateNone}
 	if cv.BuyPrice != nil {
 		v.GateText = *cv.BuyPrice
 	}
-	if reason != "" {
-		r := reason
-		v.Reason, v.Text = &r, valueReasonText[reason]
+	if p.reason != "" {
+		r := p.reason
+		v.Reason, v.Text, v.LineText = &r, valueReasonText[p.reason], valueReasonText[p.reason]
+		if p.reason == reasonNoProfile {
+			note := zhNoteNoProfile
+			v.LineText, v.Note = zhLineNoProfile, &note
+		}
+		return v
 	}
+	var note string
+	if cv.source == buypriceapi.SourceValuation {
+		v.RunState, note = runStateUsed, zhNoteReviewed+p.day+zhNoteUsed
+	} else {
+		v.RunState, note = runStateNotUsed, zhNoteReviewed+p.day+zhNoteNotUsed
+	}
+	v.Note = &note
 	return v
 }
 
-// valueFigure is the figure text of company i, or the one reason it has none. The zone rule is the resolver's;
-// the page adds one test, the strip-level ambiguous (two strips share the ticker), unless the resolver found no
-// profile, so the order of the reasons on the strip is as it was.
-func valueFigure(buy buypriceapi.Resolver, zones []buypriceapi.Zone, tables buypriceapi.Tables, cs []companyView, i int, cur string) (text, reason string) {
+// valuePartsOf is the figure and review day of company i, or the one reason it has none. The zone rule is the
+// resolver's; the page adds one test, the strip-level ambiguous (two strips share the ticker), unless the
+// resolver found no profile, so the order of the reasons on the strip is as it was.
+func valuePartsOf(buy buypriceapi.Resolver, zones []buypriceapi.Zone, tables buypriceapi.Tables, cs []companyView, i int, cur string) valueParts {
 	ticker := cs[i].Ticker
 	res := buy.Resolve(buypriceapi.Input{Symbol: ticker, Currency: stripCurrency(cur), Zones: zones, Tables: tables})
 	if res.ZoneReason == reasonNoProfile {
-		return "", reasonNoProfile
+		return valueParts{reason: reasonNoProfile}
 	}
 	for j := range cs {
 		if j != i && ticker != "" && strings.EqualFold(cs[j].Ticker, ticker) {
-			return "", reasonAmbiguous
+			return valueParts{reason: reasonAmbiguous}
 		}
 	}
 	if res.ZoneReason != "" {
-		return "", res.ZoneReason
+		return valueParts{reason: res.ZoneReason}
 	}
 	m, ok := moneyText(res.Price, cur)
 	if !ok {
-		return "", reasonBadInput
+		return valueParts{reason: reasonBadInput}
 	}
-	return m + valueReviewTag + res.ReviewDay + ")", ""
+	return valueParts{figure: m, day: res.ReviewDay}
 }
 
 // stripCurrency is the currency the resolver is asked for: the group currency, USD for the US groups.

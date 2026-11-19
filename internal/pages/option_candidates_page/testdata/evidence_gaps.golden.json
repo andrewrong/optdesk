@@ -13,20 +13,26 @@
   ],
   "run_status": "partial",
   "stale": null,
-  "title": "Option candidates",
+  "title": "期权候选",
   "notes": [
-    "Japanese option candidates are a separate group in yen when a yen reader is set",
-    "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
+    "日本期权候选单独成组；设置了日元数据源时，金额以日元计。",
+    "bid 与预测价比较所用的现金利率，对所有币种都是 DGS3MO；这是试用口径。"
   ],
   "gaps": [],
   "chain_day": "2026-11-09",
   "computed_at": "2026-11-09T21:30:00+00:00",
   "rule_version": "r1",
-  "estimate_note": "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price",
+  "head_labels": {
+    "data_day": "数据日",
+    "run_status": "运行状态",
+    "run_status_text": "部分完成",
+    "rule_version": "规则版本"
+  },
+  "estimate_note": "bid（收盘估计）是收盘时的 bid，按下一个交易日卖出来估计，不是成交价。",
   "groups": [
     {
       "kind": "short_put",
-      "title": "Short put",
+      "title": "先卖出看跌",
       "day": "2026-11-09",
       "stale": false,
       "counts": {
@@ -322,7 +328,7 @@
     },
     {
       "kind": "covered_call",
-      "title": "Covered call",
+      "title": "备兑看涨",
       "day": null,
       "stale": false,
       "counts": {
@@ -340,7 +346,7 @@
     },
     {
       "kind": "held_call_guard",
-      "title": "Held call guard",
+      "title": "持仓看涨保护",
       "day": null,
       "stale": false,
       "counts": {

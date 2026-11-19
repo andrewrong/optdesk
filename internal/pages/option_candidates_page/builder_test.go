@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -91,6 +92,7 @@ func (t *outTable) ids() []string {
 }
 
 type outGroup struct {
+	Title  string    `json:"title"`
 	Kind   string    `json:"kind"`
 	Day    *string   `json:"day"`
 	Stale  bool      `json:"stale"`
@@ -105,6 +107,8 @@ type outPage struct {
 	ComputedAt   *string     `json:"computed_at"`
 	RuleVersion  *string     `json:"rule_version"`
 	RunStatus    string      `json:"run_status"`
+	Title        string      `json:"title"`
+	HeadLabels   headLabels  `json:"head_labels"`
 	Stale        *staleLabel `json:"stale"`
 	Gaps         []gap       `json:"gaps"`
 	Notes        []string    `json:"notes"`
@@ -228,7 +232,7 @@ func TestNilReaderIsGap(t *testing.T) {
 func TestEstimateNote(t *testing.T) {
 	t.Parallel()
 	p := buildPage(t, nil, buildDay)
-	if !strings.Contains(p.EstimateNote, "not a traded price") || len(p.EstimateNote) > 200 {
+	if !strings.Contains(p.EstimateNote, "不是成交价") || utf8.RuneCountInString(p.EstimateNote) > 200 {
 		t.Errorf("estimate_note = %q", p.EstimateNote)
 	}
 	rows := map[string][]store.Candidate{"2026-11-09/short_put": {cand("short_put", 1, "ok")}}
@@ -243,7 +247,7 @@ func TestEstimateNote(t *testing.T) {
 func TestJPNote(t *testing.T) {
 	t.Parallel()
 	p := buildPage(t, nil, buildDay)
-	if len(p.Notes) != 1 || p.Notes[0] != "Japanese option candidates are a separate group in yen when a yen reader is set" {
+	if len(p.Notes) != 1 || p.Notes[0] != "日本期权候选单独成组；设置了日元数据源时，金额以日元计。" {
 		t.Errorf("notes = %v", p.Notes)
 	}
 }

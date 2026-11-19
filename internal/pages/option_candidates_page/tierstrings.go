@@ -3,28 +3,33 @@ package option_candidates_page
 // Texts of the tier view (candidates-tiers.md Decision 11): labels and every number are English, the
 // explanations and glosses are Chinese. A value in braces is filled by the page from the answer.
 const (
-	tierFitsWord  = "Fits"
-	tierCheckWord = "Check"
+	tierFitsWord  = zhWordFits
+	tierCheckWord = zhWordCheck
 	tierGreyWord  = "Not judged"
+	tierGreyView  = zhWordGrey
 
 	tierFitsID  = "fits"
 	tierCheckID = "check"
 	greyIDHead  = "grey_"
 
+	glyphFits  = "✓"
+	glyphCheck = "!"
+	glyphGrey  = "–"
+
 	iconCheck = "check"
 	iconAlert = "alert"
 	iconMinus = "minus"
 
-	titleFitsTail  = " fit your conditions"
-	titleCheckTail = " to check"
+	titleFitsTail  = zhTitleFitsHead
+	titleCheckTail = zhTitleCheckHead
 
 	keptEllipsis = "…"
 	keptMaxChars = 200
 
-	legendFitsTitle  = "✓ Fits"
-	legendCheckTitle = "! Check"
-	legendGreyTitle  = "– Not judged"
-	legendCashTitle  = "Account cash"
+	legendFitsTitle  = zhLegendFits
+	legendCheckTitle = zhLegendCheck
+	legendGreyTitle  = zhLegendGrey
+	legendCashTitle  = zhLegendCash
 	legendCashTier   = "cash"
 	legendGreyTier   = "grey"
 
@@ -36,9 +41,13 @@ const (
 	countCollapsed     = " collapsed"
 	unreadableGates    = "unreadable_gates"
 	dteSuffix          = "d"
+	dteTierSuffix      = zhDteSuffix
+	marginHead         = zhMarginHead
+	marginVs           = zhMarginVs
 	noValue            = "not formed"
-	movesSuffix        = " moves*"
+	movesSuffix        = zhMovesSuffix
 	yieldSuffix        = "%/yr"
+	yieldSubSuffix     = zhYieldSuffix
 	beHead             = "BE "
 	beVs               = " vs "
 	lineSep            = "; "
@@ -72,13 +81,13 @@ const (
 
 // Column and field labels of the tier view.
 const (
-	colArrowID, colArrowLabel       = "arrow", "Details"
-	colTierID, colTierLabel         = "tier", "Tier"
-	colContractID, colContractLabel = "contract", "Contract"
-	colMarginID, colMarginLabel     = "margin", "Margin of safety"
-	colBelowSpotID, colBelowLabel   = "below_spot", "Below spot"
-	colPremiumID, colPremiumLabel   = "premium", "Premium / yield"
-	colBadgesID, colBadgesLabel     = "badges", "Badges"
+	colArrowID, colArrowLabel       = "arrow", zhColArrow
+	colTierID, colTierLabel         = "tier", zhColTier
+	colContractID, colContractLabel = "contract", zhColContract
+	colMarginID, colMarginLabel     = "margin", zhColMargin
+	colBelowSpotID, colBelowLabel   = "below_spot", zhColBelow
+	colPremiumID, colPremiumLabel   = "premium", zhColPremium
+	colBadgesID, colBadgesLabel     = "badges", zhColBadges
 
 	fieldIVID, fieldIVLabel           = "iv", "IV (this contract)"
 	fieldDeltaID, fieldDeltaLabel     = "delta", "Delta (rough chance of assignment)"
@@ -95,12 +104,12 @@ const (
 type greySpec struct{ titleTail, keptLabel, gloss string }
 
 var greySpecs = map[string]greySpec{
-	"no_buy_price":    {" not judged: no buy price", zhGreyLabel_no_buy_price, zhGreyGloss_no_buy_price},
-	"no_spot":         {" not judged: no spot", zhGreyLabel_no_spot, zhGreyGloss_no_spot},
-	"in_the_money":    {" in the money", zhGreyLabel_in_the_money, zhGreyGloss_in_the_money},
-	"no_bid":          {" not judged: no bid", zhGreyLabel_no_bid, zhGreyGloss_no_bid},
-	"above_buy_price": {" break-even above buy price", zhGreyLabel_above_buy_price, zhGreyGloss_above_buy_price},
-	"bad_input":       {" not judged: unreadable numbers", zhGreyLabel_bad_input, zhGreyGloss_bad_input},
+	"no_buy_price":    {zhTitleNoBuyPrice, zhGreyLabel_no_buy_price, zhGreyGloss_no_buy_price},
+	"no_spot":         {zhTitleNoSpot, zhGreyLabel_no_spot, zhGreyGloss_no_spot},
+	"in_the_money":    {zhTitleInTheMoney, zhGreyLabel_in_the_money, zhGreyGloss_in_the_money},
+	"no_bid":          {zhTitleNoBid, zhGreyLabel_no_bid, zhGreyGloss_no_bid},
+	"above_buy_price": {zhTitleAboveBuy, zhGreyLabel_above_buy_price, zhGreyGloss_above_buy_price},
+	"bad_input":       {zhTitleBadInput, zhGreyLabel_bad_input, zhGreyGloss_bad_input},
 }
 
 const fallbackGrey = "bad_input"
@@ -122,22 +131,22 @@ var keptLabels = map[string]string{
 
 // badgeTexts are the English label and the Chinese gloss of each badge, note and info mark.
 var badgeTexts = map[string]struct{ label, gloss string }{
-	"no_open_interest":        {"No open interest", zhBadgeGloss_no_open_interest},
-	"low_open_interest":       {"Low open interest", zhBadgeGloss_low_open_interest},
-	"one_sided_quote":         {"One-sided quote", zhBadgeGloss_one_sided_quote},
-	"wide_quote":              {"Wide quote", zhBadgeGloss_wide_quote},
-	"stale_quote":             {"Stale quote", zhBadgeGloss_stale_quote},
-	"earnings_before_expiry":  {"Earnings before expiry", zhBadgeGloss_earnings_before_expiry},
-	"cash_short":              {"Cash short", zhBadgeGloss_cash_short},
-	"delta_above_bound":       {"Delta above bound", zhBadgeGloss_delta_above_bound},
-	"delta_unknown":           {"Delta unknown", zhBadgeGloss_delta_unknown},
-	"thin_premium":            {"Thin premium", zhBadgeGloss_thin_premium},
-	"earnings_unconfirmed":    {"Earnings unconfirmed", zhBadgeGloss_earnings_unconfirmed},
-	"earnings_beyond_horizon": {"Earnings beyond horizon", zhBadgeGloss_earnings_beyond_horizon},
-	"earnings_unknown":        {"Earnings unknown", zhBadgeGloss_earnings_unknown},
-	"cash_unknown":            {"Cash unknown", zhBadgeGloss_cash_unknown},
-	"no_jpy_rate":             {"No yen cash rate", markHintNoJPYRateZh},
-	"no_jpy_funds":            {"No yen account", markHintNoJPYFundsZh},
+	"no_open_interest":        {zhBadgeNoOI, zhBadgeGloss_no_open_interest},
+	"low_open_interest":       {zhBadgeLowOI, zhBadgeGloss_low_open_interest},
+	"one_sided_quote":         {zhBadgeOneSided, zhBadgeGloss_one_sided_quote},
+	"wide_quote":              {zhBadgeWideQuote, zhBadgeGloss_wide_quote},
+	"stale_quote":             {zhBadgeStaleQuote, zhBadgeGloss_stale_quote},
+	"earnings_before_expiry":  {zhBadgeEarnExpiry, zhBadgeGloss_earnings_before_expiry},
+	"cash_short":              {zhBadgeCashShort, zhBadgeGloss_cash_short},
+	"delta_above_bound":       {zhBadgeDeltaAbove, zhBadgeGloss_delta_above_bound},
+	"delta_unknown":           {zhBadgeDeltaUnknown, zhBadgeGloss_delta_unknown},
+	"thin_premium":            {zhBadgeThinPremium, zhBadgeGloss_thin_premium},
+	"earnings_unconfirmed":    {zhBadgeEarnUnconf, zhBadgeGloss_earnings_unconfirmed},
+	"earnings_beyond_horizon": {zhBadgeEarnBeyond, zhBadgeGloss_earnings_beyond_horizon},
+	"earnings_unknown":        {zhBadgeEarnUnknown, zhBadgeGloss_earnings_unknown},
+	"cash_unknown":            {zhBadgeCashUnknown, zhBadgeGloss_cash_unknown},
+	"no_jpy_rate":             {zhBadgeNoJPYRate, markHintNoJPYRateZh},
+	"no_jpy_funds":            {zhBadgeNoJPYFunds, markHintNoJPYFundsZh},
 }
 
 // cashWhyTexts are the words of the reason an alias has no cash figure.

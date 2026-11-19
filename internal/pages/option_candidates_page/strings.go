@@ -2,9 +2,9 @@ package option_candidates_page
 
 // Texts of the page. Option terms stay English, other text is Chinese (option-pages-v22 Decision 6).
 const (
-	pageTitle    = "Option candidates"
-	estimateNote = "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price"
-	jpNote       = "Japanese option candidates are a separate group in yen when a yen reader is set"
+	pageTitle    = zhPageTitle
+	estimateNote = zhEstimateNote
+	jpNote       = zhJPNote
 	bidLabel     = "Bid (EOD estimate)"
 	bidHint      = "Closing bid, sold on the next trading day, not a traded price"
 	itmHint      = "Model estimate of the chance the put ends in the money; not an assignment probability"
@@ -25,9 +25,9 @@ const (
 )
 
 var groupTitles = map[string]string{
-	kindShortPut:      "Short put",
-	kindCoveredCall:   "Covered call",
-	kindHeldCallGuard: "Held call guard",
+	kindShortPut:      zhGroupPut,
+	kindCoveredCall:   zhGroupCall,
+	kindHeldCallGuard: zhGroupGuard,
 }
 
 // markHints are the short Chinese hints of the marks; a mark not listed is shown as it is stored.
@@ -107,7 +107,7 @@ const (
 	evBidFcstDays     = " Data days: chain "
 	evBidFcstRate     = ", rate "
 	evNoRateDay       = "none"
-	trialRateNote     = "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
+	trialRateNote     = zhTrialNote
 
 	evPerShare    = " per share ("
 	evPerContract = " per contract)"

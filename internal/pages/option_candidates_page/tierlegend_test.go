@@ -37,7 +37,7 @@ func TestLegendPrintsCurrentValues(t *testing.T) {
 			t.Errorf("fits text %q lacks %q", fits, want)
 		}
 	}
-	if !strings.HasPrefix(view.Legend[0].Title, "✓ Fits (1)") || !strings.HasSuffix(view.Legend[2].Title, "(1)") {
+	if !strings.HasPrefix(view.Legend[0].Title, "✓ 适合 1") || view.Legend[2].Title != "– 未判定 1" {
 		t.Errorf("titles = %+v", view.Legend)
 	}
 	cash := legendText(view, "cash")
