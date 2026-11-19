@@ -130,7 +130,7 @@ func closeRunningAtStart(ctx context.Context, a *app, clk clockwork.Clock, ledge
 	if err != nil {
 		return errors.New("close running runs at start failed: scheduler not started")
 	}
-	a.log.Info("closed running runs left by the previous process", "component", "ot", "status", reason, "closed", n)
+	a.log.Info("closed running runs left by the previous process", "component", "ot", "status", reason, "rows", n)
 	return nil
 }
 
