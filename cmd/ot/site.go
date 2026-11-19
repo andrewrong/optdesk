@@ -395,8 +395,6 @@ func redirectOptions(w http.ResponseWriter, r *http.Request) bool {
 // options/data/<id>, the routes report, market and options/candidates and options/notices, the registered page routes and
 // assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
-//
-//nolint:gocyclo // one case per owner post route
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	pagesH := sitePages(a, clk, dayFlag, rd, newHandler, assets)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -439,10 +437,6 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			postOwnerFlexImport(a, clk, rd, newHandler, w, r)
 			return
 		}
-		if strings.TrimPrefix(r.URL.Path, "/") == strategyReplayPostRoute && rd.edit != nil {
-			postStrategyReplay(a, clk, rd, newHandler, w, r)
-			return
-		}
 		if redirectOptions(w, r) {
 			return
 		}
@@ -460,6 +454,9 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		build = extraPageBuilder(path, r.URL.Query(), a, clk, dayFlag, rd)
 		switch {
 		case path == "":
+		case path == strategyReplayPostRoute && rd.edit != nil:
+			postStrategyReplay(a, clk, rd, newHandler, w, r)
+			return
 		case path == "macro":
 			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
 		case path == siteMarketRoute:
