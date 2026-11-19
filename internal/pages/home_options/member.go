@@ -194,6 +194,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			}
 			sections = c.Results().Summarise(in).Sections
 		}
+		fs.aliases = aliases
 		if c.Structures != nil && c.Tiles != nil {
 			fs = figureState{on: true, review: len(in.Unresolved) + len(in.Review), aliases: aliases}
 			fs.out = c.Tiles().Tiles(blockapi.OptionTilesIn{Day: day, Positions: in.Positions, Structures: structs})
@@ -318,7 +319,11 @@ func assemble(c Config, at, d, recorded time.Time, positions []compute.LedgerPos
 	if hasFigure(k.Series) {
 		k.Gaps = slices.DeleteFunc(k.Gaps, func(g gap) bool { return g.Text == textMonthly })
 	}
-	k.Tiles.PremiumMon.Caption = caption(*sold)
+	asOf := "Ledger as of " + d.Format("01-02")
+	if baseText != textNoDay {
+		asOf = baseText
+	}
+	k.Tiles.PremiumMon.Caption = caption(*sold, asOf, fs.aliases)
 	f := money(sold.Premium)
 	k.Tiles.PremiumMon.Figure = f
 	if fig, ok := f.(figure); ok {
@@ -383,9 +388,10 @@ func newestDay(positions []compute.LedgerPosition, d time.Time) string {
 }
 
 // caption places the Realized and KeptShare of the section as text; a field the section leaves
-// empty is left out.
-func caption(sec compute.ResultSection) string {
-	parts := []string{"All accounts combined: opening cash of closed sold positions totals"}
+// empty is left out. It opens with the day and the accounts replayed; with several accounts it ends
+// by saying that the Result page shows one.
+func caption(sec compute.ResultSection, asOf string, aliases []string) string {
+	parts := []string{asOf + ", " + scopeWords(aliases) + "; all closed sold positions"}
 	if r, ok := money(sec.Realized).(figure); ok {
 		parts = append(parts, "realised "+r.Text)
 	}
@@ -396,6 +402,9 @@ func caption(sec compute.ResultSection) string {
 			text = minus + text
 		}
 		parts = append(parts, "kept share "+text)
+	}
+	if len(aliases) > 1 {
+		parts = append(parts, "the Result page shows one account")
 	}
 	return strings.Join(parts, "; ")
 }

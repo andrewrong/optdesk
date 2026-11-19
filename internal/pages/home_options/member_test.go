@@ -445,3 +445,20 @@ func TestKeptSharePercent(t *testing.T) {
 		t.Fatalf("caption = %q", cap)
 	}
 }
+
+func TestClosedPremiumCaptionNamesTheAccounts(t *testing.T) {
+	t.Parallel()
+	p := compute.LedgerPosition{Currency: "USD", Status: "closed", OpenedOn: "2026-11-02", ClosedOn: "2026-11-04"}
+	capOf := func(aliases map[string]int) string {
+		c := card(t, cfg(ledger{aliases: aliases}, results{sections: []compute.ResultSection{sold("1234.5000", "-15.2500", "0.324170")}}, p))
+		return c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
+	}
+	want := "Ledger as of 11-04, accounts a and b combined; all closed sold positions; realised −$15.25; kept share 32.4%; the Result page shows one account"
+	if got := capOf(map[string]int{"a": 1, "b": 1}); got != want {
+		t.Fatalf("caption = %q", got)
+	}
+	got := capOf(map[string]int{"a": 1})
+	if got != "Ledger as of 11-04, account a; all closed sold positions; realised −$15.25; kept share 32.4%" || strings.Contains(got, "Result page") {
+		t.Fatalf("one alias: caption = %q", got)
+	}
+}
