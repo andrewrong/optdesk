@@ -615,7 +615,15 @@ func (r *reconciler) dependentRun(
 	keys := dc.keysOf(d.ID())
 	for _, k := range keys {
 		if _, ok := present[k]; ok || len(byKey[k]) > 0 {
-			return jobEnd{}, false // it ran for the day
+			// It ran for the day: only a marked run whose upstreams are now ok runs once more.
+			again, err := r.rerunMarked(ctx, dc, d, keys, byKey, map[string]bool{up: upEndedOK})
+			if err != nil {
+				dc.fail(err)
+			}
+			if err != nil || !again {
+				return jobEnd{}, false
+			}
+			break
 		}
 	}
 	mark, leave, err := r.gate(ctx, dc, d, map[string]bool{up: upEndedOK})

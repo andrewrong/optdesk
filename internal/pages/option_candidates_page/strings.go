@@ -36,6 +36,8 @@ var markHints = map[string]string{
 	"earnings_unconfirmed":    "earnings date not confirmed",
 	"earnings_beyond_horizon": "earnings after the contract",
 	"no_dividend":             "no dividend",
+	"eod_fallback":            "Price is from the last close, the open pull had no usable quote for this stock",
+	"oi_prior_session":        "Open interest is from an earlier session",
 }
 
 // fitHints are the hints of the stored fit words.
