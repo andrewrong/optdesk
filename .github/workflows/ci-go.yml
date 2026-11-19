@@ -136,6 +136,28 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # CI only: production keeps its own max_connections; this throwaway service
+      # needs more slots because pg-tagged packages run in parallel.
+      - name: raise max_connections
+        run: |
+          CID="${{ job.services.timescaledb.id }}"
+          docker exec "$CID" psql -U postgres -c "ALTER SYSTEM SET max_connections = 500"
+          docker restart "$CID"
+          tries=0
+          until docker exec "$CID" pg_isready -U postgres; do
+            tries=$((tries + 1))
+            if [ "$tries" -ge 60 ]; then
+              echo "database not ready after restart"
+              exit 1
+            fi
+            sleep 1
+          done
+          value=$(docker exec "$CID" psql -U postgres -tAc "SHOW max_connections")
+          echo "max_connections=$value"
+          if [ "$value" != "500" ]; then
+            echo "max_connections is $value, want 500"
+            exit 1
+          fi
       # Passes while no test carries the pg build tag.
       - name: go test -tags pg
         run: go test -tags pg ./...
