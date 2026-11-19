@@ -24,7 +24,7 @@ const (
 	// reasonJPNoOpen and reasonJPNoWriter are the lines logged when the job is left out.
 	reasonJPNoOpen   = openquote.DSNEnvOptionOpen + " is not set or the option open store could not be opened"
 	reasonJPNoRule   = "no currency rule is set in deps"
-	reasonJPNoWriter ="the candidate store cannot write the currency of a row"
+	reasonJPNoWriter = "the candidate store cannot write the currency of a row"
 )
 
 func init() {
