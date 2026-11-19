@@ -49,6 +49,7 @@ type consoleHost struct {
 	lastWarn time.Time
 	jobs     []contracts.Job
 	bf       runner.ForceBackfiller
+	locks    runner.JobLocks // the set of the scheduler that builds the jobs; nil leaves requests unwaiting
 }
 
 // newConsoleHost returns a host over the queue, the gap syncer, the ops ledger and the clock. The ledger tells
@@ -71,6 +72,13 @@ func (h *consoleHost) Start(ctx context.Context) error {
 	h.started = true
 	h.mu.Unlock()
 	return nil
+}
+
+// setLocks gives the host the per-job lock set of the scheduler process, so a request of a busy job waits.
+func (h *consoleHost) setLocks(locks runner.JobLocks) {
+	h.mu.Lock()
+	h.locks = locks
+	h.mu.Unlock()
 }
 
 // set stores the job set and the backfiller of the last build.
