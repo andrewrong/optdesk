@@ -416,3 +416,48 @@ func TestShareTextOneDecimal(t *testing.T) {
 		}
 	}
 }
+
+// compositionNames builds the page over stocks AAA, BBB and CCC with the given shares, in position
+// order, and returns the symbols of the composition rows and of the concentration rows.
+func compositionNames(t *testing.T, shares ...string) (composition, concentration []string) {
+	t.Helper()
+	syms := []string{"AAA", "BBB", "CCC"}[:len(shares)]
+	var pos []store.Position
+	var marks []mark.PositionMark
+	for i, s := range syms {
+		pos = append(pos, stock(s, int64(i+1), "10", "5"))
+		marks = append(marks, markOf(int64(i+1), "100"))
+	}
+	c, _ := holdingsConfig(pos, &fakeMarks{rows: marks})
+	c.Holdings = func() blockapi.HoldingFigures {
+		return shareFigures{HoldingFigures: pagefig.NewHoldings(), shares: shares}
+	}
+	m, _ := build(t, c, "main")
+	names := func(blk string) []string {
+		var out []string
+		for _, r := range m[blk].(map[string]any)["rows"].([]any) {
+			out = append(out, r.(map[string]any)["name"].(string))
+		}
+		return out
+	}
+	return names("composition"), names("concentration")
+}
+
+func TestCompositionRowsAreOrderedByShare(t *testing.T) {
+	t.Parallel()
+	comp, conc := compositionNames(t, "3.3", "26.0", "9.5")
+	if want := []string{"BBB", "CCC", "AAA"}; !slices.Equal(comp, want) {
+		t.Fatalf("composition = %v, want %v", comp, want)
+	}
+	if want := []string{"AAA", "BBB", "CCC"}; !slices.Equal(conc, want) {
+		t.Fatalf("concentration = %v, want %v", conc, want)
+	}
+}
+
+func TestCompositionRowsTieBySymbol(t *testing.T) {
+	t.Parallel()
+	comp, _ := compositionNames(t, "10.0", "10.0")
+	if want := []string{"AAA", "BBB"}; !slices.Equal(comp, want) {
+		t.Fatalf("composition = %v, want %v", comp, want)
+	}
+}
