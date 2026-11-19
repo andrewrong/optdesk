@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -238,24 +239,35 @@ func TestPageCommandBuildsCandidates(t *testing.T) {
 	h := siteHandler(a, a.deps.newClock(), "2026-11-05", rd, echoHandler, http.NotFoundHandler())
 	rec := candidatesGet(t, h, http.MethodGet, "/"+siteCandidatesRoute)
 	site := strings.Replace(rec.Body.String(), `"run_id":"ot-serve"`, `"run_id":"ot-page"`, 1)
-	// The site has a Shortlist reader and the command has none: only the site carries short_put_list.
-	if strings.Contains(out.String(), `"short_put_list"`) || !strings.Contains(site, `"short_put_list"`) {
-		t.Fatalf("short_put_list: command %v, site %v", strings.Contains(out.String(), `"short_put_list"`), strings.Contains(site, `"short_put_list"`))
+	assertSamePageProps(t, site, out.String())
+}
+
+// assertSamePageProps fails when two pages differ in a top-level property other than short_put_list, which
+// only the site's Shortlist reader fills.
+func assertSamePageProps(t *testing.T, site, cmd string) {
+	t.Helper()
+	decode := func(name, page string) map[string]json.RawMessage {
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(page), &m); err != nil {
+			t.Fatalf("%s page is not a JSON object: %v: %s", name, err, page)
+		}
+		delete(m, "short_put_list")
+		return m
 	}
-	var sp, cp map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(site), &sp); err != nil {
-		t.Fatal(err)
+	sm, cm := decode("site", site), decode("command", cmd)
+	keys := make([]string, 0, len(sm)+len(cm))
+	for k := range sm {
+		keys = append(keys, k)
 	}
-	if err := json.Unmarshal([]byte(out.String()), &cp); err != nil {
-		t.Fatal(err)
+	for k := range cm {
+		keys = append(keys, k)
 	}
-	delete(sp, "short_put_list")
-	if len(sp) != len(cp) {
-		t.Fatalf("site %s\ncommand %s", site, out.String())
-	}
-	for k, v := range cp {
-		if string(sp[k]) != string(v) {
-			t.Errorf("property %s differs: site %s command %s", k, sp[k], v)
+	sort.Strings(keys)
+	for _, k := range keys {
+		sv, sok := sm[k]
+		cv, cok := cm[k]
+		if sok != cok || string(sv) != string(cv) {
+			t.Fatalf("property %q differs\nsite %s (present %v)\ncommand %s (present %v)", k, sv, sok, cv, cok)
 		}
 	}
 }
