@@ -326,7 +326,7 @@ func checkRow(t *testing.T, a store.Candidate) {
 	if a.Right != "put" || a.Multiplier != 100 || a.BidEod != "1.99" || a.Rank == nil || *a.Rank != 1 {
 		t.Fatalf("row %+v", a)
 	}
-	if a.Gates != `[{"gate":"buy_price","status":"pass","reason":""}]` || a.Fits != "{}" || a.Marks != "[]" {
+	if a.Gates != `[{"gate":"buy_price","status":"pass","reason":""}]` || a.Fits != "{}" || a.Marks != `["buy_from_hand"]` {
 		t.Fatalf("row %+v", a)
 	}
 }

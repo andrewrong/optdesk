@@ -41,6 +41,7 @@ var testBounds = optionshortlistapi.Bounds{OTMMinPct: "5", OTMMaxPct: "15", Delt
 func shortRows() []store.Candidate {
 	a0, a1 := tierPut(0, "ok", "85.00", "0.42"), tierPut(1, "ok", "90.00", "0.94")
 	a0.AnnualizedYield, a1.AnnualizedYield = strp("0.123456"), strp("0.2")
+	a1.Marks = `["buy_from_valuation"]` // the run priced this row from the valuation
 	b := tierPut(2, "blocked", "40.00", "0.50")
 	b.UnderlyingID, b.BuyPrice, b.Spot, b.AnnualizedYield = 8, nil, strp("41.20"), strp("0.15")
 	return []store.Candidate{a0, a1, b}

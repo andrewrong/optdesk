@@ -23,6 +23,7 @@ type companyView struct {
 	NextEarnings string         `json:"next_earnings"`
 	Counts       string         `json:"counts"`
 	Valuation    *valueLineView `json:"valuation"`
+	BuySource    *badgeView     `json:"buy_source"`
 }
 
 type markView struct {
@@ -202,7 +203,7 @@ func tierOf(b bucket, res optiontierapi.Result, f tierFacts) tierView {
 	return t
 }
 
-// companiesOf is the strip of the answer's companies: ticker, stored spot and its day, buy price or "not set"
+// companiesOf is the strip of the answer's companies: ticker, stored spot and its day, buy price or "not judged", its source
 // and the next earnings, from the first row of the company. SpotDay is the day of the stored rows; an
 // earnings date before day, the data day, is shown as unknown.
 func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day contracts.Day) []companyView {
@@ -220,10 +221,19 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 		if m, ok := moneyText(deref(r.Spot)); deref(r.Spot) != "" && ok {
 			v.Spot = m
 		}
-		if m, ok := moneyText(deref(r.BuyPrice)); deref(r.BuyPrice) != "" && ok {
+		// The price and its source come from the first row of the company that has a price; the source is
+		// read from the stored marks and never recomputed.
+		priced := r
+		if j := slices.IndexFunc(rows, func(x store.Candidate) bool {
+			return strconv.Itoa(x.UnderlyingID) == cc.Company && deref(x.BuyPrice) != ""
+		}); j >= 0 {
+			priced = rows[j]
+		}
+		v.BuySource = buySourceBadge(buySourceCode(priced))
+		if m, ok := moneyText(deref(priced.BuyPrice)); deref(priced.BuyPrice) != "" && ok {
 			v.BuyPrice = &m
 		} else {
-			note := notSet
+			note := notJudged
 			v.BuyPriceNote = &note
 		}
 		if r.NextEarnings != nil && *r.NextEarnings >= day {
