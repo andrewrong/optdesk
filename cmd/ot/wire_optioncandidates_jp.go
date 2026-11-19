@@ -46,7 +46,7 @@ func init() {
 func buildCandidatesJP(a *app, jc *jobCtx) (contracts.Job, string, error) {
 	f := jc.f
 	left := func(key, why string) (contracts.Job, string, error) {
-		a.log.Warn("job left out", "component", "ot", "job", jobOptionCandidatesJP, "status", why)
+		a.log.Warn("option_candidates_jp not built", "component", "ot", "job", jobOptionCandidatesJP, "status", why)
 		if key != "" {
 			jc.notWired.record(jobOptionCandidatesJP, key)
 		}

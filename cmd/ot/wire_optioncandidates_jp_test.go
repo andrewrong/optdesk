@@ -72,7 +72,7 @@ func TestJPLeftOutWithoutOpenStore(t *testing.T) {
 	if j != nil || reason != "" || err != nil {
 		t.Fatalf("job %v reason %q err %v", j, reason, err)
 	}
-	if n := strings.Count(h.log.String(), jobOptionCandidatesJP); n != 1 || !strings.Contains(h.log.String(), openquote.DSNEnvOptionOpen) {
+	if n := strings.Count(h.log.String(), "option_candidates_jp not built"); n != 1 || !strings.Contains(h.log.String(), openquote.DSNEnvOptionOpen) {
 		t.Fatalf("log %q", h.log.String())
 	}
 }
@@ -113,7 +113,7 @@ func TestJPLeftOutWithoutRuleLogsOneLine(t *testing.T) {
 	if j, _, err := jobFamilies[jobOptionCandidatesJP].build(t.Context(), h.a, h.jc); j != nil || err != nil {
 		t.Fatalf("job %v err %v", j, err)
 	}
-	if n := strings.Count(h.log.String(), jobOptionCandidatesJP); n != 1 || !strings.Contains(h.log.String(), reasonJPNoRule) {
+	if n := strings.Count(h.log.String(), "option_candidates_jp not built"); n != 1 || !strings.Contains(h.log.String(), reasonJPNoRule) {
 		t.Fatalf("log %q", h.log.String())
 	}
 }
