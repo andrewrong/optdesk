@@ -116,3 +116,13 @@ func TestSchedulerDoesNotCloseRunningRowsWithoutTheFence(t *testing.T) {
 		t.Fatalf("CloseRunning called %d times without the fence", l.calls.Load())
 	}
 }
+
+// Status answers an empty build: the previous process left none, so the start closes as crashed.
+func (*fakeSchedLedger) Status(context.Context) (store.SchedulerStatus, error) {
+	return store.SchedulerStatus{}, nil
+}
+
+// The Japan wiring test ledger answers an empty build too.
+func (*putLedger) Status(context.Context) (store.SchedulerStatus, error) {
+	return store.SchedulerStatus{}, nil
+}
