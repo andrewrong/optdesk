@@ -55,7 +55,7 @@ Data (probe): 8 JP watch entries, 7 with options; `option_open_jp` quotes about 
     - Cash-rate gate: no yen short rate is stored (no new source here), so the gate passes and the row carries the mark `no_jpy_rate`. The yield is `bid / strike x 365 / dte`, a ratio, so the currency does not enter.
     - Buy-price gate, spread, bid size and open interest gates: unchanged.
 15. A row that passed a gate by a mark is not equal to a row that passed by a check, and it never shows green or the top tier (standing rule: green only from conditions the owner set). Stored status stays `ok` (the rule's statuses are not changed; `no_buy_price` already works this way). The tier is decided in `optiontier`: the marks `no_jpy_rate` and `no_jpy_funds` are look-at badges (`badges.go` `storedLookAt`), so a JP row is tier `check` at best, never `fits`; with no buy price it is `grey` (not judged) as a US row. `optiontierapi.Row` gets `Currency` (the file is 104 lines); a JPY row against a USD alias has the cash cell `unknown` with the existing reason `other_currency`, not a USD comparison. Consequence, said here so nobody finds it later: while no yen cash-rate source exists the mark `no_jpy_rate` stays, so no JP row reaches `fits`; the yen rate is a separate design (`## Left out`) and is what lifts it.
-16. Mark hints are Chinese texts in `zh_texts.go`, each carried in the `hint` field of the Marks cell (`cells.go:126`) of the page document, none in the web code:
+16. Mark hints are Chinese texts in `zh_texts.go`, each carried in the badge text of the Marks cell (`cells.go` `marksCell`, a `ValueCell` with no hint field, as every existing mark hint is) of the page document, none in the web code:
     - `no_jpy_rate`: "日元没有现金利率，年化收益未与现金利率比较；本行最高只到“需留意”，不会显示为“合适”"
     - `no_jpy_funds`: "没有日元账户，资金检查按通过处理，不代表日元资金够用；指定日元账户后才真正检查"
 
@@ -175,7 +175,7 @@ Files: `internal/pages/option_candidates_page/format.go`, `internal/pages/option
 - The JP group is read from the date of the build time in `Asia/Tokyo`: a build at 09:10 JST on D while the US build day is D-1 finds the rows of D (test with a fake clock and a fake reader).
 - `short_put_tiers_jpy` and `short_put_list_jpy` hold the JP rows in yen; `short_put_tiers` and `short_put_list` hold none; a JP row with a mark of Decision 14 is never in tier `fits`; the strip of a JP company passes `JPY` to the resolver.
 - The evidence cells of a JP row carry the Chinese "not computed" reason and no number; no JP row prints a US figure.
-- Each mark of Decision 16 has its Chinese hint in the `hint` field of the Marks cell; no row prints a bare mark word; `limit_counts` lists the stored blocked reasons of the JP run with their counts and a Chinese sentence each, and a JP run whose rows are all blocked shows non-zero counts and not an empty group.
+- Each mark of Decision 16 has its Chinese hint in the badge text of the Marks cell; no row prints a bare mark word; `limit_counts` lists the stored blocked reasons of the JP run with their counts and a Chinese sentence each, and a JP run whose rows are all blocked shows non-zero counts and not an empty group.
 - A cash-secured amount of a JP row prints with the multiplier used.
 - `jpNote` no longer says Japan is a later design; a build with no JP reader gives the page of today (existing tests unedited).
 - `docs/contracts/pages.md` states the group fields.

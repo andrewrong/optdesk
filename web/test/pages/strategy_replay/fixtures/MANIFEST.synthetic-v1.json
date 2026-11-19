@@ -1,0 +1,9 @@
+{
+  "marker": "synthetic-v1",
+  "files": [
+    "empty.ts",
+    "form.ts",
+    "off.ts",
+    "report.ts"
+  ]
+}
