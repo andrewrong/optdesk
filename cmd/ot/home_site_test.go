@@ -433,3 +433,27 @@ func TestHomeDayChangeForNameWithoutOptions(t *testing.T) {
 		t.Fatalf("day change %v, ids %v, want a value from id 11", c, bars.ids)
 	}
 }
+
+func TestHomeRouteHouseholdCardIsFamily(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	var asked []string
+	rd := householdReaders(&asked)
+	rd.aliases = []string{"main", "other"}
+	rd.optionLedger, rd.ledgers = nil, nil
+	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteHomeRoute)
+	if rec.Code != 200 {
+		t.Fatalf("%d %q", rec.Code, rec.Body)
+	}
+	var p struct {
+		Household json.RawMessage `json:"household"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+		t.Fatal(err)
+	}
+	m := string(p.Household)
+	if !strings.Contains(m, "计入 1 / 2 个账户") || !strings.Contains(m, "other") {
+		t.Fatalf("household member: %s", m)
+	}
+}
