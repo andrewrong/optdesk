@@ -163,7 +163,7 @@ Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a f
 Module: compute, plus repo (judged interface entry). Size: M.
 Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `docs/contracts/compute.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/builders-wave.md#Interface
-Order: after the market-bars entry `bar-store-api` (it introduces `declarationsOnly` and the own-row derive).
+It came after entry 3 of market-bars.md, `bar-store-api` (it introduces `declarationsOnly` and the own-row derive), merged.
 Goal: the declarations of `## Interface`, no function, with a contract test from both sides (a fake `PageFigures`; a caller that fills every input field and reads every output field), with `compute.FigureValue` as the one figure type. `internal/compute/blockapi` is added to `declarationsOnly` in `scripts/arch/main.go`, with a test case in `scripts/arch/main_test.go`.
 Acceptance:
 1. `api.go` declares `PageFigures`, `NewPageFiguresFunc`, `HouseholdInput`, `HouseholdResult`, `AccountMoveIn`, `AccountMoveOut` and no `func` and no `type FigureValue` (`grep -n "^func \|^type FigureValue" internal/compute/blockapi/api.go` prints nothing); it uses `compute.FigureValue`.
