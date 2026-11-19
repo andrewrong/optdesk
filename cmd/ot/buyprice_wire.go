@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/andrewrong/optdesk/internal/compute/buyprice"
-	"github.com/andrewrong/optdesk/internal/compute/valuelines"
-	"github.com/andrewrong/optdesk/internal/compute/valuelinesapi"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	jobsbuyprice "github.com/andrewrong/optdesk/internal/jobs/buyprice"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -19,9 +16,7 @@ import (
 // gives f the reader and the resolver. A deps without the opener, or an empty line, leaves f.valuation nil: the option
 // families then price with hand prices only. What it opens goes to extra. No error holds a DSN.
 func openJobValuation(a *app, cfg runOnceConfig, f *jobFactory, extra *closerSet) error {
-	// The calculator goes through its interface so that the two compute packages stay unaware of each other here.
-	var calc valuelinesapi.Calculator = valuelines.New()
-	f.buy = buyprice.New(calc)
+	f.buy = newBuyPriceResolver()
 	if a.deps.openValuation == nil || cfg.pagesDSN == "" {
 		return nil
 	}

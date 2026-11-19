@@ -284,6 +284,18 @@ func TestOpenJobValuation(t *testing.T) {
 	})
 }
 
+func TestOpenJobValuationUsesTheSharedResolver(t *testing.T) {
+	t.Parallel()
+	f := &jobFactory{}
+	if err := openJobValuation(&app{}, runOnceConfig{}, f, &closerSet{}); err != nil {
+		t.Fatal(err)
+	}
+	in := buypriceapi.Input{Symbol: "AAPL", Currency: "USD", Hand: "100"}
+	if got, want := f.buy.Resolve(in), newBuyPriceResolver().Resolve(in); got != want {
+		t.Errorf("job resolver %+v, page resolver %+v", got, want)
+	}
+}
+
 func TestBuyPriceWiringHasNoLogic(t *testing.T) {
 	t.Parallel()
 	file, err := parser.ParseFile(token.NewFileSet(), "buyprice_wire.go", nil, 0)
