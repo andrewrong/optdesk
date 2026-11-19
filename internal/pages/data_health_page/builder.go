@@ -23,43 +23,51 @@ const (
 // and no dataset, never an error.
 func Build(ctx context.Context, in Input) ([]byte, error) {
 	vm := viewModel{Schema: pageName, SchemaVersion: versionOfDoc, RunID: runID, BuiltAt: in.Now.Format(timeLayout),
-		Datasets: []Dataset{}, Glossary: glossary(), OverwriteNote: overwriteNote, Gaps: []Gap{}}
+		FailuresNote: zhFailuresNote, FailuresNone: zhFailuresNone, Datasets: []Dataset{}, Glossary: glossary(), OverwriteNote: overwriteNote, Gaps: []Gap{}}
 	if in.Form != nil {
 		vm.Form = &formVM{PostPath: in.Form.PostPath, Expires: in.Form.Expires, MAC: in.Form.MAC}
 	}
-	datasets, err := datasetRows(ctx, in)
+	datasets, failuresOK, err := datasetRows(ctx, in)
 	if err != nil {
 		vm.Gaps = append(vm.Gaps, Gap{Kind: "gap", Reason: gapReason, Text: gapText})
 	} else {
 		vm.Datasets = datasets
+		if !failuresOK {
+			vm.Gaps = append(vm.Gaps, Gap{Kind: "gap", Reason: gapFailures, Text: gapFailuresText})
+		}
 	}
 	return json.Marshal(vm)
 }
 
 var errNoReader = errors.New("data_health_page: no coverage reader")
 
-func datasetRows(ctx context.Context, in Input) ([]Dataset, error) {
+// datasetRows builds the dataset rows; failuresOK is false when the repeated failures could not be read (the
+// reader lacks coverage.FailureReader, or its read failed) and the rows then carry empty lists.
+func datasetRows(ctx context.Context, in Input) (out []Dataset, failuresOK bool, err error) {
 	if in.Cov == nil {
-		return nil, errNoReader
+		return nil, false, errNoReader
 	}
 	windows, from, err := windowsByCalendar(ctx, in)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	rows, err := in.Cov.Cells(ctx, from, in.Today)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	newest, err := in.Cov.NewestObservations(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	ids := datasetIDs(rows)
-	out := make([]Dataset, 0, len(ids))
+	failures, failuresOK := readFailures(ctx, in, ids, windows)
+	out = make([]Dataset, 0, len(ids))
 	for _, id := range ids {
-		out = append(out, datasetRow(in, id, rows, windows, newest))
+		d := datasetRow(in, id, rows, windows, newest)
+		d.Repeated, d.FailuresTotal, d.FailuresHidden, d.FailuresHiddenText = failureView(failures[id])
+		out = append(out, d)
 	}
-	return out, nil
+	return out, failuresOK, nil
 }
 
 // windowsByCalendar returns the window days of each calendar the jobs use and the oldest day of all of them.
@@ -121,18 +129,10 @@ func jobOf(jobs []Job, dataset string) *Job {
 
 func datasetRow(in Input, id string, rows []coverage.Cell, windows map[string][]contracts.Day, newest []coverage.Newest) Dataset {
 	job := jobOf(in.Jobs, id)
-	cal := defaultCal
+	cal := calendarOf(in, id, windows)
 	var jobID *string
 	if job != nil {
 		jobID = &job.ID
-		if job.Calendar != "" {
-			cal = job.Calendar
-		}
-	} else if _, ok := windows[cal]; !ok {
-		for c := range windows {
-			cal = c
-			break
-		}
 	}
 	cells := DatasetCells(rows, id, windows[cal])
 	Apply(cells, job, in.Form, in.Now, in.Today)

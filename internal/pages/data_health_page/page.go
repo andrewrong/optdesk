@@ -33,6 +33,11 @@ type Dataset struct {
 	RepairAll string   `json:"repair_all"`
 	Newest    []Newest `json:"newest"`
 	Cells     []Cell   `json:"cells"`
+
+	FailuresTotal      int          `json:"failures_total"`
+	FailuresHidden     int          `json:"failures_hidden"`
+	FailuresHiddenText string       `json:"failures_hidden_text"`
+	Repeated           []FailureRow `json:"repeated_failures"`
 }
 
 // GlossaryRow explains one word of the page.
@@ -64,4 +69,6 @@ type viewModel struct {
 	Glossary      []GlossaryRow `json:"glossary"`
 	OverwriteNote string        `json:"overwrite_note"`
 	Gaps          []Gap         `json:"gaps"`
+	FailuresNote  string        `json:"failures_note"`
+	FailuresNone  string        `json:"failures_none_text"`
 }
