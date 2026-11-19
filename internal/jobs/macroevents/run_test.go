@@ -259,7 +259,7 @@ func TestRunTwiceChangesNothing(t *testing.T) {
 	}
 	sink.text = nil
 	second := runAll(j, "2026-11-14")
-	if second.Err != nil || second.Usable != 0 || second.Returned != first.Returned {
+	if second.Err != nil || second.Usable != second.Returned || second.Returned != first.Returned {
 		t.Fatalf("second %+v first %+v", second, first)
 	}
 	if w.deleted != 0 {
@@ -274,6 +274,36 @@ func TestRunTwiceChangesNothing(t *testing.T) {
 		t.Fatalf("second run held: %v", sink.text)
 	}
 }
+func TestRunEmptyAnswerIsNotUsable(t *testing.T) {
+	t.Parallel()
+	w := &fakeWriter{}
+	j, _ := newJob(t, &fakeSource{}, w)
+	res := j.Run(context.Background(), "2026-11-14", []contracts.ExpectedKey{{SubjectKey: "cpi"}})
+	if res.Err != nil || res.Usable != 0 || res.Returned != 0 {
+		t.Fatalf("result %+v", res)
+	}
+}
+
+func TestRunFailedKindIsNotUsable(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{
+		dates: map[string][]contracts.Day{"10": {"2026-12-10", "2027-01-13"}, "50": {"2026-12-04"}},
+		errs:  map[string]error{"10": errors.New("fred down")},
+	}
+	w := &fakeWriter{}
+	j, _ := newJob(t, src, w)
+	res := runAll(j, "2026-11-14")
+	other := 1 // the ppi row; cpi failed
+	for _, c := range w.calls {
+		if c.source == "file" {
+			other += len(c.events)
+		}
+	}
+	if res.Err == nil || res.Usable != other || res.Returned != other {
+		t.Fatalf("result %+v want usable %d", res, other)
+	}
+}
+
 func checkFileKinds(t *testing.T, w *fakeWriter) {
 	t.Helper()
 	fomc := w.callOf("fomc")

@@ -46,10 +46,10 @@ func (j *job) ID() string { return j.m.ID }
 
 // report collects what one run did, kind by kind.
 type report struct {
-	returned, written int
-	lines, held       []string
-	firstErr          error
-	failed            []string
+	returned, usable int
+	lines, held      []string
+	firstErr         error
+	failed           []string
 }
 
 func (r *report) fail(kind string, err error) {
@@ -67,7 +67,7 @@ func (j *job) replace(ctx context.Context, r *report, day contracts.Day, kind, s
 		return
 	}
 	r.returned += len(evs)
-	r.written += out.Written
+	r.usable += len(evs)
 	last := "none"
 	for _, e := range evs {
 		if last == "none" || string(e.Date) > last {
@@ -118,7 +118,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		text += "; not fetched: " + strings.Join(rep.failed, ", ")
 	}
 	j.log.Info(text)
-	res := contracts.JobResult{Returned: rep.returned, Usable: rep.written}
+	res := contracts.JobResult{Returned: rep.returned, Usable: rep.usable}
 	if rep.firstErr != nil {
 		res.Err = asTyped(rep.firstErr, contracts.Retryable)
 	}
