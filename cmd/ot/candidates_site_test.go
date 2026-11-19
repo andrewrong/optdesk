@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -237,8 +238,25 @@ func TestPageCommandBuildsCandidates(t *testing.T) {
 	h := siteHandler(a, a.deps.newClock(), "2026-11-05", rd, echoHandler, http.NotFoundHandler())
 	rec := candidatesGet(t, h, http.MethodGet, "/"+siteCandidatesRoute)
 	site := strings.Replace(rec.Body.String(), `"run_id":"ot-serve"`, `"run_id":"ot-page"`, 1)
-	if site != out.String() {
+	// The site has a Shortlist reader and the command has none: only the site carries short_put_list.
+	if strings.Contains(out.String(), `"short_put_list"`) || !strings.Contains(site, `"short_put_list"`) {
+		t.Fatalf("short_put_list: command %v, site %v", strings.Contains(out.String(), `"short_put_list"`), strings.Contains(site, `"short_put_list"`))
+	}
+	var sp, cp map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(site), &sp); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(out.String()), &cp); err != nil {
+		t.Fatal(err)
+	}
+	delete(sp, "short_put_list")
+	if len(sp) != len(cp) {
 		t.Fatalf("site %s\ncommand %s", site, out.String())
+	}
+	for k, v := range cp {
+		if string(sp[k]) != string(v) {
+			t.Errorf("property %s differs: site %s command %s", k, sp[k], v)
+		}
 	}
 }
 
