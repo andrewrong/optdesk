@@ -13,11 +13,16 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/optionopen"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // bpReader is a valuation reader that counts its reads and answers one state or one error.
@@ -72,9 +77,6 @@ func bpRow() underlying.Row {
 // bpFactory is a factory over one list row with a log into buf.
 func bpFactory(buf *bytes.Buffer, rd valuation.Reader) jobFactory {
 	f := jobFactory{valuation: rd, buy: bpResolver{}, log: slog.New(slog.NewTextHandler(buf, nil))}
-	if rd == nil {
-		f.valuation = nil
-	}
 	return f.withList(bpRow())
 }
 
@@ -175,23 +177,64 @@ func TestBuyPriceNoReaderKeepsHand(t *testing.T) {
 	}
 }
 
+// TestBuyPriceOptionFamiliesGetOnePrice builds the real option_eod family and the real option_open_plan family
+// over one list and one valuation: the entries each inner job received carry the same price and source.
 func TestBuyPriceOptionFamiliesGetOnePrice(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	f := bpFactory(&buf, &bpReader{st: bpState("AAA")})
-	var got [2]jobs.WatchEntry
-	for i, id := range []string{jobOptionEod, jobOptionOpen} {
-		j, built, err := bpCapture(f, groupOptions)
-		if err != nil {
-			t.Fatalf("%s: %v", id, err)
-		}
-		if _, _, err := j.Plan(context.Background(), "2026-11-11"); err != nil {
+	h := newOpenHarness(t, deadEnv, true, nil)
+	f := bpFactory(&buf, &bpReader{st: bpState("cik:0000320193")})
+	jf := h.jc.f
+	jf.valuation, jf.buy, jf.log = f.valuation, f.buy, f.log
+
+	var eodGot, openGot []jobs.WatchEntry
+	ed := newDeps()
+	ed.newOptionEodWatch = func(_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter,
+		es []jobs.WatchEntry, _ clock.Clock, _ symbol.Translator) (contracts.Job, error) {
+		eodGot = es
+		return &fakeInner{runs: new([]*fakeInner), tag: "eod"}, nil
+	}
+	ef := *jf
+	ef.d = ed
+	eod, err := ef.optionEod(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	open, _, err := buildOpenPlan(t.Context(), h.a, h.jc, jobOptionOpenPlan, func(d optionopen.PlanDeps) (contracts.Job, error) {
+		openGot = d.Stored.Watch
+		return &fakeInner{runs: new([]*fakeInner), tag: "open"}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, j := range []contracts.Job{eod, open} {
+		if _, _, err := j.Plan(t.Context(), "2026-11-11"); err != nil {
 			t.Fatal(err)
 		}
-		got[i] = (*built)[len(*built)-1][0]
 	}
-	if got[0].BuyPrice != got[1].BuyPrice || got[0].BuySource != got[1].BuySource || got[0].BuySource != buypriceapi.SourceValuation {
-		t.Errorf("eod %q %q, open %q %q", got[0].BuyPrice, got[0].BuySource, got[1].BuyPrice, got[1].BuySource)
+	if len(eodGot) != 1 || len(openGot) != 1 {
+		t.Fatalf("entries eod %d open %d", len(eodGot), len(openGot))
+	}
+	for name, e := range map[string]jobs.WatchEntry{"option_eod": eodGot[0], "option_open_plan": openGot[0]} {
+		if e.BuyPrice != "91.12" || e.BuySource != buypriceapi.SourceValuation {
+			t.Errorf("%s: %q %q", name, e.BuyPrice, e.BuySource)
+		}
+	}
+}
+
+func TestBuyPriceFundamentalsNeverReadValuation(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	rd := &bpReader{err: errors.New("boom")}
+	j, _, err := bpCapture(bpFactory(&buf, rd), groupFundamentals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := j.Plan(context.Background(), "2026-11-11"); err != nil {
+		t.Fatal(err)
+	}
+	if rd.count() != 0 {
+		t.Errorf("reads %d", rd.count())
 	}
 }
 
