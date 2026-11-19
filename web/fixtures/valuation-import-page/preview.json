@@ -143,6 +143,24 @@
     "r": "invented r label",
     "buy_zone_top_site": "invented site head",
     "buy_zone_top_file": "invented file head",
-    "general_tick": "invented general tick"
+    "general_tick": "invented general tick",
+    "title": "Import valuations (导入估值)",
+    "intro": "Pick the export file, read the preview, then pick it again to confirm (选择导出文件,查看预览,再选一次同一文件以确认)",
+    "file": "File (文件)",
+    "preview": "Preview (预览)",
+    "not_in_file": "Not in file (不在文件中)",
+    "unvalued": "No valuation in the file (文件中没有估值)",
+    "removed": "Removed (已移除)",
+    "count_insert": "insert (新增)",
+    "count_same": "same (相同)",
+    "count_older": "older (更旧)",
+    "count_refused": "refused (拒绝)",
+    "count_needs_tick": "needs tick (需勾选)",
+    "stored": "stored (库内已有)",
+    "older_than_stored": "older than stored (比库内已有的更旧)",
+    "margin_table": "Margin table (安全边际表)",
+    "result": "Result (结果)",
+    "same_file_again": "Same file again (再选同一文件)",
+    "confirm": "Confirm (确认)"
   }
 }

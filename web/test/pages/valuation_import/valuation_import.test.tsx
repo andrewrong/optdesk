@@ -37,7 +37,7 @@ afterEach(async () => {
 })
 
 const button = (el: HTMLElement, name: string) =>
-  [...el.querySelectorAll('button')].find((b) => b.textContent === name) as HTMLButtonElement
+  [...el.querySelectorAll('button')].find((b) => b.textContent?.startsWith(`${name} (`) || b.textContent === name) as HTMLButtonElement
 const box = (el: HTMLElement, label: string) => el.querySelector(`[role="checkbox"][aria-label="${label}"]`) as HTMLElement
 const click = (n: Element) => act(async () => n.dispatchEvent(new MouseEvent('click', { bubbles: true })))
 
@@ -67,6 +67,57 @@ describe('valuation import page', () => {
     expect(el.querySelector('input[type="file"]')).not.toBeNull()
     expect(button(el, 'Preview')).toBeDefined()
     expect(el.querySelector('table')).toBeNull()
+  })
+
+  it('renders the empty state texts from the labels', async () => {
+    const p = empty()
+    const el = await render(p)
+    expect(el.querySelector('h1')?.textContent).toBe(p.labels?.title)
+    expect(el.querySelector('header p')?.textContent).toBe(p.labels?.intro)
+    expect(el.querySelector('label[for="valuation-file"]')?.textContent).toBe(p.labels?.file)
+    expect(el.querySelector('form[data-form="preview"] button')?.textContent).toBe(p.labels?.preview)
+  })
+
+  it('renders the count words, same file again and confirm from the labels', async () => {
+    const p = preview()
+    const el = await render(p)
+    const l = p.labels
+    expect(el.textContent).toContain(`${l?.count_insert} ${p.counts.insert}`)
+    expect(el.textContent).toContain(`${l?.count_needs_tick} ${p.counts.needs_tick}`)
+    expect(el.querySelector('label[for="valuation-file-confirm"]')?.textContent).toBe(l?.same_file_again)
+    expect(el.querySelector('form[data-form="confirm"] button[type="submit"]')?.textContent).toBe(l?.confirm)
+  })
+
+  it('renders the remaining labels', async () => {
+    const p = preview()
+    p.labels = { ...p.labels, removed: 'LBL-removed', margin_table: 'LBL-margin', stored: 'LBL-stored', count_refused: 'LBL-refused' } as Payload['labels']
+    p.removed = ['XYZ']
+    const el = await render(p)
+    for (const t of ['LBL-removed', 'LBL-margin', 'LBL-stored', 'LBL-refused']) expect(el.textContent).toContain(t)
+  })
+
+  it('prints the count, older, not-in-file, unvalued and result labels from the payload', async () => {
+    const p = preview()
+    p.labels = {
+      ...p.labels,
+      count_same: 'LBL-same',
+      count_older: 'LBL-older',
+      older_than_stored: 'LBL-older-than-stored',
+      not_in_file: 'LBL-notinfile',
+      unvalued: 'LBL-unvalued',
+      result: 'LBL-result',
+    } as Payload['labels']
+    p.not_in_file = ['AAA']
+    p.unvalued = ['BBB']
+    if (p.r) p.r.action = 'older'
+    if (p.margin) p.margin.action = 'older'
+    const el = await render(p)
+    for (const t of ['LBL-same', 'LBL-older', 'LBL-notinfile', 'LBL-unvalued']) expect(el.textContent).toContain(t)
+    expect(el.textContent?.split('LBL-older-than-stored').length).toBe(3)
+    const r = result()
+    r.labels = { ...r.labels, result: 'LBL-result' } as Payload['labels']
+    const el2 = await render(r)
+    expect(el2.querySelector('[data-outcome]')?.closest('.space-y-1')?.parentElement?.textContent).toContain('LBL-result')
   })
 
   it('prints the label texts of the payload', async () => {

@@ -24,8 +24,10 @@ function Lines({ title, items }: { title: string; items: string[] }) {
   )
 }
 
+const COUNT_KEYS = ['insert', 'same', 'older', 'refused', 'needs_tick'] as const
+
 function Summary({ payload }: { payload: Payload }) {
-  const { r, margin, counts } = payload
+  const { r, margin, counts, labels } = payload
   return (
     <Card>
       <CardHeader>
@@ -33,22 +35,21 @@ function Summary({ payload }: { payload: Payload }) {
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-sm">
-          insert {counts.insert} · same {counts.same} · older {counts.older} · refused {counts.refused} · needs tick{' '}
-          {counts.needs_tick}
+          {COUNT_KEYS.map((k) => `${labels?.[`count_${k}`] ?? ''} ${counts[k]}`).join(' · ')}
         </p>
         {r ? (
           <p className="text-sm">
             R (discount multiple) <Badge variant="secondary">{r.action}</Badge> US {r.file_us} JP {r.file_jp} HKCN {r.file_hkcn}
             <span className="text-muted-foreground">
               {' '}
-              stored US {r.stored_us} JP {r.stored_jp} HKCN {r.stored_hkcn}
+              {labels?.stored} US {r.stored_us} JP {r.stored_jp} HKCN {r.stored_hkcn}
               {r.latest_yield ? ` · DGS10 ${r.latest_yield}` : ''}
             </span>
           </p>
         ) : null}
         {r?.action === 'older' ? (
           <Alert>
-            <AlertDescription>older than stored</AlertDescription>
+            <AlertDescription>{labels?.older_than_stored}</AlertDescription>
           </Alert>
         ) : null}
         {r?.problem ? (
@@ -58,13 +59,13 @@ function Summary({ payload }: { payload: Payload }) {
         ) : null}
         {margin ? (
           <p className="text-sm">
-            Margin table <Badge variant="secondary">{margin.action}</Badge>
-            {margin.action === 'older' ? <span className="text-muted-foreground"> older than stored</span> : null}
+            {labels?.margin_table} <Badge variant="secondary">{margin.action}</Badge>
+            {margin.action === 'older' ? <span className="text-muted-foreground"> {labels?.older_than_stored}</span> : null}
           </p>
         ) : null}
-        <Lines title="Not in file" items={payload.not_in_file} />
-        <Lines title="No valuation in the file" items={payload.unvalued} />
-        <Lines title="Removed" items={payload.removed} />
+        <Lines title={labels?.not_in_file ?? ''} items={payload.not_in_file} />
+        <Lines title={labels?.unvalued ?? ''} items={payload.unvalued} />
+        <Lines title={labels?.removed ?? ''} items={payload.removed} />
         {payload.flagged_note ? <p className="text-sm text-muted-foreground">{payload.flagged_note}</p> : null}
       </CardContent>
     </Card>
@@ -75,7 +76,7 @@ function Result({ payload }: { payload: Payload }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Result</CardTitle>
+        <CardTitle>{payload.labels?.result}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
         {payload.result.map((x, i) => (
@@ -100,9 +101,9 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
   return (
     <div className="min-w-0 space-y-6" data-page="valuation-import">
       <header>
-        <h1 className="text-2xl font-semibold">Import valuations</h1>
+        <h1 className="text-2xl font-semibold">{payload.labels?.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Pick the export file, read the preview, then pick it again to confirm
+          {payload.labels?.intro}
         </p>
       </header>
       {payload.error ? (
@@ -132,10 +133,10 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
         >
           <input type="hidden" name="action" value="preview" />
           <div className="space-y-1">
-            <Label htmlFor="valuation-file">File</Label>
+            <Label htmlFor="valuation-file">{payload.labels?.file}</Label>
             <Input id="valuation-file" type="file" name="file" accept=".json,application/json" />
           </div>
-          <Button type="submit">Preview</Button>
+          <Button type="submit">{payload.labels?.preview}</Button>
         </form>
       ) : null}
       {payload.view !== 'empty' ? <Summary payload={payload} /> : null}
@@ -166,11 +167,11 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
                 <Label htmlFor="general-tick">{payload.labels?.general_tick}</Label>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="valuation-file-confirm">Same file again</Label>
+                <Label htmlFor="valuation-file-confirm">{payload.labels?.same_file_again}</Label>
                 <Input id="valuation-file-confirm" type="file" name="file" accept=".json,application/json" />
               </div>
               <Button type="submit" disabled={!canConfirm}>
-                Confirm
+                {payload.labels?.confirm}
               </Button>
             </form>
           </CardContent>
