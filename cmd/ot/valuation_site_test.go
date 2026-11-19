@@ -311,9 +311,9 @@ func TestPageListHasValuation(t *testing.T) {
 		}
 		last = i
 	}
-	// the company pages (orders 180 and 190) come after the four
-	if tail := names[len(names)-3:]; tail[0] != "valuation_form" || tail[1] != "company_quarters_page" || tail[2] != "company_data_page" {
-		t.Fatalf("the four names are not followed by the company pages: %v", names)
+	// the import page (order 175) follows the four, then the company pages (orders 180 and 190)
+	if tail := names[len(names)-3:]; tail[0] != "valuation_import_page" || tail[1] != "company_quarters_page" || tail[2] != "company_data_page" {
+		t.Fatalf("the four names are not followed by the import page and the company pages: %v", names)
 	}
 }
 

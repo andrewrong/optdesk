@@ -40,6 +40,8 @@ type viewModel struct {
 	RuleVersion   *string      `json:"rule_version"`
 	EstimateNote  string       `json:"estimate_note"`
 	Groups        []group      `json:"groups"`
+	// ShortPutList is the grouped short list, omitted without a Shortlist reader or short-put rows.
+	ShortPutList *shortListView `json:"short_put_list,omitempty"`
 	// ShortPutTiers is the tier view of the short-put rows, null without a Tiers judge or rows.
 	ShortPutTiers *tiersView `json:"short_put_tiers"`
 }
@@ -88,7 +90,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 			}
 			g := buildGroup(s, gd, day, rows, c.Figures, gr.rate, gr.ev)
 			vm.Groups = append(vm.Groups, g)
-			if vm.ShortPutTiers, err = tiersOfKind(ctx, c, s.kind, gr, day, generatedAt, vm.ShortPutTiers); err != nil {
+			if err = fillShortPut(ctx, c, &vm, s.kind, gr, day, generatedAt); err != nil {
 				return nil, err
 			}
 			vm.Notes = withTrialNote(vm.Notes, g)
@@ -153,6 +155,16 @@ func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind st
 	}
 	gr.ev, err = evidenceOf(ctx, inputsOf(c), tickers, gd, rate, ok)
 	return gr, err
+}
+
+// fillShortPut writes the tier view and then the short list of the short-put group; any other kind leaves vm as it is.
+func fillShortPut(ctx context.Context, c Config, vm *viewModel, kind string, gr groupRead, day contracts.Day, at time.Time) error {
+	var err error
+	if vm.ShortPutTiers, err = tiersOfKind(ctx, c, kind, gr, day, at, vm.ShortPutTiers); err != nil {
+		return err
+	}
+	vm.ShortPutList, err = shortListOfKind(c, kind, gr, vm.ShortPutTiers)
+	return err
 }
 
 // tiersOfKind is the tier view of the short-put group and prev for any other kind.
