@@ -352,6 +352,23 @@ func TestJPListInYen(t *testing.T) {
 	}
 }
 
+// TestJPPageValidatesAgainstSchema: the page with the yen group (four groups, the yen views, the group fields)
+// is a document of page.option_candidates_page.v1.
+func TestJPPageValidatesAgainstSchema(t *testing.T) {
+	t.Parallel()
+	c, _ := jpConfig(t)
+	c.Tiers = markTierer()
+	c.Shortlist = &fakeShortlister{res: shortJPResult()}
+	_, b := buildJP(t, c)
+	var v any
+	if err := json.Unmarshal(b, &v); err != nil {
+		t.Fatal(err)
+	}
+	if err := pageSchema(t).Validate(v); err != nil {
+		t.Fatalf("the page with the yen group breaks its schema: %v", err)
+	}
+}
+
 // TestJPGolden: the yen cases as one document.
 func TestJPGolden(t *testing.T) {
 	t.Parallel()

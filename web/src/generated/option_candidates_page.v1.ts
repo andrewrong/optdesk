@@ -171,12 +171,12 @@ export interface OptionCandidatesPage {
   rule_version: Text1 | null;
   estimate_note: string;
   /**
-   * One to three groups in the order short_put, covered_call, held_call_guard.
+   * One to four groups in the order short_put, the yen short_put when present, covered_call, held_call_guard.
    *
    * @minItems 1
-   * @maxItems 3
+   * @maxItems 4
    */
-  groups: [Group] | [Group, Group] | [Group, Group, Group];
+  groups: [Group] | [Group, Group] | [Group, Group, Group] | [Group, Group, Group, Group];
   stale_after?: Timestamp;
   /**
    * The grouped short put list, or null. Additive and optional; every figure is text.
