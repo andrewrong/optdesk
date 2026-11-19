@@ -27,8 +27,17 @@ func TestStrategyReplayPageFixtureShapes(t *testing.T) {
 		t.Errorf("form view = %v", f["view"])
 	}
 	var names []string
+	values := map[string]any{}
 	for _, x := range f["form"].(map[string]any)["fields"].([]any) {
-		names = append(names, x.(map[string]any)["name"].(string))
+		m := x.(map[string]any)
+		names = append(names, m["name"].(string))
+		values[m["name"].(string)] = m["value"]
+	}
+	defaults := map[string]string{"lots": "short_puts", "alias": "", "as_of": "", "early_keep": "0.50", "early_dte": "21", "min_lots": "20"}
+	for n, v := range defaults {
+		if values[n] != v {
+			t.Errorf("default of %s = %v, want %q", n, values[n], v)
+		}
 	}
 	want := []string{"lots", "alias", "as_of", "early_keep", "early_dte", "min_lots"}
 	if len(names) != len(want) {
@@ -56,7 +65,11 @@ func TestStrategyReplayPageFixtureShapes(t *testing.T) {
 	if !under || !null {
 		t.Errorf("report: under-minimum line %v, null figure %v", under, null)
 	}
-	e := load("empty")["report"].(map[string]any)
+	ed := load("empty")
+	if ed["view"] != "report" {
+		t.Errorf("empty view = %v", ed["view"])
+	}
+	e := ed["report"].(map[string]any)
 	if e["counts"].(map[string]any)["lots"] != float64(0) || len(e["lines"].([]any)) != 0 || e["empty_text"] == nil {
 		t.Errorf("empty report = %v", e)
 	}
