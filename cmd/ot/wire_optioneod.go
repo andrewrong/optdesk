@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
@@ -25,8 +26,8 @@ func brokerDownOff(_ runOnceConfig, brokerUp bool) string {
 func init() {
 	registerJob(jobFamily{
 		id: jobOptionEod, order: 20, startOff: brokerDownOff,
-		build: func(_ context.Context, _ *app, jc *jobCtx) (contracts.Job, string, error) {
-			j, err := jc.f.optionEod(jc.brk)
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			j, err := jc.f.optionEodWith(jc.brk, eodStoredReader(ctx, a, jc))
 			return j, "", err
 		},
 	})
@@ -79,11 +80,45 @@ func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEnt
 	return out
 }
 
+// optionEod builds option_eod with no stored-contract reader: preflight and the dry run use it.
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
+	return f.optionEodWith(b, nil)
+}
+
+// optionEodWith builds option_eod; a non-nil rd gives the job the contracts the evening resolve stored, applied inside
+// the callback because listed rebuilds the job for each run.
+func (f jobFactory) optionEodWith(b broker.Broker, rd optioneod.ContractReader) (contracts.Job, error) {
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		j, err := buildOptionEod(f.d, b, f.inst, f.eod, entries, f.clk)
-		return withOptionEodReasons(j, err, f.reasons)
+		j, err = withOptionEodReasons(j, err, f.reasons)
+		if err != nil || rd == nil {
+			return j, err
+		}
+		return optioneod.WithContracts(j, rd, f.inst)
 	})
+}
+
+// eodStoredReader opens the option open store for option_eod (closed through jc.extra) and returns it as the reader of
+// stored contracts. It returns nil, with one Warn line naming the job and the reason (never the DSN), when there is no
+// DSN, no opener, no instrument store or the store does not open: the job then runs as before.
+func eodStoredReader(ctx context.Context, a *app, jc *jobCtx) optioneod.ContractReader {
+	why := ""
+	switch {
+	case jc.cfg.openDSN == "":
+		why = reasonNoOpenDSN
+	case jc.f.d.openOptionOpen == nil || jc.f.inst == nil:
+		why = reasonOpenStoreFail
+	}
+	if why == "" {
+		s, err := jc.f.d.openOptionOpen(ctx, jc.cfg.openDSN)
+		if err == nil && s != nil {
+			jc.extra.addCloser(s)
+			return s
+		}
+		why = reasonOpenStoreFail
+	}
+	a.log.Warn("option_eod reads no stored contracts", "component", "ot", "job", jobOptionEod, "status", why)
+	return nil
 }
 
 // buildOptionEod builds option_eod over the watch list: the one constructor path of run-once, the scheduler and
