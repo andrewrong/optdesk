@@ -112,7 +112,7 @@ type importDoc struct {
 		ProposedKey string `json:"proposed_key"`
 		NeedsTick   bool   `json:"needs_tick"`
 	} `json:"rows"`
-	Result []struct{ Key, Outcome string } `json:"result"`
+	Result []struct{ Key, Outcome, Text string } `json:"result"`
 }
 
 func decodeImport(t *testing.T, rec *httptest.ResponseRecorder) importDoc {

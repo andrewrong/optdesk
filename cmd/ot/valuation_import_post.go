@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -161,6 +162,11 @@ func (p importPost) run(form importForm) {
 	if confirm {
 		page.View = valuation_import_page.ViewResult
 		page.Applied = applyImport(ctx, st.w, plan, tickedOf(form.fields))
+		if slices.ContainsFunc(page.Applied, func(o valuation_import_page.Outcome) bool {
+			return o.Outcome == valuation_import_page.OutcomeInserted
+		}) {
+			page.Applied = append(page.Applied, p.refreshGate(ctx, plan, page.Applied, day)...)
+		}
 	}
 	p.answer(http.StatusOK, page)
 }
