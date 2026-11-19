@@ -24,6 +24,8 @@ function Lines({ title, items }: { title: string; items: string[] }) {
   )
 }
 
+const COUNT_KEYS = ['insert', 'same', 'older', 'refused', 'needs_tick'] as const
+
 function Summary({ payload }: { payload: Payload }) {
   const { r, margin, counts, labels } = payload
   return (
@@ -33,8 +35,7 @@ function Summary({ payload }: { payload: Payload }) {
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-sm">
-          {labels?.count_insert} {counts.insert} · {labels?.count_same} {counts.same} · {labels?.count_older} {counts.older} ·{' '}
-          {labels?.count_refused} {counts.refused} · {labels?.count_needs_tick} {counts.needs_tick}
+          {COUNT_KEYS.map((k) => `${labels?.[`count_${k}`] ?? ''} ${counts[k]}`).join(' · ')}
         </p>
         {r ? (
           <p className="text-sm">
