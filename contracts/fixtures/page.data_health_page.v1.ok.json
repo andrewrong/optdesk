@@ -17,6 +17,31 @@
       "gap_days": 2,
       "repair_all": "button",
       "newest": [],
+      "failures_total": 2,
+      "failures_hidden": 0,
+      "failures_hidden_text": "",
+      "repeated_failures": [
+        {
+          "key": "acct-synthetic-1",
+          "kind": "failed",
+          "days": 4,
+          "runs": 6,
+          "first_day": "2026-11-05",
+          "last_day": "2026-11-17",
+          "last_class": "retryable",
+          "class_text": "Invented explanation of retryable."
+        },
+        {
+          "key": "acct-synthetic-2",
+          "kind": "empty",
+          "days": 3,
+          "runs": 3,
+          "first_day": "2026-11-10",
+          "last_day": "2026-11-17",
+          "last_class": "empty",
+          "class_text": "Invented explanation of empty."
+        }
+      ],
       "cells": [
         {
           "day": "2026-11-10",
@@ -251,6 +276,8 @@
       "text": "Invented explanation of not_refetchable."
     }
   ],
+  "failures_note": "Invented note on the repeated failures table.",
+  "failures_none_text": "Invented text for a dataset with no repeated failure.",
   "overwrite_note": "A repair writes only the days that are missing or expired.",
   "gaps": []
 }
