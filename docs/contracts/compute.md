@@ -115,6 +115,10 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - The state is decided on exact rationals from the 1-month and 3-month gap of NDX minus SPX; the texts are rounded half-even to 2 places for evidence only. The published state is a two-close fold over the raw states. Band, Hard and Fold are trial. Pure: no I/O, no clock, no float.
 
+## Family figure
+
+`FamilyFigure` (method `Family(FamilyIn) FamilyResult`), `NewFamilyFigureFunc`, `FamilyIn`, `FamilyAccountIn`, `FamilyAccountOut` and `FamilyResult` are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which keeps its six methods; the counting, sum and gap rules are in the doc comment of `Family`. Design: `docs/design/household-family-total.md#Interface`. Test: `TestFamilyFigureContract` (`blockapi`).
+
 ## Holding figures
 
 `HoldingFigures` (methods `Holdings(HoldingsIn) HoldingsResult`, `Risk(RiskIn) RiskResult` and `Movers(MoversIn) MoversResult`), `NewHoldingFiguresFunc` and their types are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which is unchanged. Design: `docs/design/pages-real-data.md#Interface`.

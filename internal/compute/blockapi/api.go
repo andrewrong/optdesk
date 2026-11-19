@@ -323,3 +323,71 @@ type TechResult struct {
 
 // TechFunc evaluates the tech state, no I/O, no clock (internal/compute/techstate.Classify).
 type TechFunc func(TechIn) TechResult
+
+// FamilyAccountIn is one account of the book for the family figure. Day is the data day of the capture ("" when
+// there is none). Reason is "" for an account to count, "no_data" (never captured), "stale_input" (capture too old)
+// or "read_error" (the reader failed). Values, Prior and MonthStart are the summary rows of the newest capture, the
+// capture before it and the month start.
+type FamilyAccountIn struct {
+	Alias, Whose, Day         string
+	Reason                    string
+	Values, Prior, MonthStart []ValueIn
+}
+
+// FamilyIn is the input of the family figure: every account of the book and the USDJPY rate as the Fx reader gives
+// it (UsdJpy, its day and its source; empty when none was read).
+type FamilyIn struct {
+	Accounts                    []FamilyAccountIn
+	UsdJpy, RateDay, RateSource string
+}
+
+// FamilyAccountOut is one account in the result: its Reason (empty when counted), its Day and its net and cash in USD.
+type FamilyAccountOut struct {
+	Alias, Reason, Day string
+	Net, Cash          compute.FigureValue
+}
+
+// FamilyResult is the family figure. Currency is "USD". Included lists the aliases in the total in input order,
+// Excluded those left out (Reason no_data, stale_input, read_error or unsupported_currency), Rows has one row per
+// distinct input alias in input order. CashShare is Cash in percent of Net. OldestDay is the least Day among
+// Included, "" when none. FxRate, FxDay and FxSource are set only when a JPY account is counted.
+type FamilyResult struct {
+	Currency                                                       string
+	Included                                                       []string
+	Excluded, Rows                                                 []FamilyAccountOut
+	Net, Cash, CashShare, DayAmount, DayPct, MonthAmount, MonthPct compute.FigureValue
+	OldestDay                                                      string
+	FxRate, FxDay, FxSource                                        string
+}
+
+// FamilyFigure is the sum of every account of the book. It is a figure of its own, not a method of PageFigures.
+type FamilyFigure interface {
+	// Family sums the accounts of in. Pure: no I/O, no clock, no float; exact decimal arithmetic.
+	//
+	// Counting: an account is counted when Reason is empty and its NetLiquidation is USD, or JPY with a positive
+	// UsdJpy (the amount is divided by the rate); any other currency, or JPY without a rate, is left out with the
+	// reason unsupported_currency. An account with a Reason is left out with that Reason. An account listed twice
+	// (same Alias) is counted once, the first; Rows still has one row per distinct alias.
+	//
+	// Sums: Net and Cash are sums over the counted accounts; DayAmount and MonthAmount are sums of changes (net
+	// minus the prior net, net minus the month-start net); DayPct and MonthPct are those amounts over the sum of
+	// the earlier nets.
+	//
+	// Gaps: a figure a counted account cannot give is a gap (missing_input) and never the sum of the others. Cash
+	// is a gap when a counted account has no TotalCashValue; DayAmount and MonthAmount when one lacks the earlier
+	// net. DayAmount is the gap stale_input when the counted accounts have different Day, because a sum of
+	// one-day changes of different days is not a day change. With no account counted every figure is the gap
+	// no_data.
+	//
+	// Reasons: no_data (never captured, or nothing counted), stale_input (capture too old, or mixed days),
+	// read_error (the reader failed), unsupported_currency (not USD, or JPY without a rate).
+	//
+	// CashShare is Cash in percent of Net; a gap when either is a gap, and none given for a negative Cash.
+	//
+	// FxRate, FxDay and FxSource are set (the rate used, its day and its source) only when a JPY account is
+	// counted, and empty otherwise.
+	Family(FamilyIn) FamilyResult
+}
+
+// NewFamilyFigureFunc constructs the implementation (internal/compute/pagefig.NewFamily, a later issue).
+type NewFamilyFigureFunc func() FamilyFigure
