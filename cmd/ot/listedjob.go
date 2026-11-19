@@ -32,6 +32,10 @@ func (e *listedError) Unwrap() error             { return e.err }
 // listedBuild builds the inner job of one job family from the entries of its group.
 type listedBuild func([]jobs.WatchEntry) (contracts.Job, error)
 
+// listedPrices is the step that sets the resolved buy price and its source on the entries of an option family
+// (docs/design/buy-price-source.md Decision 4); a listedJob of any other group has none.
+type listedPrices func(context.Context, []jobs.WatchEntry) ([]jobs.WatchEntry, error)
+
 // listedKeepDays is the number of most recently planned days whose snapshots a listedJob keeps.
 const listedKeepDays = 7
 
@@ -49,6 +53,7 @@ type listedJob struct {
 	reader underlying.Reader
 	held   func(context.Context) (map[string]bool, error) // names held, by row Key; read once per Plan
 	clock  clock.Clock
+	prices listedPrices // nil for every group but groupOptions
 
 	mu     sync.Mutex
 	newest contracts.Job                // answers ID and the optional methods
@@ -59,8 +64,8 @@ type listedJob struct {
 // newListedJob builds the inner job once from the list at start, so that the schedule and the optional methods
 // are answered before the first Plan. A read error at start is returned.
 func newListedJob(ctx context.Context, build listedBuild, group string, reader underlying.Reader,
-	held func(context.Context) (map[string]bool, error), clk clock.Clock) (*listedJob, error) {
-	l := &listedJob{build: build, group: group, reader: reader, held: held, clock: clk}
+	held func(context.Context) (map[string]bool, error), clk clock.Clock, prices listedPrices) (*listedJob, error) {
+	l := &listedJob{build: build, group: group, reader: reader, held: held, clock: clk, prices: prices}
 	entries, _, err := l.entries(ctx)
 	if err != nil {
 		return nil, err
@@ -92,6 +97,11 @@ func (l *listedJob) entries(ctx context.Context) ([]jobs.WatchEntry, bool, error
 		}
 		if slices.Contains(followedBy(r, held[r.Key], held["option:"+r.Key]), l.group) {
 			out = append(out, watchEntry(r))
+		}
+	}
+	if l.prices != nil {
+		if out, err = l.prices(ctx, out); err != nil {
+			return nil, false, &listedError{kind: contracts.Retryable, msg: "read valuation failed", err: err}
 		}
 	}
 	return out, anyActive, nil

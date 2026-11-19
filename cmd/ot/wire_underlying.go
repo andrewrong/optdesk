@@ -28,10 +28,10 @@ const listStartTimeout = 30 * time.Second
 // startListed builds a listedJob with the read of the list that happens at start, under its own timeout: the builders
 // of the families take no context. It is a variable so that the read stays outside the call chain of the builders.
 var startListed = func(build listedBuild, group string, reader underlying.Reader,
-	held func(context.Context) (map[string]bool, error), clk clock.Clock) (*listedJob, error) {
+	held func(context.Context) (map[string]bool, error), clk clock.Clock, prices listedPrices) (*listedJob, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), listStartTimeout)
 	defer cancel()
-	return newListedJob(ctx, build, group, reader, held, clk)
+	return newListedJob(ctx, build, group, reader, held, clk, prices)
 }
 
 // nameKey is the name_key of a row of the list: market, a colon and the upper-case symbol.
@@ -115,7 +115,7 @@ func openJobList(ctx context.Context, a *app, cfg runOnceConfig, f *jobFactory, 
 	extra.addCloser(st)
 	f.list = st
 	f.held = heldKeys(f.d, cfg, f.bookAliases(), func() time.Time { return f.clk.Now() }, extra)
-	return nil
+	return openJobValuation(a, cfg, f, extra)
 }
 
 // heldKeys reads the names held in the newest positions of the given aliases (a stock with a quantity other than zero,
@@ -165,7 +165,7 @@ func (f jobFactory) listed(group string, build listedBuild) (contracts.Job, erro
 		}
 		return f.held(ctx)
 	}
-	j, err := startListed(build, group, f.list, held, f.clk)
+	j, err := startListed(build, group, f.list, held, f.clk, f.pricesFor(group))
 	if err != nil {
 		return nil, err
 	}
