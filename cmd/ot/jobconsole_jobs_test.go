@@ -69,7 +69,8 @@ func TestForceYesAreFredFundamentalsComputeCandidatesBookRiskEarningsDividendOpt
 		}
 	}
 	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "book_risk", "earnings_refresh",
-		"dividend_capture", "option_eod", "option_eod_jp", "option_eod_index", "option_candidates_jp", "calendar_refresh", "fx_refresh", "bars_refresh", "macro_events", "recon_bars"}) {
+		"dividend_capture", "option_eod", "option_eod_jp", "option_eod_index", "option_candidates_jp",
+		"calendar_refresh", "fx_refresh", "bars_refresh", "macro_events", "recon_bars"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
