@@ -66,6 +66,7 @@ func (r *reconciler) BackfillWith(
 	dc := newDayCtx(day, p, sess, true)
 	var order []string
 	ends := map[string]*jobEnd{}
+	quiet := unanswered{}
 	for i, k := range keys {
 		if stop, why := r.mustStop(ctx, i, opt, p.job[k]); stop {
 			r.notReached(&res, keys[i:], present, why)
@@ -75,6 +76,11 @@ func (r *reconciler) BackfillWith(
 			return res, err
 		}
 		id := p.job[k].ID()
+		if quiet.silent(id) {
+			r.notReached(&res, keys[i:i+1], present, reasonBrokerSilent)
+			fillLists(&res, k, res.Keys[len(res.Keys)-1])
+			continue
+		}
 		line, end, err := r.backfillOne(ctx, dc, k, byKey[k], present, opt)
 		if line.Group != "" {
 			res.Keys = append(res.Keys, line)
@@ -84,6 +90,9 @@ func (r *reconciler) BackfillWith(
 			return res, err
 		}
 		fillLists(&res, k, line)
+		if quiet.note(id, line) {
+			r.logSilent(id, day, r.keysLeft(keys[i+1:], p, id))
+		}
 		if end.ran {
 			if ends[id] == nil {
 				ends[id] = &jobEnd{}
