@@ -58,7 +58,7 @@ Build order: entry 1 (interface with its label and hint, compute and pages) firs
 
 Modules: compute and pages (two modules by design: the interface alone turns main red, because `zh_texts_test.go` and `cmd/ot/base_data_ids_test.go` fail for a rule with no hint, so the label and hint land in the same entry; this entry is the licensed exception to one module per entry). Size: S.
 Order: first.
-Files: `internal/compute/basecheckapi/api.go`, `internal/compute/basecheckapi/table_test.go`, `internal/pages/base_data_page/text.go`, `internal/pages/base_data_page/zh_texts.go`, `internal/pages/base_data_page/zh_texts_test.go`
+Files: `internal/compute/basecheckapi/api.go`, `internal/compute/basecheckapi/table_test.go`, `internal/pages/base_data_page/text.go`, `internal/pages/base_data_page/builder.go`, `internal/pages/base_data_page/zh_texts.go`, `internal/pages/base_data_page/zh_texts_test.go`
 Contracts: unchanged
 Design: docs/design/basedata-alerts.md#Interface
 Acceptance:
