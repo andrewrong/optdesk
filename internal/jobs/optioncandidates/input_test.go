@@ -148,3 +148,13 @@ func TestRerunUsesNewestChainOnOrBeforeRunDay(t *testing.T) {
 		t.Fatalf("inputs %+v", f.inputs)
 	}
 }
+
+func TestTrimSessionDaysKeepsRunDay(t *testing.T) {
+	t.Parallel()
+	all := []contracts.Day{"2026-11-04", "2026-11-05", "2026-11-06", "2026-11-09"}
+	got := trimSessionDays(all, "2026-11-06")
+	want := []contracts.Day{"2026-11-06", "2026-11-09"}
+	if len(got) != len(want) || got[0] != want[0] || got[len(got)-1] != "2026-11-09" {
+		t.Fatalf("trimmed %v", got)
+	}
+}
