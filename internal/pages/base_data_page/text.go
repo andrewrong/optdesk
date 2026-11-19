@@ -59,7 +59,7 @@ var ruleLabels = map[string]string{
 	"dividend_past": "Ex-dividend date past", "macro_exhausted": "Macro calendar used up",
 	"calendar_horizon": "Calendar horizon", "period_order": "Period order", "subject_stale": "Stale filings",
 	"capture_age": "Capture age", "no_netliq": "No net liquidation", "position_expired": "Expired position",
-	"flex_age": "Flex age", "flex_section_absent": "Flex section absent", "not_read": "Not read",
+	"flex_age": "Flex age", "flex_section_absent": "Flex section absent", "history_lost": "History lost", "not_read": "Not read",
 }
 
 func ruleLabel(rule string) string {

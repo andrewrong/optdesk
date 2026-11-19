@@ -30,6 +30,7 @@ const (
 	hintPositionExpired = "已经过了到期日、仍然记作持仓的期权，说明持仓没有更新。"
 	hintFlexAge         = "券商 Flex 对账单最新记录距今的自然日数。"
 	hintFlexSection     = "Flex 对账单里第二版需要的部分在最近一次下载中缺失；只是设置提示，不参与判定。"
+	hintHistoryLost     = "历史缺口，无法补采，无需处理"
 	hintNotRead         = "这一项所在的数据视图读取失败或超时，没有被判定。"
 	hintFallback        = "这一项没有中文说明。"
 )
