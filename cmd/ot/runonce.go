@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -26,6 +27,7 @@ import (
 	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
+	"github.com/andrewrong/optdesk/internal/store/valuation"
 )
 
 func init() { register("run-once", runOnce) }
@@ -236,6 +238,10 @@ type jobFactory struct {
 	// list and held are what every family that follows names gets (wire_underlying.go): the stored underlying list
 	// and the held names by row key.
 	list underlying.Reader
+	// valuation and buy are what the option families price their entries with (buyprice_wire.go); valuation is nil
+	// without the pages line, which leaves hand prices only.
+	valuation valuation.Reader
+	buy       buypriceapi.Resolver
 	// entryFix, when set, rewrites the entries of each Plan of option_eod_jp (it resolves con_ids).
 	entryFix func([]jobs.WatchEntry) []jobs.WatchEntry
 	// reasons is the reason writer of the ledger of the run (nil: the option_eod jobs write no reasons).

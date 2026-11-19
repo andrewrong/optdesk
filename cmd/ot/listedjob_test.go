@@ -73,7 +73,7 @@ func newHarness(t *testing.T, group string, rows ...underlying.Row) *listedHarne
 		return in, nil
 	}
 	held := func(context.Context) (map[string]bool, error) { return nil, nil }
-	j, err := newListedJob(context.Background(), build, group, h.reader, held, clockwork.NewFakeClock())
+	j, err := newListedJob(context.Background(), build, group, h.reader, held, clockwork.NewFakeClock(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +349,7 @@ func TestListedJobHeldOptionOutsideGroup(t *testing.T) {
 		build := func([]jobs.WatchEntry) (contracts.Job, error) { return &fakeInner{}, nil }
 		held := func(context.Context) (map[string]bool, error) { return map[string]bool{"option:US:AAA": true}, nil }
 		j, err := newListedJob(context.Background(), build, groupOptions, &fakeListReader{rows: []underlying.Row{row}}, held,
-			clockwork.NewFakeClock())
+			clockwork.NewFakeClock(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
