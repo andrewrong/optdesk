@@ -538,3 +538,97 @@ func TestOptionCandidatesPageFiveGroupsFail(t *testing.T) {
 		t.Fatal("a document with five groups validates")
 	}
 }
+
+func zhTier(id string) map[string]any {
+	return map[string]any{"id": id, "word": "适合", "glyph": "✓"}
+}
+
+func zhValueLine(runState string) map[string]any {
+	v := valueLineView(nil)
+	v["line_label"] = "估值买入线"
+	v["line_text"] = "91.20"
+	v["run_state"] = runState
+	v["note"] = "复核于 11-10，运行就用它"
+	return v
+}
+
+func zhCompany(c map[string]any) {
+	c["tier"] = zhTier("fits")
+	c["count_parts"] = map[string]any{"fits": "1", "check": "0", "grey": "0"}
+	c["spot_text"] = "100"
+	c["spot_note"] = "存档 11-18"
+	c["price_note"] = nil
+	c["earnings_text"] = "2026-12-01"
+	c["source_badge"] = map[string]any{"code": "buy_source", "label": "手填", "gloss": "你自己填的买入价", "tone": "info"}
+	c["valuation"] = zhValueLine("used")
+}
+
+func zhInst(t *testing.T, set func(view, company map[string]any)) map[string]any {
+	t.Helper()
+	inst := candidatesMinimal(t)
+	view := tiersView()
+	set(view, view["companies"].([]any)[0].(map[string]any))
+	inst["short_put_tiers"] = view
+	return inst
+}
+
+func TestTiersNewFieldsValidate(t *testing.T) {
+	t.Parallel()
+	inst := zhInst(t, func(view, c map[string]any) {
+		zhCompany(c)
+		view["strip_labels"] = map[string]any{
+			"spot": "现价", "buy_price": "买入价", "next_earnings": "下次财报", "contracts": "合约",
+			"fits": "适合", "check": "待查", "grey": "折叠", "grey_hint": "折叠 = 未判定",
+		}
+		view["card_note"] = "现价是任务为这一天运行时取到的价格。"
+	})
+	inst["head_labels"] = map[string]any{
+		"data_day": "数据日", "run_status": "运行状态", "run_status_text": "完成", "rule_version": "规则版本",
+	}
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an instance with every new field is invalid")
+	}
+	c := inst["short_put_tiers"].(map[string]any)["companies"].([]any)[0].(map[string]any)
+	c["spot_text"], c["spot_note"], c["source_badge"] = nil, nil, nil
+	c["price_note"] = "没有买入价"
+	c["valuation"].(map[string]any)["note"] = nil
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("null spot_text, spot_note, source_badge and note are invalid")
+	}
+}
+
+func TestTiersOldShapeStillValidates(t *testing.T) {
+	t.Parallel()
+	inst := zhInst(t, func(view, c map[string]any) { c["valuation"] = valueLineView(nil) })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an instance with only the old fields is invalid")
+	}
+}
+
+func TestRunStateEnum(t *testing.T) {
+	t.Parallel()
+	for _, ok := range []string{"used", "not_used", "none"} {
+		inst := zhInst(t, func(_, c map[string]any) { c["valuation"] = zhValueLine(ok) })
+		if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+			t.Fatalf("run_state %q is invalid", ok)
+		}
+	}
+	inst := zhInst(t, func(_, c map[string]any) { c["valuation"] = zhValueLine("maybe") })
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("run_state maybe validates")
+	}
+}
+
+func TestTierIDEnum(t *testing.T) {
+	t.Parallel()
+	for _, ok := range []string{"fits", "check", "grey"} {
+		inst := zhInst(t, func(_, c map[string]any) { c["tier"] = zhTier(ok) })
+		if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+			t.Fatalf("tier id %q is invalid", ok)
+		}
+	}
+	inst := zhInst(t, func(_, c map[string]any) { c["tier"] = zhTier("fit") })
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("tier id fit validates")
+	}
+}

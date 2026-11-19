@@ -171,6 +171,38 @@
           "type": "null"
         }
       ]
+    },
+    "head_labels": {
+      "description": "The words of the page head, in Chinese; additive and optional.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "data_day",
+            "run_status",
+            "run_status_text",
+            "rule_version"
+          ],
+          "properties": {
+            "data_day": {
+              "$ref": "#/$defs/Text"
+            },
+            "run_status": {
+              "$ref": "#/$defs/Text"
+            },
+            "run_status_text": {
+              "$ref": "#/$defs/Text"
+            },
+            "rule_version": {
+              "$ref": "#/$defs/Text"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "$defs": {
@@ -905,6 +937,56 @@
           "items": {
             "$ref": "#/$defs/Tier"
           }
+        },
+        "strip_labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "spot",
+            "buy_price",
+            "next_earnings",
+            "contracts",
+            "fits",
+            "check",
+            "grey",
+            "grey_hint"
+          ],
+          "properties": {
+            "spot": {
+              "$ref": "#/$defs/Text"
+            },
+            "buy_price": {
+              "$ref": "#/$defs/Text"
+            },
+            "next_earnings": {
+              "$ref": "#/$defs/Text"
+            },
+            "contracts": {
+              "$ref": "#/$defs/Text"
+            },
+            "fits": {
+              "$ref": "#/$defs/Text"
+            },
+            "check": {
+              "$ref": "#/$defs/Text"
+            },
+            "grey": {
+              "$ref": "#/$defs/Text"
+            },
+            "grey_hint": {
+              "$ref": "#/$defs/Text"
+            }
+          }
+        },
+        "card_note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -979,6 +1061,94 @@
               "type": "null"
             }
           ]
+        },
+        "tier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "word",
+            "glyph"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "enum": [
+                "fits",
+                "check",
+                "grey"
+              ]
+            },
+            "word": {
+              "$ref": "#/$defs/Text"
+            },
+            "glyph": {
+              "$ref": "#/$defs/Text"
+            }
+          }
+        },
+        "count_parts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fits",
+            "check",
+            "grey"
+          ],
+          "properties": {
+            "fits": {
+              "$ref": "#/$defs/Text"
+            },
+            "check": {
+              "$ref": "#/$defs/Text"
+            },
+            "grey": {
+              "$ref": "#/$defs/Text"
+            }
+          }
+        },
+        "spot_text": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "spot_note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "price_note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "earnings_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "source_badge": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Badge"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -1039,6 +1209,30 @@
           "$ref": "#/$defs/Text"
         },
         "gate_hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "line_label": {
+          "$ref": "#/$defs/Text"
+        },
+        "line_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "run_state": {
+          "type": "string",
+          "enum": [
+            "used",
+            "not_used",
+            "none"
+          ]
+        },
+        "note": {
           "oneOf": [
             {
               "$ref": "#/$defs/Text"

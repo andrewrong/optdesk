@@ -227,6 +227,15 @@ export interface OptionCandidatesPage {
    * The yen grouped short put list, or null. Built from the JP group; additive and optional; every figure is text.
    */
   short_put_list_jpy?: ShortList | null;
+  /**
+   * The words of the page head, in Chinese; additive and optional.
+   */
+  head_labels?: {
+    data_day: Text1;
+    run_status: Text1;
+    run_status_text: Text1;
+    rule_version: Text1;
+  } | null;
 }
 /**
  * The data time of one source behind the card.
@@ -393,6 +402,17 @@ export interface TierView {
   legend: LegendItem[];
   columns: TierColumn[];
   tiers: Tier[];
+  strip_labels?: {
+    spot: Text1;
+    buy_price: Text1;
+    next_earnings: Text1;
+    contracts: Text1;
+    fits: Text1;
+    check: Text1;
+    grey: Text1;
+    grey_hint: Text1;
+  };
+  card_note?: Text1 | null;
 }
 export interface Company {
   key: Text1;
@@ -405,6 +425,21 @@ export interface Company {
   counts: Text1;
   valuation?: ValueLine | null;
   buy_source?: Badge | null;
+  tier?: {
+    id: "fits" | "check" | "grey";
+    word: Text1;
+    glyph: Text1;
+  };
+  count_parts?: {
+    fits: Text1;
+    check: Text1;
+    grey: Text1;
+  };
+  spot_text?: Text1 | null;
+  spot_note?: Text1 | null;
+  price_note?: Text1 | null;
+  earnings_text?: Text1;
+  source_badge?: Badge | null;
 }
 /**
  * The valuation line and the gate buy price of a strip, from docs/design/candidates-valuation-line.md#Interface.
@@ -419,6 +454,10 @@ export interface ValueLine {
   gate_label: Text1;
   gate_text: Text1;
   gate_hint: Text1 | null;
+  line_label?: Text1;
+  line_text?: Text1;
+  run_state?: "used" | "not_used" | "none";
+  note?: Text1 | null;
 }
 /**
  * An info mark said once above the table.
