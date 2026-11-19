@@ -30,6 +30,10 @@ The ATM row of the skew is chosen by `newATMFor` (`cmd/ot/evidence_site.go`): on
 
 `ot serve` passes the valuation reader of the site, `valuationReaderOf(rd)` (nil without the pages line), in `candidateReaders.Valuation`; `candidatesConfig` sets `Valuation` from it and `ValueLines` from `newValueLines()` (`cmd/ot/valline_site.go`, `valuelines.New()` returned as `valuelinesapi.Calculator`), so the calculator is set on every path. The demo profile builds a nil `Valuation`. `ot page --name option_candidates_page` passes no valuation reader (nil `Valuation`), opens no store for it, and the `valuation` block of the company strips is `null` there.
 
+## Buy price resolver
+
+`candidatesConfig` sets the `Config` field `Buy` from `newBuyPriceResolver()` (`cmd/ot/valline_site.go`, `buyprice.New(valuelines.New())` returned as `buypriceapi.Resolver`) on every path, with or without readers, so the page resolves the buy price of a company from its zones. `ValueLines` stays set from `newValueLines()` and is no longer read by the page. The page and the jobs use one resolver (`docs/design/buy-price-source.md`, Decisions 9 and 11).
+
 ## Shortlist reader
 
 `ot serve` passes `Shortlist` from `newShortlister()` (`cmd/ot/shortlist_site.go`, `optionshortlist.New()` returned as `optionshortlistapi.Shortlister`) in `candidateReaders`, on every profile; `candidatesConfig` sets the `Config` field `Shortlist` from it, and the page builds `short_put_list` from it. `ot page --name option_candidates_page` (`candidatesPageNamed`) passes none: `Shortlist` is nil and `short_put_list` is omitted. The new file is `cmd/ot/shortlist_site.go`.
