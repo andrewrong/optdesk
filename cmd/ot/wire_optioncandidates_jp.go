@@ -18,9 +18,6 @@ const (
 	// jobOptionCandidatesJP is the id of the Japan candidates family.
 	jobOptionCandidatesJP = "option_candidates_jp"
 
-	// reasonJPHeld is the one line that names the hold: the scheduler lists the family as disabled with it until
-	// the schedule entry of candidates-jp removes the startOff. run-once is not held by it.
-	reasonJPHeld = "option_candidates_jp is held in the scheduler until the schedule entry of candidates-jp"
 	// reasonJPNoOpen and reasonJPNoWriter are the lines logged when the job is left out.
 	reasonJPNoOpen   = openquote.DSNEnvOptionOpen + " is not set or the option open store could not be opened"
 	reasonJPNoRule   = "no currency rule is set in deps"
@@ -28,11 +25,10 @@ const (
 )
 
 func init() {
-	// Order 183: after option_open_jp (180). startOff holds the family in the scheduler once the open line is set
-	// (a build with no open line leaves it out anyway); ot run-once --job option_candidates_jp builds it.
+	// Order 183: after option_open_jp (180). No startOff: the scheduler lists the family over the same stores as
+	// ot run-once --job option_candidates_jp (a build with no open line leaves it out).
 	registerJob(jobFamily{
 		id: jobOptionCandidatesJP, order: 183,
-		startOff: ifOpenDSN(func(runOnceConfig, bool) string { return reasonJPHeld }),
 		build: func(_ context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildCandidatesJP(a, jc)
 		},
