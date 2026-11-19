@@ -56,6 +56,12 @@ describe('registration', () => {
 })
 
 describe('valuation import page', () => {
+  it('labels the R line with the English name of R', async () => {
+    const el = await render(preview())
+    expect(el.textContent).toContain('R (discount multiple)')
+    expect(el.textContent).not.toContain('R (R)')
+  })
+
   it('renders the empty page with a file field', async () => {
     const el = await render(empty())
     expect(el.querySelector('input[type="file"]')).not.toBeNull()
