@@ -122,3 +122,19 @@ func TestOneLotAgainstTwoStoredRowsIsMatched(t *testing.T) {
 		t.Fatalf("page = %s", b)
 	}
 }
+
+func TestUnreadableQuantityCountsAsOneContract(t *testing.T) {
+	t.Parallel()
+	// two unreadable ledger lots count 1 each, so one stored row of -2 covers both
+	_, rows := buildLots(t, lots{"-x", "-x"}, storedPut("-2"))
+	for _, r := range rows {
+		if n := rowNote(r); strings.Contains(n, "snapshot") {
+			t.Fatalf("row note = %q", n)
+		}
+	}
+	// an unreadable stored row counts 1, so it covers only one of two lots of 1
+	_, rows = buildLots(t, lots{"-1", "-1"}, storedPut("-x"))
+	if len(rows) != 2 || strings.Contains(rowNote(rows[0]), "snapshot") || !strings.Contains(rowNote(rows[1]), "not in the position snapshot") {
+		t.Fatalf("rows = %v", rows)
+	}
+}

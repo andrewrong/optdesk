@@ -230,11 +230,16 @@ func contractsOf(q string) decimal.Decimal {
 	return v.Abs()
 }
 
+// isShortPut reports whether a stored position is a short put.
+func isShortPut(p store.Position) bool {
+	return p.SecType == secTypeOption && p.Right == "put" && strings.HasPrefix(p.Quantity, "-")
+}
+
 // storedShortPuts counts the contracts of the stored short put rows per key.
 func storedShortPuts(positions []store.Position) map[string]decimal.Decimal {
 	left := map[string]decimal.Decimal{}
 	for _, p := range positions {
-		if p.SecType == secTypeOption && p.Right == "put" && strings.HasPrefix(p.Quantity, "-") {
+		if isShortPut(p) {
 			k := putKey(p.Symbol, p.Strike, p.Expiry)
 			left[k] = left[k].Add(contractsOf(p.Quantity))
 		}
@@ -251,7 +256,7 @@ func missingFromLedger(positions []store.Position, ledgerKeys []ledgerPut) []str
 	}
 	var missing []string
 	for _, p := range positions {
-		if p.SecType != secTypeOption || p.Right != "put" || !strings.HasPrefix(p.Quantity, "-") {
+		if !isShortPut(p) {
 			continue
 		}
 		k, n := putKey(p.Symbol, p.Strike, p.Expiry), contractsOf(p.Quantity)
