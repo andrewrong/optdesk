@@ -199,7 +199,8 @@ Left out: removing any old field.
 
 Module: compute. Size: M.
 Order: after 1.
-Files: `internal/compute/optiontier/tier.go`, `internal/compute/optiontier/order.go`, new `internal/compute/optiontier/blocks.go`, new `internal/compute/optiontier/blocks_test.go`
+Files: `internal/compute/optiontier/tier.go`, `internal/compute/optiontier/order.go`, `internal/compute/optiontier/blocks.go`, `internal/compute/optiontier/blocks_test.go`
+New files: blocks.go, blocks_test.go.
 Contracts: unchanged
 Design: docs/design/candidates-by-company.md#Decisions
 Acceptance:
@@ -216,8 +217,9 @@ Checked by CI: `go test ./internal/compute/optiontier/...`.
 ### 4 candidates-by-company-pages
 
 Module: pages. Size: M.
-Order: after 1, 2 and 3.
-Files: `internal/pages/option_candidates_page/tiers.go`, `internal/pages/option_candidates_page/tierrows.go`, `internal/pages/option_candidates_page/zh_texts.go`, new `internal/pages/option_candidates_page/bycompany.go`, new `internal/pages/option_candidates_page/bycompany_test.go`, new `internal/pages/option_candidates_page/testdata/by_company.golden.json`
+Order: after 1 and 2.
+Files: `internal/pages/option_candidates_page/tiers.go`, `internal/pages/option_candidates_page/tierrows.go`, `internal/pages/option_candidates_page/zh_texts.go`, `internal/pages/option_candidates_page/bycompany.go`, `internal/pages/option_candidates_page/bycompany_test.go`, `internal/pages/option_candidates_page/testdata/by_company.golden.json`
+New files: bycompany.go, bycompany_test.go, by_company.golden.json.
 Contracts: unchanged
 Design: docs/design/candidates-by-company.md#Interface
 Acceptance:
@@ -234,7 +236,8 @@ Checked by CI: `go test ./internal/pages/...`.
 
 Module: web. Size: M.
 Order: after 2.
-Files: new `web/src/pages/candidates/CompanyBlock.tsx`, `web/src/pages/candidates/TierView.tsx`, `web/src/pages/candidates/CompanyStrip.tsx`, `web/src/pages/candidates/TierRows.tsx`, `web/src/pages/candidates/OptionCandidatesPage.tsx`, new `web/test/pages/optioncandidates/CompanyBlock.test.tsx`, `web/test/pages/optioncandidates/TierView.test.tsx`, `web/test/pages/optioncandidates/CompanyStrip.test.tsx`, `web/test/pages/optioncandidates/OptionCandidatesPage.test.tsx`, new `web/test/pages/optioncandidates/fixtures/bycompany.ts`, `web/test/pages/optioncandidates/fixtures/MANIFEST.synthetic-v1.json`
+Files: `web/src/pages/candidates/CompanyBlock.tsx`, `web/src/pages/candidates/TierView.tsx`, `web/src/pages/candidates/CompanyStrip.tsx`, `web/src/pages/candidates/TierRows.tsx`, `web/src/pages/candidates/OptionCandidatesPage.tsx`, `web/test/pages/optioncandidates/CompanyBlock.test.tsx`, `web/test/pages/optioncandidates/TierView.test.tsx`, `web/test/pages/optioncandidates/CompanyStrip.test.tsx`, `web/test/pages/optioncandidates/OptionCandidatesPage.test.tsx`, `web/test/pages/optioncandidates/fixtures/bycompany.ts`, `web/test/pages/optioncandidates/fixtures/MANIFEST.synthetic-v1.json`
+New files: CompanyBlock.tsx, CompanyBlock.test.tsx, bycompany.ts.
 Contracts: unchanged
 Design: docs/design/candidates-by-company.md#Decisions
 Acceptance:
