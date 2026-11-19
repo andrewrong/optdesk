@@ -1,10 +1,11 @@
 // The company strip: one card per company with the stored spot, buy price, next earnings and counts, as given.
 // The valuation block adds two rows (label, text, note); every text is a payload field, nothing is computed here.
 import { Info } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { Company } from '@/generated/option_candidates_page.v1'
+import type { Badge as BadgeT, Company } from '@/generated/option_candidates_page.v1'
 
 function Label({ text, hint }: { text: string; hint: string | null }) {
   if (hint === null) return <span className="text-muted-foreground">{text}</span>
@@ -22,6 +23,25 @@ function Label({ text, hint }: { text: string; hint: string | null }) {
   )
 }
 
+const tones = { warn: 'warn', info: 'secondary', none: 'outline' } as const
+
+function SourceBadge({ badge }: { badge: BadgeT }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span data-hint={badge.gloss} tabIndex={0} className="ml-2 cursor-help">
+            <Badge variant={tones[badge.tone]} data-buy-source={badge.code}>
+              {badge.label}
+            </Badge>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{badge.gloss}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 export function CompanyStrip({ company, spotHint = null }: { company: Company; spotHint?: string | null }) {
   const v = company.valuation
   return (
@@ -34,6 +54,7 @@ export function CompanyStrip({ company, spotHint = null }: { company: Company; s
           </span>
           <span>
             Buy price {company.buy_price ?? company.buy_price_note}
+            {company.buy_source ? <SourceBadge badge={company.buy_source} /> : null}
           </span>
           <span>Next earnings {company.next_earnings}</span>
           <span className="text-muted-foreground">{company.counts}</span>
