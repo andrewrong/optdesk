@@ -61,18 +61,18 @@ export function PlanTable({ labels, rows, keys, markets, ticks, onKey, onMarket,
                 r.key
               )}
               {r.unmatched ? (
-                <Label htmlFor={`r-market-${r.ticker}`} className="mt-1">
-                  {labels?.r}
-                </Label>
-              ) : null}
-              {r.unmatched ? (
-                <Input
-                  id={`r-market-${r.ticker}`}
-                  name={`r_market.${r.ticker}`}
-                  aria-label={`${labels?.r ?? ''} ${r.ticker}`}
-                  value={markets[r.ticker] ?? r.r_market}
-                  onChange={(e) => onMarket(r.ticker, e.target.value)}
-                />
+                <>
+                  <Label htmlFor={`r-market-${r.ticker}`} className="mt-1">
+                    {labels?.r}
+                  </Label>
+                  <Input
+                    id={`r-market-${r.ticker}`}
+                    name={`r_market.${r.ticker}`}
+                    aria-label={`${labels?.r ?? ''} ${r.ticker}`}
+                    value={markets[r.ticker] ?? r.r_market}
+                    onChange={(e) => onMarket(r.ticker, e.target.value)}
+                  />
+                </>
               ) : null}
             </TableCell>
             <TableCell>
