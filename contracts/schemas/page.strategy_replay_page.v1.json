@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.strategy_replay_page.v1.json",
+  "title": "StrategyReplayPage",
+  "description": "View model of the strategy replay page: the form with its defaults (view form) and the form with the report under it (view report). The route-off page is the view form with form null and the notice key form_off. Every figure is a decimal text or null written by the builder; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "title", "view", "post_path", "intro", "form", "restart_hint", "notices", "report"],
+  "properties": {
+    "schema": {"const": "strategy_replay_page", "type": "string"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "generated_at": {"type": "string"},
+    "title": {"$ref": "#/$defs/Text"},
+    "view": {"enum": ["form", "report"]},
+    "post_path": {"const": "strategy-replay-post", "type": "string"},
+    "intro": {"$ref": "#/$defs/Text"},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]},
+    "restart_hint": {"$ref": "#/$defs/Text"},
+    "notices": {"type": "array", "items": {"$ref": "#/$defs/Notice"}},
+    "report": {"oneOf": [{"$ref": "#/$defs/Report"}, {"type": "null"}]}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Figure": {"oneOf": [{"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}, {"type": "null"}]},
+    "Count": {"type": "integer", "minimum": 0},
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "submit_label"],
+      "properties": {
+        "fields": {"type": "array", "items": {"$ref": "#/$defs/Field"}},
+        "submit_label": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "label", "hint", "kind", "value", "options"],
+      "properties": {
+        "name": {"enum": ["lots", "alias", "as_of", "early_keep", "early_dte", "min_lots"]},
+        "label": {"$ref": "#/$defs/Text"},
+        "hint": {"$ref": "#/$defs/Text"},
+        "kind": {"enum": ["choice", "text"]},
+        "value": {"type": "string", "maxLength": 600},
+        "options": {"type": "array", "items": {"$ref": "#/$defs/Option"}}
+      }
+    },
+    "Option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label"],
+      "properties": {
+        "value": {"type": "string", "minLength": 1, "maxLength": 64},
+        "label": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "text"],
+      "properties": {
+        "key": {"enum": ["form_off", "timed_out", "busy", "read_failed", "bad_lots", "bad_as_of", "bad_early_keep", "bad_early_dte", "bad_min_lots"]},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["as_of", "lots_label", "first_quote_day", "last_quote_day", "variants", "counts", "excluded", "lines", "notes", "empty_text"],
+      "properties": {
+        "as_of": {"type": "string", "format": "date"},
+        "lots_label": {"$ref": "#/$defs/Text"},
+        "first_quote_day": {"oneOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "last_quote_day": {"oneOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "variants": {"type": "array", "items": {"$ref": "#/$defs/Variant"}},
+        "counts": {"$ref": "#/$defs/Counts"},
+        "excluded": {"type": "array", "items": {"$ref": "#/$defs/Excluded"}},
+        "lines": {"type": "array", "items": {"$ref": "#/$defs/Line"}},
+        "notes": {"type": "array", "items": {"$ref": "#/$defs/Text"}},
+        "empty_text": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]}
+      }
+    },
+    "Variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "params_hash"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 64},
+        "params_hash": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "Counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lots", "lots_with_quote", "still_open", "lot_days", "quote_days"],
+      "properties": {
+        "lots": {"$ref": "#/$defs/Count"},
+        "lots_with_quote": {"$ref": "#/$defs/Count"},
+        "still_open": {"$ref": "#/$defs/Count"},
+        "lot_days": {"$ref": "#/$defs/Count"},
+        "quote_days": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "Excluded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "text", "lots"],
+      "properties": {
+        "reason": {"type": "string", "minLength": 1, "maxLength": 64},
+        "text": {"$ref": "#/$defs/Text"},
+        "lots": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "Line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["set", "variant", "currency", "lots", "cycles", "closed_early", "held", "assigned", "rolled", "in_the_money", "kept_share", "mean_gross", "worst_gross", "hold_kept_share", "actual_kept_share", "under_minimum", "minimum_text"],
+      "properties": {
+        "set": {"type": "string", "minLength": 1, "maxLength": 64},
+        "variant": {"type": "string", "minLength": 1, "maxLength": 64},
+        "currency": {"type": "string", "minLength": 1, "maxLength": 8},
+        "lots": {"$ref": "#/$defs/Count"},
+        "cycles": {"$ref": "#/$defs/Count"},
+        "closed_early": {"$ref": "#/$defs/Count"},
+        "held": {"$ref": "#/$defs/Count"},
+        "assigned": {"$ref": "#/$defs/Count"},
+        "rolled": {"$ref": "#/$defs/Count"},
+        "in_the_money": {"$ref": "#/$defs/Count"},
+        "kept_share": {"$ref": "#/$defs/Figure"},
+        "mean_gross": {"$ref": "#/$defs/Figure"},
+        "worst_gross": {"$ref": "#/$defs/Figure"},
+        "hold_kept_share": {"$ref": "#/$defs/Figure"},
+        "actual_kept_share": {"$ref": "#/$defs/Figure"},
+        "under_minimum": {"type": "boolean"},
+        "minimum_text": {"oneOf": [{"$ref": "#/$defs/Text"}, {"type": "null"}]}
+      }
+    }
+  }
+}

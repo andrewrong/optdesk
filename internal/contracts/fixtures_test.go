@@ -32,6 +32,7 @@ var fixtureSchema = map[string]string{
 	"positions-page":         "page.positions_page.v3.json",
 	"structures-list":        "page.structures_list.v1.json",
 	"tracking":               "page.tracking.v1.json",
+	"strategy-replay-page":   "page.strategy_replay_page.v1.json",
 	"valuation-import-page":  "page.valuation_import_page.v1.json",
 }
 

@@ -1,0 +1,18 @@
+{
+  "schema": "strategy_replay_page",
+  "schema_version": 1,
+  "generated_at": "2026-11-19T08:00:00Z",
+  "title": "策略回放",
+  "view": "form",
+  "post_path": "strategy-replay-post",
+  "intro": "用已存的报价回放卖出看跌的持有到期与早平两种做法，对比他实际的结果。",
+  "form": null,
+  "restart_hint": "中途被打断的回放不留任何东西，再按一次即可",
+  "notices": [
+    {
+      "key": "form_off",
+      "text": "回放未开启：缺少所有者令牌设置，设置后重启 ot serve"
+    }
+  ],
+  "report": null
+}

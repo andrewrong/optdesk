@@ -81,6 +81,10 @@
     {"path": "page.company_data_page.v1.ok.json", "sha256": "2b90994a2508c9aa8257b2bea83151421472b890c11683e9897d52e79db05624"},
     {"path": "page.company_data_page.v1.gap.json", "sha256": "ade7cb4511537d75c07cca22e728d0c792e1b631c3cdba4c913a2853259fe2f5"},
     {"path": "page.valuation_import_page.v1.preview.json", "sha256": "98a49ef66be70334b2bc826495ce23a3c466091fc3d701d1d773cf714f87c494"},
-    {"path": "page.valuation_import_page.v1.result.json", "sha256": "9e7f38e1c18dcf39bcde1d1aa1f56c212a1cde1907633df0cb9eeb8ad3e004c2"}
+    {"path": "page.valuation_import_page.v1.result.json", "sha256": "9e7f38e1c18dcf39bcde1d1aa1f56c212a1cde1907633df0cb9eeb8ad3e004c2"},
+    {"path": "page.strategy_replay_page.v1.form.json", "sha256": "93ec87ba5d026c23eae29648c5d9f5baa92219dd08581c704cb9f3941999fff6"},
+    {"path": "page.strategy_replay_page.v1.report.json", "sha256": "a5e5f15aed44e63393ef68f76dd50501d5cc90aec904d28faae61fc059700bf4"},
+    {"path": "page.strategy_replay_page.v1.empty.json", "sha256": "8d758a4d345c0ba58e5165c4a5822221b2339b287b6d067a1e95973c2ebe98ea"},
+    {"path": "page.strategy_replay_page.v1.off.json", "sha256": "38b287094947b3b49809615019f8c5f2013703462fdd09886f7258cce984709b"}
   ]
 }
