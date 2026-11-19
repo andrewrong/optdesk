@@ -182,7 +182,8 @@ func TestOptionEodWithoutOpenDSN(t *testing.T) {
 	if b.resolves == 0 {
 		t.Fatalf("job did not run as before")
 	}
-	if n := strings.Count(logs, "level=WARN"); n != 1 || !strings.Contains(logs, reasonOpenStoreFail) || strings.Contains(logs, "secret-pw") || strings.Contains(logs, "postgres://") {
+	leak := strings.Contains(logs, "secret-pw") || strings.Contains(logs, "postgres://")
+	if n := strings.Count(logs, "level=WARN"); n != 1 || !strings.Contains(logs, reasonOpenStoreFail) || leak {
 		t.Fatalf("want one Warn with the reason and no DSN:\n%s", logs)
 	}
 }
