@@ -1,7 +1,8 @@
 // Package home_household builds the household member of the home page: the document
 // page.household_summary.v2 with the four tiles net worth, cash, day change and month to date of the
 // main account. The figures come from blockapi.PageFigures, the builder copies their decimal text,
-// computes nothing, reads no clock and pools no account.
+// computes nothing and reads no clock. A book of two or more aliases (Config.Aliases) gets the family
+// card of family.go, whose tiles copy the sums of blockapi.FamilyFigure.
 package home_household
 
 import (
@@ -19,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const (
@@ -43,6 +45,12 @@ type Config struct {
 	Account               store.AccountReader
 	Sessions              store.SessionDayReader
 	Figures               blockapi.NewPageFiguresFunc
+	// Aliases, Fx and Family are for the family card: with two or more Aliases the first is the main
+	// account and Build writes the family card (Alias, Figures are not used); with none or one, Alias is
+	// the account of today's card.
+	Aliases []string
+	Fx      bar.FxRateReader
+	Family  blockapi.NewFamilyFigureFunc
 }
 
 // capture is the account on the newest day with values, the day before it with values, and the last
@@ -59,7 +67,8 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	if c.Zone == nil {
 		return nil, errors.New("home_household: no zone")
 	}
-	if c.Figures == nil {
+	family := len(c.Aliases) >= 2
+	if c.Figures == nil && !family {
 		return nil, errors.New("home_household: no figures")
 	}
 	d, err := time.Parse(dayLayout, string(day))
@@ -67,6 +76,13 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 		return nil, fmt.Errorf("home_household: bad day %q: %w", day, err)
 	}
 	at = at.In(c.Zone)
+	if family && c.Account != nil && c.Sessions != nil {
+		fd, err := c.buildFamily(ctx, d, at)
+		if err != nil {
+			return nil, err
+		}
+		return marshal(fd)
+	}
 	switch {
 	case c.Account == nil || c.Sessions == nil:
 		return marshal(gapDoc(c, at, "no_reader", textNoReader))
@@ -77,7 +93,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	if err != nil {
 		return nil, err
 	}
-	snap, idx, err := c.capture(ctx, sessions)
+	snap, idx, err := c.captureOf(ctx, c.Alias, sessions)
 	if err != nil {
 		return nil, err
 	}
@@ -123,12 +139,12 @@ func (c Config) sessionDays(ctx context.Context, d time.Time) ([]contracts.Day, 
 	return out, nil
 }
 
-// capture reads the values of the session days, newest first: the first day with rows is the data day
+// captureOf reads the values of alias on the session days, newest first: the first day with rows is the data day
 // (idx its place in sessions), the next one with rows the prior day, and the last session day before
 // the month of the data day the month start.
-func (c Config) capture(ctx context.Context, sessions []contracts.Day) (cp capture, idx int, err error) {
+func (c Config) captureOf(ctx context.Context, alias string, sessions []contracts.Day) (cp capture, idx int, err error) {
 	read := func(s contracts.Day) ([]store.AccountValue, error) {
-		rows, err := c.Account.Values(ctx, c.Alias, string(s))
+		rows, err := c.Account.Values(ctx, alias, string(s))
 		if err != nil {
 			return nil, fmt.Errorf("home_household: read values: %w", err)
 		}
