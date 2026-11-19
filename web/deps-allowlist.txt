@@ -1,3 +1,5 @@
+@fontsource-variable/inter
+@fontsource-variable/jetbrains-mono
 @playwright/test
 @tailwindcss/vite
 @tanstack/react-table

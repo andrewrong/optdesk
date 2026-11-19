@@ -163,7 +163,7 @@ test opens a built page and resolves every asset.
 - A static fail-closed notice sits outside the React root ("page did not load, do not act"), is hidden only
   after validation and first commit, and is restored by the error boundary; `<noscript>` says the same. A CSP
   with `default-src 'self'` and `connect-src 'none'` is set where the serve path allows it.
-- No CDN, no web font download, no analytics. The hello page of step 1b lives under `_dev/`.
+- No CDN, no web font from outside, no analytics; two self-hosted variable fonts (Inter, JetBrains Mono) are allowed, bundled from `@fontsource-variable/inter` and `@fontsource-variable/jetbrains-mono`, with no request to a font host. *Amendment 2026-11-19 (ask 5217, docs/design/site-look.md Decision 2): replaces "no web font download".* The hello page of step 1b lives under `_dev/`.
 - The "STALE, do not act" banner, KL as-of times and run status of ADR 0010 are rendered from view-model fields
   by one shared component, so no page can omit them.
 
