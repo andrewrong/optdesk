@@ -52,14 +52,14 @@ root_package = "optdesk"
 [[tool.importlinter.contracts]]
 name = "the generated package is reached only through optdesk.contracts.api"
 type = "forbidden"
-source_modules = ["optdesk.calendar", "optdesk.ibkr"]
+source_modules = ["optdesk.calendar", "optdesk.ibkr", "optdesk.refbars"]
 forbidden_modules = ["optdesk.contracts.genpb"]
 allow_indirect_imports = true
 
 [[tool.importlinter.contracts]]
 name = "calendar and ibkr do not import each other"
 type = "independence"
-modules = ["optdesk.calendar", "optdesk.ibkr"]
+modules = ["optdesk.calendar", "optdesk.ibkr", "optdesk.refbars"]
 
 [[tool.importlinter.contracts]]
 name = "contracts imports neither calendar nor ibkr"

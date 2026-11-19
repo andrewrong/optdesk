@@ -197,6 +197,8 @@ func (k *keyRunner) logFinished(ctx context.Context, job contracts.Job, key cont
 		outcome = "ok"
 		if rec.ErrorCode != "" {
 			outcome = "failed"
+		} else if rec.ReturnedN > 0 && rec.UsableN == 0 {
+			outcome = "empty" // rows came back and none was kept
 		}
 	}
 	attrs := []slog.Attr{
