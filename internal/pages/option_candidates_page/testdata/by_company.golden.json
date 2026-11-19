@@ -1,0 +1,202 @@
+{
+  "heading_note": "每家公司一块：先看结论和价格，下面是这家公司筛选范围内年化最高的合约；其余折叠在最后。公司按自己最高的年化排序。",
+  "legend": [
+    {
+      "tier": "fits",
+      "title": "✓ 适合 3",
+      "text": "满足你的全部条件：有买入价、保本点不高于买入价、价外、|delta| 不高于 0.3、现金够付全额行权价。这不是买入建议。"
+    },
+    {
+      "tier": "check",
+      "title": "! 待查 2",
+      "text": "买入价、保本点、价外三项都满足，但有需要再看一眼的徽标。"
+    },
+    {
+      "tier": "folded",
+      "title": "– 未显示",
+      "text": "已判定但不能卖（价内，或保本点高于买入价，或没有 bid），或不在筛选范围内，或超出每家 3 个；点开每个公司下的折叠看原因。"
+    },
+    {
+      "tier": "yield",
+      "title": "年化",
+      "text": "年化 = bid 里的时间价值，按这一行的到期天数折成一年，除以占用的现金（行权价）；公司按自己最高的年化排序；日元公司在日本标签页，不和美元公司排在一起。"
+    },
+    {
+      "tier": "cash",
+      "title": "账户现金",
+      "text": "每一行单独对照一个账户的可用现金，不在各行之间扣减，也不替你选账户。"
+    }
+  ],
+  "columns": [
+    {
+      "id": "arrow",
+      "label": "详情",
+      "hint": null
+    },
+    {
+      "id": "tier",
+      "label": "档位",
+      "hint": null
+    },
+    {
+      "id": "contract",
+      "label": "合约",
+      "hint": "标的、行权价、到期日、剩余天数"
+    },
+    {
+      "id": "margin",
+      "label": "安全边际",
+      "hint": "保本点比买入价低多少"
+    },
+    {
+      "id": "below_spot",
+      "label": "距现价",
+      "hint": "保本点比现价低多少"
+    },
+    {
+      "id": "premium",
+      "label": "权利金 / 年化",
+      "hint": "每份合约的权利金；下一行是年化收益，也是每家公司内排序的依据。"
+    },
+    {
+      "id": "badges",
+      "label": "徽标",
+      "hint": "需要再看一眼的地方"
+    }
+  ],
+  "blocks": [
+    {
+      "company": "7",
+      "verdict": {
+        "id": "sellable",
+        "word": "有可卖",
+        "glyph": "✓",
+        "tone": "success"
+      },
+      "verdict_text": "筛选范围内，按年化从高到低，最多 3 个：适合 1 个，待查 1 个；其余在下面折叠。",
+      "best_yield": "最高年化 87.5%",
+      "row_ids": [
+        "tier-short_put-1-0",
+        "tier-short_put-2-1"
+      ],
+      "folded": {
+        "title": "未显示 3",
+        "summary": "价内 1 · 保本点高于买入价 1 · 超出每家 3 个 1",
+        "reasons": [
+          {
+            "code": "in_the_money",
+            "label": "价内",
+            "count": "1"
+          },
+          {
+            "code": "above_buy_price",
+            "label": "保本点高于买入价",
+            "count": "1"
+          },
+          {
+            "code": "over_cap",
+            "label": "超出每家 3 个",
+            "count": "1"
+          }
+        ],
+        "row_ids": [
+          "tier-short_put-4-3",
+          "tier-short_put-5-4",
+          "tier-short_put-3-2"
+        ]
+      }
+    },
+    {
+      "company": "9",
+      "verdict": {
+        "id": "out_band",
+        "word": "筛选范围内暂无可卖",
+        "glyph": "!",
+        "tone": "warn"
+      },
+      "verdict_text": "有 2 个合约能卖，但都不在筛选范围内（价外 5% 到 15%，delta 0.15 到 0.30，持仓量够），原因见下方折叠。",
+      "best_yield": null,
+      "row_ids": [],
+      "folded": {
+        "title": "未显示 2",
+        "summary": "价外不足 5% 1 · delta 不在 0.15 到 0.30 1",
+        "reasons": [
+          {
+            "code": "otm_low",
+            "label": "价外不足 5%",
+            "count": "1"
+          },
+          {
+            "code": "delta_out",
+            "label": "delta 不在 0.15 到 0.30",
+            "count": "1"
+          }
+        ],
+        "row_ids": [
+          "tier-short_put-9-8",
+          "tier-short_put-10-9"
+        ]
+      }
+    },
+    {
+      "company": "8",
+      "verdict": {
+        "id": "above_buy",
+        "word": "价格高于买入价·暂无可卖",
+        "glyph": "!",
+        "tone": "warn"
+      },
+      "verdict_text": "现价 $130.00 高于买入价 $40.00：有报价的价外合约，保本点（行权价减 bid）都高于买入价，所以暂无可卖；价内和没有 bid 的合约在下方折叠。这不是没判定，是判定过了。",
+      "best_yield": null,
+      "row_ids": [],
+      "folded": {
+        "title": "未显示 3",
+        "summary": "价内 1 · 保本点高于买入价 2",
+        "reasons": [
+          {
+            "code": "in_the_money",
+            "label": "价内",
+            "count": "1"
+          },
+          {
+            "code": "above_buy_price",
+            "label": "保本点高于买入价",
+            "count": "2"
+          }
+        ],
+        "row_ids": [
+          "tier-short_put-6-5",
+          "tier-short_put-7-6",
+          "tier-short_put-8-7"
+        ]
+      }
+    },
+    {
+      "company": "10",
+      "verdict": {
+        "id": "no_buy_price",
+        "word": "未设买入价·未判定",
+        "glyph": "–",
+        "tone": "muted"
+      },
+      "verdict_text": "没有买入价（估值买入区间和手填价格都没有），所以不判定；设了买入价才会判定。",
+      "best_yield": null,
+      "row_ids": [],
+      "folded": {
+        "title": "未显示 2",
+        "summary": "没有买入价 2",
+        "reasons": [
+          {
+            "code": "no_buy_price",
+            "label": "没有买入价",
+            "count": "2"
+          }
+        ],
+        "row_ids": [
+          "tier-short_put-11-10",
+          "tier-short_put-12-11"
+        ]
+      }
+    }
+  ]
+}
