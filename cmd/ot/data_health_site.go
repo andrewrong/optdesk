@@ -147,6 +147,7 @@ var dataHealthManifests = map[string]dataHealthManifest{
 	"option_open_resolve":     {calUS, []string{"master.option_contract"}, ""},
 	"option_open_resolve_jp":  {calJP, []string{"master.option_contract.jp"}, ""},
 	"option_open_resolve_gap": {calUS, []string{"master.option_contract.gap"}, ""},
+	"option_candidates_jp":    {calJP, []string{"candidates.option_candidate"}, ""},
 	"option_ledger":           {calUS, []string{"optionledger.flex_trade_row"}, ""},
 	"macro_events":            {calUS, []string{"obs.macro_event"}, ""},
 }

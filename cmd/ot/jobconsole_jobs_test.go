@@ -54,7 +54,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 34 {
+	if !slices.Equal(got, want) || len(got) != 35 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -157,7 +157,7 @@ func TestTodayOnlyIsExactlyTheFourteenZoned(t *testing.T) {
 
 func TestListedOnlyIsExactlyTheEight(t *testing.T) {
 	t.Parallel()
-	want := []string{"option_ledger", "option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp",
+	want := []string{"option_candidates_jp", "option_ledger", "option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp",
 		"option_open_resolve", "option_open_resolve_gap", "option_open_resolve_jp"}
 	if got := idsOfKind(kindListedOnly); !slices.Equal(got, want) {
 		t.Fatalf("listed_only %v", got)
@@ -169,7 +169,7 @@ func TestListedOnlyIsExactlyTheEight(t *testing.T) {
 
 func TestEveryListedOnlyJobHasReasonAndSentence(t *testing.T) {
 	t.Parallel()
-	codes := []string{"no_lower_time_bound", "no_day_guard", "heavy_and_shares_cap", "caches_failures"}
+	codes := []string{"no_lower_time_bound", "no_day_guard", "heavy_and_shares_cap", "caches_failures", "held_in_scheduler"}
 	for _, r := range jobTable {
 		if r.Kind != kindListedOnly {
 			continue
