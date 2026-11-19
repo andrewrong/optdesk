@@ -120,11 +120,46 @@ describe('TierView', () => {
     expect(page.querySelector('[data-tier=grey_in_the_money] button')!.className).toContain('text-muted-foreground')
     expect(page.querySelector('section[data-tier=fits] [data-row] [data-slot=badge]')!.className).toContain('text-success')
     expect(page.querySelector('section[data-tier=check] [data-row] [data-slot=badge]')!.className).toContain('text-warn')
-    expect(page.querySelector('[data-legend-item=fits]')!.className).toContain('bg-success/10')
-    expect(page.querySelector('[data-legend-item=check]')!.className).toContain('bg-warn/10')
-    expect(page.querySelector('[data-legend-item=grey]')!.className).toContain('bg-muted')
     const label = page.querySelector('section[data-tier=fits] [data-col=arrow] .sr-only')!
     expect(label.textContent).toBe(tiers.columns[0]!.label)
+  })
+
+  it('TestLegendIsOneStrip', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    expect(page.querySelectorAll('[data-legend]')).toHaveLength(1)
+    const items = page.querySelectorAll('[data-legend-item]')
+    expect(items).toHaveLength(4)
+    const pills = [...page.querySelectorAll('[data-legend] [data-slot=badge]')]
+    expect(pills.map((p) => p.textContent)).toEqual(tiers.legend.slice(0, 3).map((i) => i.title))
+    for (const item of items) expect(item.className).not.toMatch(/bg-success\/10|bg-warn\/10|bg-muted/)
+  })
+
+  it('TestTierHeadingNoDoubleWord', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const heads = [
+      page.querySelector('section[data-tier=fits] h3')!,
+      page.querySelector('section[data-tier=check] h3')!,
+      page.querySelector('[data-tier=grey_in_the_money] button')!,
+    ]
+    heads.forEach((h, i) => {
+      const tier = tiers.tiers[i]!
+      expect(h.textContent).toContain(tier.title)
+      const count = (h.textContent ?? '').split(tier.word).length - 1
+      expect(count).toBe(i === 2 ? 1 : 0)
+      if (i < 2) expect(h.querySelector('[data-icon]')!.getAttribute('aria-label')).toBe(tier.word)
+    })
+  })
+
+  it('TestNumericColumnsRightAligned', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const fits = page.querySelector('section[data-tier=fits]')!
+    for (const id of ['margin', 'below_spot', 'premium']) {
+      expect(fits.querySelector(`th[data-col=${id}]`)!.className).toContain('text-right')
+      const cell = fits.querySelector(`[data-row] [data-cell=${id}]`)!
+      expect(cell.className).toContain('text-right')
+    }
+    expect(fits.querySelector('[data-row] [data-cell=contract]')!.className).not.toContain('text-right')
+    expect(fits.querySelector('th[data-col=contract]')!.className).not.toContain('text-right')
   })
 
   it('TestGreyGroupRowsHaveColumns', async () => {

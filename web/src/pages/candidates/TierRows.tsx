@@ -13,7 +13,8 @@ const borders: Record<string, string> = { fits: 'border-l-success', check: 'bord
 const tones = { warn: 'warn', info: 'secondary', none: 'outline' } as const
 const titleTones: Record<string, string> = { fits: 'text-success', check: 'text-warn' }
 const wordVariants: Record<string, 'success' | 'warn' | 'outline'> = { fits: 'success', check: 'warn' }
-const widths = ['w-10', 'w-28', 'w-56', 'w-40', 'w-32', 'w-36', 'sm:min-w-64']
+const widths = ['w-10', 'w-28', 'w-56', 'w-64', 'w-32', 'w-36', 'sm:min-w-64']
+const numeric = new Set(['margin', 'below_spot', 'premium'])
 
 function Hint({ text, children }: { text: string | null; children: React.ReactNode }) {
   if (text === null) return <>{children}</>
@@ -45,13 +46,13 @@ function Badges({ items }: { items: BadgeT[] }) {
 
 function PairCell({ id, pair }: { id: string; pair: Pair }) {
   return (
-    <TableCell data-cell={id} className="align-top max-sm:order-4 max-sm:basis-1/3 max-sm:whitespace-normal">
+    <TableCell data-cell={id} className="text-right align-top max-sm:order-4 max-sm:basis-1/3 max-sm:whitespace-normal">
       {pair.gap ? (
-        <span className="text-muted-foreground">{pair.gap.text}</span>
+        <span className="text-right text-muted-foreground">{pair.gap.text}</span>
       ) : (
         <>
-          <div>{pair.main}</div>
-          {pair.sub !== null ? <div className="text-xs text-muted-foreground">{pair.sub}</div> : null}
+          <div className="num text-right">{pair.main}</div>
+          {pair.sub !== null ? <div className="num text-right text-xs text-muted-foreground sm:whitespace-nowrap">{pair.sub}</div> : null}
         </>
       )}
     </TableCell>
@@ -62,7 +63,7 @@ function TierTitle({ tier }: { tier: Tier }) {
   return (
     <>
       <TierIcon tier={tier} />
-      <span>{tier.word}</span>
+      {tier.collapsed ? <Badge variant="outline">{tier.word}</Badge> : null}
       <span>{tier.title}</span>
     </>
   )
@@ -104,7 +105,7 @@ export function TierHead({ columns }: { columns: TierColumn[] }) {
       <TableHeader>
         <TableRow>
           {columns.map((c, i) => (
-            <TableHead key={c.id} data-col={c.id} className={cn(i === columns.length - 1 && 'min-w-64')}>
+            <TableHead key={c.id} data-col={c.id} className={cn(i === columns.length - 1 && 'min-w-64', numeric.has(c.id) && 'text-right')}>
               {i === 0 ? <span className="sr-only">{c.label}</span> : c.label}
               {c.hint ? (
                 <span data-col-subtitle className="block text-xs font-normal whitespace-normal text-muted-foreground">
@@ -144,7 +145,7 @@ function DataRow({ tier, row }: { tier: Tier; row: TierRow }) {
               </TableCell>
               <TableCell data-cell="contract" className="align-top max-sm:order-3 max-sm:min-w-0 max-sm:flex-1 max-sm:whitespace-normal">
                 <div className="font-medium">{row.contract.name}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="num text-xs text-muted-foreground">
                   {row.contract.strike} {row.contract.expiry} {row.contract.dte}
                 </div>
               </TableCell>
@@ -182,7 +183,7 @@ function TierTable({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
   if (tier.rows.length === 0) return null
   return (
     <div className="overflow-x-auto">
-      <div className="sm:min-w-[60rem]">
+      <div className="sm:min-w-[66rem]">
         <div className="max-sm:hidden">
           <TierHead columns={columns} />
         </div>

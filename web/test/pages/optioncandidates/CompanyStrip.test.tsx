@@ -130,6 +130,30 @@ describe('CompanyStrip', () => {
     }
   })
 
+  it('TestCardLeftEdgeByTier', async () => {
+    const want = { fits: 'border-l-success', check: 'border-l-warn', grey: 'border-l-muted-foreground' } as const
+    for (const id of ['fits', 'check', 'grey'] as const) {
+      const page = await show(<CompanyStrip company={{ ...withLine, tier: { id, word: 'W', glyph: 'G' } }} labels={stripLabels} />)
+      const card = page.querySelector('[data-company]')!
+      expect(card.className).toContain('border-l-4')
+      expect(card.className).toContain(want[id])
+      await act(async () => root?.unmount())
+      host.remove()
+    }
+    const page = await show(<CompanyStrip company={{ ...withLine, tier: undefined }} labels={stripLabels} />)
+    expect(page.querySelector('[data-company]')!.className).not.toMatch(/border-l-(success|warn|muted-foreground)/)
+  })
+
+  it('TestNumbersUseNumClass', async () => {
+    const c = withLine
+    const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
+    expect(page.querySelector('[data-buy] .num')!.textContent).toBe(c.buy_price)
+    expect(page.querySelector('[data-spot] .num')!.textContent).toBe(c.spot_text)
+    expect(page.querySelector('[data-earnings] .num')!.textContent).toBe(c.earnings_text)
+    expect(page.querySelector('[data-valuation] .num')!.textContent).toBe(c.valuation!.line_text)
+    expect([...page.querySelectorAll('[data-counts] .num')].map((e) => e.textContent)).toEqual(['2', '1', '1'])
+  })
+
   it('TestStripShowsValuationSource', async () => {
     const page = await show(<CompanyStrip company={valuationSource} labels={stripLabels} />)
     expect(page.textContent).toContain('$91.20')
