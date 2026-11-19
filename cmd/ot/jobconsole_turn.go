@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -89,7 +90,16 @@ func (h *consoleHost) claimQueued(ctx context.Context) (took bool, run runner.Co
 		}
 		took = true
 	}
+	holder := lockHolderOf(bf)
 	for _, r := range waiting {
+		if since, busy := heldBy(holder, r.Request.JobID); busy {
+			// Decision 5 of docs/design/scheduler-per-job.md: the request waits, still queued and with no expiry,
+			// and shows who holds its job; the next request is taken in the same call.
+			if err := h.phase(ctx, func(c context.Context) error { return h.q.Hold(c, r.ID, r.Request.JobID, since) }); err != nil {
+				h.warn("console hold failed")
+			}
+			continue
+		}
 		claimed, err := h.claim(ctx, r)
 		if err != nil {
 			h.warn("console claim failed")
@@ -101,6 +111,30 @@ func (h *consoleHost) claimQueued(ctx context.Context) (took bool, run runner.Co
 		return true, func(c context.Context) { h.runClaimed(c, r, jobs, bf) }
 	}
 	return took, nil
+}
+
+// lockSource is the optional method of the backfiller that gives the per-job lock set it runs under.
+type lockSource interface {
+	JobLocks() runner.JobLocks
+}
+
+// lockHolderOf finds the read-only lock holder of the backfiller's lock set; nil when it has none, and then no
+// request waits (the race refusal job_running stays).
+func lockHolderOf(bf runner.ForceBackfiller) runner.JobLockHolder {
+	src, ok := bf.(lockSource)
+	if !ok {
+		return nil
+	}
+	h, _ := src.JobLocks().(runner.JobLockHolder)
+	return h
+}
+
+// heldBy tells since when the job is locked; busy is false when it is free or there is no holder.
+func heldBy(h runner.JobLockHolder, job string) (since time.Time, busy bool) {
+	if h == nil {
+		return time.Time{}, false
+	}
+	return h.Holder(job)
 }
 
 // phase runs one store call under the start-phase limit of the injected clock.
