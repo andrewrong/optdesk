@@ -124,3 +124,76 @@ func TestVerdictListsNonNil(t *testing.T) {
 		t.Errorf("lists not empty: %+v", v)
 	}
 }
+
+type blocksTierer struct{}
+
+func (blocksTierer) Judge(in optiontierapi.Input) (optiontierapi.Result, error) {
+	return optiontierapi.Result{
+		Params: in.Params,
+		Blocks: []optiontierapi.CompanyBlock{
+			{
+				Company: "AAA", State: optiontierapi.StateSellable, Best: "21.5000",
+				NFit: 1, NCheck: 1, NOpen: 1,
+				Shown:  []string{"a1", "a2"},
+				Folded: []string{"a3", "a4"},
+				Why:    []optiontierapi.GreyCount{{Code: optiontierapi.FoldOTMLow, N: 1}, {Code: optiontierapi.FoldOverCap, N: 1}},
+			},
+			{
+				Company: "CCC", State: optiontierapi.StateAboveBuy,
+				Shown:  []string{},
+				Folded: []string{"c1"},
+				Why:    []optiontierapi.GreyCount{{Code: "above_buy_price", N: 1}},
+			},
+		},
+	}, nil
+}
+
+// TestResultBlocksContract: a caller reads company blocks from a fake Tierer; the state and fold codes are distinct.
+func TestResultBlocksContract(t *testing.T) {
+	t.Parallel()
+	var tr optiontierapi.Tierer = blocksTierer{}
+	in := input()
+	in.Params.BandOTMMinPct, in.Params.BandOTMMaxPct, in.Params.BandDeltaMin, in.Params.PerCompany = "5", "15", "0.15", 3
+	res, err := tr.Judge(in)
+	if err != nil {
+		t.Fatalf("Judge: %v", err)
+	}
+	if res.Params.PerCompany != 3 || res.Params.BandOTMMinPct != "5" || res.Params.BandOTMMaxPct != "15" || res.Params.BandDeltaMin != "0.15" {
+		t.Errorf("Params echo = %+v", res.Params)
+	}
+	if len(res.Blocks) != 2 {
+		t.Fatalf("Blocks = %d, want 2", len(res.Blocks))
+	}
+	a, c := res.Blocks[0], res.Blocks[1]
+	if a.State != optiontierapi.StateSellable || a.NFit != 1 || a.NCheck != 1 || a.NOpen != 1 || a.Best != "21.5000" {
+		t.Errorf("block AAA = %+v", a)
+	}
+	if !reflect.DeepEqual(a.Shown, []string{"a1", "a2"}) || !reflect.DeepEqual(a.Folded, []string{"a3", "a4"}) {
+		t.Errorf("AAA rows: shown %v folded %v", a.Shown, a.Folded)
+	}
+	n := 0
+	for _, w := range a.Why {
+		n += w.N
+	}
+	if n != len(a.Folded) {
+		t.Errorf("sum of Why = %d, want %d", n, len(a.Folded))
+	}
+	if c.State != optiontierapi.StateAboveBuy || len(c.Shown) != 0 || len(c.Folded) != 1 || c.Why[0].Code != "above_buy_price" {
+		t.Errorf("block CCC = %+v", c)
+	}
+	distinct(t, "state", optiontierapi.StateSellable, optiontierapi.StateOutBand, optiontierapi.StateAboveBuy,
+		optiontierapi.StateNoBuyPrice, optiontierapi.StateNoQuote, optiontierapi.StateBlocked)
+	distinct(t, "fold", optiontierapi.FoldNoOpenInterest, optiontierapi.FoldOTMLow, optiontierapi.FoldOTMHigh,
+		optiontierapi.FoldNoDelta, optiontierapi.FoldDeltaOut, optiontierapi.FoldOverCap)
+}
+
+func distinct(t *testing.T, kind string, codes ...string) {
+	t.Helper()
+	seen := map[string]bool{}
+	for _, c := range codes {
+		if c == "" || seen[c] {
+			t.Errorf("%s code %q is empty or repeated", kind, c)
+		}
+		seen[c] = true
+	}
+}
