@@ -66,3 +66,22 @@ func sumCells(cells []coverage.Cell) []basecheckapi.Cell {
 	}
 	return out
 }
+
+// pairLevelOf is the level of the pair of a cross_check, as Eval takes it for the row the pair is shown on.
+func pairLevelOf(row string, cc crossCheckVM) basecheckapi.PairLevel {
+	return basecheckapi.PairLevel{Dataset: row, Pair: cc.PairID, Level: basecheckapi.Level(cc.Level)}
+}
+
+// attachCrossCheck carries the cross_check object to the payload of the row with the given id.
+func attachCrossCheck(groups []groupVM, row string, cc *crossCheckVM) {
+	if cc == nil {
+		return
+	}
+	for gi := range groups {
+		for ri := range groups[gi].Rows {
+			if groups[gi].Rows[ri].Dataset == row {
+				groups[gi].Rows[ri].CrossCheck = cc
+			}
+		}
+	}
+}

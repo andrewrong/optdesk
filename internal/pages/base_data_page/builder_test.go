@@ -14,10 +14,13 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/andrewrong/optdesk/internal/compute/basecheck"
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/compute/reconapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/basefact"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
+	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 )
 
 const (
@@ -333,5 +336,87 @@ func TestBuildStepTwoFromStepOnePayload(t *testing.T) {
 	label, _ := Hint("chains")
 	if chains["label_zh"] != label {
 		t.Fatalf("label_zh = %v", chains["label_zh"])
+	}
+}
+
+// TestBarsRowLevelIncludesR6: a fail pair over passing checks gives a fail bars row, through the real Evaluate.
+func TestBarsRowLevelIncludesR6(t *testing.T) {
+	t.Parallel()
+	in := reconInput([]reconstore.Run{r6Run()}, basecheckapi.Fail, nil)
+	in.Eval = basecheck.Evaluate
+	in.Facts = fakeFacts{res: basefact.Result{Facts: []basefact.Fact{{Dataset: "bars", Rule: "rows", N: 40}}, Failed: []string{}}}
+	// Not validated: the real Evaluate puts a note check of an empty level on the flex row, which is not this entry's.
+	b, err := Build(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range m["groups"].([]any) {
+		for _, r := range g.(map[string]any)["rows"].([]any) {
+			if row := r.(map[string]any); row["dataset"] == "bars" {
+				if row["level"] != "fail" {
+					t.Fatalf("bars level = %v", row["level"])
+				}
+				for _, c := range row["checks"].([]any) {
+					if c.(map[string]any)["level"] == "fail" {
+						t.Fatalf("a check failed: %v", c)
+					}
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("no bars row")
+}
+
+// TestReaderFailureAddsGap: a failed reader adds the gap view_unavailable and gives Eval no pairs.
+func TestReaderFailureAddsGap(t *testing.T) {
+	t.Parallel()
+	var got basecheckapi.Input
+	in := reconInput(nil, basecheckapi.Pass, nil)
+	in.Eval = fakeEval{got: &got}.Func()
+	in.Recon = fakeRecon{err: errors.New("down")}
+	m, _ := build(t, in)
+	if r := gapReasons(m); len(r) != 1 || r[0] != "view_unavailable" {
+		t.Fatalf("gaps = %v", r)
+	}
+	if len(got.Pairs) != 0 {
+		t.Fatalf("Pairs = %v", got.Pairs)
+	}
+}
+
+// TestVerdictIsTheInjectedFunction: the level of the pair is what the injected function says, and Eval gets it for
+// the row bars and pair R6.
+func TestVerdictIsTheInjectedFunction(t *testing.T) {
+	t.Parallel()
+	for _, level := range []basecheckapi.Level{basecheckapi.Pass, basecheckapi.Warn, basecheckapi.Fail} {
+		var got basecheckapi.Input
+		var calls []reconapi.Output
+		in := reconInput([]reconstore.Run{r6Run()}, level, &calls)
+		in.Eval = fakeEval{got: &got}.Func()
+		cc := crossOf(t, in)
+		if cc["level"] != string(level) {
+			t.Fatalf("level = %v, want %s", cc["level"], level)
+		}
+		want := basecheckapi.PairLevel{Dataset: "bars", Pair: "R6", Level: level}
+		if len(got.Pairs) != 1 || got.Pairs[0] != want {
+			t.Fatalf("Pairs = %v", got.Pairs)
+		}
+		if len(calls) != 1 || calls[0].N != 90 || calls[0].Diff != 1 || calls[0].MissingOurs != 1 {
+			t.Fatalf("calls = %+v", calls)
+		}
+	}
+}
+
+// TestNoReaderNoCrossCheck: without a reader the page has no cross_check and no pairs, and no gap.
+func TestNoReaderNoCrossCheck(t *testing.T) {
+	t.Parallel()
+	var got basecheckapi.Input
+	m, _ := build(t, defaultInput(fakeEval{got: &got}))
+	if len(got.Pairs) != 0 || len(gapReasons(m)) != 0 {
+		t.Fatalf("pairs %v gaps %v", got.Pairs, gapReasons(m))
 	}
 }

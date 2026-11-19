@@ -9,16 +9,22 @@ import (
 	_ "time/tzdata" // the zone database travels with the binary
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/compute/reconapi"
 	"github.com/andrewrong/optdesk/internal/store/basefact"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
+	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 )
 
 // Input is what Build reads: the clock as a value, the fact reader, the coverage reader and the verdict function.
+// Recon is the reader of the cross-check runs (nil means no reader: the page has no cross_check); Verdict makes the
+// level of a pair from a run and is needed when Recon is set.
 type Input struct {
-	Now   time.Time
-	Facts basefact.Reader
-	Cov   coverage.Reader
-	Eval  basecheckapi.Func
+	Now     time.Time
+	Facts   basefact.Reader
+	Cov     coverage.Reader
+	Eval    basecheckapi.Func
+	Recon   reconstore.Reader
+	Verdict reconapi.VerdictFunc
 }
 
 type checkVM struct {
@@ -36,16 +42,17 @@ type checkVM struct {
 }
 
 type rowVM struct {
-	Dataset       string    `json:"dataset"`
-	Label         string    `json:"label"`
-	LabelZh       string    `json:"label_zh"`
-	Level         string    `json:"level"`
-	NewestValue   string    `json:"newest_value"`
-	NewestDay     *string   `json:"newest_day"`
-	NewestSubject string    `json:"newest_subject"`
-	AgeText       string    `json:"age_text"`
-	FailedSummary string    `json:"failed_summary"`
-	Checks        []checkVM `json:"checks"`
+	Dataset       string        `json:"dataset"`
+	Label         string        `json:"label"`
+	LabelZh       string        `json:"label_zh"`
+	Level         string        `json:"level"`
+	NewestValue   string        `json:"newest_value"`
+	NewestDay     *string       `json:"newest_day"`
+	NewestSubject string        `json:"newest_subject"`
+	AgeText       string        `json:"age_text"`
+	FailedSummary string        `json:"failed_summary"`
+	Checks        []checkVM     `json:"checks"`
+	CrossCheck    *crossCheckVM `json:"cross_check,omitempty"`
 }
 
 type groupVM struct {

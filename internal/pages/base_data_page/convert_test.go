@@ -45,3 +45,21 @@ func TestCellsSumLedgerDatasetsPerRow(t *testing.T) {
 		}
 	}
 }
+
+// TestPairLevelAndAttach: the pair level is for the given row and the object lands on that row only.
+func TestPairLevelAndAttach(t *testing.T) {
+	t.Parallel()
+	cc := crossCheckVM{PairID: "R6", Level: "warn"}
+	if got := pairLevelOf("bars", cc); got != (basecheckapi.PairLevel{Dataset: "bars", Pair: "R6", Level: basecheckapi.Warn}) {
+		t.Fatalf("got %+v", got)
+	}
+	groups := []groupVM{{Rows: []rowVM{{Dataset: "bars"}, {Dataset: "quotes"}}}}
+	attachCrossCheck(groups, "bars", &cc)
+	if groups[0].Rows[0].CrossCheck != &cc || groups[0].Rows[1].CrossCheck != nil {
+		t.Fatalf("groups = %+v", groups)
+	}
+	attachCrossCheck(groups, "quotes", nil)
+	if groups[0].Rows[1].CrossCheck != nil {
+		t.Fatal("nil attached")
+	}
+}

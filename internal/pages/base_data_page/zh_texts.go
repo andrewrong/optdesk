@@ -84,3 +84,23 @@ const (
 	termCoverage = "coverage"
 	textCoverage = "覆盖：计划采集的键里实际存下了多少。"
 )
+
+// Texts of the cross-check of the bars row (entry 22).
+const (
+	reasonNoRunZh   = "尚未运行"
+	reasonFailedZh  = "未能比对："
+	skippedPrefixZh = "未比对："
+	comparedFormat  = "已比对 %d 个，共 %d 个"
+	hintR6          = "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整"
+)
+
+// Chinese names of the reason codes of a run.
+const (
+	nameRateLimited  = "被限流"
+	nameNetwork      = "网络错误"
+	nameTimeout      = "超时"
+	nameSourceChange = "数据源格式变了"
+	nameNoData       = "数据源没有数据"
+	nameSourceLacks  = "数据源没有这一天"
+	toleranceJoinZh  = "；"
+)

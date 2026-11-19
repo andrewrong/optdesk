@@ -64,13 +64,19 @@ func ruleKnown(row, rule string) bool {
 	return false
 }
 
-var errNoEval = errors.New("base_data_page: no Eval")
+var (
+	errNoEval    = errors.New("base_data_page: no Eval")
+	errNoVerdict = errors.New("base_data_page: Recon is set and Verdict is not")
+)
 
 // Build returns the JSON of page.base_data_page.v1. A failed view group, a failed fact read or a failed coverage
 // read gives a gap and never an error.
 func Build(ctx context.Context, in Input) ([]byte, error) {
 	if in.Eval == nil {
 		return nil, errNoEval
+	}
+	if in.Recon != nil && in.Verdict == nil {
+		return nil, errNoVerdict
 	}
 	cal := readCalendars(ctx, in)
 	vm := viewModel{Schema: pageName, Version: versionDoc, RunID: runID, BuiltAt: in.Now.Format(time.RFC3339),
@@ -95,9 +101,14 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 	if cal.failed {
 		vm.Gaps = append(vm.Gaps, Gap{gapKind, reasonCoverage, gapCoverageText})
 	}
+	cc, pairs, err := readCrossCheck(ctx, in, cal.days[calUS])
+	if err != nil {
+		vm.Gaps = append(vm.Gaps, Gap{gapKind, reasonView, gapReconText})
+	}
 	out := in.Eval(basecheckapi.Input{Facts: convertFacts(res.Facts), NotRead: notRead, Cells: sumCells(cal.cells),
-		Days: cal.days, Sessions: cal.sessions})
+		Days: cal.days, Sessions: cal.sessions, Pairs: pairs})
 	vm.Groups = groupsOf(out)
+	attachCrossCheck(vm.Groups, barsRowID, cc)
 	vm.Top = topVM{Level: string(out.Level), Counts: countsOf(out.Counts)}
 	c := vm.Top.Counts
 	vm.Top.TextZh = fmt.Sprintf(topTextFormat, c.Pass+c.Warn+c.Fail+c.Unknown, c.Pass, c.Warn, c.Fail, c.Unknown)

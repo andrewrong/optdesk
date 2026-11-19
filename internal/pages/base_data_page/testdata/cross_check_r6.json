@@ -1,0 +1,20 @@
+{
+  "pair_id": "R6",
+  "level": "warn",
+  "n": 90,
+  "matched": 88,
+  "diff": 1,
+  "missing": 1,
+  "skipped": 10,
+  "tolerance_text": "收盘价相差不超过 0.01%；已比对 90 个，共 100 个",
+  "source_id": "yfinance",
+  "run_at": "2026-11-17T23:05:00Z",
+  "items": [
+    {"key": "2026-11-12", "ours": "140.00", "other": "70.00", "diff": "70.00", "kind": "diff",
+     "hint_zh": "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整", "company": "NVDA"},
+    {"key": "2026-11-13", "ours": "", "other": "230.10", "diff": "", "kind": "missing_ours",
+     "hint_zh": "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整", "company": "AAPL"},
+    {"key": "2026-11-13", "ours": "", "other": "", "diff": "", "kind": "skipped",
+     "hint_zh": "未比对：数据源没有这一天", "company": "7203.T"}
+  ]
+}
