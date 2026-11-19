@@ -5,6 +5,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const (
@@ -43,7 +44,15 @@ func (r *reconciler) logSilent(id string, day contracts.Day, left int) {
 		slog.String("job", id), slog.String("day", string(day)), slog.Int("keys_left", left))
 }
 
-// keysLeft counts the keys of the job among keys.
-func (r *reconciler) keysLeft(keys []contracts.ExpectedKey, p plan, id string) int {
-	return len(keysOfJob(keys, p, id))
+// skipSilent lists k not_reached with the reason broker_silent when its job has reached the stop count; it
+// runs nothing and writes nothing. It reports whether it skipped k.
+func (r *reconciler) skipSilent(
+	res *runner.BackfillResult, u unanswered, id string, k contracts.ExpectedKey, present map[contracts.ExpectedKey]store.PresentStatus,
+) bool {
+	if !u.silent(id) {
+		return false
+	}
+	r.notReached(res, []contracts.ExpectedKey{k}, present, reasonBrokerSilent)
+	fillLists(res, k, res.Keys[len(res.Keys)-1])
+	return true
 }
