@@ -272,9 +272,13 @@ func (s noOpenStore) PutOption(context.Context, openquote.OptionRef) error { ret
 func (s noOpenStore) ListOptions(context.Context, int64) ([]openquote.OptionRef, error) {
 	return nil, s.err
 }
+func (s noOpenStore) OptionOpenSlot(context.Context, contracts.Day, string, []int64) ([]contracts.OptionOpen, error) {
+	return nil, s.err
+}
 func (s noOpenStore) Close() error { return nil }
 
 var _ openquote.Stores = noOpenStore{}
+var _ openquote.OptionOpenSlotReader = noOpenStore{}
 
 // ifOpenDSN is the startOff of the four families: off (by off) only when the DSN line is set. A family without
 // the line is left out and has no job, so its id must not be listed as disabled (the tests that count the
