@@ -158,26 +158,38 @@ func TestApplyDoesNotChangeInput(t *testing.T) {
 	}
 }
 
-func TestApplyKeyIsIssuer(t *testing.T) {
+func TestApplyKeyIsContractSymbol(t *testing.T) {
 	t.Parallel()
-	// The contract symbol differs from the issuer: the issuer decides the match.
+	// The issuer is SEC key text: the contract symbol decides the match.
 	out, err := buyprice.Apply(context.Background(), &fakeReader{st: state()}, &fakeResolver{},
-		[]jobs.WatchEntry{entry("AAA", "AAA.X", "USD", ""), entry("ZZZ", "AAA", "USD", "")})
+		[]jobs.WatchEntry{entry("cik:0000320193", "AAA", "USD", ""), entry("AAA", "ZZZ", "USD", "")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out[0].BuySource != buypriceapi.SourceValuation {
-		t.Errorf("issuer match: got %q", out[0].BuySource)
+	if out[0].BuySource != buypriceapi.SourceValuation || out[0].BuyPrice != "91.123456" {
+		t.Errorf("symbol match: got %q %q", out[0].BuySource, out[0].BuyPrice)
 	}
 	if out[1].BuySource != "" {
-		t.Errorf("symbol must not match: got %q", out[1].BuySource)
+		t.Errorf("issuer must not match: got %q", out[1].BuySource)
 	}
 	res := &fakeResolver{}
-	if _, err := buyprice.Apply(context.Background(), &fakeReader{st: state()}, res, []jobs.WatchEntry{entry("AAA", "AAA.X", "JPY", "")}); err != nil {
+	if _, err := buyprice.Apply(context.Background(), &fakeReader{st: state()}, res, []jobs.WatchEntry{entry("AAA.X", "AAA", "JPY", "")}); err != nil {
 		t.Fatal(err)
 	}
 	if res.seen[0].Symbol != "AAA" || res.seen[0].Currency != "JPY" {
 		t.Errorf("input = %+v", res.seen[0])
+	}
+}
+
+func TestApplyEmptySymbolKeepsHand(t *testing.T) {
+	t.Parallel()
+	out, err := buyprice.Apply(context.Background(), &fakeReader{st: state()}, &fakeResolver{},
+		[]jobs.WatchEntry{entry("AAA", "", "USD", "41.00")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out[0].BuyPrice != "41.00" || out[0].BuySource != buypriceapi.SourceHand {
+		t.Errorf("got %q %q", out[0].BuyPrice, out[0].BuySource)
 	}
 }
 
