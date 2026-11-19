@@ -15,40 +15,39 @@ func TestStrategyReplayPageFixturesValidate(t *testing.T) {
 	}
 }
 
-// TestStrategyReplayPageFixtureShapes: form has six default fields, report has an under-minimum
-// line with a null figure, empty has no lines and an empty_text, off has no form and form_off.
-func TestStrategyReplayPageFixtureShapes(t *testing.T) {
+func loadStrategyReplay(t *testing.T, n string) map[string]any {
+	t.Helper()
+	return readRaw(t, optionPageFixturesDir, "page.strategy_replay_page.v1."+n+".json")
+}
+
+// TestStrategyReplayFormFixture: view form, six fields in order, each with its default.
+func TestStrategyReplayFormFixture(t *testing.T) {
 	t.Parallel()
-	load := func(n string) map[string]any {
-		return readRaw(t, optionPageFixturesDir, "page.strategy_replay_page.v1."+n+".json")
-	}
-	f := load("form")
+	f := loadStrategyReplay(t, "form")
 	if f["view"] != "form" {
 		t.Errorf("form view = %v", f["view"])
 	}
-	var names []string
-	values := map[string]any{}
-	for _, x := range f["form"].(map[string]any)["fields"].([]any) {
-		m := x.(map[string]any)
-		names = append(names, m["name"].(string))
-		values[m["name"].(string)] = m["value"]
+	want := []struct{ name, value string }{
+		{"lots", "short_puts"}, {"alias", ""}, {"as_of", ""},
+		{"early_keep", "0.50"}, {"early_dte", "21"}, {"min_lots", "20"},
 	}
-	defaults := map[string]string{"lots": "short_puts", "alias": "", "as_of": "", "early_keep": "0.50", "early_dte": "21", "min_lots": "20"}
-	for n, v := range defaults {
-		if values[n] != v {
-			t.Errorf("default of %s = %v, want %q", n, values[n], v)
+	fields := f["form"].(map[string]any)["fields"].([]any)
+	if len(fields) != len(want) {
+		t.Fatalf("%d fields, want %d", len(fields), len(want))
+	}
+	for i, w := range want {
+		m := fields[i].(map[string]any)
+		if m["name"] != w.name || m["value"] != w.value {
+			t.Errorf("field %d = %v/%v, want %s/%q", i, m["name"], m["value"], w.name, w.value)
 		}
 	}
-	want := []string{"lots", "alias", "as_of", "early_keep", "early_dte", "min_lots"}
-	if len(names) != len(want) {
-		t.Fatalf("fields = %v", names)
-	}
-	for i := range want {
-		if names[i] != want[i] {
-			t.Errorf("field %d = %s, want %s", i, names[i], want[i])
-		}
-	}
-	r := load("report")
+}
+
+// TestStrategyReplayReportFixture: view report with an under-minimum line carrying minimum_text
+// and a null figure.
+func TestStrategyReplayReportFixture(t *testing.T) {
+	t.Parallel()
+	r := loadStrategyReplay(t, "report")
 	if r["view"] != "report" {
 		t.Errorf("report view = %v", r["view"])
 	}
@@ -65,7 +64,12 @@ func TestStrategyReplayPageFixtureShapes(t *testing.T) {
 	if !under || !null {
 		t.Errorf("report: under-minimum line %v, null figure %v", under, null)
 	}
-	ed := load("empty")
+}
+
+// TestStrategyReplayEmptyFixture: view report, zero lots, no lines, empty_text set.
+func TestStrategyReplayEmptyFixture(t *testing.T) {
+	t.Parallel()
+	ed := loadStrategyReplay(t, "empty")
 	if ed["view"] != "report" {
 		t.Errorf("empty view = %v", ed["view"])
 	}
@@ -73,7 +77,12 @@ func TestStrategyReplayPageFixtureShapes(t *testing.T) {
 	if e["counts"].(map[string]any)["lots"] != float64(0) || len(e["lines"].([]any)) != 0 || e["empty_text"] == nil {
 		t.Errorf("empty report = %v", e)
 	}
-	o := load("off")
+}
+
+// TestStrategyReplayOffFixture: view form, form null, the one notice form_off.
+func TestStrategyReplayOffFixture(t *testing.T) {
+	t.Parallel()
+	o := loadStrategyReplay(t, "off")
 	n := o["notices"].([]any)
 	if o["view"] != "form" || o["form"] != nil || len(n) != 1 || n[0].(map[string]any)["key"] != "form_off" {
 		t.Errorf("off = %v", o)
