@@ -35,7 +35,7 @@ describe('base data page', () => {
   it('renders one row per dataset with its verdict', async () => {
     const h = await render(ok)
     expect([...(h.querySelector('table') as HTMLElement).querySelectorAll('th')].map((c) => c.textContent)).toEqual([
-      'Dataset', 'Verdict', 'Newest value', 'Date', 'Age', 'Failed checks',
+      'Dataset', 'Verdict', 'Newest value', 'Date', 'Age', 'Failed checks', 'Cross-check',
     ])
     expect([...h.querySelectorAll('tr[data-dataset]')].map((r) => r.getAttribute('data-dataset'))).toEqual(['quotes', 'option_chains', 'fx'])
     const chains = rowOf(h, 'option_chains')
