@@ -210,7 +210,7 @@ func TestNoSpotReason(t *testing.T) {
 func TestNoteNamesDGS3MO(t *testing.T) {
 	t.Parallel()
 	p := buildPage(t, map[string][]store.Candidate{"2026-11-09/short_put": {okPut(1)}}, buildDay)
-	if !slices.Contains(p.Notes, "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial.") {
+	if !slices.Contains(p.Notes, "bid 与预测价比较所用的现金利率，对所有币种都是 DGS3MO；这是试用口径。") {
 		t.Errorf("notes = %v", p.Notes)
 	}
 	for _, c := range p.Groups[0].Main.Columns {

@@ -29,3 +29,15 @@ func buySourceBadge(code string) *badgeView {
 	}
 	return &badgeView{Code: code, Label: txt.label, Gloss: txt.gloss, Tone: badgeToneInfo}
 }
+
+// stripSourceBadge is the badge of the company card: the Chinese word for a hand price or for a valuation, nil for none
+// or a code with no text. The old buy_source badge is made by buySourceBadge and is not changed.
+func stripSourceBadge(code string) *badgeView {
+	switch code {
+	case buypriceapi.SourceHand:
+		return &badgeView{Code: code, Label: zhSourceHand, Gloss: zhBuySourceHand, Tone: badgeToneInfo}
+	case buypriceapi.SourceValuation:
+		return &badgeView{Code: code, Label: zhSourceValue, Gloss: zhBuySourceValuation, Tone: badgeToneInfo}
+	}
+	return nil
+}

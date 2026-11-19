@@ -26,19 +26,19 @@ func TestTiersFromTierer(t *testing.T) {
 	f := &fakeTierer{res: resultOf(v)}
 	view := buildTiersOf(t, tierConfig(rows, f))
 	fits := tierByID(view, "fits")
-	if fits == nil || len(fits.Rows) != 1 || fits.Title != "1 fit your conditions" || fits.Word != "Fits" || fits.Icon != "check" || fits.Collapsed {
+	if fits == nil || len(fits.Rows) != 1 || fits.Title != "适合 1" || fits.Word != "适合" || fits.Icon != "check" || fits.Collapsed {
 		t.Fatalf("fits = %+v", fits)
 	}
 	r := fits.Rows[0]
-	if r.ID != v.Key || r.Margin.Main != "6.0%" || deref(r.Margin.Sub) != "BE $84.58 vs $90.00" ||
-		r.BelowSpot.Main != "12.4%" || deref(r.BelowSpot.Sub) != "1.3 moves*" ||
-		r.Premium.Main != "$42.00" || deref(r.Premium.Sub) != "5.8%/yr" {
+	if r.ID != v.Key || r.Margin.Main != "6.0%" || deref(r.Margin.Sub) != "保本点 $84.58 / 买入价 $90.00" ||
+		r.BelowSpot.Main != "12.4%" || deref(r.BelowSpot.Sub) != "1.3 个预期波动*" ||
+		r.Premium.Main != "$42.00" || deref(r.Premium.Sub) != "5.8% / 年" {
 		t.Errorf("row = %+v", r)
 	}
-	if len(r.Notes) != 1 || r.Notes[0].Code != "thin_premium" || r.Notes[0].Label != "Thin premium" || r.Line != nil {
+	if len(r.Notes) != 1 || r.Notes[0].Code != "thin_premium" || r.Notes[0].Label != "权利金薄" || r.Line != nil {
 		t.Errorf("notes = %+v line %v", r.Notes, r.Line)
 	}
-	if r.Contract != (contractView{Name: "AAA", Strike: "$85.00", Expiry: "2026-12-18", DTE: "39d"}) {
+	if r.Contract != (contractView{Name: "AAA", Strike: "$85.00", Expiry: "2026-12-18", DTE: "39 天"}) {
 		t.Errorf("contract = %+v", r.Contract)
 	}
 	if f.calls() != 1 {
@@ -61,13 +61,13 @@ func TestTiersTierOrderAndCollapsed(t *testing.T) {
 			t.Errorf("%s collapsed = %v", tr.ID, tr.Collapsed)
 		}
 	}
-	if tr := tierByID(view, "fits"); len(tr.Rows) != 0 || tr.Title != "0 fit your conditions" {
+	if tr := tierByID(view, "fits"); len(tr.Rows) != 0 || tr.Title != "适合 0" {
 		t.Errorf("empty fits = %+v", tr)
 	}
-	if tr := tierByID(view, "grey_no_buy_price"); tr.Title != "1 not judged: no buy price" || tr.Icon != "minus" || tr.Word != "Not judged" {
+	if tr := tierByID(view, "grey_no_buy_price"); tr.Title != "1 行：没有买入价" || tr.Icon != "minus" || tr.Word != "未判定" {
 		t.Errorf("grey = %+v", tr)
 	}
-	if tr := tierByID(view, "check"); tr.Icon != "alert" || tr.Title != "1 to check" {
+	if tr := tierByID(view, "check"); tr.Icon != "alert" || tr.Title != "待查 1" {
 		t.Errorf("check = %+v", tr)
 	}
 }
@@ -124,7 +124,7 @@ func TestCommonMarkSaidOnce(t *testing.T) {
 	res.Common = []string{"earnings_unconfirmed"}
 	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: res}))
 	if len(view.Common) != 1 || view.Common[0].Code != "earnings_unconfirmed" ||
-		!strings.HasPrefix(view.Common[0].Gloss, "本次运行的每一行都有：Earnings unconfirmed。") ||
+		!strings.HasPrefix(view.Common[0].Gloss, "本次运行的每一行都有：财报日未确认。") ||
 		!strings.HasSuffix(view.Common[0].Gloss, "这不会改变任何一行的档位。") {
 		t.Fatalf("common = %+v", view.Common)
 	}
@@ -359,7 +359,7 @@ func TestKeptNoteOnce(t *testing.T) {
 	if view.KeptNote == nil || *view.KeptNote != "一行可以有几个原因，所以各项行数相加可以大于总行数。" {
 		t.Errorf("kept_note = %v", view.KeptNote)
 	}
-	if view.StoredTitle != "原始表格" {
+	if view.StoredTitle != "已存表格" {
 		t.Errorf("stored_title = %q", view.StoredTitle)
 	}
 	b, err := json.Marshal(view)

@@ -22,6 +22,14 @@ type staleLabel struct {
 	Text     string `json:"text"`
 }
 
+// headLabels are the words of the page head and the text of the run status.
+type headLabels struct {
+	DataDay       string `json:"data_day"`
+	RunStatus     string `json:"run_status"`
+	RunStatusText string `json:"run_status_text"`
+	RuleVersion   string `json:"rule_version"`
+}
+
 type viewModel struct {
 	Schema        string       `json:"schema"`
 	SchemaVersion int          `json:"schema_version"`
@@ -38,6 +46,7 @@ type viewModel struct {
 	ChainDay      *string      `json:"chain_day"`
 	ComputedAt    *string      `json:"computed_at"`
 	RuleVersion   *string      `json:"rule_version"`
+	HeadLabels    headLabels   `json:"head_labels"`
 	EstimateNote  string       `json:"estimate_note"`
 	Groups        []group      `json:"groups"`
 	// ShortPutList is the grouped short list, omitted without a Shortlist reader or short-put rows.
@@ -116,6 +125,10 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 		if g.Gap != nil {
 			vm.RunStatus = "partial"
 		}
+	}
+	vm.HeadLabels = headLabels{DataDay: zhHeadDataDay, RunStatus: zhHeadRunStatus, RunStatusText: zhRunStatusOK, RuleVersion: zhHeadRuleVer}
+	if vm.RunStatus == "partial" {
+		vm.HeadLabels.RunStatusText = zhRunStatusPart
 	}
 	return json.Marshal(vm)
 }

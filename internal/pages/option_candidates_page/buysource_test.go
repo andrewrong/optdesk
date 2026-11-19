@@ -198,7 +198,7 @@ func TestBuySourceDoesNotChangeTiers(t *testing.T) {
 	a, b := buildTiersOf(t, with), buildTiersOf(t, without)
 	for _, v := range []*tiersView{a, b} {
 		for i := range v.Companies {
-			v.Companies[i].BuySource = nil
+			v.Companies[i].BuySource, v.Companies[i].SourceBadge, v.Companies[i].source = nil, nil, ""
 		}
 	}
 	if !reflect.DeepEqual(a, b) {

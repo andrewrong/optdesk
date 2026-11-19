@@ -53,12 +53,10 @@ func legendOf(res optiontierapi.Result, f tierFacts, n tierCounts) []legendItem 
 		cash = cashBasisHead + cashDayOf(f) + cashBasisTail + cashAgeHead + strconv.Itoa(res.Params.MaxCashAgeDays) + cashAgeTail
 	}
 	return []legendItem{
-		{Tier: tierFitsID, Title: legendFitsTitle + countOf(n.fits),
+		{Tier: tierFitsID, Title: legendFitsTitle + strconv.Itoa(n.fits),
 			Text: explainFits(res, f) + thinSentenceHead + res.Params.ThinDelta + thinSentenceTail},
-		{Tier: tierCheckID, Title: legendCheckTitle + countOf(n.check), Text: explainCheck},
-		{Tier: legendGreyTier, Title: legendGreyTitle + countOf(n.grey), Text: explainGrey},
+		{Tier: tierCheckID, Title: legendCheckTitle + strconv.Itoa(n.check), Text: explainCheck},
+		{Tier: legendGreyTier, Title: legendGreyTitle + strconv.Itoa(n.grey), Text: explainGrey},
 		{Tier: legendCashTier, Title: legendCashTitle, Text: cash},
 	}
 }
-
-func countOf(n int) string { return " (" + strconv.Itoa(n) + ")" }

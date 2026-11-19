@@ -13,20 +13,26 @@
   ],
   "run_status": "partial",
   "stale": null,
-  "title": "Option candidates",
+  "title": "期权候选",
   "notes": [
-    "Japanese option candidates are a separate group in yen when a yen reader is set",
-    "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
+    "日本期权候选单独成组；设置了日元数据源时，金额以日元计。",
+    "bid 与预测价比较所用的现金利率，对所有币种都是 DGS3MO；这是试用口径。"
   ],
   "gaps": [],
   "chain_day": "2026-11-09",
   "computed_at": "2026-11-09T21:30:00+00:00",
   "rule_version": "r1",
-  "estimate_note": "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price",
+  "head_labels": {
+    "data_day": "数据日",
+    "run_status": "运行状态",
+    "run_status_text": "部分完成",
+    "rule_version": "规则版本"
+  },
+  "estimate_note": "bid（收盘估计）是收盘时的 bid，按下一个交易日卖出来估计，不是成交价。",
   "groups": [
     {
       "kind": "short_put",
-      "title": "Short put",
+      "title": "先卖出看跌",
       "day": "2026-11-09",
       "stale": false,
       "counts": {
@@ -888,7 +894,7 @@
     },
     {
       "kind": "covered_call",
-      "title": "Covered call",
+      "title": "备兑看涨",
       "day": null,
       "stale": false,
       "counts": {
@@ -906,7 +912,7 @@
     },
     {
       "kind": "held_call_guard",
-      "title": "Held call guard",
+      "title": "持仓看涨保护",
       "day": null,
       "stale": false,
       "counts": {
@@ -941,14 +947,34 @@
           "label": "Hand price",
           "gloss": "你自己在 Plan 的价格线里手填的买入价。",
           "tone": "info"
+        },
+        "tier": {
+          "id": "fits",
+          "word": "适合",
+          "glyph": "✓"
+        },
+        "count_parts": {
+          "fits": "2",
+          "check": "1",
+          "grey": "1"
+        },
+        "spot_text": "$96.50",
+        "spot_note": "存档 11-09",
+        "price_note": null,
+        "earnings_text": "未知",
+        "source_badge": {
+          "code": "hand",
+          "label": "手填",
+          "gloss": "你自己在 Plan 的价格线里手填的买入价。",
+          "tone": "info"
         }
       }
     ],
     "common": [
       {
         "code": "earnings_unconfirmed",
-        "label": "Earnings unconfirmed",
-        "gloss": "本次运行的每一行都有：Earnings unconfirmed。财报日来自数据商，没有人工核实，不改变档位。这不会改变任何一行的档位。"
+        "label": "财报日未确认",
+        "gloss": "本次运行的每一行都有：财报日未确认。财报日来自数据商，没有人工核实，不改变档位。这不会改变任何一行的档位。"
       }
     ],
     "kept": "未进入 Fits 的原因（行数）：没有买入价 1；价内 1；没有未平仓量 1",
@@ -956,68 +982,68 @@
     "legend": [
       {
         "tier": "fits",
-        "title": "✓ Fits (2)",
+        "title": "✓ 适合 2",
         "text": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。|delta| 低于 0.15 时权利金薄，仍然满足条件。"
       },
       {
         "tier": "check",
-        "title": "! Check (1)",
+        "title": "! 待查 1",
         "text": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
       },
       {
         "tier": "grey",
-        "title": "– Not judged (2)",
+        "title": "– 未判定 2",
         "text": "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。"
       },
       {
         "tier": "cash",
-        "title": "Account cash",
+        "title": "账户现金",
         "text": "现金：每一行单独对照一个账户的可用现金（已扣除已卖出的 put 占用的行权价），截至 2026-11-09；不在各行之间扣减，也不替你选账户。现金记录最多早 3 天。"
       }
     ],
     "columns": [
       {
         "id": "arrow",
-        "label": "Details",
+        "label": "详情",
         "hint": null
       },
       {
         "id": "tier",
-        "label": "Tier",
+        "label": "档位",
         "hint": "档位：满足条件、需要再看，或未评判。；数据日 2026-11-09"
       },
       {
         "id": "contract",
-        "label": "Contract",
+        "label": "合约",
         "hint": "合约：标的、行权价、到期日和剩余天数。；数据日 2026-11-09"
       },
       {
         "id": "margin",
-        "label": "Margin of safety",
-        "hint": "安全边际：保本点（行权价减 bid）比你的买入价低多少，占买入价的百分比。；数据日 2026-11-09"
+        "label": "安全边际",
+        "hint": "安全边际：保本点比买入价低多少，占买入价的百分比。；数据日 2026-11-09"
       },
       {
         "id": "below_spot",
-        "label": "Below spot",
-        "hint": "距现价：保本点比现价低多少；moves* = (现价 − 保本点) / (现价 × 本合约 IV × sqrt(年数))，即几个预期波动。；数据日 2026-11-09"
+        "label": "距现价",
+        "hint": "距现价：保本点比现价低多少；* = 几个预期波动。；数据日 2026-11-09"
       },
       {
         "id": "premium",
-        "label": "Premium / yield",
-        "hint": "权利金：bid 乘以乘数得每份合约的钱；年化收益只按时间价值除以行权价计算。；数据日 2026-11-09"
+        "label": "权利金 / 年化",
+        "hint": "权利金：每份合约收到的钱，以及按时间价值算的年化。；数据日 2026-11-09"
       },
       {
         "id": "badges",
-        "label": "Badges",
-        "hint": "徽标：需要再看一眼的地方；琥珀色的会让这一行落到 Check。；数据日 2026-11-09"
+        "label": "徽标",
+        "hint": "徽标：需要再看一眼的地方；琥珀色的会让这一行落到待查。；数据日 2026-11-09"
       }
     ],
     "tiers": [
       {
         "id": "fits",
-        "word": "Fits",
+        "word": "适合",
         "icon": "check",
-        "title": "2 fit your conditions",
+        "title": "适合 2",
         "explain": "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 0.3（默认值）；现金够付全额行权价（已扣除已卖出的 put 占用的行权价）。这不是买入建议。",
         "collapsed": false,
         "rows": [
@@ -1028,28 +1054,28 @@
               "name": "AAA",
               "strike": "$85.00",
               "expiry": "2026-12-18",
-              "dte": "39d"
+              "dte": "39 天"
             },
             "margin": {
               "main": "6.0%",
-              "sub": "BE $84.58 vs $90.00",
+              "sub": "保本点 $84.58 / 买入价 $90.00",
               "gap": null
             },
             "below_spot": {
               "main": "12.4%",
-              "sub": "1.3 moves*",
+              "sub": "1.3 个预期波动*",
               "gap": null
             },
             "premium": {
               "main": "$42.00",
-              "sub": "5.8%/yr",
+              "sub": "5.8% / 年",
               "gap": null
             },
             "badges": [],
             "notes": [
               {
                 "code": "thin_premium",
-                "label": "Thin premium",
+                "label": "权利金薄",
                 "gloss": "|delta| 低于 0.15，权利金薄，仍然满足条件。",
                 "tone": "none"
               }
@@ -1239,21 +1265,21 @@
               "name": "AAA",
               "strike": "$90.00",
               "expiry": "2026-12-18",
-              "dte": "39d"
+              "dte": "39 天"
             },
             "margin": {
               "main": "6.0%",
-              "sub": "BE $84.58 vs $90.00",
+              "sub": "保本点 $84.58 / 买入价 $90.00",
               "gap": null
             },
             "below_spot": {
               "main": "12.4%",
-              "sub": "1.3 moves*",
+              "sub": "1.3 个预期波动*",
               "gap": null
             },
             "premium": {
               "main": "$42.00",
-              "sub": "5.8%/yr",
+              "sub": "5.8% / 年",
               "gap": null
             },
             "badges": [],
@@ -1440,9 +1466,9 @@
       },
       {
         "id": "check",
-        "word": "Check",
+        "word": "待查",
         "icon": "alert",
-        "title": "1 to check",
+        "title": "待查 1",
         "explain": "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。",
         "collapsed": false,
         "rows": [
@@ -1453,27 +1479,27 @@
               "name": "AAA",
               "strike": "$87.50",
               "expiry": "2026-12-18",
-              "dte": "39d"
+              "dte": "39 天"
             },
             "margin": {
               "main": "3.4%",
-              "sub": "BE $86.90 vs $90.00",
+              "sub": "保本点 $86.90 / 买入价 $90.00",
               "gap": null
             },
             "below_spot": {
               "main": "12.4%",
-              "sub": "1.1 moves*",
+              "sub": "1.1 个预期波动*",
               "gap": null
             },
             "premium": {
               "main": "$60.00",
-              "sub": "8.1%/yr",
+              "sub": "8.1% / 年",
               "gap": null
             },
             "badges": [
               {
                 "code": "no_open_interest",
-                "label": "No open interest",
+                "label": "无未平仓量",
                 "gloss": "未平仓量没有记录或为零，可能难以成交。",
                 "tone": "warn"
               }
@@ -1661,9 +1687,9 @@
       },
       {
         "id": "grey_in_the_money",
-        "word": "Not judged",
+        "word": "未判定",
         "icon": "minus",
-        "title": "1 in the money",
+        "title": "1 行：价内",
         "explain": "价内：行权价高于现价，卖出后几乎一定被指派（按行权价买入股票）；权利金里含内在价值，收益只按时间价值算。",
         "collapsed": true,
         "rows": [
@@ -1674,7 +1700,7 @@
               "name": "AAA",
               "strike": "$100.00",
               "expiry": "2026-12-18",
-              "dte": "39d"
+              "dte": "39 天"
             },
             "margin": {
               "main": "not formed",
@@ -1696,7 +1722,7 @@
             },
             "premium": {
               "main": "$540.00",
-              "sub": "22.4%/yr",
+              "sub": "22.4% / 年",
               "gap": null
             },
             "badges": [],
@@ -1708,9 +1734,9 @@
       },
       {
         "id": "grey_no_buy_price",
-        "word": "Not judged",
+        "word": "未判定",
         "icon": "minus",
-        "title": "1 not judged: no buy price",
+        "title": "1 行：没有买入价",
         "explain": "没有估值买入区间，也没有手填买入价，无法判断保本点是否合适；不是被隐藏，只是没评判。",
         "collapsed": true,
         "rows": [
@@ -1721,7 +1747,7 @@
               "name": "BBB",
               "strike": "$40.00",
               "expiry": "2026-12-18",
-              "dte": "39d"
+              "dte": "39 天"
             },
             "margin": {
               "main": "No buy price set",
@@ -1743,7 +1769,7 @@
             },
             "premium": {
               "main": "$540.00",
-              "sub": "22.4%/yr",
+              "sub": "22.4% / 年",
               "gap": null
             },
             "badges": [],
@@ -1754,9 +1780,20 @@
         ]
       }
     ],
-    "stored_title": "原始表格",
+    "stored_title": "已存表格",
     "idle_note": "1 家公司没有买入价和估值档案：BBB",
     "buy_hint": "有公司没有买入价：导入估值，或在 Companies \u003e Watch list 的 Buy 列手填一个价格，有了买入价才会被评判。",
-    "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。"
+    "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。",
+    "strip_labels": {
+      "spot": "现价",
+      "buy_price": "买入价",
+      "next_earnings": "下次财报",
+      "contracts": "合约",
+      "fits": "适合",
+      "check": "待查",
+      "grey": "折叠",
+      "grey_hint": "折叠 = 未判定"
+    },
+    "card_note": "现价是任务为这一天运行时取到的价格，不是当天收盘价。“闸门”用的买入价就是上面的买入价：有估值买入区间就用它，没有再用手填价格。"
   }
 }

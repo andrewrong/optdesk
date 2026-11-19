@@ -51,6 +51,9 @@ type tierRow struct {
 	Notes     []badgeView  `json:"notes"`
 	Fields    []fieldView  `json:"fields"`
 	Line      *string      `json:"line"`
+	// shortSub is the English margin sub text the short list prints under its buy price; the short list keeps
+	// its texts (candidates-zh.md Decision 4).
+	shortSub *string
 }
 
 // rowEnv is what every row of one build shares: the data day, the marks said once above the table, the
@@ -72,6 +75,9 @@ func (e rowEnv) tierRowOf(v optiontierapi.Verdict, c store.Candidate, pos int) t
 		Margin: marginPair(v, c, e.cur), BelowSpot: belowSpotPair(v), Premium: premiumPair(v, e.cur),
 		Notes: e.badgesOf(v.Notes, badgeToneNone, c), Fields: []fieldView{},
 	}
+	if r.Margin.Gap == nil {
+		r.shortSub = marginSub(v, c, e.cur, beHead, beVs)
+	}
 	r.Badges = append(e.badgesOf(v.Badges, badgeToneWarn, c), e.badgesOf(v.Infos, badgeToneInfo, c)...)
 	if pos < 0 {
 		line := greyLine(v, c, e.cur)
@@ -87,7 +93,7 @@ func contractOf(c store.Candidate, cur string) contractView {
 	if !ok {
 		strike = unreadable
 	}
-	return contractView{Name: c.Issuer, Strike: strike, Expiry: string(c.Expiry), DTE: strconv.Itoa(c.DTE) + dteSuffix}
+	return contractView{Name: c.Issuer, Strike: strike, Expiry: string(c.Expiry), DTE: strconv.Itoa(c.DTE) + dteTierSuffix}
 }
 
 func whyText(v optiontierapi.Verdict, id, fallback string) string {
@@ -121,12 +127,18 @@ func marginPair(v optiontierapi.Verdict, c store.Candidate, cur string) pairView
 	if !ok {
 		return p
 	}
+	p.Sub = marginSub(v, c, cur, marginHead, marginVs)
+	return p
+}
+
+// marginSub is "<head><break-even><vs><buy price>", nil when either price is unreadable.
+func marginSub(v optiontierapi.Verdict, c store.Candidate, cur, head, vs string) *string {
 	be, ok1 := moneyText(v.BreakEven, cur)
 	buy, ok2 := moneyText(deref(c.BuyPrice), cur)
-	if ok1 && ok2 {
-		p.Sub = subOf(beHead + be + beVs + buy)
+	if !ok1 || !ok2 {
+		return nil
 	}
-	return p
+	return subOf(head + be + vs + buy)
 }
 
 func belowSpotPair(v optiontierapi.Verdict) pairView {
@@ -152,7 +164,7 @@ func premiumPair(v optiontierapi.Verdict, cur string) pairView {
 	}
 	p := pairView{Main: main}
 	if y, ok := fixedText(v.YieldPct, 1); v.YieldPct != "" && ok {
-		p.Sub = subOf(minusText(y) + yieldSuffix)
+		p.Sub = subOf(minusText(y) + yieldSubSuffix)
 	} else if v.Why["yield"] == whyBelowIntr {
 		p.Sub = subOf(belowIntrinsicText)
 	} else {

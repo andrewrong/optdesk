@@ -80,7 +80,7 @@ func TestBadgeGlossIsChinese(t *testing.T) {
 	t.Parallel()
 	for code := range badgeTexts {
 		b := badgeOf(code, badgeToneNone, store.Candidate{})
-		if han.MatchString(b.Label) || b.Label == "" {
+		if !han.MatchString(b.Label) {
 			t.Errorf("%s: label %q", code, b.Label)
 		}
 		if !han.MatchString(b.Gloss) {
