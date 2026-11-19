@@ -1,0 +1,74 @@
+{
+  "schema": "strategy_replay_page",
+  "schema_version": 1,
+  "generated_at": "2026-11-19T08:00:00Z",
+  "title": "策略回放",
+  "view": "form",
+  "post_path": "strategy-replay-post",
+  "intro": "用已存的报价回放卖出看跌的持有到期与早平两种做法，对比他实际的结果。",
+  "form": {
+    "fields": [
+      {
+        "name": "lots",
+        "label": "取单范围",
+        "hint": "卖出看跌（short puts）按单笔期权计，或按手数（short lots）计；持有到期（hold）：不提前平仓",
+        "kind": "choice",
+        "value": "short_puts",
+        "options": [
+          {
+            "value": "short_puts",
+            "label": "卖出看跌的单子"
+          },
+          {
+            "value": "short_lots",
+            "label": "卖出的手数"
+          }
+        ]
+      },
+      {
+        "name": "alias",
+        "label": "账户别名",
+        "hint": "留空表示所有已存账户",
+        "kind": "text",
+        "value": "",
+        "options": []
+      },
+      {
+        "name": "as_of",
+        "label": "截止日",
+        "hint": "格式 YYYY-MM-DD，留空表示今天",
+        "kind": "text",
+        "value": "",
+        "options": []
+      },
+      {
+        "name": "early_keep",
+        "label": "早平留存比例",
+        "hint": "早平（early）：权利金赚到一定比例或离到期不足若干天就买回；留存比例（kept share）：赚到的权利金占收到的权利金的比例；默认 0.50 [T]：试用值，不是定论",
+        "kind": "text",
+        "value": "0.50",
+        "options": []
+      },
+      {
+        "name": "early_dte",
+        "label": "早平剩余天数",
+        "hint": "早平（early）：离到期不足若干天就买回；默认 21 [T]：试用值，不是定论",
+        "kind": "text",
+        "value": "21",
+        "options": []
+      },
+      {
+        "name": "min_lots",
+        "label": "最少笔数",
+        "hint": "少于这个笔数的行不下结论；默认 20 [T]：试用值，不是定论",
+        "kind": "text",
+        "value": "20",
+        "options": []
+      }
+    ],
+    "submit_label": "开始回放"
+  },
+  "restart_hint": "中途被打断的回放不留任何东西，再按一次即可",
+  "notices": [],
+  "report": null
+}
