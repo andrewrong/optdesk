@@ -69,6 +69,20 @@ describe('valuation import page', () => {
     expect(el.querySelector('table')).toBeNull()
   })
 
+  it('prints the label texts of the payload', async () => {
+    const p = preview()
+    p.labels = {
+      r: 'invented r label',
+      buy_zone_top_site: 'invented site head',
+      buy_zone_top_file: 'invented file head',
+      general_tick: 'invented general tick',
+    }
+    const el = await render(p)
+    for (const t of ['invented r label', 'invented site head', 'invented file head', 'invented general tick']) {
+      expect(el.textContent).toContain(t)
+    }
+  })
+
   it('renders one row per company with both buy-zone tops', async () => {
     const p = preview()
     const el = await render(p)

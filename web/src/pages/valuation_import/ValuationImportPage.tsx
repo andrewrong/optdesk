@@ -14,8 +14,6 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/valuation_import_page'
 import { PlanTable } from './PlanTable'
 
-const GENERAL = 'V is per listed share, in the listing currency'
-
 function Lines({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null
   return (
@@ -154,6 +152,7 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
               <input type="hidden" name="action" value="confirm" />
               <input type="hidden" name="file_sha256" value={payload.file?.sha256 ?? ''} />
               <PlanTable
+                labels={payload.labels}
                 rows={payload.rows}
                 keys={keys}
                 markets={markets}
@@ -164,7 +163,7 @@ export function ValuationImportPage({ payload }: { payload: Payload }) {
               />
               <div className="flex items-center gap-2">
                 <Checkbox id="general-tick" aria-label="general" checked={general} onCheckedChange={(c) => setGeneral(c === true)} />
-                <Label htmlFor="general-tick">{GENERAL}</Label>
+                <Label htmlFor="general-tick">{payload.labels?.general_tick}</Label>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="valuation-file-confirm">Same file again</Label>
