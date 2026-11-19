@@ -1,6 +1,7 @@
 {
   "marker": "synthetic-v1",
   "files": [
+    "cross_check.ts",
     "gap.ts",
     "ok.ts"
   ]
