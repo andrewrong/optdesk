@@ -99,6 +99,10 @@ func evalRow(in basecheckapi.Input, info basecheckapi.RowInfo, facts map[key][]b
 		var c basecheckapi.Check
 		switch r.Source {
 		case "note":
+			if r.Rule == "history_lost" {
+				c = historyLostCheck(info, cells)
+				break
+			}
 			c = noteCheck(r.Rule, facts[key{info.ID, r.Rule}])
 		case "ledger":
 			c = ledgerCheck(in, info, r.Rule, th, cells)
@@ -265,6 +269,62 @@ func noteCheck(rule string, fs []basecheckapi.Fact) basecheckapi.Check {
 	return c
 }
 
+// historyLostCheck counts the ledger days from HistoryStart to the day before the row's first
+// counted day. Never judged: its Level is empty. The cells are the read window only.
+func historyLostCheck(info basecheckapi.RowInfo, cells []basecheckapi.Cell) basecheckapi.Check {
+	c := basecheckapi.Check{Rule: "history_lost"}
+	missing := map[contracts.Day]int{}
+	for _, cell := range cells {
+		if cell.Day >= HistoryStart && cell.Day < historyStart(info.ID) {
+			missing[cell.Day] += cell.Missing
+		}
+	}
+	c.N = int64(len(missing))
+	for d, m := range missing {
+		if m > 0 {
+			c.Bad++
+			if string(d) > c.Example {
+				c.Example = string(d)
+			}
+		}
+	}
+	c.Share = shareText(c.N, c.Bad)
+	return c
+}
+
+// historyStart is the first counted day of a row.
+func historyStart(row string) contracts.Day {
+	if d, ok := RowHistoryStart[row]; ok {
+		return d
+	}
+	return HistoryStart
+}
+
+// lastJudged is the newest day the coverage rules of a row judge: the newest closed session of
+// its first calendar, or the session PublishLag[row] sessions before it. ok is false when the
+// calendar has no closed day, or the lag reaches before the first session.
+func lastJudged(in basecheckapi.Input, info basecheckapi.RowInfo) (contracts.Day, bool) {
+	cal := firstCalendar(info)
+	closed, ok := in.Days[cal]
+	if !ok {
+		return "", false
+	}
+	lag := PublishLag[info.ID]
+	if lag == 0 {
+		return closed, true
+	}
+	var past []contracts.Day
+	for _, d := range in.Sessions[cal] {
+		if d <= closed {
+			past = append(past, d)
+		}
+	}
+	if len(past) <= lag {
+		return "", false
+	}
+	return past[len(past)-1-lag], true
+}
+
 // ledgerCheck reads the cells of the row: coverage_gap counts days with missing keys,
 // coverage_latest the missing and expired keys of the last closed session of its first calendar.
 func ledgerCheck(in basecheckapi.Input, info basecheckapi.RowInfo, rule string, th Threshold, cells []basecheckapi.Cell) basecheckapi.Check {
@@ -272,9 +332,13 @@ func ledgerCheck(in basecheckapi.Input, info basecheckapi.RowInfo, rule string, 
 	switch rule {
 	case "coverage_gap":
 		missing := map[contracts.Day]int{}
-		closed, hasClosed := in.Days[firstCalendar(info)]
+		closed, judged := lastJudged(in, info)
+		if _, hasClosed := in.Days[firstCalendar(info)]; hasClosed && !judged {
+			return c
+		}
+		start := historyStart(info.ID)
 		for _, cell := range cells {
-			if cell.Day < HistoryStart || (hasClosed && cell.Day > closed) {
+			if cell.Day < start || (judged && cell.Day > closed) {
 				continue
 			}
 			missing[cell.Day] += cell.Missing
@@ -292,7 +356,7 @@ func ledgerCheck(in basecheckapi.Input, info basecheckapi.RowInfo, rule string, 
 			}
 		}
 	case "coverage_latest":
-		last, ok := in.Days[firstCalendar(info)]
+		last, ok := lastJudged(in, info)
 		if !ok {
 			return c
 		}

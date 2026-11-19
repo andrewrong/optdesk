@@ -106,3 +106,28 @@ func TestOptionViewCrossedShare(t *testing.T) {
 		})
 	}
 }
+
+func open(t *testing.T, name string, id, status, minute int) {
+	t.Helper()
+	optRow(t, name, "rd.option_open_r1", id, status, minute, 1, "", "")
+}
+
+func TestOpenDeferredIsNotJudged(t *testing.T) {
+	t.Parallel()
+	name := newViewsDatabase(t)
+	open(t, name, 1, 7, 1) // deferred: the job chose not to ask
+	facts := viewFacts(t, name, optionView)
+	wantCounts(t, facts, "open/errors/", 1, 0)
+	wantCounts(t, facts, "open/not_judged/", 1, 1)
+}
+
+func TestOpenErrorStatusesStillCount(t *testing.T) {
+	t.Parallel()
+	name := newViewsDatabase(t)
+	open(t, name, 1, 8, 1) // error only
+	open(t, name, 2, 6, 1) // deadline only
+	open(t, name, 3, 7, 1) // deferred: not an error
+	facts := viewFacts(t, name, optionView)
+	wantCounts(t, facts, "open/errors/", 3, 2)
+	wantCounts(t, facts, "open/not_judged/", 3, 1)
+}

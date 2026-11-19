@@ -1,9 +1,11 @@
 package basecheck
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 func TestEveryRuleHasThresholds(t *testing.T) {
@@ -73,5 +75,30 @@ func TestCalendarlessAgeUsesDays(t *testing.T) {
 		if th.Warn.Kind != Days || th.Fail.Kind != Days {
 			t.Errorf("%s = %+v, want calendar days (Decision 6: no subject calendar)", id, th)
 		}
+	}
+}
+
+func TestRowTablesCoverKnownRows(t *testing.T) {
+	t.Parallel()
+	known := map[string]bool{}
+	for _, r := range basecheckapi.Rows {
+		known[r.ID] = true
+	}
+	for id := range PublishLag {
+		if !known[id] {
+			t.Errorf("PublishLag key %q is not a row", id)
+		}
+	}
+	for id := range RowHistoryStart {
+		if !known[id] {
+			t.Errorf("RowHistoryStart key %q is not a row", id)
+		}
+	}
+	if len(PublishLag) != 1 || PublishLag["rates"] != 1 {
+		t.Errorf("PublishLag = %v, want only rates 1", PublishLag)
+	}
+	want := map[string]contracts.Day{"chains": "2026-11-11", "contracts": "2026-11-13", "calendar": "2026-11-11", "flex": "2026-11-11", "open": "2026-11-10"}
+	if !reflect.DeepEqual(map[string]contracts.Day(RowHistoryStart), want) {
+		t.Errorf("RowHistoryStart = %v", RowHistoryStart)
 	}
 }
