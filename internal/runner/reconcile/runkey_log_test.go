@@ -75,6 +75,38 @@ func TestRunKeyLogsOkRun(t *testing.T) {
 	}
 }
 
+func TestRunKeyLogsEmptyRun(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	k, buf := newLogRunner(clk)
+	job := &advJob{fakeJob: &fakeJob{id: "j1"}, clk: clk, d: 7 * time.Second, buf: buf,
+		res: contracts.JobResult{Returned: 5, Usable: 0}}
+	if _, err := k.RunKey(context.Background(), job, rkDay, keyA, 2, time.Time{}, time.Time{}, ""); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if n := strings.Count(out, finishedMsg); n != 1 {
+		t.Fatalf("%d lines, want 1: %q", n, out)
+	}
+	wantAttrs(t, out[:len(out)-1], "outcome=empty", "returned=5", "usable=0")
+}
+
+func TestRunKeyLogsOkRunThatReturnedNothing(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	k, buf := newLogRunner(clk)
+	job := &advJob{fakeJob: &fakeJob{id: "j1"}, clk: clk, d: 7 * time.Second, buf: buf,
+		res: contracts.JobResult{Returned: 0, Usable: 0}}
+	if _, err := k.RunKey(context.Background(), job, rkDay, keyA, 1, time.Time{}, time.Time{}, ""); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if n := strings.Count(out, finishedMsg); n != 1 {
+		t.Fatalf("%d lines, want 1: %q", n, out)
+	}
+	wantAttrs(t, out[:len(out)-1], "outcome=ok", "returned=0", "usable=0")
+}
+
 func TestRunKeyLogsFailedRun(t *testing.T) {
 	t.Parallel()
 	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
