@@ -36,6 +36,7 @@ export interface DataHealthPage {
   gaps: Gap[];
   failures_note?: Text;
   failures_none_text?: Text;
+  running?: Running[];
 }
 export interface Form {
   post_path: "/owner-job-console";
@@ -127,4 +128,14 @@ export interface Gap {
   kind: "gap";
   reason: "coverage_unavailable" | "failures_unavailable";
   text: string;
+}
+export interface Running {
+  job?: string;
+  started_at?: string;
+  keys_done?: number;
+  keys_total?: number;
+  step?: string;
+  elapsed_minutes?: number;
+  usual_minutes?: number;
+  slow?: boolean;
 }

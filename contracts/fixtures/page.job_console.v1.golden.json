@@ -62,7 +62,44 @@
       "needs_text": "a change of the job so that its run answers for the day it is given"
     }
   ],
+  "running": [
+    {
+      "job": "compute_figures",
+      "started_at": "2026-11-12T14:02:00Z",
+      "keys_done": 3,
+      "keys_total": 7,
+      "step": "US:MSFT",
+      "elapsed_minutes": 4,
+      "usual_minutes": 3,
+      "slow": false
+    },
+    {
+      "job": "quote_snapshot",
+      "started_at": "2026-11-12T13:00:00Z",
+      "keys_done": 1,
+      "keys_total": 3,
+      "step": "US:AAPL",
+      "elapsed_minutes": 66,
+      "usual_minutes": 3,
+      "slow": true
+    }
+  ],
   "requests": [
+    {
+      "id": 21,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "queued",
+      "state_text": "queued",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "",
+      "keys": [],
+      "waiting_for": {
+        "job": "compute_figures",
+        "since": "2026-11-12T14:02:00Z"
+      }
+    },
     {
       "id": 20,
       "job": "compute_figures",

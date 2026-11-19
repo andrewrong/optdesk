@@ -17,7 +17,8 @@
     "jobs": {"type": "array", "items": {"$ref": "#/$defs/Job"}},
     "requests": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/Request"}},
     "selected": {"type": ["integer", "null"], "minimum": 1},
-    "refresh_seconds": {"enum": [0, 5]}
+    "refresh_seconds": {"enum": [0, 5]},
+    "running": {"type": "array", "items": {"$ref": "#/$defs/Running"}}
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
@@ -32,6 +33,28 @@
       }
     },
     "Optional": {"type": "string", "maxLength": 600},
+    "Running": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "job": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "keys_done": {"type": "integer", "minimum": 0},
+        "keys_total": {"type": "integer", "minimum": 0},
+        "step": {"type": "string", "maxLength": 600},
+        "elapsed_minutes": {"type": "integer", "minimum": 0},
+        "usual_minutes": {"type": "integer", "minimum": 0},
+        "slow": {"type": "boolean"}
+      }
+    },
+    "WaitingFor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "job": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+        "since": {"type": "string", "format": "date-time"}
+      }
+    },
     "Form": {
       "type": "object",
       "additionalProperties": false,
@@ -70,7 +93,8 @@
         "state_text": {"$ref": "#/$defs/Text"},
         "at_text": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} UTC$"},
         "reason": {"$ref": "#/$defs/Optional"},
-        "keys": {"type": "array", "items": {"$ref": "#/$defs/Key"}}
+        "keys": {"type": "array", "items": {"$ref": "#/$defs/Key"}},
+        "waiting_for": {"$ref": "#/$defs/WaitingFor"}
       }
     },
     "Key": {
