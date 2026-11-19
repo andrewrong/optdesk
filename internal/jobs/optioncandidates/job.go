@@ -82,6 +82,9 @@ func New(st CandidateStores, rule compute.OptionCandidates, entries []jobs.Watch
 	if err := checkSource(m.Source); err != nil {
 		return nil, err
 	}
+	if err := checkCurrency(m.Source.Currency); err != nil {
+		return nil, err
+	}
 	seen := map[string]bool{}
 	for _, e := range entries {
 		if e.Issuer == "" {
@@ -172,7 +175,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 		j.skipped = skipped
 		j.mu.Unlock()
 	}()
-	days, err := sessionDays(ctx, j.st.SessionDays, day)
+	days, err := sessionDays(ctx, j.st.SessionDays, j.slot.calendar, day)
 	if err != nil {
 		return fail("read_session_days_failed", err)
 	}

@@ -573,3 +573,20 @@ func TestCallsJobUsesSameSourceAsPuts(t *testing.T) {
 		t.Fatalf("DEF row %+v", e.rowOf(t, 21))
 	}
 }
+
+// TestSourceIgnoresJPYOpenRowsOfTheUSJob: a JPY open row is never read by the US job, so a name with only such
+// a row takes the eod chain.
+func TestSourceIgnoresJPYOpenRowsOfTheUSJob(t *testing.T) {
+	t.Parallel()
+	e := newSrcEnv()
+	e.underlying(7, "ABC")
+	e.put(7, 11, "90")
+	r := openRowOf(7, 11, 1, 2.0, 2.1)
+	r.Currency = "JPY"
+	e.open = []contracts.OptionOpen{r}
+	e.eod = []contracts.OptionEod{eodRowOf(7, 11, "2026-11-06", 1.0, 1.1, 40)}
+	e.run(t, true, entryFor("ABC", "cik:1", "91.5"))
+	if in := e.inputOf("ABC"); in.ChainDay != priorDay {
+		t.Fatalf("chain day %s, the JPY open row was read", in.ChainDay)
+	}
+}

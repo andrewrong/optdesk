@@ -1,0 +1,146 @@
+{
+ "day": "2026-11-19",
+ "sessions": [
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-16",
+  "2026-11-17",
+  "2026-11-18",
+  "2026-11-19"
+ ],
+ "names": [
+  {
+   "id": 1,
+   "symbol": "7203"
+  },
+  {
+   "id": 2,
+   "symbol": "6758"
+  },
+  {
+   "id": 3,
+   "symbol": "9984"
+  }
+ ],
+ "terms": [
+  {
+   "id": 101,
+   "strike": "2400",
+   "expiry": "2026-12-21"
+  },
+  {
+   "id": 102,
+   "strike": "2400",
+   "expiry": "2026-11-29"
+  },
+  {
+   "id": 103,
+   "strike": "2300",
+   "expiry": "2026-12-21"
+  },
+  {
+   "id": 104,
+   "strike": "2200",
+   "expiry": "2026-12-21"
+  },
+  {
+   "id": 201,
+   "strike": "2400",
+   "expiry": "2026-12-21"
+  },
+  {
+   "id": 202,
+   "strike": "2300",
+   "expiry": "2026-12-21"
+  },
+  {
+   "id": 301,
+   "strike": "50",
+   "expiry": "2026-12-21"
+  }
+ ],
+ "open": [
+  {
+   "underlying_id": 1,
+   "instrument_id": 101,
+   "status": 1,
+   "currency": "JPY",
+   "bid": 30,
+   "ask": 31
+  },
+  {
+   "underlying_id": 1,
+   "instrument_id": 102,
+   "status": 1,
+   "currency": "JPY",
+   "bid": 9,
+   "ask": 10
+  },
+  {
+   "underlying_id": 1,
+   "instrument_id": 103,
+   "status": 2,
+   "currency": "JPY",
+   "bid": 20,
+   "ask": null
+  },
+  {
+   "underlying_id": 1,
+   "instrument_id": 104,
+   "status": 1,
+   "currency": "JPY",
+   "bid": 12,
+   "ask": 13
+  },
+  {
+   "underlying_id": 2,
+   "instrument_id": 201,
+   "status": 3,
+   "currency": "JPY",
+   "bid": null,
+   "ask": null
+  },
+  {
+   "underlying_id": 2,
+   "instrument_id": 202,
+   "status": 2,
+   "currency": "JPY",
+   "bid": 15,
+   "ask": null
+  },
+  {
+   "underlying_id": 3,
+   "instrument_id": 301,
+   "status": 1,
+   "currency": "USD",
+   "bid": 1.0,
+   "ask": 1.1
+  }
+ ],
+ "eod": [
+  {
+   "underlying_id": 1,
+   "instrument_id": 101,
+   "day": "2026-11-18",
+   "open_interest": 120
+  },
+  {
+   "underlying_id": 1,
+   "instrument_id": 101,
+   "day": "2026-11-17",
+   "open_interest": 50
+  },
+  {
+   "underlying_id": 1,
+   "instrument_id": 101,
+   "day": "2026-11-13",
+   "open_interest": 999
+  },
+  {
+   "underlying_id": 1,
+   "instrument_id": 104,
+   "day": "2026-11-13",
+   "open_interest": 77
+  }
+ ]
+}

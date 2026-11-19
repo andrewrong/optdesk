@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	calendarID    = "XNYS"
 	rateSeries    = "DGS3MO"
 	fundsTag      = "AvailableFunds"
 	termsChunk    = 500
@@ -43,9 +42,10 @@ func addDays(d contracts.Day, n int) contracts.Day {
 	return contracts.Day(t.AddDate(0, 0, n).Format(time.DateOnly))
 }
 
-// sessionDays lists the XNYS session days of the lookback window, ascending.
-func sessionDays(ctx context.Context, rd store.SessionDayReader, day contracts.Day) ([]contracts.Day, error) {
-	rows, err := rd.SessionDays(ctx, calendarID, addDays(day, -lookbackDays), day)
+// sessionDays lists the session days of the calendar cal (the schedule calendar of the manifest) in the lookback
+// window, ascending.
+func sessionDays(ctx context.Context, rd store.SessionDayReader, cal string, day contracts.Day) ([]contracts.Day, error) {
+	rows, err := rd.SessionDays(ctx, cal, addDays(day, -lookbackDays), day)
 	if err != nil {
 		return nil, err
 	}

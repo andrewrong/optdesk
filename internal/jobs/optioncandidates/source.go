@@ -2,6 +2,7 @@ package optioncandidates
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -32,6 +33,10 @@ type sourceParams struct {
 	OpenMinRows        int    `toml:"open_min_rows"`
 	NeedHigh           string `toml:"need_high"`
 	OILookbackSessions int    `toml:"oi_lookback_sessions"`
+	// Currency is the currency of the open rows the job reads ("USD" in job.toml, "JPY" in job_jp.toml).
+	Currency string `toml:"currency"`
+	// EodFallback says whether a name with no usable open chain takes the option_eod chain (true in job.toml).
+	EodFallback bool `toml:"eod_fallback"`
 }
 
 // chainResult is the chain of one underlying as the run reads it: one source and one chain day for both rights.
@@ -41,6 +46,7 @@ type chainResult struct {
 	quotes   []compute.OptionQuote
 	fallback bool            // the eod path of a run that holds an open reader
 	oiPrior  map[string]bool // instrument ids whose open interest came from an earlier eod session
+	unusable bool            // a job without eod fallback found no usable open chain; quotes are what the open held
 }
 
 // addMarks appends the marks the source owes to the row.
@@ -55,18 +61,19 @@ func (r chainResult) addMarks(c *compute.Candidate) {
 
 // sourceRun is the source of one Run: the open snapshot of the day, read once, and the counts of the run.
 type sourceRun struct {
-	j      *job
-	day    contracts.Day
-	days   []contracts.Day
-	begun  bool
-	quiet  bool // the read succeeded and the day has no open row: the job of today, no mark and no line
-	open   map[int][]openRow
-	nOpen  int
-	nEod   int
-	nNone  int
-	noTerm int
-	puts   []string // "SYMBOL=n": usable puts at or below need_high times the buy price, per underlying on the open
-	lines  []string // Skipped lines of the underlyings that fell back
+	j       *job
+	day     contracts.Day
+	days    []contracts.Day
+	begun   bool
+	openErr error // the error of the open read, kept for a job that has no fallback to run on
+	quiet   bool  // the read succeeded and the day has no open row: the job of today, no mark and no line
+	open    map[int][]openRow
+	nOpen   int
+	nEod    int
+	nNone   int
+	noTerm  int
+	puts    []string // "SYMBOL=n": usable puts at or below need_high times the buy price, per underlying on the open
+	lines   []string // Skipped lines of the underlyings that fell back
 }
 
 type openRow = contracts.OptionOpen
@@ -89,14 +96,15 @@ func (s *sourceRun) begin(ctx context.Context, days []contracts.Day) {
 	}
 	rows, err := s.j.st.Open.OptionOpen(ctx, s.day)
 	if err != nil {
-		s.j.logger().Warn("option_open read failed, every underlying takes the option_eod chain",
+		s.j.logger().Warn("option_open read failed, the underlyings take the eod chain where the job has one",
 			"component", "jobs", "status", "degraded", "job", s.j.m.ID, "err", err)
+		s.openErr = err
 		return
 	}
 	s.quiet = len(rows) == 0
 	s.open = map[int][]openRow{}
 	for _, r := range rows {
-		if r.Currency == "USD" {
+		if r.Currency == s.j.m.Source.Currency {
 			s.open[r.UnderlyingID] = append(s.open[r.UnderlyingID], r)
 		}
 	}
@@ -124,6 +132,13 @@ func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.Watc
 			s.nOpen++
 			return res, nil
 		}
+		if !s.j.m.Source.EodFallback {
+			res.unusable = true
+			return res, nil
+		}
+	}
+	if !s.j.m.Source.EodFallback {
+		return chainResult{chainDay: s.day, unusable: true}, nil
 	}
 	spot, q, err := s.j.eodQuotes(ctx, ul, calls)
 	if err != nil {
@@ -330,4 +345,12 @@ func eodNewer(a, b contracts.OptionEod) bool {
 		return a.Generation > b.Generation
 	}
 	return a.CaptureID >= b.CaptureID
+}
+
+// checkCurrency names the key [source] currency when it is not three upper-case letters, never its value.
+func checkCurrency(c string) error {
+	if len(c) != 3 || strings.ToUpper(c) != c || strings.TrimSpace(c) != c {
+		return errors.New("optioncandidates: manifest: source.currency is invalid")
+	}
+	return nil
 }

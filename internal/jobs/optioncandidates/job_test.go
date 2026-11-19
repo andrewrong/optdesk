@@ -557,3 +557,16 @@ func TestRunChainTwoSessionsOldIsStale(t *testing.T) {
 		}
 	}
 }
+
+// TestUSPlanHashUnchanged pins the plan of the US job: the hash and the key do not move with the JP job.
+func TestUSPlanHashUnchanged(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	keys, hash, err := build(t, f.stores(), f, usEntry()).Plan(context.Background(), runDay)
+	if err != nil || len(keys) != 1 || keys[0].SubjectKey != "cik:0000000001" || keys[0].DatasetID != "candidates.option_candidate" {
+		t.Fatalf("keys %+v err %v", keys, err)
+	}
+	if want := "22f8b4b731d6f5aa8960b112e1eaf1f1b2e450bfeac2662ab7d384c05b61d7c4"; hash != want {
+		t.Fatalf("hash %s", hash)
+	}
+}
