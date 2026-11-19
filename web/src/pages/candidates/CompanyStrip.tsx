@@ -5,12 +5,18 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { Badge as BadgeT, Company, TierView } from '@/generated/option_candidates_page.v1'
+import type { Badge as BadgeT, Company, TierView, Verdict } from '@/generated/option_candidates_page.v1'
 
 export type StripLabels = NonNullable<TierView['strip_labels']>
 
 const tones = { warn: 'warn', info: 'secondary', none: 'outline' } as const
 const pillVariants = { fits: 'success', check: 'warn', grey: 'outline' } as const
+const verdictVariants = { success: 'success', warn: 'warn', muted: 'outline' } as const
+const verdictEdges = { success: 'border-l-success', warn: 'border-l-warn', muted: 'border-l-muted-foreground' } as const
+
+// What a by_company block gives the strip: the verdict, its text as the third line, and the best yield.
+export type StripVerdict = { verdict: Verdict; text: string; bestYield: string | null }
+
 const edges = { fits: 'border-l-success', check: 'border-l-warn', grey: 'border-l-muted-foreground' } as const
 
 function SourceBadge({ badge }: { badge: BadgeT }) {
@@ -42,17 +48,28 @@ function Counts({ company, labels }: { company: Company; labels: StripLabels | u
   )
 }
 
-export function CompanyStrip({ company, labels }: { company: Company; labels?: StripLabels }) {
+export function CompanyStrip({ company, labels, verdict }: { company: Company; labels?: StripLabels; verdict?: StripVerdict }) {
   const v = company.valuation
-  const tier = company.tier
+  const tier = verdict ? undefined : company.tier
+  const edge = verdict ? verdictEdges[verdict.verdict.tone] : tier && edges[tier.id]
   return (
-    <Card data-company={company.key} className={cn(tier && 'border-l-4', tier && edges[tier.id])}>
+    <Card data-company={company.key} className={cn(edge && 'border-l-4', edge)}>
       <CardContent className="flex flex-col gap-1 text-sm">
         <div data-line="1" className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {tier ? (
             <Badge variant={pillVariants[tier.id]} data-tier={tier.id} data-pill>
               {tier.glyph} {tier.word}
             </Badge>
+          ) : null}
+          {verdict ? (
+            <Badge variant={verdictVariants[verdict.verdict.tone]} data-verdict={verdict.verdict.id} data-pill>
+              {verdict.verdict.glyph} {verdict.verdict.word}
+            </Badge>
+          ) : null}
+          {verdict && verdict.bestYield !== null ? (
+            <span data-best-yield className="num">
+              {verdict.bestYield}
+            </span>
           ) : null}
           <span className="num font-semibold">{company.ticker}</span>
           <span data-buy className="flex items-center gap-2">
@@ -84,8 +101,13 @@ export function CompanyStrip({ company, labels }: { company: Company; labels?: S
               ) : null}
             </span>
           ) : null}
-          <Counts company={company} labels={labels} />
+          {verdict ? null : <Counts company={company} labels={labels} />}
         </div>
+        {verdict ? (
+          <div data-line="3" data-verdict-text>
+            {verdict.text}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )

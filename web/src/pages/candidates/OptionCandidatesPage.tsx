@@ -32,6 +32,7 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
   const staleText = payload.stale ? payload.stale.text : null
   const groups = placed(payload.groups)
   const labels = payload.head_labels
+  const byCompany = payload.short_put_tiers?.by_company !== undefined
   const tabs = (
     <Tabs defaultValue={groupKey(groups[0]!)}>
       <TabsList>
@@ -46,7 +47,7 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
       </TabsList>
       {groups.map((group) => (
         <TabsContent key={groupKey(group)} value={groupKey(group)} className="space-y-4">
-          {isJpy(group) ? <ShortList list={payload.short_put_list_jpy} /> : null}
+          {isJpy(group) && !payload.short_put_tiers_jpy?.by_company ? <ShortList list={payload.short_put_list_jpy} /> : null}
           {isJpy(group) && payload.short_put_tiers_jpy ? <TierView tiers={payload.short_put_tiers_jpy} /> : null}
           <CandidateGroup group={group} staleText={staleText} />
         </TabsContent>
@@ -120,8 +121,8 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           ))}
         </CardContent>
       </Card>
-      <ShortList list={payload.short_put_list} />
-      {payload.short_put_list ? (
+      {byCompany ? null : <ShortList list={payload.short_put_list} />}
+      {payload.short_put_list && !byCompany ? (
         <Accordion type="single" collapsible data-folded>
           <AccordionItem value="folded">
             <AccordionTrigger className="text-xl font-semibold">{payload.short_put_list.folded_title}</AccordionTrigger>
