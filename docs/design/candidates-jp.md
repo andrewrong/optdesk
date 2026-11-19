@@ -30,7 +30,7 @@ Data (probe): 8 JP watch entries, 7 with options; `option_open_jp` quotes about 
 
 1. A new job `option_candidates_jp` in the package `internal/jobs/optioncandidates` (a second manifest `job_jp.toml` and the constructor `NewJP`; puts only), built over the JP entries: market JP, sec_type STK, an issuer, and a `Contract.Symbol` that is the code. The US job keeps its manifest, plan and tests. Reason: calendar, zone, upstream and currency differ; a branch inside one job would make every US test and the US plan hash depend on JP names (`Plan` hashes the issuer list). Rejected: one job with a market switch (`## Left out`).
 2. Schedule (`job_jp.toml`): calendar `XTKS`, zone `Asia/Tokyo`, anchor `session_open`, offset `5m`, `After()` = `option_open_jp`, `run_bound` 10 minutes. It starts when `option_open_jp` ends for D (dependent run): on 11-19 the pull ended 09:08 JST. A day on which a key of the pull failed (11-19 batch-002) starts with `upstream_missing`; the rerun rule of `candidates-at-open.md` Decision 12 reruns it when the last key is ok. A scheduler restart kills a running job (32 restarts on 11-19); the dependent-run rule starts it again, as for the US job.
-3. One key per JP issuer with options (`Plan`): the 7 names; an entry with no option chain (278A) is named in `Skipped()` with the reason "no option chain" and gets no key; names in `no_option` of `job_plan_jp.toml` stay out too. The calendar is `XTKS` for the schedule and for `sessionDays`: on a day that is not an XTKS session the job has no run.
+3. One key per JP issuer with options (`Plan`): the 7 names; an entry with no option chain is named in `Skipped()` with the reason "no option chain" and gets no key; names in `no_option` of `job_plan_jp.toml` stay out too. The calendar is `XTKS` for the schedule and for `sessionDays`: on a day that is not an XTKS session the job has no run.
 4. Order of use: the first checked run is `ot run-once --job option_candidates_jp` (the window runs it, owner decision 2026-11-09 on `ot` commands), with the family registered but held in the scheduler (`startOff` in the registry, `cmd/ot/jobreg.go`); the last entry removes the hold. So the only change that can alter a scheduled day is the last one.
 5. The eod fallback of the US job (the previous session's `option_eod` chain for a name with no usable open put, mark `eod_fallback`) is not used for Japan in this version: a name with no usable open put is named in `Skipped()` ("no usable open quote") and gets no row. Reason: the owner reads about the open quotes at 09:10; a day-old chain shown there is a second source and a second mark text for no new result, and the JP eod rows of D are not there before 10:30 JST. The manifest gets one key, `[source] eod_fallback` (true in `job.toml`, false in `job_jp.toml`), so the US job is unchanged. Open interest still comes from the newest `option_eod` row of the same instrument within `oi_lookback_sessions` (3) XTKS sessions, marked `oi_prior_session`, as `candidates-at-open.md` Decision 8.
 
@@ -207,7 +207,7 @@ Files: `cmd/ot/wire_optioncandidates_jp.go` (new in entry 7), `cmd/ot/wire_optio
 What the window checks on the first Tokyo day after the last entry is deployed, from the scheduler log lines after the deploy and the page:
 - The page has a Japan group with rows for the four large names at about 09:10 JST, in yen, each with the buy price of the valuation zone where the owner imported a valuation, "not judged" where not, and the marks `no_jpy_rate` (and `no_jpy_funds` until a yen account is named); no row is in the top tier; no US row changes.
 - The three thin names show rows or a named reason (the `limit_counts` and the log line) rather than silence.
-- 278A is named as having no options.
+- The entry without options is named as having no options.
 - A JP run and the US run of the same date are both on the page.
 
 ## Checked by CI
@@ -241,7 +241,7 @@ Adversarial blocking points:
 - Claim most likely false, entry 7 web paths and the docs directories: adopted (entry 8 uses the real paths; docs paths are the existing ones).
 - Existing goldens untouched: adopted as acceptance (entries 2, 3, 4, 6 state the unedited tests and goldens).
 - Slip causes: migration number: adopted ("the next free number when the entry is cut"); view column order: adopted (Decision 19, `columns` unchanged); entries 4 and 5 parallel with page first: partly (the web entry runs after 1 only, the page after 1 to 4); `wire.go` 782: adopted (Decision 27, 785 at most); `testdata` directories are not files: adopted (named files).
-- Non-blocking, thin names and 278A handled well: kept. Scheduler restarts and `run_bound`: noted in Decision 2.
+- Non-blocking, thin names and the entry without options handled well: kept. Scheduler restarts and `run_bound`: noted in Decision 2.
 
 Advisor questions (the four owner questions of revision 1):
 - Q1 buy prices: answered by the owner rule of 2026-11-19 (valuation imports); the list is deleted (Decision 6).
