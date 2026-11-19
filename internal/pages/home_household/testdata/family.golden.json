@@ -1,0 +1,97 @@
+{
+  "schema": "household_summary",
+  "schema_version": 2,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "scope1",
+  "currency": "USD",
+  "generated_at": "2026-11-10T10:00:00+08:00",
+  "stale_after": "2026-11-14T09:00:00+08:00",
+  "data_times": [
+    {
+      "source": "account",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    },
+    {
+      "source": "account",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    }
+  ],
+  "run_status": "ok",
+  "card": {
+    "title": "Household",
+    "subtitle": "全家合计 · 计入 2 / 3 个账户 · 最早数据日 2026-11-10",
+    "stale": {
+      "data_time": "2026-11-10T09:00:00+08:00",
+      "stale_after": "2026-11-14T09:00:00+08:00",
+      "text": "Account data day 2026-11-10"
+    },
+    "tiles": {
+      "net_worth": {
+        "label": "Net value",
+        "figure": {
+          "value": 250000.00,
+          "text": "$250,000.00",
+          "unit": "USD"
+        },
+        "caption": {
+          "text": "USD · Data day 2026-11-10"
+        },
+        "explain": "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
+      },
+      "day_change": {
+        "label": "Previous trading day",
+        "figure": {
+          "value": 1500.00,
+          "text": "+$1,500.00",
+          "tone": "up",
+          "unit": "usd_signed"
+        },
+        "caption": {
+          "value": 0.60,
+          "text": "+0.60%",
+          "tone": "up",
+          "unit": "percent"
+        },
+        "explain": "Net liquidation of the latest capture minus the previous captured trading day, USD; includes deposits and withdrawals, not pure return. The percentage is this change divided by the previous day."
+      },
+      "month_to_date": {
+        "label": "Month to date",
+        "figure": {
+          "value": 5000.00,
+          "text": "+$5,000.00",
+          "tone": "up",
+          "unit": "usd_signed"
+        },
+        "caption": {
+          "value": 2.04,
+          "text": "+2.04%",
+          "tone": "up",
+          "unit": "percent"
+        },
+        "explain": "Net liquidation of the latest capture minus the last trading day of the previous month, USD; includes deposits and withdrawals, not time-weighted return."
+      },
+      "cash": {
+        "label": "Cash",
+        "figure": {
+          "value": 40.00,
+          "text": "40.00%",
+          "unit": "share_percent"
+        },
+        "caption": {
+          "value": 100000.00,
+          "text": "+$100,000.00",
+          "tone": "up",
+          "unit": "usd_signed"
+        },
+        "explain": "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, the small one the amount; negative cash is margin borrowing."
+      }
+    },
+    "notes": [
+      "账户（daughter）今天未采集到，合计不含",
+      "现金分放在各账户，只担保本账户的卖出看跌；合计现金不是可共用的保证金"
+    ],
+    "gaps": [],
+    "data_times_text": "Data day 2026-11-10"
+  }
+}
