@@ -124,20 +124,3 @@ func TestVerdictListsNonNil(t *testing.T) {
 		t.Errorf("lists not empty: %+v", v)
 	}
 }
-
-// TestRowCurrency: a caller hands a yen row to a Tierer and the row keeps its Currency; empty means USD.
-func TestRowCurrency(t *testing.T) {
-	t.Parallel()
-	in := input()
-	in.Rows = []optiontierapi.Row{{Key: "j", Company: "JJJ", Currency: "JPY", Strike: "8950"}, {Key: "u", Company: "AAA"}}
-	var seen []string
-	for _, r := range in.Rows {
-		seen = append(seen, r.Currency)
-	}
-	if !reflect.DeepEqual(seen, []string{"JPY", ""}) {
-		t.Errorf("currencies = %q", seen)
-	}
-	if _, err := (fakeTierer{}).Judge(in); err != nil {
-		t.Fatalf("Judge: %v", err)
-	}
-}

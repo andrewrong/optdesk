@@ -92,3 +92,19 @@ func TestJPYCashOtherCurrency(t *testing.T) {
 		t.Errorf("USD cell = %+v", u.Cash[0])
 	}
 }
+
+// TestEmptyCurrencyIsUSD: Currency "" and "USD" give the same verdict, cash cells included.
+func TestEmptyCurrencyIsUSD(t *testing.T) {
+	t.Parallel()
+	f := loadJPY(t)
+	empty := judgeJPY(t, f, f.USD, "main", "small")
+	r := f.USD
+	r.Currency = "USD"
+	usd := judgeJPY(t, f, r, "main", "small")
+	if !reflect.DeepEqual(empty, usd) {
+		t.Errorf("empty = %+v, USD = %+v", empty, usd)
+	}
+	if empty.Cash[0].Verdict != "fits" || empty.Cash[0].Why != "" {
+		t.Errorf("cash = %+v", empty.Cash)
+	}
+}
