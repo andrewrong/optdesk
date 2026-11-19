@@ -281,7 +281,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		rec runner.Reconciler, gaps runner.GapSyncer, jobs []contracts.Job, disabled map[string]string, _ runner.ExecIdentityFunc,
 	) runner.Scheduler {
 		r.sched = &fakeSched{
-			fence: fence, rec: rec, gaps: gaps, jobs: jobs, disabled: maps.Clone(disabled), runErr: r.runErr,
+			fence: fence, rec: rec, gaps: gaps, jobs: jobs, disabled: withoutRecon(disabled), runErr: r.runErr,
 			started: make(chan struct{}), ticks: make(chan chan struct{}),
 		}
 		close(r.built)

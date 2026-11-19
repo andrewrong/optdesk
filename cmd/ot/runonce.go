@@ -23,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -58,6 +59,8 @@ type runOnceConfig struct {
 	socketPath        string
 	// scheduler is set by ot scheduler alone: the jobs it leaves out are recorded (not_wired.go).
 	scheduler bool
+	// reconDSN is the line of the recon writer; empty holds recon_bars.
+	reconDSN string
 }
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) { return loadConfig(a, false) }
@@ -92,6 +95,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		barDSN:           env[bar.DSNEnvBar],
 		openDSN:          env[openquote.DSNEnvOptionOpen],
 		resolveDSN:       env[underlying.DSNEnvResolve],
+		reconDSN:         env[reconstore.DSNEnvRecon],
 		barsWired:        a.deps.openBar != nil && a.deps.newBarsRefresh != nil && a.deps.newFxRefresh != nil && a.deps.newHistory != nil,
 	}
 	for _, l := range []struct{ name, v string }{

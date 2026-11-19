@@ -107,6 +107,7 @@ var jobTable = []jobRow{
 	listedOnly("option_open_resolve_gap", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
 	listedOnly("option_ledger", "caches_failures", textCachesFailures, needsCachesFailure),
 	{ID: "macro_events", Kind: kindAnyDay, Force: true},
+	{ID: "recon_bars", Kind: kindAnyDay, Force: true},
 }
 
 // jobRowOf returns the row of a job id.

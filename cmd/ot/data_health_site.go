@@ -151,9 +151,11 @@ var dataHealthManifests = map[string]dataHealthManifest{
 	"macro_events":            {calUS, []string{"obs.macro_event"}, ""},
 }
 
-// dataHealthNoLedger is the fixed list of the jobs of jobTable that store no ledger dataset, with the reason. Every
-// job stores one today, so it is empty; a job added to jobTable without a dataset goes here with its reason.
-var dataHealthNoLedger = map[string]string{}
+// dataHealthNoLedger is the fixed list of the jobs of jobTable that store no ledger dataset, with the reason. recon_bars is the one that stores
+// a run of its own; a job added to jobTable without a dataset goes here with its reason.
+var dataHealthNoLedger = map[string]string{
+	"recon_bars": "it stores a reconciliation run and no ledger dataset",
+}
 
 // dataHealthPresentOnly is the fixed list of jobs whose past-day run stores today's source under the day
 // (Decision 5).
