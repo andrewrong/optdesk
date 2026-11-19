@@ -13,4 +13,9 @@ func newValueLines() valuelinesapi.Calculator { return valuelines.New() }
 
 // newBuyPriceResolver returns the one buy price resolver, buyprice.New over the valuation line calculator, as the
 // api type. The candidates page route and the jobs use this one resolver (buy-price-source.md Decisions 9 and 11).
-func newBuyPriceResolver() buypriceapi.Resolver { return buyprice.New(valuelines.New()) }
+func newBuyPriceResolver() buypriceapi.Resolver {
+	// The calculator goes through a variable of the api type: go-arch-lint's deep scan would otherwise read
+	// valuelines.New() inside buyprice.New as an edge from compute/valuelines to compute/buyprice.
+	var calc valuelinesapi.Calculator = valuelines.New()
+	return buyprice.New(calc)
+}
