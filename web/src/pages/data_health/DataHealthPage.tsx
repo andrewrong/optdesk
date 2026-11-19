@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/data_health_page'
 import { CoverageGrid } from './CoverageGrid'
+import { FailuresTable } from './FailuresTable'
 
 export function DataHealthView({ payload }: { payload: Payload }) {
   return (
@@ -26,6 +27,19 @@ export function DataHealthView({ payload }: { payload: Payload }) {
           <CoverageGrid datasets={payload.datasets} form={payload.form} />
         </CardContent>
       </Card>
+      {payload.datasets.some((d) => d.repeated_failures !== undefined) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Repeated failures</CardTitle>
+            {payload.failures_note ? <p className="text-sm text-muted-foreground">{payload.failures_note}</p> : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {payload.datasets.map((d) => (
+              <FailuresTable key={d.dataset_id} dataset={d} noneText={payload.failures_none_text} />
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>Legend</CardTitle>

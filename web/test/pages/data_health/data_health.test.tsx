@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as pageFolder from '@/pages/data_health/DataHealthPage'
 import * as grid from '@/pages/data_health/CoverageGrid'
 import * as repair from '@/pages/data_health/RepairButton'
+import * as failures from '@/pages/data_health/FailuresTable'
 import type { Payload } from '@/types/data_health_page'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -171,8 +172,33 @@ describe('data health page', () => {
     expect(secondCell).toContain(second.dataset_id)
   })
 
+  it('a payload without the failures fields shows no failures table and no error', async () => {
+    const p = ok()
+    delete p.failures_note
+    delete p.failures_none_text
+    for (const d of p.datasets) {
+      delete d.failures_total
+      delete d.failures_hidden
+      delete d.failures_hidden_text
+      delete d.repeated_failures
+    }
+    const el = await render(p)
+    expect(el.querySelector('[data-failures]')).toBeNull()
+    expect(el.querySelector('[data-gap]')).toBeNull()
+    expect(el.querySelectorAll('[data-dataset]')).toHaveLength(3)
+  })
+
+  it('the failures_unavailable gap prints its text and the coverage grid is still drawn', async () => {
+    const p = ok()
+    p.gaps = [{ kind: 'gap', reason: 'failures_unavailable', text: 'Invented: the failure read is unavailable.' }]
+    for (const d of p.datasets) d.repeated_failures = []
+    const el = await render(p)
+    expect(el.querySelector('[data-gap="failures_unavailable"]')?.textContent).toBe('Invented: the failure read is unavailable.')
+    expect(el.querySelectorAll('[data-dataset]')).toHaveLength(3)
+  })
+
   it('TestNoLogicInWeb:the page folder exports only components and the registration', () => {
-    const names = [pageFolder, grid, repair].flatMap((m) => Object.keys(m)).sort()
-    expect(names).toEqual(['CellRepair', 'CoverageGrid', 'DataHealthView', 'RepairAllForm', 'registration'].sort())
+    const names = [pageFolder, grid, repair, failures].flatMap((m) => Object.keys(m)).sort()
+    expect(names).toEqual(['CellRepair', 'CoverageGrid', 'DataHealthView', 'FailuresTable', 'RepairAllForm', 'registration'].sort())
   })
 })
