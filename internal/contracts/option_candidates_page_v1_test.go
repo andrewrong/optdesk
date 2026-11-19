@@ -504,3 +504,37 @@ func TestNoJPFieldsStillValid(t *testing.T) {
 		t.Fatal("the minimal group already carries currency")
 	}
 }
+
+func candidatesGroups(t *testing.T, n int) map[string]any {
+	t.Helper()
+	inst := candidatesMinimal(t)
+	first := candidatesGroup(inst)
+	groups := []any{first}
+	for i := 1; i < n; i++ {
+		g := map[string]any{}
+		for k, v := range first {
+			g[k] = v
+		}
+		groups = append(groups, g)
+	}
+	inst["groups"] = groups
+	return inst
+}
+
+func TestOptionCandidatesPageFourGroupsValid(t *testing.T) {
+	t.Parallel()
+	inst := candidatesGroups(t, 4)
+	second := inst["groups"].([]any)[1].(map[string]any)
+	second["kind"] = "short_put"
+	second["currency"] = "JPY"
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a document with four groups, the second the yen short_put, is invalid")
+	}
+}
+
+func TestOptionCandidatesPageFiveGroupsFail(t *testing.T) {
+	t.Parallel()
+	if pageV1Valid(t, optionCandidatesPageV1, candidatesGroups(t, 5)) {
+		t.Fatal("a document with five groups validates")
+	}
+}
