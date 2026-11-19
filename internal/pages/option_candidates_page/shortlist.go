@@ -52,7 +52,7 @@ func shortListOfKind(c Config, kind string, gr groupRead, tiers *tiersView) (*sh
 		Filters:      filtersOf(res),
 		DroppedItems: []droppedItem{},
 		Columns:      shortColumns(),
-		Groups:       shortGroupsOf(res, gr.rows, tiers),
+		Groups:       shortGroupsOf(res, gr.rows, tiers, gr.cur),
 		FoldedTitle:  slFoldedHead + thousands(len(gr.rows)) + slFoldedTail,
 	}
 	v.Dropped, v.DroppedItems = droppedOf(res)
@@ -156,7 +156,7 @@ func dropLabel(code string, b optionshortlistapi.Bounds) string {
 
 // shortGroupsOf writes the groups of the result in its order, each row with its stored row and, when there is
 // one, its tier row. A placed row with no stored row is not shown.
-func shortGroupsOf(res optionshortlistapi.Result, rows []store.Candidate, tiers *tiersView) []shortGroup {
+func shortGroupsOf(res optionshortlistapi.Result, rows []store.Candidate, tiers *tiersView, cur string) []shortGroup {
 	byKey := make(map[string]store.Candidate, len(rows))
 	for i, r := range rows {
 		byKey[tierKey(r, i)] = r
@@ -171,13 +171,13 @@ func shortGroupsOf(res optionshortlistapi.Result, rows []store.Candidate, tiers 
 				continue
 			}
 			if len(sg.Rows) == 0 {
-				sg.Ticker, sg.Spot = c.Issuer, spotText(c)
+				sg.Ticker, sg.Spot = c.Issuer, spotText(c, cur)
 			}
 			var t *tierRow
 			if tr, ok := tierRows[p.Key]; ok {
 				t = &tr
 			}
-			sg.Rows = append(sg.Rows, shortRowOf(p, c, t))
+			sg.Rows = append(sg.Rows, shortRowOf(p, c, t, cur))
 		}
 		if len(sg.Rows) == 0 {
 			continue
@@ -188,8 +188,8 @@ func shortGroupsOf(res optionshortlistapi.Result, rows []store.Candidate, tiers 
 	return out
 }
 
-func spotText(c store.Candidate) string {
-	if m, ok := moneyText(deref(c.Spot)); ok {
+func spotText(c store.Candidate, cur string) string {
+	if m, ok := moneyText(deref(c.Spot), cur); ok {
 		return m
 	}
 	return noSpotText

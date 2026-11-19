@@ -52,7 +52,7 @@ var valueReasonText = map[string]string{
 // fillValuation writes the valuation field of each company from Config.Valuation and Config.Buy. A nil reader
 // or resolver leaves every field nil; a Current error gives read_failed on every company and is not returned.
 // The figure is the resolver's price rounded to the cent by moneyText; nothing else is added or compared.
-func fillValuation(ctx context.Context, c Config, cs []companyView) {
+func fillValuation(ctx context.Context, c Config, cs []companyView, cur string) {
 	if c.Valuation == nil || c.Buy == nil || len(cs) == 0 {
 		return
 	}
@@ -63,7 +63,7 @@ func fillValuation(ctx context.Context, c Config, cs []companyView) {
 			cs[i].Valuation = valueLineOf(&cs[i], "", reasonReadFailed)
 			continue
 		}
-		text, reason := valueFigure(c.Buy, zones, tables, cs, i)
+		text, reason := valueFigure(c.Buy, zones, tables, cs, i, cur)
 		cs[i].Valuation = valueLineOf(&cs[i], text, reason)
 	}
 }
@@ -85,9 +85,9 @@ func valueLineOf(cv *companyView, text, reason string) *valueLineView {
 // valueFigure is the figure text of company i, or the one reason it has none. The zone rule is the resolver's;
 // the page adds one test, the strip-level ambiguous (two strips share the ticker), unless the resolver found no
 // profile, so the order of the reasons on the strip is as it was.
-func valueFigure(buy buypriceapi.Resolver, zones []buypriceapi.Zone, tables buypriceapi.Tables, cs []companyView, i int) (text, reason string) {
+func valueFigure(buy buypriceapi.Resolver, zones []buypriceapi.Zone, tables buypriceapi.Tables, cs []companyView, i int, cur string) (text, reason string) {
 	ticker := cs[i].Ticker
-	res := buy.Resolve(buypriceapi.Input{Symbol: ticker, Currency: valueUSD, Zones: zones, Tables: tables})
+	res := buy.Resolve(buypriceapi.Input{Symbol: ticker, Currency: stripCurrency(cur), Zones: zones, Tables: tables})
 	if res.ZoneReason == reasonNoProfile {
 		return "", reasonNoProfile
 	}
@@ -99,11 +99,19 @@ func valueFigure(buy buypriceapi.Resolver, zones []buypriceapi.Zone, tables buyp
 	if res.ZoneReason != "" {
 		return "", res.ZoneReason
 	}
-	m, ok := moneyText(res.Price)
+	m, ok := moneyText(res.Price, cur)
 	if !ok {
 		return "", reasonBadInput
 	}
 	return m + valueReviewTag + res.ReviewDay + ")", ""
+}
+
+// stripCurrency is the currency the resolver is asked for: the group currency, USD for the US groups.
+func stripCurrency(cur string) string {
+	if cur == "" {
+		return valueUSD
+	}
+	return cur
 }
 
 // hasFigure is true when the strip shows a valuation figure, not a reason.

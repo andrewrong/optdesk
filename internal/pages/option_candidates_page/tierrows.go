@@ -61,19 +61,20 @@ type rowEnv struct {
 	cols    []colDef
 	figs    []optionfigapi.PutFigures
 	cashDay map[string]string
+	cur     string // the currency of the group's rows: "" or USD, or JPY
 }
 
 // tierRowOf writes one row of the answer. pos is the position of the row among the rows whose evidence and
 // figures were read, -1 for a grey row, which gets a line and no fields.
 func (e rowEnv) tierRowOf(v optiontierapi.Verdict, c store.Candidate, pos int) tierRow {
 	r := tierRow{
-		ID: v.Key, Company: strconv.Itoa(c.UnderlyingID), Contract: contractOf(c),
-		Margin: marginPair(v, c), BelowSpot: belowSpotPair(v), Premium: premiumPair(v),
+		ID: v.Key, Company: strconv.Itoa(c.UnderlyingID), Contract: contractOf(c, e.cur),
+		Margin: marginPair(v, c, e.cur), BelowSpot: belowSpotPair(v), Premium: premiumPair(v, e.cur),
 		Notes: e.badgesOf(v.Notes, badgeToneNone, c), Fields: []fieldView{},
 	}
 	r.Badges = append(e.badgesOf(v.Badges, badgeToneWarn, c), e.badgesOf(v.Infos, badgeToneInfo, c)...)
 	if pos < 0 {
-		line := greyLine(v, c)
+		line := greyLine(v, c, e.cur)
 		r.Line = &line
 		return r
 	}
@@ -81,8 +82,8 @@ func (e rowEnv) tierRowOf(v optiontierapi.Verdict, c store.Candidate, pos int) t
 	return r
 }
 
-func contractOf(c store.Candidate) contractView {
-	strike, ok := moneyText(c.Strike)
+func contractOf(c store.Candidate, cur string) contractView {
+	strike, ok := moneyText(c.Strike, cur)
 	if !ok {
 		strike = unreadable
 	}
@@ -115,13 +116,13 @@ func figurePair(v optiontierapi.Verdict, id, text, fallback string) (pairView, b
 	return pairView{Main: main}, true
 }
 
-func marginPair(v optiontierapi.Verdict, c store.Candidate) pairView {
+func marginPair(v optiontierapi.Verdict, c store.Candidate, cur string) pairView {
 	p, ok := figurePair(v, "margin", v.MarginPct, noValue)
 	if !ok {
 		return p
 	}
-	be, ok1 := moneyText(v.BreakEven)
-	buy, ok2 := moneyText(deref(c.BuyPrice))
+	be, ok1 := moneyText(v.BreakEven, cur)
+	buy, ok2 := moneyText(deref(c.BuyPrice), cur)
 	if ok1 && ok2 {
 		p.Sub = subOf(beHead + be + beVs + buy)
 	}
@@ -141,11 +142,11 @@ func belowSpotPair(v optiontierapi.Verdict) pairView {
 	return p
 }
 
-func premiumPair(v optiontierapi.Verdict) pairView {
+func premiumPair(v optiontierapi.Verdict, cur string) pairView {
 	if v.PerContract == "" {
 		return gapPair("no_data", whyText(v, "premium", gapNoBid))
 	}
-	main, ok := moneyText(v.PerContract)
+	main, ok := moneyText(v.PerContract, cur)
 	if !ok {
 		return gapPair("unreadable", unreadable)
 	}
@@ -162,22 +163,22 @@ func premiumPair(v optiontierapi.Verdict) pairView {
 
 // greyLine is the one line of a grey row: the contract, the break-even and, for an in-the-money row, the
 // intrinsic and time value, then the yield.
-func greyLine(v optiontierapi.Verdict, c store.Candidate) string {
-	strike, _ := moneyText(c.Strike)
+func greyLine(v optiontierapi.Verdict, c store.Candidate, cur string) string {
+	strike, _ := moneyText(c.Strike, cur)
 	parts := []string{c.Issuer + " " + strike + " " + string(c.Expiry)}
-	if bid, ok := moneyText(c.BidEod); ok && c.BidEod != "" {
+	if bid, ok := moneyText(c.BidEod, cur); ok && c.BidEod != "" {
 		parts = append(parts, lineBid+bid)
 	}
-	if be, ok := moneyText(v.BreakEven); v.BreakEven != "" && ok {
+	if be, ok := moneyText(v.BreakEven, cur); v.BreakEven != "" && ok {
 		parts = append(parts, beHead+be)
 	} else {
 		parts = append(parts, lineBEGap+whyText(v, "break_even", gapNoBid))
 	}
-	if in, ok := moneyText(v.Intrinsic); ok && (v.Grey == "in_the_money" || v.Why["time_value"] == whyBelowIntr) {
+	if in, ok := moneyText(v.Intrinsic, cur); ok && (v.Grey == "in_the_money" || v.Why["time_value"] == whyBelowIntr) {
 		part := lineIntrinsic + in
 		if v.Why["time_value"] == whyBelowIntr {
 			part += lineTimeValue + belowIntrinsicText
-		} else if tv, ok := moneyText(v.TimeValue); v.TimeValue != "" && ok {
+		} else if tv, ok := moneyText(v.TimeValue, cur); v.TimeValue != "" && ok {
 			part += lineTimeValue + tv
 		}
 		parts = append(parts, part)
@@ -258,7 +259,10 @@ func (e rowEnv) fieldsOf(v optiontierapi.Verdict, c store.Candidate, pos int) []
 		cellField(fieldITMID, fieldITMLabel, dayHinted(hintITM, e.day), e.figureAt(pos, itmFigure)),
 		cellField(fieldVsCashID, fieldVsCashLabel, dayHinted(hintVsCash, e.day), e.figureAt(pos, excessFigure)),
 		e.cashField(v),
-		cellField(fieldBidID, fieldBidLabel, dayHinted(hintBid, e.day), moneyCell(c.BidEod)),
+		cellField(fieldBidID, fieldBidLabel, dayHinted(hintBid, e.day), moneyCellIn(c.BidEod, e.cur)),
+	}
+	if e.cur == currencyJPY {
+		fields = append(fields, cellField(colSecuredID, colSecuredLabel, ptr(jpSecuredHintZh), securedCell(c)))
 	}
 	for _, d := range e.cols {
 		fields = append(fields, cellField(d.ID, d.Label, d.Hint, d.cellAt(pos, c)))
@@ -275,6 +279,9 @@ func storedCell(p *string, f func(*string) any) any {
 }
 
 func (e rowEnv) figureAt(pos int, f func(optionfigapi.PutFigures) any) any {
+	if e.cur == currencyJPY {
+		return jpNotComputed()
+	}
 	return figureCell(e.figs, f)(pos, store.Candidate{})
 }
 
@@ -310,8 +317,8 @@ func (e rowEnv) cashLine(cc optiontierapi.CashCell) string {
 	if cc.Verdict == "short" {
 		word = cashShort
 	}
-	free, ok1 := moneyText(cc.Free)
-	committed, ok2 := moneyText(cc.Committed)
+	free, ok1 := moneyText(cc.Free, e.cur)
+	committed, ok2 := moneyText(cc.Committed, e.cur)
 	if !ok1 || !ok2 {
 		return head + cashNoFig + unreadable
 	}

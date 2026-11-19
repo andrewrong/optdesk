@@ -63,6 +63,8 @@ func evCell(set evidenceSet, f func(rowEvidence, store.Candidate) any) func(int,
 			return mkGap("no_reader", gapNoReader)
 		case evUnreadable:
 			return unreadableCell()
+		case evNotComputed:
+			return jpNotComputed()
 		case evOK:
 		}
 		return f(r, c)
@@ -105,7 +107,7 @@ func valueOf(text, key string, badges ...string) any {
 
 // signedMoney is money with a leading + for an amount that is neither zero nor negative, U+2212 for a negative one.
 func signedMoney(text string) (string, bool) {
-	m, ok := moneyText(text)
+	m, ok := moneyText(text, currencyUSD)
 	if !ok {
 		return "", false
 	}
@@ -143,7 +145,7 @@ func belowBuyCell(amount, pct, why string) any {
 	if why != "" {
 		return whyGap(why, "")
 	}
-	m, ok1 := moneyText(amount)
+	m, ok1 := moneyText(amount, currencyUSD)
 	p, ok2 := pctText1(pct)
 	if !ok1 || !ok2 {
 		return unreadableCell()
@@ -156,7 +158,7 @@ func sigmaCell(r rowEvidence) any {
 	if e.MoveWhy != "" {
 		return whyGap(e.MoveWhy, "")
 	}
-	m, ok1 := moneyText(e.OneSigma)
+	m, ok1 := moneyText(e.OneSigma, currencyUSD)
 	p, ok2 := pctText1(e.OneSigmaPct)
 	if !ok1 || !ok2 {
 		return unreadableCell()
@@ -175,7 +177,7 @@ func bidForecastCell(r rowEvidence, chainDay string) any {
 	}
 	share, ok1 := signedMoney(e.EdgePerShare)
 	contract, ok2 := signedMoney(e.EdgePerContract)
-	fair, ok3 := moneyText(e.Fair)
+	fair, ok3 := moneyText(e.Fair, currencyUSD)
 	if !ok1 || !ok2 || !ok3 {
 		return unreadableCell()
 	}

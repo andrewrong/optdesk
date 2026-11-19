@@ -116,6 +116,8 @@ var keptLabels = map[string]string{
 	"cash_short":             zhKeptLabel_cash_short,
 	"delta_above_bound":      zhKeptLabel_delta_above_bound,
 	"delta_unknown":          zhKeptLabel_delta_unknown,
+	"no_jpy_rate":            badgeLabelNoJPYRate,
+	"no_jpy_funds":           badgeLabelNoJPYFunds,
 }
 
 // badgeTexts are the English label and the Chinese gloss of each badge, note and info mark.
@@ -134,6 +136,8 @@ var badgeTexts = map[string]struct{ label, gloss string }{
 	"earnings_beyond_horizon": {"Earnings beyond horizon", zhBadgeGloss_earnings_beyond_horizon},
 	"earnings_unknown":        {"Earnings unknown", zhBadgeGloss_earnings_unknown},
 	"cash_unknown":            {"Cash unknown", zhBadgeGloss_cash_unknown},
+	"no_jpy_rate":             {"No yen cash rate", markHintNoJPYRateZh},
+	"no_jpy_funds":            {"No yen account", markHintNoJPYFundsZh},
 }
 
 // cashWhyTexts are the words of the reason an alias has no cash figure.

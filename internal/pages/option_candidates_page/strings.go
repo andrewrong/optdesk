@@ -4,7 +4,7 @@ package option_candidates_page
 const (
 	pageTitle    = "Option candidates"
 	estimateNote = "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price"
-	jpNote       = "Japanese option candidates: later design (option-candidates-jp)"
+	jpNote       = "Japanese option candidates are a separate group in yen when a yen reader is set"
 	bidLabel     = "Bid (EOD estimate)"
 	bidHint      = "Closing bid, sold on the next trading day, not a traded price"
 	itmHint      = "Model estimate of the chance the put ends in the money; not an assignment probability"
@@ -38,6 +38,8 @@ var markHints = map[string]string{
 	"no_dividend":             "no dividend",
 	"eod_fallback":            "Price is from the last close, the open pull had no usable quote for this stock",
 	"oi_prior_session":        "Open interest is from an earlier session",
+	"no_jpy_rate":             markHintNoJPYRateZh,
+	"no_jpy_funds":            markHintNoJPYFundsZh,
 }
 
 // fitHints are the hints of the stored fit words.

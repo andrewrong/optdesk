@@ -3,6 +3,7 @@ package option_candidates_page
 import (
 	"encoding/json"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -86,9 +87,20 @@ func minusText(s string) string {
 	return s
 }
 
-// moneyText writes the stored decimal text as "$1,105.75".
-func moneyText(text string) (string, bool) {
-	f, ok := fixedText(text, 2)
+// Currencies of a row; an empty currency is USD (candidates-jp.md Decision 25).
+const (
+	currencyUSD = "USD"
+	currencyJPY = "JPY"
+)
+
+// moneyText writes the stored decimal text as money of the row currency: "$1,105.75" for USD or an empty
+// currency, "¥8,950" (no decimals) for JPY.
+func moneyText(text, currency string) (string, bool) {
+	places, symbol := 2, "$"
+	if currency == currencyJPY {
+		places, symbol = 0, "\u00a5"
+	}
+	f, ok := fixedText(text, places)
 	if !ok {
 		return "", false
 	}
@@ -104,7 +116,41 @@ func moneyText(text string) (string, bool) {
 		}
 		b.WriteRune(c)
 	}
-	return sign + "$" + b.String() + "." + frac, true
+	out := sign + symbol + b.String()
+	if places > 0 {
+		out += "." + frac
+	}
+	return out, true
+}
+
+// moneyIn is moneyText of one currency as a formatter.
+func moneyIn(currency string) func(string) (string, bool) {
+	return func(text string) (string, bool) { return moneyText(text, currency) }
+}
+
+// timesInt is the decimal text multiplied by a whole number, as decimal text; ok is false for text that is
+// not a plain non-negative decimal or one too long for the integer product.
+func timesInt(text string, n int) (string, bool) {
+	if !numberPattern.MatchString(text) || strings.HasPrefix(text, "-") || n < 0 {
+		return "", false
+	}
+	whole, frac, _ := strings.Cut(text, ".")
+	digits := strings.TrimLeft(whole+frac, "0")
+	if len(digits) > 15 {
+		return "", false
+	}
+	v := int64(0)
+	for _, c := range digits {
+		v = v*10 + int64(c-'0')
+	}
+	p := strconv.FormatInt(v*int64(n), 10)
+	if len(frac) == 0 {
+		return p, true
+	}
+	if len(p) <= len(frac) {
+		p = strings.Repeat("0", len(frac)-len(p)+1) + p
+	}
+	return p[:len(p)-len(frac)] + "." + p[len(p)-len(frac):], true
 }
 
 // numberLiteral is the stored decimal text as a JSON number, when the text is one.

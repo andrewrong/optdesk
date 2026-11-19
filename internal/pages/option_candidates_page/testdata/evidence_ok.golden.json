@@ -15,7 +15,7 @@
   "stale": null,
   "title": "Option candidates",
   "notes": [
-    "Japanese option candidates: later design (option-candidates-jp)",
+    "Japanese option candidates are a separate group in yen when a yen reader is set",
     "The cash rate used for the bid vs forecast price is DGS3MO for every currency; this is a trial."
   ],
   "gaps": [],

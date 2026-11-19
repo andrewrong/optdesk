@@ -44,6 +44,10 @@ type viewModel struct {
 	ShortPutList *shortListView `json:"short_put_list,omitempty"`
 	// ShortPutTiers is the tier view of the short-put rows, null without a Tiers judge or rows.
 	ShortPutTiers *tiersView `json:"short_put_tiers"`
+	// ShortPutListJPY and ShortPutTiersJPY are the same views of the yen group (candidates-jp.md Decision 24),
+	// omitted without yen rows.
+	ShortPutListJPY  *shortListView `json:"short_put_list_jpy,omitempty"`
+	ShortPutTiersJPY *tiersView     `json:"short_put_tiers_jpy,omitempty"`
 }
 
 // Build returns the page.option_candidates_page.v1 JSON for day: the stored rows of each kind
@@ -74,23 +78,27 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 	var first *store.Candidate
 	if c.Candidates == nil {
 		for _, s := range groupSpecs {
-			vm.Groups = append(vm.Groups, gapGroup(s.kind, mkGap("no_reader", gapNoReader)))
+			vm.Groups = append(vm.Groups, gapGroup(s, mkGap("no_reader", gapNoReader)))
 		}
 		vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
 	} else {
-		for _, s := range groupSpecs {
-			gr, err := readGroup(ctx, c, series, s.kind, day)
+		for _, s := range specsOf(c) {
+			bday := day
+			if s.currency == currencyJPY {
+				bday = tokyoDay(generatedAt)
+			}
+			gr, err := readGroup(ctx, c, series, s, bday)
 			if err != nil {
 				return nil, err
 			}
 			gd, rows := gr.day, gr.rows
 			if len(rows) == 0 {
-				vm.Groups = append(vm.Groups, gapGroup(s.kind, mkGap("no_rows", gapNoRows)))
+				vm.Groups = append(vm.Groups, gapGroup(s, mkGap("no_rows", gapNoRows)))
 				continue
 			}
-			g := buildGroup(s, gd, day, rows, c.Figures, gr.rate, gr.ev)
+			g := buildGroup(s, gd, bday, rows, c.Figures, gr.rate, gr.ev)
 			vm.Groups = append(vm.Groups, g)
-			if err = fillShortPut(ctx, c, &vm, s.kind, gr, day, generatedAt); err != nil {
+			if err = fillShortPut(ctx, c, &vm, s, gr, bday, generatedAt); err != nil {
 				return nil, err
 			}
 			vm.Notes = withTrialNote(vm.Notes, g)
@@ -123,28 +131,40 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 type groupRead struct {
 	day     contracts.Day
 	rows    []store.Candidate
+	cur     string // the currency of the rows: "" for the US groups, JPY for the yen group
 	rate    rateRead
 	ev      evidenceSet
 	tickers map[int]string
 }
 
-// readGroup reads the rows of one kind with their display names, the cash rate of the group's day and,
+// specsOf are the groups in page order: the yen short-put group follows the US one when a yen reader is set.
+func specsOf(c Config) []groupSpec {
+	out := make([]groupSpec, 0, len(groupSpecs)+1)
+	for _, s := range groupSpecs {
+		out = append(out, s)
+		if s.kind == kindShortPut && c.CandCur != nil {
+			out = append(out, jpSpec)
+		}
+	}
+	return out
+}
+
+// readGroup reads the rows of one group with their display names, the cash rate of the group's day and,
 // for the short-put kind, the evidence of its ok rows (the stored main table); the tier view asks for the
-// evidence of its own rows.
-func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind string,
-	day contracts.Day) (groupRead, error) {
-	gd, rows, err := readKind(ctx, c.Candidates, kind, day)
+// evidence of its own rows. day is the build day of the group's market.
+func readGroup(ctx context.Context, c Config, series store.SeriesReader, s groupSpec, day contracts.Day) (groupRead, error) {
+	gd, rows, err := readKind(ctx, c, s.kind, s.currency, day)
 	if err != nil || len(rows) == 0 {
-		return groupRead{day: gd}, err
+		return groupRead{day: gd, cur: s.currency}, err
 	}
 	tickers, err := tickersOf(ctx, c.Names, rows)
 	if err != nil {
-		return groupRead{day: gd}, err
+		return groupRead{day: gd, cur: s.currency}, err
 	}
 	rows = namedRows(rows, tickers)
 	rate, err := readRate(ctx, series, gd)
-	gr := groupRead{day: gd, rows: rows, rate: rate, tickers: tickers}
-	if err != nil || kind != kindShortPut {
+	gr := groupRead{day: gd, rows: rows, rate: rate, tickers: tickers, cur: s.currency}
+	if err != nil || s.kind != kindShortPut {
 		return gr, err
 	}
 	var ok []store.Candidate
@@ -153,26 +173,30 @@ func readGroup(ctx context.Context, c Config, series store.SeriesReader, kind st
 			ok = append(ok, r)
 		}
 	}
-	gr.ev, err = evidenceOf(ctx, inputsOf(c), tickers, gd, rate, ok)
+	gr.ev, err = evidenceOf(ctx, inputsOf(c, s.currency), tickers, gd, rate, ok)
 	return gr, err
 }
 
-// fillShortPut writes the tier view and then the short list of the short-put group; any other kind leaves vm as it is.
-func fillShortPut(ctx context.Context, c Config, vm *viewModel, kind string, gr groupRead, day contracts.Day, at time.Time) error {
-	var err error
-	if vm.ShortPutTiers, err = tiersOfKind(ctx, c, kind, gr, day, at, vm.ShortPutTiers); err != nil {
+// fillShortPut writes the tier view and then the short list of a short-put group, into the US properties or,
+// for the yen group, the yen ones; any other kind leaves vm as it is.
+func fillShortPut(ctx context.Context, c Config, vm *viewModel, s groupSpec, gr groupRead, day contracts.Day, at time.Time) error {
+	if s.kind != kindShortPut {
+		return nil
+	}
+	tiers, err := buildTiers(ctx, c, gr, day, at)
+	if err != nil {
 		return err
 	}
-	vm.ShortPutList, err = shortListOfKind(c, kind, gr, vm.ShortPutTiers)
-	return err
-}
-
-// tiersOfKind is the tier view of the short-put group and prev for any other kind.
-func tiersOfKind(ctx context.Context, c Config, kind string, gr groupRead, day contracts.Day, at time.Time, prev *tiersView) (*tiersView, error) {
-	if kind != kindShortPut {
-		return prev, nil
+	list, err := shortListOfKind(c, s.kind, gr, tiers)
+	if err != nil {
+		return err
 	}
-	return buildTiers(ctx, c, gr, day, at)
+	if s.currency == currencyJPY {
+		vm.ShortPutTiersJPY, vm.ShortPutListJPY = tiers, list
+	} else {
+		vm.ShortPutTiers, vm.ShortPutList = tiers, list
+	}
+	return nil
 }
 
 // fillRun writes the fields that exist only when some group has rows.
@@ -203,7 +227,7 @@ func fillRun(vm *viewModel, zone *time.Location, chainDay, oldestStale contracts
 
 // withTrialNote adds the trial-rate sentence once a short-put group shows the evidence columns.
 func withTrialNote(notes []string, g group) []string {
-	if g.Kind == kindShortPut && g.Main != nil {
+	if g.Kind == kindShortPut && g.Main != nil && g.Currency == nil {
 		return append(notes, trialRateNote)
 	}
 	return notes

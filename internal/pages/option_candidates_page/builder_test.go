@@ -243,7 +243,7 @@ func TestEstimateNote(t *testing.T) {
 func TestJPNote(t *testing.T) {
 	t.Parallel()
 	p := buildPage(t, nil, buildDay)
-	if len(p.Notes) != 1 || p.Notes[0] != "Japanese option candidates: later design (option-candidates-jp)" {
+	if len(p.Notes) != 1 || p.Notes[0] != "Japanese option candidates are a separate group in yen when a yen reader is set" {
 		t.Errorf("notes = %v", p.Notes)
 	}
 }
