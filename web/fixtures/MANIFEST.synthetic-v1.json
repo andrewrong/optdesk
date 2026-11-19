@@ -69,6 +69,7 @@
     "positions-page/gap.json",
     "positions-page/ok.json",
     "positions-page/stale.json",
+    "strategy-replay-page/report.json",
     "structures-list/bad-version.json",
     "structures-list/gap.json",
     "structures-list/ok.json",
