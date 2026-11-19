@@ -85,6 +85,9 @@ func cashBuilt(accts []aliasCash) bool {
 	return false
 }
 
+// isUSD: the row is priced in USD; an empty currency means USD.
+func isUSD(r optiontierapi.Row) bool { return r.Currency == "" || r.Currency == currencyUSD }
+
 // need is strike x multiplier, the full cash a short put secures.
 func (n numbers) need() (decimal.Decimal, bool) {
 	if !n.okStrike {
@@ -96,11 +99,14 @@ func (n numbers) need() (decimal.Decimal, bool) {
 // writeCash fills the cash cells, the FitAlias and, with no figure built, the info cash_unknown.
 func writeCash(s *rowState, n numbers, accts []aliasCash, built bool) {
 	need, haveNeed := n.need()
+	usd := isUSD(s.row)
 	s.v.Cash = make([]optiontierapi.CashCell, 0, len(accts))
 	for _, a := range accts {
 		cell := optiontierapi.CashCell{Alias: a.alias, Verdict: "unknown", Why: a.why}
 		switch {
 		case !a.known:
+		case !usd:
+			cell.Why = whyOtherCurrency
 		case !haveNeed:
 			cell.Why = greyBadInput
 			cell.Free, cell.Committed = a.free.String(), a.committed.String()

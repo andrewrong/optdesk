@@ -111,6 +111,8 @@ func (t *tierer) judgeRow(r optiontierapi.Row, p optiontierapi.Params, accts []a
 		}
 	}
 	writeFigures(&s.v, r, n, p, ev, evaluated, grey)
+	// A yen row is never compared with USD funds: its cash cells are unknown and the row has no cash figure.
+	built = built && isUSD(r)
 	writeCash(s, n, accts, built)
 	if grey != "" {
 		s.v.Tier, s.v.Grey = tierGrey, grey
