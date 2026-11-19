@@ -19,6 +19,11 @@ func New() compute.OptionCandidates { return candidates{} }
 // Evaluate returns the rows of each wanted kind (puts, then covered calls, then held-call
 // guards), each kind ranked on its own with ok rows first.
 func (candidates) Evaluate(in compute.CandidateInput, p compute.CandidateParams) []compute.Candidate {
+	return evaluate(in, p, currencyUSD)
+}
+
+// evaluate is Evaluate with the cash currency of the run (USD or JPY).
+func evaluate(in compute.CandidateInput, p compute.CandidateParams, cur string) []compute.Candidate {
 	spot, spotOK := parseDec(in.Spot)
 	var puts, calls, guards []scored
 	wantPut, wantCall := wants(in.Kinds, compute.KindShortPut), wants(in.Kinds, compute.KindCoveredCall)
@@ -38,7 +43,7 @@ func (candidates) Evaluate(in compute.CandidateInput, p compute.CandidateParams)
 		switch q.Right {
 		case "P":
 			if wantPut && inWindow {
-				puts = append(puts, evaluatePut(in, p, q, dte, strike, spot, spotOK))
+				puts = append(puts, evaluatePutIn(in, p, q, dte, strike, spot, spotOK, cur))
 			}
 		case "C":
 			if wantCall && inWindow {
@@ -67,6 +72,10 @@ func wants(kinds []compute.CandidateKind, kind compute.CandidateKind) bool {
 }
 
 func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute.OptionQuote, dte int, strike, spot *big.Rat, spotOK bool) scored {
+	return evaluatePutIn(in, p, q, dte, strike, spot, spotOK, currencyUSD)
+}
+
+func evaluatePutIn(in compute.CandidateInput, p compute.CandidateParams, q compute.OptionQuote, dte int, strike, spot *big.Rat, spotOK bool, cur string) scored {
 	bid, hasBid := parseDec(q.Bid)
 	ask, hasAsk := parseDec(q.Ask)
 	premium := bid
@@ -75,13 +84,15 @@ func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute
 	}
 	yield := annualized(premium, strike, dte)
 	events, mark := eventsGate(in, p, q.Expiry)
-	funding, fits := fundingGate(in, strike, q.Multiplier)
+	funding, fits := fundingGate(in, strike, q.Multiplier, cur)
+	rate := cashRateGate(in, p, yield)
+	funding, rate, curMarks := currencyGates(cur, in, funding, rate)
 	gates := []compute.GateResult{
 		buyPriceGate(in, strike, premium),
 		quoteGate(q, p, bid, ask, hasBid, hasAsk),
 		events,
 		funding,
-		cashRateGate(in, p, yield),
+		rate,
 	}
 	var marks []string
 	if spotOK && strike.Cmp(spot) > 0 {
@@ -99,6 +110,7 @@ func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute
 	if len(in.Accounts) == 0 {
 		marks = append(marks, "no_account")
 	}
+	marks = append(marks, curMarks...)
 	row := compute.Candidate{
 		Kind: compute.KindShortPut, Underlying: in.Underlying, InstrumentID: q.InstrumentID,
 		Expiry: q.Expiry, DTE: dte, Right: "P", Strike: q.Strike, Multiplier: q.Multiplier,
