@@ -169,14 +169,16 @@ test opens a built page and resolves every asset.
 
 **Theming.** shadcn CSS variables carry the v2 design system colours for light and dark (mapping table made in
 step 2b; the current `THEME` values are the starting reference). Nova gives the compact component style but its
-default sizes conflict with the 16 px and 44 px rules, so `@theme` overrides set 44 px targets and a 16 px body.
+default sizes conflict with the 44 px rule, so `@theme` overrides set 44 px targets and the text scale.
+*Amendment 2026-11-19 (ask 5206, docs/design/site-look.md Decision 4): the scale is the approved candidates mockup's, body 14 px and smallest text 11 px; this replaces the earlier 16 px body.*
 Dark mode is CSS only: `@custom-variant dark` following `prefers-color-scheme`; no toggle script. Beyond
 neutral, only the signal tokens the system has: ok, hold, unknown, banner states. Success and warning tokens
 wait for the owner.
 
 **Accessibility and phone rules.** Design width is 390 px with a floor of 360 px: one column, no horizontal page
 scroll, wide tables scroll inside their container; on desktop the content is full width, no max-width column (owner 2026-11-10;
-docs/design/web-shell-layout.md Decisions); the 390 px phone rules stay. Text at least 16 px, touch
+docs/design/web-shell-layout.md Decisions); the 390 px phone rules stay. Body text 14 px and smallest text 11 px
+(amended 2026-11-19, ask 5206, replacing "Text at least 16 px"), touch
 targets at least 44 px, visible focus, colour never the only signal, contrast checked in both themes. Motion
 respects reduced motion: `<MotionConfig reducedMotion="user">` (Motion defaults to "never"), chart animation
 off, and `tw-animate-css` guarded by `motion-reduce`; no motion is needed to read a page.

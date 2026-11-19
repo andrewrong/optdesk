@@ -12,7 +12,8 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, Menlo, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -54,6 +55,12 @@
   --color-hold-foreground: var(--hold-foreground);
   --color-unknown: var(--unknown);
   --color-unknown-foreground: var(--unknown-foreground);
+  --color-tier-fit: var(--tier-fit);
+  --color-tier-fit-soft: var(--tier-fit-soft);
+  --color-tier-check: var(--tier-check);
+  --color-tier-check-soft: var(--tier-check-soft);
+  --color-tier-grey: var(--tier-grey);
+  --color-tier-grey-soft: var(--tier-grey-soft);
   --color-banner-normal: var(--banner-normal);
   --color-banner-normal-foreground: var(--banner-normal-foreground);
   --color-banner-partial: var(--banner-partial);
@@ -67,55 +74,70 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-pill: 9999px;
 }
 
-/* Sizing (ADR 0034, Accessibility): a 16 px body and 44 px targets over the Nova defaults. */
+/* Sizing (ADR 0034, Accessibility, amended 2026-11-19): the candidates mockup's text scale and 44 px targets. */
 @theme {
-  --text-xs: 1rem;
-  --text-xs--line-height: 1.5rem;
-  --text-sm: 1rem;
-  --text-sm--line-height: 1.5rem;
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.45;
+  --text-lg: 0.9375rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.0625rem;
+  --text-xl--line-height: 1.45;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.45;
   --target-min: 2.75rem;
   --content-column: 45rem;
 }
 
 :root {
   color-scheme: light dark;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: hsl(0 0% 96.1%);
-  --muted-foreground: hsl(0 0% 42%);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #f6f7f9;
+  --foreground: #1b2430;
+  --card: #ffffff;
+  --card-foreground: #1b2430;
+  --popover: #ffffff;
+  --popover-foreground: #1b2430;
+  --primary: #1f5fbf;
+  --primary-foreground: #ffffff;
+  --secondary: #eceff3;
+  --secondary-foreground: #1b2430;
+  --muted: #eceff3;
+  --muted-foreground: #5f6c7e;
+  --accent: #eef3fb;
+  --accent-foreground: #1b2430;
   --destructive: var(--down);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: hsl(0 0% 89.8%);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.55 0 0);
+  --destructive-foreground: #ffffff;
+  --border: #e3e7ed;
+  --input: #e3e7ed;
+  --ring: #1f5fbf;
   --chart-1: #155e9a;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --success: hsl(142 64% 29%);
-  --warn: hsl(32 92% 33%);
-  --down: hsl(0 72% 46%);
+  --radius: 0.5rem;
+  --success: #14794a;
+  --warn: #8a5a00;
+  --down: #b3261e;
   --warning: var(--warn);
-  --ok: #e4ede8;
-  --ok-foreground: #21653c;
-  --hold: #f4e5e7;
-  --hold-foreground: #a52636;
-  --unknown: #f0eae0;
-  --unknown-foreground: #815400;
+  --tier-fit: var(--success);
+  --tier-fit-soft: var(--ok);
+  --tier-check: var(--warn);
+  --tier-check-soft: var(--unknown);
+  --tier-grey: #566275;
+  --tier-grey-soft: #eceff3;
+  --ok: #e3f4ea;
+  --ok-foreground: #14794a;
+  --hold: #fbe4e2;
+  --hold-foreground: #b3261e;
+  --unknown: #fdf0d5;
+  --unknown-foreground: #8a5a00;
   --banner-normal: #e3f2e8;
   --banner-normal-foreground: #14472a;
   --banner-partial: #fbefd0;
@@ -134,40 +156,46 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: hsl(0 0% 14.9%);
-    --muted-foreground: hsl(0 0% 66%);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    --background: #10151c;
+    --foreground: #e4e9f0;
+    --card: #171e28;
+    --card-foreground: #e4e9f0;
+    --popover: #171e28;
+    --popover-foreground: #e4e9f0;
+    --primary: #7aa8f0;
+    --primary-foreground: #10151c;
+    --secondary: #252e3b;
+    --secondary-foreground: #e4e9f0;
+    --muted: #252e3b;
+    --muted-foreground: #8f9db0;
+    --accent: #1c2a40;
+    --accent-foreground: #e4e9f0;
     --destructive: var(--down);
-    --destructive-foreground: oklch(0.145 0 0);
-    --border: hsl(0 0% 17%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --destructive-foreground: #10151c;
+    --border: #283140;
+    --input: #283140;
+    --ring: #7aa8f0;
     --chart-1: #8cc7fa;
     --chart-2: oklch(0.87 0 0);
     --chart-3: oklch(0.75 0 0);
     --chart-4: oklch(0.65 0 0);
     --chart-5: oklch(0.556 0 0);
-    --success: hsl(142 55% 52%);
-    --warn: hsl(38 92% 58%);
-    --down: hsl(0 80% 66%);
+    --success: #5fd39a;
+    --warn: #e8b85a;
+    --down: #f08a82;
     --warning: var(--warn);
-    --ok: #252f29;
-    --ok-foreground: #8bdbab;
-    --hold: #33292a;
-    --hold-foreground: #ffabb3;
-    --unknown: #312c22;
-    --unknown-foreground: #f0ca75;
+    --tier-fit: var(--success);
+    --tier-fit-soft: var(--ok);
+    --tier-check: var(--warn);
+    --tier-check-soft: var(--unknown);
+    --tier-grey: #a3b0c2;
+    --tier-grey-soft: #252e3b;
+    --ok: #173326;
+    --ok-foreground: #5fd39a;
+    --hold: #3d1b19;
+    --hold-foreground: #f08a82;
+    --unknown: #3a2e12;
+    --unknown-foreground: #e8b85a;
     --banner-normal: #173824;
     --banner-normal-foreground: #bfeed2;
     --banner-partial: #3d2f0a;
@@ -194,8 +222,18 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-size: 1rem;
-    line-height: 1.5;
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+  table,
+  td,
+  th,
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .num {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
   }
 }
 
