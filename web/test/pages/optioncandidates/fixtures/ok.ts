@@ -28,6 +28,7 @@ export const ok = {
   gaps: [],
   computed_at: 'ok Computed at 2026-11-09 17:00',
   rule_version: 'ok-rule-v1',
+  head_labels: { data_day: 'ok 数据日', run_status: 'ok 运行状态', run_status_text: 'ok 完成', rule_version: 'ok 规则版本' },
   estimate_note: 'ok Valuation note: the closing bid is not a traded price',
   groups: [
     {
