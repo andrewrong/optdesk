@@ -296,6 +296,9 @@ func TestBuildLabelsInEveryView(t *testing.T) {
 			"r": TextR, "buy_zone_top_site": TextBuyZoneTopSite,
 			"buy_zone_top_file": TextBuyZoneTopFile, "general_tick": TextGeneralTick,
 		}
+		for k, v := range newLabels() {
+			want[k] = v
+		}
 		if len(labels) != len(want) {
 			t.Errorf("%s: labels %v", name, labels)
 		}
@@ -304,5 +307,48 @@ func TestBuildLabelsInEveryView(t *testing.T) {
 				t.Errorf("%s: labels[%s] = %v, want %q", name, k, labels[k], v)
 			}
 		}
+	}
+}
+
+func newLabels() map[string]string {
+	return map[string]string{
+		"title":             TextTitle,
+		"intro":             TextIntro,
+		"file":              TextFile,
+		"preview":           TextPreview,
+		"not_in_file":       TextNotInFile,
+		"unvalued":          TextUnvalued,
+		"removed":           TextRemoved,
+		"count_insert":      TextCountInsert,
+		"count_same":        TextCountSame,
+		"count_older":       TextCountOlder,
+		"count_refused":     TextCountRefused,
+		"count_needs_tick":  TextCountNeedsTick,
+		"stored":            TextStored,
+		"older_than_stored": TextOlderThanStored,
+		"margin_table":      TextMarginTable,
+		"result":            TextResult,
+		"same_file_again":   TextSameFileAgain,
+		"confirm":           TextConfirm,
+	}
+}
+
+func TestBuildEmptyViewLabels(t *testing.T) {
+	t.Parallel()
+	b := build(t, Input{View: ViewEmpty})
+	labels, ok := decode(t, b)["labels"].(map[string]any)
+	if !ok {
+		t.Fatalf("no labels: %s", b)
+	}
+	for k, v := range newLabels() {
+		if labels[k] != v {
+			t.Errorf("labels[%s] = %v, want %q", k, labels[k], v)
+		}
+	}
+	if len(newLabels()) != 18 {
+		t.Errorf("want 18 new labels, have %d", len(newLabels()))
+	}
+	if !strings.Contains(TextBuyZoneTopSite, "买入区间上沿") || !strings.Contains(TextBuyZoneTopFile, "买入区间上沿") {
+		t.Errorf("buy-zone labels lack the hint")
 	}
 }
