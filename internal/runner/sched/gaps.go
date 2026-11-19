@@ -23,6 +23,8 @@ const (
 	reasonEmptyBefore   = "empty_before_close"
 	// reasonConsoleStop is the reason of a key cut by a console stop; no reader counts it.
 	reasonConsoleStop = "console_stop"
+	// reasonOrderedStop is the reason of a run cut by an ordered stop of the process; no reader counts it.
+	reasonOrderedStop = "ordered_stop"
 	crashBrake        = 3
 )
 
@@ -190,12 +192,12 @@ func (g *gapSyncer) keyKind(runs []store.Run, mark store.PresentStatus, closed b
 	return runnerKind(true, latest, retryableLast, runs)
 }
 
-// dropConsoleStop is runs without the console_stop ones: such a run is no run for a reader, so it hides no
+// dropConsoleStop is runs without the console_stop and ordered_stop ones: such a run is no run for a reader, so it hides no
 // earlier one.
 func dropConsoleStop(runs []store.Run) []store.Run {
 	out := make([]store.Run, 0, len(runs))
 	for _, r := range runs {
-		if r.ReasonCode != reasonConsoleStop {
+		if r.ReasonCode != reasonConsoleStop && r.ReasonCode != reasonOrderedStop {
 			out = append(out, r)
 		}
 	}

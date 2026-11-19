@@ -380,6 +380,12 @@ func isCrash(run store.Run) bool {
 	return run.ReasonCode == reasonCrashed || run.ReasonCode == reasonAbandonedStop
 }
 
+// noRun reports whether run is no run for any counter: a console_stop or an ordered_stop run is no attempt,
+// no crash strike and hides no earlier run.
+func noRun(run store.Run) bool {
+	return run.ReasonCode == reasonConsoleStop || run.ReasonCode == reasonOrderedStop
+}
+
 // isRetryable reports whether run ended with a retryable error that is not a crash.
 func isRetryable(run store.Run) bool {
 	return run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && !isCrash(run)
@@ -425,7 +431,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 			}
 		case isCrash(run):
 			crashes++
-		case run.ReasonCode == reasonConsoleStop: // a console_stop run is no attempt and no crash
+		case noRun(run): // a console_stop or ordered_stop run is no attempt and no crash
 		case run.ReasonCode == reasonEmptyBeforeClose, beforeClose && isRetryable(run):
 		default:
 			counted++
@@ -452,11 +458,11 @@ func closeRow(runs []store.Run) (idx int, reason string, ok bool) {
 	crashes, latest := 0, -1
 	lastCrash, newest := -1, -1 // newest: the last run that is not console_stop
 	for i, run := range runs {
-		if run.ReasonCode != reasonConsoleStop {
+		if !noRun(run) {
 			newest = i
 		}
 		switch {
-		case run.ReasonCode == reasonConsoleStop: // console_stop rows are skipped by every row
+		case noRun(run): // console_stop and ordered_stop rows are skipped by every row
 		case isCrash(run):
 			crashes++
 			lastCrash = i

@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -27,6 +28,9 @@ const (
 	// reasonConsoleStop is the reason of a key cut by a console stop (a deploy cancel or the key's own
 	// console deadline): no crash strike, no attempt, no gap, which no reader counts.
 	reasonConsoleStop = "console_stop"
+	// reasonOrderedStop is the reason of a run cut by an ordered stop of the process (shared.ErrOrderedStop):
+	// no attempt, no crash strike, which no reader counts.
+	reasonOrderedStop = "ordered_stop"
 	// defaultRunBound is the run bound of a job that has no Bounded method.
 	defaultRunBound = 30 * time.Minute
 )
@@ -114,6 +118,7 @@ func (k *keyRunner) RunKey(
 	res := job.Run(runCtx, day, []contracts.ExpectedKey{key})
 	cutNow := runCtx.Err() != nil
 	console := cutNow && consoleCut(context.Cause(runCtx))
+	ordered := cutNow && errors.Is(context.Cause(runCtx), shared.ErrOrderedStop)
 	stop()
 
 	rec.FinishedAt = k.clk.Now()
@@ -124,12 +129,16 @@ func (k *keyRunner) RunKey(
 		rec.Status = store.RunPartial
 		if console {
 			rec.ReasonCode = reasonConsoleStop
+		} else if ordered {
+			rec.ReasonCode = reasonOrderedStop
 		}
 	case cutNow:
 		rec.Status = store.RunAbandoned
 		rec.ReasonCode = reasonAbandonedStop
 		if console {
 			rec.ReasonCode = reasonConsoleStop
+		} else if ordered {
+			rec.ReasonCode = reasonOrderedStop
 		}
 	default:
 		rec.Status = store.RunDone
