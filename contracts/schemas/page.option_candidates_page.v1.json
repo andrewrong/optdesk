@@ -1010,6 +1010,9 @@
               "$ref": "#/$defs/Text"
             }
           }
+        },
+        "by_company": {
+          "$ref": "#/$defs/ByCompany"
         }
       }
     },
@@ -1452,6 +1455,30 @@
               "type": "null"
             }
           ]
+        },
+        "tier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "word",
+            "glyph"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "enum": [
+                "fits",
+                "check"
+              ]
+            },
+            "word": {
+              "$ref": "#/$defs/Text"
+            },
+            "glyph": {
+              "$ref": "#/$defs/Text"
+            }
+          }
         }
       }
     },
@@ -1595,6 +1622,174 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Badge"
+          }
+        }
+      }
+    },
+    "ByCompany": {
+      "description": "The company-block layout of the tier view; absent means the flat tier bands. Blocks are in the order to draw.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "heading_note",
+        "legend",
+        "columns",
+        "blocks"
+      ],
+      "properties": {
+        "heading_note": {
+          "$ref": "#/$defs/Text"
+        },
+        "legend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LegendItem"
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TierColumn"
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CompanyBlock"
+          }
+        }
+      }
+    },
+    "CompanyBlock": {
+      "description": "One company; row_ids are TierRow.id values of rows that stay in tiers[].rows.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company",
+        "verdict",
+        "verdict_text",
+        "best_yield",
+        "row_ids",
+        "folded"
+      ],
+      "properties": {
+        "company": {
+          "$ref": "#/$defs/Text"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        },
+        "verdict_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "best_yield": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "row_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "folded": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Folded"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "word",
+        "glyph",
+        "tone"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "sellable",
+            "out_band",
+            "above_buy",
+            "no_buy_price",
+            "no_quote",
+            "blocked"
+          ]
+        },
+        "word": {
+          "$ref": "#/$defs/Text"
+        },
+        "glyph": {
+          "$ref": "#/$defs/Text"
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "success",
+            "warn",
+            "muted"
+          ]
+        }
+      }
+    },
+    "Folded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "summary",
+        "reasons",
+        "row_ids"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "summary": {
+          "$ref": "#/$defs/Text"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "label",
+              "count"
+            ],
+            "properties": {
+              "code": {
+                "$ref": "#/$defs/Text"
+              },
+              "label": {
+                "$ref": "#/$defs/Text"
+              },
+              "count": {
+                "$ref": "#/$defs/Text"
+              }
+            }
+          }
+        },
+        "row_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
           }
         }
       }
