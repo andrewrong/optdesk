@@ -40,10 +40,12 @@ type ContractLister interface {
 
 // PullDeps are the ports of the pull job. Log may be nil.
 type PullDeps struct {
-	Broker      broker.Broker
-	Plans       PlanReader
-	Contracts   ContractLister
-	Writer      openquote.OptionOpenWriter
+	Broker    broker.Broker
+	Plans     PlanReader
+	Contracts ContractLister
+	Writer    openquote.OptionOpenWriter
+	// Reader reads the rows stored for a batch; optional: the Writer is used when it also reads.
+	Reader      openquote.OptionOpenSlotReader
 	Instruments store.InstrumentReader
 	Clock       clock.Clock
 	Log         *slog.Logger
@@ -86,12 +88,17 @@ type pull struct {
 	offset    time.Duration
 	runBound  time.Duration
 	retry     map[Class]bool
+	reader    openquote.OptionOpenSlotReader
 }
 
 // NewPull builds the option_open job from the embedded job_pull.toml.
 func NewPull(d PullDeps) (contracts.Job, error) {
 	if d.Broker == nil || d.Plans == nil || d.Contracts == nil || d.Writer == nil || d.Instruments == nil || d.Clock == nil {
 		return nil, errors.New("optionopen: pull: broker, plan store, contract store, writer, instrument reader and clock are required")
+	}
+	rd := slotReader(d)
+	if rd == nil {
+		return nil, errors.New("optionopen: pull: neither the reader nor the writer reads the stored rows of a slot")
 	}
 	var m pullTable
 	if err := toml.Unmarshal(pullManifest, &m); err != nil {
@@ -101,8 +108,8 @@ func NewPull(d PullDeps) (contracts.Job, error) {
 	if err != nil {
 		return nil, errors.New("optionopen: pull manifest: zone is unknown")
 	}
-	p := &pull{datasetID: PullDatasetID, m: m, d: d, loc: loc, retry: map[Class]bool{}}
-	if m.ID == "" || len(m.Slot) != 4 || m.Chunk < 1 || m.MaxPerKey < 1 || m.BudgetMinutes < 1 || m.MinOKShare < 0 || m.MinOKShare > 1 {
+	p := &pull{datasetID: PullDatasetID, m: m, d: d, loc: loc, retry: map[Class]bool{}, reader: rd}
+	if !m.inRange() {
 		return nil, errors.New("optionopen: pull manifest: id, slot, chunk, max_per_key, budget_minutes and min_ok_share are out of range")
 	}
 	if p.stop, err = hhmm(m.StopAfter); err != nil {
@@ -217,7 +224,8 @@ func newErr(kind contracts.ErrorKind, format string, a ...any) contracts.TypedEr
 	return &typedError{kind: kind, err: fmt.Errorf("option_open: "+format, a...)}
 }
 
-// Run quotes the keys of day. A key is written at the end, in one call; a key started after stop_after is logged. At the
+// Run quotes the keys of day. The rows of a key are written after each group and the next run asks only the items
+// with no final row; a key started after stop_after is logged. At the
 // end the postcondition of Decision 22 holds: at least min_ok_share of the planned items that are not deferred
 // are ok, else the run is a failed run.
 func (p *pull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
@@ -280,10 +288,10 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 			p.d.Log.Warn(fmt.Sprintf("key %s started after stop_after %s", k.SubjectKey, p.m.StopAfter))
 		}
 		rows, terr := p.runKey(ctx, b)
+		res.Returned += len(rows)
 		if terr != nil {
 			return withErr(res, terr)
 		}
-		res.Returned += len(rows)
 		for _, r := range rows {
 			switch {
 			case r.Status == stOK:
@@ -327,23 +335,36 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 	return &typedError{kind: kind, err: err}
 }
 
-// runKey quotes one batch and writes its rows in one call.
+// runKey quotes the items of one batch that have no final stored row; Core writes the rows as they are built. The
+// stored final rows are returned with the new ones, so the postcondition counts the whole batch. On a cancel the rows
+// in hand are returned with the error.
 func (p *pull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, contracts.TypedError) {
-	ts, err := p.targets(ctx, b.items)
+	final, ask, err := p.resume(ctx, b.items)
+	if err != nil {
+		return nil, asTyped(err, contracts.Retryable)
+	}
+	if len(ask) == 0 {
+		return final, nil
+	}
+	ts, err := p.targets(ctx, ask)
 	if err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
 	c := &Core{
 		B: p.d.Broker, Clk: p.d.Clock, Params: DefaultPlanParams(), Slot: p.m.Slot, Chunk: p.m.Chunk, Retry: p.retry,
 		Budget: time.Duration(p.m.BudgetMinutes) * time.Minute, Beat: time.Duration(p.m.HeartbeatSeconds) * time.Second,
-		Log: p.d.Log,
+		Log: p.d.Log, Flush: p.d.Writer.InsertOptionOpen,
 	}
 	r := c.Pull(ctx, ts)
 	c.logger().Info(r.Summary.String(), "key", b.subject)
-	if err := p.d.Writer.InsertOptionOpen(ctx, r.Rows); err != nil {
-		return nil, asTyped(err, contracts.Retryable)
+	rows := append(final, r.Rows...)
+	if r.Err != nil {
+		return nil, asTyped(r.Err, contracts.Retryable)
 	}
-	return r.Rows, nil
+	if ctx.Err() != nil {
+		return rows, newErr(contracts.Retryable, "the run was cut: %v", context.Cause(ctx))
+	}
+	return rows, nil
 }
 
 // targets builds the contracts of the items from the stored option contracts and instruments. An item whose
@@ -415,4 +436,9 @@ func (p *pull) targets(ctx context.Context, items []contracts.OptionOpenItem) ([
 		out = append(out, t)
 	}
 	return out, nil
+}
+
+// inRange is whether the numbers of the manifest are usable.
+func (m pullTable) inRange() bool {
+	return m.ID != "" && len(m.Slot) == 4 && m.Chunk >= 1 && m.MaxPerKey >= 1 && m.BudgetMinutes >= 1 && m.MinOKShare >= 0 && m.MinOKShare <= 1
 }

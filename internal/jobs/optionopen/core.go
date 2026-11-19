@@ -68,6 +68,9 @@ type Core struct {
 	// Beat is the interval of the heartbeat line; the clock is read after each broker call. Zero means none.
 	Beat time.Duration
 	Log  *slog.Logger
+	// Flush, when set, writes the rows added since its last call: after each group, after each stock and once at the
+	// end (core_flush.go). Nil: Core writes nothing itself.
+	Flush func(ctx context.Context, rows []contracts.OptionOpen) error
 }
 
 // kindOf is the kind of snapshot the core sends: wave 1 asks for the option_open kind (Decisions 9 and 10), with
@@ -78,6 +81,7 @@ const kindOf = broker.KindOptionOpen
 type Result struct {
 	Rows    []contracts.OptionOpen
 	Summary Summary
+	Err     error // the error of a Flush: the run asked no more after it
 }
 
 type runState struct {
@@ -87,6 +91,8 @@ type runState struct {
 	progress map[int64]*StockProgress
 	order    []int64
 	lastBeat time.Time
+	flushed  int   // the rows already passed to Flush
+	err      error // the error of a Flush
 }
 
 // Pull quotes the targets: per stock the first underlying snapshot, the band at the open spot, then the groups
@@ -110,9 +116,14 @@ func (c *Core) Pull(ctx context.Context, targets []Target) Result {
 		st.progress[u].Total++
 	}
 	for _, ts := range stocks {
+		if st.err != nil || ctx.Err() != nil {
+			break
+		}
 		c.stock(ctx, st, ts)
+		c.flush(ctx, st, false)
 	}
-	return Result{Rows: st.rows, Summary: c.summary(st)}
+	c.flush(ctx, st, true)
+	return Result{Rows: st.rows, Summary: c.summary(st), Err: st.err}
 }
 
 // logNotOk says which asked row ended partial or no_data and which of its fields are absent.
@@ -182,6 +193,9 @@ func (c *Core) add(st *runState, t Target, r contracts.OptionOpen) {
 
 // stock handles the targets of one underlying.
 func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
+	if ctx.Err() != nil {
+		return
+	}
 	var ts []Target
 	for _, t := range all {
 		if t.Problem != "" {
@@ -203,6 +217,9 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 	}
 	spot, spotTs, code, err := c.spot(ctx, st, ts[0].Under)
 	if err != nil {
+		if ctx.Err() != nil {
+			return // the call was only cut: no row
+		}
 		_, ecode := callStatus(err)
 		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", ecode, "err", err.Error(), "items", len(ts))
 		c.callFailed(st, ts, err)
@@ -233,6 +250,9 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 	}
 	sort.Slice(exps, func(i, j int) bool { return exps[i].Before(exps[j]) })
 	for _, e := range exps {
+		if st.err != nil || ctx.Err() != nil {
+			return
+		}
 		g := groups[e]
 		sort.SliceStable(g, func(i, j int) bool { return g[i].Item.Rank < g[j].Item.Rank })
 		spot, spotTs = c.group(ctx, st, g, spot, spotTs)
@@ -344,6 +364,7 @@ type answer struct {
 	code   *string
 	q      *broker.Quote
 	sent   time.Time
+	cut    bool // the call was cut by the cancel of the context: no row
 }
 
 // group asks the targets of one (stock, expiry) group, retries the timeouts of the retry classes once, samples the
@@ -354,7 +375,7 @@ func (c *Core) group(ctx context.Context, st *runState, g []Target, start float6
 	as := c.ask(ctx, st, g)
 	var again []int
 	for i, a := range as {
-		if a.q != nil && c.Retry[g[i].class()] && retryable(a) && !st.dead && !c.budgetSpent(st) {
+		if ctx.Err() == nil && a.q != nil && c.Retry[g[i].class()] && retryable(a) && !st.dead && !c.budgetSpent(st) {
 			again = append(again, i)
 		}
 	}
@@ -370,18 +391,14 @@ func (c *Core) group(ctx context.Context, st *runState, g []Target, start float6
 		}
 	}
 	end, endTs := start, startTs
-	if !st.dead && !c.budgetSpent(st) {
+	if ctx.Err() == nil && !st.dead && !c.budgetSpent(st) {
 		if s, ts, _, err := c.spot(ctx, st, g[0].Under); err == nil && s > 0 {
 			end, endTs = s, ts
 		}
 	}
 	skew := start > 0 && end > 0 && math.Abs(end/start-1) >= skewMove
-	for i, t := range g {
-		r := c.row(t, as[i], requested)
-		r.Skew, r.UnderlyingPrice, r.UnderlyingEventTs = skew, &end, endTs
-		c.logNotOk(t, r)
-		c.add(st, t, r)
-	}
+	c.addGroup(ctx, st, g, as, requested, groupEnd{skew, end, endTs})
+	c.flush(ctx, st, false)
 	return end, endTs
 }
 
@@ -415,6 +432,9 @@ func (c *Core) ask(ctx context.Context, st *runState, ts []Target) []answer {
 	for i := 0; i < len(ts); i += chunk {
 		end := min(i+chunk, len(ts))
 		switch {
+		case ctx.Err() != nil:
+			cutAll(out[i:])
+			return out
 		case st.dead:
 			fill(out[i:], stDisconnected, "UNAVAILABLE")
 			return out
@@ -433,6 +453,10 @@ func (c *Core) ask(ctx context.Context, st *runState, ts []Target) []answer {
 			err = errors.New("optionopen: broker answered a wrong number of quotes")
 		}
 		if err != nil {
+			if ctx.Err() != nil {
+				cutAll(out[i:])
+				return out
+			}
 			status, code := callStatus(err)
 			if status == stDisconnected {
 				st.dead = true
