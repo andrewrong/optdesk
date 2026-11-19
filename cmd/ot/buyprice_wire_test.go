@@ -183,7 +183,7 @@ func TestBuyPriceOptionFamiliesGetOnePrice(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	h := newOpenHarness(t, deadEnv, true, nil)
-	f := bpFactory(&buf, &bpReader{st: bpState("cik:0000320193")})
+	f := bpFactory(&buf, &bpReader{st: bpState("AAPL")})
 	jf := h.jc.f
 	jf.valuation, jf.buy, jf.log = f.valuation, f.buy, f.log
 
