@@ -33,6 +33,10 @@ func DefaultParams() optiontierapi.Params {
 		ThinDelta:      "0.15", // trial
 		MaxCashAgeDays: 3,      // trial
 		DaysInYear:     365,    // trial
+		BandOTMMinPct:  "5",    // trial
+		BandOTMMaxPct:  "15",   // trial
+		BandDeltaMin:   "0.15", // trial
+		PerCompany:     3,      // trial
 	}
 }
 
@@ -61,6 +65,18 @@ func fillParams(p optiontierapi.Params) optiontierapi.Params {
 	}
 	if p.DaysInYear <= 0 {
 		p.DaysInYear = def.DaysInYear
+	}
+	if _, ok := parse(p.BandOTMMinPct); !ok {
+		p.BandOTMMinPct = def.BandOTMMinPct
+	}
+	if _, ok := parse(p.BandOTMMaxPct); !ok {
+		p.BandOTMMaxPct = def.BandOTMMaxPct
+	}
+	if _, ok := parse(p.BandDeltaMin); !ok {
+		p.BandDeltaMin = def.BandDeltaMin
+	}
+	if p.PerCompany <= 0 {
+		p.PerCompany = def.PerCompany
 	}
 	return p
 }

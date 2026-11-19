@@ -257,3 +257,61 @@ const (
 	zhHeadCompNote   = "每家公司两行：上行看价格，下行看估值和合约数量"
 	zhHeadTierTables = "合约分档"
 )
+
+// Chinese texts of the company blocks of the tier view (candidates-by-company.md, Interface). A sentence with
+// a figure is cut at the figure; bycompany.go joins the parts with the values of the block.
+const (
+	zhVerdictSellable   = "有可卖"
+	zhVerdictOutBand    = "筛选范围内暂无可卖"
+	zhVerdictAboveBuy   = "价格高于买入价·暂无可卖"
+	zhVerdictNoBuyPrice = "未设买入价·未判定"
+	zhVerdictNoQuote    = "无报价"
+	zhVerdictBlocked    = "暂无可卖"
+
+	zhSellHead  = "筛选范围内，按年化从高到低，最多 "
+	zhSellFit   = " 个：适合 "
+	zhSellCheck = " 个，待查 "
+	zhSellTail  = " 个；其余在下面折叠。"
+
+	zhOutBandHead  = "有 "
+	zhOutBandOTM   = " 个合约能卖，但都不在筛选范围内（价外 "
+	zhOutBandTo    = "% 到 "
+	zhOutBandDelta = "%，delta "
+	zhOutBandDTo   = " 到 "
+	zhOutBandTail  = "，持仓量够），原因见下方折叠。"
+
+	zhAboveBuyHead = "现价 "
+	zhAboveBuyMid  = " 高于买入价 "
+	zhAboveBuyTail = "：有报价的价外合约，保本点（行权价减 bid）都高于买入价，所以暂无可卖；价内和没有 bid 的合约在下方折叠。这不是没判定，是判定过了。"
+
+	zhNoBuyPriceText = "没有买入价（估值买入区间和手填价格都没有），所以不判定；设了买入价才会判定。"
+	zhNoQuoteText    = "没有现价或没有 bid，所以没法判定。"
+	zhBlockedText    = "所有合约都被挡住了，原因见下方折叠。"
+
+	zhBestYieldHead = "最高年化 "
+	zhBestYieldTail = "%"
+
+	zhFoldedTitle = "未显示 "
+	zhFoldedSep   = " · "
+
+	zhBandNoOI      = "持仓量没有或太低"
+	zhBandOTMLow    = "价外不足 "
+	zhBandOTMHigh   = "价外超过 "
+	zhBandPct       = "%"
+	zhBandNoDelta   = "没有 delta"
+	zhBandDeltaOut  = "delta 不在 "
+	zhBandDeltaTo   = " 到 "
+	zhBandOverCap   = "超出每家 "
+	zhBandOverCapGe = " 个"
+
+	zhHeadingNote = "每家公司一块：先看结论和价格，下面是这家公司筛选范围内年化最高的合约；其余折叠在最后。公司按自己最高的年化排序。"
+
+	zhLegendFolded     = "– 未显示"
+	zhLegendYield      = "年化"
+	zhFoldedLegendHead = "已判定但不能卖（价内，或保本点高于买入价，或没有 bid），或不在筛选范围内，或超出每家 "
+	zhFoldedLegendTail = " 个；点开每个公司下的折叠看原因。"
+	zhYieldLegend      = "年化 = bid 里的时间价值，按这一行的到期天数折成一年，除以占用的现金（行权价）；公司按自己最高的年化排序；日元公司在日本标签页，不和美元公司排在一起。"
+
+	zhColPremiumYield  = "权利金 / 年化"
+	zhHintPremiumYield = "每份合约的权利金；下一行是年化收益，也是每家公司内排序的依据。"
+)

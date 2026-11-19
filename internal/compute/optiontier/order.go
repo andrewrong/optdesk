@@ -30,6 +30,7 @@ func assemble(states []*rowState, p optiontierapi.Params, built bool) optiontier
 		res.Verdicts = append(res.Verdicts, s.v)
 	}
 	res.Companies = companies(states)
+	res.Blocks = buildBlocks(states, p)
 	res.Kept = kept(states)
 	return res
 }

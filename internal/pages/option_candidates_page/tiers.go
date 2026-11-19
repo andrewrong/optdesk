@@ -101,6 +101,8 @@ type tiersView struct {
 	CardNote    *string       `json:"card_note"`
 	// Heads are the headings of the company cards and the tier tables, omitted on a page with no tier view.
 	Heads *tierHeads `json:"heads,omitempty"`
+	// ByCompany is the company-block layout, written only when the judge returned Blocks.
+	ByCompany *byCompanyView `json:"by_company,omitempty"`
 }
 
 // tierHeads are the three headings of the tier view (candidates-zh-headings.md Decision 2).
@@ -202,6 +204,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 	fillStrips(ctx, c, v, companiesOf(res, gr.rows, gr.day, day, gr.cur), gr.cur)
 	v.Legend = legendOf(res, f, n)
 	v.KeptNote = keptNoteOf(v.Kept)
+	v.ByCompany = byCompanyOf(v, res, f, n, string(gr.day), gr.cur)
 	return v, nil
 }
 
