@@ -16,13 +16,26 @@ import { validate, type Payload } from '@/types/option_candidates_page'
 export { validate as validateOptionCandidatesPage } from '@/types/option_candidates_page'
 export type { Payload as OptionCandidatesPayload } from '@/types/option_candidates_page'
 
+type Group = Payload['groups'][number]
+const isJpy = (group: Group) => group.currency === 'JPY'
+const groupKey = (group: Group) => (group.currency ? `${group.kind}:${group.currency}` : group.kind)
+
+// The JP group is placed right after the US short-put group; the other groups keep the document order.
+function placed(groups: readonly Group[]): Group[] {
+  const jp = groups.filter(isJpy)
+  const rest = groups.filter((group) => !isJpy(group))
+  const at = rest.findIndex((group) => group.kind === 'short_put') + 1
+  return [...rest.slice(0, at), ...jp, ...rest.slice(at)]
+}
+
 export function OptionCandidatesPage({ payload }: { payload: Payload }) {
   const staleText = payload.stale ? payload.stale.text : null
+  const groups = placed(payload.groups)
   const tabs = (
-    <Tabs defaultValue={payload.groups[0].kind}>
+    <Tabs defaultValue={groupKey(groups[0]!)}>
       <TabsList>
-        {payload.groups.map((group) => (
-          <TabsTrigger key={group.kind} value={group.kind} data-tab={group.kind}>
+        {groups.map((group) => (
+          <TabsTrigger key={groupKey(group)} value={groupKey(group)} data-tab={group.kind} data-currency={group.currency ?? undefined}>
             {group.title}
             <Badge variant="secondary">{group.counts.ok}</Badge>
             <Badge variant="outline">{group.counts.blocked}</Badge>
@@ -30,8 +43,10 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           </TabsTrigger>
         ))}
       </TabsList>
-      {payload.groups.map((group) => (
-        <TabsContent key={group.kind} value={group.kind}>
+      {groups.map((group) => (
+        <TabsContent key={groupKey(group)} value={groupKey(group)} className="space-y-4">
+          {isJpy(group) ? <ShortList list={payload.short_put_list_jpy} /> : null}
+          {isJpy(group) && payload.short_put_tiers_jpy ? <TierView tiers={payload.short_put_tiers_jpy} /> : null}
           <CandidateGroup group={group} staleText={staleText} />
         </TabsContent>
       ))}
