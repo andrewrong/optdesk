@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
@@ -22,14 +22,6 @@ func (l *jcLocks) TryLock(job string) (func(), bool) {
 
 func (l *jcLocks) Holder(job string) (time.Time, bool) { at, ok := l.held[job]; return at, ok }
 
-// jcLockedBF is the fake backfiller together with the lock set it runs under.
-type jcLockedBF struct {
-	*jcBackfill
-	locks *jcLocks
-}
-
-func (b jcLockedBF) JobLocks() runner.JobLocks { return b.locks }
-
 // jcBusy gives the rig a lock set in which the jobs are held since 14:30 UTC.
 func jcBusy(r *jcRig, jobs ...string) *jcLocks {
 	l := &jcLocks{held: map[string]time.Time{}}
@@ -40,7 +32,8 @@ func jcBusy(r *jcRig, jobs ...string) *jcLocks {
 	for _, id := range []string{"fred_series", "option_ledger"} {
 		js = append(js, jcJob{id: id, keys: jcKey})
 	}
-	r.host.set(js, jcLockedBF{r.bf, l})
+	r.host.set(js, r.bf)
+	giveHostLocks(r.host, l)
 	return l
 }
 
@@ -92,5 +85,29 @@ func TestWithdrawWhileWaiting(t *testing.T) {
 	}
 	if f := r.wantEnd(jobrequest.StateWithdrawn, "withdrawn"); f.id != 1 || r.log.count("hold:") != 1 || r.log.count("claim:") != 0 {
 		t.Fatalf("finished %+v; calls %v", f, r.log.items)
+	}
+}
+
+func TestSchedulerWiresLockSetIntoHost(t *testing.T) {
+	t.Parallel()
+	giveHostLocks(nil, shared.NewJobLocks()) // console off: no panic
+	r := newJCRig(t, "fred_series", "option_ledger")
+	r.add(1, "fred_series", jcDay, false)
+	r.add(2, "option_ledger", jcDay, false)
+	locks := shared.NewJobLocks()
+	giveHostLocks(r.host, nil) // a nil set is tolerated
+	if _, ok := locks.TryLock("fred_series"); !ok {
+		t.Fatal("lock not taken")
+	}
+	giveHostLocks(r.host, locks)
+	took, run := r.host.claimQueued(t.Context())
+	if !took || run == nil {
+		t.Fatalf("B not claimed; calls %v", r.log.items)
+	}
+	if r.log.count("hold:1:fred_series:") != 1 || r.log.count("claim:1") != 0 || r.log.count("claim:2") != 1 {
+		t.Fatalf("calls %v", r.log.items)
+	}
+	if r.q.rows[0].State != jobrequest.StateQueued {
+		t.Fatalf("A is %s, want queued", r.q.rows[0].State)
 	}
 }

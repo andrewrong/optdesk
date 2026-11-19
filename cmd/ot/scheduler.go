@@ -209,6 +209,7 @@ func runScheduler(
 	host, closeConsole := openConsoleHost(ctx, a, cfg.runnerDSN, cfg.pagesDSN, d.newKeyGapSyncer, w.ledger, sl, fw)
 	defer closeConsole()
 	locks := shared.NewJobLocks() // one set for every build, so a swap keeps the locks of a run in flight
+	giveHostLocks(host, locks)
 	build := newBuild(d.newReconciler, withJobLocks, locks, w.ledger, sl, w.cal, fw, kr, func(jobs []contracts.Job, bf runner.Backfiller) {
 		if host == nil {
 			return
@@ -384,4 +385,12 @@ func schedulerDisabled(cfg runOnceConfig, w wiring) map[string]string {
 		}
 	}
 	return out
+}
+
+// giveHostLocks hands the console host the lock set the builds share; a nil host (console off) or set is ignored.
+func giveHostLocks(host *consoleHost, locks runner.JobLocks) {
+	if host == nil || locks == nil {
+		return
+	}
+	host.setLocks(locks)
 }
