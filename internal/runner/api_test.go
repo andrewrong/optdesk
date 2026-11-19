@@ -516,3 +516,62 @@ func TestDayPlannerIsAnOptionalMethodOfTheBackfiller(t *testing.T) {
 		t.Fatal("a backfiller without PlanDay must not assert to DayPlanner")
 	}
 }
+
+type fakeDetached struct {
+	fakeReconciler
+	spawned []string
+}
+
+func (f *fakeDetached) ReconcileDetached(_ context.Context, _ contracts.Day, spawn runner.Spawn) error {
+	spawn("job-a", func(context.Context) {})
+	f.spawned = append(f.spawned, "job-a")
+	return nil
+}
+
+type plainLocks struct{}
+
+func (plainLocks) TryLock(string) (func(), bool) { return func() {}, true }
+
+type holderLocks struct {
+	plainLocks
+	since time.Time
+}
+
+func (h holderLocks) Holder(id string) (time.Time, bool) { return h.since, id == "job-a" }
+
+func TestDetachedAndHolderContract(t *testing.T) {
+	t.Parallel()
+	var rec runner.Reconciler = &fakeDetached{}
+	d, ok := rec.(runner.DetachedReconciler)
+	if !ok {
+		t.Fatal("fakeDetached must assert to DetachedReconciler")
+	}
+	var got []string
+	spawn := runner.Spawn(func(id string, run func(ctx context.Context)) {
+		got = append(got, id)
+		run(context.Background())
+	})
+	if err := d.ReconcileDetached(context.Background(), "2026-11-04", spawn); err != nil || len(got) != 1 || got[0] != "job-a" {
+		t.Fatalf("ReconcileDetached = %v %v", err, got)
+	}
+	if _, ok := runner.Reconciler(&fakeReconciler{}).(runner.DetachedReconciler); ok {
+		t.Fatal("a plain Reconciler must not assert to DetachedReconciler")
+	}
+
+	since := time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
+	var locks runner.JobLocks = holderLocks{since: since}
+	h, ok := locks.(runner.JobLockHolder)
+	if !ok {
+		t.Fatal("holderLocks must assert to JobLockHolder")
+	}
+	if at, held := h.Holder("job-a"); !held || !at.Equal(since) {
+		t.Fatalf("Holder(job-a) = %v %v", at, held)
+	}
+	if _, held := h.Holder("job-b"); held {
+		t.Fatal("job-b is not locked")
+	}
+	locks = plainLocks{}
+	if _, ok := locks.(runner.JobLockHolder); ok {
+		t.Fatal("a JobLocks without Holder must not assert to JobLockHolder")
+	}
+}

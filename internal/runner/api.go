@@ -283,3 +283,20 @@ type ConsoleRun func(ctx context.Context)
 type ConsoleClaimer interface {
 	ClaimConsole(ctx context.Context) ([]ConsoleRun, error)
 }
+
+// Spawn starts run in a goroutine owned by the ticker's job group, under the group context.
+type Spawn func(jobID string, run func(ctx context.Context))
+
+// DetachedReconciler is the optional method of the Reconciler (asserted by type like
+// ConsoleClaimer): ReconcileDetached plans the day, starts each due job whose lock is free
+// through spawn, and returns without waiting for them.
+type DetachedReconciler interface {
+	ReconcileDetached(ctx context.Context, day contracts.Day, spawn Spawn) error
+}
+
+// JobLockHolder is the optional, read-only method of the JobLocks set, found by type
+// assertion on the lock set like ConsoleClaimer: Holder gives since when a job id is
+// locked, and ok is false while it is free. JobLocks itself is unchanged.
+type JobLockHolder interface {
+	Holder(jobID string) (since time.Time, ok bool)
+}
