@@ -421,3 +421,43 @@ func TestShortListNumberFails(t *testing.T) {
 		t.Fatal("a JSON number for strike.main validates")
 	}
 }
+
+func buySourceBadge() map[string]any {
+	return map[string]any{"code": "buy_source", "label": "your price", "gloss": "typed by you", "tone": "info"}
+}
+
+func TestBuySourceValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { c["buy_source"] = buySourceBadge() })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a company with a buy_source badge is invalid")
+	}
+}
+
+func TestBuySourceNullValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { c["buy_source"] = nil })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a null buy_source is invalid")
+	}
+}
+
+func TestNoBuySourceStillValid(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) { delete(c, "buy_source") })
+	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("a company without the buy_source key is invalid")
+	}
+}
+
+func TestBuySourceUnknownField(t *testing.T) {
+	t.Parallel()
+	inst := valueLineInst(t, func(c map[string]any) {
+		b := buySourceBadge()
+		b["extra"] = "x"
+		c["buy_source"] = b
+	})
+	if pageV1Valid(t, optionCandidatesPageV1, inst) {
+		t.Fatal("an extra key of the buy_source badge validates")
+	}
+}
