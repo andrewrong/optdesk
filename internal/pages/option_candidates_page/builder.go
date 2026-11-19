@@ -77,16 +77,10 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 	var chainDay, oldestStale contracts.Day
 	var first *store.Candidate
 	if c.Candidates == nil {
-		for _, s := range groupSpecs {
-			vm.Groups = append(vm.Groups, gapGroup(s, mkGap("no_reader", gapNoReader)))
-		}
-		vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
+		vm.noReader()
 	} else {
 		for _, s := range specsOf(c) {
-			bday := day
-			if s.currency == currencyJPY {
-				bday = tokyoDay(generatedAt)
-			}
+			bday := buildDayOf(s, day, generatedAt)
 			gr, err := readGroup(ctx, c, series, s, bday)
 			if err != nil {
 				return nil, err
@@ -124,6 +118,22 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 		}
 	}
 	return json.Marshal(vm)
+}
+
+// noReader is the page of a nil Candidates reader: every group a gap.
+func (vm *viewModel) noReader() {
+	for _, s := range groupSpecs {
+		vm.Groups = append(vm.Groups, gapGroup(s, mkGap("no_reader", gapNoReader)))
+	}
+	vm.Gaps = append(vm.Gaps, mkGap("no_reader", gapNoReader))
+}
+
+// buildDayOf is the day a group is read for: the build day, and for the yen group the Tokyo date of the build time.
+func buildDayOf(s groupSpec, day contracts.Day, at time.Time) contracts.Day {
+	if s.currency == currencyJPY {
+		return tokyoDay(at)
+	}
+	return day
 }
 
 // groupRead is what one group read: its day, rows with their display names, the cash rate of the day, the
@@ -181,6 +191,9 @@ func readGroup(ctx context.Context, c Config, series store.SeriesReader, s group
 // for the yen group, the yen ones; any other kind leaves vm as it is.
 func fillShortPut(ctx context.Context, c Config, vm *viewModel, s groupSpec, gr groupRead, day contracts.Day, at time.Time) error {
 	if s.kind != kindShortPut {
+		// As before this change: the groups after the short put, read last, leave the US list unset (the
+		// command and the site build the same bytes, tested in cmd/ot); the tier view is kept.
+		vm.ShortPutList = nil
 		return nil
 	}
 	tiers, err := buildTiers(ctx, c, gr, day, at)

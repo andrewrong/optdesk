@@ -69,6 +69,22 @@ type bucket struct {
 	keys     []string
 }
 
+// newRowEnv is what a tier row needs from its group: the evidence columns, the cash days of the accounts and,
+// for a US group only, the figures (a yen row has no US figure: its cells are the gap "not computed").
+func newRowEnv(c Config, gr groupRead, res optiontierapi.Result, f tierFacts, ev evidenceSet, judged []store.Candidate) rowEnv {
+	env := rowEnv{
+		day: string(gr.day), common: res.Common, cols: evidenceCols(withoutBand(ev)), cur: gr.cur,
+		cashDay: map[string]string{},
+	}
+	if gr.cur == "" {
+		env.figs = putFigures(c.Figures, gr.rate, gr.day, judged)
+	}
+	for _, a := range f.in.Accounts {
+		env.cashDay[a.Alias] = string(a.CaptureDay)
+	}
+	return env
+}
+
 // buildTiers sorts the stored short-put rows into the tiers of Config.Tiers. It calls Judge once and
 // the evidence builder and Config.Figures once for the rows of the Fits and Check tiers, whatever their stored
 // status, and writes the texts; day is the day Build was called for, which a past earnings date is compared
@@ -110,16 +126,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 	if err != nil {
 		return nil, err
 	}
-	env := rowEnv{
-		day: string(gr.day), common: res.Common, cols: evidenceCols(withoutBand(ev)), cur: gr.cur,
-		cashDay: map[string]string{},
-	}
-	if gr.cur == "" { // a yen row has no US figure: its cells are the gap "not computed"
-		env.figs = putFigures(c.Figures, gr.rate, gr.day, judged)
-	}
-	for _, a := range f.in.Accounts {
-		env.cashDay[a.Alias] = string(a.CaptureDay)
-	}
+	env := newRowEnv(c, gr, res, f, ev, judged)
 	v := &tiersView{
 		ChainDay: string(gr.day), Common: commonOf(res.Common),
 		Kept: keptLine(res.Kept), StoredTitle: storedTitle, Columns: columnsOf(string(gr.day)), Tiers: make([]tierView, 0, len(buckets)),
