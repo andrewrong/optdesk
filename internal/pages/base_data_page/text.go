@@ -29,6 +29,7 @@ const (
 const (
 	gapFactsText    = "All four fact views failed to read, so no row is shown."
 	gapCoverageText = "The coverage of the ledger could not be read, so the ledger rules are not judged."
+	gapReconText    = "The cross-check runs could not be read, so the bars row is judged without them."
 	gapViewHead     = "These base data could not be read and are not judged: "
 	gapViewTail     = "."
 )

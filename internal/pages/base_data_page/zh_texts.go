@@ -84,3 +84,12 @@ const (
 	termCoverage = "coverage"
 	textCoverage = "覆盖：计划采集的键里实际存下了多少。"
 )
+
+// Texts of the cross-check of the bars row (entry 22).
+const (
+	reasonNoRunZh   = "尚未运行"
+	reasonFailedZh  = "未能比对："
+	skippedPrefixZh = "未比对："
+	comparedFormat  = "已比对 %d 个，共 %d 个"
+	hintR6          = "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整"
+)
