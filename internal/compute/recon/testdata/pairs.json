@@ -1,0 +1,32 @@
+{
+  "r6": {
+    "input": {
+      "Ours": [
+        {"Key": "AAPL|USD|2026-11-12", "Amount": "100.00"},
+        {"Key": "AAPL|USD|2026-11-13", "Amount": "102.00"},
+        {"Key": "AAPL|USD|2026-11-16", "Amount": "103.5000"},
+        {"Key": "MSFT|USD|2026-11-13", "Amount": "400.00"},
+        {"Key": "7203|JPY|2026-11-13", "Amount": "2500.0"}
+      ],
+      "Other": [
+        {"Key": "AAPL|USD|2026-11-12", "Amount": "100.05"},
+        {"Key": "AAPL|USD|2026-11-13", "Amount": "100.00"},
+        {"Key": "AAPL|USD|2026-11-17", "Amount": "104.00"}
+      ],
+      "Skip": {"7203|JPY|2026-11-13": "no_data"},
+      "OtherMissingSkipped": true,
+      "Tol": {"Rel": "0.001"}
+    },
+    "want": {
+      "Items": [
+        {"Key": "7203|JPY|2026-11-13", "Ours": "2500.0", "Other": "", "Diff": "", "Reason": "no_data", "Kind": "skipped"},
+        {"Key": "AAPL|USD|2026-11-12", "Ours": "100.00", "Other": "100.05", "Diff": "", "Reason": "", "Kind": "match"},
+        {"Key": "AAPL|USD|2026-11-13", "Ours": "102.00", "Other": "100.00", "Diff": "2.00", "Reason": "", "Kind": "diff"},
+        {"Key": "AAPL|USD|2026-11-16", "Ours": "103.5000", "Other": "", "Diff": "", "Reason": "source_lacks", "Kind": "skipped"},
+        {"Key": "AAPL|USD|2026-11-17", "Ours": "", "Other": "104.00", "Diff": "", "Reason": "", "Kind": "missing_ours"},
+        {"Key": "MSFT|USD|2026-11-13", "Ours": "400.00", "Other": "", "Diff": "", "Reason": "source_lacks", "Kind": "skipped"}
+      ],
+      "N": 3, "Matched": 1, "Diff": 1, "MissingOurs": 1, "MissingOther": 0, "Skipped": 3
+    }
+  }
+}
