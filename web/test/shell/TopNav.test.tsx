@@ -38,7 +38,7 @@ const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]
       ['P&L split', '/options/pnl'],
     ],
   ],
-  ['Companies', [['Watch list', '/underlyings'], ['Price lines', '/plan/price-lines'], ['Valuation', '/valuation'], ['Data', '/company-data']]],
+  ['Companies', [['Watch list', '/underlyings'], ['Price lines', '/plan/price-lines'], ['Valuation', '/valuation'], ['Import valuations', '/valuation-import'], ['Data', '/company-data']]],
   ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Base data', '/base-data'], ['Data health', '/data-health'], ['Option data', '/options/data']]],
 ]
 
@@ -154,7 +154,7 @@ describe('TopNav', () => {
       'Market', 'Macro', 'Market state',
       'Portfolio', 'Household', 'Positions', 'Risk',
       'Options', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split',
-      'Companies', 'Watch list', 'Price lines', 'Valuation', 'Data',
+      'Companies', 'Watch list', 'Price lines', 'Valuation', 'Import valuations', 'Data',
       'System', 'Settings', 'Job console', 'Base data', 'Data health', 'Option data',
     ])
     const expected = [['Home', '/home'], ...GROUPS.flatMap(([, l]) => l)].map(([l, h]) => [l, h])
@@ -172,13 +172,13 @@ describe('TopNav', () => {
 })
 
 describe('TestTopNavHasCompanyData', () => {
-  it('the Companies menu holds Data to /company-data after Valuation and the bar keeps six items', async () => {
+  it('the Companies menu ends with Import valuations and Data to /company-data and the bar keeps six items', async () => {
     await showAt('/home')
     const bar = host.querySelector('nav > div')
     expect([...(bar?.children ?? [])]).toHaveLength(6)
     const menu = await openMenu('Companies')
     expect(pairs(menu.querySelectorAll('a')).slice(-2)).toEqual([
-      ['Valuation', '/valuation'],
+      ['Import valuations', '/valuation-import'],
       ['Data', '/company-data'],
     ])
   })

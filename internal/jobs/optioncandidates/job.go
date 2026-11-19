@@ -1,5 +1,5 @@
-// Package optioncandidates is the option_candidates job: once per XNYS session day, thirty minutes after the
-// close, it evaluates the stored put chain of each watched US stock and writes one candidate row per contract
+// Package optioncandidates is the option_candidates job: once per XNYS session day, five minutes after the
+// open and after option_open, it evaluates the stored put chain of each watched US stock and writes one candidate row per contract
 // (docs/design/option-candidates.md Decisions 1, 4, 5, 9, 13 and 15). It holds no dividend reader and no sender.
 package optioncandidates
 
@@ -112,8 +112,8 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 	return j.slot.calendar, j.slot.anchor, j.slot.zone, j.slot.offset
 }
 
-// After is the ids of the jobs of the same day that option_candidates reads.
-func (j *job) After() []string { return []string{"compute_figures"} }
+// After is the id of the job of the same day that option_candidates waits for: the open pull.
+func (j *job) After() []string { return []string{"option_open"} }
 
 // RunBound is the longest time one run may take.
 func (j *job) RunBound() time.Duration { return j.slot.runBound }

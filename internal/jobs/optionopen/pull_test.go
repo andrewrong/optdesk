@@ -28,7 +28,9 @@ type pullStores struct {
 	refs     map[int64][]openquote.OptionRef
 	insts    []store.Instrument
 	written  [][]contracts.OptionOpen
+	stored   map[string]contracts.OptionOpen // the upsert of the table: one row per day, slot and instrument
 	writeErr error
+	readErr  error
 	planErr  error
 	planDay  contracts.Day // the day of the last Plan read
 	onlyDay  contracts.Day // when set, only this day has a stored plan
@@ -56,7 +58,36 @@ func (s *pullStores) InsertOptionOpen(_ context.Context, rows []contracts.Option
 		return s.writeErr
 	}
 	s.written = append(s.written, rows)
+	if s.stored == nil {
+		s.stored = map[string]contracts.OptionOpen{}
+	}
+	for _, r := range rows {
+		s.stored[r.SessionDay.Format(time.DateOnly)+"|"+r.Slot+"|"+strconv.Itoa(r.InstrumentID)] = r
+	}
 	return nil
+}
+
+// total is the number of rows written, over all the calls.
+func (s *pullStores) total() int {
+	n := 0
+	for _, w := range s.written {
+		n += len(w)
+	}
+	return n
+}
+
+// OptionOpenSlot answers from the rows written.
+func (s *pullStores) OptionOpenSlot(_ context.Context, day contracts.Day, slot string, ids []int64) ([]contracts.OptionOpen, error) {
+	if s.readErr != nil {
+		return nil, s.readErr
+	}
+	var out []contracts.OptionOpen
+	for _, id := range ids {
+		if r, ok := s.stored[string(day)+"|"+slot+"|"+strconv.FormatInt(id, 10)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }
 
 func (s *pullStores) Instruments(_ context.Context, ids []int64) ([]store.Instrument, error) {
@@ -196,11 +227,11 @@ func TestRunWritesOneRowPerPlannedItemWithTheContractOfTheStores(t *testing.T) {
 	if res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if len(s.written) != 1 || len(s.written[0]) != 16 || res.Returned != 16 || res.Usable != 16 {
-		t.Fatalf("written %d batches, returned %d usable %d", len(s.written), res.Returned, res.Usable)
+	if s.total() != 16 || res.Returned != 16 || res.Usable != 16 {
+		t.Fatalf("written %d rows, returned %d usable %d", s.total(), res.Returned, res.Usable)
 	}
 	seen := map[int]bool{}
-	for _, r := range s.written[0] {
+	for _, r := range s.stored {
 		if seen[r.InstrumentID] || r.Slot != "0945" || r.Currency != "USD" || r.Status != stOK {
 			t.Errorf("row %d slot %s status %d", r.InstrumentID, r.Slot, r.Status)
 		}
@@ -218,7 +249,7 @@ func TestItemWithoutAStoredContractEndsError(t *testing.T) {
 	s := seed(1, 8)
 	s.refs[1] = s.refs[1][1:] // the first item has no master.option_contract row
 	res := runAll(t, newPull(t, s, newFake(100)))
-	rows := s.written[0]
+	rows := s.stored
 	if len(rows) != 8 {
 		t.Fatalf("rows %d, want one per planned item", len(rows))
 	}
@@ -251,7 +282,7 @@ func TestPostconditionOkShareOfTheItemsNotDeferred(t *testing.T) {
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Usable != 4 || res.Returned != 10 {
 		t.Errorf("err %v usable %d returned %d, want a failed run with the 10 rows written", res.Err, res.Usable, res.Returned)
 	}
-	if len(s.written) != 1 {
+	if s.total() != 10 {
 		t.Error("the rows of a run that misses the share are still written")
 	}
 
@@ -276,8 +307,8 @@ func TestPullPastStopAfterRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	res := runAll(t, j)
-	if res.Err != nil || len(s.written) != 1 || len(b.optCalls) == 0 {
-		t.Errorf("err %v written %d calls %d; keys started after 10:00 ET run", res.Err, len(s.written), len(b.optCalls))
+	if res.Err != nil || s.total() != 3 || len(b.optCalls) == 0 {
+		t.Errorf("err %v written %d calls %d; keys started after 10:00 ET run", res.Err, s.total(), len(b.optCalls))
 	}
 	if n := strings.Count(buf.String(), "started after stop_after"); n == 0 {
 		t.Errorf("no health line: %q", buf.String())
@@ -290,9 +321,10 @@ func TestPullPastDayRunsToday(t *testing.T) {
 	j := newPull(t, s, newFake(100))
 	keys, _, _ := j.Plan(context.Background(), pullDay)
 	res := j.Run(context.Background(), "2026-11-10", keys)
-	if res.Err != nil || len(s.written) != 1 {
-		t.Fatalf("past day: err %v written %d", res.Err, len(s.written))
+	if res.Err != nil || s.total() != 3 {
+		t.Fatalf("past day: err %v written %d", res.Err, s.total())
 	}
+	s.stored = nil // a store with nothing final: the key is asked again
 	s.writeErr = errors.New("db down")
 	if res := j.Run(context.Background(), pullDay, keys); res.Err == nil || res.Err.Kind() != contracts.Retryable {
 		t.Errorf("write failure: %v", res.Err)
@@ -360,8 +392,8 @@ func TestRunReadsThePlanOfItsGivenDay(t *testing.T) {
 	if err != nil || len(keys) == 0 {
 		t.Fatalf("Plan: keys %v err %v", keys, err)
 	}
-	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err != nil || len(s.written) != 1 {
-		t.Fatalf("Run: err %v written %d", res.Err, len(s.written))
+	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err != nil || s.total() != 3 {
+		t.Fatalf("Run: err %v written %d", res.Err, s.total())
 	}
 	if s.planDay != "2026-11-10" {
 		t.Errorf("last plan read for %s, want 2026-11-10", s.planDay)
@@ -377,8 +409,8 @@ func TestRunFallsBackToTheClockDatePlan(t *testing.T) {
 	if err != nil || len(keys) == 0 {
 		t.Fatalf("Plan: keys %v err %v", keys, err)
 	}
-	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err != nil || len(s.written) != 1 {
-		t.Fatalf("Run: err %v written %d", res.Err, len(s.written))
+	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err != nil || s.total() != 3 {
+		t.Fatalf("Run: err %v written %d", res.Err, s.total())
 	}
 }
 
@@ -444,8 +476,8 @@ func TestRunWithUnreadSpotIsRetryable(t *testing.T) {
 			if !strings.Contains(res.Err.Error(), "planned items ok, under the share") || !strings.Contains(res.Err.Error(), "8") {
 				t.Errorf("message %q", res.Err.Error())
 			}
-			if len(s.written) != 1 || len(s.written[0]) != 8 {
-				t.Fatalf("written %v, want the 8 rows once", s.written)
+			if s.total() != 8 || len(s.stored) != 8 {
+				t.Fatalf("written %d rows, want the 8 rows once", s.total())
 			}
 			if !strings.Contains(buf.String(), "fault stage=option_open day=2026-11-11 key=batch-001 reason=") {
 				t.Errorf("log %q", buf.String())
@@ -467,7 +499,7 @@ func TestRunRetryOfAKeyWhoseSpotCameBack(t *testing.T) {
 	if res.Err != nil || res.Usable != 8 || res.Returned != 8 {
 		t.Fatalf("second run: err %v usable %d returned %d", res.Err, res.Usable, res.Returned)
 	}
-	for _, r := range s.written[1] {
+	for _, r := range s.stored {
 		if r.Status != stOK {
 			t.Errorf("row %d status %d", r.InstrumentID, r.Status)
 		}
@@ -490,7 +522,7 @@ func TestPartialRowsUnderShareAreRetryable(t *testing.T) {
 	if res.Err == nil || res.Err.Kind() != contracts.Retryable || res.Usable != 4 || res.Returned != 10 {
 		t.Errorf("err %v usable %d returned %d, want Retryable with the 10 rows written", res.Err, res.Usable, res.Returned)
 	}
-	if len(s.written) != 1 {
-		t.Errorf("written %d times, want once", len(s.written))
+	if s.total() != 10 {
+		t.Errorf("written %d rows, want 10", s.total())
 	}
 }
