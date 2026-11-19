@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -477,11 +478,25 @@ func base(c Config, scopes []accountScope, alias string, at time.Time) pageJSON 
 		scopes = []accountScope{}
 	}
 	return pageJSON{
+		Views:  viewsOf(c.Aliases, alias),
 		Schema: "household_page", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
 		RiskLink: linkRisk, PositionsLink: linkPositions,
 		GeneratedAt: at.Format(timeLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{}, Scopes: scopes,
 		Stale: staleLabel{DataTime: at.Format(timeLayout), StaleAfter: at.Format(timeLayout), Text: textStaleLabel + "none"},
 	}
+}
+
+// viewsOf is the row of links of a book of two or more aliases: the family and each account, the
+// page's own marked current. A smaller book has none.
+func viewsOf(aliases []string, current string) []viewJSON {
+	if len(aliases) < 2 {
+		return nil
+	}
+	out := []viewJSON{{Key: familyAliasKey, Label: viewFamily, Href: "/household", Current: current == familyAliasKey}}
+	for _, a := range aliases {
+		out = append(out, viewJSON{Key: a, Label: familyAccountLabel(a), Href: "/household?account=" + url.QueryEscape(a), Current: current == a})
+	}
+	return out
 }
 
 // gapPage is the page of an alias that has nothing to show: every block is the one gap.
