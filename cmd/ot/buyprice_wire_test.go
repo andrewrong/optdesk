@@ -201,7 +201,7 @@ func TestBuyPriceOptionFamiliesGetOnePrice(t *testing.T) {
 		t.Fatal(err)
 	}
 	open, _, err := buildOpenPlan(t.Context(), h.a, h.jc, jobOptionOpenPlan, func(d optionopen.PlanDeps) (contracts.Job, error) {
-		openGot = d.Stored.Watch
+		openGot = d.Watch
 		return &fakeInner{runs: new([]*fakeInner), tag: "open"}, nil
 	})
 	if err != nil {
