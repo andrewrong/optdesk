@@ -31,6 +31,7 @@ function placed(groups: readonly Group[]): Group[] {
 export function OptionCandidatesPage({ payload }: { payload: Payload }) {
   const staleText = payload.stale ? payload.stale.text : null
   const groups = placed(payload.groups)
+  const labels = payload.head_labels
   const tabs = (
     <Tabs defaultValue={groupKey(groups[0]!)}>
       <TabsList>
@@ -59,7 +60,7 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           <Accordion type="single" collapsible data-stored-tables>
             <AccordionItem value="stored">
               <AccordionTrigger className="text-xl font-semibold">
-                {payload.short_put_tiers.stored_title ?? 'Stored tables'}
+                {payload.short_put_tiers.stored_title}
               </AccordionTrigger>
               <AccordionContent>
                 {tabs}
@@ -81,9 +82,22 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex flex-wrap gap-2">
-            {payload.chain_day ? <Badge data-chain-day>{payload.chain_day}</Badge> : null}
+            {payload.chain_day ? (
+              <Badge data-chain-day>
+                {labels?.data_day} {payload.chain_day}
+              </Badge>
+            ) : null}
+            {labels ? (
+              <Badge variant="secondary" data-run-status>
+                {labels.run_status} {labels.run_status_text}
+              </Badge>
+            ) : null}
             {payload.computed_at ? <Badge variant="secondary" data-computed-at>{payload.computed_at}</Badge> : null}
-            {payload.rule_version ? <Badge variant="outline" data-rule-version>Rule {payload.rule_version}</Badge> : null}
+            {payload.rule_version ? (
+              <Badge variant="outline" data-rule-version>
+                {labels?.rule_version} {payload.rule_version}
+              </Badge>
+            ) : null}
           </div>
           <p data-estimate-note className="text-muted-foreground">
             {payload.estimate_note}

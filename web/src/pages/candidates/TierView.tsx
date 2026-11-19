@@ -1,5 +1,5 @@
 // The short-put tier view (Decisions 10 and 13 of docs/design/candidates-tiers.md): buy hint, the common marks,
-// the legend, the tiers in payload order, then the idle line and the company strips. It renders payload texts and computes nothing.
+// the legend, the company cards, the card note, the tiers in payload order, then the idle line. It renders payload texts and computes nothing.
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -40,6 +40,14 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
           </p>
         ) : null}
         <TierLegend items={tiers.legend} />
+        {tiers.companies.map((company) => (
+          <CompanyStrip key={company.key} company={company} labels={tiers.strip_labels} />
+        ))}
+        {typeof tiers.card_note === 'string' ? (
+          <p className="text-sm text-muted-foreground" data-card-note>
+            {tiers.card_note}
+          </p>
+        ) : null}
         {tiers.tiers.map((tier) => (
           <TierSection key={tier.id} tier={tier} columns={tiers.columns} />
         ))}
@@ -48,9 +56,6 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
             {tiers.idle_note}
           </p>
         ) : null}
-        {tiers.companies.map((company) => (
-          <CompanyStrip key={company.key} company={company} spotHint={tiers.spot_hint ?? null} />
-        ))}
       </section>
     </TooltipProvider>
   )

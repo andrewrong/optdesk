@@ -1,4 +1,4 @@
-// The rows of one tier: a seven-column table per tier, one accordion item per row for the expansion, and the grey
+// One tier's rows: a seven-column table per tier, one accordion item per row for the expansion, and the grey
 // groups as closed accordions. Every text is a payload field; nothing is computed, sorted or filtered here.
 import { Check, ChevronRight, Minus, TriangleAlert } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -105,7 +105,12 @@ export function TierHead({ columns }: { columns: TierColumn[] }) {
         <TableRow>
           {columns.map((c, i) => (
             <TableHead key={c.id} data-col={c.id} className={cn(i === columns.length - 1 && 'min-w-64')}>
-              <Hint text={c.hint}>{i === 0 ? <span className="sr-only">{c.label}</span> : c.label}</Hint>
+              {i === 0 ? <span className="sr-only">{c.label}</span> : c.label}
+              {c.hint ? (
+                <span data-col-subtitle className="block text-xs font-normal whitespace-normal text-muted-foreground">
+                  {c.hint}
+                </span>
+              ) : null}
             </TableHead>
           ))}
         </TableRow>

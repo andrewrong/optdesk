@@ -2,7 +2,21 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CompanyStrip } from '@/pages/candidates/CompanyStrip'
-import { handSource, notJudgedSource, valuationSource, withLine, withNull, withoutKey, withReason } from './fixtures/valueline'
+import {
+  handSource,
+  noProfileLine,
+  noReviewLine,
+  notJudgedSource,
+  notUsedLine,
+  stripLabels,
+  valueLine,
+  valuationSource,
+  withLine,
+  withNull,
+  withoutKey,
+  withReason,
+} from './fixtures/valueline'
+import type { Company } from '../../../src/generated/option_candidates_page.v1'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | undefined
@@ -23,77 +37,119 @@ afterEach(async () => {
 })
 
 describe('CompanyStrip', () => {
-  it('TestStripShowsValueLine', async () => {
-    const page = await show(<CompanyStrip company={withLine} />)
-    const value = page.querySelector('[data-valuation]')!
-    expect(value.textContent).toContain('Valuation buy line B_hi')
-    expect(value.textContent).toContain('$91.20 (review 2026-11-10)')
-    const gate = page.querySelector('[data-gate]')!
-    expect(gate.textContent).toContain('Buy price used by the gate (hand-typed)')
-    expect(gate.textContent).toContain('$90.00')
+  it('TestStripTwoLines', async () => {
+    const c = withLine
+    const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
+    const [l1, l2] = [page.querySelector('[data-line="1"]')!, page.querySelector('[data-line="2"]')!]
+    expect(l1.textContent).toBe(
+      `${c.tier!.glyph} ${c.tier!.word}${c.ticker}${stripLabels.buy_price}${c.buy_price}${stripLabels.spot} ${c.spot_text} ${c.spot_note}${stripLabels.next_earnings} ${c.earnings_text}`,
+    )
+    const v = c.valuation!
+    expect(l2.textContent).toBe(
+      `${v.line_label}${v.line_text}${v.note}${stripLabels.contracts} 2 ${stripLabels.fits} · 1 ${stripLabels.check} · 1 ${stripLabels.grey} ${stripLabels.grey_hint}`,
+    )
+    expect(l1.querySelector('[data-tier]')!.getAttribute('data-tier')).toBe('fits')
+    expect(page.querySelector('[data-grey-hint]')!.textContent).toBe(stripLabels.grey_hint)
   })
 
-  it('TestStripShowsReasonText', async () => {
-    const page = await show(<CompanyStrip company={withReason} />)
-    const value = page.querySelector('[data-valuation]')!
-    expect(value.textContent).toContain(withReason.valuation!.text)
-    expect(value.textContent).not.toContain('$')
+  it('TestStripNoValuationLine', async () => {
+    const none = await show(<CompanyStrip company={withNull} labels={stripLabels} />)
+    expect(none.querySelector('[data-valuation]')).toBeNull()
+    expect(none.querySelector('[data-line="1"]')).not.toBeNull()
+    expect(none.querySelector('[data-counts]')).not.toBeNull()
+    await act(async () => root?.unmount())
+    host.remove()
+    const c: Company = { ...withLine, valuation: noProfileLine }
+    const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
+    const val = page.querySelector('[data-valuation]')!
+    expect(val.textContent).toBe(`${noProfileLine.line_label}${noProfileLine.line_text}${noProfileLine.note}`)
   })
 
-  it('TestStripNoValuationUnchanged', async () => {
-    const expected = (c: typeof withNull) =>
-      `${c.ticker}Spot ${c.spot} (rows of ${c.spot_day})Buy price ${c.buy_price}Next earnings ${c.next_earnings}${c.counts}`
-    for (const c of [withNull, withoutKey]) {
-      const page = await show(<CompanyStrip company={c} />)
-      expect(page.textContent).toBe(expected(c))
-      expect(page.querySelector('[data-valuation]')).toBeNull()
+  it('TestStripWordsFromPayload', async () => {
+    const labels = { ...stripLabels, spot: 'ZQ1', buy_price: 'ZQ2', next_earnings: 'ZQ3', contracts: 'ZQ4', fits: 'ZQ5', check: 'ZQ6', grey: 'ZQ7', grey_hint: 'ZQ8' }
+    const c: Company = {
+      ...withLine,
+      tier: { id: 'check', word: 'ZW', glyph: 'ZG' },
+      spot_note: 'ZN',
+      earnings_text: 'ZE',
+      valuation: { ...valueLine, line_label: 'ZL', line_text: 'ZT', note: 'ZV' },
+    }
+    const page = await show(<CompanyStrip company={c} labels={labels} />)
+    expect(page.textContent).toBe('ZG ZW' + 'AAA' + 'ZQ2$90.00' + 'ZQ1 $96.50 ZN' + 'ZQ3 ZE' + 'ZLZTZV' + 'ZQ4 2 ZQ5 · 1 ZQ6 · 1 ZQ7 ZQ8')
+  })
+
+  it('TestStripRunStateNotes', async () => {
+    const used = { ...withLine }
+    const notUsed = { ...withLine, valuation: notUsedLine }
+    const none = { ...withLine, valuation: noReviewLine }
+    for (const [c, state] of [[used, 'used'], [notUsed, 'not_used']] as const) {
+      const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
+      const note = page.querySelector('[data-valuation-note]')!
+      expect(note.getAttribute('data-run-state')).toBe(state)
+      expect(note.textContent).toBe(c.valuation!.note)
+      await act(async () => root?.unmount())
+      host.remove()
+    }
+    const page = await show(<CompanyStrip company={{ ...none, valuation: { ...noProfileLine, run_state: 'none' } }} labels={stripLabels} />)
+    expect(page.querySelector('[data-valuation-note]')!.getAttribute('data-run-state')).toBe('none')
+  })
+
+  it('TestPillIsPayloadWord', async () => {
+    const c: Company = { ...withLine, count_parts: { fits: '5', check: '0', grey: '0' }, tier: { id: 'grey', word: 'GREYWORD', glyph: '–' } }
+    const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
+    const pill = page.querySelector('[data-pill]')!
+    expect(pill.textContent).toBe('– GREYWORD')
+    expect(pill.getAttribute('data-tier')).toBe('grey')
+  })
+
+  it('TestStripNoGateLine', async () => {
+    for (const c of [withLine, withReason, withNull, withoutKey, notUsedCompany()]) {
+      const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
       expect(page.querySelector('[data-gate]')).toBeNull()
       await act(async () => root?.unmount())
       host.remove()
     }
   })
 
-  it('TestStripHintBesideLabel', async () => {
-    const page = await show(<CompanyStrip company={withLine} />)
-    const hint = page.querySelector('[data-valuation] [data-hint]')!
-    expect(hint.getAttribute('data-hint')).toBe(withLine.valuation!.hint)
-    expect(hint.textContent).toBe('Valuation buy line B_hi')
-    const gateHint = page.querySelector('[data-gate] [data-hint]')!
-    expect(gateHint.getAttribute('data-hint')).toBe(withLine.valuation!.gate_hint)
-    expect(gateHint.textContent).toBe('Buy price used by the gate (hand-typed)')
+  it('TestStripShowsReasonText', async () => {
+    const page = await show(<CompanyStrip company={withReason} labels={stripLabels} />)
+    const value = page.querySelector('[data-valuation]')!
+    expect(value.textContent).toContain(withReason.valuation!.line_text)
+    expect(value.textContent).not.toContain('$')
+    expect(page.textContent).toContain(withReason.price_note!)
   })
 
-  it('shows the spot hint on the word Spot', async () => {
-    const page = await show(<CompanyStrip company={withNull} spotHint="hint 中文" />)
-    expect(page.querySelector('[data-hint="hint 中文"]')!.textContent).toBe('Spot')
-    expect(page.textContent).toContain(`rows of ${withNull.spot_day}`)
+  it('TestStripNoValuationUnchanged', async () => {
+    for (const c of [withNull, withoutKey]) {
+      const page = await show(<CompanyStrip company={c} labels={stripLabels} />)
+      expect(page.querySelector('[data-valuation]')).toBeNull()
+      expect(page.querySelector('[data-gate]')).toBeNull()
+      expect(page.textContent).toContain(c.buy_price!)
+      await act(async () => root?.unmount())
+      host.remove()
+    }
   })
 
   it('TestStripShowsValuationSource', async () => {
-    const page = await show(<CompanyStrip company={valuationSource} />)
+    const page = await show(<CompanyStrip company={valuationSource} labels={stripLabels} />)
     expect(page.textContent).toContain('$91.20')
     const b = page.querySelector('[data-buy-source="valuation"]')!
     expect(b.textContent).toBe('Valuation buy zone')
-    expect(page.querySelector(`[data-hint="${valuationSource.buy_source!.gloss}"]`)).not.toBeNull()
+    expect(page.querySelector(`[data-hint="${valuationSource.source_badge!.gloss}"]`)).not.toBeNull()
   })
 
   it('TestStripShowsHandSource', async () => {
-    const page = await show(<CompanyStrip company={handSource} />)
+    const page = await show(<CompanyStrip company={handSource} labels={stripLabels} />)
     expect(page.querySelector('[data-buy-source="hand"]')!.textContent).toBe('Hand price')
-    expect(page.querySelector(`[data-hint="${handSource.buy_source!.gloss}"]`)).not.toBeNull()
   })
 
-  it('TestStripShowsNotJudged', async () => {
-    const page = await show(<CompanyStrip company={notJudgedSource} />)
-    expect(page.textContent).toContain('not judged')
-    expect(page.querySelector('[data-buy-source="none"]')!.textContent).toBe('Not judged')
-  })
-
-  it('TestStripNoBuySourceUnchanged', async () => {
-    const page = await show(<CompanyStrip company={withoutKey} />)
-    expect(page.textContent).toBe(
-      `${withoutKey.ticker}Spot ${withoutKey.spot} (rows of ${withoutKey.spot_day})Buy price ${withoutKey.buy_price}Next earnings ${withoutKey.next_earnings}${withoutKey.counts}`,
-    )
+  it('TestStripNotJudgedHasNoBadge', async () => {
+    const page = await show(<CompanyStrip company={notJudgedSource} labels={stripLabels} />)
+    expect(page.textContent).toContain(notJudgedSource.price_note!)
     expect(page.querySelector('[data-buy-source]')).toBeNull()
   })
 })
+
+function notUsedCompany(): Company {
+  return { ...withLine, valuation: notUsedLine }
+}

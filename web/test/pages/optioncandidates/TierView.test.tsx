@@ -29,19 +29,19 @@ describe('TierView', () => {
   it('TestTierViewRendersTiers', async () => {
     const page = await show(<TierView tiers={tiers} />)
     const text = page.textContent ?? ''
-    expect(page.querySelectorAll('[data-tier]')).toHaveLength(3)
+    expect(page.querySelectorAll('[data-tier]:not([data-company] *)')).toHaveLength(3)
     for (const tier of tiers.tiers) expect(text).toContain(tier.title)
-    expect(text).toContain(tiers.companies[0]!.counts)
+    expect(text).toContain(tiers.companies[0]!.count_parts!.fits)
     expect(text).toContain(tiers.kept!)
     for (const item of tiers.legend) expect(text).toContain(item.text)
-    expect(page.querySelectorAll('[data-tier=fits] [data-row]')).toHaveLength(2)
+    expect(page.querySelectorAll('section[data-tier=fits] [data-row]')).toHaveLength(2)
   })
 
   it('TestTierWordAndIconPerTier', async () => {
     const page = await show(<TierView tiers={tiers} />)
     await open(page.querySelector('[data-tier=grey_in_the_money] button')!)
     for (const tier of tiers.tiers) {
-      const scope = page.querySelector(`[data-tier=${tier.id}]`)!
+      const scope = page.querySelector(`[data-tier=${tier.id}]:not([data-company] *)`)!
       expect(scope.textContent).toContain(tier.word)
       const icon = scope.querySelector(`[data-icon=${tier.icon}]`)!
       expect(icon.getAttribute('aria-label')).toBe(tier.word)
@@ -62,7 +62,7 @@ describe('TierView', () => {
 
   it('TestRowExpansionFields', async () => {
     const page = await show(<TierView tiers={tiers} />)
-    const first = page.querySelector('[data-tier=fits] [data-row]')!
+    const first = page.querySelector('section[data-tier=fits] [data-row]')!
     await open(first.querySelector('[data-arrow]')!)
     const labels = [...first.querySelectorAll('[data-field]')].map((f) => f.querySelector('[data-field-label]')!.textContent)
     expect(labels).toEqual(tiers.tiers[0]!.rows[0]!.fields.map((f) => f.label))
@@ -86,13 +86,13 @@ describe('TierView', () => {
   it('TestTierViewShowsTextUnchanged', async () => {
     const page = await show(<TierView tiers={tiers} />)
     expect(page.textContent).toContain('−$1,234.50')
-    const gapRow = page.querySelectorAll('[data-tier=fits] [data-row]')[1]!
+    const gapRow = page.querySelectorAll('section[data-tier=fits] [data-row]')[1]!
     expect(gapRow.querySelector('[data-cell=margin]')!.textContent).toBe('tiers gap margin text')
   })
 
   it('TestBadgeColumnWide', async () => {
     const page = await show(<TierView tiers={tiers} />)
-    const heads = page.querySelectorAll('[data-tier=fits] thead th')
+    const heads = page.querySelectorAll('section[data-tier=fits] thead th')
     expect(heads).toHaveLength(7)
     expect(heads[6]!.textContent).toContain('tiers col badges')
     expect(heads[6]!.className).toContain('min-w-64')
@@ -106,7 +106,7 @@ describe('TierView', () => {
 
   it('TestRowWrapsOnPhone', async () => {
     const page = await show(<TierView tiers={tiers} />)
-    const fits = page.querySelector('[data-tier=fits]')!
+    const fits = page.querySelector('section[data-tier=fits]')!
     // Decision 13: at 640px and below a row wraps to two lines, so no fixed wide minimum forces sideways scrolling.
     expect(fits.querySelector('.min-w-\\[60rem\\]')).toBeNull()
     const row = fits.querySelector('[data-row] tr')!
@@ -115,15 +115,15 @@ describe('TierView', () => {
 
   it('TestTierColoursAndHeaderLabel', async () => {
     const page = await show(<TierView tiers={tiers} />)
-    expect(page.querySelector('[data-tier=fits] h3')!.className).toContain('text-success')
-    expect(page.querySelector('[data-tier=check] h3')!.className).toContain('text-warn')
+    expect(page.querySelector('section[data-tier=fits] h3')!.className).toContain('text-success')
+    expect(page.querySelector('section[data-tier=check] h3')!.className).toContain('text-warn')
     expect(page.querySelector('[data-tier=grey_in_the_money] button')!.className).toContain('text-muted-foreground')
-    expect(page.querySelector('[data-tier=fits] [data-row] [data-slot=badge]')!.className).toContain('text-success')
-    expect(page.querySelector('[data-tier=check] [data-row] [data-slot=badge]')!.className).toContain('text-warn')
+    expect(page.querySelector('section[data-tier=fits] [data-row] [data-slot=badge]')!.className).toContain('text-success')
+    expect(page.querySelector('section[data-tier=check] [data-row] [data-slot=badge]')!.className).toContain('text-warn')
     expect(page.querySelector('[data-legend-item=fits]')!.className).toContain('bg-success/10')
     expect(page.querySelector('[data-legend-item=check]')!.className).toContain('bg-warn/10')
     expect(page.querySelector('[data-legend-item=grey]')!.className).toContain('bg-muted')
-    const label = page.querySelector('[data-tier=fits] [data-col=arrow] .sr-only')!
+    const label = page.querySelector('section[data-tier=fits] [data-col=arrow] .sr-only')!
     expect(label.textContent).toBe(tiers.columns[0]!.label)
   })
 
@@ -131,7 +131,7 @@ describe('TierView', () => {
     const page = await show(<TierView tiers={tiers} />)
     const group = page.querySelector('[data-tier=grey_in_the_money]')!
     await open(group.querySelector('button')!)
-    const fitsCells = page.querySelector('[data-tier=fits] [data-row] tbody tr')!.querySelectorAll('td').length
+    const fitsCells = page.querySelector('section[data-tier=fits] [data-row] tbody tr')!.querySelectorAll('td').length
     const rows = group.querySelectorAll('[data-row] tbody tr')
     expect(rows).toHaveLength(tiers.tiers[2]!.rows.length)
     for (const tr of rows) expect(tr.querySelectorAll('td')).toHaveLength(fitsCells)
@@ -175,7 +175,7 @@ describe('TierView', () => {
     const page = await show(<TierView tiers={tiers} />)
     await open(page.querySelector('[data-tier=grey_in_the_money] button')!)
     const cells = [
-      page.querySelectorAll('[data-tier=fits] [data-row]')[1]!.querySelector('[data-cell=margin]')!,
+      page.querySelectorAll('section[data-tier=fits] [data-row]')[1]!.querySelector('[data-cell=margin]')!,
       page.querySelector('[data-tier=grey_in_the_money] [data-row] [data-cell=below_spot]')!,
     ]
     for (const cell of cells) {
@@ -184,7 +184,7 @@ describe('TierView', () => {
       const span = [...cell.querySelectorAll('span')].find((e) => e.textContent === gapText)!
       expect(span.className).toContain('text-muted-foreground')
     }
-    const normal = page.querySelector('[data-tier=fits] [data-row] [data-cell=margin] div')!
+    const normal = page.querySelector('section[data-tier=fits] [data-row] [data-cell=margin] div')!
     expect(normal.className).not.toContain('text-muted-foreground')
   })
 
@@ -206,25 +206,51 @@ describe('TierView', () => {
     const lines = page.querySelectorAll('[data-idle-note]')
     expect(lines).toHaveLength(1)
     expect(lines[0]!.textContent).toBe(tiers.idle_note)
-    const lastTier = [...page.querySelectorAll('[data-tier]')].at(-1)!
+    const lastTier = [...page.querySelectorAll('[data-tier]:not([data-company] *)')].at(-1)!
     expect(lastTier.compareDocumentPosition(lines[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const strip = page.querySelector('[data-company]')!
-    expect(lines[0]!.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(strip.textContent).toContain(`rows of ${tiers.companies[0]!.spot_day}`)
+    expect(strip.textContent).toContain(tiers.companies[0]!.spot_note!)
     await act(async () => root?.unmount())
     host.remove()
     const none = await show(<TierView tiers={tiersTextsNull} />)
     expect(none.querySelector('[data-idle-note]')).toBeNull()
   })
 
+  it('TestCardsBeforeTable', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    const legend = page.querySelector('[data-legend]')!
+    const card = page.querySelector('[data-company]')!
+    const note = page.querySelector('[data-card-note]')!
+    const table = page.querySelector('table')!
+    expect(note.textContent).toBe(tiers.card_note)
+    expect(follows(legend, card)).toBe(true)
+    expect(follows(card, note)).toBe(true)
+    expect(follows(note, table)).toBe(true)
+  })
+
+  it('TestColumnSubtitlesVisible', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    const heads = [...page.querySelectorAll('section[data-tier=fits] thead th')]
+    const subtitles = heads.map((h) => h.querySelector('[data-col-subtitle]')?.textContent)
+    expect(subtitles).toEqual(tiers.columns.map((c) => c.hint))
+    expect(page.querySelector('section[data-tier=fits] thead [data-hint]')).toBeNull()
+  })
+
+  it('TestNoWidthCap', () => {
+    const all = import.meta.glob('/src/pages/candidates/*.tsx', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
+    expect(Object.keys(all).length).toBeGreaterThan(3)
+    for (const text of Object.values(all)) expect(text).not.toMatch(/\bmax-w-/)
+  })
+
   it('renders no table header for an empty tier', async () => {
     const empty = { ...tiers, tiers: tiers.tiers.map((t) => (t.id === 'check' ? { ...t, rows: [], explain: 'tiers None: nothing to check' } : t)) }
     const page = await show(<TierView tiers={empty} />)
-    const scope = page.querySelector('[data-tier=check]')!
+    const scope = page.querySelector('section[data-tier=check]')!
     expect(scope.querySelector('thead')).toBeNull()
     expect(scope.querySelector('table')).toBeNull()
     expect(scope.textContent).toContain(tiers.tiers[1]!.title)
     expect(scope.textContent).toContain('tiers None: nothing to check')
-    expect(page.querySelector('[data-tier=fits] thead')).not.toBeNull()
+    expect(page.querySelector('section[data-tier=fits] thead')).not.toBeNull()
   })
 })

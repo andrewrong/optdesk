@@ -12,6 +12,7 @@ const columns = [
 // Synthetic document with a JPY short-put group after the US one; every text is a field of the document.
 export const jp = {
   ...ok,
+  head_labels: { data_day: 'jp 数据日', run_status: 'jp 运行状态', run_status_text: 'jp 部分完成', rule_version: 'jp 规则版本' },
   groups: [
     ok.groups[0],
     {
@@ -36,5 +37,10 @@ export const jp = {
     ok.groups[1],
   ],
   short_put_list_jpy: { ...shortlist, counts: 'jp yen list counts', run_day: 'jp run day' },
-  short_put_tiers_jpy: { ...tiers, kept: 'jp yen tiers kept' },
+  short_put_tiers_jpy: {
+    ...tiers,
+    kept: 'jp yen tiers kept',
+    card_note: 'jp 日元卡片说明',
+    strip_labels: { ...tiers.strip_labels!, spot: 'jp 现价' },
+  },
 } as unknown as OptionCandidatesPage

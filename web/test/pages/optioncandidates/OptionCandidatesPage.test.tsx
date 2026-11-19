@@ -47,7 +47,10 @@ describe('OptionCandidatesPage', () => {
     expect(text).toContain(ok.chain_day)
     expect(text).toContain(ok.computed_at)
     expect(text).toContain(ok.rule_version)
-    expect(page.querySelector('[data-rule-version]')!.textContent).toBe(`Rule ${ok.rule_version}`)
+    const h = ok.head_labels
+    expect(page.querySelector('[data-chain-day]')!.textContent).toBe(`${h.data_day} ${ok.chain_day}`)
+    expect(page.querySelector('[data-run-status]')!.textContent).toBe(`${h.run_status} ${h.run_status_text}`)
+    expect(page.querySelector('[data-rule-version]')!.textContent).toBe(`${h.rule_version} ${ok.rule_version}`)
     expect(text).toContain(ok.groups[0].title)
     expect(text).toContain(ok.groups[1].title)
     expect(page.querySelectorAll('[data-tab]')).toHaveLength(2)
@@ -139,10 +142,6 @@ describe('OptionCandidatesPage tiers', () => {
     expect(page.querySelector('[data-tab]')).toBeNull()
     await open(trigger)
     expect(page.querySelectorAll('[data-tab]').length).toBe(ok.groups.length)
-    await act(async () => root?.unmount())
-    host.remove()
-    const plain = await show({ ...ok, short_put_tiers: { ...tiers, stored_title: null } } as never)
-    expect(plain.querySelector('[data-stored-tables] button')!.textContent).toBe('Stored tables')
   })
 
   it('folds the tier view under the closed accordion', async () => {
