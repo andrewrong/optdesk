@@ -30,6 +30,10 @@ min_report_gap_days = 60
 open_min_rows = 1
 need_high = "1.05"
 oi_lookback_sessions = 3
+# Currency of the open rows this job reads, and whether a name with no usable open chain takes the previous
+# session's option_eod chain (mark eod_fallback).
+currency = "USD"
+eod_fallback = true
 
 # What this strategy needs of the stored option chains (design option-capture-need, Decision 2). The DTE window
 # is the [params] one. Every number below is trial.

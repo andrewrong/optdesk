@@ -53,7 +53,7 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 		j.skipped = skipped
 		j.mu.Unlock()
 	}()
-	days, err := sessionDays(ctx, j.st.SessionDays, day)
+	days, err := sessionDays(ctx, j.st.SessionDays, j.slot.calendar, day)
 	if err != nil {
 		return fail("read_session_days_failed", err)
 	}
