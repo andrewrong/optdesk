@@ -205,9 +205,7 @@ func readGroup(ctx context.Context, c Config, series store.SeriesReader, s group
 // for the yen group, the yen ones; any other kind leaves vm as it is.
 func fillShortPut(ctx context.Context, c Config, vm *viewModel, s groupSpec, gr groupRead, day contracts.Day, at time.Time) error {
 	if s.kind != kindShortPut {
-		// As before this change: the groups after the short put, read last, leave the US list unset (the
-		// command and the site build the same bytes, tested in cmd/ot); the tier view is kept.
-		vm.ShortPutList = nil
+		// Any other kind leaves vm as it is: the lists and tier views an earlier group wrote stay.
 		return nil
 	}
 	tiers, err := buildTiers(ctx, c, gr, day, at)
