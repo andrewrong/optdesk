@@ -216,7 +216,7 @@ Checked by CI: `go test ./internal/compute/optiontier/...`.
 ### 4 candidates-by-company-pages
 
 Module: pages. Size: M.
-Order: after 1 and 2 (shows data only once 3 is on main).
+Order: after 1, 2 and 3.
 Files: `internal/pages/option_candidates_page/tiers.go`, `internal/pages/option_candidates_page/tierrows.go`, `internal/pages/option_candidates_page/zh_texts.go`, new `internal/pages/option_candidates_page/bycompany.go`, new `internal/pages/option_candidates_page/bycompany_test.go`, new `internal/pages/option_candidates_page/testdata/by_company.golden.json`
 Contracts: unchanged
 Design: docs/design/candidates-by-company.md#Interface
