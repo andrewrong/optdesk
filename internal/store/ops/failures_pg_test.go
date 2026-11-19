@@ -120,7 +120,7 @@ func TestRepeatedFailuresPG(t *testing.T) {
 	}
 }
 
-func TestRepeatedFailuresTieByRunID(t *testing.T) {
+func TestRepeatedFailuresTieOkRunWins(t *testing.T) {
 	t.Parallel()
 	name := newRunsDatabase(t)
 	c := connectAs(t, name, "")
@@ -130,7 +130,7 @@ func TestRepeatedFailuresTieByRunID(t *testing.T) {
 	covExec(t, c, ins, "a1", "2026-11-03", 0, 0, "retryable")
 	covExec(t, c, ins, "a2", "2026-11-04", 0, 0, "retryable")
 	covExec(t, c, ins, "a3", "2026-11-05", 0, 0, "retryable")
-	covExec(t, c, ins, "z9", "2026-11-05", 5, 5, "") // same finished_at, larger run_id: the newest, ok
+	covExec(t, c, ins, "z9", "2026-11-05", 5, 5, "") // same finished_at and day: no run_id in the view, so the ok run wins the tie
 	if got := failuresRead(t, name, "2026-11-01", "2026-11-12"); len(got) != 0 {
 		t.Fatalf("healed key listed: %+v", got)
 	}

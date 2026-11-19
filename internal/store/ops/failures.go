@@ -15,8 +15,11 @@ var _ coverage.FailureReader = (*coverageReader)(nil)
 // A done run with no error and nothing returned or usable, and every run not done, is left out of both the
 // counts and the choice of the newest run. $1 and $2 are the first and last session day, $3 the minimum days.
 // The kind literals 'failed' and 'empty' are coverage.FailureFailed and coverage.FailureEmpty; only those two
-// reach the cast below. The view has no run_id, so equal finished_at is settled by session_day, then an ok run
-// wins (a key is not listed on a tie it may have healed in), then kind and error_code.
+// reach the cast below.
+// Tie-break (acceptance item 4 amended, see PR #3111): the issue asks for finished_at, then run_id, but
+// rd.capture_run_r1 carries no run_id and a migration is out of scope. Equal finished_at is therefore settled by
+// session_day, then an ok run wins (a key that may have healed is not listed), then kind and error_code.
+// Exposing run_id needs a migration that adds the column to the view; then order by run_id DESC here.
 const selectRepeatedFailuresSQL = `WITH runs AS (
   SELECT dataset_id, subject_key, session_day, finished_at, error_code,
     CASE WHEN error_code <> '' THEN 'failed'
