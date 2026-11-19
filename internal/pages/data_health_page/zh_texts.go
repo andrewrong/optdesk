@@ -15,3 +15,16 @@ const (
 	zhClassEmpty      = "empty：源站返回了数据行，但一条也没有保留。对没有新数据的源站，或自己检查结果的任务，这是正常现象；只有当该键同时在网格里是缺口时才值得查看。"
 	zhClassOther      = "其他错误类别：运行完成时带有这个错误代码，详细原因只在日志里。"
 )
+
+// The running lines above the grid (docs/design/scheduler-per-job.md, Decision 8): the same strings as the
+// job console, the English meaning of each beside it.
+const (
+	// zhDoneOfFmt: "done 12 / 40".
+	zhDoneOfFmt = "已完成 %[1]d / %[2]d (done %[1]d / %[2]d)"
+	// zhRanUsuallyFmt: "ran X minutes, usually Y minutes".
+	zhRanUsuallyFmt = "跑了 %[1]d 分钟，平常 %[2]d 分钟 (ran %[1]d minutes, usually %[2]d minutes)"
+	// zhRanNoHistoryFmt: "ran X minutes, no history" (the job has no usual yet).
+	zhRanNoHistoryFmt = "跑了 %[1]d 分钟，没有历史 (ran %[1]d minutes, no history)"
+	// zhSlowNote: "slow, a notice only".
+	zhSlowNote = "偏慢，仅提示 (slow, a notice only)"
+)
