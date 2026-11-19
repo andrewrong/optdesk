@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -136,7 +137,7 @@ func (c Config) holdings(alias string, cp capture, h held) *holdingBlocks {
 		return m
 	}
 	return &holdingBlocks{
-		composition:   holdingRows(titleComposition, meaning(meaningComposition), headsComposition, x, res),
+		composition:   compositionRows(meaning(meaningComposition), x, res),
 		concentration: concentrationOf(meaning(meaningConcentration), x, res),
 		allocation:    allocationOf(meaning(meaningAllocation), x, res),
 	}
@@ -200,6 +201,40 @@ func shareOf(f compute.FigureValue) *shareFigure {
 		return nil
 	}
 	return &shareFigure{Value: json.Number(f.Value), Text: shareLabel(f.Value), Unit: "share_percent"}
+}
+
+// compositionRows is the holdings rows ordered by share, largest first: equal shares by symbol, a row
+// without a share last, also by symbol. Shares are compared as decimal numbers.
+func compositionRows(meaning string, x rowsCtx, res blockapi.HoldingsResult) moneyBlock {
+	b := holdingRows(titleComposition, meaning, headsComposition, x, res)
+	slices.SortStableFunc(b.Rows, func(a, c moneyRow) int {
+		switch {
+		case a.Share != nil && c.Share != nil:
+			if n := cmpDecimal(string(c.Share.Value), string(a.Share.Value)); n != 0 {
+				return n
+			}
+		case a.Share != nil:
+			return -1
+		case c.Share != nil:
+			return 1
+		}
+		return strings.Compare(a.Name, c.Name)
+	})
+	return b
+}
+
+// cmpDecimal compares two non-negative decimal texts (the shape of shareText) as numbers.
+func cmpDecimal(a, b string) int {
+	ai, af, _ := strings.Cut(a, ".")
+	bi, bf, _ := strings.Cut(b, ".")
+	ai, bi = strings.TrimLeft(ai, "0"), strings.TrimLeft(bi, "0")
+	if len(ai) != len(bi) {
+		return len(ai) - len(bi)
+	}
+	if n := strings.Compare(ai, bi); n != 0 {
+		return n
+	}
+	return strings.Compare(strings.TrimRight(af, "0"), strings.TrimRight(bf, "0"))
 }
 
 // holdingRows is one row per stock with its value and share, each cell labelled by the currency of
