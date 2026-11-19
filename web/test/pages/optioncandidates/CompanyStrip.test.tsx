@@ -2,7 +2,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CompanyStrip } from '@/pages/candidates/CompanyStrip'
-import { withLine, withNull, withoutKey, withReason } from './fixtures/valueline'
+import { handSource, notJudgedSource, valuationSource, withLine, withNull, withoutKey, withReason } from './fixtures/valueline'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | undefined
@@ -67,5 +67,33 @@ describe('CompanyStrip', () => {
     const page = await show(<CompanyStrip company={withNull} spotHint="hint 中文" />)
     expect(page.querySelector('[data-hint="hint 中文"]')!.textContent).toBe('Spot')
     expect(page.textContent).toContain(`rows of ${withNull.spot_day}`)
+  })
+
+  it('TestStripShowsValuationSource', async () => {
+    const page = await show(<CompanyStrip company={valuationSource} />)
+    expect(page.textContent).toContain('$91.20')
+    const b = page.querySelector('[data-buy-source="valuation"]')!
+    expect(b.textContent).toBe('Valuation buy zone')
+    expect(page.querySelector(`[data-hint="${valuationSource.buy_source!.gloss}"]`)).not.toBeNull()
+  })
+
+  it('TestStripShowsHandSource', async () => {
+    const page = await show(<CompanyStrip company={handSource} />)
+    expect(page.querySelector('[data-buy-source="hand"]')!.textContent).toBe('Hand price')
+    expect(page.querySelector(`[data-hint="${handSource.buy_source!.gloss}"]`)).not.toBeNull()
+  })
+
+  it('TestStripShowsNotJudged', async () => {
+    const page = await show(<CompanyStrip company={notJudgedSource} />)
+    expect(page.textContent).toContain('not judged')
+    expect(page.querySelector('[data-buy-source="none"]')!.textContent).toBe('Not judged')
+  })
+
+  it('TestStripNoBuySourceUnchanged', async () => {
+    const page = await show(<CompanyStrip company={withoutKey} />)
+    expect(page.textContent).toBe(
+      `${withoutKey.ticker}Spot ${withoutKey.spot} (rows of ${withoutKey.spot_day})Buy price ${withoutKey.buy_price}Next earnings ${withoutKey.next_earnings}${withoutKey.counts}`,
+    )
+    expect(page.querySelector('[data-buy-source]')).toBeNull()
   })
 })

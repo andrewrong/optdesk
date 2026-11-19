@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 )
 
 var (
@@ -90,11 +92,15 @@ func markText(mark string) string {
 	return mark
 }
 
-// markBadges is the badge text of each mark, in the stored order.
+// markBadges is the badge text of each mark, in the stored order. The two buy source marks are not badges: the
+// candidates page shows them, and a row with only them stays Passed.
 func markBadges(marks []string) []string {
-	out := make([]string, len(marks))
-	for i, m := range marks {
-		out[i] = markText(m)
+	out := make([]string, 0, len(marks))
+	for _, m := range marks {
+		if m == buypriceapi.MarkValuation || m == buypriceapi.MarkHand {
+			continue
+		}
+		out = append(out, markText(m))
 	}
 	return out
 }
