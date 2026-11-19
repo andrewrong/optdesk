@@ -43,25 +43,25 @@ ORDER BY r.dataset_id, r.subject_key, r.kind`
 // RepeatedFailures returns the keys with failed or empty runs on coverage.FailureMinDays or more distinct session
 // days from from to to whose newest counted done run is failed or empty. It only reads.
 func (r *coverageReader) RepeatedFailures(ctx context.Context, from, to contracts.Day) ([]coverage.Failure, error) {
-	f, err := parseDay(from)
+	fromDay, err := parseDay(from)
 	if err != nil {
 		return nil, err
 	}
-	t, err := parseDay(to)
+	toDay, err := parseDay(to)
 	if err != nil {
 		return nil, err
 	}
 	out := []coverage.Failure{}
-	err = r.db.Select(ctx, selectRepeatedFailuresSQL, []any{f, t, coverage.FailureMinDays}, func(s scanner) error {
-		var x coverage.Failure
+	err = r.db.Select(ctx, selectRepeatedFailuresSQL, []any{fromDay, toDay, coverage.FailureMinDays}, func(s scanner) error {
+		var row coverage.Failure
 		var kind string
 		var first, last time.Time
-		if err := s.Scan(&x.Dataset, &x.Key, &kind, &x.Days, &x.Runs, &first, &last, &x.LastClass); err != nil {
+		if err := s.Scan(&row.Dataset, &row.Key, &kind, &row.Days, &row.Runs, &first, &last, &row.LastClass); err != nil {
 			return err
 		}
-		x.Kind = coverage.FailureKind(kind)
-		x.FirstDay, x.LastDay = dayOf(first), dayOf(last)
-		out = append(out, x)
+		row.Kind = coverage.FailureKind(kind)
+		row.FirstDay, row.LastDay = dayOf(first), dayOf(last)
+		out = append(out, row)
 		return nil
 	})
 	if err != nil {
