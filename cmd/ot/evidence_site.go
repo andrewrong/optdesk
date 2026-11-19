@@ -82,7 +82,7 @@ func candidatesConfig(zone *time.Location, runID, buildID, scope string, r candi
 		ATMFor:   newATMFor(r.Days, r.Terms, optionevidence.NewATMPicker()),
 		Readings: r.View,
 		Tiers:    r.Tiers, Account: r.Account, Aliases: r.Aliases, Owner: r.Owner, RuleParams: r.RuleParams,
-		Valuation: r.Valuation, ValueLines: newValueLines(),
+		Valuation: r.Valuation, ValueLines: newValueLines(), Buy: newBuyPriceResolver(),
 		Shortlist: r.Shortlist,
 	}
 }

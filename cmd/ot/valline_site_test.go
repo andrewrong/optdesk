@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/compute/valuelines"
 	"github.com/andrewrong/optdesk/internal/compute/valuelinesapi"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -107,5 +108,38 @@ func TestDemoProfileBuildsNoValuation(t *testing.T) {
 	}
 	if candidatesConfig(time.UTC, "r", "b", "candidates", f.gotAll).ValueLines == nil {
 		t.Fatal("no ValueLines")
+	}
+}
+
+func TestBuyPriceResolverIsReal(t *testing.T) {
+	t.Parallel()
+	r := newBuyPriceResolver()
+	if r == nil {
+		t.Fatal("nil resolver")
+	}
+	lines := sampleLinesInput()
+	want, err := valuelines.New().Lines(lines)
+	if err != nil || want.BuyHigh == "" {
+		t.Fatalf("calculator %q %v", want.BuyHigh, err)
+	}
+	got := r.Resolve(buypriceapi.Input{
+		Symbol: "AAA", Currency: "USD",
+		Zones: []buypriceapi.Zone{{Symbol: "AAA", Currency: "USD", Pool: "active", Market: valuelinesapi.MarketUS,
+			V: lines.V, P: lines.P, ReviewDay: "2026-11-17", Reviewed: true}},
+		Tables: buypriceapi.Tables{Present: true, R: lines.R, Margin: lines.Margin},
+	})
+	if got.Source != buypriceapi.SourceValuation || got.Price != want.BuyHigh {
+		t.Fatalf("got %+v, want price %q", got, want.BuyHigh)
+	}
+}
+
+func TestCandidatesConfigHasBuy(t *testing.T) {
+	t.Parallel()
+	full := candidatesConfig(time.UTC, "r", "b", "candidates", candidateReaders{Valuation: valuation.Reader(newFakeValuation())})
+	if full.Buy == nil {
+		t.Fatal("nil Buy with readers")
+	}
+	if bare := candidatesConfig(time.UTC, "r", "b", "candidates", candidateReaders{}); bare.Buy == nil {
+		t.Fatal("nil Buy without readers")
 	}
 }
