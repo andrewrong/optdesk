@@ -49,8 +49,32 @@ const (
 const (
 	ReasonOtherTop = "the site computes another buy-zone top (站点算出的买入区间上沿与文件不同)"
 	ReasonHKCN     = "HK and CN differ: the site has one HKCN column (港股与 A 股的 R 不同,站点只有一列 HKCN)"
-	ReasonRMarket  = "the row R differs from the R of its market (该行 R 与所属市场的 R 不一致)"
-	ReasonBadKey   = "the key picked is not valid (所选 key 不合规)"
+	ReasonRMarket  = "R of the row differs from the R of its market in the file (该行 R 与文件中所属市场的 R 不一致)"
+	ReasonBadKey   = "the key picked is not valid or is already on the list (所选 key 不合规或已在清单中)"
+)
+
+// The other refusal reasons of the importer and the problems of calc.Check, each with its hint.
+const (
+	ReasonNoVersion     = "no R version or margin table to compute the lines (没有 R 版本或安全边际表,无法算出各线)"
+	ReasonOutOfRange    = "the site cannot compute the lines: V or P is out of range (站点无法算出各线:V 或 P 超出范围)"
+	ReasonUnknownMarket = "the list row has a market the import does not know (清单行的市场导入无法识别)"
+	ProblemReviewType   = "review type is required (必须填写估值类型)"
+	ProblemVersionDate  = "version date is required (必须填写版本日期)"
+	ProblemVRequired    = "V is required (必须填写 V)"
+	ProblemPRequired    = "P is required (必须填写 P)"
+	ProblemVRange       = "V must be a number above 0 (V 必须是大于 0 的数)"
+	ProblemPRange       = "P must be from 1 to 5 in steps of 0.5 (P 必须在 1 到 5 之间,步长 0.5)"
+	ProblemMarginNumber = "margin table has a value that is not a number (安全边际表有不是数字的值)"
+	// ProblemNoRowHint follows "margin table has no row for P <p>".
+	ProblemNoRowHint = "(安全边际表缺少该 P 的行)"
+	// ProblemRowHint follows "margin row from P <p>: ...".
+	ProblemRowHint = "(安全边际表该行:买入区间上线不低于合理区间下线)"
+)
+
+// Prefixes of the check problems that carry numbers.
+const (
+	prefixNoRow = "margin table has no row for P "
+	prefixRow   = "margin row from P "
 )
 
 // textFlagged follows the count of rows with a breakpoint flag other than ok.

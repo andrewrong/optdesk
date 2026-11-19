@@ -138,11 +138,28 @@ func reviewType(t string) string {
 }
 
 // reason gives the sentence with its hint for a reason of the importer; an unknown text is shown as it is.
+// A text of several problems joined with "; " gets a hint for each part.
 func reason(s string) string {
-	if t, ok := hinted[s]; ok {
+	parts := strings.Split(s, "; ")
+	for i, p := range parts {
+		parts[i] = hintPart(p)
+	}
+	return cut(strings.Join(parts, "; "))
+}
+
+// hintPart gives one problem its hint: an exact key, or a text with numbers kept as it is
+// and followed by its hint.
+func hintPart(p string) string {
+	if t, ok := hinted[p]; ok {
 		return t
 	}
-	return cut(s)
+	switch {
+	case strings.HasPrefix(p, prefixNoRow):
+		return p + " " + ProblemNoRowHint
+	case strings.HasPrefix(p, prefixRow):
+		return p + " " + ProblemRowHint
+	}
+	return p
 }
 
 func optional(s string) *string {
