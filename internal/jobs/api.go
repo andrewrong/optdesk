@@ -20,9 +20,11 @@ type WatchEntry struct {
 	// ReportDateOverride is the owner's own report date, YYYY-MM-DD; empty is unset. The owner's word wins over
 	// any automatic value: the job writes only an owner row for such an entry and no vendor row.
 	ReportDateOverride string
-	// BuyPrice is the price the owner would buy at: decimal text in the currency of the contract, positive,
-	// at most 4 places; empty is unset. The owner's word wins over any automatic value.
+	// BuyPrice is the resolved price the owner would buy at: the valuation buy-zone top, else the hand price.
+	// Decimal text in the currency of the contract, positive, at most 4 places; empty is unset.
 	BuyPrice string
+	// BuySource names where BuyPrice came from: "valuation", "hand" or empty (no price).
+	BuySource string
 	// SalePrice is the price the owner would sell at: decimal text in the currency of the contract, positive,
 	// at most 4 places, not below BuyPrice; empty is unset. The owner's word wins over any automatic value.
 	SalePrice string
