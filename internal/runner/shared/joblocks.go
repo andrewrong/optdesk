@@ -4,7 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/clock/realclock"
+	"github.com/jonboulle/clockwork"
+
 	"github.com/andrewrong/optdesk/internal/runner"
 )
 
@@ -21,7 +22,7 @@ type jobLocks struct {
 
 // NewJobLocks builds an empty set of per-job locks. TryLock never blocks; the unlock
 // func releases the job and may be called more than once.
-func NewJobLocks() runner.JobLocks { return NewJobLocksAt(realclock.NewReal().Now) }
+func NewJobLocks() runner.JobLocks { return NewJobLocksAt(clockwork.NewRealClock().Now) }
 
 // NewJobLocksAt is NewJobLocks with the time source that Holder reports (a fake clock in tests).
 func NewJobLocksAt(now func() time.Time) runner.JobLocks {
