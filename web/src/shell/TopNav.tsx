@@ -47,6 +47,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
           { label: 'P&L split', path: '/options/pnl' },
         ],
       },
+      { label: 'Strategy replay', path: '/strategy-replay' },
     ],
   },
   {
