@@ -22,13 +22,9 @@ export function CompanyBlock({ block, tiers }: { block: BlockT; tiers: TierView 
         labels={tiers.strip_labels}
         verdict={{ verdict: block.verdict, text: block.verdict_text, bestYield: block.best_yield }}
       />
-      <div className="overflow-x-auto">
-        <div className="sm:min-w-[66rem]">
-          {rowsOf(tiers, block.row_ids).map((row) => (
-            <DataRow key={row.id} tier={null} row={row} />
-          ))}
-        </div>
-      </div>
+      {rowsOf(tiers, block.row_ids).map((row) => (
+        <DataRow key={row.id} tier={null} row={row} fit />
+      ))}
       {folded ? (
         <Accordion type="single" collapsible data-block-folded>
           <AccordionItem value="folded">
