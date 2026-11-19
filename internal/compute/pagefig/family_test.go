@@ -160,3 +160,14 @@ func TestFamilyOnceForRepeatedAlias(t *testing.T) {
 		t.Errorf("result = %+v", r)
 	}
 }
+
+func TestFamilyMissingNetIsNoData(t *testing.T) {
+	t.Parallel()
+	r := NewFamily().Family(blockapi.FamilyIn{Accounts: []blockapi.FamilyAccountIn{
+		famAcctIn("a", "d", famNL("USD", "100"), nil, nil),
+		famAcctIn("b", "d", nil, nil, nil),
+	}})
+	if len(r.Excluded) != 1 || r.Excluded[0].Reason != "no_data" {
+		t.Errorf("excluded = %+v, want b with no_data", r.Excluded)
+	}
+}

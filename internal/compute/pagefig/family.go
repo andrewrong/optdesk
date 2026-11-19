@@ -17,8 +17,8 @@ func NewFamily() blockapi.FamilyFigure { return familyFigure{} }
 
 // famAcct is one counted account with its amounts in USD; nil where the account has none.
 type famAcct struct {
-	alias, day            string
-	net, cash, prior, mon *big.Rat
+	alias, day                   string
+	net, cash, prior, monthStart *big.Rat
 }
 
 // famUSD reads the row of tag as USD: the rate divides a JPY amount (rt nil for a USD account). nil when the
@@ -82,6 +82,9 @@ func (familyFigure) Family(in blockapi.FamilyIn) blockapi.FamilyResult {
 // famCount reads the NetLiquidation of a in USD, or the reason that leaves the account out.
 func famCount(a blockapi.FamilyAccountIn, rt *big.Rat) (famAcct, string) {
 	v, r, ok := tagValue(a.Values, "NetLiquidation")
+	if !ok {
+		return famAcct{}, "no_data"
+	}
 	var conv *big.Rat
 	switch {
 	case v.Currency == "JPY" && rt != nil:
@@ -89,16 +92,13 @@ func famCount(a blockapi.FamilyAccountIn, rt *big.Rat) (famAcct, string) {
 	case v.Currency != "USD":
 		return famAcct{}, "unsupported_currency"
 	}
-	if !ok {
-		return famAcct{}, "no_data"
-	}
 	f := famAcct{alias: a.Alias, day: a.Day, net: r}
 	if conv != nil {
 		f.net = new(big.Rat).Quo(r, conv)
 	}
 	f.cash = famUSD(a.Values, "TotalCashValue", v.Currency, conv)
 	f.prior = famUSD(a.Prior, "NetLiquidation", v.Currency, conv)
-	f.mon = famUSD(a.MonthStart, "NetLiquidation", v.Currency, conv)
+	f.monthStart = famUSD(a.MonthStart, "NetLiquidation", v.Currency, conv)
 	return f, ""
 }
 
@@ -135,7 +135,7 @@ func famFigures(out *blockapi.FamilyResult, cs []famAcct) {
 		}
 	}
 	out.DayAmount, out.DayPct = famChange(cs, net, sameDay, func(c famAcct) *big.Rat { return c.prior })
-	out.MonthAmount, out.MonthPct = famChange(cs, net, true, func(c famAcct) *big.Rat { return c.mon })
+	out.MonthAmount, out.MonthPct = famChange(cs, net, true, func(c famAcct) *big.Rat { return c.monthStart })
 }
 
 // famChange is the sum of net minus earlier(c) and its percent of the sum of the earlier nets; a gap when
