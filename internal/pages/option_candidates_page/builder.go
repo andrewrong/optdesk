@@ -41,6 +41,7 @@ type viewModel struct {
 	RunStatus     string       `json:"run_status"`
 	Stale         *staleLabel  `json:"stale"`
 	Title         string       `json:"title"`
+	Subtitle      string       `json:"subtitle"`
 	Notes         []string     `json:"notes"`
 	Gaps          []gap        `json:"gaps"`
 	ChainDay      *string      `json:"chain_day"`
@@ -79,7 +80,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 		Schema: "option_candidates_page", SchemaVersion: 1,
 		RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
 		GeneratedAt: generatedAt.In(c.Zone).Format(timeLayout),
-		DataTimes:   []sourceTime{}, RunStatus: "ok", Title: pageTitle,
+		DataTimes:   []sourceTime{}, RunStatus: "ok", Title: pageTitle, Subtitle: zhSubtitle,
 		Notes: []string{jpNote}, Gaps: []gap{}, EstimateNote: estimateNote,
 		Groups: make([]group, 0, len(groupSpecs)),
 	}
