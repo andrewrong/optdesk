@@ -50,7 +50,7 @@ export function TierView({ tiers }: { tiers: TierViewPayload }) {
             </span>
           </div>
         ) : null}
-        {by ? <TierHead columns={by.columns} /> : null}
+        {by ? <TierHead columns={by.columns} fit /> : null}
         {by
           ? by.blocks.map((block) => <CompanyBlock key={block.company} block={block} tiers={tiers} />)
           : tiers.companies.map((company) => <CompanyStrip key={company.key} company={company} labels={tiers.strip_labels} />)}

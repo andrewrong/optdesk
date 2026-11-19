@@ -108,6 +108,12 @@ Fixed run reasons (Decision 7 of `docs/design/scheduler.md`):
 
 Counting: only `crashed` and `abandoned_stop` runs count toward the brake of three; `empty_before_close` runs and retryable runs before the close count for nothing, and `console_stop` and `ordered_stop` runs count for nothing, so they are no crash strike. An `ordered_stop` run counts toward neither the two-run cap nor the brake; only `crashed` and `abandoned_stop` count toward the brake. `Reconcile` counts the runs of the key that carry these reasons and starts no new run at three; the gap syncer counts the same runs through `store.OpsLedger` and writes the gap at three, and treats a run with `crashed_repeatedly` as proof of the stop.
 
+## Job run rows
+
+`WithJobRunLedger` gives a reconciler or backfiller a `jobrun.JobRunLedger`. With one, a run spawned by `ReconcileDetached` (source `scheduler`) and a `BackfillWith` call with `Job` set (source `console`) each write one row: `Start` when the run begins (the row has no day), `Progress` after each key with the keys done, the total and the key in hand (`dataset/subject`), and `Close` in a deferred call with `ok`, `failed` or `cut`, so every return closes the row, on a context that is not the cancelled one. `ot run-once` and the old `Reconcile` path record nothing, and so does a reconciler with no ledger or a console call with no `Job`.
+
+The row records; it is not a guard. The lock per job id is the guard: one run per job id at a time, different jobs together. A failed ledger write is logged and never stops, refuses or delays a run, and a slow run is a notice only.
+
 ## Forbidden
 
 - Reading dataset content or interpreting a key.
