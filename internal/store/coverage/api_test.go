@@ -85,3 +85,50 @@ func TestLookbackIs60(t *testing.T) {
 		t.Fatalf("LookbackDays = %d, want 60", coverage.LookbackDays)
 	}
 }
+
+type fakeFailureReader struct{ rows []coverage.Failure }
+
+func (f fakeFailureReader) RepeatedFailures(context.Context, contracts.Day, contracts.Day) ([]coverage.Failure, error) {
+	return f.rows, nil
+}
+
+var _ coverage.FailureReader = fakeFailureReader{}
+
+func listFailures(ctx context.Context, r coverage.FailureReader) (int, error) {
+	rows, err := r.RepeatedFailures(ctx, "2026-11-01", "2026-11-19")
+	return len(rows), err
+}
+
+func TestFailureReaderContract(t *testing.T) {
+	t.Parallel()
+	f := fakeFailureReader{rows: []coverage.Failure{
+		{Dataset: "d", Key: "k", Kind: coverage.FailureFailed, Days: 3, Runs: 4,
+			FirstDay: "2026-11-10", LastDay: "2026-11-18", LastClass: "retryable"},
+		{Dataset: "d", Key: "k", Kind: coverage.FailureEmpty, Days: 3, Runs: 3,
+			FirstDay: "2026-11-10", LastDay: "2026-11-18", LastClass: "empty"},
+	}}
+	n, err := listFailures(context.Background(), f)
+	if err != nil || n != 2 {
+		t.Fatalf("got %d rows, err %v; want 2, nil", n, err)
+	}
+	for _, r := range f.rows {
+		if r.Days < coverage.FailureMinDays {
+			t.Errorf("row %v has Days below FailureMinDays", r)
+		}
+	}
+	if coverage.FailureFailed != "failed" || coverage.FailureEmpty != "empty" ||
+		coverage.FailureWindowDays != 14 || coverage.FailureMinDays != 3 {
+		t.Error("failure constants differ from the design")
+	}
+}
+
+func TestReaderOnlyStillAccepted(t *testing.T) {
+	t.Parallel()
+	accept := func(r coverage.Reader) error { return r.Close() }
+	if err := accept(fakeReader{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := any(fakeReader{}).(coverage.FailureReader); ok {
+		t.Error("a Reader-only value must not be a FailureReader")
+	}
+}
