@@ -2,11 +2,13 @@ package optioncandidates
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
+	"github.com/andrewrong/optdesk/internal/compute/optioncand"
 	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
@@ -89,25 +91,44 @@ func TestBuySourceOnCoveredCalls(t *testing.T) {
 
 func TestBuySourceStoredOnPutRun(t *testing.T) {
 	t.Parallel()
-	for _, c := range []struct{ src, price, marks string }{
-		{buypriceapi.SourceValuation, "91.5", `["buy_from_valuation"]`},
-		{buypriceapi.SourceHand, "91.5", `["buy_from_hand"]`},
-		{"", "91.5", `["buy_from_hand"]`},
-		{"", "", `[]`},
+	for _, c := range []struct {
+		src, price string
+		marks      []string
+	}{
+		{buypriceapi.SourceValuation, "91.5", []string{buypriceapi.MarkValuation}},
+		{buypriceapi.SourceHand, "91.5", []string{buypriceapi.MarkHand}},
+		{"", "91.5", []string{buypriceapi.MarkHand}},
+		{"", "", nil},
 	} {
 		f := newFakes()
-		j := build(t, f.stores(), f, entryWith(c.price, c.src))
+		j, err := New(f.stores(), optioncand.New(), []jobs.WatchEntry{entryWith(c.price, c.src)}, fixedClock{})
+		if err != nil {
+			t.Fatal(err)
+		}
 		for range 2 {
 			if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
 				t.Fatal(res.Err)
 			}
 		}
 		a, b := f.written[0][0], f.written[1][0]
-		if a.Marks != c.marks || a.RunID != b.RunID {
+		var got []string
+		if err := json.Unmarshal([]byte(a.Marks), &got); err != nil {
+			t.Fatal(err)
+		}
+		var sources []string // the buy source marks among the marks the rule wrote
+		for _, m := range got {
+			if m == buypriceapi.MarkValuation || m == buypriceapi.MarkHand {
+				sources = append(sources, m)
+			}
+		}
+		if !slices.Equal(sources, c.marks) || a.RunID != b.RunID {
 			t.Fatalf("%+v: marks %s run ids %s %s", c, a.Marks, a.RunID, b.RunID)
 		}
 		if c.price == "" && a.BuyPrice != nil {
 			t.Fatalf("buy price %v", *a.BuyPrice)
+		}
+		if c.price != "" && (a.BuyPrice == nil || *a.BuyPrice != c.price) {
+			t.Fatalf("%+v: buy price %v, want the entry price", c, a.BuyPrice)
 		}
 	}
 }
