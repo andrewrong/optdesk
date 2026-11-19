@@ -34,7 +34,8 @@ type gateJob struct {
 // lines are the plan rows whose outcome in applied is inserted. A job whose run of day has finished is queued with
 // force; one that has not run yet is left to its run of the day. Nothing is given when the console or the run store
 // is not wired. A failure becomes a failed line with a fixed text and never a status or an error.
-func (p importPost) refreshGate(ctx context.Context, plan valueimportapi.Plan, applied []valuation_import_page.Outcome, day contracts.Day) []valuation_import_page.Outcome {
+func (p importPost) refreshGate(ctx context.Context, plan valueimportapi.Plan,
+	applied []valuation_import_page.Outcome, day contracts.Day) []valuation_import_page.Outcome {
 	openers, ok := jobRequestOpenersOf(p.a.deps)
 	if !ok || p.a.deps.openRuns == nil || p.rd.underlying == nil {
 		return nil
