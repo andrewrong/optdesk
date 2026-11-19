@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/basecheck"
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
+	"github.com/andrewrong/optdesk/internal/compute/recon"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/base_data_page"
@@ -16,6 +17,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/basefactpg"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
 	"github.com/andrewrong/optdesk/internal/store/ops"
+	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
+	"github.com/andrewrong/optdesk/internal/store/reconpg"
 )
 
 // Design: docs/design/base-data-page.md#10.
@@ -29,6 +32,7 @@ const (
 	// siteBaseDataFactsKey and siteBaseDataCoverageKey are the keys of the readers the openers put in siteReaders.ext.
 	siteBaseDataFactsKey    = "base_data_facts"
 	siteBaseDataCoverageKey = "base_data_coverage"
+	siteBaseDataReconKey    = "base_data_recon"
 	// extBaseData is the name of the openers in the ext deps.
 	extBaseData = "base_data"
 )
@@ -37,12 +41,13 @@ const (
 type baseDataDeps struct {
 	openFacts    basefact.OpenFunc
 	openCoverage coverage.OpenFunc
+	openRecon    reconstore.OpenReaderFunc
 	eval         basecheckapi.Func
 }
 
 func init() {
 	extDeps[extBaseData] = func() any {
-		return baseDataDeps{openFacts: basefactpg.Open, openCoverage: ops.OpenCoverage, eval: basecheck.Evaluate}
+		return baseDataDeps{openFacts: basefactpg.Open, openCoverage: ops.OpenCoverage, openRecon: reconpg.OpenReader, eval: basecheck.Evaluate}
 	}
 	registerPage(pageFamily{name: baseDataName, route: siteBaseDataRoute, order: 135, build: buildBaseData, named: baseDataPageNamed})
 	siteOpeners[siteBaseDataFactsKey] = func(ctx context.Context, a *app, track func(io.Closer, error) bool) (any, bool) {
@@ -59,6 +64,14 @@ func init() {
 				return nil, nil //nolint:nilnil // no opener: no reader, the page shows the gap
 			}
 			return d.openCoverage(ctx, dsn)
+		})
+	}
+	siteOpeners[siteBaseDataReconKey] = func(ctx context.Context, a *app, track func(io.Closer, error) bool) (any, bool) {
+		return openBaseData(ctx, a, track, func(ctx context.Context, d baseDataDeps, dsn string) (io.Closer, error) {
+			if d.openRecon == nil {
+				return nil, nil //nolint:nilnil // no opener: no reader, the page shows the gap
+			}
+			return d.openRecon(ctx, dsn)
 		})
 	}
 }
@@ -93,7 +106,9 @@ func openBaseData(ctx context.Context, a *app, track func(io.Closer, error) bool
 func buildBaseData(ctx context.Context, a *app, clk clock.Clock, _ string, rd siteReaders) ([]byte, error) {
 	facts, _ := siteReaderOf[basefact.Reader](rd, siteBaseDataFactsKey)
 	cov, _ := siteReaderOf[coverage.Reader](rd, siteBaseDataCoverageKey)
-	return base_data_page.Build(ctx, base_data_page.Input{Now: clk.Now().UTC(), Facts: facts, Cov: cov, Eval: baseDataEval(a)})
+	rec, _ := siteReaderOf[reconstore.Reader](rd, siteBaseDataReconKey)
+	return base_data_page.Build(ctx, base_data_page.Input{Now: clk.Now().UTC(), Facts: facts, Cov: cov, Eval: baseDataEval(a),
+		Recon: rec, Verdict: recon.Verdict})
 }
 
 // baseDataEval is the injected verdict function: the one of the deps, basecheck.Evaluate when a test set none.
@@ -124,7 +139,9 @@ func baseDataPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) 
 	build := func(ctx context.Context, _ store.SeriesReader, _ contracts.Day, now time.Time) ([]byte, error) {
 		facts, _ := siteReaderOf[basefact.Reader](rd, siteBaseDataFactsKey)
 		cov, _ := siteReaderOf[coverage.Reader](rd, siteBaseDataCoverageKey)
-		return base_data_page.Build(ctx, base_data_page.Input{Now: now.UTC(), Facts: facts, Cov: cov, Eval: baseDataEval(a)})
+		rec, _ := siteReaderOf[reconstore.Reader](rd, siteBaseDataReconKey)
+		return base_data_page.Build(ctx, base_data_page.Input{Now: now.UTC(), Facts: facts, Cov: cov, Eval: baseDataEval(a),
+			Recon: rec, Verdict: recon.Verdict})
 	}
 	return pages.Page{Meta: pages.Meta{Name: baseDataName, Schema: "page.base_data_page.v1"}, Build: build}, closeFn, nil
 }

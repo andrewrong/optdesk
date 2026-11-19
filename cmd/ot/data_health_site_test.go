@@ -183,7 +183,7 @@ func dataHealthZoneCarried(zone string, r jobRow) bool {
 func TestEveryJobHasRowOrReason(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
-	if len(jobTable) != 33 || len(jobs) != len(jobTable) {
+	if len(jobTable) != 34 || len(jobs) != len(jobTable) {
 		t.Fatalf("%d jobs for %d rows", len(jobs), len(jobTable))
 	}
 	for _, r := range jobTable {

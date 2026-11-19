@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/reconapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
@@ -28,7 +29,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/andrewrong/optdesk/internal/symbol/table"
@@ -717,5 +720,75 @@ func TestRunOnceTakesNoFence(t *testing.T) {
 	}
 	if got != "2026-03-04" {
 		t.Fatalf("reconciled %q", got)
+	}
+}
+
+func TestReconDSNLoaded(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv+"OT_PG_DSN_RECON=recon-dsn\n")
+	cfg, err := loadConfig(a, false)
+	if err != nil || cfg.reconDSN != "recon-dsn" {
+		t.Fatalf("reconDSN %q, err %v", cfg.reconDSN, err)
+	}
+	// The line is optional: before the owner's setup pg it is empty and the load still succeeds.
+	b, _ := testApp(t, fullEnv)
+	if cfg, err := loadConfig(b, false); err != nil || cfg.reconDSN != "" {
+		t.Fatalf("without the line: %q, %v", cfg.reconDSN, err)
+	}
+}
+
+type fakeReconWriter struct{}
+
+func (fakeReconWriter) InsertRun(context.Context, reconstore.Run) (int64, error) { return 1, nil }
+func (fakeReconWriter) Close() error                                             { return nil }
+
+func TestReconBarsHeldWithoutDSN(t *testing.T) {
+	t.Parallel()
+	const want = "OT_PG_DSN_RECON is not set (run setup pg)"
+	if got := startDisabled(runOnceConfig{}, true)["recon_bars"]; got != want {
+		t.Fatalf("reason %q, want %q", got, want)
+	}
+	if got, held := startDisabled(runOnceConfig{reconDSN: "recon-dsn"}, true)["recon_bars"]; held {
+		t.Fatalf("held with the line set: %q", got)
+	}
+	fam, ok := jobFamilies["recon_bars"]
+	if !ok || fam.order != 230 {
+		t.Fatalf("family %+v", fam)
+	}
+	// With no line the build opens nothing and gives no job.
+	jc := &jobCtx{cfg: runOnceConfig{}, f: &jobFactory{}, extra: &closerSet{}}
+	if j, reason, err := fam.build(t.Context(), nil, jc); j != nil || reason != "" || err != nil {
+		t.Fatalf("build without the line: %v %q %v", j, reason, err)
+	}
+}
+
+func TestReconBarsBuildOpensWriterWithLine(t *testing.T) {
+	t.Parallel()
+	var dsn string
+	var cmp reconapi.Func
+	f := jobFactory{
+		bars: noBarStore{}, clk: fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)},
+		list: &fakeUnderlyingStore{rows: []underlying.Row{oneUSRow()}},
+		held: func(context.Context) (map[string]bool, error) { return map[string]bool{}, nil },
+	}
+	jc := &jobCtx{cfg: runOnceConfig{reconDSN: "recon-dsn"}, f: &f, extra: &closerSet{}}
+	open := func(_ context.Context, d string) (reconstore.Writer, error) { dsn = d; return fakeReconWriter{}, nil }
+	mk := func(
+		_ sources.BarSource, _ store.InstrumentResolver, _ bar.PriceBarReader, w reconstore.Writer, c reconapi.Func,
+		_ []jobs.WatchEntry, _ clock.Clock,
+	) (contracts.Job, error) {
+		cmp = c
+		if _, ok := w.(fakeReconWriter); !ok {
+			t.Errorf("writer %T", w)
+		}
+		return namedJob{id: "recon_bars"}, nil
+	}
+	j, err := f.reconBars(t.Context(), jc, open, mk)
+	if err != nil || j == nil || dsn != "recon-dsn" || cmp == nil || len(jc.extra.cs) != 1 {
+		t.Fatalf("job %v dsn %q cmp %v closers %d err %v", j, dsn, cmp != nil, len(jc.extra.cs), err)
+	}
+	// recon.Compare of nothing compares nothing.
+	if out := cmp(reconapi.Input{}); out.N != 0 {
+		t.Fatalf("compare of nothing: %+v", out)
 	}
 }

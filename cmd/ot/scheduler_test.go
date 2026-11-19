@@ -280,8 +280,11 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		fence store.Fence, _ store.SchedulerLedger, _ store.OpsLedger, _ clock.Calendar, _ clockwork.Clock,
 		rec runner.Reconciler, gaps runner.GapSyncer, jobs []contracts.Job, disabled map[string]string, _ runner.ExecIdentityFunc,
 	) runner.Scheduler {
+		// The fixtures set no OT_PG_DSN_RECON, so recon_bars is always held; TestReconBarsHeldWithoutDSN covers that reason.
+		disabled = maps.Clone(disabled)
+		delete(disabled, jobReconBars)
 		r.sched = &fakeSched{
-			fence: fence, rec: rec, gaps: gaps, jobs: jobs, disabled: maps.Clone(disabled), runErr: r.runErr,
+			fence: fence, rec: rec, gaps: gaps, jobs: jobs, disabled: disabled, runErr: r.runErr,
 			started: make(chan struct{}), ticks: make(chan chan struct{}),
 		}
 		close(r.built)

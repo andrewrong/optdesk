@@ -118,7 +118,7 @@ func TestOffReasonHeld(t *testing.T) {
 			t.Fatalf("log %q lacks %q", buf.String(), want)
 		}
 	}
-	cfg := runOnceConfig{fredKey: "k", eventsDSN: "x"}
+	cfg := runOnceConfig{fredKey: "k", eventsDSN: "x", reconDSN: "x"}
 	dis := schedulerDisabled(cfg, w)
 	if dis[jobEarningsRefresh] != reasonNoAlphaKey || dis[jobOptionCandidates] != reasonNoCandidateDSN || len(dis) != 2 {
 		t.Fatalf("disabled %v", dis)
