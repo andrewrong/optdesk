@@ -1797,6 +1797,10 @@ type OptionCandidate struct {
 	// the latest computed_at.
 	ComputedAt time.Time `json:"computed_at" yaml:"computed_at" mapstructure:"computed_at"`
 
+	// Currency of the row as three upper-case letters (for example JPY); null or
+	// absent reads as USD.
+	Currency *string `json:"currency,omitempty" yaml:"currency,omitempty" mapstructure:"currency,omitempty"`
+
 	// Delta as decimal text; null when absent.
 	Delta *string `json:"delta" yaml:"delta" mapstructure:"delta"`
 

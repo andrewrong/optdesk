@@ -40,6 +40,7 @@ candidates.option_candidate r1: one evaluated option candidate of one run, with 
 | rank | integer | yes | Position of an ok row in the run; null when not ranked. |
 | rank_in_underlying | integer | yes | Position of an ok row within its underlying; null when not ranked. |
 | computed_at | string (date-time) | no | Instant the run computed the row, UTC; the newest run of a day is the one with the latest computed_at. |
+| currency | string | yes | Currency of the row as three upper-case letters (for example JPY); null or absent reads as USD. |
 | settings_version | integer | yes | Version of the owner settings (ownerset Version) the run used; null when the row was computed without owner settings. |
 
 Primary key: (session_day, run_id, kind, instrument_id, alias)
