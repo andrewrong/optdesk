@@ -2,6 +2,7 @@ package barsrefresh
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -17,7 +18,8 @@ const deepenSlackDays = 30
 // this run (backfilled). While the oldest stored trades day is newer than the run day minus
 // deepen_days plus 30 days it asks pieces of at most deepen_piece_days days ending on the day before
 // the oldest stored day, and upserts the older rows of each; it stops when
-// the oldest day reaches the target or a piece holds no older day. There is no diff test: a piece
+// the oldest day reaches the target, a piece holds no older day, or the broker answers a piece with
+// "no data" (error 162, a piece before the listing). There is no diff test: a piece
 // overlaps no stored row.
 //
 // deferred is true when the name is past deepen_names_per_run for the day: no request was made and
@@ -59,22 +61,14 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 			Contract: c, Kind: broker.BarTrades, DurationDays: days, End: oldest.AddDate(0, 0, -1).Format(dayLayout),
 		})
 		if err != nil {
+			if isNoData(err) {
+				return false, nil // the piece lies before the listing: the end of history, not a failure
+			}
 			return false, asTyped(err, contracts.Retryable)
 		}
-		older := make([]broker.Bar, 0, len(bars))
-		next := oldest
-		for _, b := range bars {
-			d, err := time.Parse(dayLayout, b.Day)
-			if err != nil {
-				return false, newErr(contracts.Permanent, "bad bar day")
-			}
-			if !d.Before(oldest) {
-				continue
-			}
-			older = append(older, b)
-			if d.Before(next) {
-				next = d
-			}
+		older, next, terr := olderThan(bars, oldest)
+		if terr != nil {
+			return false, terr
 		}
 		if len(older) == 0 {
 			return false, nil
@@ -90,6 +84,30 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 	}
 	return false, nil
 }
+
+// olderThan is the bars of a piece that lie before oldest, and the earliest of their days (oldest when
+// there is none).
+func olderThan(bars []broker.Bar, oldest time.Time) (older []broker.Bar, next time.Time, terr contracts.TypedError) {
+	older = make([]broker.Bar, 0, len(bars))
+	next = oldest
+	for _, b := range bars {
+		d, err := time.Parse(dayLayout, b.Day)
+		if err != nil {
+			return nil, oldest, newErr(contracts.Permanent, "bad bar day")
+		}
+		if !d.Before(oldest) {
+			continue
+		}
+		older = append(older, b)
+		if d.Before(next) {
+			next = d
+		}
+	}
+	return older, next, nil
+}
+
+// isNoData reports a broker answer of "no data" (error 162); the code is only in the error text of Bars.
+func isNoData(err error) bool { return strings.Contains(err.Error(), "broker error 162") }
 
 // deepenDayKey is the day key under which the job's started map records the keys that asked a
 // deepening piece on that day: it gives the per-day cap and the once-a-week limit, which must hold
