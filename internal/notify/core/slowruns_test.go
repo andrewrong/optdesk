@@ -51,7 +51,10 @@ type slowRig struct {
 func newSlowRig(t *testing.T, start time.Time) *slowRig {
 	t.Helper()
 	r := &slowRig{
-		ledger: &slowLedger{rows: []jobrun.JobRun{{ID: "r1", JobID: "job-a", Source: "scheduler", StartedAt: start.Add(-2 * time.Hour), KeysDone: 3, KeysTotal: 9, Step: "SECRET-KEY"}}},
+		ledger: &slowLedger{rows: []jobrun.JobRun{{
+			ID: "r1", JobID: "job-a", Source: "scheduler", StartedAt: start.Add(-2 * time.Hour),
+			KeysDone: 3, KeysTotal: 9, Step: "SECRET-KEY",
+		}}},
 		sender: &notifytest.Sender{},
 		clock:  clockwork.NewFakeClockAt(start),
 		logs:   &bytes.Buffer{},
