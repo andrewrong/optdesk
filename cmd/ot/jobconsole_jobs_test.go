@@ -17,6 +17,7 @@ var wantFourteen = map[string]string{
 	"option_eod":             "America/New_York",
 	"option_eod_index":       "America/New_York",
 	"option_eod_jp":          "Asia/Tokyo",
+	"option_candidates_jp":   "Asia/Tokyo",
 	"quote_snapshot":         "America/New_York",
 	"calendar_refresh":       "America/New_York",
 	"calendar_hours_us":      "America/New_York",
@@ -68,7 +69,8 @@ func TestForceYesAreFredFundamentalsComputeCandidatesBookRiskEarningsDividendOpt
 		}
 	}
 	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "book_risk", "earnings_refresh",
-		"dividend_capture", "option_eod", "option_eod_jp", "option_eod_index", "calendar_refresh", "fx_refresh", "bars_refresh", "macro_events", "recon_bars"}) {
+		"dividend_capture", "option_eod", "option_eod_jp", "option_eod_index", "option_candidates_jp",
+		"calendar_refresh", "fx_refresh", "bars_refresh", "macro_events", "recon_bars"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
@@ -100,7 +102,7 @@ func TestOptionEodRowsForce(t *testing.T) {
 	for _, r := range jobTable {
 		byID[r.ID] = r
 	}
-	for _, id := range []string{"option_eod", "option_eod_jp", "option_eod_index"} {
+	for _, id := range []string{"option_eod", "option_eod_jp", "option_eod_index", "option_candidates_jp"} {
 		r := byID[id]
 		if !r.runnable() || r.Kind != kindTodayOnly || !r.Force {
 			t.Errorf("%s: runnable %v kind %v force %v", id, r.runnable(), r.Kind, r.Force)
@@ -157,7 +159,7 @@ func TestTodayOnlyIsExactlyTheFourteenZoned(t *testing.T) {
 
 func TestListedOnlyIsExactlyTheEight(t *testing.T) {
 	t.Parallel()
-	want := []string{"option_candidates_jp", "option_ledger", "option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp",
+	want := []string{"option_ledger", "option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp",
 		"option_open_resolve", "option_open_resolve_gap", "option_open_resolve_jp"}
 	if got := idsOfKind(kindListedOnly); !slices.Equal(got, want) {
 		t.Fatalf("listed_only %v", got)
@@ -169,7 +171,7 @@ func TestListedOnlyIsExactlyTheEight(t *testing.T) {
 
 func TestEveryListedOnlyJobHasReasonAndSentence(t *testing.T) {
 	t.Parallel()
-	codes := []string{"no_lower_time_bound", "no_day_guard", "heavy_and_shares_cap", "caches_failures", "held_in_scheduler"}
+	codes := []string{"no_lower_time_bound", "no_day_guard", "heavy_and_shares_cap", "caches_failures"}
 	for _, r := range jobTable {
 		if r.Kind != kindListedOnly {
 			continue
@@ -191,7 +193,7 @@ func TestOnlyOptionEodJpIsInTheTokyoZone(t *testing.T) {
 			tokyo = append(tokyo, r.ID)
 		}
 	}
-	if !slices.Equal(tokyo, []string{"option_eod_jp", "calendar_hours_jp", "option_list_preopen_jp"}) {
+	if !slices.Equal(tokyo, []string{"option_eod_jp", "option_candidates_jp", "calendar_hours_jp", "option_list_preopen_jp"}) {
 		t.Fatalf("Tokyo jobs %v", tokyo)
 	}
 }

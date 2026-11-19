@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -51,15 +52,18 @@ func TestJPFamilyRegistered(t *testing.T) {
 	if fam.order != 183 || jobFamilies[jobOptionOpenJP].order >= fam.order {
 		t.Fatalf("order %d, option_open_jp %d", fam.order, jobFamilies[jobOptionOpenJP].order)
 	}
-	if fam.startOff == nil {
-		t.Fatal("no startOff: the family is not held in the scheduler")
+}
+
+// TestJPFamilyScheduled: the hold is gone, so the scheduler lists the family (startDisabled names no reason).
+func TestJPFamilyScheduled(t *testing.T) {
+	t.Parallel()
+	if fam := jobFamilies[jobOptionCandidatesJP]; fam.startOff != nil {
+		t.Fatalf("startOff set: %q", fam.startOff(runOnceConfig{openDSN: "x"}, true))
 	}
-	cfg := runOnceConfig{openDSN: "x"}
-	if r := fam.startOff(cfg, true); r != reasonJPHeld || !strings.Contains(r, jobOptionCandidatesJP) {
-		t.Fatalf("startOff %q", r)
-	}
-	if got := startDisabled(cfg, true)[jobOptionCandidatesJP]; got != reasonJPHeld {
-		t.Fatalf("scheduler disabled reason %q", got)
+	for _, open := range []bool{true, false} {
+		if got, held := startDisabled(runOnceConfig{openDSN: "x"}, open)[jobOptionCandidatesJP]; held {
+			t.Fatalf("scheduler disabled reason %q", got)
+		}
 	}
 }
 
@@ -115,5 +119,18 @@ func TestJPLeftOutWithoutRuleLogsOneLine(t *testing.T) {
 	}
 	if n := strings.Count(h.log.String(), "option_candidates_jp not built"); n != 1 || !strings.Contains(h.log.String(), reasonJPNoRule) {
 		t.Fatalf("log %q", h.log.String())
+	}
+}
+
+// TestJPDataHealthRow: the data-health table carries the job over the Tokyo calendar and the candidates dataset,
+// as a today-only job of the Tokyo zone.
+func TestJPDataHealthRow(t *testing.T) {
+	t.Parallel()
+	j := dataHealthJobOf(t, dataHealthJobs(), jobOptionCandidatesJP)
+	if j.Calendar != "XTKS" || !slices.Equal(j.Datasets, []string{"candidates.option_candidate"}) {
+		t.Fatalf("calendar %q datasets %v", j.Calendar, j.Datasets)
+	}
+	if j.Kind != kindTodayOnly || j.Zone != "Asia/Tokyo" {
+		t.Fatalf("kind %v zone %q", j.Kind, j.Zone)
 	}
 }

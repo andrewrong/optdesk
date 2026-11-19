@@ -139,11 +139,11 @@ func TestCatchUpPassStopsAtCap(t *testing.T) {
 		t.Fatalf("first pass enqueued %d, want %d", first, catchUpCap)
 	}
 	r.host.catchUpPass(t.Context())
-	if rest := len(r.post.enqueued) - first; rest != 8 { // 45 gap days of jobs outside the window rule and the newest day of three window jobs
-		t.Fatalf("second pass enqueued %d, want the other 8", rest)
+	if rest := len(r.post.enqueued) - first; rest != 9 { // 46 gap days of jobs outside the window rule and the newest day of three window jobs
+		t.Fatalf("second pass enqueued %d, want the other 9", rest)
 	}
 	r.host.catchUpPass(t.Context())
-	for _, e := range r.post.enqueued[48:] { // only the next newest day of a window job is left
+	for _, e := range r.post.enqueued[49:] { // only the next newest day of a window job is left
 		if !slices.Contains(windowEndingJobs, e.JobID) {
 			t.Fatalf("third pass enqueued %+v", e)
 		}
