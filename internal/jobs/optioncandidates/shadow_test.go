@@ -268,6 +268,8 @@ func TestShadowRowsEqualOldRows(t *testing.T) {
 			r.ParamHash != st.Strategy.Params().Hash || r.ParamHash == "" {
 			t.Errorf("row %s: run %q at %v strategy %q version %q hash %q", r.Key, r.RunID, r.ComputedAt, r.Strategy, r.RuleVersion, r.ParamHash)
 		}
+		// the shadow strategy does not write the buy source mark; the job does, last (buysource.go)
+		o.Marks = strings.Replace(o.Marks, `,"buy_from_hand"]`, `]`, 1)
 		compareColumns(t, oldColumns(t, r), o)
 	}
 	if statuses["ok"] != 3 || statuses["blocked"] != 2 || statuses["unknown"] != 2 {

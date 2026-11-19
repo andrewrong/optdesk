@@ -223,6 +223,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 		shadow.add(in, ul, ev)
 		for _, c := range j.rule.Evaluate(in, j.params) {
 			ch.addMarks(&c)
+			addBuySourceMark(&c, entry)
 			row, err := toStoreRow(c, day, ul, ev, now)
 			if err != nil {
 				return fail("map_candidate_failed", err)
