@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -158,13 +159,32 @@ func TestBuildFixedFields(t *testing.T) {
 	}
 }
 
+const (
+	sentenceWant = "Your hand buy price for each name you keep. The put gate reads it only for a name that has no valuation buy zone."
+	introWant    = "A saved price applies to the next option candidate run; clearing a hand price removes the check only for a name with no valuation."
+)
+
+func TestSentenceNamesValuationException(t *testing.T) {
+	t.Parallel()
+	o, _ := build(t, base())
+	if !strings.Contains(o.Sentence, "hand buy price") || !strings.Contains(o.Sentence, "only for a name that has no valuation buy zone") {
+		t.Errorf("sentence = %q", o.Sentence)
+	}
+	if strings.HasSuffix(o.Sentence, "The put gate reads it.") {
+		t.Errorf("sentence reads unconditionally: %q", o.Sentence)
+	}
+	if !strings.Contains(o.Intro, "only for a name with no valuation") {
+		t.Errorf("intro = %q", o.Intro)
+	}
+}
+
 func TestBuildFixedTexts(t *testing.T) {
 	t.Parallel()
 	o, _ := build(t, base())
 	for name, p := range map[string][2]string{
 		"title":    {o.Title, "Price lines"},
-		"sentence": {o.Sentence, "Your buy price for each name you keep. The put gate reads it."},
-		"intro":    {o.Intro, "A saved price applies to the next option candidate run; clearing it removes the check for that name."},
+		"sentence": {o.Sentence, sentenceWant},
+		"intro":    {o.Intro, introWant},
 		"add.hint": {o.Add.Hint, "Type the code and market of a name on the underlying list."},
 		"footnote": {o.Footnote, "The price is the buy_price of the name on the underlyings page; the note is shared with it."},
 	} {
