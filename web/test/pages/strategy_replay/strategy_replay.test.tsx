@@ -110,6 +110,30 @@ describe('strategy replay page, report', () => {
   })
 })
 
+describe('strategy replay page, report hints', () => {
+  it('strategy replay page, report hints', async () => {
+    const p = report()
+    const r = p.report!
+    const el = await render(p)
+    const t = text(el)
+    for (const v of Object.values(r.hints!.counts)) expect(t).toContain(v)
+    for (const v of Object.values(r.hints!.columns)) expect(t).toContain(v)
+    for (const v of r.variants) expect(t).toContain(v.hint as string)
+    expect(el.querySelectorAll('thead th span.text-muted-foreground').length).toBe(15)
+  })
+
+  it('shows the table rows and counts when the payload has no hints', async () => {
+    const p = report()
+    const r = p.report!
+    delete r.hints
+    for (const v of r.variants) delete v.hint
+    const el = await render(p)
+    expect(el.querySelectorAll('tbody tr')).toHaveLength(r.lines.length)
+    expect(text(el)).toContain(`lots ${r.counts.lots}`)
+    expect(el.querySelectorAll('thead th span.text-muted-foreground')).toHaveLength(0)
+  })
+})
+
 describe('strategy replay page, zero lots', () => {
   it('shows empty_text and no table', async () => {
     const p = empty()
