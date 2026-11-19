@@ -24,8 +24,9 @@ type Usual struct {
 	Samples int
 }
 
-// Figure is the figures of one run. HasUsual is false when the job has no usual yet (UsualMinutes is 0
-// and Slow is false). Slow is a notice only.
+// Figure is the figures of one run. HasUsual is false when the job has no usual yet (fewer than the
+// least samples; UsualMinutes is 0). A run with no usual can still be Slow: after a fixed bound with no
+// history (Decision 7 of scheduler-per-job). Slow is a notice only.
 type Figure struct {
 	JobID          string
 	ElapsedMinutes int

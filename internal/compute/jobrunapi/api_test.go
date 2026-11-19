@@ -16,6 +16,7 @@ func fakeFigures(now time.Time, runs []jobrunapi.Input, usuals []jobrunapi.Usual
 			JobID: r.JobID, ElapsedMinutes: int(now.Sub(r.StartedAt) / time.Minute),
 			KeysDone: r.KeysDone, KeysTotal: r.KeysTotal, Step: r.Step,
 		}
+		f.Slow = fakeSlow(now.Sub(r.StartedAt), 0, 0)
 		for _, u := range usuals {
 			if u.JobID == r.JobID {
 				f.HasUsual, f.UsualMinutes = true, int(u.Median/time.Minute)
@@ -28,7 +29,10 @@ func fakeFigures(now time.Time, runs []jobrunapi.Input, usuals []jobrunapi.Usual
 }
 
 func fakeSlow(elapsed, usual time.Duration, samples int) bool {
-	return samples > 0 && elapsed > 2*usual
+	if samples == 0 {
+		return elapsed > 60*time.Minute // no history: a fixed bound
+	}
+	return elapsed > 2*usual
 }
 
 // pageSide and notifySide copy the figures and never decide slowness themselves.
@@ -68,15 +72,15 @@ func TestFiguresFuncContract(t *testing.T) {
 	want := []jobrunapi.Figure{
 		{JobID: "a", ElapsedMinutes: 50, UsualMinutes: 20, HasUsual: true, Slow: true, KeysDone: 3, KeysTotal: 10, Step: "fetch"},
 		{JobID: "b", ElapsedMinutes: 5, UsualMinutes: 20, HasUsual: true},
-		{JobID: "c", ElapsedMinutes: 90},
+		{JobID: "c", ElapsedMinutes: 90, Slow: true},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("figures = %+v, want %+v", got, want)
 	}
-	if page := pageSide(f, now, runs, usuals); !page["a"] || page["b"] || page["c"] {
+	if page := pageSide(f, now, runs, usuals); !page["a"] || page["b"] || !page["c"] {
 		t.Errorf("page side slow = %v", page)
 	}
-	if ids := notifySide(f, now, runs, usuals); !reflect.DeepEqual(ids, []string{"a"}) {
+	if ids := notifySide(f, now, runs, usuals); !reflect.DeepEqual(ids, []string{"a", "c"}) {
 		t.Errorf("notify side slow = %v", ids)
 	}
 	if got := f(now, nil, nil); len(got) != 0 {
@@ -95,11 +99,22 @@ func TestSlowFuncContract(t *testing.T) {
 	}{
 		{"well over", 50 * time.Minute, 20 * time.Minute, 7, true},
 		{"within", 30 * time.Minute, 20 * time.Minute, 7, false},
-		{"no samples", 50 * time.Minute, 20 * time.Minute, 0, false},
+		{"no samples under the bound", 50 * time.Minute, 20 * time.Minute, 0, false},
+		{"no samples over the bound", 90 * time.Minute, 0, 0, true},
 	}
 	for _, c := range cases {
 		if got := s(c.elapsed, c.usual, c.samples); got != c.want {
 			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestNoHistoryRunOverAnHourIsSlow(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 19, 12, 0, 0, 0, time.UTC)
+	var f jobrunapi.FiguresFunc = fakeFigures
+	got := f(now, []jobrunapi.Input{{JobID: "c", StartedAt: now.Add(-90 * time.Minute)}}, nil)
+	if len(got) != 1 || got[0].HasUsual || !got[0].Slow {
+		t.Fatalf("a run with no history at 90 min must be slow (Decision 7), got %+v", got)
 	}
 }
