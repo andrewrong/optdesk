@@ -50,6 +50,8 @@ The plan's step 10: put the valuation buy line next to the hand-typed buy price,
 10. **Web** renders and computes nothing: `CompanyStrip.tsx` shows `valuation` when it is not null or absent as two rows (label, text, hint in a tooltip beside the label; the same for the gate row); a payload without `valuation` renders as today.
 11. **No migration, no write, no job change, no gate change.** `docs/contracts/pages.md` gets one paragraph and `docs/contracts/ot/pages/option_candidates_page.md` one sentence.
 
+Amended by `docs/design/buy-price-source.md` (Decision 12): when a company has a valuation, B_hi is the buy price the put gate uses (its figure comes from the shared resolver and its currency rule is the contract currency), so "shown only, gate unchanged" and "the hand-typed buy price the gate uses" no longer hold for such a company.
+
 ## Modules
 
 `docs/design/modules.md`: no row is added or changed. Paths and the first row whose glob matches: `contracts/schemas/page.option_candidates_page.v1.json`, `web/src/generated/option_candidates_page.v1.ts`, `internal/contracts/option_candidates_page_v1_test.go` and `docs/contracts/page-schemas.md` contracts (entry 1), `internal/pages/option_candidates_page/**` and `docs/contracts/pages.md` pages (entries 2 and 3), `cmd/ot/**` and `docs/contracts/ot/pages/option_candidates_page.md` ot (entry 4), `web/src/pages/candidates/**` and `web/test/pages/optioncandidates/**` web (entry 5). Imports against the `depends` column: pages imports `store/valuation` (store) and `valuelinesapi` (compute), both allowed; `cmd/ot` imports `valuelines` (compute); web imports generated types only.

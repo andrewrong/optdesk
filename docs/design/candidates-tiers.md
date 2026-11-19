@@ -439,7 +439,7 @@ Adversarial file: `state/optdesk-drafts/designs/tiers-amend-1-adversarial.md` (a
 
 ## Left out
 
-- Plan step 10, the valuation buy line beside the hand-typed buy price: a later design; the company strip shows the hand-typed buy price only, and the tiers use it.
+- Plan step 10, the valuation buy line beside the hand-typed buy price: a later design; the company strip shows the hand-typed buy price only, and the tiers use it. Amended by `docs/design/buy-price-source.md`: the strip shows the resolved buy price (valuation buy-zone top, else the hand price) with its source, and the tiers use it.
 - Concentration above a share he gives (the owner's amber badge list): no share setting exists and the plan (集中度) says only to show shares, with no cap; a company's share of cash secured is not built here. Asked of the owner: the share number, as a second rule parameter.
 - The confirmed-or-not flag of an earnings date: the stored row does not keep it (`input.go`), so `earnings_before_expiry` is amber for any date inside the life and its gloss says so; a job change that stores the flag is a later design.
 - The stored `rank` and `rankRun` (`convert.go:185-224`): unchanged; the page orders itself. The `/options` overview cards still take `RankInUnderlying`.
