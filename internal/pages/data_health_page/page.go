@@ -17,6 +17,8 @@ type Input struct {
 	Jobs  []Job
 	Form  *Form // nil without owner edit
 
+	Gateways []GatewayInput // one per gateway; empty: no gateways block
+
 	Runs    jobrun.JobRunReader   // nil: no running lines
 	Figures jobrunapi.FiguresFunc // the figures of the open runs at Now; nil: no running lines
 }
@@ -71,6 +73,7 @@ type viewModel struct {
 	BuiltAt       string        `json:"built_at"`
 	Form          *formVM       `json:"form"`
 	Running       []runningVM   `json:"running,omitempty"`
+	Gateways      []GatewayVM   `json:"gateways,omitempty"`
 	Datasets      []Dataset     `json:"datasets"`
 	Glossary      []GlossaryRow `json:"glossary"`
 	OverwriteNote string        `json:"overwrite_note"`
