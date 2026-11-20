@@ -37,20 +37,21 @@ const (
 	bandHigh    = "66.5"
 	minus       = "−"
 
-	title        = "Macro"
-	sayEase      = "Ease %s, %s."
-	sayNoEase    = "Ease: no data yet."
-	textNoData   = "Ease: no data yet"
-	textNoReader = "Ease: not connected yet"
-	textNoWeek   = "Change vs last week: no data yet"
-	textEvents   = "Event calendar: not connected yet"
-	textNoDay    = "No data day"
-	textNoEvents = "No macro events stored for the next 60 days"
-	textPrevious = "previous value: not built"
-	whenDateOnly = "date only"
-	eventWindow  = 60 // days after the day that the event reader is asked for
-	maxEvents    = 8
-	noteDates    = "Event dates follow the release calendar, no release time."
+	title            = "Macro"
+	sayEase          = "Ease %s, %s."
+	sayNoEase        = "Ease: no data yet."
+	textNoData       = "Ease: no data yet"
+	textNoReader     = "Ease: not connected yet"
+	textNoWeek       = "Change vs last week: no data yet"
+	textEvents       = "Event calendar: not connected yet"
+	textNoDay        = "No data day"
+	textEventsUnread = "Event calendar: could not be read"
+	textNoEvents     = "No macro events stored for the next 60 days"
+	textPrevious     = "previous value: not built"
+	whenDateOnly     = "date only"
+	eventWindow      = 60 // days after the day that the event reader is asked for
+	maxEvents        = 8
+	noteDates        = "Event dates follow the release calendar, no release time."
 )
 
 var (
@@ -74,8 +75,8 @@ type Config struct {
 	Liquidity       liquidityapi.Func
 	LiquidityParams liquidityapi.Params
 	// Events is optional. With it set, the card lists the next stored events of the six kinds of eventNames
-	// over the day and the 60 days after it, at most 8; nil keeps the not_built gap. An error of Events is an
-	// error of Build.
+	// over the day and the 60 days after it, at most 8; nil keeps the not_built gap. An error of Events is a
+	// gap of the card (no_reader), not an error of Build.
 	Events macroevent.Reader
 }
 
@@ -213,14 +214,15 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	}
 	if c.Events != nil {
 		evs, err := eventsFor(ctx, c.Events, d)
-		if err != nil {
-			return nil, err
-		}
-		s.Card.Events = evs
 		s.Card.Gaps = []gap{}
-		if len(evs) == 0 {
+		switch {
+		case err != nil:
+			evs = []event{}
+			s.Card.Gaps = []gap{{Reason: "no_reader", Text: textEventsUnread}}
+		case len(evs) == 0:
 			s.Card.Gaps = []gap{{Reason: "no_data", Text: textNoEvents}}
 		}
+		s.Card.Events = evs
 	}
 	if c.Liquidity != nil {
 		say, err := reservesSay(ctx, c, d)
