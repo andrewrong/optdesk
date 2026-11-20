@@ -352,3 +352,57 @@ func TestSlowNotifierContract(t *testing.T) {
 		t.Fatalf("texts = %v, marked = %v", snd.texts, mark.ids)
 	}
 }
+
+type fakeGatewayNotifier struct{ sender notify.Sender }
+
+func (n fakeGatewayNotifier) NotifyGateways(ctx context.Context, facts []notify.GatewayFact) (int, error) {
+	sent := 0
+	for _, f := range facts {
+		if !f.Down {
+			continue
+		}
+		if err := n.sender.Send(ctx, f.Gateway); err != nil {
+			return sent, err
+		}
+		sent++
+	}
+	return sent, nil
+}
+
+func TestGatewayNotifierContract(t *testing.T) {
+	t.Parallel()
+	var ctor notify.NewGatewayNotifierFunc = func(s notify.Sender, _ store.SentStore, _ clockwork.Clock) (notify.GatewayNotifier, error) {
+		return fakeGatewayNotifier{sender: s}, nil
+	}
+	s := &fakeSender{}
+	n, err := ctor(s, nil, clockwork.NewFakeClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := n.NotifyGateways(context.Background(), []notify.GatewayFact{{Gateway: "main", Farm: "f", Down: true}, {Gateway: "wife"}})
+	if err != nil || got != 1 || len(s.texts) != 1 {
+		t.Fatalf("got %d, %v, texts %v; want 1 text", got, err, s.texts)
+	}
+}
+
+func TestFactOf(t *testing.T) {
+	t.Parallel()
+	since := time.Unix(1000, 0)
+	farms := []notify.GatewayFarm{{Name: "eu", Up: true}, {Name: "us", Up: false, Since: since}, {Name: "jp", Up: false, Since: time.Unix(2000, 0)}}
+	cases := []struct {
+		name     string
+		answered bool
+		state    string
+		want     notify.GatewayFact
+	}{
+		{"broken", true, "farm_broken", notify.GatewayFact{Gateway: "a", Farm: "us", Since: since, Down: true}},
+		{"unanswered", false, "farm_broken", notify.GatewayFact{Gateway: "a"}},
+		{"up", true, "up", notify.GatewayFact{Gateway: "a"}},
+		{"down", true, "down", notify.GatewayFact{Gateway: "a"}},
+	}
+	for _, c := range cases {
+		if got := notify.FactOf("a", c.answered, c.state, farms); got != c.want {
+			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
+		}
+	}
+}
