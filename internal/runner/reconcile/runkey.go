@@ -246,8 +246,11 @@ func (k *keyRunner) verdict(
 	case res.Usable > 0:
 		return store.StatusPresent, nil
 	case !closeAt.IsZero() && k.clk.Now().Before(closeAt):
-		// An empty answer is no explanation: retry until the window closes.
-		rec.ReasonCode = reasonEmptyBeforeClose
+		// An empty answer is no explanation: retry until the window closes. A run that carries the mark
+		// upstream_missing keeps it: the end of its upstream runs it again (rerunMarked reads the mark).
+		if rec.ReasonCode != reasonUpstreamMissing {
+			rec.ReasonCode = reasonEmptyBeforeClose
+		}
 		return "", nil
 	}
 	return store.StatusNoValue, nil
