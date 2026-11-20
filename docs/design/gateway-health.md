@@ -27,13 +27,13 @@ The owner opens `/data-health` and sees, for each gateway (by its alias `main` o
 4. Backoff stays as today: doubling from `BACKOFF_FIRST_S` to the 60 s cap of `server.py`. No cap on the number of opens and no `ReconnectPolicy` protocol. The noise is cut instead: one log line per state change, not per attempt. A gateway that stays down logs one `session_down` line when it goes down, and one `session_up` line when it comes back; attempts in between add none. The reason of the last failed attempt is a field of the next state line, not a line of its own.
 5. Farm probe, `main` only (the session used for history, port 4001). Besides the clock probe, every `FARM_PROBE_EVERY_S` one tiny history request goes out on that session under `PROBE_WAIT_S`: one daily bar (or the head timestamp) of one fixed liquid index or ETF, whose symbol is named in code only (`pyside/src/optdesk/ibkr/farm_probe.py`), not a name of any watch list. `FARM_PROBE_FAILS` consecutive failures while the clock probe is good set the state `farm_broken`, naming the farm (`ushmds` for US). It is the slow path behind the code of Decision 2; either one sets the state, and the first good answer or an ok code clears it. The probe request waits on the history pacer like any request.
 6. History wait. `ibgateway.bars` waits `HISTORY_WAIT_S` per request and then raises `HistoryUnavailable`, which the transport maps to `UNAVAILABLE` with the message `history_unavailable`. The Go caller sees a Retryable error (Decision 11), not its own deadline. Nothing else depends on this error in this design.
-7. Grace. A farm broken for less than `FARM_GRACE_S` raises no notice and no `farm_down` verdict (IB resets farms at night and they come back by themselves); the page shows the farm as `down` with its since-time from the first sight, and the verdict `farm_down` starts when the grace has passed. Times come from the injected `Clock`.
+7. Grace. A farm broken for less than `FARM_GRACE_S` raises no notice and no `farm_down` verdict (IB resets farms at night and they come back by themselves); the page shows the farm as `down` with its since-time from the first sight, and pyside sets the state `farm_broken` only when the grace has passed; the Go side holds no grace. Times come from the injected `Clock`.
 8. Constants, trial values (named, not yet measured; the owner can change them without a design), all in one new file `pyside/src/optdesk/ibkr/health_constants.py`: `PROBE_EVERY_S` = 60, `PROBE_FAILS` = 3, `HISTORY_WAIT_S` = 60, `FARM_PROBE_EVERY_S` = 300, `FARM_PROBE_FAILS` = 3, `PROBE_WAIT_S` = 10, `FARM_GRACE_S` = 600. `PROBE_WAIT_S` is a new name because `health.py` already has `PROBE_DEADLINE_S` (2 s, local `/health`).
 9. Log lines, one per change, with the configured gateway name only: `farm_code gateway=<name> code=<int> farm=<word>` per code of 2100 to 2199 when the farm state changes, `soft_loss`, `restore`, `session_down`, `session_up`, `farm_broken gateway=<name> farm=<word>`, `farm_ok gateway=<name> farm=<word>`. No account id, no port. The farm word passes the rule of Decision 2.
 10. The payload. `PingResponse` gains, additive and numbered after the existing fields: `state` (enum `up`, `soft_lost`, `down`, `farm_broken`), `farms` (repeated `{name, up, since_unix_ms}`). The old fields keep their numbers. `ot serve` reads one `Ping` per gateway socket per request of `/data-health`, under a 2 s deadline; a gateway that does not answer shows `unreachable`, never an error page. The numbers and states are pyside's; the page builder maps them to verdict keys and Chinese text and computes nothing (the front end renders data).
 11. A job call in flight during a reconnect gets a Retryable class. pyside answers such a call `UNAVAILABLE` with the message `session_reconnecting` (a different message from `history_unavailable`); `grpcbroker` maps both to `contracts.Retryable`, never to a permanent key failure.
 12. What the owner sees, per gateway, is a verdict key of the builder: `session_up`, `session_retrying`, `farm_down` (text: log in at this gateway again; a reconnect does not help), `unreachable`. Each key has its Chinese text in `zh_texts.go` with the term explained nearby. The gateway is shown by alias (`main`, `wife`), never an account id or port.
-13. Notice. The existing notify channel is `notify.Sender` (Telegram, `internal/notify/telegram`) with `SentStore` (`alerts.sent`), as `AlertNotifier` uses them. A new `GatewayNotifier` sends one text when a gateway's verdict becomes `farm_down` (after the grace), keyed `gateway_<alias>_<farm>` for that incident, and one text when it recovers. The text names the gateway by alias, no account id, no port, and says the owner must log in again at the gateway; the Chinese text is a constant of Go in `internal/notify/core` (repo rule). Mark only after a confirmed send. No job and no time guard (dev mode).
+13. Notice. The existing notify channel is `notify.Sender` (Telegram, `internal/notify/telegram`) with `SentStore` (`alerts.sent`), as `AlertNotifier` uses them. A new `GatewayNotifier` gets one `GatewayFact` per gateway on every tick and decides by its marks: one text when a fact is `Down` (state `farm_broken`, so after the grace), marked by incident with the key `gateway_<alias>_<farm>_<since_unix>` (the farm's `since` time is in the fact, so a second incident on the same day sends), and one text when a gateway with a marked incident is no longer `Down`, marked `<key>_up`. The text names the gateway by alias, no account id, no port, and says the owner must log in again at the gateway; the Chinese text is a constant of Go in `internal/notify/core` (repo rule). Mark only after a confirmed send. No job and no time guard (dev mode).
 14. Version of the page. `gateways` is an additive OPTIONAL property of `page.data_health_page.v1`, never in `required`; the schema version does not change. This amends `docs/design/data-health.md` Decision 14 ("Versions are named"), whose exception clause allows an additive field only by amendment; this design is that amendment, and the older readers read the page as before.
 15. A new web component renders the gateway block (Decision 12): `GatewayBlock.tsx` is shown by `DataHealthPage.tsx` above the grid when `gateways` is non-empty, and shows nothing else when it is empty or absent.
 16. No time guard (dev mode): probes, notices and the page run when due or asked, at any hour.
@@ -57,10 +57,10 @@ No row of `docs/design/modules.md` changes; every path falls in an existing row 
 
 1. Proto `ibkr.v1.PingResponse`: additive `state` and `farms` of Decision 10; enum `SessionState`; message `FarmState {string name; bool up; int64 since_unix_ms}`. Existing fields and numbers unchanged.
 2. Page `page.data_health_page.v1` gains the optional array `gateways` (`[{name, verdict, farms: [{name, up}], note}]`, `additionalProperties` false, `verdict` an enum of the keys of Decision 12, not in `required`).
-3. Python (`pyside/src/optdesk/ibkr/api.py`): `SessionStatus` gains `state` and `farms` with defaults; protocol `FarmBoard` (`record(code, text, now) -> None`, `snapshot() -> tuple[Farm, ...]`); exception `HistoryUnavailable`.
-4. Go (`internal/broker/api.go`): `type Health struct { Name, State string; Farms []Farm }`, `type HealthReader interface { Health(ctx context.Context) (Health, error); Close() error }`, `NewHealthFunc`.
-5. Pages: `data_health_page.Input` gains `Gateways []GatewayInput` of plain fields.
-6. Notify: `notify.GatewayNotifier` with `NotifyGateways(ctx, []GatewayFact) (int, error)`; `GatewayFact` is `{Gateway, Farm string; Down bool}`.
+3. Python (`pyside/src/optdesk/ibkr/api.py`): protocol `FarmBoard` (`record(code, text, now) -> None`, `snapshot() -> tuple[model.Farm, ...]`); exception `HistoryUnavailable`. `pyside/src/optdesk/ibkr/model.py`: the existing `SessionState` gains `state` (`up`, `soft_lost`, `down`, `farm_broken`; default `up`) and `farms: tuple[Farm, ...]` (default empty); new `Farm` is `{name: str, up: bool, since: int}` (`since` in unix ms); the `Gateway.status` protocol returns them. `api.py` declares no second `SessionState`; `model.SessionState` is its one owner.
+4. Go (`internal/broker/api.go`): `type Farm struct { Name string; Up bool; Since time.Time }`, `type Health struct { Name, State string; Farms []Farm }` (`State` is one of `up`, `soft_lost`, `down`, `farm_broken`), `type HealthReader interface { Health(ctx context.Context) (Health, error); Close() error }`, `NewHealthFunc`.
+5. Pages: `data_health_page.Input` gains `Gateways []GatewayInput`; `GatewayInput` is `{Name string; Answered bool; State string; Farms []GatewayFarm}` and `GatewayFarm` is `{Name string; Up bool}` (`State` as in `broker.Health`; `Answered` false when the reader failed).
+6. Notify: `notify.GatewayNotifier` with `NotifyGateways(ctx, []GatewayFact) (int, error)`; `GatewayFact` is `{Gateway, Farm string; Since time.Time; Down bool}` (`Farm` and `Since` are those of the first farm that is down, empty when `Down` is false). `notify.FactOf(alias string, answered bool, state string, farms []GatewayFarm) GatewayFact` is the declared mapping, owned by notify: `Down` is true when `answered` and `state` is `farm_broken`; `GatewayFarm` is `{Name string; Up bool; Since time.Time}`.
 
 ## Issues
 
@@ -85,10 +85,10 @@ Acceptance:
 ### 2 gateway-health-pyside-api (interface)
 
 Module: pyside. Size: S. Order: after 1.
-Files: `pyside/src/optdesk/ibkr/api.py`, `pyside/tests/contracts/test_ibkr_api.py`
+Files: `pyside/src/optdesk/ibkr/api.py`, `pyside/src/optdesk/ibkr/model.py`, `pyside/tests/contracts/test_ibkr_api.py`
 Acceptance:
-1. `pyside/src/optdesk/ibkr/api.py` declares `SessionStatus` with `state` and `farms` (new fields), `Farm`, `SessionState`, the protocol `FarmBoard` and the exception `HistoryUnavailable` (all new), signatures, types and docstrings only.
-2. `TestFarmBoardContract` (new) in `pyside/tests/contracts/test_ibkr_api.py`: a fake class is an instance of the runtime-checkable `FarmBoard`; `TestSessionStatusDefaults` (new): `SessionStatus` built with the old arguments still works through the defaults.
+1. `model.py` gives `SessionState` the fields `state` and `farms` and declares `Farm` (new; fields of Interface 3); `api.py` declares the protocol `FarmBoard` and the exception `HistoryUnavailable` (new) and no `SessionState`, signatures, types and docstrings only.
+2. `TestFarmBoardContract` (new) in `pyside/tests/contracts/test_ibkr_api.py`: a fake class is an instance of the runtime-checkable `FarmBoard`; `TestSessionStateDefaults` (new): `model.SessionState` built with the old arguments still works through the defaults.
 
 ### 3 gateway-health-pyside-probe
 
@@ -103,17 +103,17 @@ Acceptance:
 6. `TestFarmGrace` (new) shows with the fake clock that a farm down for less than `FARM_GRACE_S` gives no `farm_broken` verdict and one down for longer does.
 7. `TestHistoryWait` (new) shows `ibgateway.bars` raises `HistoryUnavailable` after `HISTORY_WAIT_S` of fake clock.
 8. `TestLogOnStateChange` (new) drives `supervise` against a gateway that stays down for 24 hours of fake clock and asserts exactly one `session_down` line and no line per attempt, then one `session_up` after it returns; the lines hold `gateway=<name>` and no account id and no port.
-9. `server.py` and `ibgateway.py` get a few lines only (the hook calls) and end under 800 lines (`ibgateway.py` is 791 lines at the checked head); all new code is in the new files of Files.
+9. `server.py` and `ibgateway.py` get only the hook calls, all new code is in the new files of Files, and a test (`TestSizeCeiling`, new) asserts each of the two files stays under 800 lines (`ibgateway.py` is 791 at the checked head).
 
 ### 4 gateway-health-pyside-transport
 
-Module: pyside. Size: S. Order: after 3.
+Module: pyside. Size: S. Order: after 2.
 Owner-only: `pyside/src/optdesk/ibkr/transport.py` is an owner-only path. The dispatcher writes this pull request. The owner merges this pull request.
 Owner case: a change in an owner-only path
 Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/transport_health.py`, `pyside/tests/ibkr/test_transport_health.py`
 Acceptance:
-1. `transport.py` (794 lines at the checked head) gets at most a few lines, the calls into the new `transport_health.py` (new), and stays under 800 lines; the mapping code is in the new file.
-2. `TestPingCarriesFarms` (new) shows `Ping` returns `state` and every farm of the board with `up` and `since_unix_ms`, and the old fields as before.
+1. `transport.py` (794 lines at the checked head) gets only the calls into the new `transport_health.py` (new); the mapping code is in the new file, and a test (`TestSizeCeiling`, new) asserts `transport.py` stays under 800 lines (794 at the checked head).
+2. `TestPingCarriesFarms` (new) builds against `model.SessionState` from a fake `Gateway` (no `ibgateway.py` read) and shows `Ping` returns `state` and every farm of the board with `up` and `since_unix_ms`, and the old fields as before.
 3. `TestHistoryUnavailableStatus` (new) shows `HistoryUnavailable` becomes `UNAVAILABLE` with the message `history_unavailable`.
 4. `TestInFlightReconnect` (new) shows a call in flight when its session closes is answered `UNAVAILABLE` with the message `session_reconnecting`, not `INTERNAL` and not a key-specific error.
 
@@ -133,17 +133,17 @@ Acceptance:
 Module: pages. Size: M. Order: after 1.
 Files: `internal/pages/data_health_page/builder.go`, `internal/pages/data_health_page/gateways.go`, `internal/pages/data_health_page/gateways_test.go`, `internal/pages/data_health_page/zh_texts.go`, `docs/contracts/pages.md`
 Acceptance:
-1. `gateways.go` (new) maps `Input.Gateways` to the `gateways` array: `TestGatewayVerdicts` (new) shows a farm down past the grace gives `farm_down`, a state `farm_broken` gives `farm_down`, a gateway with no answer gives `unreachable`, probe failures under the limit or a reconnect wait give `session_retrying`, otherwise `session_up`.
+1. `gateways.go` (new) maps `Input.Gateways` to the `gateways` array by the fields of `GatewayInput` only: `TestGatewayVerdicts` (new) shows `farm_broken` gives `farm_down`; `soft_lost` or `down` gives `session_retrying`; `Answered` false gives `unreachable`; otherwise `session_up`.
 2. `TestGatewayTexts` (new) shows each verdict key has a Chinese text from `zh_texts.go` with the term explained beside it (the `farm_down` text says to log in at that gateway again and that a reconnect does not help), and no text holds an account id or a port.
 3. `TestNoGatewaysOmitsField` (new) shows `Build` with no gateways returns a document without the `gateways` key.
 
-### 7 gateway-health-notify
+### 7 gateway-health-notify (interface)
 
 Module: notify. Size: M. Order: after 1.
 Files: `internal/notify/api.go`, `internal/notify/api_test.go`, `internal/notify/core/gateways.go`, `internal/notify/core/gateways_text.go`, `internal/notify/core/gateways_test.go`, `docs/contracts/notify.md`
 Acceptance:
-1. `internal/notify/api.go` declares `GatewayNotifier`, `GatewayFact` and `NewGatewayNotifierFunc` of Interface 6, declarations only; `TestGatewayNotifierContract` (new) in `api_test.go`.
-2. `core/gateways.go` (new) sends through `notify.Sender` and marks through `SentStore`: `TestGatewayOncePerIncident` (new) shows two passes on one incident with the same (gateway, farm) send one text, and a later incident sends again.
+1. `internal/notify/api.go` declares `GatewayNotifier`, `GatewayFact`, `GatewayFarm`, `FactOf` and `NewGatewayNotifierFunc` of Interface 6, declarations only; `TestGatewayNotifierContract` (new) in `api_test.go`; `TestFactOf` (new) shows the mapping of Interface 6.
+2. `core/gateways.go` (new) sends through `notify.Sender` and marks through `SentStore`: `TestGatewayOncePerIncident` (new) shows two passes on one incident (same gateway, farm and `Since`) send one text, and a second incident of the same farm on the same day (a later `Since`, after a `Down: false` pass) sends again.
 3. `TestGatewayRecoveryOnce` (new) shows a `Down: false` fact after a sent incident sends one recovery text, a second one sends none.
 4. `TestGatewayMarkAfterSend` (new) shows a failed send leaves no mark and the next pass sends again.
 5. `TestGatewayText` (new) shows the text, a constant of `gateways_text.go`, names the gateway by alias and says to log in again at the gateway, and holds no account id and no port.
@@ -162,9 +162,9 @@ Acceptance:
 Module: ot. Size: M. Order: after 5, 6 and 7.
 Files: `cmd/ot/data_health_site.go`, `cmd/ot/gateway_health.go`, `cmd/ot/gateway_health_test.go`, `cmd/ot/data_health_site_test.go`, `cmd/ot/notify.go`, `docs/contracts/ot/pages/data_health_page.md`
 Acceptance:
-1. `cmd/ot/gateway_health.go` (new) reads one `Health` per configured gateway socket through `broker.HealthReader` under a 2 s deadline and maps it to `Input.Gateways` by alias; `TestGatewayHealthUnreachable` (new) shows a reader that errors gives `unreachable` and the page still answers 200 with a document that validates.
-2. `TestDataHealthGateways` (new) in `data_health_site_test.go`: two fake readers (one with the farm `down` past the grace) give the `gateways` array of the fixture `gateways`.
-3. `TestGatewayNotifyPass` (new): the scheduler tick passes one `GatewayFact` per gateway whose verdict changed to or from `farm_down` and none for an unchanged one.
+1. `cmd/ot/gateway_health.go` (new) reads one `Health` per configured gateway socket through `broker.HealthReader` under a 2 s deadline and copies it to `Input.Gateways` by alias (`Answered` false on an error); `TestGatewayHealthUnreachable` (new) shows a reader that errors gives `unreachable` and the page still answers 200 with a document that validates.
+2. `TestDataHealthGateways` (new) in `data_health_site_test.go`: two fake readers (one with state `farm_broken`) give the `gateways` array of the fixture `gateways`.
+3. `TestGatewayNotifyPass` (new): the scheduler tick passes one `GatewayFact` per gateway on every tick, built by `notify.FactOf` from the `Health` just read, and keeps no previous verdict; `GatewayNotifier` and its marks decide what is sent.
 4. No line of `cmd/ot` holds a rule: the verdict words come from `Health` and the builder.
 
 ## Checked by CI
@@ -177,7 +177,7 @@ Acceptance:
 ## Left out
 
 - bars fallback to yfinance: its own design (docs/design/bars-fallback.md, next)
-- Auto re-login of the gateway (IBC or any login script): the credentials are the owner's, so the owner logs in; the design only tells him when and where.
+- Auto re-login of the gateway (IBC or any login script): the credentials are the owner's, so the owner logs in; the design only tells the owner when and where.
 - A reconnect cap per hour and a `ReconnectPolicy` protocol: not adopted (Decision 4).
 - A data request or a reconnect for the wife gateway driven by `main`: none (Decision 3).
 - No change to the 1100/2110/1101/1102 soft-loss rule or `RESTORE_WAIT_S`, to the history pacer or the line budgets.
@@ -198,4 +198,4 @@ Raw text: the scratchpad file `gateway-health-adversarial.md` in `state/optdesk-
 3. A simpler way (split in two; skip the cap and the policy protocol; maybe skip the notice): adopted for the split and the cap. Not adopted for dropping the notice: the owner wants to be told once and the page is not looked at all day (Decision 13, entry 7).
 4. Lock-in (additive proto and page fields, enum words, `alerts.sent` keys, UNAVAILABLE plus a message string): partly adopted. The additive fields and keys are accepted and named (Decision 14); the string match is made two fixed messages with a test on the Go side (Decision 11, entry 5 item 4); the CHECK migration leaves with the fallback.
 5. Claim most likely false (a farm down at pyside start is not seen): adopted, it was false. The read-only probe of 2026-11-20 08:47Z showed 2105 `ushmds` at connect; Decision 15 of the draft is replaced by the FACT in Today and the history-stall counter is dropped. The restate runner-up leaves with the fallback.
-6. Likeliest slip (the 800-line ceilings of `ibgateway.py` and `transport.py`, owner-only paths, entry size): adopted. New code goes in new files, the two files get a few lines (entry 3 item 9, entry 4 item 1), the owner-only entries say so, and the large pyside entry is cut in two (3 and 4). The acceptance items that are runs by CI are under `## Checked by CI`, and no test waits on a wall clock.
+6. Likeliest slip (the 800-line ceilings of `ibgateway.py` and `transport.py`, owner-only paths, entry size): adopted. New code goes in new files, the two files get only hook calls and a test holds each under 800 lines (entry 3 item 9, entry 4 item 1), the owner-only entries say so, and the large pyside entry is cut in two (3 and 4). The acceptance items that are runs by CI are under `## Checked by CI`, and no test waits on a wall clock.
