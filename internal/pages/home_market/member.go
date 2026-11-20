@@ -57,10 +57,11 @@ type gap struct {
 func mkGap(reason, text string) gap { return gap{Kind: "gap", Reason: reason, Text: text} }
 
 type volPoints struct {
-	Kind  string      `json:"kind"`
-	Value json.Number `json:"value"`
-	Text  string      `json:"text"`
-	Unit  string      `json:"unit"`
+	Kind   string      `json:"kind"`
+	Value  json.Number `json:"value"`
+	Text   string      `json:"text"`
+	Unit   string      `json:"unit"`
+	Source string      `json:"source,omitempty"`
 }
 
 type indexLevel struct {
@@ -96,14 +97,21 @@ type chart struct {
 type indexRow struct {
 	Name        string `json:"name"`
 	IV          any    `json:"iv"`
+	IndexIV     any    `json:"index_iv"`
 	RV20        any    `json:"rv20"`
 	IVMinusRV20 any    `json:"iv_minus_rv20"`
 	SourceText  string `json:"source_text,omitempty"`
 }
 
+type indexIvColumn struct {
+	Label string `json:"label"`
+	Hint  string `json:"hint"`
+}
+
 type indexTable struct {
-	Columns []string   `json:"columns"`
-	Rows    []indexRow `json:"rows"`
+	Columns []string       `json:"columns"`
+	IndexIV *indexIvColumn `json:"index_iv"`
+	Rows    []indexRow     `json:"rows"`
 }
 
 type volIndex struct {
@@ -176,9 +184,14 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 	days := dataDays{}
 	failed := 0
 
-	table := indexTable{Columns: columns, Rows: []indexRow{}}
+	volPts, err := readVolPoints(ctx, r, d)
+	if err != nil {
+		return nil, err
+	}
+
+	table := indexTable{Columns: columns, IndexIV: &indexIvColumn{Label: indexIvLabel, Hint: indexIvHint}, Rows: []indexRow{}}
 	for _, name := range indexNames {
-		row, ok, err := buildRow(ctx, c, name, d)
+		row, ok, err := buildRow(ctx, c, name, d, volPts[indexVolSeries[name]])
 		if err != nil {
 			return nil, err
 		}
@@ -188,21 +201,8 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		table.Rows = append(table.Rows, row)
 	}
 
-	vols := []volIndex{}
-	for _, s := range volSpecs {
-		pts, err := storedPoints(ctx, r, s.series, d, levelLookback)
-		if err != nil {
-			return nil, err
-		}
-		v := buildVol(s, pts, d)
-		if _, isGap := v.Level.(gap); isGap {
-			failed++
-		}
-		if len(pts) > 0 {
-			days.add(s.series, pts[0].date)
-		}
-		vols = append(vols, v)
-	}
+	vols, volFailed := buildVols(volPts, d, days)
+	failed += volFailed
 
 	cpts, err := storedPoints(ctx, r, seriesChart, d, chartLookback)
 	if err != nil {
@@ -247,6 +247,37 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 	return json.Marshal(vm)
 }
 
+// readVolPoints reads the stored points of the three volatility index series once, by series id.
+func readVolPoints(ctx context.Context, r store.SeriesReader, d time.Time) (map[string][]point, error) {
+	out := map[string][]point{}
+	for _, s := range volSpecs {
+		pts, err := storedPoints(ctx, r, s.series, d, levelLookback)
+		if err != nil {
+			return nil, err
+		}
+		out[s.series] = pts
+	}
+	return out, nil
+}
+
+// buildVols is the three volatility indices from their points; failed counts the Gap levels and days
+// gets the newest point day of each series.
+func buildVols(volPts map[string][]point, d time.Time, days dataDays) (vols []volIndex, failed int) {
+	vols = []volIndex{}
+	for _, s := range volSpecs {
+		pts := volPts[s.series]
+		v := buildVol(s, pts, d)
+		if _, isGap := v.Level.(gap); isGap {
+			failed++
+		}
+		if len(pts) > 0 {
+			days.add(s.series, pts[0].date)
+		}
+		vols = append(vols, v)
+	}
+	return vols, failed
+}
+
 func validate(c Config, r store.SeriesReader) error {
 	switch {
 	case c.Zone == nil:
@@ -265,14 +296,16 @@ func validate(c Config, r store.SeriesReader) error {
 }
 
 // buildRow is the row of one index: the IV and the 20 day realised volatility from their stored
-// readings; the difference from its stored market.iv_rv20 reading. ok is false when the IV is a Gap; a Gap of the
+// readings; the difference from its stored market.iv_rv20 reading; the volatility index of the
+// index from ivPts, the stored points of its series (indexVolSeries), newest first. ok is false when the IV is a Gap; a Gap of the
 // realised volatility does not count.
-func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow, bool, error) {
+func buildRow(ctx context.Context, c Config, name string, d time.Time, ivPts []point) (indexRow, bool, error) {
 	row := indexRow{
 		Name:        name,
 		IV:          mkGap("no_data", name+" "+ivNoRow),
 		RV20:        mkGap("no_data", name+" "+rv20NoRow),
 		IVMinusRV20: mkGap("no_data", name+" "+ivRvNoRow),
+		IndexIV:     indexIvCell(name, ivPts, d),
 	}
 	rv, err := newestReading(ctx, c, figRv20, name, d)
 	if err != nil {
@@ -450,6 +483,9 @@ func collectGaps(c card) []gap {
 	out := []gap{}
 	for _, row := range c.IndexTable.Rows {
 		if g, ok := row.IV.(gap); ok {
+			out = append(out, g)
+		}
+		if g, ok := row.IndexIV.(gap); ok {
 			out = append(out, g)
 		}
 		if g, ok := row.RV20.(gap); ok {

@@ -75,6 +75,10 @@
         "20-day realised",
         "Difference"
       ],
+      "index_iv": {
+        "label": "Index IV",
+        "hint": "指数隐含波动率：标普500用VIX，纳斯达克100用VXN，罗素2000用RVX，取FRED已存收盘值（不是期权实时报价）；标签里是数据日。"
+      },
       "rows": [
         {
           "name": "SPX",
@@ -83,6 +87,13 @@
             "value": 20.1,
             "text": "20.1",
             "unit": "vol_points"
+          },
+          "index_iv": {
+            "kind": "value",
+            "value": 18.2,
+            "text": "18.2",
+            "unit": "vol_points",
+            "source": "FRED VIXCLS 11-06"
           },
           "rv20": {
             "kind": "value",
@@ -106,6 +117,13 @@
             "text": "24.5",
             "unit": "vol_points"
           },
+          "index_iv": {
+            "kind": "value",
+            "value": 21.0,
+            "text": "21.0",
+            "unit": "vol_points",
+            "source": "FRED VXNCLS 11-06"
+          },
           "rv20": {
             "kind": "value",
             "value": 16.2,
@@ -127,6 +145,13 @@
             "value": 21.8,
             "text": "21.8",
             "unit": "vol_points"
+          },
+          "index_iv": {
+            "kind": "value",
+            "value": 23.5,
+            "text": "23.5",
+            "unit": "vol_points",
+            "source": "FRED RVXCLS 11-06"
           },
           "rv20": {
             "kind": "value",
