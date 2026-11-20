@@ -117,6 +117,33 @@ func TestRunOnceEnqueueAllSkipsListedOnlyJobs(t *testing.T) {
 	}
 }
 
+func TestRunOnceForceWithoutJobForcesOnlyJobsThatOfferIt(t *testing.T) {
+	t.Parallel()
+	p := &enqPoster{}
+	a, _, _ := enqueueApp(t, p)
+	if err := runOnce(a, []string{"--day", "2026-11-05", "--force"}); err != nil {
+		t.Fatal(err)
+	}
+	offers := map[string]bool{}
+	for _, row := range jobTable {
+		offers[row.ID] = row.Force
+	}
+	var forced, plain int
+	for _, r := range p.reqs {
+		if r.Force != offers[r.JobID] {
+			t.Errorf("request %+v: the job offers force=%v", r, offers[r.JobID])
+		}
+		if r.Force {
+			forced++
+		} else {
+			plain++
+		}
+	}
+	if forced == 0 || plain == 0 {
+		t.Fatalf("forced %d, not forced %d: the run must cover a job that offers force and one that does not", forced, plain)
+	}
+}
+
 func TestRunOnceEnqueueAllSkipsTodayOnlyJobsOfAnotherDay(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
