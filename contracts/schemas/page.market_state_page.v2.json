@@ -261,6 +261,79 @@
               "$ref": "common.v2.json#/$defs/Gap"
             }
           ]
+        },
+        "range": {
+          "description": "A trial normal, caution or alarm range the producer wrote, or a Gap. A notice only; nothing is blocked.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "state_text",
+                "cuts",
+                "notice"
+              ],
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "caution",
+                    "alarm"
+                  ]
+                },
+                "state_text": {
+                  "$ref": "#/$defs/Text"
+                },
+                "cuts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "level",
+                      "text",
+                      "basis",
+                      "source"
+                    ],
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "caution",
+                          "alarm"
+                        ]
+                      },
+                      "text": {
+                        "$ref": "#/$defs/Text"
+                      },
+                      "basis": {
+                        "type": "string",
+                        "enum": [
+                          "published",
+                          "percentile"
+                        ]
+                      },
+                      "source": {
+                        "$ref": "#/$defs/Text"
+                      }
+                    }
+                  }
+                },
+                "notice": {
+                  "$ref": "#/$defs/Text"
+                }
+              }
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "hint": {
+          "description": "The Chinese hover hint of the row: what the figure is and what the ranges mean.",
+          "$ref": "#/$defs/LongText"
         }
       }
     },
