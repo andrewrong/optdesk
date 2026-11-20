@@ -3,6 +3,7 @@
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarsSourceNote } from '@/components/BarsSourceNote'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/company_data_page'
 import { CompanyTable } from './CompanyTable'
@@ -25,6 +26,7 @@ export function CompanyDataPage({ payload }: { payload: Payload }) {
               <AlertDescription>{g.text}</AlertDescription>
             </Alert>
           ))}
+          <BarsSourceNote payload={payload} />
           <CompanyTable columns={payload.columns} companies={payload.companies} />
         </CardContent>
       </Card>

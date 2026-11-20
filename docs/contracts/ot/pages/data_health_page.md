@@ -23,3 +23,10 @@ The page carries `form` `{post_path, expires, mac}` only when the owner edit is 
 ## Version
 
 v1: introduced with this document (order 130).
+
+## Gateways
+
+Design: `docs/design/gateway-health.md#9-gateway-health-wire`. The line `OT_GATEWAY_SOCKETS` of the env file is a comma list of `alias=socket path`, such as `main=<path>,wife=<path>`; an alias is lower-case letters and digits and appears once; an unset line means no gateway (the page has no `gateways` array and the scheduler makes no gateway pass); a malformed line is ignored with one log line that names the key only.
+
+- Per request, `ot serve` (and `ot page`) reads one `broker.Health` per gateway socket through `broker.HealthReader` (`grpcbroker.DialHealth`), all at once, each under a 2 s deadline for the dial and the call, and copies it to `Input.Gateways` by alias, in the order of the line. `Answered` is false when the dial or the call fails: the builder gives `unreachable` and the page is never an error page. `cmd/ot` holds no rule: the verdict keys and words are the builder's.
+- Per tick, the scheduler reads the same readings and passes one `notify.GatewayFact` per gateway, built by `notify.FactOf` from the `Health` just read, to `notify.GatewayNotifier` (`core.NewGateways`, over the sender and the sent store of the other notifiers) after the slow-run pass. It keeps no previous verdict; the notifier and its marks decide what is sent. A failed or panicking pass is logged by class and never reaches the ticker.

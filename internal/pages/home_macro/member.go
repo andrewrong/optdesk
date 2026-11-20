@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
 
 const (
@@ -44,6 +45,11 @@ const (
 	textNoWeek   = "Change vs last week: no data yet"
 	textEvents   = "Event calendar: not connected yet"
 	textNoDay    = "No data day"
+	textNoEvents = "No macro events stored for the next 60 days"
+	textPrevious = "previous value: not built"
+	whenDateOnly = "date only"
+	eventWindow  = 60 // days after the day that the event reader is asked for
+	maxEvents    = 8
 	noteDates    = "Event dates follow the release calendar, no release time."
 )
 
@@ -67,6 +73,23 @@ type Config struct {
 	Series          store.SeriesReader
 	Liquidity       liquidityapi.Func
 	LiquidityParams liquidityapi.Params
+	// Events is optional. With it set, the card lists the next stored events of the six kinds of eventNames
+	// over the day and the 60 days after it, at most 8; nil keeps the not_built gap. An error of Events is an
+	// error of Build.
+	Events macroevent.Reader
+}
+
+// eventNames maps the stored kinds the card lists to their names.
+var eventNames = map[string]string{
+	"cpi": "CPI", "employment_situation": "Employment situation", "gdp": "GDP",
+	"pce": "PCE", "fomc": "FOMC decision", "boj": "BoJ decision",
+}
+
+type event struct {
+	Date     string `json:"date"`
+	WhenText string `json:"when_text"`
+	NameText string `json:"name_text"`
+	Previous gap    `json:"previous"`
 }
 
 type gap struct {
@@ -107,7 +130,7 @@ type card struct {
 	Say           string   `json:"say"`
 	Stale         stale    `json:"stale"`
 	Ease          any      `json:"ease"`
-	Events        []string `json:"events"`
+	Events        []event  `json:"events"`
 	Notes         []string `json:"notes"`
 	Gaps          []gap    `json:"gaps"`
 	DataTimesText string   `json:"data_times_text"`
@@ -163,7 +186,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 		RunStatus:   "partial",
 		Card: card{
 			Title:  title,
-			Events: []string{},
+			Events: []event{},
 			Notes:  []string{noteDates},
 			Gaps:   []gap{{Reason: "not_built", Text: textEvents}},
 		},
@@ -188,6 +211,17 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			s.Card.DataTimesText = "Ease data day " + base.Format("01-02") + ". " + noteDates
 		}
 	}
+	if c.Events != nil {
+		evs, err := eventsFor(ctx, c.Events, d)
+		if err != nil {
+			return nil, err
+		}
+		s.Card.Events = evs
+		s.Card.Gaps = []gap{}
+		if len(evs) == 0 {
+			s.Card.Gaps = []gap{{Reason: "no_data", Text: textNoEvents}}
+		}
+	}
 	if c.Liquidity != nil {
 		say, err := reservesSay(ctx, c, d)
 		if err != nil {
@@ -208,6 +242,32 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 		Text:       baseText,
 	}
 	return json.Marshal(s)
+}
+
+// eventsFor reads the events of d and the eventWindow days after it once and keeps the first maxEvents of the
+// listed kinds, in the order the reader returns them.
+func eventsFor(ctx context.Context, r macroevent.Reader, d time.Time) ([]event, error) {
+	from := contracts.Day(d.Format(dayLayout))
+	to := contracts.Day(d.AddDate(0, 0, eventWindow).Format(dayLayout))
+	rows, err := r.Between(ctx, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("home_macro: read macro events: %w", err)
+	}
+	out := []event{}
+	for _, e := range rows {
+		name, ok := eventNames[e.Kind]
+		if !ok {
+			continue
+		}
+		out = append(out, event{
+			Date: string(e.Date), WhenText: whenDateOnly, NameText: name,
+			Previous: gap{Reason: "not_built", Text: textPrevious},
+		})
+		if len(out) == maxEvents {
+			break
+		}
+	}
+	return out, nil
 }
 
 func midnight(t time.Time, zone *time.Location) string {
