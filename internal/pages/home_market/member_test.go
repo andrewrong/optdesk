@@ -484,3 +484,55 @@ func TestRowRv20GapLeavesIVOk(t *testing.T) {
 		t.Fatalf("RV20 = %+v", row.RV20)
 	}
 }
+
+// diffRows is a Config whose market.iv_rv20 readings of SPX are rows, the others empty.
+func diffRows(rows ...contracts.ReadingRecord) Config {
+	c := configAll(nil, nil, nil)
+	c.Readings = func(_ context.Context, fig, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
+		var in []contracts.ReadingRecord
+		if fig == figIvRv20 && kind == "underlying" && subject == "SPX" {
+			for _, r := range rows {
+				if day := r.Day.Format("2006-01-02"); day >= string(from) && day <= string(to) {
+					in = append(in, r)
+				}
+			}
+		}
+		return in, nil
+	}
+	return c
+}
+
+func diffCell(t *testing.T, c Config) any {
+	t.Helper()
+	row, _, err := buildRow(context.Background(), c, "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return row.IVMinusRV20
+}
+
+func TestNewestReadingSkipsNotOkOfToday(t *testing.T) {
+	t.Parallel()
+	ok := diffReading("2026-11-05", "0.032000")
+	ok.Parameters = []gen.ReadingRecordParametersElem{{Param: "data_day", ValueTag: func() *string { s := "2026-11-03"; return &s }()}}
+	v, isVal := diffCell(t, diffRows(reading("2026-11-06", "missing_input", ""), ok)).(volPoints)
+	if !isVal || v.Text != "+3.2 (11-03)" {
+		t.Fatalf("cell = %+v, want +3.2 (11-03)", v)
+	}
+}
+
+func TestNoOkReadingKeepsNewestGap(t *testing.T) {
+	t.Parallel()
+	g, isGap := diffCell(t, diffRows(reading("2026-11-04", "missing_input", ""), reading("2026-11-06", "missing_input", ""))).(gap)
+	if !isGap || g.Reason != "missing_input" {
+		t.Fatalf("cell = %+v, want the missing_input gap", g)
+	}
+}
+
+func TestOkReadingOlderThanFiveDaysIsNotUsed(t *testing.T) {
+	t.Parallel()
+	g, isGap := diffCell(t, diffRows(reading("2026-11-06", "missing_input", ""), diffReading("2026-10-30", "0.032000"))).(gap)
+	if !isGap || g.Reason != "missing_input" {
+		t.Fatalf("cell = %+v, want the missing_input gap", g)
+	}
+}
