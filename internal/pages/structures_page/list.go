@@ -18,11 +18,6 @@ const (
 	pageTitle          = "Position structures"
 	decideTitle        = "To decide this week"
 	othersTitle        = "Other structures"
-	otherNote          = "Unidentified structures, shown leg by leg"
-	noReaderNote       = "Ledger or trading day reader not connected (no_reader)"
-	noCaptureNote      = "No position snapshot, not compared with Flex"
-	oldCaptureNote     = "Position snapshot is older than 3 trading days, not compared with Flex"
-	noAccountNote      = "Position snapshot reader not connected (no_reader), not compared with Flex"
 	shownContracts     = 2
 	exDividendLookback = 10 // days before the page day of the dividend rows read
 )
@@ -136,9 +131,9 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 	}
 	total := len(res.Structures) + len(res.Other)
 	if total == 0 {
-		vm.Sentence = "Account " + alias + " has no structures held"
+		vm.Sentence = emptySentenceHead + alias + emptySentenceTail
 	} else {
-		vm.Sentence = "Total " + strconv.Itoa(total) + " position structures, to decide this week: " + strconv.Itoa(len(vm.Groups[0].Rows))
+		vm.Sentence = totalSentenceHead + strconv.Itoa(total) + totalSentenceMid + strconv.Itoa(len(vm.Groups[0].Rows))
 	}
 	if note := c.noteOf(res); note != "" {
 		vm.Note = &note
@@ -225,10 +220,10 @@ func (c Config) noteOf(res compute.StructureResult) string {
 		parts = append(parts, oldCaptureNote)
 	}
 	if len(d.CaptureOnly) > 0 {
-		parts = append(parts, "Positions not yet in Flex: "+contractList(d.CaptureOnly))
+		parts = append(parts, captureOnlyPrefix+contractList(d.CaptureOnly))
 	}
 	if len(d.LedgerOnly) > 0 {
-		parts = append(parts, "Flex positions missing from the position snapshot: "+contractList(d.LedgerOnly))
+		parts = append(parts, ledgerOnlyPrefix+contractList(d.LedgerOnly))
 	}
 	return clip(strings.Join(parts, "; "))
 }

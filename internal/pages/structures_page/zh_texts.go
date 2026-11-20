@@ -23,3 +23,22 @@ const (
 	printWord       = "最近成交"
 	closeNoteSep    = "；"
 )
+
+// The sentence under the title of the page: the counts and the alias are put between the parts.
+const (
+	totalSentenceHead = "共 "
+	totalSentenceMid  = " 个持仓结构，本周待决策："
+	emptySentenceHead = "账户 "
+	emptySentenceTail = " 当前没有持仓结构"
+)
+
+// The parts of the note line written by noteOf; the option term Flex stays English.
+const (
+	otherNote         = "未识别的结构，按单腿逐条列出"
+	noReaderNote      = "账本或交易日读取器未连接（no_reader）"
+	noCaptureNote     = "没有持仓快照，未与 Flex 比对"
+	oldCaptureNote    = "持仓快照已超过 3 个交易日，未与 Flex 比对"
+	noAccountNote     = "持仓快照读取器未连接（no_reader），未与 Flex 比对"
+	captureOnlyPrefix = "尚未进入 Flex 的持仓："
+	ledgerOnlyPrefix  = "Flex 中有而持仓快照缺失的持仓："
+)
