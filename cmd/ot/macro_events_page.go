@@ -48,26 +48,32 @@ func registryWindow() int {
 // registry and true, or the registry default and false when none is stored, the reader is nil or a read fails.
 func ownerWindow(owner ownerset.Reader) macro_page.WindowFunc {
 	return func(ctx context.Context, at time.Time) (int, bool) {
-		if owner == nil {
-			return registryWindow(), false
+		if n, ok := storedWindow(ctx, owner, at); ok {
+			return n, true
 		}
-		params, err := owner.Params(ctx, at)
-		if err != nil {
-			return registryWindow(), false
-		}
-		stored := make(map[string]string, len(params))
-		for _, p := range params {
-			stored[p.Key] = p.Value
-		}
-		if stored[windowKey] == "" {
-			return registryWindow(), false
-		}
-		n, err := strconv.Atoi(ruleparam.New().Resolve(stored)[windowKey])
-		if err != nil || n <= 0 {
-			return registryWindow(), false
-		}
-		return n, true
+		return registryWindow(), false
 	}
+}
+
+// storedWindow is the owner's stored max_dte, resolved by the rule registry; ok is false when there is no reader, the
+// read fails, none is stored or the text is not a positive number.
+func storedWindow(ctx context.Context, owner ownerset.Reader, at time.Time) (int, bool) {
+	if owner == nil {
+		return 0, false
+	}
+	params, err := owner.Params(ctx, at)
+	if err != nil {
+		return 0, false
+	}
+	stored := make(map[string]string, len(params))
+	for _, p := range params {
+		stored[p.Key] = p.Value
+	}
+	if stored[windowKey] == "" {
+		return 0, false
+	}
+	n, err := strconv.Atoi(ruleparam.New().Resolve(stored)[windowKey])
+	return n, err == nil && n > 0
 }
 
 // openMacroOwner opens the owner settings reader on store.DSNEnvPages as openMacroEvents opens the event reader. The
