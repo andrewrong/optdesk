@@ -148,6 +148,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	ma, err := home_macro.Build(ctx, home_macro.Config{
 		RunID: runID, BuildID: build, Scope: scope, Zone: zone, Read: read,
 		Series: series, Liquidity: liquidity.Compute, LiquidityParams: liquidity.TrialParams(),
+		Events: rd.macroEvents,
 	}, day, now)
 	if err != nil {
 		return nil, err

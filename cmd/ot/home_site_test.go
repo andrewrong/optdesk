@@ -23,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -455,5 +456,80 @@ func TestHomeRouteHouseholdCardIsFamily(t *testing.T) {
 	m := string(p.Household)
 	if !strings.Contains(m, "计入 1 / 2 个账户") || !strings.Contains(m, "other") {
 		t.Fatalf("household member: %s", m)
+	}
+}
+
+// fakeHomeEvents is a macroevent.Reader that returns the rows it holds.
+type fakeHomeEvents struct{ rows []macroevent.Event }
+
+func (f fakeHomeEvents) Between(context.Context, contracts.Day, contracts.Day) ([]macroevent.Event, error) {
+	return f.rows, nil
+}
+
+func (fakeHomeEvents) Kinds(context.Context) ([]macroevent.Kind, error) { return nil, nil }
+
+type homeMacroCard struct {
+	Macro struct {
+		Card struct {
+			Events []struct {
+				Date     string `json:"date"`
+				NameText string `json:"name_text"`
+			} `json:"events"`
+			Gaps []struct {
+				Reason string `json:"reason"`
+				Text   string `json:"text"`
+			} `json:"gaps"`
+		} `json:"card"`
+	} `json:"macro"`
+}
+
+func homeMacroCardOf(t *testing.T, ev macroevent.Reader) homeMacroCard {
+	t.Helper()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	b, err := homeBuild(t.Context(), a, "ot-page", siteReaders{series: newLiquidityFake(), macroEvents: ev}, "2026-11-05",
+		time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p homeMacroCard
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestHomeMacroCardListsStoredEvents(t *testing.T) {
+	t.Parallel()
+	p := homeMacroCardOf(t, fakeHomeEvents{rows: []macroevent.Event{
+		{Kind: "cpi", Source: "fred", Date: "2026-11-12", RunDay: "2026-11-05"},
+		{Kind: "fomc", Source: "fred", Date: "2026-12-09", RunDay: "2026-11-05"},
+	}})
+	ev := p.Macro.Card.Events
+	if len(ev) != 2 || ev[0].Date != "2026-11-12" || ev[0].NameText != "CPI" || ev[1].Date != "2026-12-09" || ev[1].NameText != "FOMC decision" {
+		t.Fatalf("events = %+v", ev)
+	}
+}
+
+func TestHomeMacroCardNoStoredEventsSaysSo(t *testing.T) {
+	t.Parallel()
+	p := homeMacroCardOf(t, fakeHomeEvents{})
+	found := false
+	for _, g := range p.Macro.Card.Gaps {
+		found = found || g.Text == "No macro events stored for the next 60 days"
+	}
+	if len(p.Macro.Card.Events) != 0 || !found {
+		t.Fatalf("card = %+v", p.Macro.Card)
+	}
+}
+
+func TestHomeMacroCardWithoutReaderKeepsGap(t *testing.T) {
+	t.Parallel()
+	p := homeMacroCardOf(t, nil)
+	found := false
+	for _, g := range p.Macro.Card.Gaps {
+		found = found || g.Text == "Event calendar: not connected yet"
+	}
+	if !found {
+		t.Fatalf("card = %+v", p.Macro.Card)
 	}
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/hoursnoticepg"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/andrewrong/optdesk/internal/store/jobrun"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
@@ -129,6 +130,10 @@ type siteReaders struct {
 	// marks is the position mark reader of household_page, opened with the pages line (nil: no opener or a
 	// failed open, the blocks that need a mark stay gaps).
 	marks mark.Reader
+
+	// macroEvents is the stored macro event reader of the home macro card, opened with the pages line (nil: demo
+	// profile, empty line or deps without the opener; the card keeps the gap "Event calendar: not connected yet").
+	macroEvents macroevent.Reader
 
 	// days is the reader of obs.option_day behind the coverage column of option_tracking_page, opened with the pages
 	// line (nil: no opener or the demo profile; the column is the gap no_reader).
@@ -306,9 +311,15 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
+	events, closeEvents, err := openMacroEvents(ctx, a)
+	if err != nil {
+		return fail()
+	}
+	closers = append(closers, func() error { closeEvents(); return nil })
 	rd := siteReaders{
-		hours: openHoursReader(ctx, dsn, track),
-		days:  days, bars: bars, fx: fx, dividends: dividends, marks: openMarkReader(ctx, a, dsn, track),
+		macroEvents: events,
+		hours:       openHoursReader(ctx, dsn, track),
+		days:        days, bars: bars, fx: fx, dividends: dividends, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq, jobRuns: jobRuns,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
