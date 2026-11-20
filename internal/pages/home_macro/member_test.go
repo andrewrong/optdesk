@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/home_macro"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
 
 const (
@@ -359,6 +360,131 @@ func TestGoldenReserves(t *testing.T) {
 	}
 	pretty.WriteByte('\n')
 	want, err := os.ReadFile(filepath.Join("testdata", "reserves.golden.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(pretty.Bytes(), want) {
+		t.Fatalf("golden differs:\n%s", pretty.Bytes())
+	}
+}
+
+type fakeEvents struct {
+	rows     []macroevent.Event
+	err      error
+	calls    int
+	from, to contracts.Day
+}
+
+func (f *fakeEvents) Between(_ context.Context, from, to contracts.Day) ([]macroevent.Event, error) {
+	f.calls++
+	f.from, f.to = from, to
+	return f.rows, f.err
+}
+
+func (f *fakeEvents) Kinds(context.Context) ([]macroevent.Kind, error) { return nil, nil }
+
+func buildEvents(t *testing.T, ev macroevent.Reader) ([]byte, error) {
+	t.Helper()
+	return home_macro.Build(context.Background(), home_macro.Config{
+		RunID: "run-test", BuildID: "build-test", Scope: "scope-test", Zone: zone,
+		Read: readerOf(row(t, day, "56.04", "steady"), row(t, weekAgo, "56.24", "steady")), Events: ev,
+	}, day, generated)
+}
+
+func evRow(kind, date string) macroevent.Event {
+	return macroevent.Event{Kind: kind, Source: "fred", Date: contracts.Day(date), RunDay: day}
+}
+
+func TestEventsListKeptKindsInOrder(t *testing.T) {
+	t.Parallel()
+	f := &fakeEvents{rows: []macroevent.Event{evRow("cpi", "2026-11-12"), evRow("ppi", "2026-11-13"), evRow("fomc", "2026-12-09")}}
+	b, err := buildEvents(t, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, b)
+	if f.calls != 1 || f.from != "2026-11-05" || f.to != "2027-01-04" {
+		t.Fatalf("calls = %d, window = %s..%s", f.calls, f.from, f.to)
+	}
+	card := decode(t, b)["card"].(map[string]any)
+	ev := card["events"].([]any)
+	if len(ev) != 2 {
+		t.Fatalf("events = %v", ev)
+	}
+	first := ev[0].(map[string]any)
+	if first["date"] != "2026-11-12" || first["name_text"] != "CPI" || first["when_text"] != "date only" {
+		t.Fatalf("first = %v", first)
+	}
+	if p := first["previous"].(map[string]any); p["reason"] != "not_built" || p["text"] != "previous value: not built" {
+		t.Fatalf("previous = %v", p)
+	}
+	if ev[1].(map[string]any)["name_text"] != "FOMC decision" {
+		t.Fatalf("second = %v", ev[1])
+	}
+	for _, g := range card["gaps"].([]any) {
+		if g.(map[string]any)["reason"] == "not_built" {
+			t.Fatalf("gaps = %v", card["gaps"])
+		}
+	}
+}
+
+func TestEventsAreCutToEight(t *testing.T) {
+	t.Parallel()
+	f := &fakeEvents{}
+	for i := 1; i <= 9; i++ {
+		f.rows = append(f.rows, evRow("gdp", "2026-11-0"+string(rune('0'+i))))
+	}
+	b, err := buildEvents(t, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, b)
+	ev := decode(t, b)["card"].(map[string]any)["events"].([]any)
+	if len(ev) != 8 || ev[7].(map[string]any)["date"] != "2026-11-08" {
+		t.Fatalf("events = %v", ev)
+	}
+}
+
+func TestNoStoredEventsIsNoDataGap(t *testing.T) {
+	t.Parallel()
+	b, err := buildEvents(t, &fakeEvents{rows: []macroevent.Event{evRow("ppi", "2026-11-13")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, b)
+	card := decode(t, b)["card"].(map[string]any)
+	if len(card["events"].([]any)) != 0 {
+		t.Fatalf("events = %v", card["events"])
+	}
+	gaps := card["gaps"].([]any)
+	g := gaps[len(gaps)-1].(map[string]any)
+	if len(gaps) != 1 || g["reason"] != "no_data" || g["text"] != "No macro events stored for the next 60 days" {
+		t.Fatalf("gaps = %v", gaps)
+	}
+}
+
+func TestEventsReaderErrorIsBuildError(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	if _, err := buildEvents(t, &fakeEvents{err: boom}); !errors.Is(err, boom) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestGoldenEvents(t *testing.T) {
+	t.Parallel()
+	f := &fakeEvents{rows: []macroevent.Event{evRow("cpi", "2026-11-12"), evRow("fomc", "2026-12-09"), evRow("boj", "2026-12-19")}}
+	got, err := buildEvents(t, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, got)
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, got, "", "  "); err != nil {
+		t.Fatal(err)
+	}
+	pretty.WriteByte('\n')
+	want, err := os.ReadFile(filepath.Join("testdata", "events.golden.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
