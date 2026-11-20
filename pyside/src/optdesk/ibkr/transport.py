@@ -48,6 +48,7 @@ from optdesk.ibkr.model import (
     ResolveResult,
 )
 from optdesk.ibkr.timing import Clock, SystemClock
+from optdesk.ibkr.transport_health import ping_response, retryable_status
 
 # --- the guard -------------------------------------------------------------
 
@@ -309,8 +310,8 @@ def _chain_to_proto(row: ChainRow) -> pb.Chain:
 def _status_of(exc: BaseException) -> tuple[grpc.StatusCode, str]:
     if isinstance(exc, TimeoutError):
         return grpc.StatusCode.DEADLINE_EXCEEDED, "the gateway did not answer in time"
-    if isinstance(exc, ConnectionError | OSError):
-        return grpc.StatusCode.UNAVAILABLE, "the gateway is not connected"
+    if (health := retryable_status(exc)) is not None:
+        return health
     if isinstance(exc, HistoryPaced):
         return grpc.StatusCode.RESOURCE_EXHAUSTED, "historical requests are paced"
     if isinstance(exc, MultipleAccounts):
@@ -361,11 +362,7 @@ class SessionServicer(pb.SessionServiceServicer):
 
     async def Ping(self, request: pb.PingRequest, context: Context) -> pb.PingResponse:
         state = await self._shared.call("ping", context, self._shared.gateway.status())
-        return pb.PingResponse(
-            connected=state.connected,
-            generation=state.generation,
-            market_data_type=_data_type(state.market_data_type),
-        )
+        return ping_response(state, _data_type(state.market_data_type))
 
 
 class ContractsServicer(pb.ContractsServiceServicer):
