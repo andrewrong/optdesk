@@ -7,14 +7,10 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/sources"
-	"github.com/andrewrong/optdesk/internal/store"
 )
 
 type fbCalendar struct{ clock.Calendar }
-
-type fbSessions struct{ store.SessionDayStore }
 
 type fbJob struct{ contracts.Job }
 
@@ -25,9 +21,7 @@ func fbFactory(t *testing.T) jobFactory {
 	if err := os.WriteFile(filepath.Join(dir, "pyproject.toml"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	f := jobFactory{project: dir, compute: computefigures.ComputeStores{SessionDays: fbSessions{}}}
-	f.d.newCalendar = func(clock.SessionSource) clock.Calendar { return fbCalendar{} }
-	return f
+	return jobFactory{project: dir, cal: fbCalendar{}}
 }
 
 type attachRec struct {
@@ -74,7 +68,7 @@ func TestBarsRefreshWithoutCommand(t *testing.T) {
 func TestBarsRefreshWithoutCalendar(t *testing.T) {
 	t.Parallel()
 	f := fbFactory(t)
-	f.compute = computefigures.ComputeStores{}
+	f.cal = nil
 	rec := &attachRec{}
 	in := namedJob{id: jobBarsRefresh}
 	if got := f.withBarsFallbackIn(in, barSources, rec.attach); got != contracts.Job(in) || rec.n != 0 {

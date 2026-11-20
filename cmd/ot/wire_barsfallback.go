@@ -17,7 +17,7 @@ var errNoFallbackCalendar = errors.New("no session calendar")
 // sourceYfinance is the registry id of the bar source of the fallback.
 const sourceYfinance = "yfinance"
 
-// withBarsFallback gives j, a bars_refresh job, the yfinance source and the session calendar of the factory
+// withBarsFallback gives j, a bars_refresh job, the yfinance source and the session calendar the factory holds (f.cal)
 // (barsrefresh.WithFallback). A source the registry cannot build, a missing command or calendar, or a job that
 // takes none leaves j as built and logs one line; the rule of the fallback is in barsrefresh.
 func (f jobFactory) withBarsFallback(j contracts.Job) contracts.Job {
@@ -41,14 +41,10 @@ func (f jobFactory) withBarsFallbackIn(j contracts.Job, reg map[string]sources.N
 	if err != nil {
 		return left(err)
 	}
-	var cal clock.Calendar
-	if f.d.newCalendar != nil && f.compute.SessionDays != nil {
-		cal = f.d.newCalendar(f.compute.SessionDays)
-	}
-	if cal == nil {
+	if f.cal == nil {
 		return left(errNoFallbackCalendar)
 	}
-	out, err := attach(j, src, cal)
+	out, err := attach(j, src, f.cal)
 	if err != nil {
 		return left(err)
 	}
