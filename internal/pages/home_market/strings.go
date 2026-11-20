@@ -19,7 +19,6 @@ const (
 	levelStale       = " data is stale, data day "
 	levelBad         = " data unusable"
 	indexIvLabel     = "Index IV"
-	indexIvHint      = "指数隐含波动率：标普500用VIX，纳斯达克100用VXN，罗素2000用RVX，取FRED已存收盘值（不是期权实时报价）；标签里是数据日。"
 	indexIvNoRow     = " index IV: no data, not stored yet"
 	indexIvStale     = " index IV: data is stale, data day "
 	indexIvBad       = " index IV: data unusable"
