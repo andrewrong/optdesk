@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -159,21 +161,21 @@ func TestEveryStoredLineHasOneOutcome(t *testing.T) {
 		outcome, reason string
 		present         string
 	}{
-		{"already_present", mk("already_present", "", "", "", "present", 0, 0), "already_present", "", "the key is present now"},
-		{"not_due", notDue, "waiting", "not_due", "the key is missing"},
-		{"lease_held", mk("lease_held", "", "", "", "", 0, 0), "skipped", "run_in_progress", "the key is missing"},
-		{"not_reached", mk("not_reached", "", "", "slot_near", "", 0, 0), "not_run", "slot_near", "the key is missing"},
-		{"rerun_error", mk("rerun", "", "timeout", "", "present", 0, 0), "failed", "timeout", "the key is present now"},
-		{"rerun_no_value", mk("rerun", "", "", "no_value", "present", 0, 0), "nothing_found", "no_value", "the key is present now"},
-		{"rerun_usable", mk("rerun", "", "", "", "present", 5, 5), "unconfirmed", "rerun_unknown", "the key is present now"},
-		{"rerun_empty", mk("rerun", "", "", "", "present", 0, 0), "nothing_found", "no_value_or_empty", "the key is present now"},
-		{"ran_abandoned", mk("ran", "abandoned", "", "", "", 0, 0), "failed", "cut", "the key is missing"},
-		{"ran_partial", mk("ran", "partial", "", "", "", 7, 3), "partial", "cut", "the key is missing"},
-		{"ran_error", mk("ran", "done", "vendor_down", "", "", 0, 0), "failed", "vendor_down", "the key is missing"},
-		{"ran_produced", mk("ran", "done", "", "", "present", 12, 12), "produced", "", "the key is present now"},
-		{"ran_unconfirmed", mk("ran", "done", "", "", "", 12, 12), "unconfirmed", "postcondition", "the key is missing"},
-		{"ran_empty_before_close", mk("ran", "done", "", "empty_before_close", "", 0, 0), "nothing_found", "empty_before_close", "the key is missing"},
-		{"ran_nothing", mk("ran", "done", "", "", "no_value", 0, 0), "nothing_found", "no_value_or_empty", "marked no value"},
+		{"already_present", mk("already_present", "", "", "", "present", 0, 0), "already_present", "", presentNow},
+		{"not_due", notDue, "waiting", "not_due", presentMissing},
+		{"lease_held", mk("lease_held", "", "", "", "", 0, 0), "skipped", "run_in_progress", presentMissing},
+		{"not_reached", mk("not_reached", "", "", "slot_near", "", 0, 0), "not_run", "slot_near", presentMissing},
+		{"rerun_error", mk("rerun", "", "timeout", "", "present", 0, 0), "failed", "timeout", presentNow},
+		{"rerun_no_value", mk("rerun", "", "", "no_value", "present", 0, 0), "nothing_found", "no_value", presentNow},
+		{"rerun_usable", mk("rerun", "", "", "", "present", 5, 5), "unconfirmed", "rerun_unknown", presentNow},
+		{"rerun_empty", mk("rerun", "", "", "", "present", 0, 0), "nothing_found", "no_value_or_empty", presentNow},
+		{"ran_abandoned", mk("ran", "abandoned", "", "", "", 0, 0), "failed", "cut", presentMissing},
+		{"ran_partial", mk("ran", "partial", "", "", "", 7, 3), "partial", "cut", presentMissing},
+		{"ran_error", mk("ran", "done", "vendor_down", "", "", 0, 0), "failed", "vendor_down", presentMissing},
+		{"ran_produced", mk("ran", "done", "", "", "present", 12, 12), "produced", "", presentNow},
+		{"ran_unconfirmed", mk("ran", "done", "", "", "", 12, 12), "unconfirmed", "postcondition", presentMissing},
+		{"ran_empty_before_close", mk("ran", "done", "", "empty_before_close", "", 0, 0), "nothing_found", "empty_before_close", presentMissing},
+		{"ran_nothing", mk("ran", "done", "", "", "no_value", 0, 0), "nothing_found", "no_value_or_empty", presentNoValue},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -206,7 +208,7 @@ func TestRerunThatFoundNothing(t *testing.T) {
 	l := line("rerun", "")
 	l.Mark = "present"
 	k := one(t, row(1, jobrequest.StateDone, l)).Requests[0].Keys[0]
-	if k.Outcome != "nothing_found" || !strings.Contains(k.OutcomeText, "the key stays present from an earlier run") {
+	if k.Outcome != "nothing_found" || !strings.Contains(k.OutcomeText, zhRerunStays) {
 		t.Errorf("got %q %q", k.Outcome, k.OutcomeText)
 	}
 }
@@ -221,14 +223,14 @@ func TestRerunNeverReadsProduced(t *testing.T) {
 			t.Errorf("rerun with %d rows is produced", usable)
 		}
 		if usable > 0 && (k.Outcome != "unconfirmed" || k.Reason != "rerun_unknown" ||
-			k.OutcomeText != fmt.Sprintf("re-run returned %d rows; the key was already present and the page cannot tell whether anything new was stored", usable)) {
+			k.OutcomeText != zhOutUnconfirmed+": "+fmt.Sprintf(zhRerunUnknownFmt, usable)) {
 			t.Errorf("rerun %d rows: %q %q %q", usable, k.Outcome, k.Reason, k.OutcomeText)
 		}
 	}
 	ran := line("ran", "done")
 	ran.Mark, ran.Returned, ran.Usable = "present", 12, 12
 	k := one(t, row(1, jobrequest.StateDone, ran)).Requests[0].Keys[0]
-	if k.Outcome != "produced" || k.OutcomeText != "returned 12 rows" {
+	if k.Outcome != "produced" || k.OutcomeText != zhOutProduced+": "+fmt.Sprintf(zhRanReturnedFmt, 12) {
 		t.Errorf("ran: %q %q", k.Outcome, k.OutcomeText)
 	}
 }
@@ -238,10 +240,10 @@ func TestNotDueLineShowsTime(t *testing.T) {
 	l := line("not_due", "")
 	l.DueAt = time.Date(2026, 11, 12, 15, 30, 0, 0, time.UTC)
 	p := one(t, rowReason(1, jobrequest.StateRefused, "not_due", l))
-	if got := p.Requests[0].Keys[0].OutcomeText; got != "runs at 15:30 UTC" {
+	if got := p.Requests[0].Keys[0].OutcomeText; got != zhOutWaiting+": "+fmt.Sprintf(zhLineRunsAtFmt, "15:30") {
 		t.Errorf("line text %q", got)
 	}
-	if got := p.Requests[0].StateText; got != "the job's slot has not come: runs at 15:30 UTC" {
+	if got := p.Requests[0].StateText; got != fmt.Sprintf(zhRefusedNotDueAtFmt, "15:30") {
 		t.Errorf("state text %q", got)
 	}
 }
@@ -251,7 +253,7 @@ func TestEmptyBeforeCloseText(t *testing.T) {
 	l := line("ran", "done")
 	l.ReasonCode = "empty_before_close"
 	k := one(t, row(1, jobrequest.StateDone, l)).Requests[0].Keys[0]
-	if k.OutcomeText != "nothing yet, the scheduler tries again" {
+	if k.OutcomeText != zhOutNothingFound+": "+zhRanEmptyBefore {
 		t.Errorf("text %q", k.OutcomeText)
 	}
 }
@@ -259,14 +261,14 @@ func TestEmptyBeforeCloseText(t *testing.T) {
 func TestNothingWasProducedLine(t *testing.T) {
 	t.Parallel()
 	l := line("ran", "done")
-	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; !strings.Contains(got, "nothing was produced") {
+	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; !strings.Contains(got, fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")) {
 		t.Errorf("sentence %q", got)
 	}
 	l.Mark, l.Returned, l.Usable = "present", 3, 3
-	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; strings.Contains(got, "nothing was produced") {
+	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; strings.Contains(got, fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")) {
 		t.Errorf("a produced line still says nothing: %q", got)
 	}
-	if got := one(t, rowReason(7, jobrequest.StateRefused, "no_plan")).Sentence; strings.Contains(got, "nothing was produced") {
+	if got := one(t, rowReason(7, jobrequest.StateRefused, "no_plan")).Sentence; strings.Contains(got, fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")) {
 		t.Errorf("a refused request says nothing was produced: %q", got)
 	}
 }
@@ -278,22 +280,22 @@ func TestRequestStateText(t *testing.T) {
 		reason string
 		want   string
 	}{
-		{jobrequest.StateRunning, "", "running since 2026-11-12 14:05 UTC"},
-		{jobrequest.StateDone, "completed", "done"},
-		{jobrequest.StateRefused, "no_key", "not a session of this job's calendar"},
-		{jobrequest.StateRefused, "not_due", "the job's slot has not come"},
-		{jobrequest.StateRefused, "no_plan", "no stored plan for this day (not a session, or the plan was not made)"},
-		{jobrequest.StateRefused, "left_out", "the scheduler holds this job out"},
-		{jobrequest.StateRefused, "not_runnable", "this job cannot be run from the page"},
-		{jobrequest.StateRefused, "not_today", "the day is not today any more in the job's zone"},
-		{jobrequest.StateRefused, "job_running", "this job is already running; press Run again when it ends"},
-		{jobrequest.StateFailed, "slot_near", "stopped before the next key because a slot starts soon; press Run again after it"},
-		{jobrequest.StateFailed, "lease_held", "another run holds the lease"},
-		{jobrequest.StateFailed, "plan_failed", "the plan of the day could not be read"},
-		{jobrequest.StateFailed, "error", "the run failed with an error; see the scheduler log"},
-		{jobrequest.StateFailed, "restart", "the scheduler restarted while it ran"},
-		{jobrequest.StateInterrupted, "stopped", "interrupted by a stop or a deploy; press Run again"},
-		{jobrequest.StateWithdrawn, "withdrawn", "withdrawn"},
+		{jobrequest.StateRunning, "", fmt.Sprintf(zhRunningSinceFmt, "2026-11-12 14:05 UTC")},
+		{jobrequest.StateDone, "completed", zhStateDone},
+		{jobrequest.StateRefused, "no_key", zhRefusedNoKey},
+		{jobrequest.StateRefused, "not_due", zhRefusedNotDue},
+		{jobrequest.StateRefused, "no_plan", zhRefusedNoPlan},
+		{jobrequest.StateRefused, "left_out", zhRefusedLeftOut},
+		{jobrequest.StateRefused, "not_runnable", zhRefusedNotRunnable},
+		{jobrequest.StateRefused, "not_today", zhRefusedNotToday},
+		{jobrequest.StateRefused, "job_running", zhRefusedJobRunning},
+		{jobrequest.StateFailed, "slot_near", zhFailedSlotNear},
+		{jobrequest.StateFailed, "lease_held", zhFailedLeaseHeld},
+		{jobrequest.StateFailed, "plan_failed", zhFailedPlanFailed},
+		{jobrequest.StateFailed, "error", zhFailedError},
+		{jobrequest.StateFailed, "restart", zhFailedRestart},
+		{jobrequest.StateInterrupted, "stopped", zhInterruptedStopped},
+		{jobrequest.StateWithdrawn, "withdrawn", zhStateWithdrawn},
 	}
 	for _, c := range cases {
 		r := rowReason(1, c.state, c.reason)
@@ -317,7 +319,7 @@ func TestQueuedHeldText(t *testing.T) {
 	t.Parallel()
 	r := row(1, jobrequest.StateQueued)
 	r.HoldJob, r.HoldAt = "quote_snapshot", time.Date(2026, 11, 12, 15, 30, 0, 0, time.UTC)
-	if got := one(t, r).Requests[0].StateText; got != "starts after 15:30 UTC (the slot of quote_snapshot)" {
+	if got := one(t, r).Requests[0].StateText; got != fmt.Sprintf(zhQueuedStartsAfterFmt, "15:30", "quote_snapshot") {
 		t.Errorf("text %q", got)
 	}
 }
@@ -327,7 +329,7 @@ func TestQueuedWithdrawalPendingText(t *testing.T) {
 	r := row(1, jobrequest.StateQueued)
 	r.WithdrawnAt = fixedNow
 	got := one(t, r).Requests[0].StateText
-	if !strings.Contains(got, "until the scheduler's worker is next free") && !strings.Contains(got, "when the scheduler's worker is next free") {
+	if got != zhQueuedWithdrawing {
 		t.Errorf("text %q", got)
 	}
 	if !strings.Contains(got, "up to two hours") {
@@ -339,10 +341,10 @@ func TestQueuedStaleText(t *testing.T) {
 	t.Parallel()
 	r := row(1, jobrequest.StateQueued)
 	r.RequestedAt = fixedNow.Add(-3 * time.Minute)
-	if got := one(t, r).Requests[0].StateText; !strings.Contains(got, "may have no console yet") {
+	if got := one(t, r).Requests[0].StateText; got != zhQueuedStale {
 		t.Errorf("old: %q", got)
 	}
-	if got := one(t, row(1, jobrequest.StateQueued)).Requests[0].StateText; strings.Contains(got, "no console yet") {
+	if got := one(t, row(1, jobrequest.StateQueued)).Requests[0].StateText; got == zhQueuedStale {
 		t.Errorf("fresh: %q", got)
 	}
 }
@@ -352,7 +354,7 @@ func TestInterruptedShowsRowsUnknown(t *testing.T) {
 	l := line("ran", "done")
 	l.Mark, l.Returned, l.Usable = "present", 12, 12
 	p := one(t, rowReason(1, jobrequest.StateInterrupted, "stopped", l))
-	if p.Requests[0].StateText != "interrupted by a stop or a deploy; press Run again" {
+	if p.Requests[0].StateText != zhInterruptedStopped {
 		t.Errorf("text %q", p.Requests[0].StateText)
 	}
 	if len(p.Requests[0].Keys) != 1 || p.Requests[0].Keys[0].Outcome != "produced" {
@@ -435,7 +437,7 @@ func TestSlotNearText(t *testing.T) {
 	l.ReasonCode = "slot_near"
 	l.DueAt = time.Date(2026, 11, 12, 15, 30, 0, 0, time.UTC)
 	p := one(t, rowReason(1, jobrequest.StateFailed, "slot_near", l))
-	want := "stopped before the next key because a slot starts at 15:30 UTC; press Run again after it"
+	want := fmt.Sprintf(zhFailedSlotNearAtFmt, "15:30")
 	if p.Requests[0].StateText != want {
 		t.Errorf("text %q", p.Requests[0].StateText)
 	}
@@ -623,7 +625,7 @@ func TestWaitingForLine(t *testing.T) {
 		t.Errorf("a request holding for another job's slot got waiting_for")
 	}
 	p = buildRuns(t, []jobrequest.Row{waiting}, Runs{Reader: fakeRuns{}, Figures: fixedFigures()})
-	if p.Requests[0].WaitingFor != nil || !strings.HasPrefix(p.Requests[0].StateText, "starts after 13:30 UTC") {
+	if p.Requests[0].WaitingFor != nil || p.Requests[0].StateText != fmt.Sprintf(zhQueuedStartsAfterFmt, "13:30", "compute_figures") {
 		t.Errorf("no open run: %+v %q", p.Requests[0].WaitingFor, p.Requests[0].StateText)
 	}
 }
@@ -662,20 +664,28 @@ func TestRunningLinesDoNoArithmetic(t *testing.T) {
 	}
 }
 
+func jsonString(v string) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
 func TestBuildWithoutRunsSameBytes(t *testing.T) {
 	t.Parallel()
 	want := `{
   "schema": "job_console",
   "schema_version": 1,
   "generated_at": "2026-11-12T14:06:00Z",
-  "title": "Job console",
-  "sentence": "Run a job for one day; the scheduler does the work.",
+  "title": ` + jsonString(titleText) + `,
+  "sentence": ` + jsonString(sentenceText) + `,
   "form": null,
   "gaps": [
     {
       "kind": "gap",
       "reason": "job_requests_unavailable",
-      "text": "The job requests cannot be read now."
+      "text": ` + jsonString(unavailableText) + `
     }
   ],
   "jobs": [],
@@ -718,5 +728,80 @@ func TestRunningPairsFigureWithItsOwnRun(t *testing.T) {
 		if (r.Job == "a") != (r.StartedAt == "2026-11-12T13:00:00Z") {
 			t.Errorf("job %s shows start %s", r.Job, r.StartedAt)
 		}
+	}
+}
+
+func TestConsoleTextsAreChineseWithEnglish(t *testing.T) {
+	t.Parallel()
+	hasHan := func(s string) bool {
+		for _, r := range s {
+			if unicode.Is(unicode.Han, r) {
+				return true
+			}
+		}
+		return false
+	}
+	gloss := regexp.MustCompile(`\([A-Za-z]`)
+	check := func(t *testing.T, what, text string) {
+		t.Helper()
+		if !hasHan(text) || !gloss.MatchString(text) {
+			t.Errorf("%s %q lacks Chinese or a glossed English meaning", what, text)
+		}
+	}
+	due := time.Date(2026, 11, 12, 15, 30, 0, 0, time.UTC)
+	mk := func(group, status, errc, reason, mark string, returned, usable int) jobrequest.KeyLine {
+		l := line(group, status)
+		l.ErrorCode, l.ReasonCode, l.Mark, l.Returned, l.Usable = errc, reason, mark, returned, usable
+		return l
+	}
+	notDue := mk("not_due", "", "", "", "", 0, 0)
+	notDue.DueAt = due
+	lines := []jobrequest.KeyLine{
+		mk("already_present", "", "", "", "present", 0, 0), notDue,
+		mk("lease_held", "", "", "", "", 0, 0), mk("not_reached", "", "", "slot_near", "", 0, 0),
+		mk("rerun", "", "timeout", "", "present", 0, 0), mk("rerun", "", "", "no_value", "present", 0, 0),
+		mk("rerun", "", "", "", "present", 5, 5), mk("rerun", "", "", "", "present", 0, 0),
+		mk("ran", "abandoned", "", "", "", 0, 0), mk("ran", "partial", "", "", "", 7, 3),
+		mk("ran", "done", "vendor_down", "", "", 0, 0), mk("ran", "done", "", "", "present", 12, 12),
+		mk("ran", "done", "", "", "", 12, 12), mk("ran", "done", "", "empty_before_close", "", 0, 0),
+		mk("ran", "done", "", "", "no_value", 0, 0),
+	}
+	if len(lines) != 15 {
+		t.Fatalf("%d lines, the table has fifteen rows", len(lines))
+	}
+	for i, l := range lines {
+		k := one(t, row(1, jobrequest.StateDone, l)).Requests[0].Keys[0]
+		check(t, "outcome_text", k.OutcomeText)
+		if k.OutcomeText == k.Outcome {
+			t.Errorf("line %d shows the bare code %q", i, k.Outcome)
+		}
+		if !strings.HasPrefix(k.OutcomeText, outcomeName(k.Outcome)+": ") {
+			t.Errorf("line %d: %q does not start with the name of %q", i, k.OutcomeText, k.Outcome)
+		}
+	}
+	states := []struct {
+		state  jobrequest.State
+		reason string
+	}{
+		{jobrequest.StateRunning, ""}, {jobrequest.StateDone, "completed"},
+		{jobrequest.StateRefused, "no_key"}, {jobrequest.StateRefused, "not_due"}, {jobrequest.StateRefused, "no_plan"},
+		{jobrequest.StateRefused, "left_out"}, {jobrequest.StateRefused, "not_runnable"},
+		{jobrequest.StateRefused, "not_today"}, {jobrequest.StateRefused, "job_running"},
+		{jobrequest.StateFailed, "slot_near"}, {jobrequest.StateFailed, "lease_held"},
+		{jobrequest.StateFailed, "plan_failed"}, {jobrequest.StateFailed, "error"},
+		{jobrequest.StateFailed, "restart"}, {jobrequest.StateFailed, "broker_silent"},
+		{jobrequest.StateInterrupted, "stopped"}, {jobrequest.StateWithdrawn, "withdrawn"},
+		// the fallback line: a state with a reason that has no sentence, and without a reason
+		{jobrequest.StateRefused, "other"}, {jobrequest.StateFailed, ""}, {jobrequest.StateInterrupted, "other"},
+		{jobrequest.StateQueued, ""},
+	}
+	for _, c := range states {
+		r := rowReason(1, c.state, c.reason)
+		r.StartedAt = fixedNow.Add(-time.Minute)
+		check(t, string(c.state)+" "+c.reason, one(t, r).Requests[0].StateText)
+	}
+	for _, s := range []jobrequest.State{jobrequest.StateQueued, jobrequest.StateRunning, jobrequest.StateDone,
+		jobrequest.StateRefused, jobrequest.StateFailed, jobrequest.StateInterrupted, jobrequest.StateWithdrawn} {
+		check(t, "state name", stateName(s))
 	}
 }
