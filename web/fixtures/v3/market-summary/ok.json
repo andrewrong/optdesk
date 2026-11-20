@@ -275,7 +275,14 @@
             "unit": "vol_points",
             "tone": "up"
           },
-          "source_text": "Sample source"
+          "source_text": "Sample source",
+          "index_iv": {
+            "kind": "value",
+            "value": 18.2,
+            "text": "18.2",
+            "unit": "vol_points",
+            "source": "VIXCLS 11-19"
+          }
         },
         {
           "name": "NDX",
@@ -298,7 +305,14 @@
             "unit": "vol_points",
             "tone": "up"
           },
-          "source_text": "Sample source"
+          "source_text": "Sample source",
+          "index_iv": {
+            "kind": "value",
+            "value": 22.4,
+            "text": "22.4",
+            "unit": "vol_points",
+            "source": "VXNCLS 11-19"
+          }
         },
         {
           "name": "RUT",
@@ -321,9 +335,20 @@
             "unit": "vol_points",
             "tone": "down"
           },
-          "source_text": "Sample source"
+          "source_text": "Sample source",
+          "index_iv": {
+            "kind": "value",
+            "value": 21.1,
+            "text": "21.1",
+            "unit": "vol_points",
+            "source": "RVXCLS 11-19"
+          }
         }
-      ]
+      ],
+      "index_iv": {
+        "label": "Index IV",
+        "hint": "指数隐含波动率：标普500用VIX，纳斯达克100用VXN，罗素2000用RVX，取FRED已存收盘值（不是期权实时报价）；标签里是数据日。"
+      }
     },
     "vol_indices": [
       {

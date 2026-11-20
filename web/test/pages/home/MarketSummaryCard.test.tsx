@@ -230,6 +230,29 @@ describe('validate', () => {
     )
   })
 
+  it('index IV column shows source and hint', async () => {
+    const payload = fixture('ok.json')
+    await show(<MarketSummaryCard payload={payload} />)
+    const headers = [...host.querySelectorAll('[data-index-table] th')]
+    const texts = headers.map((h) => h.textContent)
+    const { label, hint } = payload.card.index_table.index_iv
+    expect(texts).toContain(label)
+    expect(texts.indexOf(label)).toBe(texts.indexOf(payload.card.index_table.columns[1]) + 1)
+    expect(texts.indexOf(label) + 1).toBe(texts.indexOf(payload.card.index_table.columns[2]))
+    await act(async () => (headers[texts.indexOf(label)]!.querySelector('button') as HTMLElement).focus())
+    expect(document.body.textContent).toContain(hint)
+    const row = [...host.querySelectorAll('[data-index-table] tbody tr')].find((tr) => tr.textContent?.includes('SPX'))
+    expect(row?.textContent).toContain(payload.card.index_table.rows[0].index_iv.source)
+    expect(row?.textContent).toContain(payload.card.index_table.rows[0].index_iv.text)
+  })
+
+  it('no index IV column without the table field', async () => {
+    const payload = fixture('stale.json')
+    expect(payload.card.index_table.index_iv).toBeUndefined()
+    await show(<MarketSummaryCard payload={payload} />)
+    expect(host.querySelectorAll('[data-index-table] th')).toHaveLength(4)
+  })
+
   it('registers under market_summary', () => {
     expect(registration.schema).toBe('market_summary')
   })

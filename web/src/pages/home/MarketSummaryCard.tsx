@@ -31,11 +31,16 @@ function specOf(chart: Chart_): ChartSpec {
 }
 
 // Python sends the column names in order: name, iv, rv20, difference.
-function columnsOf(names: Payload['card']['index_table']['columns']): Column[] {
-  const [name, iv, rv20, diff] = names
+// The Index IV column stands after the iv column when the payload sends `index_table.index_iv`.
+function columnsOf(table: Payload['card']['index_table']): Column[] {
+  const [name, iv, rv20, diff] = table.columns
+  const indexIv: Column[] = table.index_iv
+    ? [{ id: 'index_iv', label: table.index_iv.label, hint: table.index_iv.hint, align: 'right' }]
+    : []
   return [
     { id: 'name', label: name },
     { id: 'iv', label: iv, align: 'right' },
+    ...indexIv,
     { id: 'rv20', label: rv20, align: 'right' },
     { id: 'diff', label: diff, align: 'right' },
   ]
@@ -46,7 +51,7 @@ type Slot = Payload['card']['index_table']['rows'][number]['iv']
 // A figure slot is a value or a gap, told apart by its kind tag; a gap has no value and no tone.
 function cellOf(slot: Slot): Cell {
   if (slot.kind === 'gap') return { reason: slot.reason, text: slot.text }
-  return { text: slot.text, value: slot.value, tone: slot.tone }
+  return { text: slot.text, value: slot.value, tone: slot.tone, source: slot.source }
 }
 
 export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; titleHref?: string }) {
@@ -58,6 +63,7 @@ export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; ti
       note: row.source_text ?? null,
     } as Cell,
     iv: cellOf(row.iv),
+    ...(row.index_iv ? { index_iv: cellOf(row.index_iv) } : {}),
     rv20: cellOf(row.rv20),
     diff: cellOf(row.iv_minus_rv20),
   }))
@@ -78,7 +84,7 @@ export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; ti
           <Chart spec={specOf(card.chart)} ariaText={card.chart.aria_text} name="market-summary" />
         </div>
         <div data-index-table>
-          <DataTable columns={columnsOf(card.index_table.columns)} rows={rows} />
+          <DataTable columns={columnsOf(card.index_table)} rows={rows} />
         </div>
         {card.vol_indices ? (
           <ul className="flex flex-wrap gap-2" data-vol-indices>
