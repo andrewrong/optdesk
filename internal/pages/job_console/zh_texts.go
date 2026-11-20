@@ -171,3 +171,44 @@ const (
 	// zhFailedRestart: "the scheduler restarted while it ran".
 	zhFailedRestart = "运行期间调度器重启了 (the scheduler restarted while it ran)"
 )
+
+// The force-run reasons beside a job row (docs/design/scheduler-per-job.md, Decisions).
+const (
+	// ZhForceMomentMix: "force comes with the late-collection design (each pull stored with its own time)".
+	ZhForceMomentMix = "强制运行要等晚期采集设计落地（每次拉取按各自的时间存储） (force comes with the late-collection design (each pull stored with its own time))"
+	// ZhForceAppendOnly: "a forced run adds executions by (alias, exec_id) and never replaces the day's capture".
+	ZhForceAppendOnly = "强制运行按 (alias, exec_id) 追加成交，绝不替换当天已存的采集 (a forced run adds executions by (alias, exec_id) and never replaces the day's capture)"
+	// ZhForceInsertOnly: "a stored capture of a statement day is never replaced, so a forced run writes nothing new".
+	ZhForceInsertOnly = "已存的对账单日采集绝不会被替换，所以强制运行不会写入任何新数据 (a stored capture of a statement day is never replaced, so a forced run writes nothing new)"
+	// ZhForceAttemptRows: "a re-run adds one row under the next attempt, which replaces nothing".
+	ZhForceAttemptRows = "重跑会在下一个尝试序号下新增一行，不替换任何内容 (a re-run adds one row under the next attempt, which replaces nothing)"
+	// ZhForceNotProved: "nothing read proves that a second run equals the first".
+	ZhForceNotProved = "目前读到的内容无法证明第二次运行与第一次结果相同 (nothing read proves that a second run equals the first)"
+)
+
+// Why a listed-only job cannot be run, and what would make it runnable.
+const (
+	// ZhWhyNoLowerBound: "a run before its slot would store pre-open prices as the open".
+	ZhWhyNoLowerBound = "在时段之前运行会把开盘前的价格存成开盘价 (a run before its slot would store pre-open prices as the open)"
+	// ZhNeedsLowerBound: "its Run must have a lower bound at the slot instant".
+	ZhNeedsLowerBound = "它的 Run 必须在时段时刻设有下限 (its Run must have a lower bound at the slot instant)"
+	// ZhWhyNoDayGuard: "a late run makes a key that the open job answers late".
+	ZhWhyNoDayGuard = "迟到的运行会生成一个键，而开盘任务会迟答这个键 (a late run makes a key that the open job answers late)"
+	// ZhNeedsDayGuard: "the plan job must refuse the day and the time that the pull refuses".
+	ZhNeedsDayGuard = "计划任务必须拒绝拉取所拒绝的日期和时间 (the plan job must refuse the day and the time that the pull refuses)"
+	// ZhWhyHeavyAndCap: "the budget exceeds the run bound so a run is always cut, and the per-day cap in memory is shared with the scheduler".
+	ZhWhyHeavyAndCap = "预算超过运行上限，所以运行总会被中断；内存中的每日上限与调度器共用 (the budget exceeds the run bound so a run is always cut, and the per-day cap in memory is shared with the scheduler)" //nolint:lll // one string literal, as the English guard of cmd/ot reads it
+	// ZhNeedsHeavyAndCap: "a console run must have a budget and a cap of its own".
+	ZhNeedsHeavyAndCap = "控制台运行必须有自己的预算和上限 (a console run must have a budget and a cap of its own)"
+	// ZhWhyCachesFailures: "a failed result is cached for the day, so a run neither retries nor can be forced".
+	ZhWhyCachesFailures = "失败的结果会缓存一整天，所以运行既不会重试也无法强制 (a failed result is cached for the day, so a run neither retries nor can be forced)"
+	// ZhNeedsCachesFailure: "the cache must keep only successes, or Run must take a force flag".
+	ZhNeedsCachesFailure = "缓存只能保留成功的结果，或者 Run 必须带强制标志 (the cache must keep only successes, or Run must take a force flag)"
+)
+
+const (
+	// ZhNoteQuoteSnapshot: "its three keys, 09:45, 12:30 and 15:30 ET, share one scheduled instant, 15:30 ET, so all three wait for it;
+	// only the 15:30 key can produce, and only until ten minutes after it; a 09:45 or 12:30 key that is still missing
+	// ends no value (missed slot), as the scheduler's own tick at 15:30 would write".
+	ZhNoteQuoteSnapshot = "它的三个键 09:45、12:30 和 15:30 ET 共用同一个计划时刻 15:30 ET，所以三个键都要等到那时；只有 15:30 的键能产出，且只在它之后十分钟内；仍然缺失的 09:45 或 12:30 键以无值（错过时段）结束，与调度器在 15:30 的自身轮次所写的一致 (its three keys, 09:45, 12:30 and 15:30 ET, share one scheduled instant, 15:30 ET, so all three wait for it; only the 15:30 key can produce, and only until ten minutes after it; a 09:45 or 12:30 key that is still missing ends no value (missed slot), as the scheduler's own tick at 15:30 would write)" //nolint:lll // one string literal, as the English guard of cmd/ot reads it
+)
