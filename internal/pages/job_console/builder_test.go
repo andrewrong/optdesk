@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -665,10 +664,7 @@ func TestRunningLinesDoNoArithmetic(t *testing.T) {
 }
 
 func jsonString(v string) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		panic(err)
-	}
+	b, _ := json.Marshal(v)
 	return string(b)
 }
 
@@ -733,18 +729,11 @@ func TestRunningPairsFigureWithItsOwnRun(t *testing.T) {
 
 func TestConsoleTextsAreChineseWithEnglish(t *testing.T) {
 	t.Parallel()
-	hasHan := func(s string) bool {
-		for _, r := range s {
-			if unicode.Is(unicode.Han, r) {
-				return true
-			}
-		}
-		return false
-	}
+	han := regexp.MustCompile(`\p{Han}`)
 	gloss := regexp.MustCompile(`\([A-Za-z]`)
 	check := func(t *testing.T, what, text string) {
 		t.Helper()
-		if !hasHan(text) || !gloss.MatchString(text) {
+		if !han.MatchString(text) || !gloss.MatchString(text) {
 			t.Errorf("%s %q lacks Chinese or a glossed English meaning", what, text)
 		}
 	}
@@ -791,7 +780,6 @@ func TestConsoleTextsAreChineseWithEnglish(t *testing.T) {
 		{jobrequest.StateFailed, "plan_failed"}, {jobrequest.StateFailed, "error"},
 		{jobrequest.StateFailed, "restart"}, {jobrequest.StateFailed, "broker_silent"},
 		{jobrequest.StateInterrupted, "stopped"}, {jobrequest.StateWithdrawn, "withdrawn"},
-		// the fallback line: a state with a reason that has no sentence, and without a reason
 		{jobrequest.StateRefused, "other"}, {jobrequest.StateFailed, ""}, {jobrequest.StateInterrupted, "other"},
 		{jobrequest.StateQueued, ""},
 	}
