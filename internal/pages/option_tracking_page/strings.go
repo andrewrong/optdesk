@@ -4,18 +4,17 @@ package option_tracking_page
 // sentence of its tracking code; the code word is not shown.
 const (
 	pageTitle   = "My short option tracking"
-	flexNote    = "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table"
-	markNote    = "Mid price, the midpoint of the closing bid/ask; not a traded price"
+	flexNote    = flexNoteZh
+	markNote    = markNoteZh
 	noOpenText  = "No open short options"
-	leftOutTail = " long legs not listed, see Held options > Structures"
-	staleText   = "Some open contracts have no fresh closing price, the related cells show a gap"
+	leftOutTail = leftOutTailZh
+	staleText   = staleTextZh
 	defaultName = "main"
 
 	labelAccount = "Account ("
 	labelClose   = ")"
 
 	dash       = "—"
-	unreadable = "Unreadable"
 	notApply   = "Not applicable"
 	inLife     = "In term"
 	earlyBadge = "Early"
@@ -51,21 +50,21 @@ const (
 
 // codeTexts is the sentence of a gap text.
 var codeTexts = map[string]string{
-	codeNoMark:     "No fresh closing price",
-	codeNoEventRow: "No candidate row of this company in the last 7 days, earnings and ex-dividend dates unknown",
-	codeNoGuardRow: "No held call guard row, not treated as safe",
-	codeNoFlexRows: "No Flex record for this account",
-	codeNoAccount:  "No account position record, check table not built",
-	codeNoValue:    "No such value",
-	codeNoClose:    "No closing price of the stock",
+	codeNoMark:     noMarkZh,
+	codeNoEventRow: noEventRowZh,
+	codeNoGuardRow: noGuardRowZh,
+	codeNoFlexRows: noFlexRowsZh,
+	codeNoAccount:  noAccountZh,
+	codeNoValue:    noValueZh,
+	codeNoClose:    noCloseZh,
 	codeMarkOnly:   markOnlyZh,
-	codeUnreadable: unreadable,
-	"no_reader":    "No reader",
+	codeUnreadable: unreadableZh,
+	"no_reader":    noReaderZh,
 
-	"no_sessions":   "No session reader, the page cannot tell the trading day",
-	"no_eod_reader": "No end-of-day price reader, earnings and ex-dividend dates unknown",
-	"no_candidates": "No candidate reader, earnings and ex-dividend dates unknown",
-	"no_names":      "No symbol reader, earnings and ex-dividend dates unknown",
+	"no_sessions":   noSessionsZh,
+	"no_eod_reader": noEodReaderZh,
+	"no_candidates": noCandidatesZh,
+	"no_names":      noNamesZh,
 }
 
 // reasonOf is the common.v2 Gap reason of a tracking code.
@@ -97,12 +96,12 @@ var badgeGuard = map[string]string{"ok": "ok", "block": "Blocked", "blocked": "B
 var guardTone = map[string]string{"ok": "up", "block": "down", "blocked": "down"}
 
 var reasonTexts = map[string]string{
-	"early_assignment_risk": "Early assignment risk before the ex-dividend date",
-	"no_dividend_info":      "No dividend information",
-	"stale_dividend":        "Dividend information is stale",
+	"early_assignment_risk": earlyAssignZh,
+	"no_dividend_info":      noDividendZh,
+	"stale_dividend":        staleDividendZh,
 }
 
 var checkNotes = map[string]string{
-	"not_in_flex":    "Held in the account, not in Flex: maybe opened today, Flex arrives the next day",
-	"not_in_account": "Open in Flex, gone from the account: maybe assigned or expired today, Flex not arrived yet",
+	"not_in_flex":    notInFlexZh,
+	"not_in_account": notInAccountZh,
 }

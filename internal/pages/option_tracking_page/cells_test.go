@@ -46,7 +46,7 @@ func TestNumericCellsCarryValue(t *testing.T) {
 	if !strings.Contains(string(b), `"value":100.50`) {
 		t.Fatalf("json = %s", b)
 	}
-	if g := asGap(t, numCell("abc", codeNoValue)); g.Reason != "no_data" || g.Text != "Unreadable" {
+	if g := asGap(t, numCell("abc", codeNoValue)); g.Reason != "no_data" || g.Text != codeTexts["unreadable"] {
 		t.Fatalf("gap = %+v", g)
 	}
 	m := asValue(t, moneynessCell(sampleOpen("p")))
@@ -60,7 +60,7 @@ func TestMissingMarkIsGapCell(t *testing.T) {
 	o := sampleOpen("p")
 	o.Mid, o.MarkStatus = "", "no_mark"
 	g := asGap(t, numCell(o.Mid, markCode(o)))
-	if g.Kind != "gap" || g.Reason != "missing_quote" || g.Text != "No fresh closing price" {
+	if g.Kind != "gap" || g.Reason != "missing_quote" || g.Text != codeTexts["no_mark"] {
 		t.Fatalf("gap = %+v", g)
 	}
 	for _, d := range openColumns("", nil) {
@@ -96,7 +96,7 @@ func TestMarkOnlyRowText(t *testing.T) {
 		}
 	}
 	o.Spot = "100.00"
-	if g := asGap(t, numCell("", markCode(o))); g.Text != "No such value" {
+	if g := asGap(t, numCell("", markCode(o))); g.Text != codeTexts["no_value"] {
 		t.Fatalf("with spot = %+v", g)
 	}
 }
@@ -129,11 +129,11 @@ func TestGuardBadges(t *testing.T) {
 		t.Fatalf("ok = %+v", c)
 	}
 	o.Guard, o.GuardReason = "block", "early_assignment_risk"
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "Blocked") || c.Tone != "down" || !strings.Contains(c.Text, "Early assignment") {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "Blocked") || c.Tone != "down" || !strings.Contains(c.Text, reasonTexts["early_assignment_risk"]) {
 		t.Fatalf("block = %+v", c)
 	}
 	o.Guard, o.GuardReason = "unknown", "no_dividend_info"
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "Unconfirmed") || !strings.Contains(c.Text, "No dividend information") {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "Unconfirmed") || !strings.Contains(c.Text, reasonTexts["no_dividend_info"]) {
 		t.Fatalf("unknown = %+v", c)
 	}
 	o.GuardReason = "no_guard_row"
@@ -197,7 +197,7 @@ func TestEmptyStringIsNeverZero(t *testing.T) {
 			}
 		}
 	}
-	if g := asGap(t, numCell("", codeNoValue)); g.Reason != "no_data" || g.Text != "No such value" {
+	if g := asGap(t, numCell("", codeNoValue)); g.Reason != "no_data" || g.Text != codeTexts["no_value"] {
 		t.Fatalf("gap = %+v", g)
 	}
 }
@@ -210,7 +210,7 @@ func TestCodeGapTextHasNoCodeWord(t *testing.T) {
 			t.Errorf("%s: gap = %+v", code, g)
 		}
 	}
-	if g := codeGap("no_mark"); g.Text != "No fresh closing price" {
+	if g := codeGap("no_mark"); g.Text != codeTexts["no_mark"] {
 		t.Fatalf("gap = %+v", g)
 	}
 }
@@ -238,11 +238,11 @@ func TestPremiumCellUnknownCurrency(t *testing.T) {
 	t.Parallel()
 	for _, cur := range []string{"", "XYZ"} {
 		g := asGap(t, moneyCell("100", cur))
-		if g.Reason != "no_data" || g.Text != "Unreadable" {
+		if g.Reason != "no_data" || g.Text != codeTexts["unreadable"] {
 			t.Errorf("%q: gap = %+v", cur, g)
 		}
 	}
-	if g := asGap(t, moneyCell("", "USD")); g.Text != "No such value" {
+	if g := asGap(t, moneyCell("", "USD")); g.Text != codeTexts["no_value"] {
 		t.Fatalf("gap = %+v", g)
 	}
 }
@@ -262,7 +262,7 @@ func TestDecimalCellRounds(t *testing.T) {
 	if g := asGap(t, decimalCell("", codeNoMark, 2)); g.Reason != "missing_quote" {
 		t.Fatalf("empty = %+v", g)
 	}
-	if g := asGap(t, decimalCell("abc", codeNoValue, 2)); g.Text != "Unreadable" {
+	if g := asGap(t, decimalCell("abc", codeNoValue, 2)); g.Text != codeTexts["unreadable"] {
 		t.Fatalf("abc = %+v", g)
 	}
 }
@@ -294,7 +294,7 @@ func TestKeptPercentCell(t *testing.T) {
 	if g := asGap(t, keptPercentCell("", codeNoMark)); g.Reason != "missing_quote" {
 		t.Errorf("empty = %+v", g)
 	}
-	if g := asGap(t, keptPercentCell("abc", codeNoValue)); g.Text != "Unreadable" {
+	if g := asGap(t, keptPercentCell("abc", codeNoValue)); g.Text != codeTexts["unreadable"] {
 		t.Errorf("abc = %+v", g)
 	}
 }
@@ -347,11 +347,11 @@ func TestMoneynessGaps(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
 	o.OtmPercent = "abc"
-	if g := asGap(t, moneynessCell(o)); g.Text != "Unreadable" {
+	if g := asGap(t, moneynessCell(o)); g.Text != codeTexts["unreadable"] {
 		t.Fatalf("unreadable gap = %+v", g)
 	}
 	o.OtmPercent = ""
-	if g := asGap(t, moneynessCell(o)); g.Text == "Unreadable" || g.Kind != "gap" {
+	if g := asGap(t, moneynessCell(o)); g.Text == codeTexts["unreadable"] || g.Kind != "gap" {
 		t.Fatalf("empty gap = %+v", g)
 	}
 }
