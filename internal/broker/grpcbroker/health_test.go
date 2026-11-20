@@ -52,8 +52,6 @@ func TestHealthMapsPing(t *testing.T) {
 		"soft_lost":   {&pb.PingResponse{State: pb.SessionState_SESSION_STATE_SOFT_LOST}, "soft_lost"},
 		"down":        {&pb.PingResponse{State: pb.SessionState_SESSION_STATE_DOWN}, "down"},
 		"farm_broken": {&pb.PingResponse{Connected: true, State: pb.SessionState_SESSION_STATE_FARM_BROKEN}, "farm_broken"},
-		"older":       {&pb.PingResponse{Connected: true}, "up"},
-		"older_down":  {&pb.PingResponse{}, "down"},
 	} {
 		c := serveHealth(t, func(context.Context) (*pb.PingResponse, error) { return tc.in, nil })
 		h, err := c.Health(context.Background())
@@ -74,6 +72,16 @@ func TestHealthMapsPing(t *testing.T) {
 	want := broker.Farm{Name: "ushmds", Up: false, Since: time.UnixMilli(1700000000123).UTC()}
 	if h.Farms[0] != want || h.Farms[1].Name != "hkhmds" || !h.Farms[1].Up || h.Farms[1].Since.UnixMilli() != 5 {
 		t.Fatalf("got %+v", h.Farms)
+	}
+}
+
+func TestStateOfUnspecifiedIsUnknown(t *testing.T) {
+	t.Parallel()
+	for _, connected := range []bool{true, false} {
+		r := &pb.PingResponse{State: pb.SessionState_SESSION_STATE_UNSPECIFIED, Connected: connected}
+		if got := stateOf(r); got != "" {
+			t.Fatalf("connected=%v: got %q, want empty", connected, got)
+		}
 	}
 }
 

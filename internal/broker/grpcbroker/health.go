@@ -67,10 +67,9 @@ func stateOf(r *pb.PingResponse) string {
 		return "farm_broken"
 	case pb.SessionState_SESSION_STATE_UNSPECIFIED:
 	}
-	if r.GetConnected() {
-		return "up"
-	}
-	return "down"
+	// A pyside that states nothing reads as unknown, whatever connected says; the page builder
+	// shows an unknown state as unreachable.
+	return ""
 }
 
 // healthErr is wrapErr, except that a cancelled call is Retryable: a gateway that does not answer
