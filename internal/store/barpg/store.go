@@ -43,7 +43,8 @@ const upsertFxRateSQL = `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, 
 
 // upsertPriceBarSQL arguments: instrument_id, session_day, basis, open, high, low, close, volume, currency, source,
 // received_at, written_by. A stored row is replaced only when its prices, volume (numeric equality), currency, source or
-// status differs; received_at, the key and adjust_epoch are never set.
+// status differs; received_at, the key and adjust_epoch are never set. A yfinance row never replaces a stored ibkr
+// row (it counts as unchanged); an ibkr row replaces a yfinance row, equal prices or not.
 const upsertPriceBarSQL = `INSERT INTO obs.price_bar (instrument_id, session_day, basis, open, high, low, close, volume, ` +
 	`currency, source, received_at, status, updated_at, written_by) ` +
 	`VALUES ($1, $2::date, $3, $4::numeric, $5::numeric, $6::numeric, $7::numeric, $8::numeric, $9, $10, $11, 'ok', now(), $12) ` +
@@ -53,7 +54,8 @@ const upsertPriceBarSQL = `INSERT INTO obs.price_bar (instrument_id, session_day
 	`WHERE (obs.price_bar.open, obs.price_bar.high, obs.price_bar.low, obs.price_bar.close, obs.price_bar.volume, ` +
 	`obs.price_bar.currency, obs.price_bar.source, obs.price_bar.status) ` +
 	`IS DISTINCT FROM (EXCLUDED.open, EXCLUDED.high, EXCLUDED.low, EXCLUDED.close, EXCLUDED.volume, EXCLUDED.currency, ` +
-	`EXCLUDED.source, EXCLUDED.status) RETURNING instrument_id`
+	`EXCLUDED.source, EXCLUDED.status) ` +
+	`AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr') RETURNING instrument_id`
 
 // execer runs one statement inside a transaction and reports the rows it added.
 type execer interface {

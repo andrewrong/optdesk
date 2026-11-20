@@ -173,3 +173,65 @@ func TestOldPriceBarInsertSQLWorksOnMigratedTable(t *testing.T) {
 		}
 	}
 }
+
+func sourced(r contracts.PriceBar, source, closeText string) contracts.PriceBar {
+	r.Open, r.High, r.Low, r.Close = closeText, closeText, closeText, closeText
+	setText(&r.Source, source)
+	return r
+}
+
+func TestUpsertSourcePrecedence(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	cases := []struct {
+		name, first, second string
+		want                bar.BarWriteCount
+		wantClose, wantSrc  string
+	}{
+		{"ibkr over ibkr", "ibkr", "ibkr", bar.BarWriteCount{Written: 1}, "12", "ibkr"},
+		{"yfinance over ibkr", "ibkr", "yfinance", bar.BarWriteCount{Unchanged: 1}, "10", "ibkr"},
+		{"ibkr over yfinance", "yfinance", "ibkr", bar.BarWriteCount{Written: 1}, "12", "ibkr"},
+		{"yfinance over yfinance", "yfinance", "yfinance", bar.BarWriteCount{Written: 1}, "12", "yfinance"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			name := newDatabase(t)
+			st, admin := openWriter(ctx, t, name), pgxAs(t, name)
+			base := pbar(7, "trades", 1, "2026-11-05", "10")
+			if c, err := st.UpsertPriceBars(ctx, []contracts.PriceBar{sourced(base, tc.first, "10")}, "r1"); err != nil || c != (bar.BarWriteCount{Written: 1}) {
+				t.Fatalf("first = %+v, %v", c, err)
+			}
+			c, err := st.UpsertPriceBars(ctx, []contracts.PriceBar{sourced(base, tc.second, "12")}, "r2")
+			if err != nil || c != tc.want {
+				t.Errorf("second = %+v, %v; want %+v", c, err, tc.want)
+			}
+			var cl, src string
+			if err := admin.QueryRow(ctx, `SELECT close::text, source FROM obs.price_bar`).Scan(&cl, &src); err != nil {
+				t.Fatal(err)
+			}
+			if cl != tc.wantClose || src != tc.wantSrc {
+				t.Errorf("stored close %s source %s, want %s %s", cl, src, tc.wantClose, tc.wantSrc)
+			}
+		})
+	}
+}
+
+func TestUpsertIbkrReplacesYfinanceEqualPrices(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, admin := openWriter(ctx, t, name), pgxAs(t, name)
+	base := pbar(7, "trades", 1, "2026-11-05", "10")
+	if _, err := st.UpsertPriceBars(ctx, []contracts.PriceBar{sourced(base, "yfinance", "10")}, "r1"); err != nil {
+		t.Fatal(err)
+	}
+	c, err := st.UpsertPriceBars(ctx, []contracts.PriceBar{sourced(base, "ibkr", "10")}, "r2")
+	if err != nil || c != (bar.BarWriteCount{Written: 1}) {
+		t.Fatalf("ibkr over yfinance = %+v, %v", c, err)
+	}
+	var src string
+	if err := admin.QueryRow(ctx, `SELECT source FROM obs.price_bar`).Scan(&src); err != nil || src != "ibkr" {
+		t.Errorf("source = %q, %v", src, err)
+	}
+}

@@ -340,6 +340,14 @@ func TestUpsertBarSQLReplacesOnlyWhenDifferent(t *testing.T) {
 	}
 }
 
+func TestUpsertBarSQLSourcePrecedence(t *testing.T) {
+	t.Parallel()
+	const want = "AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr') RETURNING instrument_id"
+	if !strings.HasSuffix(upsertPriceBarSQL, want) {
+		t.Errorf("statement does not end with %q: %s", want, upsertPriceBarSQL)
+	}
+}
+
 func TestUpsertBarEmptyMakesNoCall(t *testing.T) {
 	t.Parallel()
 	f := &fakeDB{}
