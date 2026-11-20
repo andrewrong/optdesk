@@ -126,6 +126,7 @@ func runOnce(a *app, args []string) error {
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
 	dryRun := fs.Bool("dry-run", false, "capture through the live broker into memory; no store, no guard, no write")
+	force := fs.Bool("force", false, "post the requests with force (a stored day is run again); not read by --dry-run")
 	var ef enqueueFlags
 	ef.register(fs)
 	var jobNames []string
@@ -152,7 +153,7 @@ func runOnce(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	return enqueue(context.Background(), a, "run-once", buildRequests(jobNames, day, clk.Now(), false, true), ef)
+	return enqueue(context.Background(), a, "run-once", buildRequests(jobNames, day, clk.Now(), *force, true), ef)
 }
 
 // wiring is what run-once, backfill and ot scheduler build from the open stores.

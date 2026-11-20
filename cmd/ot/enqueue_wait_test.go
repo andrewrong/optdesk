@@ -186,6 +186,25 @@ func TestBackfillJobPostsOneRequestWithForce(t *testing.T) {
 	}
 }
 
+func TestRunOncePostsForceWithFlag(t *testing.T) {
+	t.Parallel()
+	for _, force := range []bool{true, false} {
+		p := &enqPoster{}
+		a, _, _ := enqueueApp(t, p)
+		args := []string{"--day", "2026-11-04", "--job", "fred_series"}
+		if force {
+			args = append(args, "--force")
+		}
+		if err := runOnce(a, args); err != nil {
+			t.Fatal(err)
+		}
+		want := []jobrequest.Request{{JobID: "fred_series", Day: "2026-11-04", Force: force}}
+		if !slices.Equal(p.reqs, want) {
+			t.Fatalf("force=%v: requests %+v, want %+v", force, p.reqs, want)
+		}
+	}
+}
+
 func TestEnqueueRefusesDatasetAsUnknownFlag(t *testing.T) {
 	t.Parallel()
 	for name, run := range map[string]func(*app, []string) error{"backfill": backfill, "run-once": runOnce} {
