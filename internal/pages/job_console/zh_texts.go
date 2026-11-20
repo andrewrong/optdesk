@@ -82,7 +82,7 @@ const (
 	// zhRerunNoValue: "the job answered no value (for example outside its slot); the key stays present".
 	zhRerunNoValue = "任务答复无值（例如在时段之外），键仍然存在 (the job answered no value (for example outside its slot); the key stays present)"
 	// zhRerunUnknownFmt: "re-run returned N rows; the key was already present and the page cannot tell whether anything new was stored".
-	zhRerunUnknownFmt = "重跑返回 %[1]d 行；键原本已存在，页面无法判断是否存入了新数据 (re-run returned %[1]d rows; the key was already present and the page cannot tell whether anything new was stored)"
+	zhRerunUnknownFmt = "重跑返回 %[1]d 行；键原本已存在，页面无法判断是否存入了新数据 (re-run returned %[1]d rows; the key was already present and the page cannot tell whether anything new was stored)" //nolint:lll // one string literal, as the English guard of cmd/ot reads it
 	// zhRerunStays: "the key stays present from an earlier run".
 	zhRerunStays = "键沿用更早一次运行的结果，仍然存在 (the key stays present from an earlier run)"
 
@@ -137,9 +137,9 @@ const (
 	// zhQueuedHeld: "held: the schedule is not read yet".
 	zhQueuedHeld = "已搁置：尚未读取时间表 (held: the schedule is not read yet)"
 	// zhQueuedWithdrawing: "withdrawal pending: it takes effect when the scheduler's worker is next free (a running reconcile can take up to two hours)".
-	zhQueuedWithdrawing = "撤回待处理：调度器的工作进程下次空闲时生效（正在运行的对账最多可能需要两小时）(withdrawal pending: it takes effect when the scheduler's worker is next free (a running reconcile can take up to two hours))"
+	zhQueuedWithdrawing = "撤回待处理：调度器的工作进程下次空闲时生效（正在运行的对账最多可能需要两小时）(withdrawal pending: it takes effect when the scheduler's worker is next free (a running reconcile can take up to two hours))" //nolint:lll // one string literal, as the English guard of cmd/ot reads it
 	// zhQueuedStale: "still queued: the scheduler may have no console yet (it tries again on every turn), or its worker is busy".
-	zhQueuedStale = "仍在排队：调度器可能还没有控制台（每一轮都会再试），或其工作进程正忙 (still queued: the scheduler may have no console yet (it tries again on every turn), or its worker is busy)"
+	zhQueuedStale = "仍在排队：调度器可能还没有控制台（每一轮都会再试），或其工作进程正忙 (still queued: the scheduler may have no console yet (it tries again on every turn), or its worker is busy)" //nolint:lll // one string literal, as the English guard of cmd/ot reads it
 
 	// zhRefusedNoKey: "not a session of this job's calendar".
 	zhRefusedNoKey = "不是此任务日历上的交易日 (not a session of this job's calendar)"

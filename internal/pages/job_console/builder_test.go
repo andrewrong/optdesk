@@ -259,15 +259,16 @@ func TestEmptyBeforeCloseText(t *testing.T) {
 
 func TestNothingWasProducedLine(t *testing.T) {
 	t.Parallel()
+	nothingLine := fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")
 	l := line("ran", "done")
-	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; !strings.Contains(got, fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")) {
+	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; !strings.Contains(got, nothingLine) {
 		t.Errorf("sentence %q", got)
 	}
 	l.Mark, l.Returned, l.Usable = "present", 3, 3
-	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; strings.Contains(got, fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")) {
+	if got := one(t, rowReason(7, jobrequest.StateDone, "completed", l)).Sentence; strings.Contains(got, nothingLine) {
 		t.Errorf("a produced line still says nothing: %q", got)
 	}
-	if got := one(t, rowReason(7, jobrequest.StateRefused, "no_plan")).Sentence; strings.Contains(got, fmt.Sprintf(zhNothingProducedFmt, 7, "compute_figures", "2026-11-12")) {
+	if got := one(t, rowReason(7, jobrequest.StateRefused, "no_plan")).Sentence; strings.Contains(got, nothingLine) {
 		t.Errorf("a refused request says nothing was produced: %q", got)
 	}
 }

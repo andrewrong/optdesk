@@ -9,7 +9,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
-// Every visible string of the page is written here, in Chinese with the English glossed beside it (docs/design/job-console.md, Decision 12; docs/design/scheduler-per-job.md, Decision 8); the Chinese phrases are the constants of zh_texts.go.
+// Every visible string of the page is written here, in Chinese with the English glossed beside it
+// (docs/design/job-console.md, Decision 12; docs/design/scheduler-per-job.md, Decision 8);
+// the Chinese phrases are the constants of zh_texts.go.
 
 const (
 	titleText       = zhTitle
