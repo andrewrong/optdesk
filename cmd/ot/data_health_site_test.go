@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
@@ -310,5 +313,38 @@ func TestDataHealthTimeSlots(t *testing.T) {
 	}
 	if strings.Contains(body, `"repair":"button"`) {
 		t.Fatalf("button before the slot: %s", body)
+	}
+}
+
+func TestDataHealthGateways(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, gatewayEnv)
+	main := &fakeHealth{h: broker.Health{State: "farm_broken", Farms: []broker.Farm{{Name: "usfarm", Up: true}, {Name: "ushmds"}}}}
+	wife := &fakeHealth{err: errors.New("no answer")}
+	a.deps.ext = map[string]any{extGateway: gatewayDeps{newHealth: fakeDial(map[string]*fakeHealth{"/s/m": main, "/s/w": wife})}}
+	code, body := dataHealthGet(t, a, siteReaders{})
+	if code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	validateDataHealth(t, body)
+	fx, err := os.ReadFile("../../contracts/fixtures/page.data_health_page.v1.gateways.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The note is the builder's text, written by the builder's own tests; the wire owns name, verdict and farms.
+	var got, want struct {
+		Gateways []map[string]any `json:"gateways"`
+	}
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(fx, &want); err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range append(got.Gateways, want.Gateways...) {
+		delete(g, "note")
+	}
+	if len(want.Gateways) != 2 || !reflect.DeepEqual(got.Gateways, want.Gateways) {
+		t.Fatalf("gateways %v, want the fixture's %v", got.Gateways, want.Gateways)
 	}
 }

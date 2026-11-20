@@ -250,6 +250,7 @@ func runScheduler(
 	defer closeMorning()
 	slow := newSlowNotifier(a, runs, sender, fw, true)
 	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, morn: mn, slow: slow, log: a.log}
+	gaps.gateways = newGatewayPass(a, sent, sender, fw)
 	if host != nil {
 		sctx, cancel := clockTimeout(ctx, fw, startPhase)
 		if err := host.Start(sctx); err != nil {
