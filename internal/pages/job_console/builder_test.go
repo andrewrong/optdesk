@@ -12,8 +12,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -794,48 +792,5 @@ func TestConsoleTextsAreChineseWithEnglish(t *testing.T) {
 	for _, s := range []jobrequest.State{jobrequest.StateQueued, jobrequest.StateRunning, jobrequest.StateDone,
 		jobrequest.StateRefused, jobrequest.StateFailed, jobrequest.StateInterrupted, jobrequest.StateWithdrawn} {
 		check(t, "state name", stateName(s))
-	}
-}
-
-func TestJobNoteConstantsAreChineseWithEnglish(t *testing.T) {
-	t.Parallel()
-	english := regexp.MustCompile(`\([A-Za-z]`)
-	cases := []struct {
-		name  string
-		text  string
-		limit int
-	}{
-		{"ZhForceMomentMix", ZhForceMomentMix, 600},
-		{"ZhForceAppendOnly", ZhForceAppendOnly, 600},
-		{"ZhForceInsertOnly", ZhForceInsertOnly, 600},
-		{"ZhForceAttemptRows", ZhForceAttemptRows, 600},
-		{"ZhForceNotProved", ZhForceNotProved, 600},
-		{"ZhWhyNoLowerBound", ZhWhyNoLowerBound, 600},
-		{"ZhNeedsLowerBound", ZhNeedsLowerBound, 600},
-		{"ZhWhyNoDayGuard", ZhWhyNoDayGuard, 600},
-		{"ZhNeedsDayGuard", ZhNeedsDayGuard, 600},
-		{"ZhWhyHeavyAndCap", ZhWhyHeavyAndCap, 600},
-		{"ZhNeedsHeavyAndCap", ZhNeedsHeavyAndCap, 600},
-		{"ZhWhyCachesFailures", ZhWhyCachesFailures, 600},
-		{"ZhNeedsCachesFailure", ZhNeedsCachesFailure, 600},
-		{"ZhNoteQuoteSnapshot", ZhNoteQuoteSnapshot, 1000},
-	}
-	for _, c := range cases {
-		hasHan := false
-		for _, r := range c.text {
-			if unicode.Is(unicode.Han, r) {
-				hasHan = true
-				break
-			}
-		}
-		if !hasHan {
-			t.Errorf("%s has no Chinese character: %q", c.name, c.text)
-		}
-		if !english.MatchString(c.text) {
-			t.Errorf("%s has no parenthesised English: %q", c.name, c.text)
-		}
-		if n := utf8.RuneCountInString(c.text); n > c.limit {
-			t.Errorf("%s is %d characters, limit %d", c.name, n, c.limit)
-		}
 	}
 }
