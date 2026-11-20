@@ -21,6 +21,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
+	"github.com/andrewrong/optdesk/internal/store/jobrunpg"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -212,7 +214,9 @@ func runScheduler(
 	defer closeConsole()
 	locks := shared.NewJobLocks() // one set for every build, so a swap keeps the locks of a run in flight
 	giveHostLocks(host, locks)
-	build := newBuild(d.newReconciler, withJobLocks, locks, w.ledger, sl, w.cal, fw, kr, func(jobs []contracts.Job, bf runner.Backfiller) {
+	runs, closeRuns := startJobRuns(ctx, a, cfg.runnerDSN, fw) // the ledger of job runs, built once beside the lock set
+	defer closeRuns()
+	build := newBuild(d.newReconciler, withJobLocksAndRuns(runs), locks, w.ledger, sl, w.cal, fw, kr, func(jobs []contracts.Job, bf runner.Backfiller) {
 		if host == nil {
 			return
 		}
@@ -244,7 +248,8 @@ func runScheduler(
 		return err
 	}
 	defer closeMorning()
-	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, morn: mn, log: a.log}
+	slow := newSlowNotifier(a, runs, sender, fw, true)
+	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, morn: mn, slow: slow, log: a.log}
 	if host != nil {
 		sctx, cancel := clockTimeout(ctx, fw, startPhase)
 		if err := host.Start(sctx); err != nil {
@@ -264,6 +269,61 @@ func runScheduler(
 		return err
 	}
 	return errors.New("scheduler stopped with an error; its text is withheld because it may hold a DSN or a key")
+}
+
+// jobRunStore is the store of ops.job_run: the ledger of the runner and the reader of the pages and the notice.
+type jobRunStore interface {
+	jobrun.JobRunLedger
+	jobrun.JobRunReader
+	// Release closes the pool; Close is the ledger's end of a run.
+	Release() error
+}
+
+// openJobRunFunc opens the job-run store with a DSN.
+type openJobRunFunc func(ctx context.Context, dsn string) (jobRunStore, error)
+
+// openJobRunStore is the real opener (jobrunpg.Open).
+func openJobRunStore(ctx context.Context, dsn string) (jobRunStore, error) {
+	s, err := jobrunpg.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// startJobRuns opens the job-run store with the runner line and closes every row the previous process left open
+// as "cut" (CloseOpen). The row records and is not a guard: without an opener, or when the open or the close
+// fails, it logs one line without error text (it may hold a DSN) and returns nil, and the scheduler goes on
+// without the ledger. The returned func releases the store.
+func startJobRuns(ctx context.Context, a *app, dsn string, clk clockwork.Clock) (jobRunStore, func()) {
+	if a.deps.openJobRun == nil {
+		return nil, func() {}
+	}
+	st, err := a.deps.openJobRun(ctx, dsn)
+	if err != nil {
+		a.log.Warn("job run ledger not opened", "component", "ot", "status", "failed")
+		return nil, func() {}
+	}
+	release := func() { _ = st.Release() }
+	n, err := st.CloseOpen(ctx, clk.Now())
+	if err != nil {
+		a.log.Warn("close open job runs at start failed", "component", "ot", "status", "failed")
+		return st, release
+	}
+	a.log.Info("closed job runs left open by the previous process", "component", "ot", "status", "cut", "rows", n)
+	return st, release
+}
+
+// withJobLocksAndRuns is withJobLocks that also gives the ledger to the reconciler and backfiller; a nil store
+// gives none.
+func withJobLocksAndRuns(st jobRunStore) func(runner.Reconciler, runner.Backfiller, runner.JobLocks) {
+	return func(r runner.Reconciler, bf runner.Backfiller, locks runner.JobLocks) {
+		withJobLocks(r, bf, locks)
+		if st != nil {
+			reconcile.WithJobRunLedger(r, st)
+			reconcile.WithJobRunLedger(bf, st)
+		}
+	}
 }
 
 // withJobLocks gives the lock set to a reconciler and its backfiller (reconcile.WithJobLocks).

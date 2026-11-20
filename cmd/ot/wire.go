@@ -210,6 +210,8 @@ type deps struct {
 	openSent                store.OpenSentFunc
 	newAlertNotifier        notify.NewAlertNotifierFunc
 	newMorningNotifier      notify.NewMorningNotifierFunc
+	newSlowNotifier         notify.NewSlowNotifierFunc // nil: no slow-run pass
+	openJobRun              openJobRunFunc             // nil: no job-run ledger, no running lines
 	openGapHistory          gaphistory.OpenFunc
 	openGapReader           store.OpenGapReaderFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
@@ -355,6 +357,8 @@ func newBaseDeps() deps {
 		openSent:                alert.Open,
 		newAlertNotifier:        core.NewAlerts,
 		newMorningNotifier:      core.NewMorningNotifier,
+		newSlowNotifier:         core.NewSlow,
+		openJobRun:              openJobRunStore,
 		openGapHistory:          ops.OpenGapHistory,
 		openGapReader:           ops.OpenGapReader,
 		loadAlertRules:          alertrules.Load,
