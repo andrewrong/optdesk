@@ -1,6 +1,7 @@
 package option_pnl_page
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -60,7 +61,7 @@ func TestAssignmentLedgerLine(t *testing.T) {
 	t.Parallel()
 	f := figures{Total: "78.2", AssignedIntrinsic: "190", LedgerPnL: "268.2"}
 	l := ledgerLine("p", f, "USD", true, false)
-	if l.Text != "total $78.20 + assignment intrinsic $190.00 = $268.20" || l.Hint == nil || *l.Hint != "total + assignment intrinsic = ledger" {
+	if l.Text != "total $78.20 + assignment intrinsic $190.00 = $268.20" || l.Hint == nil || *l.Hint != "合计加行权内在价值等于账本" {
 		t.Fatalf("line = %+v", l)
 	}
 }
@@ -120,5 +121,39 @@ func TestBookLateEntryHintCountsBookLots(t *testing.T) {
 		if l.Label == "Entry vs mid" && (l.Hint == nil || !strings.Contains(*l.Hint, "2 个仓位中有 1 个")) {
 			t.Fatalf("hint = %v, want M = book lots 2", l.Hint)
 		}
+	}
+}
+
+func TestCardHintsAreChinese(t *testing.T) {
+	t.Parallel()
+	old := []string{
+		"what you earned for selling insurance", "the option loses value as days pass", "convexity:",
+		"value moved to the shares", "ledger minus total minus assignment intrinsic", "total + assignment intrinsic = ledger",
+		"the bet that the stock does not fall", "implied volatility,", "steps whose IV", "fill price", "the option side", "the ledger's figure",
+	}
+	o := outcome{lot: pnlLot{pos: compute.LedgerPosition{Currency: "USD", Status: "closed"}},
+		res: optionattrapi.Result{Currency: "USD", Entry: "1", Exit: "1", AssignedIntrinsic: "2", LedgerPnL: "3", Unsplit: "1", UnsplitSteps: 1, Time: "1", MoveCost: "1", Direction: "1", IVRemark: "1"}}
+	card, err := lotCard(Config{}, "p", "a", o, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := append(append(card.Lines, card.Recon...), ledgerLine("p", figures{Total: "1", AssignedIntrinsic: "2", LedgerPnL: "3"}, "USD", true, false))
+	hinted := 0
+	for _, l := range lines {
+		if l.Hint == nil {
+			continue
+		}
+		hinted++
+		if !regexp.MustCompile(`\p{Han}`).MatchString(*l.Hint) {
+			t.Errorf("line %s hint %q has no Chinese character", l.ID, *l.Hint)
+		}
+		for _, e := range old {
+			if strings.Contains(*l.Hint, e) {
+				t.Errorf("line %s hint %q holds old English %q", l.ID, *l.Hint, e)
+			}
+		}
+	}
+	if hinted == 0 {
+		t.Fatal("no hinted line")
 	}
 }
