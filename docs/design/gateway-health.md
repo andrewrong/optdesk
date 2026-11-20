@@ -55,6 +55,8 @@ No row of `docs/design/modules.md` changes; every path falls in an existing row 
 
 ## Interface
 
+Landed in #3385
+
 1. Proto `ibkr.v1.PingResponse`: additive `state` and `farms` of Decision 10; enum `SessionState`; message `FarmState {string name; bool up; int64 since_unix_ms}`. Existing fields and numbers unchanged.
 2. Page `page.data_health_page.v1` gains the optional array `gateways` (`[{name, verdict, farms: [{name, up}], note}]`, `additionalProperties` false, `verdict` an enum of the keys of Decision 12, not in `required`).
 3. Python (`pyside/src/optdesk/ibkr/api.py`): protocol `FarmBoard` (`record(code, text, now) -> None`, `snapshot() -> tuple[model.Farm, ...]`); exception `HistoryUnavailable`. `pyside/src/optdesk/ibkr/model.py`: the existing `SessionState` gains `state` (`up`, `soft_lost`, `down`, `farm_broken`; default `up`) and `farms: tuple[Farm, ...]` (default empty); new `Farm` is `{name: str, up: bool, since: int}` (`since` in unix ms); the `Gateway.status` protocol returns them. `api.py` declares no second `SessionState`; `model.SessionState` is its one owner.
@@ -64,7 +66,7 @@ No row of `docs/design/modules.md` changes; every path falls in an existing row 
 
 ## Issues
 
-Each entry is one module. `(interface)` entries land first. All entries: `Plan: none — incident repair`, `Design: docs/design/gateway-health.md#issues`, `Standing: none`, `Consultation: none`. Entries 1 and 5 touch an owner-only path (`contracts/proto/`, `transport.py`): The dispatcher writes this pull request. The owner merges this pull request.
+Each entry is one module. `(interface)` entries land first. All entries: `Plan: none — incident repair`, `Design: docs/design/gateway-health.md#issues`, `Standing: none`, `Consultation: none`. Entries 1 and 4 touch an owner-only path (`contracts/proto/`, `transport.py`): The dispatcher writes this pull request. The owner merges this pull request.
 
 Decision coverage: 1, 2, 3, 5, 7, 8, 9 entry 3; 6 entries 3 and 4; 10 entries 1 and 4; 11 entries 4 and 5; 12 entry 6; 13 entry 7; 14 entry 1; 15 entry 8; 4 entry 3 item 8 (the backoff itself is unchanged code, so only the log rule has an item); 16 no entry — it adds no code. The wire of entry 9 carries 10, 12 and 13.
 
