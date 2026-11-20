@@ -173,3 +173,17 @@ func TestBarCodesAreFive(t *testing.T) {
 		seen[c] = true
 	}
 }
+
+func TestRefBarKeyedLiteral(t *testing.T) {
+	t.Parallel()
+	pair := sources.BarPair{}
+	old := sources.RefBar{Pair: pair, Close: "10.0000"}
+	full := sources.RefBar{Pair: pair, Close: "10.0000", Open: "", High: "", Low: "", Volume: ""}
+	if old != full {
+		t.Fatalf("keyed literal without the new fields %+v differs from %+v", old, full)
+	}
+	filled := sources.RefBar{Pair: pair, Close: "10.0000", Open: "9.0000", High: "11.0000", Low: "8.5000", Volume: "100"}
+	if filled == old || filled.Open != "9.0000" || filled.High != "11.0000" || filled.Low != "8.5000" || filled.Volume != "100" {
+		t.Fatalf("new fields not carried: %+v", filled)
+	}
+}
