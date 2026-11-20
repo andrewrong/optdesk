@@ -344,6 +344,8 @@ export type Events =
       Event
     ];
 export type Date = string;
+export type DaysTo = number;
+export type InWindow = boolean;
 export type NameText = string;
 export type Previous = string | Gap;
 export type WhenText = string;
@@ -567,17 +569,38 @@ export type Indicators =
       Indicator,
       Indicator
     ];
+export type ChangeText = string | null;
+export type DataDay = string | null;
 export type DetailHref = string | null;
+export type Group = "rates" | "credit" | "dollar_japan";
+export type Hint = string;
 export type Label = string;
-export type Latest = PercentFigure | Gap;
+export type Latest = PercentFigure | LevelFigure | Gap;
 export type Text3 = string;
 export type Tone1 = ("up" | "down" | "flat" | "none") | null;
 export type Unit2 = "percent";
 export type Value2 = number;
+export type Text4 = string;
+export type Unit3 = "index_points" | "jpy_per_usd" | "percent";
+export type Value3 = number;
 export type Name = string;
 export type SourceText = string;
 export type Status = "good" | "late" | "missing";
 export type IndicatorsTitle = string;
+export type Note = string;
+/**
+ * @minItems 4
+ * @maxItems 4
+ */
+export type Rows = [LeadRow, LeadRow, LeadRow, LeadRow];
+export type ChangeText1 = string | null;
+export type DataDay1 = string | null;
+export type Hint1 = string;
+export type Key = "tbill" | "hy_spread" | "next_event" | "index_iv";
+export type Label1 = string;
+export type State = "ok" | "gap";
+export type Text5 = string;
+export type Title = string;
 export type Liquidity = Liquidity1 | Gap;
 export type BackgroundText = string;
 /**
@@ -585,8 +608,8 @@ export type BackgroundText = string;
  * @maxItems 4
  */
 export type Lines = [LiquidityLine, LiquidityLine, LiquidityLine, LiquidityLine];
-export type Key = "reserves" | "money_market" | "credit" | "conditions";
-export type Label1 = string;
+export type Key1 = "reserves" | "money_market" | "credit" | "conditions";
+export type Label2 = string;
 export type Sentence = Sentence1 | Gap;
 export type Sentence1 = string;
 export type SourceText1 = string;
@@ -599,23 +622,23 @@ export type Taps =
   | [LiquidityTap, LiquidityTap]
   | [LiquidityTap, LiquidityTap, LiquidityTap]
   | [LiquidityTap, LiquidityTap, LiquidityTap, LiquidityTap];
-export type Key1 = "stlfsi" | "reserves_over_assets" | "discount_window" | "net_liquidity";
-export type Label2 = string;
+export type Key2 = "stlfsi" | "reserves_over_assets" | "discount_window" | "net_liquidity";
+export type Label3 = string;
 /**
  * @minItems 1
  * @maxItems 4
  */
-export type Rows =
+export type Rows1 =
   | [LiquidityRow]
   | [LiquidityRow, LiquidityRow]
   | [LiquidityRow, LiquidityRow, LiquidityRow]
   | [LiquidityRow, LiquidityRow, LiquidityRow, LiquidityRow];
-export type Label3 = string;
-export type Text4 = Text5 | Gap;
-export type Text5 = string;
-export type DataDay = string | null;
-export type Note = Note1 | null;
-export type Note1 = string;
+export type Label4 = string;
+export type Text6 = Text7 | Gap;
+export type Text7 = string;
+export type DataDay2 = string | null;
+export type Note1 = Note2 | null;
+export type Note2 = string;
 export type LiquidityTitle = string;
 /**
  * @maxItems 20
@@ -766,8 +789,8 @@ export type Timestamp1 = string;
  * An RFC 3339 time with any offset.
  */
 export type Timestamp2 = string;
-export type Text6 = string;
-export type Title = string;
+export type Text8 = string;
+export type Title1 = string;
 
 export interface MacroPageV2 {
   build_id: Id;
@@ -780,6 +803,7 @@ export interface MacroPageV2 {
   generated_at: Timestamp;
   indicators: Indicators;
   indicators_title: IndicatorsTitle;
+  lead?: Lead;
   liquidity: Liquidity;
   liquidity_title: LiquidityTitle;
   notes: Notes;
@@ -791,7 +815,7 @@ export interface MacroPageV2 {
   scope: Id;
   sentence: Sentence2;
   stale: StaleLabel;
-  title: Title;
+  title: Title1;
 }
 /**
  * The data time of one source behind the card.
@@ -842,12 +866,18 @@ export interface Gap {
 }
 export interface Event {
   date: Date;
+  days_to?: DaysTo;
+  in_window?: InWindow;
   name_text: NameText;
   previous: Previous;
   when_text: WhenText;
 }
 export interface Indicator {
+  change_text?: ChangeText;
+  data_day?: DataDay;
   detail_href: DetailHref;
+  group?: Group;
+  hint?: Hint;
   label: Label;
   latest: Latest;
   name: Name;
@@ -863,27 +893,49 @@ export interface PercentFigure {
   unit: Unit2;
   value: Value2;
 }
+/**
+ * A level that is not a percent: index points, yen per dollar or a percent level.
+ */
+export interface LevelFigure {
+  text: Text4;
+  unit: Unit3;
+  value: Value3;
+}
+export interface Lead {
+  note: Note;
+  rows: Rows;
+  title: Title;
+}
+export interface LeadRow {
+  change_text: ChangeText1;
+  data_day: DataDay1;
+  hint: Hint1;
+  key: Key;
+  label: Label1;
+  state: State;
+  text: Text5;
+}
 export interface Liquidity1 {
   background_text: BackgroundText;
   lines: Lines;
   taps: Taps;
 }
 export interface LiquidityLine {
-  key: Key;
-  label: Label1;
+  key: Key1;
+  label: Label2;
   sentence: Sentence;
   source_text: SourceText1;
 }
 export interface LiquidityTap {
-  key: Key1;
-  label: Label2;
-  rows: Rows;
-  note: Note;
+  key: Key2;
+  label: Label3;
+  rows: Rows1;
+  note: Note1;
 }
 export interface LiquidityRow {
-  label: Label3;
-  text: Text4;
-  data_day: DataDay;
+  label: Label4;
+  text: Text6;
+  data_day: DataDay2;
 }
 /**
  * The times and the label; the browser only compares its clock with stale_after.
@@ -891,5 +943,5 @@ export interface LiquidityRow {
 export interface StaleLabel {
   data_time: Timestamp1;
   stale_after: Timestamp2;
-  text: Text6;
+  text: Text8;
 }
