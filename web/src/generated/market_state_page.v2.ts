@@ -128,6 +128,26 @@ export interface MarketRow {
   day: Day | Gap1;
   percentile?: Percentile;
   history: History | Gap1;
+  /**
+   * A trial normal, caution or alarm range the producer wrote, or a Gap. A notice only; nothing is blocked.
+   */
+  range?:
+    | {
+        state: "normal" | "caution" | "alarm";
+        state_text: Text1;
+        cuts: {
+          level: "caution" | "alarm";
+          text: Text1;
+          basis: "published" | "percentile";
+          source: Text1;
+        }[];
+        notice: Text1;
+      }
+    | Gap1;
+  /**
+   * The Chinese hover hint of the row: what the figure is and what the ranges mean.
+   */
+  hint?: string;
 }
 /**
  * A number the producer wrote; the view prints text.
