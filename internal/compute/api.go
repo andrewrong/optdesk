@@ -90,8 +90,7 @@ type Figure struct {
 	StaleRate    bool
 }
 
-// StrikeQuote holds the IBKR model values of one strike. An IV of 0 means no model IV;
-// a mid of 0 with Has true is not allowed.
+// StrikeQuote holds the IBKR model values of one strike. An IV of 0 means no model IV; a mid of 0 with Has true is not allowed.
 type StrikeQuote struct {
 	Strike, CallIV, PutIV, CallMid, PutMid float64
 	HasCall, HasPut                        bool
@@ -167,8 +166,7 @@ type Rules interface {
 	IDs() []string
 }
 
-// Figures computes one Figure per call from the rule of id. Day is asOf, ID and Version
-// come from Rules.
+// Figures computes one Figure per call from the rule of id. Day is asOf, ID and Version come from Rules.
 type Figures interface {
 	HistoricalVol(id string, closes Series, asOf contracts.Day) Figure
 	// Iv30 interpolates the 30-day IV from IBKR model values only; StaleRate is true
@@ -647,8 +645,11 @@ type StructureParams struct {
 	CommissionDays     int
 }
 
-// Structure is one recognised structure. Decide is true when the short leg expires within
-// ExitDTE days or EarnedShare is at least CaptureTarget; the two Param texts are copied.
+// Structure is one recognised structure. Kind is one of put_spread, call_spread, put_debit_spread (new), call_debit_spread (new), calendar_spread (new),
+// diagonal_spread (new), long_straddle (new), short_straddle (new), long_strangle (new), short_strangle (new), iron_condor (new), reverse_iron_condor (new),
+// collar (new), covered_call, naked_call, short_put, long_put, long_call and other. A later unit of one alias whose first leg has the same PositionID gets
+// #2, #3 appended to ID, and the Quantity of a leg may be a part of the position's quantity. Decide is true when the short leg expires within ExitDTE days
+// or EarnedShare is at least CaptureTarget; the two Param texts are copied.
 type Structure struct {
 	ID, Alias, Underlying, Currency, Kind string
 	Legs                                  []StructureLeg
