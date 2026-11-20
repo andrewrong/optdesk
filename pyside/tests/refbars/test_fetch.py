@@ -119,8 +119,8 @@ def test_auto_adjust_false_and_close_read() -> None:
     ]
     assert result["error_code"] == ""
     assert result["bars"] == [
-        {"session_day": "2026-11-16", "close": "189.5000"},
-        {"session_day": "2026-11-17", "close": "190.2500"},
+        {"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "189.5000", "volume": ""},
+        {"session_day": "2026-11-17", "open": "", "high": "", "low": "", "close": "190.2500", "volume": ""},
     ]
 
 
@@ -134,7 +134,7 @@ def test_session_day_is_the_exchange_date() -> None:
     late = datetime.datetime(2026, 11, 17, 3, tzinfo=datetime.UTC)  # 22:00 on the 16th in New York
     frame = _Frame([(late, 10.0)], COLUMNS)
     result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-17")
-    assert result["bars"] == [{"session_day": "2026-11-16", "close": "10.0000"}]
+    assert result["bars"] == [{"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "10.0000", "volume": ""}]
 
 
 def test_rate_limit_stops_batch() -> None:
@@ -213,4 +213,4 @@ def test_hide_exceptions_restored_after_test() -> None:
 def test_nan_close_is_skipped(value: float) -> None:
     frame = _Frame([(_day(16), value), (_day(17), 2.0)], COLUMNS)
     result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-17")
-    assert result["bars"] == [{"session_day": "2026-11-17", "close": "2.0000"}]
+    assert result["bars"] == [{"session_day": "2026-11-17", "open": "", "high": "", "low": "", "close": "2.0000", "volume": ""}]

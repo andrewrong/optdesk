@@ -67,7 +67,8 @@ def test_golden_answer_has_the_declared_keys() -> None:
         assert set(result) == set(get_type_hints(PairResult))
         assert result["error_code"] in ERROR_CODES
         for bar in result["bars"]:
-            assert set(bar) == set(get_type_hints(Bar))
+            assert set(bar) <= set(get_type_hints(Bar))
+            assert {"session_day", "close"} <= set(bar)
             assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", bar["session_day"])
             assert re.fullmatch(r"\d+\.\d{4}", bar["close"])
     assert len(results[0]["bars"]) == 2
@@ -75,3 +76,9 @@ def test_golden_answer_has_the_declared_keys() -> None:
     assert set(get_type_hints(Request)) == {"pairs", "from_day", "to_day"}
     assert set(get_type_hints(PairSpec)) == {"symbol", "currency"}
     assert Fetcher is not None and Clock is not None
+
+
+def test_bar_has_ohlcv_keys() -> None:
+    hints = get_type_hints(Bar)
+    assert set(hints) == {"session_day", "open", "high", "low", "close", "volume"}
+    assert all(hint is str for hint in hints.values())

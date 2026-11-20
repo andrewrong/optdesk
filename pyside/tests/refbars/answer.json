@@ -5,8 +5,8 @@
       "currency": "USD",
       "error_code": "",
       "bars": [
-        {"session_day": "2026-11-16", "close": "189.5000"},
-        {"session_day": "2026-11-17", "close": "190.2500"}
+        {"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "189.5000", "volume": ""},
+        {"session_day": "2026-11-17", "open": "", "high": "", "low": "", "close": "190.2500", "volume": ""}
       ]
     },
     {"symbol": "7203", "currency": "JPY", "error_code": "rate_limited", "bars": []},
