@@ -22,7 +22,7 @@ Says missed work once, as one plain-text message. The scheduler process calls `N
 - Gaps with `ClearedAt` or `ReportedAt` set are not said. Inside quiet hours nothing is sent and the rows stay unmarked.
 - The text is built from the job or dataset id, the day and a fixed reason word; it carries no account id, path, token, chat id or error text.
 - `ErrSend` is the error class of a failed delivery; its text never holds a token, a chat id or a URL.
-- `internal/notify` holds only `api.go` and `api_test.go`; it depends on `store`, `clockwork` and the standard library.
+- `internal/notify` holds `api.go`, `api_test.go` and `fact.go` (the body of `FactOf`); it depends on `store`, `clockwork` and the standard library.
 
 ## Market alerts
 
@@ -48,7 +48,7 @@ Says missed work once, as one plain-text message. The scheduler process calls `N
 ## Gateway health
 
 - `GatewayNotifier.NotifyGateways(ctx, []GatewayFact) (int, error)` is a fifth pass, built by `notify.NewGatewayNotifierFunc(Sender, store.SentStore, clock)` (`internal/notify/core.NewGateways`). `GatewayFact{Gateway, Farm, Since, Down}`; `notify.FactOf(alias, answered, state, farms []GatewayFarm)` maps a health reading to a fact: `Down` is true when answered and `state` is `farm_broken`, `Farm` and `Since` are those of the first farm not up. Design: `docs/design/gateway-health.md`, Decision 13.
-- One text per incident, marked `gateway_<alias>_<farm>_<since_unix>` in `alerts.sent` (day of `Since`, UTC) after a confirmed send; a second incident of the same farm (later `Since`) sends again. When a gateway with a marked incident is no longer `Down`, one recovery text is sent and the incident is marked `<key>_up`. Marks are read 30 days back; aliases hold no underscore.
+- One text per incident, marked `gateway_<alias>_<farm>_<since_unix>` in `alerts.sent` (day of `Since`, UTC) after a confirmed send; a second incident of the same farm (later `Since`) sends again. When a gateway with a marked incident is no longer `Down`, one recovery text is sent and the incident is marked `<key>_up`. Marks are read 30 days back, and further back to the day of the oldest `Down` fact's `Since` so an old incident is not repeated; a recovery text is found only for incidents inside the 30 days. `FactOf` is a func variable of `api.go` implemented in `internal/notify/fact.go`; `StateFarmBroken` names the state word. Aliases hold no underscore.
 - A failed send marks nothing; the next pass sends again. No quiet window, no loop. The text names the gateway by alias and says to log in again at the gateway; no account id, no port.
 
 ## Version history

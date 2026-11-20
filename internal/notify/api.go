@@ -181,22 +181,15 @@ type GatewayFarm struct {
 	Since time.Time
 }
 
-// FactOf is the declared mapping from a health reading to a GatewayFact: Down is true when answered
-// is true and state is "farm_broken"; Farm and Since are those of the first farm that is not up.
-func FactOf(alias string, answered bool, state string, farms []GatewayFarm) GatewayFact {
-	f := GatewayFact{Gateway: alias}
-	if !answered || state != "farm_broken" {
-		return f
-	}
-	f.Down = true
-	for _, fm := range farms {
-		if !fm.Up {
-			f.Farm, f.Since = fm.Name, fm.Since
-			break
-		}
-	}
-	return f
-}
+// StateFarmBroken is the state word of broker.Health that makes a GatewayFact Down.
+const StateFarmBroken = "farm_broken"
+
+// FactOfFunc is the mapping from a health reading to a GatewayFact: Down is true when answered is
+// true and state is StateFarmBroken; Farm and Since are those of the first farm not up.
+type FactOfFunc func(alias string, answered bool, state string, farms []GatewayFarm) GatewayFact
+
+// FactOf is the declared mapping, owned by notify (implemented in fact.go).
+var FactOf FactOfFunc = factOf
 
 // GatewayNotifier makes one pass over the gateway facts, one fact per gateway, on every tick.
 //

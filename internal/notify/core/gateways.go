@@ -49,7 +49,14 @@ func gatewayDay(since time.Time) contracts.Day {
 func (n *gatewayNotifier) NotifyGateways(ctx context.Context, facts []notify.GatewayFact) (int, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	// An incident is marked on the day of its Since, so the read reaches back to the oldest Down
+	// fact: an incident older than the lookback (or with a zero Since) is still found and not repeated.
 	from := contracts.Day(n.clock.Now().UTC().AddDate(0, 0, -gatewayLookbackDays).Format(time.DateOnly))
+	for _, f := range facts {
+		if d := gatewayDay(f.Since); f.Down && d < from {
+			from = d
+		}
+	}
 	marks, err := n.sent.SentSince(ctx, from)
 	if err != nil {
 		return 0, fmt.Errorf("notify: read sent marks: %w", err)

@@ -114,3 +114,25 @@ func TestGatewayText(t *testing.T) {
 		t.Errorf("text %q holds digits (account id or port)", text)
 	}
 }
+
+func TestGatewayZeroSinceOncePerIncident(t *testing.T) {
+	t.Parallel()
+	r := newGwRig(t)
+	f := notify.FactOf("main", true, "farm_broken", nil) // farm_broken, no down farm listed
+	r.pass(t, f)
+	r.pass(t, f)
+	if got := len(r.sender.Texts()); got != 1 {
+		t.Fatalf("one incident sent %d texts, want 1", got)
+	}
+}
+
+func TestGatewayOldIncidentOncePerIncident(t *testing.T) {
+	t.Parallel()
+	r := newGwRig(t)
+	f := down(gwSince.AddDate(0, 0, -45))
+	r.pass(t, f)
+	r.pass(t, f)
+	if got := len(r.sender.Texts()); got != 1 {
+		t.Fatalf("one old incident sent %d texts, want 1", got)
+	}
+}
