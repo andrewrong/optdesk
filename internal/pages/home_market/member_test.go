@@ -523,9 +523,12 @@ func TestNewestReadingSkipsNotOkOfToday(t *testing.T) {
 
 func TestNoOkReadingKeepsNewestGap(t *testing.T) {
 	t.Parallel()
-	g, isGap := diffCell(t, diffRows(reading("2026-11-04", "missing_input", ""), reading("2026-11-06", "missing_input", ""))).(gap)
+	older := reading("2026-11-04", "missing_input", "")
+	code := 3
+	older.ReasonCode = &code // an older stale_input reading must not be the one shown
+	g, isGap := diffCell(t, diffRows(older, reading("2026-11-06", "missing_input", ""))).(gap)
 	if !isGap || g.Reason != "missing_input" {
-		t.Fatalf("cell = %+v, want the missing_input gap", g)
+		t.Fatalf("cell = %+v, want the missing_input gap of the newest reading", g)
 	}
 }
 
