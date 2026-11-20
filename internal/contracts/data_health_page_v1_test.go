@@ -259,3 +259,37 @@ func TestDataHealthRunningWithoutLineFails(t *testing.T) {
 		t.Error("running item without line accepted")
 	}
 }
+
+// TestGatewaysFixtureValidates: the gateways fixture passes the schema and holds the gateways main and wife.
+func TestGatewaysFixtureValidates(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "gateways")
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("gateways fixture refused")
+	}
+	gws := m["gateways"].([]any)
+	if len(gws) != 2 {
+		t.Fatalf("%d gateways, want 2", len(gws))
+	}
+	g0, g1 := gws[0].(map[string]any), gws[1].(map[string]any)
+	if g0["name"] != "main" || g0["verdict"] != "farm_down" || g1["name"] != "wife" || g1["verdict"] != "unreachable" {
+		t.Fatalf("gateways %v %v", g0, g1)
+	}
+}
+
+// TestGatewaysVerdictOutsideEnum: a verdict outside the four keys is refused, each of the four is accepted.
+func TestGatewaysVerdictOutsideEnum(t *testing.T) {
+	t.Parallel()
+	for _, v := range []string{"session_up", "session_retrying", "farm_down", "unreachable"} {
+		m := dataHealthFixture(t, "gateways")
+		m["gateways"].([]any)[0].(map[string]any)["verdict"] = v
+		if !pageV1Valid(t, dataHealthPageV1, m) {
+			t.Errorf("verdict %q refused", v)
+		}
+	}
+	m := dataHealthFixture(t, "gateways")
+	m["gateways"].([]any)[0].(map[string]any)["verdict"] = "farm_broken"
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal(`verdict "farm_broken" accepted`)
+	}
+}

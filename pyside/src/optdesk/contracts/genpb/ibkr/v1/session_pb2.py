@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from optdesk.contracts.genpb.ibkr.v1 import quote_types_pb2 as ibkr_dot_v1_dot_quote__types__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15ibkr/v1/session.proto\x12\x07ibkr.v1\x1a\x19ibkr/v1/quote_types.proto\"\r\n\x0bPingRequest\"h\n\x0cPingResponse\x12\x11\n\tconnected\x18\x01 \x01(\x08\x12\x12\n\ngeneration\x18\x02 \x01(\x03\x12\x31\n\x10market_data_type\x18\x03 \x01(\x0e\x32\x17.ibkr.v1.MarketDataType2E\n\x0eSessionService\x12\x33\n\x04Ping\x12\x14.ibkr.v1.PingRequest\x1a\x15.ibkr.v1.PingResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15ibkr/v1/session.proto\x12\x07ibkr.v1\x1a\x19ibkr/v1/quote_types.proto\"\r\n\x0bPingRequest\"\xb1\x01\n\x0cPingResponse\x12\x11\n\tconnected\x18\x01 \x01(\x08\x12\x12\n\ngeneration\x18\x02 \x01(\x03\x12\x31\n\x10market_data_type\x18\x03 \x01(\x0e\x32\x17.ibkr.v1.MarketDataType\x12$\n\x05state\x18\x04 \x01(\x0e\x32\x15.ibkr.v1.SessionState\x12!\n\x05\x66\x61rms\x18\x05 \x03(\x0b\x32\x12.ibkr.v1.FarmState\"<\n\tFarmState\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\n\n\x02up\x18\x02 \x01(\x08\x12\x15\n\rsince_unix_ms\x18\x03 \x01(\x03*\x97\x01\n\x0cSessionState\x12\x1d\n\x19SESSION_STATE_UNSPECIFIED\x10\x00\x12\x14\n\x10SESSION_STATE_UP\x10\x01\x12\x1b\n\x17SESSION_STATE_SOFT_LOST\x10\x02\x12\x16\n\x12SESSION_STATE_DOWN\x10\x03\x12\x1d\n\x19SESSION_STATE_FARM_BROKEN\x10\x04\x32\x45\n\x0eSessionService\x12\x33\n\x04Ping\x12\x14.ibkr.v1.PingRequest\x1a\x15.ibkr.v1.PingResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,10 +33,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ibkr.v1.session_pb2', _glob
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z6github.com/andrewrong/optdesk/internal/contracts/genpb'
+  _globals['_SESSIONSTATE']._serialized_start=319
+  _globals['_SESSIONSTATE']._serialized_end=470
   _globals['_PINGREQUEST']._serialized_start=61
   _globals['_PINGREQUEST']._serialized_end=74
-  _globals['_PINGRESPONSE']._serialized_start=76
-  _globals['_PINGRESPONSE']._serialized_end=180
-  _globals['_SESSIONSERVICE']._serialized_start=182
-  _globals['_SESSIONSERVICE']._serialized_end=251
+  _globals['_PINGRESPONSE']._serialized_start=77
+  _globals['_PINGRESPONSE']._serialized_end=254
+  _globals['_FARMSTATE']._serialized_start=256
+  _globals['_FARMSTATE']._serialized_end=316
+  _globals['_SESSIONSERVICE']._serialized_start=472
+  _globals['_SESSIONSERVICE']._serialized_end=541
 # @@protoc_insertion_point(module_scope)

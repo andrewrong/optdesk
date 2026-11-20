@@ -37,6 +37,7 @@ export interface DataHealthPage {
   failures_note?: Text;
   failures_none_text?: Text;
   running?: Running[];
+  gateways?: Gateway[];
 }
 export interface Form {
   post_path: "/owner-job-console";
@@ -139,4 +140,14 @@ export interface Running {
   elapsed_minutes?: number;
   usual_minutes?: number;
   slow?: boolean;
+}
+export interface Gateway {
+  name: Text;
+  verdict: "session_up" | "session_retrying" | "farm_down" | "unreachable";
+  farms: GatewayFarm[];
+  note: Optional;
+}
+export interface GatewayFarm {
+  name: Text;
+  up: boolean;
 }

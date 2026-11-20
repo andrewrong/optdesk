@@ -21,6 +21,67 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// SessionState is the state of the broker API session.
+type SessionState int32
+
+const (
+	// SESSION_STATE_UNSPECIFIED is an older answer that sets no state.
+	SessionState_SESSION_STATE_UNSPECIFIED SessionState = 0
+	// SESSION_STATE_UP is a connected session.
+	SessionState_SESSION_STATE_UP SessionState = 1
+	// SESSION_STATE_SOFT_LOST is a session the gateway reported lost (1100, 2110).
+	SessionState_SESSION_STATE_SOFT_LOST SessionState = 2
+	// SESSION_STATE_DOWN is an ended session.
+	SessionState_SESSION_STATE_DOWN SessionState = 3
+	// SESSION_STATE_FARM_BROKEN is a session whose history farm is broken past the grace time.
+	SessionState_SESSION_STATE_FARM_BROKEN SessionState = 4
+)
+
+// Enum value maps for SessionState.
+var (
+	SessionState_name = map[int32]string{
+		0: "SESSION_STATE_UNSPECIFIED",
+		1: "SESSION_STATE_UP",
+		2: "SESSION_STATE_SOFT_LOST",
+		3: "SESSION_STATE_DOWN",
+		4: "SESSION_STATE_FARM_BROKEN",
+	}
+	SessionState_value = map[string]int32{
+		"SESSION_STATE_UNSPECIFIED": 0,
+		"SESSION_STATE_UP":          1,
+		"SESSION_STATE_SOFT_LOST":   2,
+		"SESSION_STATE_DOWN":        3,
+		"SESSION_STATE_FARM_BROKEN": 4,
+	}
+)
+
+func (x SessionState) Enum() *SessionState {
+	p := new(SessionState)
+	*p = x
+	return p
+}
+
+func (x SessionState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SessionState) Descriptor() protoreflect.EnumDescriptor {
+	return file_ibkr_v1_session_proto_enumTypes[0].Descriptor()
+}
+
+func (SessionState) Type() protoreflect.EnumType {
+	return &file_ibkr_v1_session_proto_enumTypes[0]
+}
+
+func (x SessionState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SessionState.Descriptor instead.
+func (SessionState) EnumDescriptor() ([]byte, []int) {
+	return file_ibkr_v1_session_proto_rawDescGZIP(), []int{0}
+}
+
 // PingRequest carries nothing: a Ping needs no arguments.
 type PingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -68,8 +129,12 @@ type PingResponse struct {
 	Generation int64 `protobuf:"varint,2,opt,name=generation,proto3" json:"generation,omitempty"`
 	// market_data_type is the type set on the current session.
 	MarketDataType MarketDataType `protobuf:"varint,3,opt,name=market_data_type,json=marketDataType,proto3,enum=ibkr.v1.MarketDataType" json:"market_data_type,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// state is the state of the broker session, apart from the farms.
+	State SessionState `protobuf:"varint,4,opt,name=state,proto3,enum=ibkr.v1.SessionState" json:"state,omitempty"`
+	// farms is each data farm the gateway named, with its last known state.
+	Farms         []*FarmState `protobuf:"bytes,5,rep,name=farms,proto3" json:"farms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PingResponse) Reset() {
@@ -123,18 +188,108 @@ func (x *PingResponse) GetMarketDataType() MarketDataType {
 	return MarketDataType_MARKET_DATA_TYPE_UNSPECIFIED
 }
 
+func (x *PingResponse) GetState() SessionState {
+	if x != nil {
+		return x.State
+	}
+	return SessionState_SESSION_STATE_UNSPECIFIED
+}
+
+func (x *PingResponse) GetFarms() []*FarmState {
+	if x != nil {
+		return x.Farms
+	}
+	return nil
+}
+
+// FarmState is one data farm named by the gateway.
+type FarmState struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// name is the farm word, for example ushmds.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// up is true while the farm is ok.
+	Up bool `protobuf:"varint,2,opt,name=up,proto3" json:"up,omitempty"`
+	// since_unix_ms is when the farm took its current state, in unix milliseconds.
+	SinceUnixMs   int64 `protobuf:"varint,3,opt,name=since_unix_ms,json=sinceUnixMs,proto3" json:"since_unix_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FarmState) Reset() {
+	*x = FarmState{}
+	mi := &file_ibkr_v1_session_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FarmState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FarmState) ProtoMessage() {}
+
+func (x *FarmState) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_session_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FarmState.ProtoReflect.Descriptor instead.
+func (*FarmState) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_session_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *FarmState) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *FarmState) GetUp() bool {
+	if x != nil {
+		return x.Up
+	}
+	return false
+}
+
+func (x *FarmState) GetSinceUnixMs() int64 {
+	if x != nil {
+		return x.SinceUnixMs
+	}
+	return 0
+}
+
 var File_ibkr_v1_session_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_session_proto_rawDesc = "" +
 	"\n" +
 	"\x15ibkr/v1/session.proto\x12\aibkr.v1\x1a\x19ibkr/v1/quote_types.proto\"\r\n" +
-	"\vPingRequest\"\x8f\x01\n" +
+	"\vPingRequest\"\xe6\x01\n" +
 	"\fPingResponse\x12\x1c\n" +
 	"\tconnected\x18\x01 \x01(\bR\tconnected\x12\x1e\n" +
 	"\n" +
 	"generation\x18\x02 \x01(\x03R\n" +
 	"generation\x12A\n" +
-	"\x10market_data_type\x18\x03 \x01(\x0e2\x17.ibkr.v1.MarketDataTypeR\x0emarketDataType2E\n" +
+	"\x10market_data_type\x18\x03 \x01(\x0e2\x17.ibkr.v1.MarketDataTypeR\x0emarketDataType\x12+\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x15.ibkr.v1.SessionStateR\x05state\x12(\n" +
+	"\x05farms\x18\x05 \x03(\v2\x12.ibkr.v1.FarmStateR\x05farms\"S\n" +
+	"\tFarmState\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
+	"\x02up\x18\x02 \x01(\bR\x02up\x12\"\n" +
+	"\rsince_unix_ms\x18\x03 \x01(\x03R\vsinceUnixMs*\x97\x01\n" +
+	"\fSessionState\x12\x1d\n" +
+	"\x19SESSION_STATE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10SESSION_STATE_UP\x10\x01\x12\x1b\n" +
+	"\x17SESSION_STATE_SOFT_LOST\x10\x02\x12\x16\n" +
+	"\x12SESSION_STATE_DOWN\x10\x03\x12\x1d\n" +
+	"\x19SESSION_STATE_FARM_BROKEN\x10\x042E\n" +
 	"\x0eSessionService\x123\n" +
 	"\x04Ping\x12\x14.ibkr.v1.PingRequest\x1a\x15.ibkr.v1.PingResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
@@ -150,21 +305,26 @@ func file_ibkr_v1_session_proto_rawDescGZIP() []byte {
 	return file_ibkr_v1_session_proto_rawDescData
 }
 
-var file_ibkr_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_ibkr_v1_session_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_ibkr_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_ibkr_v1_session_proto_goTypes = []any{
-	(*PingRequest)(nil),  // 0: ibkr.v1.PingRequest
-	(*PingResponse)(nil), // 1: ibkr.v1.PingResponse
-	(MarketDataType)(0),  // 2: ibkr.v1.MarketDataType
+	(SessionState)(0),    // 0: ibkr.v1.SessionState
+	(*PingRequest)(nil),  // 1: ibkr.v1.PingRequest
+	(*PingResponse)(nil), // 2: ibkr.v1.PingResponse
+	(*FarmState)(nil),    // 3: ibkr.v1.FarmState
+	(MarketDataType)(0),  // 4: ibkr.v1.MarketDataType
 }
 var file_ibkr_v1_session_proto_depIdxs = []int32{
-	2, // 0: ibkr.v1.PingResponse.market_data_type:type_name -> ibkr.v1.MarketDataType
-	0, // 1: ibkr.v1.SessionService.Ping:input_type -> ibkr.v1.PingRequest
-	1, // 2: ibkr.v1.SessionService.Ping:output_type -> ibkr.v1.PingResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: ibkr.v1.PingResponse.market_data_type:type_name -> ibkr.v1.MarketDataType
+	0, // 1: ibkr.v1.PingResponse.state:type_name -> ibkr.v1.SessionState
+	3, // 2: ibkr.v1.PingResponse.farms:type_name -> ibkr.v1.FarmState
+	1, // 3: ibkr.v1.SessionService.Ping:input_type -> ibkr.v1.PingRequest
+	2, // 4: ibkr.v1.SessionService.Ping:output_type -> ibkr.v1.PingResponse
+	4, // [4:5] is the sub-list for method output_type
+	3, // [3:4] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_ibkr_v1_session_proto_init() }
@@ -178,13 +338,14 @@ func file_ibkr_v1_session_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ibkr_v1_session_proto_rawDesc), len(file_ibkr_v1_session_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_ibkr_v1_session_proto_goTypes,
 		DependencyIndexes: file_ibkr_v1_session_proto_depIdxs,
+		EnumInfos:         file_ibkr_v1_session_proto_enumTypes,
 		MessageInfos:      file_ibkr_v1_session_proto_msgTypes,
 	}.Build()
 	File_ibkr_v1_session_proto = out.File
