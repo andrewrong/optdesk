@@ -86,6 +86,9 @@
     {"path": "page.strategy_replay_page.v1.form.json", "sha256": "93ec87ba5d026c23eae29648c5d9f5baa92219dd08581c704cb9f3941999fff6"},
     {"path": "page.strategy_replay_page.v1.report.json", "sha256": "cb0dc7dc0555ddcbcea22af5f90f252e0e5919461d1492af23430b4cbdb3838a"},
     {"path": "page.strategy_replay_page.v1.empty.json", "sha256": "8d758a4d345c0ba58e5165c4a5822221b2339b287b6d067a1e95973c2ebe98ea"},
-    {"path": "page.strategy_replay_page.v1.off.json", "sha256": "38b287094947b3b49809615019f8c5f2013703462fdd09886f7258cce984709b"}
+    {"path": "page.strategy_replay_page.v1.off.json", "sha256": "38b287094947b3b49809615019f8c5f2013703462fdd09886f7258cce984709b"},
+    {"path": "page.market_state_page.v2.ok.json", "sha256": "bee1b2a26ce93ad94a8d1b99cf5da16792681f187b39e532d9d5536f9ffeb223"},
+    {"path": "page.company_data_page.v2.ok.json", "sha256": "bbbb38cf57dae7b67e6f1fb9546281e114236dcd916a82e72d74a626f0b239e8"},
+    {"path": "page.positions_page.v4.ok.json", "sha256": "9b92cda71851393b3aa9598767883e16632ff480c75ff4eacfc30c795a0ea82d"}
   ]
 }
