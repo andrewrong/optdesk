@@ -313,11 +313,11 @@ func TestNoMidKeepsSpotAndMoneyness(t *testing.T) {
 	if v := asValue(t, cells["moneyness"]); v.Text != "+3.2%" && v.Text != "3.2%" {
 		t.Fatalf("moneyness = %+v", v)
 	}
-	if g := asGap(t, cells["mid"]); g.Text != "No fresh closing price" {
+	if g := asGap(t, cells["mid"]); g.Text != codeTexts["no_mark"] {
 		t.Fatalf("mid = %+v", g)
 	}
 	o.Spot = ""
-	if g := asGap(t, openTable([]opt{o}, "", nil).Rows[0].Cells["spot"]); g.Text != "No closing price of the stock" {
+	if g := asGap(t, openTable([]opt{o}, "", nil).Rows[0].Cells["spot"]); g.Text != codeTexts["no_close"] {
 		t.Fatalf("no close spot = %+v", g)
 	}
 }

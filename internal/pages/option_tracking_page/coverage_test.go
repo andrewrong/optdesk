@@ -115,7 +115,7 @@ func TestCoverageNoReaderIsGap(t *testing.T) {
 	if cell["kind"] != "gap" || cell["reason"] != "no_reader" {
 		t.Fatalf("cell = %v", cell)
 	}
-	if notesWith(m, "lot-days") != 0 {
+	if notesWith(m, coverageNoteMidZh) != 0 {
 		t.Fatalf("notes = %v", m["notes"])
 	}
 }
@@ -165,7 +165,7 @@ func TestCoverageCountsFromFirstStoredQuote(t *testing.T) {
 	if cell["text"] != "2 of 3 days" || len(cell["badges"].([]any)) != 0 {
 		t.Fatalf("cell = %v", cell)
 	}
-	if notesWith(m, "main: 1 of 3 lot-days") != 1 {
+	if notesWith(m, "main: "+coverageNoteHeadZh+"3"+coverageNoteMidZh+"1"+coverageNoteTailZh) != 1 {
 		t.Fatalf("notes = %v", m["notes"])
 	}
 }
@@ -183,13 +183,13 @@ func TestCoverageNoteTotals(t *testing.T) {
 	}
 	c.Days = fakeDays{rows: rows}
 	m := buildMap(t, c)
-	if notesWith(m, "main: 3 of 15 lot-days") != 1 {
+	if notesWith(m, "main: "+coverageNoteHeadZh+"15"+coverageNoteMidZh+"3"+coverageNoteTailZh) != 1 {
 		t.Fatalf("notes = %v", m["notes"])
 	}
 	// an alias with no open row has no note
 	c2 := cfgFor(map[string]trackapi.TrackResult{"main": {Recent: []opt{sampleClosed("p0")}}}, "main")
 	c2.Days = fakeDays{}
-	if m := buildMap(t, c2); notesWith(m, "lot-days") != 0 {
+	if m := buildMap(t, c2); notesWith(m, coverageNoteMidZh) != 0 {
 		t.Fatalf("notes = %v", m["notes"])
 	}
 }
@@ -225,7 +225,7 @@ func TestCoverageEodNoSidesIsNoQuote(t *testing.T) {
 func TestCoverageHintNamesFirstStoredQuote(t *testing.T) {
 	t.Parallel()
 	last := openColumns("", nil)[len(openColumns("", nil))-1]
-	if last.Hint == nil || strings.Contains(*last.Hint, "since the position was opened") {
+	if last.Hint == nil || strings.Contains(*last.Hint, "开仓后") {
 		t.Fatalf("hint = %v, counts from the first stored quote now", last.Hint)
 	}
 }

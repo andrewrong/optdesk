@@ -127,11 +127,11 @@ func TestLongLegsLeftOut(t *testing.T) {
 	if vm.Accounts[0].LongLegsLeftOut != 3 {
 		t.Fatalf("long_legs_left_out = %d", vm.Accounts[0].LongLegsLeftOut)
 	}
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "3 long legs not listed, see Held options > Structures") {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "3"+leftOutTail) {
 		t.Fatalf("notes = %v", vm.Notes)
 	}
-	if len(vm.Notes) < 1 || vm.Notes[0] != "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table" ||
-		vm.MarkNote != "Mid price, the midpoint of the closing bid/ask; not a traded price" {
+	if len(vm.Notes) < 1 || vm.Notes[0] != flexNote ||
+		vm.MarkNote != markNote {
 		t.Fatalf("notes = %v, mark note = %q", vm.Notes, vm.MarkNote)
 	}
 }
@@ -170,7 +170,7 @@ func TestAliasWithoutRowsIsGap(t *testing.T) {
 	c := cfgFor(nil, "main")
 	c.Ledger = aliasLedger{aliases: []string{"main"}}
 	a := buildPage(t, c).Accounts[0]
-	if a.Gap == nil || a.Gap.Reason != "no_data" || a.Gap.Text != "No Flex record for this account" || a.Open != nil {
+	if a.Gap == nil || a.Gap.Reason != "no_data" || a.Gap.Text != codeTexts["no_flex_rows"] || a.Open != nil {
 		t.Fatalf("account = %+v", a)
 	}
 }
@@ -184,7 +184,7 @@ func TestNoAccountIsGapOfCheckOnly(t *testing.T) {
 	if a.Open == nil || a.Recent == nil || a.Recon != nil || a.Gap != nil {
 		t.Fatalf("account = %+v", a)
 	}
-	if len(vm.Gaps) != 1 || vm.Gaps[0].Reason != "no_data" || vm.Gaps[0].Text != "No account position record, check table not built" {
+	if len(vm.Gaps) != 1 || vm.Gaps[0].Reason != "no_data" || vm.Gaps[0].Text != codeTexts["no_account"] {
 		t.Fatalf("gaps = %+v", vm.Gaps)
 	}
 }
@@ -262,7 +262,7 @@ func TestBuildEmptyLedgerTitle(t *testing.T) {
 	}
 	res := trackapi.TrackResult{LongLegsLeftOut: 14}
 	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"a": res}, "a"))
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "a:14 long legs not listed, see Held options > Structures") {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "a:14"+leftOutTail) {
 		t.Fatalf("notes = %v", vm.Notes)
 	}
 }
@@ -271,7 +271,7 @@ func TestBuildGapTextsHaveNoCodeWord(t *testing.T) {
 	t.Parallel()
 	c := cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")
 	c.Account = nil
-	if g := buildPage(t, c).Gaps[0]; g.Text != "No account position record, check table not built" || g.Reason != "no_data" {
+	if g := buildPage(t, c).Gaps[0]; g.Text != codeTexts["no_account"] || g.Reason != "no_data" {
 		t.Fatalf("gap = %+v", g)
 	}
 	res := okResult()
@@ -286,16 +286,16 @@ func TestBuildGapTextsHaveNoCodeWord(t *testing.T) {
 	raw := buildRaw(t, c)
 	cells := buildPage(t, c).Accounts[0].Open.Rows[0].Cells
 	for _, id := range []string{"delta", "iv", "kept", "kept_percent", "mid", "moneyness"} {
-		if g := cells[id].(map[string]any); g["text"] != "No fresh closing price" || g["reason"] != "missing_quote" {
+		if g := cells[id].(map[string]any); g["text"] != codeTexts["no_mark"] || g["reason"] != "missing_quote" {
 			t.Errorf("%s = %+v", id, g)
 		}
 	}
-	if g := cells["spot"].(map[string]any); g["text"] != "No closing price of the stock" || g["reason"] != "missing_quote" {
+	if g := cells["spot"].(map[string]any); g["text"] != codeTexts["no_close"] || g["reason"] != "missing_quote" {
 		t.Errorf("spot = %+v", g)
 	}
 	for _, id := range []string{"ex", "results"} {
 		g := cells[id].(map[string]any)
-		if g["text"] != "No candidate row of this company in the last 7 days, earnings and ex-dividend dates unknown" || g["reason"] != "missing_input" {
+		if g["text"] != codeTexts["no_event_row"] || g["reason"] != "missing_input" {
 			t.Errorf("%s = %+v", id, g)
 		}
 	}

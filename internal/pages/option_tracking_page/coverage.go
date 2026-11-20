@@ -19,8 +19,7 @@ import (
 const (
 	coverageID    = "coverage"
 	coverageLabel = "Quote coverage"
-	coverageHint  = "Trading days from the later of the opening day and the first stored quote of the " +
-		"contract, on which a two-sided quote (bid and ask both above zero) is stored"
+	coverageHint  = coverageHintZh
 
 	reasonOneSide = "one side only"
 	reasonNoQuote = "no quote stored"
@@ -95,8 +94,8 @@ func coverageOf(ctx context.Context, c Config, in trackapi.TrackInput, open []op
 		gapTotal += len(lc.gapDays)
 		dayTotal += lc.days
 	}
-	note := in.Alias + noteSep + " " + strconv.Itoa(gapTotal) + " of " + strconv.Itoa(dayTotal) +
-		" lot-days have no two-sided quote since the first stored quote"
+	note := in.Alias + noteSep + " " + coverageNoteHeadZh + strconv.Itoa(dayTotal) +
+		coverageNoteMidZh + strconv.Itoa(gapTotal) + coverageNoteTailZh
 	return cells, note, nil
 }
 

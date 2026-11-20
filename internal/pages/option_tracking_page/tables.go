@@ -9,8 +9,7 @@ import (
 )
 
 // netPremiumHint explains the closed table's premium column.
-const netPremiumHint = "Cash of the opening trade plus the closing trade before commissions; " +
-	"negative when the option was bought back for more than it was sold for"
+const netPremiumHint = netPremiumHintZh
 
 type column struct {
 	ID    string  `json:"id"`
@@ -55,7 +54,7 @@ func openColumns(asOf contracts.Day, closes map[string]shared.Close) []colDef[op
 		col("opened", "Opened", "left", openedDayCell),
 		col("qty", "Quantity", "right", qty),
 		col("dte", "DTE", "right", dteCell),
-		col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent of the closing price, positive is out of the money"),
+		col("moneyness", "Moneyness", "right", moneynessCell).hinted(moneynessHintZh),
 		col("spot", "Stock close", "right", func(o opt) any { return spotCell(o, closes) }),
 		col("mid", "Mid price", "right", func(o opt) any { return moneyHalfUp(o.Mid, o.Currency, markCode(o)) }).hinted(markNote),
 		col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
