@@ -19,6 +19,9 @@ func init() { register("migrate", runMigrate) }
 
 // runMigrate applies the migrations of a directory under the administrative DSN as ot_owner.
 func runMigrate(a *app, args []string) error {
+	if len(args) > 0 && args[0] == "check" {
+		return migrateCheckCmd(a, args[1:])
+	}
 	fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dir := fs.String("dir", "migrations", "directory of the migration files")
