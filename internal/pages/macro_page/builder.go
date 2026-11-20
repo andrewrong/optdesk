@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -67,6 +68,12 @@ type Config struct {
 	Scope      string
 	Zone       *time.Location
 	Indicators []Indicator
+	// Groups is optional: the grouped rows of the Indicators card, written after Indicators with the fields group,
+	// change_text, data_day and hint (indicators.go). Empty keeps the payload as it is.
+	Groups []Group
+	// Window is optional: the option window in days and whether the owner stored it. With it, Build writes the lead
+	// block and days_to and in_window on each event (lead.go). Nil keeps the payload as it is.
+	Window WindowFunc
 	// Read is optional. Nil keeps the page as it is: the ease is a no_data gap. With it,
 	// Build may read stored readings through it; an error of Read is an error of Build,
 	// never a gap.
@@ -102,6 +109,11 @@ type indicatorRow struct {
 	Label      string  `json:"label"`
 	SourceText string  `json:"source_text"`
 	DetailHref *string `json:"detail_href"`
+	// Written only for the rows of a group.
+	Group      string  `json:"group,omitempty"`
+	ChangeText *string `json:"change_text,omitempty"`
+	DataDay    *string `json:"data_day,omitempty"`
+	Hint       string  `json:"hint,omitempty"`
 }
 
 type sourceTime struct {
@@ -139,6 +151,9 @@ type viewModel struct {
 	// Written only with a Liquidity function (version 2).
 	LiquidityTitle string          `json:"liquidity_title,omitempty"`
 	Liquidity      *liquidityBlock `json:"liquidity,omitempty"`
+	// Written only with a Window function.
+	Lead   *lead `json:"lead,omitempty"`
+	events []macroevent.Event
 }
 
 func validate(c Config) error {
@@ -150,13 +165,17 @@ func validate(c Config) error {
 			return fmt.Errorf("macro_page: bad %s %q", name, v)
 		}
 	}
-	if len(c.Indicators) == 0 {
+	all := slices.Clone(c.Indicators)
+	for _, g := range c.Groups {
+		all = append(all, g.Indicators...)
+	}
+	if len(all) == 0 {
 		return fmt.Errorf("macro_page: no indicators")
 	}
-	if len(c.Indicators) > maxIndicators {
-		return fmt.Errorf("macro_page: %d indicators, at most %d", len(c.Indicators), maxIndicators)
+	if len(all) > maxIndicators {
+		return fmt.Errorf("macro_page: %d indicators, at most %d", len(all), maxIndicators)
 	}
-	for i, ind := range c.Indicators {
+	for i, ind := range all {
 		if ind.SeriesID == "" || ind.Name == "" {
 			return fmt.Errorf("macro_page: indicator %d has an empty series id or name", i)
 		}
@@ -232,13 +251,12 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		latest := latestPoint(rows, d)
 		vm.Indicators = append(vm.Indicators, row(ind, latest, d))
 		if latest != nil {
-			obs := latest.ObservationDate.Time
-			vm.DataTimes = append(vm.DataTimes, sourceTime{Source: ind.SeriesID, DataTime: midnight(obs, c.Zone)})
-			if oldest == nil || obs.Before(*oldest) {
-				o := obs
-				oldest = &o
-			}
+			oldest = noteData(&vm, c.Zone, oldest, ind.SeriesID, latest.ObservationDate.Time, true)
 		}
+	}
+	oldest, err = withGroupsAndLead(ctx, r, c, d, generatedAt, &vm, oldest)
+	if err != nil {
+		return nil, err
 	}
 	vm.Stale = staleOf(d, oldest, c.Zone)
 	return json.Marshal(vm)
@@ -310,4 +328,34 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 		out.Status, out.Label = "good", "On time"
 	}
 	return out
+}
+
+// noteData adds the data time of a series to vm and, when it counts for the stale label, moves oldest back to it.
+func noteData(vm *viewModel, zone *time.Location, oldest *time.Time, id string, obs time.Time, counts bool) *time.Time {
+	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: id, DataTime: midnight(obs, zone)})
+	if counts && (oldest == nil || obs.Before(*oldest)) {
+		o := obs
+		return &o
+	}
+	return oldest
+}
+
+// withGroupsAndLead appends the grouped rows, with their data times (a monthly series is listed but does not set the
+// stale label) and, with c.Window, writes the event flags and the lead block. It returns the oldest data day.
+func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel, oldest *time.Time) (*time.Time, error) {
+	grouped, days, err := buildGroups(ctx, r, c.Groups, d)
+	if err != nil {
+		return nil, err
+	}
+	vm.Indicators = append(vm.Indicators, grouped...)
+	for _, g := range days {
+		oldest = noteData(vm, c.Zone, oldest, g.id, g.day, !g.monthly)
+	}
+	if c.Window == nil {
+		return oldest, nil
+	}
+	window, stored := windowOf(ctx, c, generatedAt)
+	markWindow(vm.Events, d, window)
+	vm.Lead, err = buildLead(ctx, r, vm.events, d, window, stored)
+	return oldest, err
 }

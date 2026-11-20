@@ -1,0 +1,24 @@
+package macro_page
+
+// Design: docs/design/macro-page-v2.md#decisions 8.
+//
+// The Chinese hints of the page. This is the only file of the package with Chinese text;
+// TestHintsOnlyInZhTexts fails on any other. The web prints a hint as it is.
+const (
+	hintTbill     = "三个月美国国债收益率，就是无风险现金利率；卖期权的收入要拿它来比，它高时现金本身就有回报。"
+	hintHySpread  = "高收益债信用利差（ICE BofA，FRED BAMLH0A0HYM2）：越大说明市场越怕违约，常在股市下跌前后走阔；这里只提示，不挡单。"
+	hintNextEvent = "期权窗口内的重大事件（CPI、非农、PCE、GDP、联储议息、日本央行议息）：合约跨过这一天，要把事件风险算进去。"
+	hintIndexIV   = "指数隐含波动率（VIX、VXN、RVX，FRED收盘值，不是实时报价）：越高权利金越贵，卖方收入高，风险也高。"
+	hintWindow    = "事件列和窗口提示用同一套说明：“窗口内”指到期日不超过期权最长到期天数（默认45天）。"
+
+	hintDFF      = "联邦基金有效利率，美联储政策利率的实际水平，短期资金的价格。"
+	hintDGS2     = "两年期美国国债收益率，反映市场对未来一两年政策利率的预期。"
+	hintDGS10    = "十年期美国国债收益率，长期利率的基准，也影响估值。"
+	hintT10Y2Y   = "十年减两年国债利差；为负是倒挂，常被当作衰退预警，只作参考。"
+	hintT10Y3M   = "十年减三个月国债利差；同样是曲线形状，倒挂更受联储关注。"
+	hintT10YIE   = "十年期盈亏平衡通胀率，市场隐含的未来十年通胀预期。"
+	hintNFCI     = "芝加哥联储金融状况指数；0是平均，越高金融环境越紧。"
+	hintDTWEXBGS = "美联储广义美元指数；美元走强常对应全球流动性收紧。"
+	hintDEXJPUS  = "美元兑日元；日元急升常伴随套利交易平仓，波动放大。"
+	hintIRLTJP   = "日本十年期国债收益率（OECD经FRED，月度）。"
+)

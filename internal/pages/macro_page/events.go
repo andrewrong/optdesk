@@ -66,6 +66,9 @@ type eventRow struct {
 	WhenText string `json:"when_text"`
 	NameText string `json:"name_text"`
 	Previous gap    `json:"previous"`
+	// Written only with a Window function.
+	DaysTo   *int  `json:"days_to,omitempty"`
+	InWindow *bool `json:"in_window,omitempty"`
 }
 
 func newEventRow(e macroevent.Event) eventRow {
@@ -90,20 +93,20 @@ func newEventRow(e macroevent.Event) eventRow {
 
 // eventBlock reads the stored events of the window and the gaps that say what is missing from them. An error of
 // the reader is an error, never a gap.
-func eventBlock(ctx context.Context, rd macroevent.Reader, d time.Time) ([]eventRow, []gap, error) {
+func eventBlock(ctx context.Context, rd macroevent.Reader, d time.Time) ([]eventRow, []macroevent.Event, []gap, error) {
 	day := contracts.Day(d.Format(dayLayout))
 	end := d.AddDate(0, 0, eventWindowDays)
 	events, err := rd.Between(ctx, day, contracts.Day(end.Format(dayLayout)))
 	if err != nil {
-		return nil, nil, fmt.Errorf("macro_page: read events: %w", err)
+		return nil, nil, nil, fmt.Errorf("macro_page: read events: %w", err)
 	}
 	kinds, err := rd.Kinds(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("macro_page: read event kinds: %w", err)
+		return nil, nil, nil, fmt.Errorf("macro_page: read event kinds: %w", err)
 	}
 	entered, err := enteredYears(ctx, rd, d, end)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	rows := make([]eventRow, 0, maxEvents)
@@ -128,7 +131,7 @@ func eventBlock(ctx context.Context, rd macroevent.Reader, d time.Time) ([]event
 		gaps = append(gaps, gap{Reason: "missing_input", Text: fmt.Sprintf("Events after %s not shown: %d of %d shown",
 			rows[len(rows)-1].Date, maxEvents, len(events))})
 	}
-	return rows, gaps, nil
+	return rows, events, gaps, nil
 }
 
 // kindGaps sorts the kinds into the three lists of Decision 8 that come from Reader.Kinds, in table order.
@@ -214,13 +217,28 @@ func withEvents(ctx context.Context, c Config, d time.Time, vm *viewModel) ([]ga
 	if c.Events == nil {
 		return nil, nil
 	}
-	rows, gaps, err := eventBlock(ctx, c.Events, d)
+	rows, events, gaps, err := eventBlock(ctx, c.Events, d)
 	if err != nil {
 		return nil, err
 	}
+	vm.events = events
 	vm.EventsTitle = eventsTitleWithReader
 	vm.Sentence = sentenceEv
 	vm.Gaps = vm.Gaps[:1]
 	vm.Events = rows
 	return gaps, nil
+}
+
+// markWindow writes days_to and in_window on each row: in_window is true when the days to the event are zero or more
+// and at most days.
+func markWindow(rows []eventRow, d time.Time, days int) {
+	for i := range rows {
+		ed, err := time.Parse(dayLayout, rows[i].Date)
+		if err != nil {
+			continue
+		}
+		n := daysBetween(d, ed)
+		in := n >= 0 && n <= days
+		rows[i].DaysTo, rows[i].InWindow = &n, &in
+	}
 }
