@@ -229,6 +229,14 @@ export interface OptionCandidatesPage {
   short_put_list_jpy?: ShortList | null;
   subtitle?: Text1;
   /**
+   * How many names came from the open chain, from the last close, and with no candidate; additive and optional. none is left out when the stored candidates cannot give it.
+   */
+  source_counts?: {
+    open: number;
+    eod_fallback: number;
+    none?: number;
+  };
+  /**
    * The words of the page head, in Chinese; additive and optional.
    */
   head_labels?: {
