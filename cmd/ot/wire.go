@@ -167,6 +167,7 @@ type deps struct {
 	pageList                []pages.Page
 	newHandler              pages.NewHandlerFunc
 	migrateUp               func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	migrateMissing          func(ctx context.Context, dsn string, want []int64) (missing, extra []int64, err error) // read-only: ot migrate check
 	ownerDSN                func(adminDSN string) (string, error)
 	readEnv                 store.ReadEnvFunc
 	macroPage               func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page
@@ -326,6 +327,7 @@ func newBaseDeps() deps {
 		pageList:                []pages.Page{macro_rates.Page()},
 		newHandler:              embed.Handler,
 		migrateUp:               setup.MigrateUp,
+		migrateMissing:          setup.MigrateMissing,
 		ownerDSN:                setup.OwnerDSN,
 		readEnv:                 setup.ReadEnv,
 		macroPage:               newMacroPage,
