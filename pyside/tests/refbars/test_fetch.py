@@ -42,14 +42,24 @@ class _Series:
 
 
 class _Frame:
-    def __init__(self, rows: list[tuple[datetime.datetime, float]], columns: list[str]) -> None:
+    """Rows of (stamp, close); `fields` gives other columns by name, one value per row (NaN when absent)."""
+
+    def __init__(
+        self,
+        rows: list[tuple[datetime.datetime, float]],
+        columns: list[str],
+        fields: dict[str, list[float]] | None = None,
+    ) -> None:
         self._rows = rows
         self.columns = columns
+        self._fields = fields or {}
         self.empty = not rows
 
     def __getitem__(self, name: str) -> _Series:
-        assert name == "Close", f"read of column {name}"
-        return _Series(self._rows)
+        if name == "Close":
+            return _Series(self._rows)
+        values = self._fields.get(name, [float("nan")] * len(self._rows))
+        return _Series([(stamp, values[i]) for i, (stamp, _) in enumerate(self._rows)])
 
 
 class _FakeClock:
@@ -214,3 +224,49 @@ def test_nan_close_is_skipped(value: float) -> None:
     frame = _Frame([(_day(16), value), (_day(17), 2.0)], COLUMNS)
     result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-17")
     assert result["bars"] == [{"session_day": "2026-11-17", "open": "", "high": "", "low": "", "close": "2.0000", "volume": ""}]
+
+
+def test_bar_carries_ohlcv() -> None:
+    frame = _Frame(
+        [(_day(16), 189.5), (_day(17), 190.25)],
+        COLUMNS,
+        {
+            "Open": [188.00005, 189.1999969482422],
+            "High": [190.0, 191.5],
+            "Low": [187.25, 188.0],
+            "Volume": [1234567.0, 89.0],
+        },
+    )
+    result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-17")
+    assert result["bars"] == [
+        {
+            "session_day": "2026-11-16",
+            "open": "188.0001",
+            "high": "190.0000",
+            "low": "187.2500",
+            "close": "189.5000",
+            "volume": "1234567.0000",
+        },
+        {
+            "session_day": "2026-11-17",
+            "open": "189.2000",
+            "high": "191.5000",
+            "low": "188.0000",
+            "close": "190.2500",
+            "volume": "89.0000",
+        },
+    ]
+
+
+def test_nan_open_is_empty_text() -> None:
+    nan = float("nan")
+    frame = _Frame(
+        [(_day(16), 5.0)],
+        COLUMNS,
+        {"Open": [nan], "High": [nan], "Low": [nan], "Volume": [nan]},
+    )
+    result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-16")
+    assert result["error_code"] == ""
+    assert result["bars"] == [
+        {"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "5.0000", "volume": ""}
+    ]

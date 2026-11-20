@@ -156,7 +156,16 @@ def test_deadline_answers_rest_timeout_keeping_bars() -> None:
     results = json.loads(out)["results"]
     assert code == 0
     assert [r["error_code"] for r in results] == ["", "", "timeout"]
-    assert results[0]["bars"] == [{"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "10.0000", "volume": ""}]
+    assert results[0]["bars"] == [
+        {
+            "session_day": "2026-11-16",
+            "open": "10.0000",
+            "high": "10.0000",
+            "low": "10.0000",
+            "close": "10.0000",
+            "volume": "10.0000",
+        }
+    ]
     assert results[2]["bars"] == []
     assert yf.asked == ["A", "B"]
 
