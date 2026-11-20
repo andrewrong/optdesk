@@ -53,7 +53,7 @@ Facts read on origin/main b6b01e2c.
 
 ## Modules
 
-Seven modules named; six entries (the producer and the wiring are one entry because the wiring cannot be written before the producer's new fields exist and the interface files hold none of them). contracts (`contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/**`), sources (`internal/sources/fred/**`), store (`migrations/**`), jobs (`internal/jobs/fredseries/**`), pages (`internal/pages/macro_page/**`), ot (`cmd/ot/**`) and web (`web/src/pages/macro/**`, `web/test/pages/macro/**`). No row of `docs/design/modules.md` changes. Entry 5 spans pages and ot, both named here.
+Seven modules named; six entries (the producer and the wiring are one entry because the wiring cannot be written before the producer's new fields exist and the interface files hold none of them). contracts (`contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/**`), sources (`internal/sources/fred/**`), store (`migrations/**`), jobs (`internal/jobs/fredseries/**`), pages (`internal/pages/macro_page/**`), ot (`cmd/ot/**`) and web (`web/src/pages/macro/**`, `web/test/pages/macro/**`). No row of `docs/design/modules.md` changes. Entry 1 spans contracts and web (the read of `tone` in `web/src/pages/macro/MacroPage.tsx`, which the regenerated type changes); entry 5 spans pages and ot, all named here.
 
 ## Interface
 
@@ -63,7 +63,7 @@ One shared item changes: `page.macro_page.v2` gains the optional fields of Decis
 
 ### 1 macro-page-schema (interface)
 
-Module: contracts. Size: S.
+Module: contracts and web. Size: S.
 Order: none.
 Files: `contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/macro_page_lead_test.go`, `web/src/pages/macro/MacroPage.tsx` (only the read of `tone`, which `LevelFigure` lacks, so `tsc` stays green with the regenerated type)
 Acceptance: the fields of Decisions 2, 3, 5, 6 and 7 are optional; the generated type has them; a new test `TestMacroPageLeadOptional` validates an instance without and with them.
