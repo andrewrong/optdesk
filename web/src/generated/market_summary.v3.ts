@@ -69,6 +69,8 @@ export type Text = string;
  * @maxItems 4
  */
 export type Columns = [string, string, string, string];
+export type Hint = string;
+export type Label1 = string;
 /**
  * @maxItems 10
  */
@@ -84,13 +86,14 @@ export type Rows =
   | [IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow]
   | [IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow]
   | [IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow];
-export type Iv = VolPointsFigure | Gap;
+export type IndexIv1 = VolPointsFigure | Gap;
 export type Kind1 = "value";
 export type Source = string;
 export type Text1 = string;
 export type Tone = "up" | "down" | "flat" | "none";
 export type Unit = "vol_points";
 export type Value = number;
+export type Iv = VolPointsFigure | Gap;
 export type IvMinusRv20 = VolPointsFigure | Gap;
 export type Name = string;
 export type Rv20 = VolPointsFigure | Gap;
@@ -522,9 +525,15 @@ export interface Gap {
 }
 export interface IndexTable {
   columns: Columns;
+  index_iv?: IndexIv;
   rows: Rows;
 }
+export interface IndexIv {
+  hint: Hint;
+  label: Label1;
+}
 export interface IndexRow {
+  index_iv?: IndexIv1;
   iv: Iv;
   iv_minus_rv20: IvMinusRv20;
   name: Name;

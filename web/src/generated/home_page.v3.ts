@@ -1820,6 +1820,8 @@ export type Gaps4 =
  * @maxItems 4
  */
 export type Columns1 = [string, string, string, string];
+export type Hint = string;
+export type Label8 = string;
 /**
  * @maxItems 10
  */
@@ -1835,13 +1837,14 @@ export type Rows1 =
   | [IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow]
   | [IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow]
   | [IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow, IndexRow];
-export type Iv = VolPointsFigure | Gap1;
+export type IndexIv1 = VolPointsFigure | Gap1;
 export type Kind6 = "value";
 export type Source1 = string;
 export type Text18 = string;
 export type Tone4 = "up" | "down" | "flat" | "none";
 export type Unit8 = "vol_points";
 export type Value8 = number;
+export type Iv = VolPointsFigure | Gap1;
 export type IvMinusRv20 = VolPointsFigure | Gap1;
 export type Name = string;
 export type Rv20 = VolPointsFigure | Gap1;
@@ -2399,7 +2402,7 @@ export type Text21 = string;
 export type Tone5 = "up" | "down" | "flat" | "none";
 export type Unit10 = "usd_signed";
 export type Value10 = number;
-export type Label8 = string;
+export type Label9 = string;
 /**
  * Calendar month as YYYY-MM.
  */
@@ -2415,17 +2418,17 @@ export type Kind10 = "value";
 export type Text22 = string;
 export type Unit11 = "usd";
 export type Value11 = number;
-export type Label9 = string;
+export type Label10 = string;
 export type Caption5 = string;
 export type Figure5 = UsdSignedFigure1 | Gap2;
-export type Label10 = string;
+export type Label11 = string;
 export type Caption6 = string;
 export type Figure6 = CountFigure | Gap2;
 export type Kind11 = "value";
 export type Text23 = string;
 export type Unit12 = "structures";
 export type Value12 = number;
-export type Label11 = string;
+export type Label12 = string;
 export type Title5 = string;
 export type Currency2 = "USD";
 /**
@@ -3036,9 +3039,15 @@ export interface ChartPoint {
 }
 export interface IndexTable {
   columns: Columns1;
+  index_iv?: IndexIv;
   rows: Rows1;
 }
+export interface IndexIv {
+  hint: Hint;
+  label: Label8;
+}
 export interface IndexRow {
+  index_iv?: IndexIv1;
   iv: Iv;
   iv_minus_rv20: IvMinusRv20;
   name: Name;
@@ -3118,7 +3127,7 @@ export interface Gap2 {
 }
 export interface SeriesPoint {
   closed: Closed;
-  label: Label8;
+  label: Label9;
   month: Month;
   premium: Premium;
 }
@@ -3144,7 +3153,7 @@ export interface Tiles1 {
 export interface UsdTile {
   caption?: Caption4;
   figure: Figure4;
-  label: Label9;
+  label: Label10;
 }
 /**
  * A displayed US-dollar amount (two decimals in ``value``, whole dollars in ``text``).
@@ -3158,12 +3167,12 @@ export interface UsdFigure1 {
 export interface SignedUsdTile {
   caption?: Caption5;
   figure: Figure5;
-  label: Label10;
+  label: Label11;
 }
 export interface CountTile {
   caption?: Caption6;
   figure: Figure6;
-  label: Label11;
+  label: Label12;
 }
 /**
  * A displayed count of option structures (a short put, a spread: one structure each).

@@ -215,6 +215,17 @@
     "IndexRow": {
       "additionalProperties": false,
       "properties": {
+        "index_iv": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ],
+          "title": "Index Iv"
+        },
         "iv": {
           "oneOf": [
             {
@@ -283,6 +294,29 @@
           "minItems": 4,
           "title": "Columns",
           "type": "array"
+        },
+        "index_iv": {
+          "additionalProperties": false,
+          "properties": {
+            "hint": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Hint",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Label",
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "hint"
+          ],
+          "title": "Index Iv",
+          "type": "object"
         },
         "rows": {
           "items": {
