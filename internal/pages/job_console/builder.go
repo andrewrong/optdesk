@@ -158,6 +158,9 @@ func BuildWithRuns(ctx context.Context, r jobrequest.Reader, generatedAt time.Ti
 
 	open := readRuns(ctx, runs, now)
 	p.Running = open.rows
+	if len(p.Running) > 0 {
+		p.RefreshSeconds = refreshSeconds
+	}
 
 	rows, sel, gap := readRows(ctx, r, selected)
 	if gap != nil {
