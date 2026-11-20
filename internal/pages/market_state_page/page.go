@@ -52,7 +52,7 @@ type Config struct {
 func NewPage(c Config) pages.Page {
 	c.Symbols = slices.Clone(c.Symbols)
 	return pages.Page{
-		Meta: pages.Meta{Name: "market_state_page", Schema: "page.market_state_page.v1"},
+		Meta: pages.Meta{Name: "market_state_page", Schema: "page.market_state_page.v2"},
 		Build: func(ctx context.Context, r store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 			return Build(ctx, c, r, day, at)
 		},

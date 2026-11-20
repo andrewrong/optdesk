@@ -12,6 +12,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
@@ -77,6 +78,9 @@ type pageJSON struct {
 	Views         []viewJSON   `json:"views"`
 	Notes         []string     `json:"notes"`
 	Gaps          []gapJSON    `json:"gaps"`
+	// BarsSource and BarsSourceNote are left out when every bar is ibkr.
+	BarsSource     string `json:"bars_source,omitempty"`
+	BarsSourceNote string `json:"bars_source_note,omitempty"`
 }
 
 // capture is what the account holds on its newest session day with positions.
@@ -142,7 +146,11 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
-	return marshal(c.assemble(alias, label, snap, ledgerAt, stocks, options, trades, skipped, bp.Fallbacks, at))
+	page := c.assemble(alias, label, snap, ledgerAt, stocks, options, trades, skipped, bp.Fallbacks, at)
+	if kind, note := shared.BarSourceOf(bp.Rows); kind != shared.BarSourceIbkr {
+		page.BarsSource, page.BarsSourceNote = kind, note
+	}
+	return marshal(page)
 }
 
 // ready is true when every reader and constructor is set.
@@ -279,7 +287,7 @@ func (c Config) base(alias string, at time.Time) pageJSON {
 		scope = "unknown"
 	}
 	return pageJSON{
-		Schema: "positions_page", SchemaVersion: 3, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
+		Schema: "positions_page", SchemaVersion: 4, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
 		GeneratedAt: at.Format(stampLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{},
 		Title: pageTitle, Views: []viewJSON{},
 		Stale: staleLabel{DataTime: at.Format(stampLayout), StaleAfter: at.Format(stampLayout), Text: textStaleData + "none"},

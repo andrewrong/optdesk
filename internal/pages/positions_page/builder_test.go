@@ -177,7 +177,7 @@ func at0(t *testing.T, v any, path ...any) any {
 func TestMeta(t *testing.T) {
 	t.Parallel()
 	p := positions_page.NewPage(positions_page.Config{}, "main")
-	if p.Meta.Name != "positions_page" || p.Meta.Schema != "page.positions_page.v3" {
+	if p.Meta.Name != "positions_page" || p.Meta.Schema != "page.positions_page.v4" {
 		t.Fatalf("meta = %+v", p.Meta)
 	}
 }
@@ -196,7 +196,7 @@ func (fileLoader) Load(url string) (any, error) {
 // any non-empty key, label and role text), so that it holds before and after that issue lands.
 func validate(t *testing.T, b []byte) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "schemas", "page.positions_page.v3.json"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "schemas", "page.positions_page.v4.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,10 +216,10 @@ func validate(t *testing.T, b []byte) {
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
 	c.UseLoader(fileLoader{})
-	if err := c.AddResource("https://optdesk.invalid/schemas/page.positions_page.v3.json", doc); err != nil {
+	if err := c.AddResource("https://optdesk.invalid/schemas/page.positions_page.v4.json", doc); err != nil {
 		t.Fatal(err)
 	}
-	s, err := c.Compile("https://optdesk.invalid/schemas/page.positions_page.v3.json")
+	s, err := c.Compile("https://optdesk.invalid/schemas/page.positions_page.v4.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -694,4 +694,24 @@ func TestStatementNoteFitsTheSchema(t *testing.T) {
 		}
 	}
 	validate(t, b)
+}
+
+func TestBarsSourceMixed(t *testing.T) {
+	t.Parallel()
+	c, _ := noMarks(pos("2026-11-10", "AAA", "stock", "USD", 1, "10", "100"))
+	ids := &fakeStockIDs{rows: []store.InstrumentName{idOf(11, "AAA")}}
+	yf := bar(11, "2026-11-09", "110", "USD")
+	yf.Source = "yfinance"
+	bars := &fakeBars{byID: map[int64][]contracts.PriceBar{11: {bar(11, "2026-11-06", "100", "USD"), yf}}}
+	m, b := build(t, withBars(c, ids, bars), "main")
+	validate(t, b)
+	if m["schema_version"] != float64(4) || m["bars_source"] != "mixed" || m["bars_source_note"] == "" {
+		t.Fatalf("source = %v %v, version %v", m["bars_source"], m["bars_source_note"], m["schema_version"])
+	}
+	bars = &fakeBars{byID: map[int64][]contracts.PriceBar{11: {bar(11, "2026-11-06", "100", "USD"), bar(11, "2026-11-09", "110", "USD")}}}
+	ok, b := build(t, withBars(c, ids, bars), "main")
+	validate(t, b)
+	if _, has := ok["bars_source_note"]; has || ok["bars_source"] != nil {
+		t.Fatalf("all-ibkr page carries a source: %v", ok["bars_source"])
+	}
 }

@@ -1,4 +1,4 @@
-// Package positions_page builds the page.positions_page.v3 view model of one account per page: the
+// Package positions_page builds the page.positions_page.v4 view model of one account per page: the
 // stocks and options the account holds at its newest capture with the price of each (the stored mark),
 // the remaining premium of each option from the replayed ledger, and the executions of the last 30
 // session days. It computes no figure (the figures come from blockapi.HoldingFigures and
@@ -44,7 +44,7 @@ type Config struct {
 // NewPage is the positions_page page of one account; alias "" means the main account.
 func NewPage(c Config, alias string) pages.Page {
 	return pages.Page{
-		Meta: pages.Meta{Name: "positions_page", Schema: "page.positions_page.v3"},
+		Meta: pages.Meta{Name: "positions_page", Schema: "page.positions_page.v4"},
 		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 			return Build(ctx, c, alias, day, at)
 		},

@@ -44,7 +44,7 @@ func validate(t *testing.T, b []byte) {
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
 	c.UseLoader(fileLoader{})
-	s, err := c.Compile(schemaHost + "page.company_data_page.v1.json")
+	s, err := c.Compile(schemaHost + "page.company_data_page.v2.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,5 +331,22 @@ func TestNextReportFromYesterdaysObservation(t *testing.T) {
 	in.Earnings = windowEarnings{rows: []contracts.EarningsDate{r}}
 	if got := companies(build(t, in))[0]["next_report"]; got != "2026-12-01" {
 		t.Fatalf("next_report = %v, want 2026-12-01", got)
+	}
+}
+
+func TestBarsSourceMixed(t *testing.T) {
+	t.Parallel()
+	in, b := newInput([]underlying.Row{aapl}, &fakeCalc{sum: summary()})
+	yf := mkBar("2026-11-16")
+	yf.Source = "yfinance"
+	b.bars[1] = []contracts.PriceBar{mkBar("2026-11-14"), yf}
+	m := build(t, in) // build validates against the v2 schema
+	if m["schema_version"] != float64(2) || m["bars_source"] != "mixed" || m["bars_source_note"] == "" {
+		t.Fatalf("source = %v %v, version %v", m["bars_source"], m["bars_source_note"], m["schema_version"])
+	}
+	in, _ = newInput([]underlying.Row{aapl}, &fakeCalc{sum: summary()})
+	ok := build(t, in)
+	if _, has := ok["bars_source_note"]; has || ok["bars_source"] != nil {
+		t.Fatalf("all-ibkr page carries a source: %v", ok["bars_source"])
 	}
 }

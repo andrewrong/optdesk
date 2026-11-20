@@ -37,6 +37,7 @@ type fallback struct{ Symbol, Day string }
 type barFigures struct {
 	Price, Prev map[int64]string
 	Fallbacks   []fallback
+	Rows        []contracts.PriceBar // every bar row read, for shared.BarSourceOf
 }
 
 // barPrices completes the marks of the capture on capDay from the daily bars: a stock with no mark takes the
@@ -79,6 +80,7 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 		if err != nil {
 			return out, fmt.Errorf("positions_page: read price bars of %s: %w", p.Symbol, err)
 		}
+		out.Rows = append(out.Rows, bars...)
 		cs := dayCloses(bars, capDay)
 		if _, marked := price[p.ConID]; marked {
 			if v, ok := prevOfMark(cs, capDay, p.Currency); ok {
