@@ -16,6 +16,15 @@ const (
 	zhClassOther      = "其他错误类别：运行完成时带有这个错误代码，详细原因只在日志里。"
 )
 
+// The gateway block (docs/design/gateway-health.md, Decision 12): the verdict key stays in each text with its
+// meaning beside it. No text names an account or a port.
+const (
+	zhGatewaySessionUp   = "session_up：与网关的接口连接正常（session 指程序与网关之间的连接）。"
+	zhGatewayRetrying    = "session_retrying：与网关的接口连接断了或暂时丢失，程序正在自动重连，不需要你操作。"
+	zhGatewayFarmDown    = "farm_down：网关自己报告某个数据服务器（farm，即网关背后的行情或历史数据服务器）断了，程序与网关的连接仍然正常，所以重连没有用：请到这个网关重新登录。"
+	zhGatewayUnreachable = "unreachable：这次没有从网关得到可用的状态（没有回答，或回答里的状态无法识别）；这不等于网关已经坏了。"
+)
+
 // The running lines above the grid (docs/design/scheduler-per-job.md, Decision 8): the same strings as the
 // job console, the English meaning of each beside it.
 const (

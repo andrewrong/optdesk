@@ -28,6 +28,7 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 		vm.Form = &formVM{PostPath: in.Form.PostPath, Expires: in.Form.Expires, MAC: in.Form.MAC}
 	}
 	vm.Running = runningLines(ctx, in)
+	vm.Gateways = gatewayRows(in.Gateways)
 	datasets, failuresOK, err := datasetRows(ctx, in)
 	if err != nil {
 		vm.Gaps = append(vm.Gaps, Gap{Kind: "gap", Reason: gapReason, Text: gapText})
