@@ -50,15 +50,11 @@ function HintMark({ hint }: { hint: string }) {
             role="button"
             tabIndex={0}
             data-hint-mark
-            className="ml-1 cursor-help text-muted-foreground"
-            onClick={(event) => {
-              event.stopPropagation()
-              setOpen(!open)
-            }}
+            className="absolute right-3 top-3 cursor-help text-muted-foreground"
+            onClick={() => setOpen(!open)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                event.stopPropagation()
                 setOpen(!open)
               }
             }}
@@ -76,10 +72,7 @@ function RowText({ row }: { row: Row }) {
   const { figure, percentile } = row
   return (
     <span className="grid gap-1 text-left">
-      <span className="font-medium">
-        {row.label}
-        {row.hint ? <HintMark hint={row.hint} /> : null}
-      </span>
+      <span className="font-medium">{row.label}</span>
       <span>{figure.text}</span>
       {percentile ? (
         <span className="text-sm text-muted-foreground">
@@ -102,7 +95,8 @@ function MarketRow({ row }: { row: Row }) {
   const { history } = row
   if ('kind' in history) {
     return (
-      <li className="rounded-md border p-3" data-market-row={row.id}>
+      <li className="relative rounded-md border p-3" data-market-row={row.id}>
+        {row.hint ? <HintMark hint={row.hint} /> : null}
         <RowText row={row} />
         <p className="mt-2 text-sm text-muted-foreground" data-history-gap>
           {history.text}
@@ -111,7 +105,8 @@ function MarketRow({ row }: { row: Row }) {
     )
   }
   return (
-    <li className="rounded-md border" data-market-row={row.id}>
+    <li className="relative rounded-md border" data-market-row={row.id}>
+      {row.hint ? <HintMark hint={row.hint} /> : null}
       <button
         type="button"
         aria-expanded={open}

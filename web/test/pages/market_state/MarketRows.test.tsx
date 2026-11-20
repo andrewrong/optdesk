@@ -16,40 +16,6 @@ const ok = JSON.parse(
   ),
 ) as Payload
 
-async function figureOf(unit: string): Promise<{ text: string; span: Element | null }> {
-  const base = ok.market.rows[0]!
-  const block = {
-    ...ok.market,
-    rows: [{ ...base, figure: { kind: 'value', text: '7.2', unit } }],
-  } as unknown as Payload['market']
-  const host = document.createElement('div')
-  const root = createRoot(host)
-  await act(async () => {
-    root.render(<MarketRows block={block} />)
-  })
-  const row = host.querySelector('[data-market-row]')!
-  const span = row.querySelector('span.ml-1')
-  const text = row.textContent ?? ''
-  await act(async () => root.unmount())
-  return { text, span }
-}
-
-describe('MarketRows figure unit', () => {
-  it('prints the figure text alone for a percent unit, with no suffix or id after it', async () => {
-    const { text, span } = await figureOf('percent')
-    expect(span).toBeNull()
-    expect(text).toContain('7.2')
-    expect(text).not.toContain('7.2%')
-    expect(text).not.toContain('percent')
-  })
-
-  it('prints nothing after the figure of a unit with no suffix', async () => {
-    const { text, span } = await figureOf('index_points')
-    expect(span).toBeNull()
-    expect(text).not.toContain('index_points')
-  })
-})
-
 type TestRow = Payload['market']['rows'][number]
 
 async function render(patch: Partial<TestRow>): Promise<{ host: HTMLElement; done: () => Promise<void> }> {
@@ -69,6 +35,31 @@ async function render(patch: Partial<TestRow>): Promise<{ host: HTMLElement; don
     },
   }
 }
+
+async function figureOf(unit: string): Promise<{ text: string; span: Element | null }> {
+  const { host, done } = await render({ figure: { kind: 'value', text: '7.2', unit } } as unknown as Partial<TestRow>)
+  const row = host.querySelector('[data-market-row]')!
+  const span = row.querySelector('span.ml-1')
+  const text = row.textContent ?? ''
+  await done()
+  return { text, span }
+}
+
+describe('MarketRows figure unit', () => {
+  it('prints the figure text alone for a percent unit, with no suffix or id after it', async () => {
+    const { text, span } = await figureOf('percent')
+    expect(span).toBeNull()
+    expect(text).toContain('7.2')
+    expect(text).not.toContain('7.2%')
+    expect(text).not.toContain('percent')
+  })
+
+  it('prints nothing after the figure of a unit with no suffix', async () => {
+    const { text, span } = await figureOf('index_points')
+    expect(span).toBeNull()
+    expect(text).not.toContain('index_points')
+  })
+})
 
 describe('MarketRows range and hint', () => {
   // jsdom has no ResizeObserver, which the Radix tooltip measures with.
@@ -122,6 +113,15 @@ describe('MarketRows range and hint', () => {
     expect(host.querySelector('[data-range-gap]')).toBeNull()
     expect(host.querySelector('[data-hint-mark]')).toBeNull()
     expect(host.querySelector('[data-range-notice]')).toBeNull()
+    await done()
+  })
+})
+
+describe('MarketRows hint placement', () => {
+  it('hint mark is not nested inside the row toggle button', async () => {
+    const { host, done } = await render({ hint: '提示' })
+    const mark = host.querySelector('[data-hint-mark]')!
+    expect(mark.closest('button')).toBeNull()
     await done()
   })
 })
