@@ -57,7 +57,7 @@ func restated(stored []contracts.PriceBar, pulled []broker.Bar, tol *big.Rat) (b
 
 // olderThanWindow pulls again the stored days older than the oldest day of window: pieces of at most
 // deepen_piece_days ending the day before the oldest pulled day, down to the oldest stored day. A piece
-// with no older day stops the loop. It returns the rows of every piece and writes nothing, so that the
+// with no older day, or answered with no data (error 162), stops the loop. It returns the rows of every piece and writes nothing, so that the
 // restatement is written in one call after the last pull.
 func (r *runState) olderThanWindow(
 	ctx context.Context, c broker.Contract, id int64, stored []contracts.PriceBar, window []broker.Bar,
@@ -86,6 +86,9 @@ func (r *runState) olderThanWindow(
 			Contract: c, Kind: broker.BarTrades, DurationDays: days, End: oldest.AddDate(0, 0, -1).Format(dayLayout),
 		})
 		if err != nil {
+			if isNoData(err) {
+				break // before the first day of the history: the end of the pull, not a failure
+			}
 			return nil, asTyped(err, contracts.Retryable)
 		}
 		older := make([]broker.Bar, 0, len(bars))

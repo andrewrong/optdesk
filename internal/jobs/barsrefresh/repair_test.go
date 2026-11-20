@@ -226,6 +226,33 @@ func TestRestatementStopsAtEmptyPiece(t *testing.T) {
 	}
 }
 
+func TestRestatementNoDataEndsWithoutError(t *testing.T) {
+	t.Parallel()
+	h := splitHistory(func(broker.BarQuery) ([]broker.Bar, error) {
+		return nil, textErr{noData162, contracts.Permanent}
+	})
+	st := &memBars{rows: splitStored()}
+	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	var pieces []broker.BarQuery
+	for _, q := range h.queries {
+		if q.End != "" {
+			pieces = append(pieces, q)
+		}
+	}
+	if len(pieces) != 1 || pieces[0].End != dayOf(-401) {
+		t.Fatalf("pieces %+v", pieces)
+	}
+	if len(st.calls) != 1 || len(st.calls[0]) != 2 {
+		t.Fatalf("calls %+v", st.calls)
+	}
+	if got := closeOf(t, st, dayOf(0)); got != "50.0000" {
+		t.Fatalf("window close %q, rows %+v", got, st.rows)
+	}
+}
+
 // insertOnly hides every method of a writer but InsertPriceBars.
 type insertOnly struct{ bar.PriceBarWriter }
 
