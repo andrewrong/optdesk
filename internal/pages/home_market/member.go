@@ -305,27 +305,56 @@ func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow
 	return row, true, nil
 }
 
-// newestReading is the newest stored reading of fig for the index within the last readingDays,
-// nil when there is none.
+// newestReading is the newest ok reading with a value of fig for the index within the last
+// readingDays; when there is none, the newest reading of any state, nil when there is no reading at all.
+// A not-ok reading of today (written before the day's inputs are published) never hides an ok one
+// of the days before it.
 func newestReading(ctx context.Context, c Config, fig, name string, d time.Time) (*contracts.ReadingRecord, error) {
-	return newestOf(ctx, c, fig, subjectKind, name, d)
+	rows, err := readingRows(ctx, c, fig, subjectKind, name, d)
+	if err != nil {
+		return nil, err
+	}
+	if best := newest(rows, func(r *contracts.ReadingRecord) bool {
+		return string(r.State) == "ok" && r.Value != nil
+	}); best != nil {
+		return best, nil
+	}
+	return newest(rows, nil), nil
 }
 
-// newestOf is newestReading for a subject kind: the newest day, then the highest revision.
+// newestOf is the newest stored reading of fig for a subject kind within the last readingDays,
+// whatever its state: the newest day, then the highest revision.
 func newestOf(ctx context.Context, c Config, fig, kind, name string, d time.Time) (*contracts.ReadingRecord, error) {
+	rows, err := readingRows(ctx, c, fig, kind, name, d)
+	if err != nil {
+		return nil, err
+	}
+	return newest(rows, nil), nil
+}
+
+func readingRows(ctx context.Context, c Config, fig, kind, name string, d time.Time) ([]contracts.ReadingRecord, error) {
 	from := contracts.Day(d.AddDate(0, 0, -readingDays).Format(dayLayout))
 	rows, err := c.Readings(ctx, fig, kind, name, from, contracts.Day(d.Format(dayLayout)))
 	if err != nil {
 		return nil, fmt.Errorf("home_market: read %s %s: %w", fig, name, err)
 	}
+	return rows, nil
+}
+
+// newest is the reading of the newest day, then the highest revision, among those keep accepts
+// (all when keep is nil); nil when none.
+func newest(rows []contracts.ReadingRecord, keep func(*contracts.ReadingRecord) bool) *contracts.ReadingRecord {
 	var best *contracts.ReadingRecord
 	for i := range rows {
 		r := &rows[i]
+		if keep != nil && !keep(r) {
+			continue
+		}
 		if best == nil || r.Day.After(best.Day.Time) || (r.Day.Equal(best.Day.Time) && r.Rev > best.Rev) {
 			best = r
 		}
 	}
-	return best, nil
+	return best
 }
 
 // rv20Cell is the 20 day realised volatility: the stored value times 100, one decimal, half even.
