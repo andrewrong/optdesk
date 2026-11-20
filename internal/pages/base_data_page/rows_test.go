@@ -1,6 +1,7 @@
 package base_data_page
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
@@ -14,9 +15,10 @@ func TestFailedSummaryNamesWarnAndFail(t *testing.T) {
 		{Rule: "coverage_gap", Level: basecheckapi.Warn, Bad: 3},
 		{Rule: "crossed", Level: basecheckapi.Fail, Share: "0.021"},
 		{Rule: "age", Level: basecheckapi.Fail},
+		{Rule: "coverage_latest", Level: basecheckapi.Warn, N: 75, Bad: 4, Share: "0.0533"},
 		{Rule: "empty", Level: basecheckapi.Unknown, Share: "0.5"},
 	})
-	if want := "coverage_gap 3 days; crossed 2.1%; age"; got != want {
+	if want := "coverage_gap 3 days; crossed 2.1%; age; coverage_latest 4 of 75 keys missing or expired (5.33%)"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
@@ -62,6 +64,22 @@ func TestPercentText(t *testing.T) {
 	for _, in := range []string{"", "0", "0.000", "x", "-0.1", "1e-3"} {
 		if got, ok := percentText(in); ok {
 			t.Errorf("percentText(%q) = %q, want none", in, got)
+		}
+	}
+}
+
+// TestCoverageLatestSummaryAndLabel: the missing share is not labelled or summarised as coverage.
+func TestCoverageLatestSummaryAndLabel(t *testing.T) {
+	t.Parallel()
+	checks := []basecheckapi.Check{{Rule: "coverage_latest", Level: basecheckapi.Warn, N: 75, Bad: 4, Share: "0.0533"}}
+	list := checkList("bars", checks)
+	if list[0].Label == "Latest coverage" || list[0].Label == "" {
+		t.Fatalf("label %q", list[0].Label)
+	}
+	got := failedSummary(checks)
+	for _, w := range []string{"4 of 75", "5.33%"} {
+		if !strings.Contains(got, w) {
+			t.Fatalf("summary %q lacks %q", got, w)
 		}
 	}
 }
