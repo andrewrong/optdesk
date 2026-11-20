@@ -273,7 +273,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok, unread, partial := 0, 0, 0, 0
+	planned, ok, unread, partial, outside := 0, 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -292,6 +292,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		if terr != nil {
 			return withErr(res, terr)
 		}
+		outside += outsideBand(rows)
 		for _, r := range rows {
 			switch {
 			case r.Status == stOK:
@@ -304,26 +305,31 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		}
 		res.Usable = ok
 	}
+	planned -= outside
+	if planned == 0 && outside > 0 {
+		return allOutside(res, outside)
+	}
 	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
-		return underShare(res, ok, planned, unread, partial, p.m.MinOKShare)
+		return underShare(res, ok, planned, unread, partial, outside, p.m.MinOKShare)
 	}
 	return res
 }
 
 // underShare is the result of a batch that ended under the ok share: Retryable when rows were not asked (the broker
 // answered nothing at the moment) or are partial (a slow broker; the same captureID keeps the run idempotent), else Permanent.
-func underShare(res contracts.JobResult, ok, planned, unread, partial int, share float64) contracts.JobResult {
+func underShare(res contracts.JobResult, ok, planned, unread, partial, outside int, share float64) contracts.JobResult {
 	if unread > 0 {
 		return withErr(res, newErr(contracts.Retryable,
-			"%d of %d planned items ok, under the share %.2f; %d rows not asked, the spot was not read or the broker was unavailable",
-			ok, planned, share, unread))
+			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d (not asked: spot unread or broker unavailable)",
+			ok, planned, share, ok, partial, unread, outside))
 	}
 	if partial > 0 {
 		return withErr(res, newErr(contracts.Retryable,
-			"%d of %d planned items ok, under the share %.2f; %d rows partial",
-			ok, planned, share, partial))
+			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d (slow broker)",
+			ok, planned, share, ok, partial, unread, outside))
 	}
-	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, share))
+	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d",
+		ok, planned, share, ok, partial, unread, outside))
 }
 
 func withErr(r contracts.JobResult, e contracts.TypedError) contracts.JobResult {
