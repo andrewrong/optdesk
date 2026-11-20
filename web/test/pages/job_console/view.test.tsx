@@ -161,6 +161,18 @@ describe('job console view', () => {
     expect(el.querySelector('tr[data-job="quote_snapshot"]')?.textContent).toContain('share one scheduled instant')
   })
 
+  it('renders the line of each running row', async () => {
+    const p = { ...golden(), running: [{ line: 'first line as sent' }, { job: 'x', line: 'second line as sent' }] } as Payload
+    const el = await render(p)
+    const lines = [...el.querySelectorAll('[data-running-line]')].map((l) => l.textContent)
+    expect(lines).toEqual(['first line as sent', 'second line as sent'])
+  })
+
+  it('renders the line of a waiting request', async () => {
+    const el = await render(withRequests(request({ id: 7, state: 'queued', keys: [], waiting_for: { line: 'waiting line as sent' } })))
+    expect(el.querySelector('[data-request="7"] [data-waiting-line]')?.textContent).toBe('waiting line as sent')
+  })
+
   it('reloads after refresh_seconds', async () => {
     vi.useFakeTimers()
     const reload = vi.fn()

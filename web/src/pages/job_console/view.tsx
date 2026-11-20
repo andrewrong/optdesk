@@ -142,6 +142,11 @@ function RequestItem({ r, form }: { r: Request; form: Form | null }) {
           {r.state_text}
         </p>
         <p className="text-sm text-muted-foreground">{r.at_text}</p>
+        {r.waiting_for ? (
+          <p data-waiting-line className="text-sm">
+            {r.waiting_for.line}
+          </p>
+        ) : null}
         {r.state === 'queued' && form ? (
           <form method="post" action={form.post_path} data-withdraw-form={r.id}>
             <input type="hidden" name="action" value="withdraw" />
@@ -187,6 +192,15 @@ export function JobConsoleView({ payload }: { payload: Payload }) {
               <AlertDescription>{g.text}</AlertDescription>
             </Alert>
           ))}
+          {payload.running && payload.running.length > 0 ? (
+            <ul data-running className="space-y-1 text-sm">
+              {payload.running.map((r, i) => (
+                <li key={`${i}-${r.job ?? ''}`} data-running-line>
+                  {r.line}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <JobsTable jobs={payload.jobs} form={form} />
         </CardContent>
       </Card>
