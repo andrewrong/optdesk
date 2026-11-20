@@ -389,24 +389,6 @@
           "title": "Text",
           "type": "string"
         },
-        "tone": {
-          "anyOf": [
-            {
-              "enum": [
-                "up",
-                "down",
-                "flat",
-                "none"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Tone"
-        },
         "unit": {
           "enum": [
             "index_points",

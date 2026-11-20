@@ -84,3 +84,15 @@ func TestMacroPageLeadOptional(t *testing.T) {
 		}
 	})
 }
+
+// TestLevelFigureHasNoTone: a LevelFigure has only value, text and unit (Decisions 6 and 9).
+func TestLevelFigureHasNoTone(t *testing.T) {
+	t.Parallel()
+	s := compilePageV2(t, "page.macro_page.v2.json")
+	m := loadMacroPageV2(t, "golden")
+	ind := m["indicators"].([]any)[0].(map[string]any)
+	ind["latest"] = map[string]any{"value": 150.2, "text": "150.2", "unit": "jpy_per_usd", "tone": "up"}
+	if err := s.Validate(m); err == nil {
+		t.Fatal("a LevelFigure with a tone validated; Decisions 6 and 9 allow only value, text, unit")
+	}
+}

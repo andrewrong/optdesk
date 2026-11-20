@@ -581,7 +581,6 @@ export type Tone1 = ("up" | "down" | "flat" | "none") | null;
 export type Unit2 = "percent";
 export type Value2 = number;
 export type Text4 = string;
-export type Tone2 = ("up" | "down" | "flat" | "none") | null;
 export type Unit3 = "index_points" | "jpy_per_usd" | "percent";
 export type Value3 = number;
 export type Name = string;
@@ -899,7 +898,6 @@ export interface PercentFigure {
  */
 export interface LevelFigure {
   text: Text4;
-  tone?: Tone2;
   unit: Unit3;
   value: Value3;
 }
