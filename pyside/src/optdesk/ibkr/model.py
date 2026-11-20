@@ -95,13 +95,27 @@ class ListedContract:
     trading_class: str
 
 
+@dataclass(frozen=True)
+class Farm:
+    """One data farm the gateway named: since is unix milliseconds of its last change."""
+
+    name: str
+    up: bool
+    since: int
+
+
 class SessionState(NamedTuple):
-    """State of the broker session."""
+    """State of the broker session.
+
+    state is "up", "soft_lost", "down" or "farm_broken"; farms lists the farms seen.
+    """
 
     connected: bool
     generation: int
     market_data_type: int
     soft_lost: bool = False  # socket up, a 1100 or 2110 not yet restored
+    state: str = "up"
+    farms: tuple[Farm, ...] = ()
 
 
 class Gateway(Protocol):
