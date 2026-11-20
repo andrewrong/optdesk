@@ -293,6 +293,9 @@ func TestDetailKindGloss(t *testing.T) {
 	if len(sub) <= len(head) || sub[:len(head)] != head {
 		t.Fatalf("subline = %q, want the gloss after %q", sub, head)
 	}
+	if want := head + "买入较高行权价认沽、卖出较低行权价认沽，同一到期日"; sub != want {
+		t.Fatalf("subline = %q, want %q", sub, want)
+	}
 	short := readFixtureless(mk("short_put", "-1")).build(t, "main:T1:1", false)
 	if got := short["subline"]; got != "Short put · expiry 2026-12-18 · account main" {
 		t.Fatalf("subline = %v, want no gloss", got)
