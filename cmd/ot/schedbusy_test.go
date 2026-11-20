@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
 func busyRuns(hb ...time.Time) store.SchedulerStatus {
@@ -117,5 +118,94 @@ func TestBusyNewWritesNothing(t *testing.T) {
 	}
 	if n := r.forbiddenOpens.Load(); n != 0 {
 		t.Fatalf("a dataset store or the broker was opened %d times", n)
+	}
+}
+
+// fakeJobRuns embeds the interfaces: any method but Running and Release panics on the nil embedded interface.
+type fakeJobRuns struct {
+	jobRunStore
+	rows     []jobrun.JobRun
+	err      error
+	released atomic.Int32
+}
+
+func (f *fakeJobRuns) Running(context.Context) ([]jobrun.JobRun, error) { return f.rows, f.err }
+func (f *fakeJobRuns) Release() error                                   { f.released.Add(1); return nil }
+
+func withJobRuns(r *statusRig, f *fakeJobRuns) {
+	r.a.deps.openJobRun = func(context.Context, string) (jobRunStore, error) { return f, nil }
+}
+
+func TestBusyJobRunOpenExits75(t *testing.T) {
+	t.Parallel()
+	r := newStatusRig(t, store.SchedulerStatus{})
+	withJobRuns(r, &fakeJobRuns{rows: []jobrun.JobRun{{ID: "jr7", HeartbeatAt: statusNow.Add(-time.Minute)}}})
+	err := schedBusyCmd(r.a, nil)
+	if c := busyExitCode(t, err); c != 75 {
+		t.Fatalf("code %d", c)
+	}
+	if !strings.HasPrefix(err.Error(), "busy: ") || !strings.Contains(err.Error(), "jr7") {
+		t.Fatalf("text %v", err)
+	}
+}
+
+func TestBusyJobRunNoneIsIdle(t *testing.T) {
+	t.Parallel()
+	r := newStatusRig(t, store.SchedulerStatus{})
+	withJobRuns(r, &fakeJobRuns{})
+	if err := schedBusyCmd(r.a, nil); err != nil {
+		t.Fatal(err)
+	}
+	if r.out.String() != "idle\n" {
+		t.Fatalf("output %q", r.out.String())
+	}
+}
+
+func TestBusyJobRunStaleIsIdle(t *testing.T) {
+	t.Parallel()
+	r := newStatusRig(t, store.SchedulerStatus{})
+	withJobRuns(r, &fakeJobRuns{rows: []jobrun.JobRun{{ID: "jr1", HeartbeatAt: statusNow.Add(-11 * time.Minute)}}})
+	if err := schedBusyCmd(r.a, nil); err != nil {
+		t.Fatal(err)
+	}
+	if r.out.String() != "idle\n" {
+		t.Fatalf("output %q", r.out.String())
+	}
+}
+
+func TestBusyJobRunReadErrorExits1(t *testing.T) {
+	t.Parallel()
+	r := newStatusRig(t, store.SchedulerStatus{})
+	withJobRuns(r, &fakeJobRuns{err: errors.New("dsn=secret")})
+	err := schedBusyCmd(r.a, nil)
+	if c := busyExitCode(t, err); c != 1 {
+		t.Fatalf("read failure code %d", c)
+	}
+	if strings.Contains(err.Error(), "secret") {
+		t.Fatalf("text leaks: %v", err)
+	}
+	r.a.deps.openJobRun = func(context.Context, string) (jobRunStore, error) { return nil, errors.New("dsn=secret") }
+	err = schedBusyCmd(r.a, nil)
+	if c := busyExitCode(t, err); c != 1 {
+		t.Fatalf("open failure code %d", c)
+	}
+	if strings.Contains(err.Error(), "secret") {
+		t.Fatalf("text leaks: %v", err)
+	}
+}
+
+func TestBusyJobRunReleased(t *testing.T) {
+	t.Parallel()
+	for name, f := range map[string]*fakeJobRuns{
+		"busy":    {rows: []jobrun.JobRun{{ID: "jr1", HeartbeatAt: statusNow}}},
+		"idle":    {},
+		"failing": {err: errors.New("down")},
+	} {
+		r := newStatusRig(t, store.SchedulerStatus{})
+		withJobRuns(r, f)
+		_ = schedBusyCmd(r.a, nil)
+		if n := f.released.Load(); n != 1 {
+			t.Fatalf("%s: Release called %d times", name, n)
+		}
 	}
 }
