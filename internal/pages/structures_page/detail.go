@@ -19,6 +19,21 @@ const (
 	maxGapsShown = 20
 )
 
+// kindGlosses is the gloss that ends the detail subline of a recognised kind; the old kinds have none.
+var kindGlosses = map[string]string{
+	"put_debit_spread":    glossPutDebitSpread,
+	"call_debit_spread":   glossCallDebitSpread,
+	"calendar_spread":     glossCalendarSpread,
+	"diagonal_spread":     glossDiagonalSpread,
+	"long_straddle":       glossLongStraddle,
+	"short_straddle":      glossShortStraddle,
+	"long_strangle":       glossLongStrangle,
+	"short_strangle":      glossShortStrangle,
+	"iron_condor":         glossIronCondor,
+	"reverse_iron_condor": glossReverseIronCondor,
+	"collar":              glossCollar,
+}
+
 type tile struct {
 	Label   string `json:"label"`
 	Figure  any    `json:"figure"`

@@ -41,18 +41,18 @@ const (
 	ledgerOnlyPrefix  = "Flex 中有而持仓快照缺失的持仓："
 )
 
-// kindGlosses is the fixed sentence that ends the detail subline of a recognised kind: what the legs are, and
-// nothing on premium paid or received.
-var kindGlosses = map[string]string{
-	"put_debit_spread":    "买入较高行权价认沽、卖出较低行权价认沽，同一到期日",
-	"call_debit_spread":   "买入较低行权价认购、卖出较高行权价认购，同一到期日",
-	"calendar_spread":     "同一行权价、同一权利方向，买卖两腿到期日不同",
-	"diagonal_spread":     "同一权利方向，买卖两腿行权价和到期日都不同",
-	"long_straddle":       "同一到期日、同一行权价，同时买入认购和认沽",
-	"short_straddle":      "同一到期日、同一行权价，同时卖出认购和认沽",
-	"long_strangle":       "同一到期日，买入较低行权价认沽和较高行权价认购",
-	"short_strangle":      "同一到期日，卖出较低行权价认沽和较高行权价认购",
-	"iron_condor":         "同一到期日，卖出内侧认沽和认购、买入外侧认沽和认购，共四腿",
-	"reverse_iron_condor": "同一到期日，买入内侧认沽和认购、卖出外侧认沽和认购，共四腿",
-	"collar":              "持有正股，买入认沽并卖出认购",
-}
+// The gloss of each recognised kind: what the legs are, nothing on premium. detail.go maps them by kind;
+// the door allows const declarations only.
+const (
+	glossPutDebitSpread    = "买入较高行权价认沽、卖出较低行权价认沽，同一到期日"
+	glossCallDebitSpread   = "买入较低行权价认购、卖出较高行权价认购，同一到期日"
+	glossCalendarSpread    = "同一行权价、同一权利方向，买卖两腿到期日不同"
+	glossDiagonalSpread    = "同一权利方向，买卖两腿行权价和到期日都不同"
+	glossLongStraddle      = "同一到期日、同一行权价，同时买入认购和认沽"
+	glossShortStraddle     = "同一到期日、同一行权价，同时卖出认购和认沽"
+	glossLongStrangle      = "同一到期日，买入较低行权价认沽和较高行权价认购"
+	glossShortStrangle     = "同一到期日，卖出较低行权价认沽和较高行权价认购"
+	glossIronCondor        = "同一到期日，卖出内侧认沽和认购、买入外侧认沽和认购，共四腿"
+	glossReverseIronCondor = "同一到期日，买入内侧认沽和认购、卖出外侧认沽和认购，共四腿"
+	glossCollar            = "持有正股，买入认沽并卖出认购"
+)
