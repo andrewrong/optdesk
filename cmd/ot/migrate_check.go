@@ -60,6 +60,9 @@ func migrateCheck(a *app, repo, commit string, bi *debug.BuildInfo) error {
 	if strings.HasPrefix(commit, "-") {
 		return errors.New("the commit is not a revision")
 	}
+	if err := ensureCommit(repo, commit); err != nil {
+		return err
+	}
 	deployed, err := deployedRevision(bi)
 	if err != nil {
 		return err
@@ -96,6 +99,18 @@ func migrateCheck(a *app, repo, commit string, bi *debug.BuildInfo) error {
 	if len(missing) > 0 {
 		_, _ = fmt.Fprintln(a.stdout, "missing "+joinVersions(missing))
 		return fmt.Errorf("migration %s of the commit is not applied", joinVersions(missing))
+	}
+	return nil
+}
+
+// ensureCommit makes sure the clone holds commit: when it does not, it runs `git fetch --quiet origin` once and tests again.
+func ensureCommit(repo, commit string) error {
+	if _, err := gitOut(repo, "cat-file", "-e", commit+"^{commit}"); err == nil {
+		return nil
+	}
+	_, _ = gitOut(repo, "fetch", "--quiet", "origin")
+	if _, err := gitOut(repo, "cat-file", "-e", commit+"^{commit}"); err != nil {
+		return fmt.Errorf("the commit %s is not in the clone, also not after git fetch origin", commit)
 	}
 	return nil
 }

@@ -260,3 +260,41 @@ func TestMigrateCheckStderrShort(t *testing.T) {
 		t.Fatalf("length %d", n)
 	}
 }
+
+// originAndClone returns a clone made before the commit head, which only the bare origin holds, and the base commit.
+func originAndClone(t *testing.T) (clone, base, head string) {
+	t.Helper()
+	work, base := newRepo(t)
+	root := t.TempDir()
+	bare := filepath.Join(root, "origin.git")
+	clone = filepath.Join(root, "clone")
+	gitIn(t, root, "clone", "-q", "--bare", work, bare)
+	gitIn(t, root, "clone", "-q", bare, clone)
+	writeIn(t, work, "migrations/0002_b.sql")
+	head = commitAll(t, work, "two")
+	gitIn(t, work, "push", "-q", bare, "HEAD:refs/heads/master")
+	return clone, base, head
+}
+
+func TestMigrateCheckFetchesMissingCommit(t *testing.T) {
+	t.Parallel()
+	clone, base, head := originAndClone(t)
+	a, _, want := migCheckApp(t, []int64{1, 2}, "dsn", nil)
+	if err := migrateCheck(a, clone, head, buildInfo(base, "")); err != nil {
+		t.Fatal(err)
+	}
+	if len(*want) != 2 || (*want)[1] != 2 {
+		t.Fatalf("versions %v", *want)
+	}
+}
+
+func TestMigrateCheckMissingCommitFailsClosed(t *testing.T) {
+	t.Parallel()
+	clone, base, _ := originAndClone(t)
+	const absent = "0123456789abcdef0123456789abcdef01234567"
+	a, _, _ := migCheckApp(t, []int64{1}, "dsn", nil)
+	err := migrateCheck(a, clone, absent, buildInfo(base, ""))
+	if err == nil || !strings.Contains(err.Error(), absent) {
+		t.Fatalf("err %v", err)
+	}
+}
