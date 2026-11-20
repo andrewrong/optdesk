@@ -79,7 +79,9 @@ func TestJPNoDataUnderSharePermanent(t *testing.T) {
 }
 
 // jpRerun builds the JP job over ten planned puts and returns it with its keys, the stores and the broker.
-func jpRerun(t *testing.T, opt func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error)) (contracts.Job, []contracts.ExpectedKey, *pullStores, *fakeBroker) {
+func jpRerun(
+	t *testing.T, opt func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error),
+) (contracts.Job, []contracts.ExpectedKey, *pullStores, *fakeBroker) {
 	t.Helper()
 	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC))
 	s := seed(1, 10)
