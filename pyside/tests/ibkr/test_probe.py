@@ -254,3 +254,12 @@ class TestHistoryWait:
                 await task
 
         asyncio.run(run())
+
+
+def test_an_ok_code_clears_a_probe_farm_broken() -> None:
+    clock = FakeClock()
+    farms = Farms("main", clock)
+    farms.probe_broken("ushmds")
+    assert farms.state(True, False) == "farm_broken"
+    farms.record(2106, "HMDS data farm connection is OK:ushmds", farms.now_ms())
+    assert farms.state(True, False) == "up"

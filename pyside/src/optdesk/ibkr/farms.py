@@ -50,8 +50,11 @@ class Farms:
             return
         farm = farm_word(text)
         up = code in UP_CODES
+        if up and farm == self._probe:
+            self._probe = None  # an ok code clears what the history probe set
         known = self._farms.get(farm)
         if known is not None and known.up == up:
+            self._note()
             return
         self._farms[farm] = Farm(farm, up, now)
         _LOG.info("farm_code gateway=%s code=%d farm=%s", self.name, code, farm)
