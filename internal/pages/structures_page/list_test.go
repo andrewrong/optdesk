@@ -116,7 +116,7 @@ func TestOtherRowsListed(t *testing.T) {
 	if last["symbol"] != "AMD" || last["kind_text"] != "Unidentified" || last["compare"] != nil {
 		t.Fatalf("other row = %v", last)
 	}
-	if !strings.Contains(m["note"].(string), "Unidentified structures, shown leg by leg") {
+	if !strings.Contains(m["note"].(string), otherNote) {
 		t.Fatalf("note = %v", m["note"])
 	}
 }
@@ -192,11 +192,11 @@ func TestMainAliasDefault(t *testing.T) {
 func TestCaptureNoteShown(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
-	if n := m["note"].(string); !strings.Contains(n, "Positions not yet in Flex: TSLA 260116P00200000") {
+	if n := m["note"].(string); !strings.Contains(n, captureOnlyPrefix+"TSLA 260116P00200000") {
 		t.Fatalf("note = %q", n)
 	}
 	m = decode(t, newRig(readResult(t, "list_gaps")).build(t, "main"))
-	if n := m["note"].(string); !strings.Contains(n, "No position snapshot") {
+	if n := m["note"].(string); !strings.Contains(n, noCaptureNote) {
 		t.Fatalf("note = %q", n)
 	}
 }
@@ -433,7 +433,7 @@ func TestFullPageWithCloseNoteStaysOk(t *testing.T) {
 	r.cfg.Structures = newRig(res).cfg.Structures
 	m = decode(t, r.build(t, "main"))
 	n, _ := m["note"].(string)
-	if m["run_status"] != "partial" || !strings.Contains(n, "Positions not yet in Flex") || !strings.HasSuffix(n, "AAPL 最近成交 2026-11-06") {
+	if m["run_status"] != "partial" || !strings.Contains(n, captureOnlyPrefix) || !strings.HasSuffix(n, "AAPL 最近成交 2026-11-06") {
 		t.Fatalf("status = %v, note = %q", m["run_status"], n)
 	}
 }
@@ -553,5 +553,20 @@ func TestPutOnlyPageIsOk(t *testing.T) {
 	}
 	if got := groupRows(t, m, 0)[0]["ex_dividend"]; got != nil {
 		t.Fatalf("ex_dividend = %v, want null", got)
+	}
+}
+
+func TestSentenceAndNoteAreChinese(t *testing.T) {
+	t.Parallel()
+	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
+	for name, s := range map[string]string{"sentence": m["sentence"].(string), "note": m["note"].(string)} {
+		if !strings.ContainsFunc(s, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Fatalf("%s has no Chinese character: %q", name, s)
+		}
+		for _, old := range []string{"Unidentified structures", "not yet in Flex", "Total"} {
+			if strings.Contains(s, old) {
+				t.Fatalf("%s holds %q: %q", name, old, s)
+			}
+		}
 	}
 }
