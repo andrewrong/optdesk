@@ -1,5 +1,7 @@
 package main
 
+import "github.com/andrewrong/optdesk/internal/pages/job_console"
+
 // Design: docs/design/job-console.md#Decisions 6 and 10.
 
 // The kinds of a job on the console page.
@@ -36,26 +38,6 @@ type jobRow struct {
 // runnable tells whether the page can queue a run of the job.
 func (r jobRow) runnable() bool { return r.Kind == kindAnyDay || r.Kind == kindTodayOnly }
 
-// The texts of the force-no reasons, one per code.
-const (
-	textMomentMix      = "force comes with the late-collection design (each pull stored with its own time)"
-	textAppendOnly     = "a forced run adds executions by (alias, exec_id) and never replaces the day's capture"
-	textInsertOnly     = "a stored capture of a statement day is never replaced, so a forced run writes nothing new"
-	textAttemptRows    = "a re-run adds one row under the next attempt, which replaces nothing"
-	textNotProved      = "nothing read proves that a second run equals the first"
-	textNoLowerBound   = "a run before its slot would store pre-open prices as the open"
-	needsLowerBound    = "its Run must have a lower bound at the slot instant"
-	textNoDayGuard     = "a late run makes a key that the open job answers late"
-	needsDayGuard      = "the plan job must refuse the day and the time that the pull refuses"
-	textHeavyAndCap    = "the budget exceeds the run bound so a run is always cut, and the per-day cap in memory is shared with the scheduler"
-	needsHeavyAndCap   = "a console run must have a budget and a cap of its own"
-	textCachesFailures = "a failed result is cached for the day, so a run neither retries nor can be forced"
-	needsCachesFailure = "the cache must keep only successes, or Run must take a force flag"
-	noteQuoteSnapshot  = "its three keys, 09:45, 12:30 and 15:30 ET, share one scheduled instant, 15:30 ET, so all three wait for it; " +
-		"only the 15:30 key can produce, and only until ten minutes after it; a 09:45 or 12:30 key that is still missing " +
-		"ends no value (missed slot), as the scheduler's own tick at 15:30 would write"
-)
-
 // anyDay builds the row of an any-day job with its force-no reason.
 func anyDay(id, reason, text string) jobRow {
 	return jobRow{ID: id, Kind: kindAnyDay, ForceReason: reason, ForceText: text}
@@ -79,34 +61,34 @@ var jobTable = []jobRow{
 	{ID: "option_candidates", Kind: kindAnyDay, Force: true},
 	// book_risk is insert-only under a new run id and a rerun's run id is the newest one readers take, as option_candidates.
 	{ID: "book_risk", Kind: kindAnyDay, Force: true},
-	todayOnly("account_capture", "append_only", textAppendOnly),
-	anyDay("statement_capture", "insert_only", textInsertOnly),
-	todayOnly("position_marks", "attempt_rows", textAttemptRows),
+	todayOnly("account_capture", "append_only", job_console.ZhForceAppendOnly),
+	anyDay("statement_capture", "insert_only", job_console.ZhForceInsertOnly),
+	todayOnly("position_marks", "attempt_rows", job_console.ZhForceAttemptRows),
 	{ID: "earnings_refresh", Kind: kindAnyDay, Force: true},
 	{ID: "dividend_capture", Kind: kindAnyDay, Force: true},
 	{ID: "option_eod", Kind: kindTodayOnly, Zone: marketZone, Force: true},
 	{ID: "option_eod_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", Force: true},
 	{ID: "option_eod_index", Kind: kindTodayOnly, Zone: marketZone, Force: true},
 	{ID: "option_candidates_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", Force: true},
-	{ID: "quote_snapshot", Kind: kindTodayOnly, Zone: marketZone, ForceReason: "moment_mix", ForceText: textMomentMix, Note: noteQuoteSnapshot},
+	{ID: "quote_snapshot", Kind: kindTodayOnly, Zone: marketZone, ForceReason: "moment_mix", ForceText: job_console.ZhForceMomentMix, Note: job_console.ZhNoteQuoteSnapshot},
 	{ID: "calendar_refresh", Kind: kindTodayOnly, Zone: marketZone, Force: true},
-	todayOnly("calendar_hours_us", "not_proved", textNotProved),
-	{ID: "calendar_hours_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: textNotProved},
-	todayOnly("underlying_resolve", "not_proved", textNotProved),
+	todayOnly("calendar_hours_us", "not_proved", job_console.ZhForceNotProved),
+	{ID: "calendar_hours_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: job_console.ZhForceNotProved},
+	todayOnly("underlying_resolve", "not_proved", job_console.ZhForceNotProved),
 	{ID: "fx_refresh", Kind: kindAnyDay, Force: true},
-	todayOnly("iv_history", "not_proved", textNotProved),
-	todayOnly("option_list_preopen", "not_proved", textNotProved),
-	todayOnly("option_list_zone", "not_proved", textNotProved),
-	{ID: "option_list_preopen_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: textNotProved},
+	todayOnly("iv_history", "not_proved", job_console.ZhForceNotProved),
+	todayOnly("option_list_preopen", "not_proved", job_console.ZhForceNotProved),
+	todayOnly("option_list_zone", "not_proved", job_console.ZhForceNotProved),
+	{ID: "option_list_preopen_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: job_console.ZhForceNotProved},
 	{ID: "bars_refresh", Kind: kindAnyDay, Force: true},
-	listedOnly("option_open", "no_lower_time_bound", textNoLowerBound, needsLowerBound),
-	listedOnly("option_open_jp", "no_lower_time_bound", textNoLowerBound, needsLowerBound),
-	listedOnly("option_open_plan", "no_day_guard", textNoDayGuard, needsDayGuard),
-	listedOnly("option_open_plan_jp", "no_day_guard", textNoDayGuard, needsDayGuard),
-	listedOnly("option_open_resolve", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
-	listedOnly("option_open_resolve_jp", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
-	listedOnly("option_open_resolve_gap", "heavy_and_shares_cap", textHeavyAndCap, needsHeavyAndCap),
-	listedOnly("option_ledger", "caches_failures", textCachesFailures, needsCachesFailure),
+	listedOnly("option_open", "no_lower_time_bound", job_console.ZhWhyNoLowerBound, job_console.ZhNeedsLowerBound),
+	listedOnly("option_open_jp", "no_lower_time_bound", job_console.ZhWhyNoLowerBound, job_console.ZhNeedsLowerBound),
+	listedOnly("option_open_plan", "no_day_guard", job_console.ZhWhyNoDayGuard, job_console.ZhNeedsDayGuard),
+	listedOnly("option_open_plan_jp", "no_day_guard", job_console.ZhWhyNoDayGuard, job_console.ZhNeedsDayGuard),
+	listedOnly("option_open_resolve", "heavy_and_shares_cap", job_console.ZhWhyHeavyAndCap, job_console.ZhNeedsHeavyAndCap),
+	listedOnly("option_open_resolve_jp", "heavy_and_shares_cap", job_console.ZhWhyHeavyAndCap, job_console.ZhNeedsHeavyAndCap),
+	listedOnly("option_open_resolve_gap", "heavy_and_shares_cap", job_console.ZhWhyHeavyAndCap, job_console.ZhNeedsHeavyAndCap),
+	listedOnly("option_ledger", "caches_failures", job_console.ZhWhyCachesFailures, job_console.ZhNeedsCachesFailure),
 	{ID: "macro_events", Kind: kindAnyDay, Force: true},
 	{ID: "recon_bars", Kind: kindAnyDay, Force: true},
 }

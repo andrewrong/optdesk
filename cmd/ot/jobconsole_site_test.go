@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/pages/job_console"
 )
 
 type jobConsoleVM struct {
@@ -78,10 +80,11 @@ func TestSiteBuildsPageFromTable(t *testing.T) {
 		t.Errorf("calendar_refresh %+v", cal)
 	}
 	open := vm.Jobs[by["option_open"]]
-	if open.Kind != "listed_only" || open.WhyText != textNoLowerBound || open.NeedsText != needsLowerBound {
+	if open.Kind != "listed_only" || open.WhyText != job_console.ZhWhyNoLowerBound ||
+		open.NeedsText != job_console.ZhNeedsLowerBound {
 		t.Errorf("option_open %+v", open)
 	}
-	if q := vm.Jobs[by["quote_snapshot"]]; q.Note == nil || *q.Note != noteQuoteSnapshot {
+	if q := vm.Jobs[by["quote_snapshot"]]; q.Note == nil || *q.Note != job_console.ZhNoteQuoteSnapshot {
 		t.Errorf("quote_snapshot %+v", q)
 	}
 	// the Tokyo job reads today in its own zone: 12:00 UTC is 21:00 on the same date.

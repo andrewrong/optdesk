@@ -4,9 +4,12 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 // wantFourteen is the test's own list of the today-only jobs with their zones (Decision 6); no zone is read
@@ -270,5 +273,38 @@ func TestReconBarsRowIsAnyDay(t *testing.T) {
 	r, ok := jobRowOf("recon_bars")
 	if !ok || r.Kind != kindAnyDay || !r.Force || r.Zone != "" {
 		t.Fatalf("row %+v found %v", r, ok)
+	}
+}
+
+// TestJobTableNotesAreChineseWithEnglish: every note of the table reads Chinese first with the English
+// glossed in parentheses, within the schema limits, and every force-no and listed-only row has its text.
+func TestJobTableNotesAreChineseWithEnglish(t *testing.T) {
+	t.Parallel()
+	gloss := regexp.MustCompile(`\([A-Za-z]`)
+	check := func(id, field, text string, limit int) {
+		if text == "" {
+			return
+		}
+		if !slices.ContainsFunc([]rune(text), func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Errorf("%s %s has no Chinese character: %q", id, field, text)
+		}
+		if !gloss.MatchString(text) {
+			t.Errorf("%s %s has no English gloss in parentheses: %q", id, field, text)
+		}
+		if n := utf8.RuneCountInString(text); n > limit {
+			t.Errorf("%s %s is %d runes, limit %d", id, field, n, limit)
+		}
+	}
+	for _, r := range jobTable {
+		check(r.ID, "ForceText", r.ForceText, 600)
+		check(r.ID, "Text", r.Text, 600)
+		check(r.ID, "Needs", r.Needs, 600)
+		check(r.ID, "Note", r.Note, 1000)
+		if r.runnable() && !r.Force && (r.ForceReason == "" || r.ForceText == "") {
+			t.Errorf("%s is force-no without reason or text", r.ID)
+		}
+		if r.Kind == kindListedOnly && (r.Reason == "" || r.Text == "" || r.Needs == "") {
+			t.Errorf("%s is listed only without reason, text or needs", r.ID)
+		}
 	}
 }
