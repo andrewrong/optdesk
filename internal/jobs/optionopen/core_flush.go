@@ -43,15 +43,21 @@ type groupEnd struct {
 	ts    *time.Time
 }
 
-// addGroup makes the rows of the answered targets of a group. A cut keeps the underlying price of each quote and
-// skew false, the one value it leaves; a target whose call was cut gets no row.
+// addGroup makes the rows of the answered targets of a group. The row carries the stock's own price (the spot read
+// for the group) whenever it is positive, cut or not; a cut group has skew false. Only when no stock price was read
+// does the row keep the option quote's UndPrice, the IBKR option-model value. A target whose call was cut gets no
+// row.
 func (c *Core) addGroup(ctx context.Context, st *runState, g []Target, as []answer, requested time.Time, e groupEnd) {
 	for i, t := range g {
 		if as[i].cut {
 			continue
 		}
 		r := c.row(t, as[i], requested)
-		if ctx.Err() == nil {
+		if e.price > 0 {
+			price := e.price
+			r.UnderlyingPrice, r.UnderlyingEventTs = &price, e.ts
+			r.Skew = e.skew && ctx.Err() == nil
+		} else if ctx.Err() == nil {
 			r.Skew, r.UnderlyingPrice, r.UnderlyingEventTs = e.skew, &e.price, e.ts
 		}
 		c.logNotOk(t, r)

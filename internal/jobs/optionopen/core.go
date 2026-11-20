@@ -584,6 +584,8 @@ func (c *Core) row(t Target, a answer, requested time.Time) contracts.OptionOpen
 	r.Bid, r.Ask, r.BidSize, r.AskSize, r.Last, r.Volume = q.Bid, q.Ask, q.BidSize, q.AskSize, q.Last, q.Volume
 	r.IvDecimal, r.Delta, r.Gamma = q.ImpliedVol, roundDelta(q.Delta), q.Gamma
 	r.ThetaPerCalendarDay, r.VegaPerVolPoint = q.Theta, q.Vega
+	// The quote's UndPrice is the option-model value, not the stock's price: it is the fallback only. A Pull
+	// overwrites it in addGroup with the stock's spot; Refresh reads no stock and keeps it.
 	r.UnderlyingPrice = q.UndPrice
 	return r
 }

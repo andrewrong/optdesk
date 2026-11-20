@@ -56,9 +56,38 @@ func TestPullWritesRowsInHandOnCancel(t *testing.T) {
 	}
 	last := flushed[len(flushed)-1]
 	for _, r := range last {
-		if r.Skew || r.UnderlyingPrice == nil || *r.UnderlyingPrice != 101 {
+		if r.Skew || r.UnderlyingPrice == nil || *r.UnderlyingPrice != 100 {
 			t.Errorf("row %d of the cut group: skew %v price %v", r.InstrumentID, r.Skew, r.UnderlyingPrice)
 		}
+	}
+}
+
+func TestCutGroupRowsCarryTheStockPrice(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	b := newFake(339)
+	b.opt = func(call int, cs []broker.Contract) ([]broker.Quote, error) {
+		qs := okQuotes(b.clk, cs)
+		for i := range qs {
+			qs[i].UndPrice = f(358.32)
+		}
+		if call == 1 { // the second group is answered, then the context is cancelled
+			cancel()
+		}
+		return qs, nil
+	}
+	c := newCore(b)
+	first := target(1, 10, ClassHeld, 95, "P")
+	second := target(1, 20, ClassHeld, 95, "P")
+	second.Expiry = testExpiry.AddDate(0, 0, 7)
+	res := c.Pull(ctx, []Target{first, second})
+	if res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	r := rowOf(t, res, 20)
+	if r.Skew || r.UnderlyingPrice == nil || *r.UnderlyingPrice != 339 {
+		t.Errorf("cut group row: skew %v price %v, want the stock price 339 and not 358.32", r.Skew, r.UnderlyingPrice)
 	}
 }
 
