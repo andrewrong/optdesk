@@ -30,6 +30,7 @@ from optdesk.ibkr.api import (
     HistoryRequest,
 )
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
+from optdesk.ibkr.farm_probe import history_wait
 from optdesk.ibkr.history import HistoryReader, WireRequest
 from optdesk.ibkr.missing import _number, _open_interest, missing_fields
 from optdesk.ibkr.model import (
@@ -738,16 +739,19 @@ class IbGateway:
         async def fetch(words: WireRequest) -> Sequence[HistoryBar]:
             ib, generation = self._session()
             try:
-                found = await self._send_details(
-                    generation,
-                    lambda: ib.reqHistoricalDataAsync(
-                        contract,
-                        words.end_date,
-                        words.duration,
-                        words.bar_size,
-                        words.what_to_show,
-                        True,
-                        words.format_date,
+                found = await history_wait(
+                    self._clock,
+                    self._send_details(
+                        generation,
+                        lambda: ib.reqHistoricalDataAsync(
+                            contract,
+                            words.end_date,
+                            words.duration,
+                            words.bar_size,
+                            words.what_to_show,
+                            True,
+                            words.format_date,
+                        ),
                     ),
                 )
             except RequestError as exc:
