@@ -198,8 +198,7 @@ var FactOf FactOfFunc = factOf
 // written through store.SentStore only after the send was confirmed (at-least-once delivery): a
 // failed send marks nothing and the next pass sends again. It has no quiet window and no loop,
 // and returns the number of texts sent. The incident key is gateway_<alias>_<farm>_<since_unix>
-// and the recovery key is that key plus "_up"; aliases hold no underscore. Marks are looked up
-// 30 days back, so an incident older than that gets no recovery text.
+// and the recovery key is that key plus "_up"; aliases hold no underscore.
 type GatewayNotifier interface {
 	NotifyGateways(ctx context.Context, facts []GatewayFact) (int, error)
 }

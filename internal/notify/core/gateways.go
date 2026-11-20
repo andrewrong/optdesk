@@ -15,8 +15,10 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-// gatewayLookbackDays is the span of days of marks read to find the incidents still open.
-const gatewayLookbackDays = 30
+// gatewayMarksFrom is the first day of the mark read: an incident is marked on the day of its Since,
+// which may be old or zero, and its mark must be found for the dedupe and for the recovery text.
+// alerts.sent holds a few rows a day, so the whole read is small.
+const gatewayMarksFrom contracts.Day = "0001-01-01"
 
 const gatewayUpSuffix = "_up"
 
@@ -49,15 +51,7 @@ func gatewayDay(since time.Time) contracts.Day {
 func (n *gatewayNotifier) NotifyGateways(ctx context.Context, facts []notify.GatewayFact) (int, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	// An incident is marked on the day of its Since, so the read reaches back to the oldest Down
-	// fact: an incident older than the lookback (or with a zero Since) is still found and not repeated.
-	from := contracts.Day(n.clock.Now().UTC().AddDate(0, 0, -gatewayLookbackDays).Format(time.DateOnly))
-	for _, f := range facts {
-		if d := gatewayDay(f.Since); f.Down && d < from {
-			from = d
-		}
-	}
-	marks, err := n.sent.SentSince(ctx, from)
+	marks, err := n.sent.SentSince(ctx, gatewayMarksFrom)
 	if err != nil {
 		return 0, fmt.Errorf("notify: read sent marks: %w", err)
 	}

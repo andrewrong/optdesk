@@ -136,3 +136,24 @@ func TestGatewayOldIncidentOncePerIncident(t *testing.T) {
 		t.Fatalf("one old incident sent %d texts, want 1", got)
 	}
 }
+
+func TestGatewayZeroSinceRecovery(t *testing.T) {
+	t.Parallel()
+	r := newGwRig(t)
+	r.pass(t, notify.FactOf("main", true, notify.StateFarmBroken, nil))
+	r.pass(t, up)
+	texts := r.sender.Texts()
+	if len(texts) != 2 || !strings.Contains(texts[1], "已恢复") {
+		t.Fatalf("texts = %v, want incident then recovery", texts)
+	}
+}
+
+func TestGatewayOldIncidentRecovery(t *testing.T) {
+	t.Parallel()
+	r := newGwRig(t)
+	r.pass(t, down(gwSince.AddDate(0, 0, -45)))
+	r.pass(t, up)
+	if got := len(r.sender.Texts()); got != 2 {
+		t.Fatalf("texts = %d, want incident then recovery", got)
+	}
+}
