@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strings"
@@ -266,6 +267,10 @@ func buildRows(c Config, rd readings, ms marketstateapi.Result, lr liquidityapi.
 	hy := hySpreadRow(c.Liquidity != nil, lr)
 	hy.History = hist(ms.History.HighYield, labelHySpread, fmtPercent)
 	rows := []marketRow{sp, dd, vx, tm, hy}
+	for i := range rows {
+		rows[i].Range = rangeOf(rows[i].ID, figureValue(rows[i].Figure), historyValues(rows[i].History))
+		rows[i].Hint = hintOf(rows[i].ID)
+	}
 	for _, r := range rows {
 		if day, ok := r.Day.(string); ok {
 			src := map[string]string{"sp500_vs_200d": seriesSP500, "sp500_drawdown": seriesSP500,
@@ -423,4 +428,32 @@ func hySpreadRow(haveLiquidity bool, lr liquidityapi.Result) marketRow {
 	row.Percentile = &percentile{Text: pctText, Window: pctWindowHy}
 	row.Day = dayOrGap(string(n.Day), row.Figure, labelHySpread)
 	return row
+}
+
+// figureValue is the number of a figure cell, NaN for a Gap (or any cell that is no figure).
+func figureValue(cell any) float64 {
+	f, ok := cell.(figure)
+	if !ok {
+		return math.NaN()
+	}
+	v, err := f.Value.Float64()
+	if err != nil {
+		return math.NaN()
+	}
+	return v
+}
+
+// historyValues are the point values of a history cell, none for a Gap.
+func historyValues(cell any) []float64 {
+	h, ok := cell.(history)
+	if !ok {
+		return nil
+	}
+	out := make([]float64, 0, len(h.Points))
+	for _, p := range h.Points {
+		if v, err := p.Value.Float64(); err == nil {
+			out = append(out, v)
+		}
+	}
+	return out
 }

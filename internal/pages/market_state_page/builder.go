@@ -74,6 +74,9 @@ type marketRow struct {
 	Day        any         `json:"day"`
 	Percentile *percentile `json:"percentile,omitempty"`
 	History    any         `json:"history"`
+	// Range and Hint come from ranges.toml; a range is a notice only and never a page gap.
+	Range any    `json:"range,omitempty"`
+	Hint  string `json:"hint,omitempty"`
 }
 
 type marketBlock struct {

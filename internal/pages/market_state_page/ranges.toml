@@ -1,0 +1,115 @@
+# Every number in this file is trial: a first reading the owner may change here, not a rule. (docs/design/market-state-ranges.md, Decisions 2 to 5 and 9)
+# direction: high_bad = the reading is worse the higher it is; low_bad = the lower.
+# A cut is a published value (basis "published", with value) or a percentile of the row's own
+# stored history (basis "percentile", with percentile). A reading beyond the alarm cut is alarm,
+# beyond the caution cut only is caution, else normal. A range is a notice only; nothing is blocked.
+
+[[source]]
+id = "A"
+short = "Cboe"
+text = "Cboe, \"Inside Volatility Trading: More Chaos Ahead - Or a Bottom? What Does the VIX Index Say?\", cboe.com/insights/posts/inside-volatility-trading-more-chaos-ahead-or-a-bottom-what-does-the-vix-index-say (long-term median 17.6; the index tends to revert toward its long-term level)."
+
+[[source]]
+id = "B"
+short = "S&P Dow Jones Indices"
+text = "S&P Dow Jones Indices, \"A Practitioner's Guide to Reading VIX\", spglobal.com/spdji/en/documents/education/education-a-practitioners-guide-to-reading-vix.pdf (how the level is read)."
+
+[[source]]
+id = "C"
+short = "Faber 2007"
+text = "M. T. Faber, \"A Quantitative Approach to Tactical Asset Allocation\", Journal of Wealth Management 9(4), Spring 2007, 69-79, SSRN 962461 (hold the index while its price is above the 10-month average, leave it below)."
+
+[[source]]
+id = "D"
+short = "FRED BAMLH0A0HYM2"
+text = "FRED, series BAMLH0A0HYM2 (ICE BofA US High Yield Index Option-Adjusted Spread), fred.stlouisfed.org/series/BAMLH0A0HYM2 (what the series is; three years of data)."
+
+[[row]]
+id = "sp500_vs_200d"
+direction = "low_bad"
+unit_text = "%"
+decimals = 2
+hint = "标普 500 相对 200 日均线的偏离。低于 0 表示指数在均线下方，趋势策略通常据此转为防守（Faber 2007）；报警线取自身历史的第 5 分位，试用，只是提示。"
+
+[[row.cut]]
+level = "caution"
+basis = "published"
+value = 0.0
+sources = ["C"]
+
+[[row.cut]]
+level = "alarm"
+basis = "percentile"
+percentile = 5.0
+
+[[row]]
+id = "sp500_drawdown"
+direction = "low_bad"
+unit_text = "%"
+decimals = 2
+hint = "标普 500 距近 60 个交易日最高点的回撤。区间按它自己的历史分位给出（越低越差），试用，只是提示。"
+
+[[row.cut]]
+level = "caution"
+basis = "percentile"
+percentile = 20.0
+
+[[row.cut]]
+level = "alarm"
+basis = "percentile"
+percentile = 5.0
+
+[[row]]
+id = "vix"
+direction = "high_bad"
+unit_text = " index points"
+decimals = 1
+hint = "VIX 是标普 500 期权隐含的未来 30 天波动率，常被叫做恐慌指数。20 以下一般视为平静，20 到 30 为偏高，30 以上为紧张；这是试用读法，只是提示，不会阻止任何操作。"
+
+[[row.cut]]
+level = "caution"
+basis = "published"
+value = 20.0
+sources = ["A", "B"]
+
+[[row.cut]]
+level = "alarm"
+basis = "published"
+value = 30.0
+sources = ["A", "B"]
+
+[[row]]
+id = "vix_term"
+direction = "high_bad"
+unit_text = ""
+decimals = 2
+hint = "VIX 与 VIX3M 的比值，即 30 天隐含波动率除以 3 个月隐含波动率。大于 1 说明近期比远期更不安（期限结构倒挂）。区间按它自己的历史分位给出，试用，只是提示。"
+
+[[row.cut]]
+level = "caution"
+basis = "percentile"
+percentile = 80.0
+
+[[row.cut]]
+level = "alarm"
+basis = "percentile"
+percentile = 95.0
+
+[[row]]
+id = "hy_spread"
+direction = "high_bad"
+unit_text = "%"
+decimals = 2
+hint = "高收益债信用利差（ICE BofA 美国高收益指数期权调整利差），越大代表市场对信用风险要求的补偿越高。区间按约三年自身历史的分位给出，试用，只是提示。"
+
+[[row.cut]]
+level = "caution"
+basis = "percentile"
+percentile = 80.0
+sources = ["D"]
+
+[[row.cut]]
+level = "alarm"
+basis = "percentile"
+percentile = 95.0
+sources = ["D"]
