@@ -318,14 +318,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		}
 		res.Usable = ok
 	}
-	planned -= outside
-	if planned == 0 && outside > 0 {
-		return allOutside(res, outside)
-	}
-	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
-		return underShare(res, ok, planned, unread, partial, outside, p.m.MinOKShare)
-	}
-	return res
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside)
 }
 
 // runKey is pull.runKey with the JP parameters of the core.

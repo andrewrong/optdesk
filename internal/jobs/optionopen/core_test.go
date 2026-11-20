@@ -759,3 +759,23 @@ func TestStockLogsWhySpotWasNotRead(t *testing.T) {
 		})
 	}
 }
+
+func TestSummaryNamesOutsideBand(t *testing.T) {
+	t.Parallel()
+	s := Summary{Items: 3, OK: 1, OutsideBand: 2}
+	if !strings.Contains(s.String(), "outside_band=2") {
+		t.Fatal(s.String())
+	}
+}
+
+func TestPullSummaryCountsTheRowsOutsideTheBand(t *testing.T) {
+	t.Parallel()
+	b := newFake(100)
+	r := newCore(b).Pull(context.Background(), ladder())
+	if r.Summary.OutsideBand == 0 || r.Summary.OutsideBand != r.Summary.Items-r.Summary.OK {
+		t.Errorf("summary %+v, want the far strikes counted as outside_band", r.Summary)
+	}
+	if line := r.Summary.String(); !strings.Contains(line, "outside_band="+strconv.Itoa(r.Summary.OutsideBand)) {
+		t.Errorf("summary line %q", line)
+	}
+}

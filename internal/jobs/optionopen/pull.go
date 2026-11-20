@@ -305,14 +305,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		}
 		res.Usable = ok
 	}
-	planned -= outside
-	if planned == 0 && outside > 0 {
-		return allOutside(res, outside)
-	}
-	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
-		return underShare(res, ok, planned, unread, partial, outside, p.m.MinOKShare)
-	}
-	return res
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside)
 }
 
 // underShare is the result of a batch that ended under the ok share: Retryable when rows were not asked (the broker

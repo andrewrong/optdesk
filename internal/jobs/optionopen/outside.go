@@ -19,3 +19,16 @@ func outsideBand(rows []contracts.OptionOpen) int {
 func allOutside(res contracts.JobResult, outside int) contracts.JobResult {
 	return withErr(res, newErr(contracts.NoValue, "all outside band (outside_band=%d)", outside))
 }
+
+// postcondition ends a run: planned is the not-deferred plan items, of which the outside-band rows are taken apart.
+// All of them outside is NoValue; else at least share of the rest must be ok.
+func postcondition(res contracts.JobResult, share float64, planned, ok, unread, partial, outside int) contracts.JobResult {
+	planned -= outside
+	if planned == 0 && outside > 0 {
+		return allOutside(res, outside)
+	}
+	if float64(ok) < share*float64(planned) {
+		return underShare(res, ok, planned, unread, partial, outside, share)
+	}
+	return res
+}
