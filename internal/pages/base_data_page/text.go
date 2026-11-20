@@ -52,7 +52,7 @@ var rowLabels = map[string]string{
 
 // ruleLabels are the English labels of the rules, by rule name.
 var ruleLabels = map[string]string{
-	"rows": "Rows", "newest": "Newest value", "coverage_gap": "Coverage gap", "coverage_latest": "Latest coverage",
+	"rows": "Rows", "newest": "Newest value", "coverage_gap": "Coverage gap", "coverage_latest": "Latest missing share",
 	"ohlc_order": "High low order", "bar_jump": "Close jump", "age": "Age", "crossed": "Crossed quotes",
 	"empty": "No quote", "errors": "Errors", "non_live": "Not live", "bad_iv": "Implausible IV",
 	"series_age": "Series age", "fx_band": "FX band", "fx_jump": "FX jump", "earnings_past": "Earnings date past",
