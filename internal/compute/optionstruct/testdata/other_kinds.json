@@ -2,13 +2,17 @@
 {"name":"diagonal","positions":[
  {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
  {"PositionID":"b1","Right":"P","Expiry":"2027-01-15","Strike":"45","Quantity":"1","OpenPrice":"0.90","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
- "structures":[],"other":[{"kind":"other","id":"acct:b1"}]},
+ "structures":[{"kind":"diagonal_spread","id":"acct:b1"}],"other":[]},
 {"name":"straddle","positions":[
  {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
  {"PositionID":"s2","Right":"C","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.60","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
- "structures":[],"other":[{"kind":"other","id":"acct:s1"}]},
+ "structures":[{"kind":"short_straddle","id":"acct:s1"}],"other":[]},
 {"name":"quantity_mismatch","positions":[
  {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-2","OpenPrice":"1.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
  {"PositionID":"b1","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"1","OpenPrice":"0.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
- "structures":[],"other":[{"kind":"other","id":"acct:b1"}]}
+ "structures":[{"kind":"short_put","id":"acct:s1"},{"kind":"put_spread","id":"acct:b1"}],"other":[]},
+{"name":"put_call_opposite_sides","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[],"other":[{"kind":"other","id":"acct:s1"}]}
 ]}

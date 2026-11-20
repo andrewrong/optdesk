@@ -1,0 +1,50 @@
+{"cases":[
+{"name":"put_debit_spread","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"P","Expiry":"2026-12-18","Strike":"55","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"put_debit_spread","lots":["-1","1"]}]},
+{"name":"call_debit_spread","positions":[
+ {"PositionID":"s1","Right":"C","Expiry":"2026-12-18","Strike":"60","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"call_debit_spread","lots":["1","-1"]}]},
+{"name":"calendar_spread","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"P","Expiry":"2027-01-15","Strike":"50","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"calendar_spread","lots":["1","-1"]}]},
+{"name":"diagonal_spread","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"P","Expiry":"2027-01-15","Strike":"45","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"diagonal_spread","lots":["1","-1"]}]},
+{"name":"long_straddle","positions":[
+ {"PositionID":"p1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"50","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"long_straddle","lots":["1","1"]}]},
+{"name":"short_straddle","positions":[
+ {"PositionID":"p1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"short_straddle","lots":["-1","-1"]}]},
+{"name":"long_strangle","positions":[
+ {"PositionID":"p1","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"long_strangle","lots":["1","1"]}]},
+{"name":"short_strangle","positions":[
+ {"PositionID":"p1","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"short_strangle","lots":["-1","-1"]}]},
+{"name":"iron_condor","positions":[
+ {"PositionID":"a","Right":"P","Expiry":"2026-12-18","Strike":"40","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"c","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"d","Right":"C","Expiry":"2026-12-18","Strike":"60","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"iron_condor","lots":["1","-1","-1","1"]}]},
+{"name":"reverse_iron_condor","positions":[
+ {"PositionID":"a","Right":"P","Expiry":"2026-12-18","Strike":"40","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"c","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"d","Right":"C","Expiry":"2026-12-18","Strike":"60","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "want":[{"kind":"reverse_iron_condor","lots":["-1","1","1","-1"]}]},
+{"name":"collar","positions":[
+ {"PositionID":"s1","Right":"C","Expiry":"2026-12-18","Strike":"55","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "cycles":[{"CycleID":"c1","Alias":"acct","Underlying":"AAPL","Currency":"USD","Shares":"100","CostBasisPerShare":"50"}],"want":[{"kind":"collar","lots":["1","-1"]}]}
+]}

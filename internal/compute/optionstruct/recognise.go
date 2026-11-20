@@ -1,3 +1,5 @@
+// Algorithm and definition table after QuantConnect Lean, OptionStrategyMatcher, Apache-2.0, https://github.com/QuantConnect/Lean
+
 package optionstruct
 
 import (
@@ -8,16 +10,27 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 )
 
-// The kinds of a structure (Decision 4).
+// The kinds of a structure (Decisions 3 and 4 of docs/design/option-structure-matcher.md).
 const (
-	kindPutSpread  = "put_spread"
-	kindCallSpread = "call_spread"
-	kindCovered    = "covered_call"
-	kindNakedCall  = "naked_call"
-	kindShortPut   = "short_put"
-	kindLongPut    = "long_put"
-	kindLongCall   = "long_call"
-	kindOther      = "other"
+	kindPutSpread     = "put_spread"
+	kindCallSpread    = "call_spread"
+	kindPutDebit      = "put_debit_spread"
+	kindCallDebit     = "call_debit_spread"
+	kindCalendar      = "calendar_spread"
+	kindDiagonal      = "diagonal_spread"
+	kindLongStraddle  = "long_straddle"
+	kindShortStraddle = "short_straddle"
+	kindLongStrangle  = "long_strangle"
+	kindShortStrangle = "short_strangle"
+	kindIronCondor    = "iron_condor"
+	kindReverseCondor = "reverse_iron_condor"
+	kindCollar        = "collar"
+	kindCovered       = "covered_call"
+	kindNakedCall     = "naked_call"
+	kindShortPut      = "short_put"
+	kindLongPut       = "long_put"
+	kindLongCall      = "long_call"
+	kindOther         = "other"
 )
 
 // leg is an open position with its numbers parsed. qty is signed: negative is short.
@@ -36,8 +49,9 @@ type unit struct {
 	basis *big.Rat
 }
 
-// recognise groups the open positions of the input into units. A position is never split;
-// a position whose numbers do not parse is an `other` unit of its own.
+// recognise groups the open positions of the input into units: the table matches whole
+// multiples of lots (a position may be split into slices), the lots left become `other` units
+// or singles. A position whose numbers do not parse is an `other` unit of its own.
 func recognise(in compute.StructureInput) []unit {
 	groups := map[string][]leg{}
 	var keys []string
@@ -93,63 +107,20 @@ func sortLegs(ls []leg) {
 	})
 }
 
-// recogniseGroup works on the legs of one underlying and currency.
+// recogniseGroup works on the legs of one underlying and currency: the table first, then the
+// lots left as in Decision 6.
 func recogniseGroup(legs []leg, cycles []compute.LedgerCycle) []unit {
-	slices.SortStableFunc(legs, func(a, b leg) int { return cmp.Compare(a.p.PositionID, b.p.PositionID) })
-	used := make([]bool, len(legs))
-	var out []unit
-	// (a) a sold and a bought piece of the same right and expiry with the same open quantity
-	// pair; credit pairs first, so a debit pair never takes the leg of a credit pair.
-	for _, credit := range []bool{true, false} {
-		for i, s := range legs {
-			if used[i] || !s.short() {
-				continue
-			}
-			for j, b := range legs {
-				if used[j] || b.short() || !pairable(s, b) || isCredit(s, b) != credit {
-					continue
-				}
-				used[i], used[j] = true, true
-				out = append(out, pairUnit(s, b, credit))
-				break
-			}
-		}
-	}
-	var rest []leg
-	for i, l := range legs {
-		if !used[i] {
-			rest = append(rest, l)
-		}
-	}
-	// A diagonal, a calendar, a straddle, a collar or a pair that no longer matches is other.
+	shares, basis := cycleShares(legs[0].p.Underlying, legs[0].p.Currency, cycles)
+	b := newBook(legs, shares, basis)
+	out := matchGroup(b)
+	rest := b.rest()
+	slices.SortStableFunc(rest, func(x, y leg) int { return cmp.Compare(x.p.PositionID, y.p.PositionID) })
+	// A put and a call of one expiry on different sides, or a pair no entry names, is other.
 	tangled, singles := entangled(rest)
 	for _, comp := range tangled {
 		out = append(out, unit{kind: kindOther, legs: comp})
 	}
-	return append(out, classifySingles(singles, cycles)...)
-}
-
-func pairable(s, b leg) bool {
-	return s.p.Right == b.p.Right && s.p.Expiry == b.p.Expiry &&
-		new(big.Rat).Abs(s.qty).Cmp(b.qty) == 0
-}
-
-// isCredit tells whether the sold strike is above the bought strike for puts, below for calls.
-func isCredit(s, b leg) bool {
-	if s.p.Right == "P" {
-		return s.strike.Cmp(b.strike) > 0
-	}
-	return s.strike.Cmp(b.strike) < 0
-}
-
-func pairUnit(s, b leg, credit bool) unit {
-	switch {
-	case !credit:
-		return unit{kind: kindOther, legs: []leg{s, b}}
-	case s.p.Right == "P":
-		return unit{kind: kindPutSpread, legs: []leg{s, b}}
-	}
-	return unit{kind: kindCallSpread, legs: []leg{s, b}}
+	return append(out, classifySingles(singles, b.shares, b.basis)...)
 }
 
 // related tells whether two leftover legs form something that is not a single: opposite sides
@@ -202,7 +173,7 @@ func entangled(legs []leg) (components [][]leg, singles []leg) {
 
 // classifySingles names the single legs: a sold call is covered while the shares of the cycle
 // last (first in, first out among the calls), else naked; the rest by side and right.
-func classifySingles(singles []leg, cycles []compute.LedgerCycle) []unit {
+func classifySingles(singles []leg, shares, basis *big.Rat) []unit {
 	var out []unit
 	var calls []leg
 	for _, l := range singles {
@@ -223,7 +194,6 @@ func classifySingles(singles []leg, cycles []compute.LedgerCycle) []unit {
 		}
 		return cmp.Compare(a.p.PositionID, b.p.PositionID)
 	})
-	shares, basis := cycleShares(calls, cycles)
 	for _, c := range calls {
 		need := mul(new(big.Rat).Abs(c.qty), c.mult)
 		if shares.Cmp(need) >= 0 {
@@ -236,16 +206,13 @@ func classifySingles(singles []leg, cycles []compute.LedgerCycle) []unit {
 	return out
 }
 
-// cycleShares is the shares held by the cycles of the underlying of the calls, and the cost
+// cycleShares is the shares held by the cycles of an underlying and currency, and the cost
 // basis per share of the first cycle that holds any (nil when its text is not a number).
-func cycleShares(calls []leg, cycles []compute.LedgerCycle) (*big.Rat, *big.Rat) {
+func cycleShares(underlying, currency string, cycles []compute.LedgerCycle) (*big.Rat, *big.Rat) {
 	total := new(big.Rat)
 	var basis *big.Rat
-	if len(calls) == 0 {
-		return total, nil
-	}
 	for _, c := range cycles {
-		if c.Underlying != calls[0].p.Underlying || c.Currency != calls[0].p.Currency {
+		if c.Underlying != underlying || c.Currency != currency {
 			continue
 		}
 		n, ok := parseDec(c.Shares)

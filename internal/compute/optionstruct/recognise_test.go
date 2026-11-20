@@ -104,11 +104,14 @@ func TestPairIntoCallSpread(t *testing.T) {
 	checkCase(t, "spread_and_put.json", "call_spread")
 }
 
-func TestPutDebitSpreadIsOther(t *testing.T) {
+func TestPutDebitSpread(t *testing.T) {
 	t.Parallel()
-	res := checkCase(t, "spread_and_put.json", "put_debit_spread")
-	if len(res.Other) == 1 && res.Other[0].Figures.MaxLoss.Gap != "no_rule" {
-		t.Errorf("other max loss = %+v, want gap no_rule", res.Other[0].Figures.MaxLoss)
+	res := evaluate([]compute.LedgerPosition{pos("s1", "P", "45", "-1", "0.50"), pos("b1", "P", "50", "1", "1.50")}, nil)
+	if got, want := kinds(res.Structures), []wantStructure{{"put_debit_spread", "acct:s1"}}; !equalWant(got, want) || len(res.Other) != 0 {
+		t.Fatalf("structures = %v, other = %v, want %v", got, kinds(res.Other), want)
+	}
+	if f := res.Structures[0].Figures; f.MaxLoss.Value != "-100.0000" || f.MaxGain.Value != "400.0000" {
+		t.Errorf("max loss %+v, max gain %+v, want -100.0000 and 400.0000 (the premium paid)", f.MaxLoss, f.MaxGain)
 	}
 }
 
@@ -152,21 +155,47 @@ func TestSingles(t *testing.T) {
 	}
 }
 
-func TestDiagonalIsOther(t *testing.T) {
+func TestDiagonalSpread(t *testing.T) {
 	t.Parallel()
-	checkCase(t, "other_kinds.json", "diagonal")
+	res := checkCase(t, "other_kinds.json", "diagonal")
+	if len(res.Structures) == 1 && res.Structures[0].Figures.MaxLoss.Gap != "no_rule" {
+		t.Errorf("diagonal max loss = %+v, want gap no_rule", res.Structures[0].Figures.MaxLoss)
+	}
 	checkCase(t, "other_kinds.json", "straddle")
+	checkCase(t, "other_kinds.json", "put_call_opposite_sides")
 }
 
-func TestPositionNeverSplit(t *testing.T) {
+func TestUnequalLotsSplit(t *testing.T) {
 	t.Parallel()
-	// Sold 2, bought 1: the quantities do not match, nothing is split to force a pair.
-	res := checkCase(t, "other_kinds.json", "quantity_mismatch")
-	if len(res.Other) == 1 {
-		o := res.Other[0]
-		if len(o.Legs) != 2 || o.Legs[1].Quantity != "-2" {
-			t.Errorf("legs = %+v, want both whole positions", o.Legs)
-		}
+	// Short put of 3 lots, long put of 2 lots below it: 2 lots form the spread, 1 lot is left.
+	res := evaluate([]compute.LedgerPosition{pos("s1", "P", "50", "-3", "1.50"), pos("b1", "P", "45", "2", "0.50")}, nil)
+	byKind := map[string]compute.Structure{}
+	for _, s := range res.Structures {
+		byKind[s.Kind] = s
+	}
+	sp, sh := byKind["put_spread"], byKind["short_put"]
+	if len(res.Structures) != 2 || len(res.Other) != 0 {
+		t.Fatalf("structures = %v", kinds(res.Structures))
+	}
+	if len(sp.Legs) != 2 || sp.Legs[0].Quantity != "2" || sp.Legs[1].Quantity != "-2" {
+		t.Errorf("put_spread legs = %+v, want 2 and -2", sp.Legs)
+	}
+	if len(sh.Legs) != 1 || sh.Legs[0].Quantity != "-1" {
+		t.Errorf("short_put legs = %+v, want -1", sh.Legs)
+	}
+}
+
+func TestStructureIDSuffix(t *testing.T) {
+	t.Parallel()
+	// Long put of 3 lots, short put of 2 lots above it: the spread is named by b1, and so is the
+	// remainder, which gets #2.
+	res := evaluate([]compute.LedgerPosition{pos("s1", "P", "50", "-2", "1.50"), pos("b1", "P", "45", "3", "0.50")}, nil)
+	ids := map[string]string{}
+	for _, s := range res.Structures {
+		ids[s.Kind] = s.ID
+	}
+	if ids["put_spread"] != "acct:b1" || ids["long_put"] != "acct:b1#2" {
+		t.Errorf("ids = %v, want put_spread acct:b1 and long_put acct:b1#2", ids)
 	}
 }
 

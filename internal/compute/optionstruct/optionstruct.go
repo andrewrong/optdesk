@@ -31,8 +31,10 @@ func (structures) Evaluate(in compute.StructureInput, params compute.StructurePa
 	var res compute.StructureResult
 	m := marker{quotes: in.Quotes, params: params, asOf: in.AsOf, days: in.SessionDays}
 	units := recognise(in)
+	ids := map[string]int{}
 	for _, u := range units {
 		s := build(in.Alias, u)
+		s.ID = uniqueID(ids, s.ID)
 		m.fill(&s, u)
 		if u.kind == kindOther {
 			res.Other = append(res.Other, s)
@@ -44,6 +46,15 @@ func (structures) Evaluate(in compute.StructureInput, params compute.StructurePa
 	slices.SortStableFunc(res.Other, func(a, b compute.Structure) int { return cmp.Compare(a.ID, b.ID) })
 	res.Diff = captureDiff(in, units)
 	return res
+}
+
+// uniqueID gives a later unit whose id is already used the suffix #2, #3 (Decision 8).
+func uniqueID(seen map[string]int, id string) string {
+	seen[id]++
+	if n := seen[id]; n > 1 {
+		return id + "#" + itoa(n)
+	}
+	return id
 }
 
 func build(alias string, u unit) compute.Structure {
