@@ -172,7 +172,7 @@ it('renders a version 1 payload without the liquidity block', async () => {
   expect(host.querySelector('[data-liquidity]')).toBeNull()
 })
 
-it('renders the liquidity block of the v2 golden before the events', async () => {
+it('renders the liquidity block of the v2 golden after the events', async () => {
   const payload = v2('golden')
   expect(validateMacroPage(payload).ok).toBe(true)
   await show(payload)
@@ -180,7 +180,7 @@ it('renders the liquidity block of the v2 golden before the events', async () =>
   expect(block.textContent).toContain(payload.liquidity_title)
   for (const line of payload.liquidity.lines) expect(block.textContent).toContain(line.sentence)
   expect(
-    block.compareDocumentPosition(host.querySelector('[data-events]')!) &
+    host.querySelector('[data-events]')!.compareDocumentPosition(block) &
       Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy()
   expect(host.querySelector('[data-ease-figure]')).toBeNull()
@@ -207,4 +207,85 @@ it('shows the stale label of the v2 stale fixture', async () => {
 
 it('refuses the v2 bad-version fixture', () => {
   expect(validateMacroPage(v2('bad-version')).ok).toBe(false)
+})
+
+// Decisions 2, 3 and 5 of docs/design/macro-page-v2.md: the optional fields are added to the golden here.
+const lead = {
+  title: 'What a put seller reads first',
+  note: 'display only; no rule reads this',
+  rows: [
+    ['tbill', 'ok'],
+    ['hy_spread', 'ok'],
+    ['next_event', 'ok'],
+    ['index_iv', 'ok'],
+  ].map(([key, state]) => ({
+    key,
+    state,
+    label: `label ${key}`,
+    text: `text ${key}`,
+    change_text: null,
+    data_day: null,
+    hint: `hint ${key}`,
+  })),
+}
+function withV2Fields() {
+  const payload = v2('golden')
+  payload.lead = lead
+  payload.events[0].days_to = 19
+  payload.events[0].in_window = true
+  payload.events[1].days_to = 50
+  payload.events[1].in_window = false
+  payload.indicators[0].group = 'rates'
+  payload.indicators[0].change_text = '+0.10 pp over five sessions'
+  payload.indicators[0].data_day = '2026-10-23'
+  payload.indicators[0].hint = 'hint cpi'
+  payload.indicators[1].group = 'credit'
+  payload.indicators[2].group = 'rates'
+  payload.indicators[2].latest = { text: '99.1', unit: 'index_points', value: 99.1 }
+  return payload
+}
+const position = (a: Element, b: Element) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
+
+it('TestMacroPageOrder: lead, events, indicators, ease, liquidity, notes; no lead renders without it', async () => {
+  const payload = withV2Fields()
+  expect(validateMacroPage(payload).ok).toBe(true)
+  await show(payload)
+  const order = ['[data-lead]', '[data-events]', '[data-indicators]', '[data-ease-fold]', '[data-liquidity]', '[data-notes]']
+  const nodes = order.map((sel) => host.querySelector(sel)!)
+  nodes.forEach((n, i) => expect(n, order[i]).not.toBeNull())
+  for (let i = 1; i < nodes.length; i++) expect(position(nodes[i - 1]!, nodes[i]!), order[i]).toBeTruthy()
+  await act(async () => root?.unmount())
+  host.remove()
+  const plain = v2('golden')
+  await show(plain)
+  expect(host.querySelector('[data-lead]')).toBeNull()
+  expect(host.querySelector('[data-events]')).not.toBeNull()
+  expect(host.querySelector('[data-indicators]')).not.toBeNull()
+})
+
+it('TestEventWindowMarker: marker and day count only where the payload sends them', async () => {
+  await show(withV2Fields())
+  const rows = host.querySelectorAll('[data-events] tbody tr')
+  expect(rows[0]!.textContent).toContain('in window')
+  expect(rows[0]!.textContent).toContain('19')
+  expect(rows[1]!.textContent).not.toContain('in window')
+  expect(rows[1]!.textContent).toContain('50')
+  await act(async () => root?.unmount())
+  host.remove()
+  await show(v2('golden'))
+  expect(host.querySelector('[data-events]')!.textContent).not.toContain('in window')
+})
+
+it('TestGroupedIndicators: groups in payload order with change, day and hint', async () => {
+  await show(withV2Fields())
+  const groups = [...host.querySelectorAll('[data-indicator-group]')]
+  expect(groups.map((g) => g.getAttribute('data-indicator-group'))).toEqual(['rates', 'credit'])
+  const rates = groups[0]!.querySelectorAll('tbody tr')
+  expect(rates).toHaveLength(2)
+  expect(rates[0]!.textContent).toContain('+0.10 pp over five sessions')
+  expect(rates[0]!.textContent).toContain('2026-10-23')
+  expect(rates[0]!.querySelector('[aria-label="hint cpi"]')).not.toBeNull()
+  expect(rates[1]!.textContent).toContain('99.1')
+  expect(rates[1]!.querySelector('[data-hint]')).toBeNull()
+  expect(groups[1]!.textContent).toContain('data source not connected')
 })
