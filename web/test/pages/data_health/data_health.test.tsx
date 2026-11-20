@@ -197,6 +197,24 @@ describe('data health page', () => {
     expect(el.querySelectorAll('[data-dataset]')).toHaveLength(3)
   })
 
+  it('renders the line of each running row above the grid', async () => {
+    const p = ok()
+    p.running = [{ line: 'Invented line one' }, { line: 'Invented line two', slow: true }]
+    const el = await render(p)
+    const rows = [...el.querySelectorAll('[data-running]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Invented line one', 'Invented line two'])
+    const gridEl = el.querySelector('[data-dataset]') as Element
+    for (const r of rows) expect(r.compareDocumentPosition(gridEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('renders no running line when the payload has no running rows', async () => {
+    const p = ok()
+    delete p.running
+    const el = await render(p)
+    expect(el.querySelectorAll('[data-running]')).toHaveLength(0)
+    expect(el.querySelectorAll('[data-dataset]').length).toBeGreaterThan(0)
+  })
+
   it('TestNoLogicInWeb:the page folder exports only components and the registration', () => {
     const names = [pageFolder, grid, repair, failures].flatMap((m) => Object.keys(m)).sort()
     expect(names).toEqual(['CellRepair', 'CoverageGrid', 'DataHealthView', 'FailuresTable', 'RepairAllForm', 'registration'].sort())

@@ -24,6 +24,11 @@ export function DataHealthView({ payload }: { payload: Payload }) {
               <AlertDescription>{g.text}</AlertDescription>
             </Alert>
           ))}
+          {(payload.running ?? []).map((r, i) => (
+            <p key={`${i}-${r.line}`} data-running className="text-sm">
+              {r.line}
+            </p>
+          ))}
           <CoverageGrid datasets={payload.datasets} form={payload.form} />
         </CardContent>
       </Card>
