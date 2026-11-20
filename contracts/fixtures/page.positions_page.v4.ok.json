@@ -1,0 +1,1138 @@
+{
+  "build_id": "build-demo-0001",
+  "data_times": [
+    {
+      "data_time": "2026-10-28T09:28:00+08:00",
+      "source": "invented"
+    }
+  ],
+  "gaps": [],
+  "generated_at": "2026-10-28T09:30:00+08:00",
+  "notes": [
+    "All fictional examples, not real positions. A negative option quantity means sold; cost and last price are premium per share."
+  ],
+  "run_id": "run-demo-0001",
+  "run_status": "ok",
+  "schema": "positions_page",
+  "schema_version": 4,
+  "scope": "positions-page",
+  "stale": {
+    "data_time": "2026-10-28T09:28:00+08:00",
+    "stale_after": "2026-10-28T10:28:00+08:00",
+    "text": "Data time 2026-10-28 09:28 (UTC+8)"
+  },
+  "title": "Positions",
+  "views": [
+    {
+      "key": "me",
+      "label": "Me",
+      "options": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "Symbol"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "Name"
+          },
+          {
+            "align": "left",
+            "id": "expiry",
+            "label": "Expiry"
+          },
+          {
+            "align": "right",
+            "id": "days_left",
+            "label": "Days left"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "Owner"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "Cost (per share)"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Last price (per share)"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "Day P&L"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "Unrealized P&L"
+          },
+          {
+            "align": "right",
+            "id": "open_premium",
+            "label": "Remaining premium"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "XYZ 11-20 P100",
+              "value": "XYZ 11-20 P100"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$2.60",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 2.6
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$15.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -15.0
+            },
+            "days_left": {
+              "text": "23",
+              "unit": "days",
+              "value": 23
+            },
+            "expiry": {
+              "text": "2026-11-20",
+              "value": "2026-11-20"
+            },
+            "name": {
+              "text": "XYZ sell put",
+              "value": "XYZ sell put"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "$258.00",
+              "tone": "none",
+              "unit": "amount",
+              "value": 258.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$3.15",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 3.15
+            },
+            "quantity": {
+              "text": "−1",
+              "unit": "contracts",
+              "value": -1
+            },
+            "role": {
+              "text": "Me",
+              "value": "Me"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$55.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -55.0
+            }
+          }
+        ],
+        "title": "Options"
+      },
+      "sentence": "2 stock rows, 1 option leg.",
+      "stocks": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "Symbol"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "Name"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "Owner"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "Cost (per share)"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Last price (per share)"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "Day P&L"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "Unrealized P&L"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AMD",
+              "value": "AMD"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$138.20",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 138.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$120.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 120.0
+            },
+            "name": {
+              "text": "Sample Company A",
+              "value": "Sample Company A"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$151.40",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 151.4
+            },
+            "quantity": {
+              "text": "200",
+              "unit": "shares",
+              "value": 200
+            },
+            "role": {
+              "text": "Me",
+              "value": "Me"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$2,640.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 2640.0
+            }
+          },
+          {
+            "code": {
+              "text": "JPA",
+              "value": "JPA"
+            },
+            "cost": {
+              "approx_usd": {
+                "text": "≈$82",
+                "unit": "USD",
+                "value": 82.0
+              },
+              "currency": "JPY",
+              "text": "¥12,300",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 12300.0
+            },
+            "day": {
+              "currency": "JPY",
+              "text": "+¥1,500",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 1500.0
+            },
+            "name": {
+              "text": "Sample Company E",
+              "value": "Sample Company E"
+            },
+            "price": {
+              "approx_usd": {
+                "text": "≈$83",
+                "unit": "USD",
+                "value": 83.0
+              },
+              "currency": "JPY",
+              "text": "¥12,450",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 12450.0
+            },
+            "quantity": {
+              "text": "10",
+              "unit": "shares",
+              "value": 10
+            },
+            "role": {
+              "text": "Me",
+              "value": "Me"
+            },
+            "unrealised": {
+              "currency": "JPY",
+              "text": "+¥2,250",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 2250.0
+            }
+          }
+        ],
+        "title": "Stocks"
+      },
+      "trades": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "time",
+            "label": "Time"
+          },
+          {
+            "align": "left",
+            "id": "account",
+            "label": "Account"
+          },
+          {
+            "align": "left",
+            "id": "action",
+            "label": "Action"
+          },
+          {
+            "align": "left",
+            "id": "instrument",
+            "label": "Underlying · structure"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Price"
+          }
+        ],
+        "rows": [
+          {
+            "account": {
+              "text": "Me",
+              "tone": "none"
+            },
+            "action": {
+              "text": "Sell to open",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "XYZ 11-20 Put 100",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$2.60/share",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "1 contract",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "fill time unknown"
+            }
+          }
+        ],
+        "title": "Today's actions"
+      }
+    },
+    {
+      "key": "spouse",
+      "label": "Spouse",
+      "options": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "Symbol"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "Name"
+          },
+          {
+            "align": "left",
+            "id": "expiry",
+            "label": "Expiry"
+          },
+          {
+            "align": "right",
+            "id": "days_left",
+            "label": "Days left"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "Owner"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "Cost (per share)"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Last price (per share)"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "Day P&L"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "Unrealized P&L"
+          },
+          {
+            "align": "right",
+            "id": "open_premium",
+            "label": "Remaining premium"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "BBB 12-18 C50",
+              "value": "BBB 12-18 C50"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$1.20",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 1.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$10.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 10.0
+            },
+            "days_left": {
+              "text": "51",
+              "unit": "days",
+              "value": 51
+            },
+            "expiry": {
+              "text": "2026-12-18",
+              "value": "2026-12-18"
+            },
+            "name": {
+              "text": "BBB buy call",
+              "value": "BBB buy call"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "−$241.00",
+              "tone": "none",
+              "unit": "amount",
+              "value": -241.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$1.40",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 1.4
+            },
+            "quantity": {
+              "text": "2",
+              "unit": "contracts",
+              "value": 2
+            },
+            "role": {
+              "text": "Spouse",
+              "value": "Spouse"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$40.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 40.0
+            }
+          }
+        ],
+        "title": "Options"
+      },
+      "sentence": "1 stock row, 1 option leg.",
+      "stocks": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "Symbol"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "Name"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "Owner"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "Cost (per share)"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Last price (per share)"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "Day P&L"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "Unrealized P&L"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$40.00",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 40.0
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$25.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -25.0
+            },
+            "name": {
+              "text": "Sample Company C",
+              "value": "Sample Company C"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$38.00",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 38.0
+            },
+            "quantity": {
+              "text": "50",
+              "unit": "shares",
+              "value": 50
+            },
+            "role": {
+              "text": "Spouse",
+              "value": "Spouse"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$100.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -100.0
+            }
+          }
+        ],
+        "title": "Stocks"
+      },
+      "trades": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "time",
+            "label": "Time"
+          },
+          {
+            "align": "left",
+            "id": "account",
+            "label": "Account"
+          },
+          {
+            "align": "left",
+            "id": "action",
+            "label": "Action"
+          },
+          {
+            "align": "left",
+            "id": "instrument",
+            "label": "Underlying · structure"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Price"
+          }
+        ],
+        "rows": [
+          {
+            "account": {
+              "text": "Spouse",
+              "tone": "none"
+            },
+            "action": {
+              "text": "Buy stock",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "AAA stock",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$40.00/share",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "50 shares",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "fill time unknown"
+            }
+          }
+        ],
+        "title": "Today's actions"
+      }
+    },
+    {
+      "key": "household",
+      "label": "Household",
+      "options": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "Symbol"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "Name"
+          },
+          {
+            "align": "left",
+            "id": "expiry",
+            "label": "Expiry"
+          },
+          {
+            "align": "right",
+            "id": "days_left",
+            "label": "Days left"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "Owner"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "Cost (per share)"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Last price (per share)"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "Day P&L"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "Unrealized P&L"
+          },
+          {
+            "align": "right",
+            "id": "open_premium",
+            "label": "Remaining premium"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "XYZ 11-20 P100",
+              "value": "XYZ 11-20 P100"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$2.60",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 2.6
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$15.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -15.0
+            },
+            "days_left": {
+              "text": "23",
+              "unit": "days",
+              "value": 23
+            },
+            "expiry": {
+              "text": "2026-11-20",
+              "value": "2026-11-20"
+            },
+            "name": {
+              "text": "XYZ sell put",
+              "value": "XYZ sell put"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "$258.00",
+              "tone": "none",
+              "unit": "amount",
+              "value": 258.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$3.15",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 3.15
+            },
+            "quantity": {
+              "text": "−1",
+              "unit": "contracts",
+              "value": -1
+            },
+            "role": {
+              "text": "Me",
+              "value": "Me"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$55.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -55.0
+            }
+          },
+          {
+            "code": {
+              "text": "BBB 12-18 C50",
+              "value": "BBB 12-18 C50"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$1.20",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 1.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$10.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 10.0
+            },
+            "days_left": {
+              "text": "51",
+              "unit": "days",
+              "value": 51
+            },
+            "expiry": {
+              "text": "2026-12-18",
+              "value": "2026-12-18"
+            },
+            "name": {
+              "text": "BBB buy call",
+              "value": "BBB buy call"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "−$241.00",
+              "tone": "none",
+              "unit": "amount",
+              "value": -241.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$1.40",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 1.4
+            },
+            "quantity": {
+              "text": "2",
+              "unit": "contracts",
+              "value": 2
+            },
+            "role": {
+              "text": "Spouse",
+              "value": "Spouse"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$40.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 40.0
+            }
+          }
+        ],
+        "title": "Options"
+      },
+      "sentence": "3 stock rows, 2 option legs.",
+      "stocks": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "Symbol"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "Name"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "Owner"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "Cost (per share)"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Last price (per share)"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "Day P&L"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "Unrealized P&L"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AMD",
+              "value": "AMD"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$138.20",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 138.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$120.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 120.0
+            },
+            "name": {
+              "text": "Sample Company A",
+              "value": "Sample Company A"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$151.40",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 151.4
+            },
+            "quantity": {
+              "text": "200",
+              "unit": "shares",
+              "value": 200
+            },
+            "role": {
+              "text": "Me",
+              "value": "Me"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$2,640.00",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 2640.0
+            }
+          },
+          {
+            "code": {
+              "text": "JPA",
+              "value": "JPA"
+            },
+            "cost": {
+              "approx_usd": {
+                "text": "≈$82",
+                "unit": "USD",
+                "value": 82.0
+              },
+              "currency": "JPY",
+              "text": "¥12,300",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 12300.0
+            },
+            "day": {
+              "currency": "JPY",
+              "text": "+¥1,500",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 1500.0
+            },
+            "name": {
+              "text": "Sample Company E",
+              "value": "Sample Company E"
+            },
+            "price": {
+              "approx_usd": {
+                "text": "≈$83",
+                "unit": "USD",
+                "value": 83.0
+              },
+              "currency": "JPY",
+              "text": "¥12,450",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 12450.0
+            },
+            "quantity": {
+              "text": "10",
+              "unit": "shares",
+              "value": 10
+            },
+            "role": {
+              "text": "Me",
+              "value": "Me"
+            },
+            "unrealised": {
+              "currency": "JPY",
+              "text": "+¥2,250",
+              "tone": "up",
+              "unit": "amount_signed",
+              "value": 2250.0
+            }
+          },
+          {
+            "code": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$40.00",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 40.0
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$25.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -25.0
+            },
+            "name": {
+              "text": "Sample Company C",
+              "value": "Sample Company C"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$38.00",
+              "tone": "none",
+              "unit": "amount_per_share",
+              "value": 38.0
+            },
+            "quantity": {
+              "text": "50",
+              "unit": "shares",
+              "value": 50
+            },
+            "role": {
+              "text": "Spouse",
+              "value": "Spouse"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$100.00",
+              "tone": "down",
+              "unit": "amount_signed",
+              "value": -100.0
+            }
+          }
+        ],
+        "title": "Stocks"
+      },
+      "trades": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "time",
+            "label": "Time"
+          },
+          {
+            "align": "left",
+            "id": "account",
+            "label": "Account"
+          },
+          {
+            "align": "left",
+            "id": "action",
+            "label": "Action"
+          },
+          {
+            "align": "left",
+            "id": "instrument",
+            "label": "Underlying · structure"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "Quantity"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "Price"
+          }
+        ],
+        "rows": [
+          {
+            "account": {
+              "text": "Me",
+              "tone": "none"
+            },
+            "action": {
+              "text": "Sell to open",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "XYZ 11-20 Put 100",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$2.60/share",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "1 contract",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "fill time unknown"
+            }
+          },
+          {
+            "account": {
+              "text": "Spouse",
+              "tone": "none"
+            },
+            "action": {
+              "text": "Buy stock",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "AAA stock",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$40.00/share",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "50 shares",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "fill time unknown"
+            }
+          }
+        ],
+        "title": "Today's actions"
+      }
+    }
+  ]
+}

@@ -2832,7 +2832,7 @@ func (j *OptionOpen) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// obs.price_bar r1: one daily bar of one instrument under one basis; a restated
+// obs.price_bar r2: one daily bar of one instrument under one basis; a restated
 // day is a new adjust_epoch row, an existing row is never changed.
 type PriceBar struct {
 	// Epoch of the pull, from 1; a restated day is written again under the next
@@ -2867,7 +2867,8 @@ type PriceBar struct {
 	// Session day the bar covers.
 	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
 
-	// Where the row came from.
+	// Where the row came from: ibkr or yfinance; a yfinance row never replaces an
+	// ibkr row.
 	Source PriceBarSource `json:"source" yaml:"source" mapstructure:"source"`
 
 	// Volume as decimal text; null when the source gives none (adjusted_last rows).
@@ -2908,9 +2909,11 @@ func (j *PriceBarBasis) UnmarshalJSON(b []byte) error {
 type PriceBarSource string
 
 const PriceBarSourceIbkr PriceBarSource = "ibkr"
+const PriceBarSourceYfinance PriceBarSource = "yfinance"
 
 var enumValues_PriceBarSource = []interface{}{
 	"ibkr",
+	"yfinance",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
