@@ -67,6 +67,10 @@ type wireRequest struct {
 type wireBar struct {
 	SessionDay contracts.Day `json:"session_day"`
 	Close      string        `json:"close"`
+	Open       string        `json:"open"`
+	High       string        `json:"high"`
+	Low        string        `json:"low"`
+	Volume     string        `json:"volume"`
 }
 
 type wireResult struct {
@@ -181,7 +185,8 @@ func (s *source) askBatch(ctx context.Context, req sources.BarRequest, batch []s
 			unanswered = append(unanswered, sources.BarUnanswered{Pair: p, Code: r.ErrorCode})
 		default:
 			for _, b := range r.Bars {
-				bars = append(bars, sources.RefBar{Pair: p, Day: b.SessionDay, Close: b.Close})
+				bars = append(bars, sources.RefBar{Pair: p, Day: b.SessionDay, Close: b.Close,
+					Open: b.Open, High: b.High, Low: b.Low, Volume: b.Volume})
 			}
 		}
 	}
