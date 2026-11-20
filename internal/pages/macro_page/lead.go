@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
@@ -67,15 +66,7 @@ func sourceWords(stored bool) string {
 // buildLead returns the four lead rows in order. events are the stored events of the page window. An error of a series
 // read is an error.
 func buildLead(ctx context.Context, r store.SeriesReader, events []macroevent.Event, d time.Time, days int, stored bool) (*lead, error) {
-	from := contracts.Day(d.AddDate(0, 0, -lookbackDays).Format(dayLayout))
-	to := contracts.Day(d.Format(dayLayout))
-	read := func(id string) ([]obsPoint, error) {
-		pts, err := r.SeriesPoints(ctx, id, from, to)
-		if err != nil {
-			return nil, fmt.Errorf("macro_page: read %s: %w", id, err)
-		}
-		return observations(pts, d), nil
-	}
+	read := func(id string) ([]obsPoint, error) { return readObs(ctx, r, id, d, lookbackDays) }
 	tbill, err := read("DGS3MO")
 	if err != nil {
 		return nil, err

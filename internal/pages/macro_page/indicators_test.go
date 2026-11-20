@@ -186,3 +186,20 @@ func TestHintsOnlyInZhTexts(t *testing.T) {
 		}
 	}
 }
+
+func TestGroupsOnlyPageKeepsDataDay(t *testing.T) {
+	t.Parallel()
+	r := fakeReader{points: map[string][]contracts.SeriesPoint{
+		"DGS10": {pt(t, "2026-11-04", "2026-11-05", "percent", f64(4.2))},
+	}}
+	c := cfg("DGS10")
+	c.Groups = []Group{{Key: "rates", Indicators: c.Indicators}}
+	c.Indicators = nil
+	b, err := Build(t.Context(), r, c, "2026-11-05", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), `"No data day"`) || strings.Contains(string(b), `"data_times":[]`) {
+		t.Fatalf("page with a 2026-11-04 row says no data day: %s", b)
+	}
+}

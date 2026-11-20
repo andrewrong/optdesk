@@ -251,15 +251,11 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		latest := latestPoint(rows, d)
 		vm.Indicators = append(vm.Indicators, row(ind, latest, d))
 		if latest != nil {
-			obs := latest.ObservationDate.Time
-			vm.DataTimes = append(vm.DataTimes, sourceTime{Source: ind.SeriesID, DataTime: midnight(obs, c.Zone)})
-			if oldest == nil || obs.Before(*oldest) {
-				o := obs
-				oldest = &o
-			}
+			oldest = noteData(&vm, c.Zone, oldest, ind.SeriesID, latest.ObservationDate.Time, true)
 		}
 	}
-	if err := withGroupsAndLead(ctx, r, c, d, generatedAt, &vm); err != nil {
+	oldest, err = withGroupsAndLead(ctx, r, c, d, generatedAt, &vm, oldest)
+	if err != nil {
 		return nil, err
 	}
 	vm.Stale = staleOf(d, oldest, c.Zone)
@@ -334,18 +330,32 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 	return out
 }
 
-// withGroupsAndLead appends the grouped rows and, with c.Window, writes the event flags and the lead block.
-func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel) error {
-	grouped, err := buildGroups(ctx, r, c.Groups, d)
+// noteData adds the data time of a series to vm and, when it counts for the stale label, moves oldest back to it.
+func noteData(vm *viewModel, zone *time.Location, oldest *time.Time, id string, obs time.Time, counts bool) *time.Time {
+	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: id, DataTime: midnight(obs, zone)})
+	if counts && (oldest == nil || obs.Before(*oldest)) {
+		o := obs
+		return &o
+	}
+	return oldest
+}
+
+// withGroupsAndLead appends the grouped rows, with their data times (a monthly series is listed but does not set the
+// stale label) and, with c.Window, writes the event flags and the lead block. It returns the oldest data day.
+func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel, oldest *time.Time) (*time.Time, error) {
+	grouped, days, err := buildGroups(ctx, r, c.Groups, d)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	vm.Indicators = append(vm.Indicators, grouped...)
-	if c.Window == nil {
-		return nil
+	for _, g := range days {
+		oldest = noteData(vm, c.Zone, oldest, g.id, g.day, !g.monthly)
 	}
-	days, stored := windowOf(ctx, c, generatedAt)
-	markWindow(vm.Events, d, days)
-	vm.Lead, err = buildLead(ctx, r, vm.events, d, days, stored)
-	return err
+	if c.Window == nil {
+		return oldest, nil
+	}
+	window, stored := windowOf(ctx, c, generatedAt)
+	markWindow(vm.Events, d, window)
+	vm.Lead, err = buildLead(ctx, r, vm.events, d, window, stored)
+	return oldest, err
 }

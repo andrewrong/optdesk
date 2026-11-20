@@ -131,21 +131,41 @@ func specOf(id string) seriesSpec {
 	return seriesSpec{unit: unitPercent}
 }
 
-// buildGroups reads the series of every group and returns their rows in order. An error of a read is an error.
-func buildGroups(ctx context.Context, r store.SeriesReader, groups []Group, d time.Time) ([]indicatorRow, error) {
-	from := contracts.Day(d.AddDate(0, 0, -groupLookbackDays).Format(dayLayout))
-	to := contracts.Day(d.Format(dayLayout))
+// readObs reads id from back days before d through d and returns its observations. An error is wrapped with the id.
+func readObs(ctx context.Context, r store.SeriesReader, id string, d time.Time, back int) ([]obsPoint, error) {
+	from := contracts.Day(d.AddDate(0, 0, -back).Format(dayLayout))
+	pts, err := r.SeriesPoints(ctx, id, from, contracts.Day(d.Format(dayLayout)))
+	if err != nil {
+		return nil, fmt.Errorf("macro_page: read %s: %w", id, err)
+	}
+	return observations(pts, d), nil
+}
+
+// groupDay is the day of the latest point of a grouped series.
+type groupDay struct {
+	id      string
+	day     time.Time
+	monthly bool
+}
+
+// buildGroups reads the series of every group and returns their rows in order, and the day of each series that has a
+// point. An error of a read is an error.
+func buildGroups(ctx context.Context, r store.SeriesReader, groups []Group, d time.Time) ([]indicatorRow, []groupDay, error) {
 	var rows []indicatorRow
+	var days []groupDay
 	for _, g := range groups {
 		for _, ind := range g.Indicators {
-			pts, err := r.SeriesPoints(ctx, ind.SeriesID, from, to)
+			obs, err := readObs(ctx, r, ind.SeriesID, d, groupLookbackDays)
 			if err != nil {
-				return nil, fmt.Errorf("macro_page: read %s: %w", ind.SeriesID, err)
+				return nil, nil, err
 			}
-			rows = append(rows, groupRow(g.Key, ind, observations(pts, d), d))
+			rows = append(rows, groupRow(g.Key, ind, obs, d))
+			if len(obs) > 0 {
+				days = append(days, groupDay{ind.SeriesID, obs[len(obs)-1].day, specOf(ind.SeriesID).monthly})
+			}
 		}
 	}
-	return rows, nil
+	return rows, days, nil
 }
 
 // groupRow is one row of a group: the old fields of row plus group, change, data day and hint.
