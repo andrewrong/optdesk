@@ -122,7 +122,7 @@ Acceptance:
 ### 5 gateway-health-broker (interface)
 
 Module: broker. Size: M. Order: after 1.
-Files: `internal/broker/api.go`, `internal/broker/api_test.go`, `internal/broker/grpcbroker/health.go`, `internal/broker/grpcbroker/health_test.go`, `internal/broker/grpcbroker/errors.go`, `internal/broker/grpcbroker/errors_test.go`, `docs/contracts/broker.md`
+Files: `internal/broker/api.go`, `internal/broker/api_test.go`, `internal/broker/grpcbroker/health.go`, `internal/broker/grpcbroker/health_test.go`, `internal/broker/grpcbroker/errors_test.go`, `docs/contracts/broker.md`
 Acceptance:
 1. `internal/broker/api.go` declares `Health`, `Farm`, `HealthReader` and `NewHealthFunc` of Interface 4, declarations only; `TestHealthReaderContract` (new) in `api_test.go`: a fake implements it and a caller reads one `Health`.
 2. `grpcbroker/health.go` (new) implements `HealthReader` over `SessionService.Ping`; `TestHealthMapsPing` (new) shows every new field maps to the field of the same meaning and an older answer (new fields zero) maps to state `up` when `connected`.
