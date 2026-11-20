@@ -17,8 +17,15 @@ _PLACES = Decimal("0.0001")
 
 
 def close_text(value: float) -> str:
-    """Return the close as decimal text of 4 places, without the float artefact."""
+    """Return the price as decimal text of 4 places, without the float artefact."""
     return str(Decimal(repr(float(value))).quantize(_PLACES, rounding=ROUND_HALF_UP))
+
+
+def _text_or_empty(value: Any) -> str:
+    """Decimal text of a cell; an empty string when the cell is missing or NaN."""
+    if value is None or math.isnan(float(value)):
+        return ""
+    return close_text(float(value))
 
 
 def _code_of(yf: Any, exc: Exception) -> str:
@@ -36,10 +43,13 @@ def _code_of(yf: Any, exc: Exception) -> str:
 
 
 def _bars(frame: Any, zone: datetime.tzinfo, from_day: str, to_day: str) -> list[Bar] | None:
-    """Read the closes; None when the column set is not the expected one."""
+    """Read the bars; None when the column set is not the expected one."""
     if not _EXPECTED_COLUMNS.issubset(set(frame.columns)):
         return None
     bars: list[Bar] = []
+    opens, highs, lows, volumes = (
+        dict(frame[name].items()) for name in ("Open", "High", "Low", "Volume")
+    )
     for stamp, value in frame["Close"].items():
         if value is None or math.isnan(float(value)):
             continue
@@ -50,11 +60,11 @@ def _bars(frame: Any, zone: datetime.tzinfo, from_day: str, to_day: str) -> list
             bars.append(
                 {
                     "session_day": day,
-                    "open": "",
-                    "high": "",
-                    "low": "",
+                    "open": _text_or_empty(opens.get(stamp)),
+                    "high": _text_or_empty(highs.get(stamp)),
+                    "low": _text_or_empty(lows.get(stamp)),
                     "close": close_text(float(value)),
-                    "volume": "",
+                    "volume": _text_or_empty(volumes.get(stamp)),
                 }
             )
     bars.sort(key=lambda bar: bar["session_day"])
