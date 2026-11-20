@@ -16,15 +16,15 @@ type StockProgress struct {
 
 // Summary is the run summary of Decision 8, derived from the rows.
 type Summary struct {
-	Items, OK, Partial int
-	Seconds            float64
-	Stocks             []StockProgress
+	Items, OK, Partial, OutsideBand int
+	Seconds                         float64
+	Stocks                          []StockProgress
 }
 
 // String is the one line of the summary.
 func (s Summary) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "option_open: items=%d ok=%d partial=%d seconds=%.1f", s.Items, s.OK, s.Partial, s.Seconds)
+	fmt.Fprintf(&b, "option_open: items=%d ok=%d partial=%d outside_band=%d seconds=%.1f", s.Items, s.OK, s.Partial, s.OutsideBand, s.Seconds)
 	for _, p := range s.Stocks {
 		fmt.Fprintf(&b, " %s=%d/%d@%s", p.Symbol, p.Done, p.Total, p.LastRowT.UTC().Format("15:04:05"))
 	}
@@ -42,6 +42,9 @@ func (c *Core) summary(st *runState) Summary {
 			s.OK++
 		case stPartial:
 			s.Partial++
+		}
+		if r.OutsideBand {
+			s.OutsideBand++
 		}
 		if r.SentAt == nil {
 			continue
