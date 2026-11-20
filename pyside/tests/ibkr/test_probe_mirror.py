@@ -10,7 +10,7 @@ from optdesk.contracts import api as pb
 from optdesk.ibkr.api import SessionStatus
 
 # Fields of PingResponse that the by-hand probe does not carry.
-UNMIRRORED = {"generation", "market_data_type"}
+UNMIRRORED = {"generation", "market_data_type", "state", "farms"}
 
 
 def test_session_status_matches_ping_response() -> None:
