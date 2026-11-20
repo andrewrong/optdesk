@@ -16,7 +16,7 @@ import (
 
 func gitIn(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	cmd := exec.CommandContext(context.Background(), "git", append([]string{"-C", dir}, args...)...)
 	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@x", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@x")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

@@ -155,7 +155,7 @@ func treeVersions(repo, commit string) ([]int64, error) {
 
 // gitOut runs `git -C repo args...` as an argv, without a shell, and returns its standard output.
 func gitOut(repo string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+	cmd := exec.CommandContext(context.Background(), "git", append([]string{"-C", repo}, args...)...)
 	out, err := cmd.Output()
 	if err != nil {
 		var ee *exec.ExitError
