@@ -344,3 +344,29 @@ func TestPostErrorsCarryNoDSN(t *testing.T) {
 		t.Fatalf("log %q", s)
 	}
 }
+
+func TestPostRefusalPageLinksBack(t *testing.T) {
+	t.Parallel()
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	check := func(name string, rec *httptest.ResponseRecorder, code int, text string) {
+		t.Helper()
+		if rec.Code != code {
+			t.Fatalf("%s: status %d", name, rec.Code)
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+			t.Fatalf("%s: content type %q", name, ct)
+		}
+		body := rec.Body.String()
+		if !strings.Contains(body, text) || !strings.Contains(body, `href="/`+siteJobConsoleRoute+`"`) {
+			t.Fatalf("%s: body %q", name, body)
+		}
+	}
+	check("unknown job", jcPost(t, h, postKey, runFields("no_such_job", "2026-11-05", "")),
+		http.StatusUnprocessableEntity, textBadForm)
+	fp.outcome = jobrequest.EnqueueWithdrawing
+	check("withdrawing", jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", "")),
+		http.StatusConflict, "this request is being withdrawn; press Run again when it shows withdrawn")
+	fp.outcome, fp.enqErr = jobrequest.EnqueueCreated, errors.New("boom")
+	check("store", jcPost(t, h, postKey, runFields("fred_series", "2026-11-05", "")),
+		http.StatusServiceUnavailable, textStoreFailure)
+}
