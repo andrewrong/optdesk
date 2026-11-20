@@ -76,7 +76,7 @@ Acceptance:
 2. A new test expects an added item's row to carry `OutsideBand` false and a plan item it dropped to carry it true.
 3. A new test expects the asks of one stock never to exceed `max_per_stock`, held contracts apart.
 4. A new test runs a stock with a live spot inside the stored band and expects the same asks as before this change (new test of no change).
-5. A new test `TestResumeAddedRow` in `pull_resume_test.go` stores an `ok` row of an added contract and expects the resume to treat it as final and not ask it again, and a missing row to be asked again.
+5. A new test `TestResumeAddedRow` in `pull_resume_test.go` stores an `ok` row of an added contract and expects the resume to treat it as final and not ask it again, and a missing row to be asked again; on that re-run the stored added row is left out of `planned`, counted once in `added=<n>`, and the ok share is the same as on the first run.
 6. `grep -c "Contracts" internal/jobs/optionopen/pull.go internal/jobs/optionopen/jp.go` shows `runKey` of each file passing the lister into `Core` (count at least 2 for each).
 
 ## Checked by CI
@@ -99,4 +99,4 @@ Acceptance:
 - Simpler way: Decision 1 alone; it ends the false failure but leaves AMD thin. Decision 2 adds the stored contracts at no extra broker call.
 - Lock-in: Decision 2 changes who the candidates of `band` are, behind the same `PlanFunc` type.
 - Claim most likely false: "the stored contracts already hold the live band for most gaps". The stored band reaches 1.75 sigma, the live band starts 1.4 sigma below the new spot, so a gap above 0.35 sigma sqrt(T) (about 3.5 percent) leaves the stored band; AMD at 9.8 percent did. Issue 2 acceptance 1 pins the case.
-- Likeliest slip: counting an added row as planned in the postcondition twice (as item and as row) when a re-run finds it stored; issue 1 test 2 and issue 2 test 2 both run a re-run path.
+- Likeliest slip: counting an added row as planned in the postcondition twice (as item and as row) when a re-run finds it stored; issue 2 test 5 (`TestResumeAddedRow`) re-runs a key with a stored ok added row and checks `planned`, `added=<n>` and the share.
