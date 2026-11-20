@@ -165,3 +165,52 @@ type SlowNotifier interface {
 // NewSlowNotifierFunc is the constructor of the slow notifier (internal/notify/core.NewSlow);
 // it fails only on a bad Config or an incomplete SlowDeps.
 type NewSlowNotifierFunc func(SlowDeps, Sender, clockwork.Clock, Config) (SlowNotifier, error)
+
+// GatewayFact is what the scheduler tick knows of one gateway. Farm and Since are those of the
+// first farm that is down, and empty when Down is false.
+type GatewayFact struct {
+	Gateway, Farm string
+	Since         time.Time
+	Down          bool
+}
+
+// GatewayFarm is one data farm of a gateway as FactOf reads it.
+type GatewayFarm struct {
+	Name  string
+	Up    bool
+	Since time.Time
+}
+
+// FactOf is the declared mapping from a health reading to a GatewayFact: Down is true when answered
+// is true and state is "farm_broken"; Farm and Since are those of the first farm that is not up.
+func FactOf(alias string, answered bool, state string, farms []GatewayFarm) GatewayFact {
+	f := GatewayFact{Gateway: alias}
+	if !answered || state != "farm_broken" {
+		return f
+	}
+	f.Down = true
+	for _, fm := range farms {
+		if !fm.Up {
+			f.Farm, f.Since = fm.Name, fm.Since
+			break
+		}
+	}
+	return f
+}
+
+// GatewayNotifier makes one pass over the gateway facts, one fact per gateway, on every tick.
+//
+// NotifyGateways sends one text for a Down fact whose incident (gateway, farm, Since) has no mark,
+// and one text for a gateway with a marked incident when its fact is no longer Down. Marks are
+// written through store.SentStore only after the send was confirmed (at-least-once delivery): a
+// failed send marks nothing and the next pass sends again. It has no quiet window and no loop,
+// and returns the number of texts sent. The incident key is gateway_<alias>_<farm>_<since_unix>
+// and the recovery key is that key plus "_up"; aliases hold no underscore. Marks are looked up
+// 30 days back, so an incident older than that gets no recovery text.
+type GatewayNotifier interface {
+	NotifyGateways(ctx context.Context, facts []GatewayFact) (int, error)
+}
+
+// NewGatewayNotifierFunc is the constructor of the gateway notifier (internal/notify/core.NewGateways);
+// it fails only on a nil argument.
+type NewGatewayNotifierFunc func(Sender, store.SentStore, clockwork.Clock) (GatewayNotifier, error)
