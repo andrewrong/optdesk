@@ -187,3 +187,28 @@ func TestSnapshotKindFromQuote(t *testing.T) {
 		}
 	}
 }
+
+func TestOSISymbolClassRoot(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, class, root, want string }{
+		{"weekly class begins with the root", "SPXW", "SPX", "SPXW"},
+		{"adjusted class begins with the root", "AAPL1", "AAPL", "AAPL1"},
+		{"class equal to the root", "AAPL", "AAPL", "AAPL"},
+		{"class of 6 characters", "ABCDE1", "ABCDE", "ABCDE1"},
+		{"class over 6 characters", "ABCDEFG", "ABCDE", "ABCDE"},
+		{"unrelated class", "2330", "TSMC", "TSMC"},
+		{"empty class", "", "AAPL", "AAPL"},
+	} {
+		if got := osiRootOf(tc.class, tc.root); got != tc.want {
+			t.Errorf("%s: got %q want %q", tc.name, got, tc.want)
+		}
+	}
+	c := broker.Contract{Symbol: "SPX", Expiry: "20261120", Right: "C", Strike: "5000", TradingClass: "SPXW"}
+	std := c
+	std.TradingClass = "SPX"
+	a, err1 := osiSymbolWith(c, osiRootOf(c.TradingClass, "SPX"))
+	b, err2 := osiSymbolWith(std, osiRootOf(std.TradingClass, "SPX"))
+	if err1 != nil || err2 != nil || a == b || a != "SPXW  261120C05000000" {
+		t.Fatalf("got %q %q %v %v", a, b, err1, err2)
+	}
+}

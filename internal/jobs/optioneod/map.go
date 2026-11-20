@@ -117,6 +117,15 @@ func withUnderlyingPrice(row contracts.OptionEod, price float64) contracts.Optio
 // osiSymbol is the 21-character option symbol: symbol padded to 6, yymmdd, C or P, strike times 1000 in 8 digits.
 func osiSymbol(c broker.Contract) (string, error) { return osiSymbolWith(c, c.Symbol) }
 
+// osiRootOf is the osi root of a contract: its trading class when the class is not empty, begins with root and fits 6
+// characters (the weekly or adjusted series of root), else root. Two series of one strike so get two osi symbols.
+func osiRootOf(class, root string) string {
+	if class != "" && len(class) <= 6 && strings.HasPrefix(class, root) {
+		return class
+	}
+	return root
+}
+
 // osiSymbolWith is osiSymbol with root, the option root of the symbol, in place of the symbol; a root over 6 is refused.
 func osiSymbolWith(c broker.Contract, root string) (string, error) {
 	strike, err := strconv.ParseFloat(c.Strike, 64)

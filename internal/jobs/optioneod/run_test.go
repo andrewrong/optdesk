@@ -16,6 +16,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
@@ -757,4 +758,26 @@ func (c *emptyQuote) Snapshot(ctx context.Context, kind broker.Kind, cs []broker
 		return c.qs, nil
 	}
 	return c.fakeBroker.Snapshot(ctx, kind, cs)
+}
+
+func TestChunkResolvesTwoSeriesOfOneStrike(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, "2026-11-06 11:00")
+	rs := &runState{j: r.job, start: r.clk.Now()}
+	u, _ := r.job.underlyingOf("TEST")
+	std := broker.Contract{Symbol: "TEST", Expiry: "20261106", Right: "C", Strike: "95", Multiplier: "100", TradingClass: "TEST", ConID: 950}
+	weekly := std
+	weekly.TradingClass, weekly.ConID = "TESTW", 951
+	var res contracts.JobResult
+	terr := rs.chunk(context.Background(), u, 1, 100, jobs.CaptureID{}, []broker.Contract{std, weekly}, &res, &tally{})
+	if terr != nil {
+		t.Fatal(terr)
+	}
+	if len(r.res.calls) != 2 || len(r.w.all()) != 2 {
+		t.Fatalf("resolves %d rows %d", len(r.res.calls), len(r.w.all()))
+	}
+	a, b := r.res.calls[0].extra[0].Value, r.res.calls[1].extra[0].Value
+	if a != "TEST  261106C00095000" || b != "TESTW 261106C00095000" {
+		t.Fatalf("osi %q %q", a, b)
+	}
 }
