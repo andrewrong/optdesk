@@ -24,4 +24,32 @@ message PingResponse {
   int64 generation = 2;
   // market_data_type is the type set on the current session.
   MarketDataType market_data_type = 3;
+  // state is the state of the broker session, apart from the farms.
+  SessionState state = 4;
+  // farms is each data farm the gateway named, with its last known state.
+  repeated FarmState farms = 5;
+}
+
+// SessionState is the state of the broker API session.
+enum SessionState {
+  // SESSION_STATE_UNSPECIFIED is an older answer that sets no state.
+  SESSION_STATE_UNSPECIFIED = 0;
+  // SESSION_STATE_UP is a connected session.
+  SESSION_STATE_UP = 1;
+  // SESSION_STATE_SOFT_LOST is a session the gateway reported lost (1100, 2110).
+  SESSION_STATE_SOFT_LOST = 2;
+  // SESSION_STATE_DOWN is an ended session.
+  SESSION_STATE_DOWN = 3;
+  // SESSION_STATE_FARM_BROKEN is a session whose history farm is broken past the grace time.
+  SESSION_STATE_FARM_BROKEN = 4;
+}
+
+// FarmState is one data farm named by the gateway.
+message FarmState {
+  // name is the farm word, for example ushmds.
+  string name = 1;
+  // up is true while the farm is ok.
+  bool up = 2;
+  // since_unix_ms is when the farm took its current state, in unix milliseconds.
+  int64 since_unix_ms = 3;
 }

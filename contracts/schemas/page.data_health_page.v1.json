@@ -18,7 +18,8 @@
     "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
     "failures_note": {"$ref": "#/$defs/Text"},
     "failures_none_text": {"$ref": "#/$defs/Text"},
-    "running": {"type": "array", "items": {"$ref": "#/$defs/Running"}}
+    "running": {"type": "array", "items": {"$ref": "#/$defs/Running"}},
+    "gateways": {"type": "array", "items": {"$ref": "#/$defs/Gateway"}}
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
@@ -38,6 +39,26 @@
         "elapsed_minutes": {"type": "integer", "minimum": 0},
         "usual_minutes": {"type": "integer", "minimum": 0},
         "slow": {"type": "boolean"}
+      }
+    },
+    "Gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "verdict", "farms", "note"],
+      "properties": {
+        "name": {"$ref": "#/$defs/Text"},
+        "verdict": {"enum": ["session_up", "session_retrying", "farm_down", "unreachable"]},
+        "farms": {"type": "array", "items": {"$ref": "#/$defs/GatewayFarm"}},
+        "note": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "GatewayFarm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "up"],
+      "properties": {
+        "name": {"$ref": "#/$defs/Text"},
+        "up": {"type": "boolean"}
       }
     },
     "Count": {"type": "integer", "minimum": 0},

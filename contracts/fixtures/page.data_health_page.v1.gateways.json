@@ -1,0 +1,319 @@
+{
+  "schema": "data_health_page",
+  "schema_version": 1,
+  "run_id": "run-synthetic-0001",
+  "built_at": "2026-11-17T09:30:00Z",
+  "form": {
+    "post_path": "/owner-job-console",
+    "expires": "2026-11-17T10:00:00Z",
+    "mac": "invented-mac-0001"
+  },
+  "running": [
+    {
+      "job": "statement_capture",
+      "started_at": "2026-11-17T09:20:00Z",
+      "keys_done": 2,
+      "keys_total": 5,
+      "step": "invented-key-0003",
+      "elapsed_minutes": 10,
+      "usual_minutes": 8,
+      "slow": false,
+      "line": "已完成 2 / 5，跑了 10 分钟，平常 8 分钟，09:20 UTC"
+    }
+  ],
+  "datasets": [
+    {
+      "dataset_id": "account_statement",
+      "label": "Account statements",
+      "job_id": "statement_capture",
+      "calendar": "XNYS",
+      "gap_days": 2,
+      "repair_all": "button",
+      "newest": [],
+      "failures_total": 2,
+      "failures_hidden": 0,
+      "failures_hidden_text": "",
+      "repeated_failures": [
+        {
+          "key": "acct-synthetic-1",
+          "kind": "failed",
+          "days": 4,
+          "runs": 6,
+          "first_day": "2026-11-05",
+          "last_day": "2026-11-17",
+          "last_class": "retryable",
+          "class_text": "Invented explanation of retryable."
+        },
+        {
+          "key": "acct-synthetic-2",
+          "kind": "empty",
+          "days": 3,
+          "runs": 3,
+          "first_day": "2026-11-10",
+          "last_day": "2026-11-17",
+          "last_class": "empty",
+          "class_text": "Invented explanation of empty."
+        }
+      ],
+      "cells": [
+        {
+          "day": "2026-11-10",
+          "state": "ok",
+          "keys": 3,
+          "ok": 3,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-11",
+          "state": "no_value",
+          "keys": 3,
+          "ok": 2,
+          "no_value": 1,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-12",
+          "state": "expired",
+          "keys": 3,
+          "ok": 2,
+          "no_value": 0,
+          "expired": 1,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "button",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-13",
+          "state": "missing",
+          "keys": 3,
+          "ok": 1,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 2,
+          "missing_keys": [
+            "statement-a",
+            "statement-b"
+          ],
+          "repair": "button",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-16",
+          "state": "not_run",
+          "keys": 0,
+          "ok": 0,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "not_refetchable",
+          "why_text": "not planned: repair of an unplanned day is not built yet",
+          "due_text": ""
+        }
+      ]
+    },
+    {
+      "dataset_id": "option_eod",
+      "label": "Option end of day",
+      "job_id": "option_eod_index",
+      "calendar": "XNYS",
+      "gap_days": 0,
+      "repair_all": "none",
+      "newest": [],
+      "cells": [
+        {
+          "day": "2026-11-11",
+          "state": "ok",
+          "keys": 5,
+          "ok": 5,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-12",
+          "state": "no_value",
+          "keys": 5,
+          "ok": 3,
+          "no_value": 2,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-13",
+          "state": "missing",
+          "keys": 5,
+          "ok": 3,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 2,
+          "missing_keys": [
+            "AAA",
+            "BBB"
+          ],
+          "repair": "not_refetchable",
+          "why_text": "lost: the source gives only the present",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-16",
+          "state": "not_run",
+          "keys": 0,
+          "ok": 0,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "not_refetchable",
+          "why_text": "not planned: repair of an unplanned day is not built yet",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-17",
+          "state": "missing",
+          "keys": 5,
+          "ok": 0,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 5,
+          "missing_keys": [
+            "AAA",
+            "BBB",
+            "CCC",
+            "DDD",
+            "EEE"
+          ],
+          "repair": "none",
+          "why_text": "",
+          "due_text": "due at 11:00 EST"
+        }
+      ]
+    },
+    {
+      "dataset_id": "obs.series_point",
+      "label": "FRED series",
+      "job_id": "fred_series",
+      "calendar": "XNYS",
+      "gap_days": 0,
+      "repair_all": "none",
+      "newest": [
+        {
+          "series_id": "DGS10",
+          "day": "2026-11-14",
+          "age_days": 3
+        }
+      ],
+      "cells": [
+        {
+          "day": "2026-11-16",
+          "state": "ok",
+          "keys": 12,
+          "ok": 12,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        },
+        {
+          "day": "2026-11-17",
+          "state": "ok",
+          "keys": 12,
+          "ok": 12,
+          "no_value": 0,
+          "expired": 0,
+          "missing": 0,
+          "missing_keys": [],
+          "repair": "none",
+          "why_text": "",
+          "due_text": ""
+        }
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "ok",
+      "text": "Invented explanation of ok."
+    },
+    {
+      "term": "no_value",
+      "text": "Invented explanation of no_value."
+    },
+    {
+      "term": "expired",
+      "text": "Invented explanation of expired."
+    },
+    {
+      "term": "missing",
+      "text": "Invented explanation of missing."
+    },
+    {
+      "term": "not_run",
+      "text": "Invented explanation of not_run."
+    },
+    {
+      "term": "none",
+      "text": "Invented explanation of none."
+    },
+    {
+      "term": "button",
+      "text": "Invented explanation of button."
+    },
+    {
+      "term": "not_refetchable",
+      "text": "Invented explanation of not_refetchable."
+    }
+  ],
+  "failures_note": "Invented note on the repeated failures table.",
+  "failures_none_text": "Invented text for a dataset with no repeated failure.",
+  "overwrite_note": "A repair writes only the days that are missing or expired.",
+  "gaps": [],
+  "gateways": [
+    {
+      "name": "main",
+      "verdict": "farm_down",
+      "farms": [
+        {
+          "name": "usfarm",
+          "up": true
+        },
+        {
+          "name": "ushmds",
+          "up": false
+        }
+      ],
+      "note": "历史行情服务 ushmds 中断：请重新登录这个网关；重连没有用。"
+    },
+    {
+      "name": "wife",
+      "verdict": "unreachable",
+      "farms": [],
+      "note": "这个网关没有回答。"
+    }
+  ]
+}

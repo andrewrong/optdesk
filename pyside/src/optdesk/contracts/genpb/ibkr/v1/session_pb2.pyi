@@ -3,8 +3,11 @@
 isort:skip_file
 """
 
+from collections import abc as _abc
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from optdesk.contracts.genpb.ibkr.v1 import quote_types_pb2 as _quote_types_pb2
 import builtins as _builtins
 import sys
@@ -16,6 +19,38 @@ else:
     from typing_extensions import TypeAlias as _TypeAlias, Never as _Never
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class _SessionState:
+    ValueType = _typing.NewType("ValueType", _builtins.int)
+    V: _TypeAlias = ValueType  # noqa: Y015
+
+class _SessionStateEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_SessionState.ValueType], _builtins.type):
+    DESCRIPTOR: _descriptor.EnumDescriptor
+    SESSION_STATE_UNSPECIFIED: _SessionState.ValueType  # 0
+    """SESSION_STATE_UNSPECIFIED is an older answer that sets no state."""
+    SESSION_STATE_UP: _SessionState.ValueType  # 1
+    """SESSION_STATE_UP is a connected session."""
+    SESSION_STATE_SOFT_LOST: _SessionState.ValueType  # 2
+    """SESSION_STATE_SOFT_LOST is a session the gateway reported lost (1100, 2110)."""
+    SESSION_STATE_DOWN: _SessionState.ValueType  # 3
+    """SESSION_STATE_DOWN is an ended session."""
+    SESSION_STATE_FARM_BROKEN: _SessionState.ValueType  # 4
+    """SESSION_STATE_FARM_BROKEN is a session whose history farm is broken past the grace time."""
+
+class SessionState(_SessionState, metaclass=_SessionStateEnumTypeWrapper):
+    """SessionState is the state of the broker API session."""
+
+SESSION_STATE_UNSPECIFIED: SessionState.ValueType  # 0
+"""SESSION_STATE_UNSPECIFIED is an older answer that sets no state."""
+SESSION_STATE_UP: SessionState.ValueType  # 1
+"""SESSION_STATE_UP is a connected session."""
+SESSION_STATE_SOFT_LOST: SessionState.ValueType  # 2
+"""SESSION_STATE_SOFT_LOST is a session the gateway reported lost (1100, 2110)."""
+SESSION_STATE_DOWN: SessionState.ValueType  # 3
+"""SESSION_STATE_DOWN is an ended session."""
+SESSION_STATE_FARM_BROKEN: SessionState.ValueType  # 4
+"""SESSION_STATE_FARM_BROKEN is a session whose history farm is broken past the grace time."""
+Global___SessionState: _TypeAlias = SessionState  # noqa: Y015
 
 @_typing.final
 class PingRequest(_message.Message):
@@ -43,6 +78,8 @@ class PingResponse(_message.Message):
     CONNECTED_FIELD_NUMBER: _builtins.int
     GENERATION_FIELD_NUMBER: _builtins.int
     MARKET_DATA_TYPE_FIELD_NUMBER: _builtins.int
+    STATE_FIELD_NUMBER: _builtins.int
+    FARMS_FIELD_NUMBER: _builtins.int
     connected: _builtins.bool
     """connected is true while the broker session is up."""
     generation: _builtins.int
@@ -51,17 +88,55 @@ class PingResponse(_message.Message):
     """
     market_data_type: _quote_types_pb2.MarketDataType.ValueType
     """market_data_type is the type set on the current session."""
+    state: Global___SessionState.ValueType
+    """state is the state of the broker session, apart from the farms."""
+    @_builtins.property
+    def farms(self) -> _containers.RepeatedCompositeFieldContainer[Global___FarmState]:
+        """farms is each data farm the gateway named, with its last known state."""
+
     def __init__(
         self,
         *,
         connected: _builtins.bool = ...,
         generation: _builtins.int = ...,
         market_data_type: _quote_types_pb2.MarketDataType.ValueType = ...,
+        state: Global___SessionState.ValueType = ...,
+        farms: _abc.Iterable[Global___FarmState] | None = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["connected", b"connected", "generation", b"generation", "market_data_type", b"market_data_type"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["connected", b"connected", "farms", b"farms", "generation", b"generation", "market_data_type", b"market_data_type", "state", b"state"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
 Global___PingResponse: _TypeAlias = PingResponse  # noqa: Y015
+
+@_typing.final
+class FarmState(_message.Message):
+    """FarmState is one data farm named by the gateway."""
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: _builtins.int
+    UP_FIELD_NUMBER: _builtins.int
+    SINCE_UNIX_MS_FIELD_NUMBER: _builtins.int
+    name: _builtins.str
+    """name is the farm word, for example ushmds."""
+    up: _builtins.bool
+    """up is true while the farm is ok."""
+    since_unix_ms: _builtins.int
+    """since_unix_ms is when the farm took its current state, in unix milliseconds."""
+    def __init__(
+        self,
+        *,
+        name: _builtins.str = ...,
+        up: _builtins.bool = ...,
+        since_unix_ms: _builtins.int = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["name", b"name", "since_unix_ms", b"since_unix_ms", "up", b"up"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___FarmState: _TypeAlias = FarmState  # noqa: Y015

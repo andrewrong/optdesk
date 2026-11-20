@@ -68,6 +68,7 @@
     {"path": "page.market_state_page.v1.gap.json", "sha256": "028bf5e44589f7603e31887275f4cb78c3d5a74c8c878f212541a2261cefd92b"},
     {"path": "page.data_health_page.v1.ok.json", "sha256": "32d35039b52e94f17594b4026c086f6d736e795ba482bdcc40751316712c0f4a"},
     {"path": "page.data_health_page.v1.gap.json", "sha256": "9175a5bee9512e49be6c1d2e4ebeb6a8f0d8a0893cfaf164244e9599de7dd31a"},
+    {"path": "page.data_health_page.v1.gateways.json", "sha256": "0cac4b795e772039e378489330083ae5c6404cfad9ba50d59c6bbccd6b05d907"},
     {"path": "page.base_data_page.v1.ok.json", "sha256": "b23f082681b0be3427357a6686a43be9993976399f9765e7c624ec9bb7dc0646"},
     {"path": "page.base_data_page.v1.gap.json", "sha256": "f13c605e4f28fc81e6affcc3185139e00187d1ea124250edf5811d2acadb2647"},
     {"path": "page.base_data_page.v1.cross.json", "sha256": "a94906369f5f9c4f00da6c040c0876bd5c04ab35330030f70bf31605d4942cd2"},
