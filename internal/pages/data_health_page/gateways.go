@@ -71,7 +71,7 @@ func gatewayRows(in []GatewayInput) []GatewayVM {
 	for _, g := range in {
 		farms := make([]GatewayFarmVM, 0, len(g.Farms))
 		for _, f := range g.Farms {
-			farms = append(farms, GatewayFarmVM{Name: f.Name, Up: f.Up})
+			farms = append(farms, GatewayFarmVM(f))
 		}
 		v := gatewayVerdict(g)
 		out = append(out, GatewayVM{Name: g.Name, Verdict: v, Farms: farms, Note: gatewayTexts[v]})
