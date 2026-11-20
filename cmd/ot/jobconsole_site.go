@@ -6,8 +6,10 @@ import (
 	"strconv"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	jobrunfig "github.com/andrewrong/optdesk/internal/compute/jobrun"
 	"github.com/andrewrong/optdesk/internal/pages/job_console"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
 // Design: docs/design/job-console.md#Decisions 3, 10 and 11.
@@ -51,6 +53,26 @@ func openJobRequestReader(ctx context.Context, a *app, dsn string, track func(io
 	return st
 }
 
+// openJobRunReader opens the job-run store with the pages line when deps holds the opener, else it is nil (the
+// pages then carry no running lines). A failed open leaves it nil with one log line; the site still starts.
+func openJobRunReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) jobrun.JobRunReader {
+	if a.deps.openJobRun == nil {
+		return nil
+	}
+	st, err := a.deps.openJobRun(ctx, dsn)
+	if err != nil {
+		a.log.Warn("job run reader not opened", "component", "ot", "status", "failed")
+		return nil
+	}
+	track(releaseCloser{st}, nil)
+	return st
+}
+
+// releaseCloser closes a job-run store by Release, as the closers of the site call Close.
+type releaseCloser struct{ st jobRunStore }
+
+func (c releaseCloser) Close() error { return c.st.Release() }
+
 // buildJobConsolePage builds page.job_console.v1 per request over the reader of the site. With rd.edit the page
 // carries the token of the form; without it the form is null.
 func buildJobConsolePage(ctx context.Context, clk clock.Clock, rd siteReaders, selected int64) ([]byte, error) {
@@ -60,7 +82,8 @@ func buildJobConsolePage(ctx context.Context, clk clock.Clock, rd siteReaders, s
 		tok := ownerDummyToken()
 		form = &job_console.Form{PostPath: "/" + jobConsolePostRoute, Expires: tok.Expires, MAC: tok.MAC}
 	}
-	return job_console.Build(ctx, rd.jobReq, now, form, selected, jobInfos(jobTable))
+	runs := job_console.Runs{Reader: rd.jobRuns, Figures: jobrunfig.Figures}
+	return job_console.BuildWithRuns(ctx, rd.jobReq, now, form, selected, jobInfos(jobTable), runs)
 }
 
 // jobInfos converts the table of the console to the rows the page builder takes.

@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/hoursnoticepg"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
+	"github.com/andrewrong/optdesk/internal/store/jobrun"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
@@ -156,6 +157,10 @@ type siteReaders struct {
 	// jobReq is the reader of the job console page (nil: no opener or a failed open, the gap job_requests_unavailable).
 	jobReq jobrequest.Reader
 
+	// jobRuns is the reader of the open runs and the usual durations (rd.job_run_r1, rd.job_usual_r1) behind the
+	// running lines of the job console and the data health page (nil: no opener or a failed open, no lines).
+	jobRuns jobrun.JobRunReader
+
 	// open, plan and optContracts are the stores of the option open pull opened with the pages line (nil in the demo
 	// profile or when the open failed: the pages show every quote as its close archive value). live is the refresh
 	// route and the overlay of `ot serve --live-quotes` (nil: the route options/refresh is 404).
@@ -284,6 +289,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	jobReq := openJobRequestReader(ctx, a, dsn, track)
+	jobRuns := openJobRunReader(ctx, a, dsn, track)
 	sessions, ok := openSessionReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
@@ -304,7 +310,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		hours: openHoursReader(ctx, dsn, track),
 		days:  days, bars: bars, fx: fx, dividends: dividends, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
-		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
+		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq, jobRuns: jobRuns,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	rd.candCur, _ = opt.cands.(candidatecur.Reader)
 	if oos != nil {
