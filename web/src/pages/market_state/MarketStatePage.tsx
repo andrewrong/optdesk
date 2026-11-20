@@ -1,5 +1,6 @@
 // The market state page: title, freshness text, the five rows, the sector table, the rotation map and the bars.
 // The page builder supplies every figure and sentence; the browser shows them and computes nothing.
+import { BarsSourceNote } from '@/components/BarsSourceNote'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/market_state_page'
 import { ExcessBars } from './ExcessBars'
@@ -19,6 +20,7 @@ export function MarketStatePage({ payload }: { payload: Payload }) {
         </p>
         {payload.stale ? <p data-stale>{payload.stale.text}</p> : null}
       </header>
+      <BarsSourceNote note={'bars_source_note' in payload ? payload.bars_source_note : undefined} />
       <MarketRows block={payload.market} />
       <SectorTable block={payload.sectors} />
       <RotationMap block={payload.sectors} />

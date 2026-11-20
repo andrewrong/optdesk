@@ -1,10 +1,11 @@
 // The company data page payload: the generated v1 type of contracts/schemas/page.company_data_page.v1.json. The check of a
 // payload is the shared placeholder plus a refusal of an unknown field, until the generated validators land.
-import type { CompanyDataPage } from '@/generated/company_data_page.v1'
+import type { CompanyDataPage as PayloadV1 } from '@/generated/company_data_page.v1'
+import type { CompanyDataPage as PayloadV2 } from '@/generated/company_data_page.v2'
 import { arr, obj, strictValidate } from './strict_keys.ts'
 
-export const SUPPORTED_VERSIONS = [1] as const
-export type Payload = CompanyDataPage
+export const SUPPORTED_VERSIONS = [1, 2] as const
+export type Payload = PayloadV1 | PayloadV2
 
 export const validate = strictValidate<Payload>(
   SUPPORTED_VERSIONS,
@@ -33,6 +34,8 @@ export const validate = strictValidate<Payload>(
         quarters_path: null,
       }),
     ),
+    bars_source: null,
+    bars_source_note: null,
     glossary: arr(obj({ term: null, text: null })),
     gaps: arr(obj({ kind: null, reason: null, text: null })),
   }),

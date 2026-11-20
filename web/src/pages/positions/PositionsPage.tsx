@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BarsSourceNote } from '@/components/BarsSourceNote'
 import { DataTable } from '@/components/data-table/data-table'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
@@ -49,6 +50,7 @@ export function PositionsPage({ payload }: { payload: Payload }) {
         </Button>
       </div>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
+      <BarsSourceNote note={'bars_source_note' in payload ? payload.bars_source_note : undefined} />
       <Tabs defaultValue={payload.views[0].key} className="min-w-0">
         <TabsList className="group-data-horizontal/tabs:h-auto w-full flex-wrap">
           {payload.views.map((view) => (
