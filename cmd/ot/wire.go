@@ -520,7 +520,7 @@ func (f jobFactory) barsRefresh(b broker.Broker, h broker.HistoryClient) (contra
 		if err != nil {
 			return nil, fmt.Errorf("build bars_refresh job failed: %w", err)
 		}
-		return j, nil
+		return f.withBarsFallback(j), nil
 	})
 }
 

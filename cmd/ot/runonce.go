@@ -209,8 +209,10 @@ func (w wiring) runnable(log *slog.Logger) []contracts.Job {
 
 // jobFactory builds the jobs over the stores withWiring opened.
 type jobFactory struct {
-	d    deps
-	clk  clock.Clock
+	d   deps
+	clk clock.Clock
+	// cal is the session calendar of the run, set by wireJobs; bars_refresh gets it for its fallback.
+	cal  clock.Calendar
 	src  sources.Source
 	ser  store.SeriesStore
 	eod  store.OptionEodStore
@@ -349,6 +351,7 @@ func wireJobs(
 		return err
 	}
 	f.book = book
+	f.cal = cal
 	wireHeldCalls(cfg, &f, extra, a.log)
 	if err := openJobList(ctx, a, cfg, &f, extra); err != nil {
 		return err
