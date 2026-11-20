@@ -221,11 +221,16 @@ type BarRequest struct {
 	To    contracts.Day
 }
 
-// RefBar is one daily bar of a pair: the session day and the close as decimal text.
+// RefBar is one daily bar of a pair: the session day and the prices as decimal text. Open, High, Low
+// and Volume are empty when the source gave none.
 type RefBar struct {
-	Pair  BarPair
-	Day   contracts.Day
-	Close string
+	Pair   BarPair
+	Day    contracts.Day
+	Close  string
+	Open   string
+	High   string
+	Low    string
+	Volume string
 }
 
 // BarUnanswered is a pair the source could not answer, with one of the BarCode constants.
@@ -240,7 +245,8 @@ type BarResult struct {
 	Unanswered []BarUnanswered
 }
 
-// BarSource fetches daily bars of a second source. One DailyBars call makes at most the requests its
+// BarSource fetches daily bars of a second source. An implementation fills Open, High, Low and Volume of
+// each RefBar when it can. One DailyBars call makes at most the requests its
 // service allows and never retries. It returns contracts.TypedError values only, and no text holds a key
 // or an address. It returns an error only when the whole source failed; a pair it cannot answer goes in
 // the Unanswered list of the result with its code. It may split one call into batches. It stops at the
