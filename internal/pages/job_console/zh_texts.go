@@ -197,7 +197,7 @@ const (
 	// ZhNeedsDayGuard: "the plan job must refuse the day and the time that the pull refuses".
 	ZhNeedsDayGuard = "计划任务必须拒绝拉取所拒绝的日期和时间 (the plan job must refuse the day and the time that the pull refuses)"
 	// ZhWhyHeavyAndCap: "the budget exceeds the run bound so a run is always cut, and the per-day cap in memory is shared with the scheduler".
-	ZhWhyHeavyAndCap = "预算超过运行上限，所以运行总会被中断；内存中的每日上限与调度器共用 (the budget exceeds the run bound so a run is always cut, and the per-day cap in memory is shared with the scheduler)"
+	ZhWhyHeavyAndCap = "预算超过运行上限，所以运行总会被中断；内存中的每日上限与调度器共用 (the budget exceeds the run bound so a run is always cut, and the per-day cap in memory is shared with the scheduler)" //nolint:lll // one string literal, as the English guard of cmd/ot reads it
 	// ZhNeedsHeavyAndCap: "a console run must have a budget and a cap of its own".
 	ZhNeedsHeavyAndCap = "控制台运行必须有自己的预算和上限 (a console run must have a budget and a cap of its own)"
 	// ZhWhyCachesFailures: "a failed result is cached for the day, so a run neither retries nor can be forced".
