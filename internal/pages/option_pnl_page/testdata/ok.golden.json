@@ -28,7 +28,7 @@
             "id": "b0-main-head",
             "label": "Rent minus move cost",
             "text": "$226.00",
-            "hint": "what you earned for selling insurance: time minus move cost",
+            "hint": "卖保险赚到的钱：时间价值减去波动带来的成本，可与你的预期对比",
             "tone": "good"
           },
           "lines": [
@@ -36,49 +36,49 @@
               "id": "b0-main-time",
               "label": "Time (theta)",
               "text": "$412.00",
-              "hint": "the option loses value as days pass; the seller keeps it",
+              "hint": "随着日子过去，期权价值下降；卖方把这部分留在手里",
               "tone": "good"
             },
             {
               "id": "b0-main-move",
               "label": "Move cost (gamma)",
               "text": "−$186.00",
-              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "hint": "凸性：股价波动越大，卖出的看跌期权对你越不利",
               "tone": "bad"
             },
             {
               "id": "b0-main-dir",
               "label": "Direction (delta)",
               "text": "$95.00",
-              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "hint": "赌股价不跌；这是你的估值判断，不是波动率优势",
               "tone": "good"
             },
             {
               "id": "b0-main-iv",
               "label": "IV re-marking (vega)",
               "text": "$64.00",
-              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "hint": "隐含波动率（市场对未来波动的定价）变动带来的盈亏；它会回归",
               "tone": "good"
             },
             {
               "id": "b0-main-unsplit",
               "label": "Not split",
               "text": "$0.00",
-              "hint": "steps whose IV could not be solved; reason on the lot",
+              "hint": "无法求解隐含波动率的步骤；原因写在仓位上",
               "tone": "none"
             },
             {
               "id": "b0-main-entry",
               "label": "Entry vs mid",
               "text": "$10.00",
-              "hint": "fill price against the stored mid of bid and ask · 3 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
+              "hint": "成交价与存档的买卖中间价之差 · 3 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
               "tone": "good"
             },
             {
               "id": "b0-main-exit",
               "label": "Exit vs mid",
               "text": "−$35.00",
-              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "hint": "买回成交价与存档的买卖中间价之差",
               "tone": "bad"
             },
             {
@@ -92,21 +92,21 @@
               "id": "b0-main-total",
               "label": "Total options P\u0026L",
               "text": "$335.80",
-              "hint": "the option side; the assignment intrinsic below is not in it",
+              "hint": "期权这一侧的盈亏；下面的行权内在价值不包含在内",
               "tone": "good"
             },
             {
               "id": "b0-main-assigned",
               "label": "Assignment intrinsic",
               "text": "$190.00",
-              "hint": "value moved to the shares when a put is assigned",
+              "hint": "看跌期权被行权时转移到股票上的价值",
               "tone": "none"
             },
             {
               "id": "b0-main-ledger",
               "label": "Ledger says",
               "text": "$525.80 = total + assignment intrinsic + difference ($0.00)",
-              "hint": "the ledger's figure for this lot",
+              "hint": "账本给出的该仓位的数字",
               "tone": "none"
             }
           ]
@@ -122,49 +122,49 @@
               "id": "a0l0-time",
               "label": "Time (theta)",
               "text": "$150.00",
-              "hint": "the option loses value as days pass; the seller keeps it",
+              "hint": "随着日子过去，期权价值下降；卖方把这部分留在手里",
               "tone": "good"
             },
             {
               "id": "a0l0-move",
               "label": "Move cost (gamma)",
               "text": "−$60.00",
-              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "hint": "凸性：股价波动越大，卖出的看跌期权对你越不利",
               "tone": "bad"
             },
             {
               "id": "a0l0-dir",
               "label": "Direction (delta)",
               "text": "$30.00",
-              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "hint": "赌股价不跌；这是你的估值判断，不是波动率优势",
               "tone": "good"
             },
             {
               "id": "a0l0-iv",
               "label": "IV re-marking (vega)",
               "text": "$40.00",
-              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "hint": "隐含波动率（市场对未来波动的定价）变动带来的盈亏；它会回归",
               "tone": "good"
             },
             {
               "id": "a0l0-unsplit",
               "label": "Not split",
               "text": "$0.00",
-              "hint": "steps whose IV could not be solved; reason on the lot",
+              "hint": "无法求解隐含波动率的步骤；原因写在仓位上",
               "tone": "none"
             },
             {
               "id": "a0l0-entry",
               "label": "Entry vs mid",
               "text": "−$10.00",
-              "hint": "fill price against the stored mid of bid and ask",
+              "hint": "成交价与存档的买卖中间价之差",
               "tone": "bad"
             },
             {
               "id": "a0l0-exit",
               "label": "Exit vs mid",
               "text": "$0.00",
-              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "hint": "买回成交价与存档的买卖中间价之差",
               "tone": "none"
             },
             {
@@ -178,14 +178,14 @@
               "id": "a0l0-total",
               "label": "Total options P\u0026L",
               "text": "$147.40",
-              "hint": "the option side; the assignment intrinsic below is not in it",
+              "hint": "期权这一侧的盈亏；下面的行权内在价值不包含在内",
               "tone": "good"
             },
             {
               "id": "a0l0-ledger",
               "label": "Ledger says",
               "text": "$147.40",
-              "hint": "the ledger's figure for this lot",
+              "hint": "账本给出的该仓位的数字",
               "tone": "none"
             }
           ],
@@ -209,7 +209,7 @@
               "id": "a0l0-diff",
               "label": "Ours vs ledger",
               "text": "difference $0.00",
-              "hint": "ledger minus total minus assignment intrinsic",
+              "hint": "账本数字减去合计，再减去行权内在价值",
               "tone": "none"
             },
             {
@@ -234,49 +234,49 @@
               "id": "a0l1-time",
               "label": "Time (theta)",
               "text": "$200.00",
-              "hint": "the option loses value as days pass; the seller keeps it",
+              "hint": "随着日子过去，期权价值下降；卖方把这部分留在手里",
               "tone": "good"
             },
             {
               "id": "a0l1-move",
               "label": "Move cost (gamma)",
               "text": "−$90.00",
-              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "hint": "凸性：股价波动越大，卖出的看跌期权对你越不利",
               "tone": "bad"
             },
             {
               "id": "a0l1-dir",
               "label": "Direction (delta)",
               "text": "$40.00",
-              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "hint": "赌股价不跌；这是你的估值判断，不是波动率优势",
               "tone": "good"
             },
             {
               "id": "a0l1-iv",
               "label": "IV re-marking (vega)",
               "text": "$0.00",
-              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "hint": "隐含波动率（市场对未来波动的定价）变动带来的盈亏；它会回归",
               "tone": "none"
             },
             {
               "id": "a0l1-unsplit",
               "label": "Not split",
               "text": "$0.00",
-              "hint": "steps whose IV could not be solved; reason on the lot",
+              "hint": "无法求解隐含波动率的步骤；原因写在仓位上",
               "tone": "none"
             },
             {
               "id": "a0l1-entry",
               "label": "Entry vs mid",
               "text": "−$20.00",
-              "hint": "fill price against the stored mid of bid and ask",
+              "hint": "成交价与存档的买卖中间价之差",
               "tone": "bad"
             },
             {
               "id": "a0l1-exit",
               "label": "Exit vs mid",
               "text": "−$35.00",
-              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "hint": "买回成交价与存档的买卖中间价之差",
               "tone": "bad"
             },
             {
@@ -290,21 +290,21 @@
               "id": "a0l1-total",
               "label": "Total options P\u0026L",
               "text": "$78.20",
-              "hint": "the option side; the assignment intrinsic below is not in it",
+              "hint": "期权这一侧的盈亏；下面的行权内在价值不包含在内",
               "tone": "good"
             },
             {
               "id": "a0l1-assigned",
               "label": "Assignment intrinsic",
               "text": "$190.00",
-              "hint": "value moved to the shares when a put is assigned",
+              "hint": "看跌期权被行权时转移到股票上的价值",
               "tone": "none"
             },
             {
               "id": "a0l1-ledger",
               "label": "Ledger says",
               "text": "total $78.20 + assignment intrinsic $190.00 = $268.20",
-              "hint": "total + assignment intrinsic = ledger",
+              "hint": "合计加行权内在价值等于账本",
               "tone": "none"
             }
           ],
@@ -326,7 +326,7 @@
             "id": "a0l1-end",
             "label": "Assignment",
             "text": "shares bought at 38.00; the close that day was 36.10, so intrinsic value $190.00 moved to the shares",
-            "hint": "value moved to the shares when a put is assigned",
+            "hint": "看跌期权被行权时转移到股票上的价值",
             "tone": "none"
           },
           "recon": [
@@ -334,7 +334,7 @@
               "id": "a0l1-diff",
               "label": "Ours vs ledger",
               "text": "difference $0.00",
-              "hint": "ledger minus total minus assignment intrinsic",
+              "hint": "账本数字减去合计，再减去行权内在价值",
               "tone": "none"
             },
             {
@@ -359,49 +359,49 @@
               "id": "a0l2-time",
               "label": "Time (theta)",
               "text": "$62.00",
-              "hint": "the option loses value as days pass; the seller keeps it",
+              "hint": "随着日子过去，期权价值下降；卖方把这部分留在手里",
               "tone": "good"
             },
             {
               "id": "a0l2-move",
               "label": "Move cost (gamma)",
               "text": "−$36.00",
-              "hint": "convexity: the bigger the stock move, the more the put gains against you",
+              "hint": "凸性：股价波动越大，卖出的看跌期权对你越不利",
               "tone": "bad"
             },
             {
               "id": "a0l2-dir",
               "label": "Direction (delta)",
               "text": "$25.00",
-              "hint": "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
+              "hint": "赌股价不跌；这是你的估值判断，不是波动率优势",
               "tone": "good"
             },
             {
               "id": "a0l2-iv",
               "label": "IV re-marking (vega)",
               "text": "$24.00",
-              "hint": "implied volatility, the market's price for future swings, moved; it reverts",
+              "hint": "隐含波动率（市场对未来波动的定价）变动带来的盈亏；它会回归",
               "tone": "good"
             },
             {
               "id": "a0l2-unsplit",
               "label": "Not split",
               "text": "$0.00",
-              "hint": "steps whose IV could not be solved; reason on the lot",
+              "hint": "无法求解隐含波动率的步骤；原因写在仓位上",
               "tone": "none"
             },
             {
               "id": "a0l2-entry",
               "label": "Entry vs mid",
               "text": "$40.00",
-              "hint": "fill price against the stored mid of bid and ask",
+              "hint": "成交价与存档的买卖中间价之差",
               "tone": "good"
             },
             {
               "id": "a0l2-exit",
               "label": "Exit vs mid",
               "text": "$0.00",
-              "hint": "fill price of the buy-back against the stored mid of bid and ask",
+              "hint": "买回成交价与存档的买卖中间价之差",
               "tone": "none"
             },
             {
@@ -415,14 +415,14 @@
               "id": "a0l2-total",
               "label": "Total options P\u0026L",
               "text": "$110.20",
-              "hint": "the option side; the assignment intrinsic below is not in it",
+              "hint": "期权这一侧的盈亏；下面的行权内在价值不包含在内",
               "tone": "good"
             },
             {
               "id": "a0l2-ledger",
               "label": "Ledger says",
               "text": "$110.20",
-              "hint": "the ledger's figure for this lot",
+              "hint": "账本给出的该仓位的数字",
               "tone": "none"
             }
           ],
@@ -446,7 +446,7 @@
               "id": "a0l2-diff",
               "label": "Ours vs ledger",
               "text": "difference $0.00",
-              "hint": "ledger minus total minus assignment intrinsic",
+              "hint": "账本数字减去合计，再减去行权内在价值",
               "tone": "none"
             },
             {

@@ -34,3 +34,12 @@ const (
 	foldedMonthsZh  = "无拆分的月份"
 	foldedNoteZh    = "2026-11-07 之前没有存档报价，这些仓位只有账本数字，无法拆分"
 )
+
+// Hints of the lot cards and the account card that have no ledger twin. The other card hints reuse the
+// ledgerHint...Zh constants, so one term has one gloss on the page.
+const (
+	cardHintUnsplitZh    = "无法求解隐含波动率的步骤；原因写在仓位上"
+	cardHintLedgerZh     = "账本给出的该仓位的数字"
+	cardHintDifferenceZh = "账本数字减去合计，再减去行权内在价值"
+	cardHintAssignmentZh = "合计加行权内在价值等于账本"
+)

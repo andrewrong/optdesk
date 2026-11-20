@@ -67,7 +67,7 @@ const (
 	badgeUnsplit   = "not split: "
 	noQuoteDays    = "no stored quote days"
 	notComputed    = "not computed"
-	assignmentText = "total + assignment intrinsic = ledger"
+	assignmentText = cardHintAssignmentZh
 )
 
 var classTexts = map[string]string{
@@ -86,16 +86,16 @@ var classReasons = map[string]string{
 
 // hints are the plain-language gloss written next to a jargon label.
 var hints = map[string]string{
-	"rent":       "what you earned for selling insurance: time minus move cost",
-	"time":       "the option loses value as days pass; the seller keeps it",
-	"move_cost":  "convexity: the bigger the stock move, the more the put gains against you",
-	"direction":  "the bet that the stock does not fall; your valuation judgement, not a volatility edge",
-	"iv_remark":  "implied volatility, the market's price for future swings, moved; it reverts",
-	"unsplit":    "steps whose IV could not be solved; reason on the lot",
-	"entry":      "fill price against the stored mid of bid and ask",
-	"exit":       "fill price of the buy-back against the stored mid of bid and ask",
-	"total":      "the option side; the assignment intrinsic below is not in it",
-	"assigned":   "value moved to the shares when a put is assigned",
-	"ledger":     "the ledger's figure for this lot",
-	"difference": "ledger minus total minus assignment intrinsic",
+	"rent":       ledgerHintRentZh,
+	"time":       ledgerHintTimeZh,
+	"move_cost":  ledgerHintMoveCostZh,
+	"direction":  ledgerHintDirectionZh,
+	"iv_remark":  ledgerHintIVRemarkZh,
+	"unsplit":    cardHintUnsplitZh,
+	"entry":      ledgerHintEntryZh,
+	"exit":       ledgerHintExitZh,
+	"total":      ledgerHintTotalZh,
+	"assigned":   ledgerHintAssignedZh,
+	"ledger":     cardHintLedgerZh,
+	"difference": cardHintDifferenceZh,
 }
