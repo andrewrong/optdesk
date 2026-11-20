@@ -65,7 +65,7 @@ One shared item changes: `page.macro_page.v2` gains the optional fields of Decis
 
 Module: contracts. Size: S.
 Order: none.
-Files: `contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/macro_page_lead_test.go`
+Files: `contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/macro_page_lead_test.go`, `web/src/pages/macro/MacroPage.tsx` (only the read of `tone`, which `LevelFigure` lacks, so `tsc` stays green with the regenerated type)
 Acceptance: the fields of Decisions 2, 3, 5, 6 and 7 are optional; the generated type has them; a new test `TestMacroPageLeadOptional` validates an instance without and with them.
 
 ### 2 macro-fred-units
