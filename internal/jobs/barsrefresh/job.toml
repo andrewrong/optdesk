@@ -4,6 +4,8 @@ id = "bars_refresh"
 backfill_days = 400
 daily_days = 5
 restate_tolerance = "0.00001"
+# The largest relative difference of a yfinance close from a stored IB close; above it the fallback writes nothing for the name.
+fallback_tolerance = "0.005"
 adjusted_cadence_days = 7
 backfill_names_per_run = 10
 deepen_days = 1825
