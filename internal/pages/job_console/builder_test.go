@@ -549,6 +549,7 @@ type runsPage struct {
 		StateText  string                             `json:"state_text"`
 		WaitingFor *struct{ Line, Job, Since string } `json:"waiting_for"`
 	}
+	RefreshSeconds int `json:"refresh_seconds"`
 }
 
 // buildRuns runs BuildWithRuns, validates against the schema and decodes.
@@ -792,5 +793,17 @@ func TestConsoleTextsAreChineseWithEnglish(t *testing.T) {
 	for _, s := range []jobrequest.State{jobrequest.StateQueued, jobrequest.StateRunning, jobrequest.StateDone,
 		jobrequest.StateRefused, jobrequest.StateFailed, jobrequest.StateInterrupted, jobrequest.StateWithdrawn} {
 		check(t, "state name", stateName(s))
+	}
+}
+
+func TestRefreshSecondsWhileRunLineOpen(t *testing.T) {
+	t.Parallel()
+	done := []jobrequest.Row{row(1, jobrequest.StateDone)}
+	runs := Runs{Reader: oneRun("compute_figures"), Figures: fixedFigures(jobrunapi.Figure{JobID: "compute_figures"})}
+	if got := buildRuns(t, done, runs).RefreshSeconds; got != 5 {
+		t.Errorf("open run: refresh %d, want 5", got)
+	}
+	if got := buildRuns(t, done, Runs{}).RefreshSeconds; got != 0 {
+		t.Errorf("no open run: refresh %d, want 0", got)
 	}
 }
