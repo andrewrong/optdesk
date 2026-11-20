@@ -249,7 +249,9 @@ func TestAnswerMatchesGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	aapl := req.Pairs[0]
-	wantBars := []sources.RefBar{{Pair: aapl, Day: "2026-11-16", Close: "189.5000"}, {Pair: aapl, Day: "2026-11-17", Close: "190.2500"}}
+	wantBars := []sources.RefBar{
+		{Pair: aapl, Day: "2026-11-16", Close: "189.5000", Open: "189.5000", High: "189.5000", Low: "189.5000", Volume: "189.5000"},
+		{Pair: aapl, Day: "2026-11-17", Close: "190.2500", Open: "190.2500", High: "190.2500", Low: "190.2500", Volume: "190.2500"}}
 	if len(res.Bars) != 2 || res.Bars[0] != wantBars[0] || res.Bars[1] != wantBars[1] {
 		t.Fatalf("bars = %+v", res.Bars)
 	}
@@ -269,5 +271,41 @@ func TestConformsToBarSource(t *testing.T) {
 	}
 	if _, err := New(sources.BarConfig{}); err == nil {
 		t.Fatal("an empty command was accepted")
+	}
+}
+
+func TestDailyBarsOhlcv(t *testing.T) {
+	t.Parallel()
+	f := &fakeRun{reply: func(_ int, _ wireRequest) ([]byte, int, error) {
+		return []byte(`{"results":[{"symbol":"S0","currency":"USD","bars":[` +
+			`{"session_day":"2026-11-17","close":"10.5000","open":"10.0000","high":"11.0000","low":"9.5000","volume":"1200"},` +
+			`{"session_day":"2026-11-18","close":"10.7000","open":"10.5000","high":"10.9000","low":"10.4000","volume":""}]}]}`), 0, nil
+	}}
+	res, err := newTest(f, clockwork.NewFakeClock()).DailyBars(context.Background(), request(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair := sources.BarPair{Symbol: "S0", Currency: "USD"}
+	want := []sources.RefBar{
+		{Pair: pair, Day: "2026-11-17", Close: "10.5000", Open: "10.0000", High: "11.0000", Low: "9.5000", Volume: "1200"},
+		{Pair: pair, Day: "2026-11-18", Close: "10.7000", Open: "10.5000", High: "10.9000", Low: "10.4000", Volume: ""},
+	}
+	if len(res.Bars) != len(want) || res.Bars[0] != want[0] || res.Bars[1] != want[1] {
+		t.Fatalf("bars = %+v, want %+v", res.Bars, want)
+	}
+}
+
+func TestOldCommandAnswerHasEmptyOhlc(t *testing.T) {
+	t.Parallel()
+	f := &fakeRun{reply: func(_ int, _ wireRequest) ([]byte, int, error) {
+		return []byte(`{"results":[{"symbol":"S0","currency":"USD","bars":[{"session_day":"2026-11-17","close":"1.2300"}]}]}`), 0, nil
+	}}
+	res, err := newTest(f, clockwork.NewFakeClock()).DailyBars(context.Background(), request(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := sources.RefBar{Pair: sources.BarPair{Symbol: "S0", Currency: "USD"}, Day: "2026-11-17", Close: "1.2300"}
+	if len(res.Bars) != 1 || res.Bars[0] != want || len(res.Unanswered) != 0 {
+		t.Fatalf("result = %+v, want bar %+v", res, want)
 	}
 }
