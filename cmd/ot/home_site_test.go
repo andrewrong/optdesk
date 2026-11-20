@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -531,5 +534,76 @@ func TestHomeMacroCardWithoutReaderKeepsGap(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("card = %+v", p.Macro.Card)
+	}
+}
+
+// trackedCloser counts the closes of the macro event reader.
+type trackedCloser struct{ closed *atomic.Int32 }
+
+func (c trackedCloser) Close() error { c.closed.Add(1); return nil }
+
+func TestOpenSiteReadersGivesMacroEventReader(t *testing.T) {
+	t.Parallel()
+	var closed, evClosed atomic.Int32
+	a := sessionApp(t, &closed)
+	var dsns []string
+	want := fakeHomeEvents{}
+	a.deps.ext = map[string]any{extMacroEvents: macroEventsDeps{
+		openReader: func(_ context.Context, dsn string) (macroevent.Reader, io.Closer, error) {
+			dsns = append(dsns, dsn)
+			return want, trackedCloser{&evClosed}, nil
+		},
+	}}
+	rd, closeFn, err := openSiteReaders(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dsns) != 1 || dsns[0] != "pages-dsn" || rd.macroEvents == nil {
+		t.Fatalf("opens %v, macroEvents %v", dsns, rd.macroEvents)
+	}
+	if evClosed.Load() != 0 {
+		t.Fatal("closed before the close function")
+	}
+	closeFn()
+	if evClosed.Load() != 1 || closed.Load() != 7 {
+		t.Fatalf("reader closed %d times, other stores %d (want 1 and 7)", evClosed.Load(), closed.Load())
+	}
+}
+
+func TestOpenSiteReadersMacroEventOpenFailsClosesOpened(t *testing.T) {
+	t.Parallel()
+	var closed atomic.Int32
+	a := sessionApp(t, &closed)
+	a.deps.ext = map[string]any{extMacroEvents: macroEventsDeps{
+		openReader: func(context.Context, string) (macroevent.Reader, io.Closer, error) {
+			return nil, nil, errors.New("open sentinel-secret")
+		},
+	}}
+	_, _, err := openSiteReaders(t.Context(), a)
+	if err == nil || strings.Contains(err.Error(), "sentinel") {
+		t.Fatalf("err %v", err)
+	}
+	if closed.Load() != 7 {
+		t.Fatalf("closed %d, want the 7 stores already opened", closed.Load())
+	}
+}
+
+func TestOpenSiteReadersDemoHasNoMacroEventReader(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	a.profile.Name = "demo"
+	a.deps.ext = map[string]any{extMacroEvents: macroEventsDeps{
+		openReader: func(context.Context, string) (macroevent.Reader, io.Closer, error) {
+			t.Error("the reader was opened for the demo profile")
+			return nil, nil, errors.New("opened")
+		},
+	}}
+	rd, closeFn, err := openSiteReaders(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	if rd.macroEvents != nil {
+		t.Fatalf("macroEvents %v", rd.macroEvents)
 	}
 }
