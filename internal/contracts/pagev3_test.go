@@ -318,3 +318,39 @@ func TestPageV3Conventions(t *testing.T) {
 		})
 	}
 }
+
+func TestV3IndexIvOptional(t *testing.T) {
+	t.Parallel()
+	const name = "page.market_summary.v3.json"
+	s := compileURL(t, schemasDir, schemaHost+name)
+	valid := func(mutate func(table map[string]any)) bool {
+		t.Helper()
+		inst := minimal(t, schemasDir, name, readRaw(t, schemasDir, name), idOverride).(map[string]any)
+		table := inst["card"].(map[string]any)["index_table"].(map[string]any)
+		mutate(table)
+		return s.Validate(toJSONValue(t, inst)) == nil
+	}
+	gap := gapOf("no_data")
+	row := func(extra map[string]any) map[string]any {
+		r := map[string]any{"name": "Alpha", "iv": gap, "rv20": gap, "iv_minus_rv20": gap}
+		for k, v := range extra {
+			r[k] = v
+		}
+		return r
+	}
+	figure := map[string]any{"kind": "value", "value": 21.5, "text": "21.5", "unit": "vol_points"}
+	if !valid(func(map[string]any) {}) {
+		t.Error("the minimal instance without index_iv is invalid")
+	}
+	if !valid(func(tb map[string]any) {
+		tb["rows"] = []any{row(map[string]any{"index_iv": figure}), row(map[string]any{"index_iv": gap})}
+		tb["index_iv"] = map[string]any{"label": "Index IV", "hint": "front month"}
+	}) {
+		t.Error("a figure row and a table object are invalid")
+	}
+	if valid(func(tb map[string]any) {
+		tb["index_iv"] = map[string]any{"label": "Index IV"}
+	}) {
+		t.Error("a table object without hint is valid")
+	}
+}

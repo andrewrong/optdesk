@@ -30,14 +30,17 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r := &runState{j: j, up: up, day: day, dayTime: dayTime, past: string(day) < j.clk.Now().UTC().Format(dayLayout),
 		conIDs: map[string]int64{}}
 	var res contracts.JobResult
-	for _, k := range keys {
-		returned, usable, kerr := r.runKey(ctx, k.SubjectKey)
+	add := func(returned, usable int, kerr contracts.TypedError) {
 		res.Returned += returned
 		res.Usable += usable
 		if kerr != nil && (res.Err == nil || (res.Err.Kind() != contracts.Retryable && kerr.Kind() == contracts.Retryable)) {
 			res.Err = kerr
 		}
 	}
+	for _, k := range keys {
+		add(r.runKey(ctx, k.SubjectKey))
+	}
+	r.runFallback(ctx, add)
 	return res
 }
 
@@ -48,6 +51,10 @@ type runState struct {
 	dayTime time.Time
 	past    bool             // the day is before the UTC date of the clock: a repair run
 	conIDs  map[string]int64 // con id of a key resolved through the broker in this run
+
+	histFails int       // keys whose history call ended Retryable in this run (the fallback, fallback.go)
+	histDown  bool      // the IB pull is skipped for the rest of the run
+	pending   []pending // keys waiting for the fallback
 }
 
 // firstDay is before any stored bar: the read that starts there gives every winner row of the pair.
@@ -111,11 +118,14 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 		}
 		days = r.j.m.BackfillDays
 	}
-	if r.past {
-		days = r.j.m.BackfillDays
+	if r.past || hasSource(stored, sourceYfinance) {
+		days = r.j.m.BackfillDays // a repair, or the recovery that replaces the yfinance rows
 	}
 	bars, rows, terr := r.collect(ctx, id, c, stored, days)
 	if terr != nil {
+		if r.deferToFallback(key, id, c, stored, days, terr) {
+			return 0, 0, nil
+		}
 		return 0, 0, terr
 	}
 	if terr := r.upsert(ctx, rows); terr != nil {
@@ -166,7 +176,14 @@ func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]bro
 	if r.past {
 		q.End = string(r.day)
 	}
-	return r.dropAfterDay(r.j.h.Bars(ctx, q))
+	if r.histDown {
+		return nil, r.historyFailed(errHistDown)
+	}
+	bars, err := r.j.h.Bars(ctx, q)
+	if err != nil {
+		return nil, r.historyFailed(err)
+	}
+	return r.dropAfterDay(bars, nil)
 }
 
 func (r *runState) dropAfterDay(bars []broker.Bar, err error) ([]broker.Bar, error) {

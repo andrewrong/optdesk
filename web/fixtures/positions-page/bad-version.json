@@ -14,7 +14,7 @@
   "run_id": "run-demo-0001",
   "run_status": "ok",
   "schema": "positions_page",
-  "schema_version": 4,
+  "schema_version": 5,
   "scope": "positions-page",
   "stale": {
     "data_time": "2026-10-28T09:28:00+08:00",

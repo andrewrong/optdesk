@@ -62,7 +62,7 @@ func openDataHealthCoverage(ctx context.Context, a *app, track func(io.Closer, e
 
 // buildDataHealth builds data_health_page per request. With the owner edit on the page carries the form of the
 // job console post; without it the form is nil and no cell has a button.
-func buildDataHealth(ctx context.Context, _ *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
+func buildDataHealth(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
 	day, err := dayOrDefault(clk, dayFlag)
 	if err != nil {
 		return nil, err
@@ -73,9 +73,10 @@ func buildDataHealth(ctx context.Context, _ *app, clk clock.Clock, dayFlag strin
 		tok := ownerDummyToken()
 		form = &data_health_page.Form{PostPath: "/" + jobConsolePostRoute, Expires: tok.Expires, MAC: tok.MAC}
 	}
+	src, _ := gatewaySourceOf(a)
 	return data_health_page.Build(ctx, data_health_page.Input{
 		Now: clk.Now().UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs(), Form: form,
-		Runs: rd.jobRuns, Figures: jobrunfig.Figures,
+		Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx)),
 	})
 }
 
@@ -96,10 +97,11 @@ func dataHealthPageNamed(ctx context.Context, a *app) (pages.Page, func(), error
 			rd, closeFn = r, closeAll
 		}
 	}
+	src, _ := gatewaySourceOf(a)
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
 		cov, _ := siteReaderOf[coverage.Reader](rd, siteDataHealthKey)
 		return data_health_page.Build(ctx, data_health_page.Input{Now: now.UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs(),
-			Runs: rd.jobRuns, Figures: jobrunfig.Figures})
+			Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx))})
 	}
 	return pages.Page{Meta: pages.Meta{Name: dataHealthName, Schema: "page.data_health_page.v1"}, Build: build}, closeFn, nil
 }

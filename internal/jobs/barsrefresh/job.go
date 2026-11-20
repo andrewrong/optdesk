@@ -3,6 +3,7 @@ package barsrefresh
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
@@ -65,6 +67,9 @@ type job struct {
 	clk   clock.Clock
 	keys  []string
 	byKey map[string]target
+	src   sources.BarSource // the yfinance fallback; nil means none (WithFallback)
+	cal   clock.Calendar    // the session calendar the fallback filters by
+	log   *slog.Logger
 
 	mu      sync.Mutex
 	started map[contracts.Day]map[string]bool // keys that began a first pull, per day
@@ -83,7 +88,7 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	j := &job{m: m, b: b, h: h, res: res, w: w, r: r, clk: clk, byKey: map[string]target{},
+	j := &job{m: m, b: b, h: h, res: res, w: w, r: r, clk: clk, byKey: map[string]target{}, log: slog.Default(),
 		started: map[contracts.Day]map[string]bool{}}
 	add := func(key string, t target) error {
 		if key == "" || key == indexPrefix {

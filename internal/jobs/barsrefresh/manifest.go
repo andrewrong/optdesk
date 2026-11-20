@@ -56,6 +56,7 @@ type Manifest struct {
 	BackfillDays        int
 	DailyDays           int
 	RestateTolerance    *big.Rat // exact compare, no float
+	FallbackTolerance   *big.Rat // largest relative close difference of a yfinance bar against a stored IB bar, exact
 	AdjustedCadenceDays int
 	BackfillNamesPerRun int
 	DeepenDays          int
@@ -91,6 +92,7 @@ type rawManifest struct {
 	BackfillDays        int        `toml:"backfill_days"`
 	DailyDays           int        `toml:"daily_days"`
 	RestateTolerance    string     `toml:"restate_tolerance"`
+	FallbackTolerance   string     `toml:"fallback_tolerance"`
 	AdjustedCadenceDays int        `toml:"adjusted_cadence_days"`
 	BackfillNamesPerRun int        `toml:"backfill_names_per_run"`
 	DeepenDays          int        `toml:"deepen_days"`
@@ -154,8 +156,13 @@ func LoadManifest(data []byte) (Manifest, error) {
 	if !ok {
 		return Manifest{}, refuse("restate_tolerance", "is not a decimal")
 	}
+	fbTol, err := fallbackTolerance(r.FallbackTolerance)
+	if err != nil {
+		return Manifest{}, err
+	}
 	m := Manifest{
-		Version: r.Version, ID: r.ID, BackfillDays: r.BackfillDays, DailyDays: r.DailyDays,
+		FallbackTolerance: fbTol,
+		Version:           r.Version, ID: r.ID, BackfillDays: r.BackfillDays, DailyDays: r.DailyDays,
 		RestateTolerance: tol, AdjustedCadenceDays: r.AdjustedCadenceDays,
 		BackfillNamesPerRun: r.BackfillNamesPerRun, DeepenDays: r.DeepenDays,
 		DeepenPieceDays: r.DeepenPieceDays, DeepenNamesPerRun: r.DeepenNamesPerRun,
@@ -191,6 +198,21 @@ func LoadManifest(data []byte) (Manifest, error) {
 	}
 	m.Schedule = s
 	return m, nil
+}
+
+// fallbackTolerance reads the text of fallback_tolerance as an exact, positive decimal.
+func fallbackTolerance(text string) (*big.Rat, error) {
+	if text == "" {
+		return nil, refuse("fallback_tolerance", "is missing")
+	}
+	tol, ok := new(big.Rat).SetString(text)
+	if !ok || !decimal.MatchString(text) {
+		return nil, refuse("fallback_tolerance", "is not a decimal")
+	}
+	if tol.Sign() <= 0 {
+		return nil, refuse("fallback_tolerance", "must be positive")
+	}
+	return tol, nil
 }
 
 func loadStocks(raws []rawStock, benchmark string) ([]Stock, error) {

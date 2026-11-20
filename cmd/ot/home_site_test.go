@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,6 +26,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/macroevent"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -455,5 +459,151 @@ func TestHomeRouteHouseholdCardIsFamily(t *testing.T) {
 	m := string(p.Household)
 	if !strings.Contains(m, "计入 1 / 2 个账户") || !strings.Contains(m, "other") {
 		t.Fatalf("household member: %s", m)
+	}
+}
+
+// fakeHomeEvents is a macroevent.Reader that returns the rows it holds.
+type fakeHomeEvents struct{ rows []macroevent.Event }
+
+func (f fakeHomeEvents) Between(context.Context, contracts.Day, contracts.Day) ([]macroevent.Event, error) {
+	return f.rows, nil
+}
+
+func (fakeHomeEvents) Kinds(context.Context) ([]macroevent.Kind, error) { return nil, nil }
+
+type homeMacroCard struct {
+	Macro struct {
+		Card struct {
+			Events []struct {
+				Date     string `json:"date"`
+				NameText string `json:"name_text"`
+			} `json:"events"`
+			Gaps []struct {
+				Reason string `json:"reason"`
+				Text   string `json:"text"`
+			} `json:"gaps"`
+		} `json:"card"`
+	} `json:"macro"`
+}
+
+func homeMacroCardOf(t *testing.T, ev macroevent.Reader) homeMacroCard {
+	t.Helper()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	b, err := homeBuild(t.Context(), a, "ot-page", siteReaders{series: newLiquidityFake(), macroEvents: ev}, "2026-11-05",
+		time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p homeMacroCard
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestHomeMacroCardListsStoredEvents(t *testing.T) {
+	t.Parallel()
+	p := homeMacroCardOf(t, fakeHomeEvents{rows: []macroevent.Event{
+		{Kind: "cpi", Source: "fred", Date: "2026-11-12", RunDay: "2026-11-05"},
+		{Kind: "fomc", Source: "fred", Date: "2026-12-09", RunDay: "2026-11-05"},
+	}})
+	ev := p.Macro.Card.Events
+	if len(ev) != 2 || ev[0].Date != "2026-11-12" || ev[0].NameText != "CPI" || ev[1].Date != "2026-12-09" || ev[1].NameText != "FOMC decision" {
+		t.Fatalf("events = %+v", ev)
+	}
+}
+
+func TestHomeMacroCardNoStoredEventsSaysSo(t *testing.T) {
+	t.Parallel()
+	p := homeMacroCardOf(t, fakeHomeEvents{})
+	found := false
+	for _, g := range p.Macro.Card.Gaps {
+		found = found || g.Text == "No macro events stored for the next 60 days"
+	}
+	if len(p.Macro.Card.Events) != 0 || !found {
+		t.Fatalf("card = %+v", p.Macro.Card)
+	}
+}
+
+func TestHomeMacroCardWithoutReaderKeepsGap(t *testing.T) {
+	t.Parallel()
+	p := homeMacroCardOf(t, nil)
+	found := false
+	for _, g := range p.Macro.Card.Gaps {
+		found = found || g.Text == "Event calendar: not connected yet"
+	}
+	if !found {
+		t.Fatalf("card = %+v", p.Macro.Card)
+	}
+}
+
+// trackedCloser counts the closes of the macro event reader.
+type trackedCloser struct{ closed *atomic.Int32 }
+
+func (c trackedCloser) Close() error { c.closed.Add(1); return nil }
+
+func TestOpenSiteReadersGivesMacroEventReader(t *testing.T) {
+	t.Parallel()
+	var closed, evClosed atomic.Int32
+	a := sessionApp(t, &closed)
+	var dsns []string
+	want := fakeHomeEvents{}
+	a.deps.ext = map[string]any{extMacroEvents: macroEventsDeps{
+		openReader: func(_ context.Context, dsn string) (macroevent.Reader, io.Closer, error) {
+			dsns = append(dsns, dsn)
+			return want, trackedCloser{&evClosed}, nil
+		},
+	}}
+	rd, closeFn, err := openSiteReaders(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dsns) != 1 || dsns[0] != "pages-dsn" || rd.macroEvents == nil {
+		t.Fatalf("opens %v, macroEvents %v", dsns, rd.macroEvents)
+	}
+	if evClosed.Load() != 0 {
+		t.Fatal("closed before the close function")
+	}
+	closeFn()
+	if evClosed.Load() != 1 || closed.Load() != 7 {
+		t.Fatalf("reader closed %d times, other stores %d (want 1 and 7)", evClosed.Load(), closed.Load())
+	}
+}
+
+func TestOpenSiteReadersMacroEventOpenFailsClosesOpened(t *testing.T) {
+	t.Parallel()
+	var closed atomic.Int32
+	a := sessionApp(t, &closed)
+	a.deps.ext = map[string]any{extMacroEvents: macroEventsDeps{
+		openReader: func(context.Context, string) (macroevent.Reader, io.Closer, error) {
+			return nil, nil, errors.New("open sentinel-secret")
+		},
+	}}
+	_, _, err := openSiteReaders(t.Context(), a)
+	if err == nil || strings.Contains(err.Error(), "sentinel") {
+		t.Fatalf("err %v", err)
+	}
+	if closed.Load() != 7 {
+		t.Fatalf("closed %d, want the 7 stores already opened", closed.Load())
+	}
+}
+
+func TestOpenSiteReadersDemoHasNoMacroEventReader(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	a.profile.Name = "demo"
+	a.deps.ext = map[string]any{extMacroEvents: macroEventsDeps{
+		openReader: func(context.Context, string) (macroevent.Reader, io.Closer, error) {
+			t.Error("the reader was opened for the demo profile")
+			return nil, nil, errors.New("opened")
+		},
+	}}
+	rd, closeFn, err := openSiteReaders(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	if rd.macroEvents != nil {
+		t.Fatalf("macroEvents %v", rd.macroEvents)
 	}
 }

@@ -262,7 +262,9 @@ type notifyingGaps struct {
 	alerts notify.AlertNotifier   // nil: no alert pass
 	morn   notify.MorningNotifier // nil: no morning pass
 	slow   notify.SlowNotifier    // nil: no slow-run pass
-	log    *slog.Logger
+	// gateways is the gateway pass: one fact per gateway on every tick (nil: no gateway configured).
+	gateways gatewayPasser
+	log      *slog.Logger
 }
 
 func (g notifyingGaps) Sync(ctx context.Context, day contracts.Day, disabled map[string]string) error {
@@ -271,6 +273,7 @@ func (g notifyingGaps) Sync(ctx context.Context, day contracts.Day, disabled map
 	g.notifyAlerts(ctx)
 	g.notifyMorning(ctx)
 	g.notifySlow(ctx)
+	g.notifyGateways(ctx)
 	return err
 }
 
@@ -327,5 +330,20 @@ func (g notifyingGaps) notifySlow(ctx context.Context) {
 	}()
 	if _, err := g.slow.NotifySlowRuns(ctx); err != nil {
 		g.log.Warn("slow notify failed", "component", "ot", "class", errorClass(err))
+	}
+}
+
+// notifyGateways is the gateway pass, after the slow-run pass; it fails and panics on its own.
+func (g notifyingGaps) notifyGateways(ctx context.Context) {
+	if g.gateways == nil {
+		return
+	}
+	defer func() {
+		if recover() != nil {
+			g.log.Error("gateway notify panicked", "component", "ot", "class", "panic")
+		}
+	}()
+	if _, err := g.gateways.pass(ctx); err != nil {
+		g.log.Warn("gateway notify failed", "component", "ot", "class", errorClass(err))
 	}
 }
