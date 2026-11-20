@@ -13,10 +13,16 @@ restart_sensitive = false
 # The jobs of the same day this job waits for: the JP open pull.
 after = ["option_open_jp"]
 
-# Limits of the put rule in yen. Every number below is a trial value, copied from the US job and not tuned.
+# Limits of the put rule in yen. Every number below is a trial value, not the owner's word.
 [params]
+# trial: the floor of 21 days is the day the common practice manages or closes (open near 45 DTE, manage at 21 DTE; the
+# practice is named by third-party summaries and is not verified at its source page); it is kept from the US job.
 min_dte = 21 # trial
-max_dte = 45 # trial
+# trial: JPX lists 2 consecutive near-term months plus 2 months of the March cycle, and the last trading day is the
+# business day before the second Friday of the expiry month, so two expiries are at most about 35 days apart; a window
+# at least 35 days wide always holds an expiry (21 to 45 was 24 days wide and held none on 2026-11-20). 60 days opens
+# near the 45 DTE entry of that practice and leaves room for the next monthly expiry.
+max_dte = 60 # trial
 min_bid_size = 1 # trial
 max_spread = "0.10" # trial: 10 percent of mid
 min_open_interest = 10 # trial

@@ -260,7 +260,7 @@ func TestJPManifestKeys(t *testing.T) {
 	if m.Source.Currency != "JPY" || m.Source.EodFallback || m.Schedule.Calendar != "XTKS" {
 		t.Fatalf("source %+v", m.Source)
 	}
-	if p.MinDTE != 21 || p.MaxDTE != 45 || p.MaxSpread != "0.10" || p.MinBidSize != 1 || p.MinOpenInterest != 10 {
+	if p.MinDTE != 21 || p.MaxDTE != 60 || p.MaxSpread != "0.10" || p.MinBidSize != 1 || p.MinOpenInterest != 10 {
 		t.Fatalf("params %+v", p)
 	}
 	us, _, _, err := parseManifest(manifestBytes)
