@@ -647,8 +647,8 @@ type StructureParams struct {
 	CommissionDays     int
 }
 
-// Structure is one recognised structure. Decide is true when the short leg expires within
-// ExitDTE days or EarnedShare is at least CaptureTarget; the two Param texts are copied.
+// Structure is one recognised structure. Kind is one of put_spread, call_spread, put_debit_spread (new), call_debit_spread (new), calendar_spread (new), diagonal_spread (new), long_straddle (new), short_straddle (new), long_strangle (new), short_strangle (new), iron_condor (new), reverse_iron_condor (new), collar (new), covered_call, naked_call, short_put, long_put, long_call, other. A later unit of one alias whose first leg has the same PositionID gets #2, #3 appended to ID; the Quantity of a leg may be a part of the position's quantity.
+// Decide is true when the short leg expires within ExitDTE days or EarnedShare is at least CaptureTarget; the two Param texts are copied.
 type Structure struct {
 	ID, Alias, Underlying, Currency, Kind string
 	Legs                                  []StructureLeg
