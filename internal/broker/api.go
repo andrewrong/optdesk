@@ -304,3 +304,28 @@ type notServedError string
 
 // ErrNotServed is the service not serving ListContracts (an older pyside answers UNIMPLEMENTED).
 const ErrNotServed = notServedError("broker: contract listing is not served")
+
+// Farm is one data farm the gateway named, with its last known state.
+type Farm struct {
+	Name  string
+	Up    bool
+	Since time.Time
+}
+
+// Health is the health of one gateway. State is one of up, soft_lost, down and farm_broken. Name is
+// the alias of the gateway; a reader that does not know it leaves it empty and the caller sets it.
+type Health struct {
+	Name  string
+	State string
+	Farms []Farm
+}
+
+// HealthReader reads the health of one gateway. It is separate from Broker. Errors are
+// contracts.TypedError values; an unreachable gateway is Retryable.
+type HealthReader interface {
+	Health(ctx context.Context) (Health, error)
+	Close() error
+}
+
+// NewHealthFunc connects a HealthReader to the service at socketPath.
+type NewHealthFunc func(ctx context.Context, socketPath string, o Options) (HealthReader, error)
