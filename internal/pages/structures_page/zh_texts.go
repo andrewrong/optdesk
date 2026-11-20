@@ -2,8 +2,6 @@ package structures_page
 
 // The reasons a multi-leg unit of kind other was made, one line each, written in the note of the page.
 const (
-	// reasonOppositeSidesExpiries: legs of one right on opposite sides at different expiries.
-	reasonOppositeSidesExpiries = "同一方向的期权腿多空相反且到期日不同"
 	// reasonPutCallOneExpiry: a put and a call at one expiry.
 	reasonPutCallOneExpiry = "同一到期日同时持有认沽和认购"
 )
@@ -41,4 +39,20 @@ const (
 	noAccountNote     = "持仓快照读取器未连接（no_reader），未与 Flex 比对"
 	captureOnlyPrefix = "尚未进入 Flex 的持仓："
 	ledgerOnlyPrefix  = "Flex 中有而持仓快照缺失的持仓："
+)
+
+// The gloss of each recognised kind: what the legs are, nothing on premium. detail.go maps them by kind;
+// the door allows const declarations only.
+const (
+	glossPutDebitSpread    = "买入较高行权价认沽、卖出较低行权价认沽，同一到期日"
+	glossCallDebitSpread   = "买入较低行权价认购、卖出较高行权价认购，同一到期日"
+	glossCalendarSpread    = "同一行权价、同一权利方向，买卖两腿到期日不同"
+	glossDiagonalSpread    = "同一权利方向，买卖两腿行权价和到期日都不同"
+	glossLongStraddle      = "同一到期日、同一行权价，同时买入认购和认沽"
+	glossShortStraddle     = "同一到期日、同一行权价，同时卖出认购和认沽"
+	glossLongStrangle      = "同一到期日，买入较低行权价认沽和较高行权价认购"
+	glossShortStrangle     = "同一到期日，卖出较低行权价认沽和较高行权价认购"
+	glossIronCondor        = "同一到期日，卖出内侧认沽和认购、买入外侧认沽和认购，共四腿"
+	glossReverseIronCondor = "同一到期日，买入内侧认沽和认购、卖出外侧认沽和认购，共四腿"
+	glossCollar            = "持有正股，买入认沽并卖出认购"
 )
