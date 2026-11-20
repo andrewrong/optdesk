@@ -14,4 +14,6 @@ const (
 	zhDoneOfFmt = "已完成 %[1]d / %[2]d (done %[1]d / %[2]d)"
 	// zhSlowNote: "slow, a notice only".
 	zhSlowNote = "偏慢，仅提示 (slow, a notice only)"
+	// zhBrokerSilent: "the gateway did not answer, the keys were not fetched; run it again once the gateway answers".
+	zhBrokerSilent = "网关没有应答，未取得这些键；网关应答后可再次运行 (the gateway did not answer, the keys were not fetched; run it again once the gateway answers)"
 )
