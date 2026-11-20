@@ -568,6 +568,20 @@ func TestNoMarkWithinFiveDaysIsMissingQuote(t *testing.T) {
 	}
 }
 
+func TestMarkFiveDaysBackStillPrices(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-05": {markOf(1, "240")}}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, _ := build(t, c, "main")
+	if m["composition"].(map[string]any)["gap"] != nil {
+		t.Fatalf("composition has a gap: %v", m["composition"])
+	}
+	want := "有 1 个持仓用的是 2026-11-05 的收盘标记，采集日尚无标记"
+	if !slices.Contains(noteTexts(m), want) {
+		t.Fatalf("notes = %v, want %q", noteTexts(m), want)
+	}
+}
+
 func TestMoversUseEarlierMark(t *testing.T) {
 	t.Parallel()
 	days := map[string]dayData{
