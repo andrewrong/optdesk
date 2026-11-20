@@ -394,7 +394,7 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price f
 	res *contracts.JobResult, tl *tally) contracts.TypedError {
 	ids := make([]int64, len(cs))
 	for i, c := range cs {
-		osi, err := osiSymbolWith(c, r.j.root(c.Symbol))
+		osi, err := osiSymbolWith(c, osiRootOf(c.TradingClass, r.j.root(c.Symbol)))
 		if err != nil {
 			return asTyped(err, contracts.Permanent)
 		}
