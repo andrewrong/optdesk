@@ -7,10 +7,12 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/data_health_page'
 import { CoverageGrid } from './CoverageGrid'
 import { FailuresTable } from './FailuresTable'
+import { GatewayBlock } from './GatewayBlock'
 
 export function DataHealthView({ payload }: { payload: Payload }) {
   return (
     <div className="space-y-4">
+      {payload.gateways && payload.gateways.length > 0 ? <GatewayBlock gateways={payload.gateways} /> : null}
       <Card>
         <CardHeader>
           <CardTitle>
