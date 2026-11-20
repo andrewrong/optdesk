@@ -47,6 +47,7 @@ const (
 	reasonPostcondition  = "postcondition"
 	reasonEmptyBefore    = "empty_before_close"
 	reasonSlotNear       = "slot_near"
+	reasonBrokerSilent   = "broker_silent"
 )
 
 // The groups and statuses of a stored line, as the runner writes them.
@@ -263,6 +264,8 @@ func refusedText(in stateIn) (string, bool) {
 
 func failedText(in stateIn) (string, bool) {
 	switch in.Reason {
+	case reasonBrokerSilent:
+		return zhBrokerSilent, true
 	case reasonSlotNear:
 		if in.DueAt.IsZero() {
 			return "stopped before the next key because a slot starts soon; press Run again after it", true

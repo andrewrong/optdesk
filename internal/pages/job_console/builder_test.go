@@ -304,6 +304,15 @@ func TestRequestStateText(t *testing.T) {
 	}
 }
 
+func TestBrokerSilentFailedText(t *testing.T) {
+	t.Parallel()
+	r := rowReason(1, jobrequest.StateFailed, "broker_silent")
+	r.StartedAt = fixedNow.Add(-time.Minute)
+	if got := one(t, r).Requests[0].StateText; got != zhBrokerSilent {
+		t.Errorf("text %q, want %q", got, zhBrokerSilent)
+	}
+}
+
 func TestQueuedHeldText(t *testing.T) {
 	t.Parallel()
 	r := row(1, jobrequest.StateQueued)
