@@ -259,17 +259,8 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 			}
 		}
 	}
-	grouped, err := buildGroups(ctx, r, c.Groups, d)
-	if err != nil {
+	if err := withGroupsAndLead(ctx, r, c, d, generatedAt, &vm); err != nil {
 		return nil, err
-	}
-	vm.Indicators = append(vm.Indicators, grouped...)
-	if c.Window != nil {
-		days, stored := windowOf(ctx, c, generatedAt)
-		markWindow(vm.Events, d, days)
-		if vm.Lead, err = buildLead(ctx, r, vm.events, d, days, stored); err != nil {
-			return nil, err
-		}
 	}
 	vm.Stale = staleOf(d, oldest, c.Zone)
 	return json.Marshal(vm)
@@ -341,4 +332,20 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 		out.Status, out.Label = "good", "On time"
 	}
 	return out
+}
+
+// withGroupsAndLead appends the grouped rows and, with c.Window, writes the event flags and the lead block.
+func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel) error {
+	grouped, err := buildGroups(ctx, r, c.Groups, d)
+	if err != nil {
+		return err
+	}
+	vm.Indicators = append(vm.Indicators, grouped...)
+	if c.Window == nil {
+		return nil
+	}
+	days, stored := windowOf(ctx, c, generatedAt)
+	markWindow(vm.Events, d, days)
+	vm.Lead, err = buildLead(ctx, r, vm.events, d, days, stored)
+	return err
 }
