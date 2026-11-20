@@ -2,7 +2,7 @@
 
 Author: the optdesk designer (draft)
 Owner approved: (pending)
-Date: 2026-11-20. Checked head: `origin/main` `cd3ccf96`. The next free migration at that head is `0064` (the last is `0063_job_run.sql`); the number is the next free one at the cut of the issue.
+Date: 2026-11-20. Checked head: `origin/main` of that day. The next free migration at that head is `0064` (the last is `0063_job_run.sql`); the number is the next free one at the cut of the issue.
 
 Owner words: 2026-11-20 (a broken farm shows on the page and waits; the bars fallback to yfinance is its own design, `docs/design/gateway-health.md` `## Left out`). Plan: none, incident repair. Advisor constraints of 2026-11-20 are carried: the upsert has a WHERE on the source, so a yfinance row never overwrites an IB row and an IB row replaces a yfinance row, proved by a `pg` Go test; the next free migration number; the source of each bar is shown on the pages that show bars; the adjustment basis is stated.
 
@@ -17,7 +17,7 @@ When the history farm of the `main` gateway is broken (the incident of 2026-11-1
 - `internal/jobs/barsrefresh/run.go`: `runKey` resolves the contract, reads the stored trades bars, pulls `DailyDays` (5) or `BackfillDays` (400) through `broker.HistoryClient.Bars`, upserts by key with `writtenBy "bars_refresh:<day>"`, then deepens and runs the weekly `adjusted_last` step. In the incident the `Bars` call of a key waited its `HistoryTimeout` (330 s) and ended Retryable (deadline exceeded, or INTERNAL); the key failed, the run went on and each next key waited the whole time again. The runner retries a Retryable day until the close of its calendar.
 - The signal `history_unavailable` of `docs/design/gateway-health.md` (Decision 6) is not on main yet and `grpcbroker` drops the message of an `UNAVAILABLE` answer; this design does not depend on it (Left out).
 - yfinance is already in the repo and is not a new dependency: `pyside/pyproject.toml` pins `yfinance==1.8.0` (Apache-2.0, mainstream, the module map names it for the pyside row); `optdesk.refbars` is the one-shot read-only command and `internal/sources/yfinance` is the Go `sources.BarSource` over it (used by `recon_bars` through `cmd/ot/wire_barsource.go`). It returns the close only (`sources.RefBar{Pair, Day, Close}`, python `Bar{session_day, close}`) and asks `auto_adjust=False`, `actions=False`.
-- `obs.price_bar` (migration `0041`) is keyed `(instrument_id, basis, session_day)`; `barpg.upsertPriceBarSQL` replaces a row whose prices, volume, currency, source or status differs. The check `price_bar_source_ck` (migration `0021`) still allows only `source = 'ibkr'`, and so do the dataset `obs.price_bar.r1` enum and the generated `PriceBarSource`. The dataset r1 still requires `adjust_epoch` and lists it in `x-primary-key`, which migration `0041` removed from the key.
+- `obs.price_bar` (migration `0041`) is keyed `(instrument_id, basis, session_day)`; `barpg.upsertPriceBarSQL` replaces a row whose prices, volume, currency, source or status differs. The check `price_bar_source_ck` (migration `0021`) still allows only `source = 'ibkr'`, and so do the dataset `obs.price_bar.r1` enum and the generated `PriceBarSource`.
 - Pages that read trades bars: `market_state_page` (has a `bars_caption`), `company_data_page`, `positions_page` (v3); the report global-assets block reads them too (Left out).
 
 ## Decisions
@@ -27,10 +27,10 @@ When the history farm of the `main` gateway is broken (the incident of 2026-11-1
 3. What is written. Only basis `trades`, only the daily step (the window of `DailyDays`, or `BackfillDays` for a first pull, a past-day repair or a restated window, as today). Volume is written NULL: IB volume units (US stocks are often in lots of 100) and Yahoo shares are not shown equal, and no figure may read a fallback volume. Not written by the fallback: the weekly `adjusted_last` step and the deepening of older history; both wait for the IB farm (they tolerate a gap and nothing reads them within days). A pair Yahoo answers with no data stays unfilled for that day (code `no_data`, Retryable); no new symbol mapping is added here.
 4. Full bars. A fallback row needs open, high, low and close. `refbars` and `sources.RefBar` are extended additively with those fields and `volume` (empty text when Yahoo gives none; the job drops the volume, Decision 3). A bar missing any of the four prices is not written and is counted as incomplete; the key's result is Retryable. Prices are decimal text of 4 places as `refbars` already makes them.
 5. Adjustment basis. Sources read on 2026-11-20: the IBKR page https://interactivebrokers.github.io/tws-api/historical_bars.html says "TRADES data is adjusted for splits, but not dividends" and "ADJUSTED_LAST data is adjusted for splits and dividends"; yfinance `Ticker.history(auto_adjust=...)` (https://github.com/ranaroussi/yfinance, `yfinance/scrapers/history.py`) adjusts the price columns when `auto_adjust` is true, and refbars passes `auto_adjust=False`, so `Close` is the price before that adjustment (Yahoo applies a split with some delay after the day, which is why the comparison below exists). The two `trades` series are taken as the same basis and the fallback writes basis `trades` only; `adjusted_last` is never taken from `Adj Close`. Consistency is kept in three steps. (a) Before a name's rows are written the fallback compares the days of its window that have a stored IB row with the Yahoo day; when any close differs by more than `fallback_tolerance` nothing is written for that name, its result is a Retryable error `fallback_basis_differs`, and the day stays a gap. The tolerance is a trial value, `0.005` (0.5 percent), a new key of `job.toml` the owner can change; it is looser than `close_rel` 0.001 of `recon_bars` because it only detects a broken basis (a split not yet applied is a factor of 2 or more), not the quality of a close, and Yahoo's close and IB's last trade differ by cents. The largest observed difference of the run is printed in the run note. With no overlapping IB day nothing can be compared: the rows are written, marked `yfinance`, and the note says "no overlap". (b) The recovery pull of Decision 7 is IB's basis for the whole window, so a split between a fallback day and the recovery is covered by it. (c) Volume is not written (Decision 3).
-6. Precedence in the store. The upsert statement gains `AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr')` to its `WHERE`: a yfinance row never replaces a stored ibkr row (it counts as unchanged); an ibkr row replaces a yfinance row because the source differs (existing `IS DISTINCT FROM` already covers `source`), even when the prices are equal, so the source label heals. `TestUpsertSourcePrecedence` (tag `pg`, CI only) proves the four cases ibkr over ibkr, yfinance over ibkr (kept), ibkr over yfinance (replaced), yfinance over yfinance. Migration `0064_price_bar_source.sql` replaces `price_bar_source_ck` by `source IN ('ibkr', 'yfinance')`; its down drops it and restores the old one only when no yfinance row exists. The dataset becomes `obs.price_bar.r2` (`docs/contracts/00-protocol.md` states the additive rule for the proto package only, not for a dataset enum, so a new value is a new revision): `source` enum `ibkr`, `yfinance`, and `required` and `x-primary-key` follow migration `0041` (`adjust_epoch` out of both).
+6. Precedence in the store. The upsert statement gains `AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr')` to its `WHERE`: a yfinance row never replaces a stored ibkr row (it counts as unchanged); an ibkr row replaces a yfinance row because the source differs (existing `IS DISTINCT FROM` already covers `source`), even when the prices are equal, so the source label heals. `TestUpsertSourcePrecedence` (tag `pg`, CI only) proves the four cases ibkr over ibkr, yfinance over ibkr (kept), ibkr over yfinance (replaced), yfinance over yfinance. Migration `0064_price_bar_source.sql` replaces `price_bar_source_ck` by `source IN ('ibkr', 'yfinance')`; its down drops it and restores the old one only when no yfinance row exists. The dataset becomes `obs.price_bar.r2` (`docs/contracts/00-protocol.md` states the additive rule for the proto package only, not for a dataset enum, so a new value is a new revision): r2 differs from r1 only by the `source` enum `ibkr`, `yfinance`; `adjust_epoch` stays required and in `x-primary-key` exactly as in r1.
 7. Healing. A normal IB run whose stored trades rows include any with source `yfinance` pulls `BackfillDays` instead of `DailyDays` (the same widening `restated` already does), so the yfinance days older than the 5-day window are replaced too, and after a recovered run no yfinance row remains for a day IB serves in the pulled window. A name dropped from the list or not pulled because of the first-pull cap keeps its yfinance rows, still marked. No other state is kept: the source column is the memory, so the job is idempotent and a re-run of any day gives the same rows.
 8. Rows carry `writtenBy "bars_refresh:<day>"` as today; the log line of a run names how many keys went to the fallback, how many rows it wrote and the codes of the unanswered pairs (`rate_limited`, `no_data`, `network`, `timeout`, `source_changed`, `fallback_basis_differs`, `incomplete`). The time of the fallback is bounded by the context of the run, as `sources.BarSource` already promises (it stops 10 s before the deadline and reports the rest `timeout`). There is no time guard and no time anchor: the fallback runs whenever the call fails, on any day, forced or scheduled. The bar is filtered by data instead: the job drops any yfinance bar whose session day is later than the last closed session of the pair's calendar (`clock.Calendar.Session`, `CloseAt` and `EarlyClose`, so half days count; the US and the JP calendars the repo already has), so a console run in mid-session writes no partial day.
-9. Wiring. The job gets its source by decoration, as `withFxSecondary` does for `fx_refresh`: `barsrefresh.WithFallback(job, src)` returns the job with the source set; `New` keeps its signature. `cmd/ot` builds the source with the existing registry (`barSource("yfinance")`, same command as `recon_bars`) in a new file; no source built (the command missing) leaves the job as today and the log says so.
+9. Wiring. The job gets its source by decoration, as `withFxSecondary` does for `fx_refresh`: `barsrefresh.WithFallback(job, src, cal)` returns the job with the source and the session calendar (`clock.Calendar`, `internal/clock/api.go`) set; `New` keeps its signature. `cmd/ot` builds the source with the existing registry (`barSource("yfinance")`, same command as `recon_bars`) in a new file; no source built (the command missing) leaves the job as today and the log says so.
 10. Source on the pages. Readers of stored bars other than these pages (`computefigures` hv, tech and vol, `buyprice`, `optionopen`, `optionledger`, `valuation`) are not given the source (Left out); the note therefore also says that figures of the days it names may rest on a Yahoo bar. `internal/pages/shared` gets `BarSourceOf(rows []contracts.PriceBar) (kind, note string)`: kind is `ibkr`, `yfinance` or `mixed`; note is empty for `ibkr` and a Chinese sentence otherwise (for example "日线含 Yahoo 数据，当日指标可能基于 Yahoo 价格；IB 历史数据恢复后自动改回 IB 数据" for `mixed`). `market_state_page`, `company_data_page` and `positions_page` v3 gain the optional fields `bars_source` and `bars_source_note`; the web shows the note beside the table when it is not empty and computes nothing.
 11. Library and own code. No new dependency: yfinance 1.8.0 (Apache-2.0) is the library; our glue is `refbars` and `internal/sources/yfinance` behind `sources.BarSource`, so another library or source replaces it by one registry line. Own code of this design is the decision rule and the precedence SQL, because no library does either.
 
@@ -46,7 +46,7 @@ No row of `docs/design/modules.md` changes and no new edge: `jobs` already depen
 | `internal/jobs/barsrefresh/**`, `docs/contracts/jobs/bars_refresh.md` | jobs |
 | `internal/pages/**` | pages |
 | `cmd/ot/**` | ot |
-| `web/src/pages/**`, `web/src/components/**`, `web/test/pages/**` | web |
+| `web/src/pages/**`, `web/src/components/**`, `web/src/types/**`, `web/test/pages/**` | web |
 | `pyside/src/optdesk/refbars/**`, `pyside/tests/refbars/**`, `pyside/tests/contracts/test_refbars_api.py` | pyside |
 
 ## Interface
@@ -55,7 +55,7 @@ No row of `docs/design/modules.md` changes and no new edge: `jobs` already depen
 2. sources (`internal/sources/api.go`, additive): `RefBar` gains `Open, High, Low, Volume string` (decimal text; empty when the source gave none); `Close` is unchanged; the doc of `BarSource` says an implementation fills them when it can.
 3. store (`internal/store/bar/api.go`, doc only): the doc of `PriceBarUpserter` adds "a row whose source is not ibkr never replaces a stored row whose source is ibkr; it counts as unchanged".
 4. pyside (`pyside/src/optdesk/refbars/api.py`, additive): `Bar` gains `open`, `high`, `low`, `volume` (decimal text of 4 places; empty string when none); rule 4 of the module docstring covers them.
-5. Job (not an interface file): `barsrefresh.WithFallback(job contracts.Job, src sources.BarSource) (contracts.Job, error)` and the manifest key `fallback_tolerance`.
+5. Job (not an interface file): `barsrefresh.WithFallback(job contracts.Job, src sources.BarSource, cal clock.Calendar) (contracts.Job, error)` and the manifest key `fallback_tolerance`.
 
 ## Issues
 
@@ -64,11 +64,11 @@ Build order: every entry compiles and its tests pass against main; BASE is `git 
 ### 1 bars-fallback-contracts (interface)
 
 Module: contracts. Size: M. Order: first.
-Contracts: `obs.price_bar r1 -> r2` (source enum, key per migration 0041), `page.market_state_page v1 -> v2`, `page.company_data_page v1 -> v2`, `page.positions_page v3 -> v4`.
-Files: `contracts/datasets/obs.price_bar.r2.json`, `contracts/schemas/page.market_state_page.v2.json`, `contracts/schemas/page.company_data_page.v2.json`, `contracts/schemas/page.positions_page.v4.json`, `contracts/fixtures/page.market_state_page.v2.ok.json`, `contracts/fixtures/page.company_data_page.v2.ok.json`, `internal/contracts/gen/records.go`, `web/src/generated/market_state_page.v2.ts`, `web/src/generated/company_data_page.v2.ts`, `web/src/generated/positions_page.v4.ts`, `docs/contracts/datasets/obs.price_bar.md`, `docs/contracts/page-schemas.md`
+Contracts: `obs.price_bar r1 -> r2` (source enum only), `page.market_state_page v1 -> v2`, `page.company_data_page v1 -> v2`, `page.positions_page v3 -> v4`.
+Files: `contracts/datasets/obs.price_bar.r2.json`, `contracts/schemas/page.market_state_page.v2.json`, `contracts/schemas/page.company_data_page.v2.json`, `contracts/schemas/page.positions_page.v4.json`, `contracts/fixtures/page.market_state_page.v2.ok.json`, `contracts/fixtures/page.company_data_page.v2.ok.json`, `contracts/fixtures/page.positions_page.v4.ok.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/gen/records.go`, `web/src/generated/market_state_page.v2.ts`, `web/src/generated/company_data_page.v2.ts`, `web/src/generated/positions_page.v4.ts`, `docs/contracts/datasets/obs.price_bar.md`, `docs/contracts/page-schemas.md`
 Design: docs/design/bars-fallback.md#Interface (1)
 Acceptance:
-1. `obs.price_bar.r2.json` has the `source` enum `["ibkr", "yfinance"]`; its `required` and `x-primary-key` match migration `0041` (`instrument_id`, `basis`, `session_day`; `adjust_epoch` in neither); `PriceBarSourceYfinance` is produced by the generator (no hand edit).
+1. `obs.price_bar.r2.json` differs from r1 only by the `source` enum `["ibkr", "yfinance"]`; `adjust_epoch` stays required and in `x-primary-key`; the generated `contracts.PriceBar` keeps `AdjustEpoch int`, so no file outside contracts changes; `PriceBarSourceYfinance` is produced by the generator (no hand edit).
 2. Each of the three schemas declares `bars_source` and `bars_source_note` and leaves them out of `required`; the generated TypeScript of each has both as optional.
 3. `TestPriceBarSourceEnum` (new) accepts `yfinance` and rejects `tiingo`; the fixtures `ok` of the three new versions validate.
 4. `docs/contracts/datasets/obs.price_bar.md` names both sources and the rule of Decision 6 in one line.
@@ -143,7 +143,7 @@ Contracts: unchanged
 Files: `internal/jobs/barsrefresh/fallback.go`, `internal/jobs/barsrefresh/fallback_test.go`, `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/job.go`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/job.toml`, `internal/jobs/barsrefresh/manifest_test.go`, `docs/contracts/jobs/bars_refresh.md`
 Design: docs/design/bars-fallback.md#Decisions (1, 2, 3, 4, 5, 7, 8, 9)
 Acceptance:
-1. `fallback.go` (new, under 600 lines) holds `WithFallback`, the pair mapping from the key's contract (symbol and currency), the basis comparison of Decision 5, the session filter of Decision 8 and the mapping of `RefBar` to `contracts.PriceBar` (basis `trades`, source `yfinance`, volume NULL); `run.go` gets only the hook calls and stays under 300 lines.
+1. `fallback.go` (new, under 600 lines) holds `WithFallback(job, src, cal)` (a nil `cal` or `src` is an error), the pair mapping from the key's contract (symbol and currency), the basis comparison of Decision 5, the session filter of Decision 8 and the mapping of `RefBar` to `contracts.PriceBar` (basis `trades`, source `yfinance`, volume NULL); `run.go` gets only the hook calls and stays under 300 lines.
 2. `TestFallbackAfterRetryableBars` (new, fake clock, fake `HistoryClient` returning a Retryable error, fake `BarSource`): the failing key goes to the fallback; after a second key fails the same way the rest make no `Bars` call; one `DailyBars` call carries the pairs; the rows written have source `yfinance` and basis `trades`.
 3. `TestOneDeadSymbolDoesNotFlipOthers` (new): one key's Retryable failure with the others served by `Bars` sends only that key to the fallback.
 4. `TestNoFallbackForPermanent` (new): an unknown key, a bad bar day and a Permanent error make no `DailyBars` call.
@@ -151,7 +151,7 @@ Acceptance:
 6. `TestFallbackNoWeeklyNoDeepen` (new): in fallback no `adjusted_last` row is written and no deepening pull is made.
 7. `TestFallbackBasisDiffers` (new): a stored IB close and a Yahoo close that differ by more than `fallback_tolerance` write nothing for the name and give Retryable `fallback_basis_differs`; a difference within it writes the rows and the run note carries the largest difference; with no overlapping IB day the rows are written and the note says "no overlap".
 8. `TestFallbackIncompleteBar` (new): a bar with an empty open, high, low or close is not written and is counted `incomplete`; a written row has NULL volume.
-9. `TestFallbackDropsOpenSession` (new, fake `clock.Calendar`): a console run in mid-session of a US day and of a JP day, and on a half day, writes no bar of the session in progress.
+9. `TestFallbackDropsOpenSession` (new, fake `clock.Calendar` passed to `WithFallback`): a console run in mid-session of a US day and of a JP day, and on a half day, writes no bar of the session in progress.
 10. `TestRecoveryLeavesNoYfinanceRow` (new): with stored yfinance rows older than `DailyDays` and a working farm, the pull asks `BackfillDays` and afterwards no yfinance row remains for the days IB serves in the window; with none stored it asks `DailyDays` as today.
 11. `TestDroppedNameKeepsYfinanceRows` (new): a name not in the list, and a name past the first-pull cap, keep their yfinance rows with source `yfinance`.
 12. `TestFallbackIdempotent` (new): the same run twice over a fake store that applies the precedence rule gives the same rows and the second reports them unchanged.
@@ -174,12 +174,13 @@ Acceptance:
 
 Module: web. Size: S. Order: after 1 and 9.
 Contracts: unchanged
-Files: `web/src/pages/market_state/MarketStatePage.tsx`, `web/src/pages/company_data/CompanyDataPage.tsx`, `web/src/pages/positions/PositionsPage.tsx`, `web/src/components/BarsSourceNote.tsx`, `web/test/pages/market_state/BarsSourceNote.test.tsx`
+Files: `web/src/pages/market_state/MarketStatePage.tsx`, `web/src/pages/company_data/CompanyDataPage.tsx`, `web/src/pages/positions/PositionsPage.tsx`, `web/src/components/BarsSourceNote.tsx`, `web/src/types/market_state_page.ts`, `web/src/types/company_data_page.ts`, `web/src/types/positions_page.ts`, `web/src/types/positions_page.v4.types.ts`, `web/test/pages/market_state/BarsSourceNote.test.tsx`
 Design: docs/design/bars-fallback.md#Decisions (10)
 Acceptance:
 1. `BarsSourceNote.tsx` (new) renders `bars_source_note` as text when it is a non-empty string and renders nothing otherwise; it computes nothing and reads no `bars_source` kind itself.
 2. The three pages render `BarsSourceNote` with the payload fields; a payload without them renders as before.
 3. `BarsSourceNote.test.tsx` (new) renders a mixed fixture note and an empty one.
+4. The four `web/src/types` files type and validate `market_state_page` v2, `company_data_page` v2 and `positions_page` v4 (the fixtures of entry 1 pass them), and the three pages import those versions.
 
 ### 11 bars-fallback-wire
 
@@ -188,7 +189,7 @@ Contracts: unchanged
 Files: `cmd/ot/wire_barsfallback.go`, `cmd/ot/wire_barsfallback_test.go`, `cmd/ot/wire.go`
 Design: docs/design/bars-fallback.md#Decisions (9)
 Acceptance:
-1. `wire_barsfallback.go` (new) holds `withBarsFallback(j)`: it builds the source through `jobFactory.barSource("yfinance")` and returns `barsrefresh.WithFallback(j, src)`; an error from the registry returns the job unchanged and logs one line.
+1. `wire_barsfallback.go` (new) holds `withBarsFallback(j)`: it builds the source through `jobFactory.barSource("yfinance")` and returns `barsrefresh.WithFallback(j, src, cal)` with the `clock.Calendar` the factory already holds (an error from the registry or a missing calendar returns the job unchanged and logs one line).
 2. `wire.go` changes by at most 5 lines (one call in `barsRefresh`) and stays under 800 lines.
 3. `TestBarsRefreshHasFallback` (new): the built `bars_refresh` job has a source set; `TestBarsRefreshWithoutCommand` (new): with no registry entry the job is built without one and the build does not fail.
 4. No line of `cmd/ot` holds a rule: the decision is in `barsrefresh`.
@@ -220,14 +221,14 @@ Acceptance:
 - Figures read from stored bars (`computefigures` hv, tech and vol, `buyprice`, `optionopen`, `optionledger`, `valuation`): they are not given the source and are not recomputed after healing, because a figure is a function of the stored bars of its day and the next run of each reads the healed bars; the note of the pages says figures of a fallback day may rest on a Yahoo bar.
 - `fx_refresh`, `recon_bars` and the report global-assets block: not changed (`recon_bars` keeps its close-only use of `RefBar`; `fx_refresh` has its own secondary; the report block gets the note only if the owner asks).
 - Health state and notice of the broken farm: `docs/design/gateway-health.md`.
+- The mismatch of the dataset r1 (`adjust_epoch` required, in `x-primary-key`) with migration `0041` (key without it): kept as it is, not part of this change.
 - A per-name or per-day source switch, a history table of sources, a second fallback provider: not adopted.
 
 ## Doubts
 
 1. Yahoo egress from the service host is not verified: the window checks it read-only (one `refbars` command run) before entry 11 is cut.
 2. yfinance 1.8.0 has so far been used only by `recon_bars`, not for a write path; the basis comparison (Decision 5) is its guard.
-3. Contracts versions: if the owner or advisor reads `00-protocol.md` as allowing an optional page field without a bump, entry 1 shrinks to the dataset r2 and the page schema files keep their names; the code that reads `AdjustEpoch` of `contracts.PriceBar` (r2 drops it from `required`) is not enumerated here and entry 1 must list it.
-4. The JP calendar id the session filter uses is not named here; entry 8 takes the one `calendar_refresh` already stores.
+3. The JP calendar id the session filter uses is not named here; entry 8 takes the one `calendar_refresh` already stores.
 
 ## Adversarial
 
