@@ -7,7 +7,7 @@ Revision: 1
 
 Source: owner product goal (sells puts at the US open) and the finding of 2026-11-20, a broad selloff, AMD -9.8 percent. Amends `option-open-pull.md` Decisions 8, 12 and 22. Read on origin/main at d6c75f8c: `internal/jobs/optionopen/{core.go:225-361,pull.go:270-307,jp.go:290-322,pull_resume.go,planfunc.go:398-432,listed.go,job_pull.toml}`, `internal/store/openquote/api.go` (`OptionContractStore`, `ListRecord`), `internal/broker/api.go` (`Chain`, `ListChains`, `ResolveContract`), `docs/design/option-open-pull.md`, `docs/design/option-open-gap-jp.md`. Status: draft. Not the same as `option-open-gap-jp.md`, which is the pre-open resolve pass; this is the open pull at a price gap. The gate of `option_candidates` is `candidates-after-partial-open.md`, not here.
 
-摘要（中文）：11 月 20 日大跌（AMD -9.8%）。option_open 开盘时用实时现价重算价带，计划里落在新价带之外的合约被标 OutsideBand、不询价；但收尾检查仍把它们算进"计划数"，于是一批只有 8/52 成功就判失败，重试也没用（再问一次，价带还是丢掉它们，91 毫秒结束），option_open 永远"结束不了"。更糟的是产品面：下跌时卖方想卖的 put（行权价低于新现价）根本不在昨日收盘价算出的计划里，开盘快照里这只股票只剩约 4 个合约，候选页恰好在最需要的日子里最薄。本设计两点：(a) 价带外的条目单独计数，不进分母；(b) 现价跑出已存价带时，用已存合约表和一次链列表，为新价带补选行权价并询价，总数仍在每股 60 条的上限内；没有已存合约的行权价，开盘时限量解析，上限写明。
+摘要（中文）：11 月 20 日大跌（AMD -9.8%）。option_open 开盘时用实时现价重算价带，计划里落在新价带之外的合约被标 OutsideBand、不询价；但收尾检查仍把它们算进"计划数"，于是一批只有 8/52 成功就判失败，重试也没用（再问一次，价带还是丢掉它们，91 毫秒结束），option_open 永远"结束不了"。更糟的是产品面：下跌时卖方想卖的 put（行权价低于新现价）根本不在昨日收盘价算出的计划里，开盘快照里这只股票只剩约 4 个合约，候选页恰好在最需要的日子里最薄。本设计两点：(a) 价带外的条目单独计数，不进分母；(b) 现价跑出已存价带时，只从已存合约表中为新价带补选行权价并询价，总数仍在每股 60 条的上限内；已存合约表里没有的行权价开盘时不解析、不写标记（见 ## Left out）。
 
 ## Frame
 
