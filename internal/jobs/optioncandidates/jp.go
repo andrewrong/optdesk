@@ -277,9 +277,11 @@ func (j *jpJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Expect
 			Accounts: accts, Kinds: []compute.CandidateKind{compute.KindShortPut},
 		}, Currency: currency}
 		cands := j.rule.EvaluateIn(in, j.params)
+		spreadMin, spreadMed := spreadFigures(ch.quotes, day, j.params.MinDTE, j.params.MaxDTE)
 		j.logger().Info("option_candidates_jp name", "component", "jobs", "job", j.m.ID, "symbol", ul.symbol,
 			"rows", len(cands), "outside_window", counts.outside, "unusable_quote", counts.unusable,
-			"gates_blocked", gateCounts(cands), "multiplier", multipliers(ch.quotes))
+			"gates_blocked", gateCounts(cands), "spread_min", spreadMin, "spread_median", spreadMed,
+			"multiplier", multipliers(ch.quotes))
 		for _, c := range cands {
 			ch.addMarks(&c)
 			addBuySourceMark(&c, entry)
