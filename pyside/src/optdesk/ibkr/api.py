@@ -10,6 +10,8 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from optdesk.ibkr import model
+
 
 @dataclass(frozen=True)
 class SessionStatus:
@@ -120,4 +122,24 @@ class History(Protocol):
 
     async def bars(self, request: HistoryRequest) -> Sequence[HistoryBar]:
         """Return the bars of the request, oldest first; raise HistoryPaced when paced."""
+        ...
+
+
+class HistoryUnavailable(Exception):
+    """The history request got no answer within its wait; the transport maps it to UNAVAILABLE."""
+
+
+@runtime_checkable
+class FarmBoard(Protocol):
+    """The data farms a gateway named, kept from its 2100 to 2199 messages."""
+
+    def record(self, code: int, text: str, now: int) -> None:
+        """Note one message: 2103, 2105 and 2157 mark a farm down; 2104, 2106 and 2158 mark it up.
+
+        now is unix milliseconds.
+        """
+        ...
+
+    def snapshot(self) -> tuple[model.Farm, ...]:
+        """Return the farms seen so far."""
         ...

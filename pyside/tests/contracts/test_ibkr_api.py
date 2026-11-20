@@ -10,15 +10,17 @@ from collections.abc import Awaitable, Callable, Sequence
 
 import pytest
 
-from optdesk.ibkr import api
+from optdesk.ibkr import api, model
 from optdesk.ibkr.api import (
     DividendKey,
     DividendReading,
+    FarmBoard,
     History,
     HistoryBar,
     HistoryKey,
     HistoryPaced,
     HistoryRequest,
+    HistoryUnavailable,
     Reference,
     Session,
     SessionStatus,
@@ -120,3 +122,51 @@ def test_history_values_are_frozen() -> None:
 
 def test_history_paced_is_an_exception() -> None:
     assert issubclass(HistoryPaced, Exception)
+
+
+class _FakeFarmBoard:
+    def __init__(self) -> None:
+        self.rows: list[model.Farm] = []
+
+    def record(self, code: int, text: str, now: int) -> None:
+        self.rows.append(model.Farm(name=text, up=code == 2104, since=now))
+
+    def snapshot(self) -> tuple[model.Farm, ...]:
+        return tuple(self.rows)
+
+
+class TestFarmBoardContract:
+    def test_fake_satisfies_farm_board(self) -> None:
+        assert isinstance(_FakeFarmBoard(), FarmBoard)
+
+    def test_caller_reads_snapshot(self) -> None:
+        board: FarmBoard = _FakeFarmBoard()
+        board.record(2103, "usfarm", 5)
+        assert board.snapshot() == (model.Farm(name="usfarm", up=False, since=5),)
+
+    def test_history_unavailable_is_an_exception(self) -> None:
+        with pytest.raises(HistoryUnavailable):
+            raise HistoryUnavailable("history_unavailable")
+
+    def test_api_declares_no_session_state(self) -> None:
+        assert not hasattr(api, "SessionState")
+
+
+class TestSessionStateDefaults:
+    def test_old_arguments_still_work(self) -> None:
+        s = model.SessionState(True, 3, 1)
+        assert s.soft_lost is False
+        assert s.state == "up"
+        assert s.farms == ()
+
+    def test_new_fields_are_set_by_keyword(self) -> None:
+        farm = model.Farm(name="ushmds", up=False, since=9)
+        s = model.SessionState(
+            connected=True,
+            generation=1,
+            market_data_type=1,
+            state="farm_broken",
+            farms=(farm,),
+        )
+        assert s.state == "farm_broken"
+        assert s.farms == (farm,)
