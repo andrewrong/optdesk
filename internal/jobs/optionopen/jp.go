@@ -254,6 +254,9 @@ func NewPullJP(d PullDeps) (contracts.Job, error) {
 	}
 	pl := j.(*pull)
 	pl.datasetID = PullDatasetIDJP
+	if pl.reader = slotReader(d); pl.reader == nil {
+		return nil, errors.New("optionopen: pull: neither the reader nor the writer reads the stored rows of a slot")
+	}
 	return &jpPull{pull: pl, params: m.params, rules: r}, nil
 }
 
@@ -322,7 +325,14 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 
 // runKey is pull.runKey with the JP parameters of the core.
 func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, contracts.TypedError) {
-	ts, err := p.targets(ctx, b.items)
+	final, ask, err := p.resume(ctx, b.items)
+	if err != nil {
+		return nil, asTyped(err, contracts.Retryable)
+	}
+	if len(ask) == 0 {
+		return final, nil
+	}
+	ts, err := p.targets(ctx, ask)
 	if err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
@@ -341,7 +351,7 @@ func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, c
 	if err := p.d.Writer.InsertOptionOpen(ctx, r.Rows); err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
-	return r.Rows, nil
+	return append(final, r.Rows...), nil
 }
 
 // newPullFrom is the body of NewPull for a manifest given.
