@@ -175,6 +175,17 @@
     "subtitle": {
       "$ref": "#/$defs/Text"
     },
+    "source_counts": {
+      "description": "How many names came from the open chain, from the last close, and with no candidate; additive and optional. none is left out when the stored candidates cannot give it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "eod_fallback"],
+      "properties": {
+        "open": {"type": "integer", "minimum": 0},
+        "eod_fallback": {"type": "integer", "minimum": 0},
+        "none": {"type": "integer", "minimum": 0}
+      }
+    },
     "head_labels": {
       "description": "The words of the page head, in Chinese; additive and optional.",
       "oneOf": [
