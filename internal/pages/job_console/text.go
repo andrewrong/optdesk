@@ -9,20 +9,19 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
-// Every visible string of the page is written here, in English (docs/design/job-console.md, Decision 12).
+// Every visible string of the page is written here, in Chinese with the English glossed beside it
+// (docs/design/job-console.md, Decision 12; docs/design/scheduler-per-job.md, Decision 8);
+// the Chinese phrases are the constants of zh_texts.go.
 
 const (
-	titleText    = "Job console"
-	sentenceText = "Run a job for one day; the scheduler does the work."
+	titleText       = zhTitle
+	sentenceText    = zhSentence
+	unavailableText = zhUnavailable
+	noSuchText      = zhNoSuch
 
-	nothingProducedText = "nothing was produced"
-
-	unavailableText = "The job requests cannot be read now."
-	noSuchText      = "No request has this id."
-
-	presentNow     = "the key is present now"
-	presentMissing = "the key is missing"
-	presentNoValue = "marked no value"
+	presentNow     = zhPresentNow
+	presentMissing = zhPresentMissing
+	presentNoValue = zhPresentNoValue
 )
 
 // The nine outcomes of a key line and the reason codes this file writes.
@@ -80,22 +79,30 @@ type lineText struct {
 
 // lineOutcome maps a stored line to its outcome, outcome text, present text and reason. Every stored line falls in
 // exactly one of the fifteen rows of the table of Decision 12; ok is false for a group or status outside it.
-func lineOutcome(l jobrequest.KeyLine) (lt lineText, ok bool) {
+func lineOutcome(l jobrequest.KeyLine) (lineText, bool) {
+	lt, ok := lineOutcomeBody(l)
+	if ok {
+		lt.Text = outcomeName(lt.Outcome) + ": " + lt.Text
+	}
+	return lt, ok
+}
+
+func lineOutcomeBody(l jobrequest.KeyLine) (lt lineText, ok bool) {
 	lt.Present = presentFor(l)
 	switch l.Group {
 	case groupAlreadyPresent:
-		lt.Outcome, lt.Text = outAlreadyPresent, "the key was present before this run"
+		lt.Outcome, lt.Text = outAlreadyPresent, zhLineAlreadyPresent
 	case groupNotDue:
 		lt.Outcome, lt.Reason = outWaiting, reasonNotDue
-		lt.Text = "runs at its slot"
+		lt.Text = zhLineRunsAtSlot
 		if !l.DueAt.IsZero() {
-			lt.Text = "runs at " + hhmm(l.DueAt) + " UTC"
+			lt.Text = fmt.Sprintf(zhLineRunsAtFmt, hhmm(l.DueAt))
 		}
 	case groupLeaseHeld:
 		lt.Outcome, lt.Reason = outSkipped, reasonInProgress
-		lt.Text = "another run of this key is in progress"
+		lt.Text = zhLineInProgress
 	case groupNotReached:
-		lt.Outcome, lt.Text = outNotRun, "not reached"
+		lt.Outcome, lt.Text = outNotRun, zhLineNotReached
 		lt.Reason = l.ReasonCode
 		if lt.Reason == "" {
 			lt.Reason = reasonStopped
@@ -116,16 +123,16 @@ func rerunOutcome(l jobrequest.KeyLine, lt lineText) lineText {
 	switch {
 	case l.ErrorCode != "":
 		lt.Outcome, lt.Reason = outFailed, l.ErrorCode
-		lt.Text = "the re-run failed: " + l.ErrorCode
+		lt.Text = fmt.Sprintf(zhRerunFailedFmt, l.ErrorCode)
 	case l.ReasonCode == reasonNoValue:
 		lt.Outcome, lt.Reason = outNothingFound, reasonNoValue
-		lt.Text = "the job answered no value (for example outside its slot); the key stays present"
+		lt.Text = zhRerunNoValue
 	case l.Usable > 0:
 		lt.Outcome, lt.Reason = outUnconfirmed, reasonRerunUnknown
-		lt.Text = fmt.Sprintf("re-run returned %d rows; the key was already present and the page cannot tell whether anything new was stored", l.Returned)
+		lt.Text = fmt.Sprintf(zhRerunUnknownFmt, l.Returned)
 	default:
 		lt.Outcome, lt.Reason = outNothingFound, reasonNoValueOrEmpty
-		lt.Text = "the key stays present from an earlier run"
+		lt.Text = zhRerunStays
 	}
 	return lt
 }
@@ -135,29 +142,29 @@ func ranOutcome(l jobrequest.KeyLine, lt lineText) (lineText, bool) {
 	switch l.Status {
 	case statusAbandoned:
 		lt.Outcome, lt.Reason = outFailed, reasonCut
-		lt.Text = "the run was cut before it finished"
+		lt.Text = zhRanCut
 	case statusPartial:
 		lt.Outcome, lt.Reason = outPartial, reasonCut
-		lt.Text = fmt.Sprintf("cut after %d of %d rows; counts shown", l.Usable, l.Returned)
+		lt.Text = fmt.Sprintf(zhRanPartialFmt, l.Usable, l.Returned)
 	case statusDone:
 		switch {
 		case l.ErrorCode != "":
 			lt.Outcome, lt.Reason = outFailed, l.ErrorCode
-			lt.Text = "the job failed: " + l.ErrorCode
+			lt.Text = fmt.Sprintf(zhRanFailedFmt, l.ErrorCode)
 		case l.Usable > 0 && l.Mark == markPresent:
 			lt.Outcome = outProduced
-			lt.Text = fmt.Sprintf("returned %d rows", l.Returned)
+			lt.Text = fmt.Sprintf(zhRanReturnedFmt, l.Returned)
 		case l.Usable > 0:
 			lt.Outcome, lt.Reason = outUnconfirmed, reasonPostcondition
-			lt.Text = fmt.Sprintf("returned %d rows but the key is not marked present", l.Returned)
+			lt.Text = fmt.Sprintf(zhRanNotMarkedFmt, l.Returned)
 		case l.ReasonCode == reasonEmptyBefore:
 			lt.Outcome, lt.Reason = outNothingFound, reasonEmptyBefore
-			lt.Text = "nothing yet, the scheduler tries again"
+			lt.Text = zhRanEmptyBefore
 		default:
 			lt.Outcome, lt.Reason = outNothingFound, reasonNoValueOrEmpty
-			lt.Text = "the job returned nothing"
+			lt.Text = zhRanNothing
 			if l.Mark == markNoValue {
-				lt.Text += "; marked no value"
+				lt.Text = zhRanNothingMarked
 			}
 		}
 	default:
@@ -199,14 +206,14 @@ func stateText(in stateIn) string {
 	case jobrequest.StateQueued:
 		return queuedText(in)
 	case jobrequest.StateRunning:
-		return "running since " + in.StartedAt
+		return fmt.Sprintf(zhRunningSinceFmt, in.StartedAt)
 	case jobrequest.StateDone:
-		return "done"
+		return zhStateDone
 	case jobrequest.StateWithdrawn:
-		return "withdrawn"
+		return zhStateWithdrawn
 	case jobrequest.StateInterrupted:
 		if in.Reason == reasonStopped {
-			return "interrupted by a stop or a deploy; press Run again"
+			return zhInterruptedStopped
 		}
 	case jobrequest.StateRefused:
 		if t, ok := refusedText(in); ok {
@@ -218,9 +225,9 @@ func stateText(in stateIn) string {
 		}
 	}
 	if in.Reason != "" {
-		return string(in.State) + ": " + in.Reason
+		return stateName(in.State) + ": " + in.Reason
 	}
-	return string(in.State)
+	return stateName(in.State)
 }
 
 func queuedText(in stateIn) string {
@@ -228,36 +235,36 @@ func queuedText(in stateIn) string {
 	case in.Waiting:
 		return waitingLine(in.HoldAt)
 	case in.HoldJob != "":
-		return "starts after " + hhmm(in.HoldAt) + " UTC (the slot of " + in.HoldJob + ")"
+		return fmt.Sprintf(zhQueuedStartsAfterFmt, hhmm(in.HoldAt), in.HoldJob)
 	case !in.HoldAt.IsZero():
-		return "held: the schedule is not read yet"
+		return zhQueuedHeld
 	case in.Withdrawing:
-		return "withdrawal pending: it takes effect when the scheduler's worker is next free (a running reconcile can take up to two hours)"
+		return zhQueuedWithdrawing
 	case in.Age > staleAfter:
-		return "still queued: the scheduler may have no console yet (it tries again on every turn), or its worker is busy"
+		return zhQueuedStale
 	}
-	return "waits for the scheduler's worker; a running reconcile or console run goes first"
+	return zhQueuedWaits
 }
 
 func refusedText(in stateIn) (string, bool) {
 	switch in.Reason {
 	case "no_key":
-		return "not a session of this job's calendar", true
+		return zhRefusedNoKey, true
 	case reasonNotDue:
 		if in.DueAt.IsZero() {
-			return "the job's slot has not come", true
+			return zhRefusedNotDue, true
 		}
-		return "the job's slot has not come: runs at " + hhmm(in.DueAt) + " UTC", true
+		return fmt.Sprintf(zhRefusedNotDueAtFmt, hhmm(in.DueAt)), true
 	case "no_plan":
-		return "no stored plan for this day (not a session, or the plan was not made)", true
+		return zhRefusedNoPlan, true
 	case "left_out":
-		return "the scheduler holds this job out", true
+		return zhRefusedLeftOut, true
 	case "not_runnable":
-		return "this job cannot be run from the page", true
+		return zhRefusedNotRunnable, true
 	case "not_today":
-		return "the day is not today any more in the job's zone", true
+		return zhRefusedNotToday, true
 	case "job_running":
-		return "this job is already running; press Run again when it ends", true
+		return zhRefusedJobRunning, true
 	}
 	return "", false
 }
@@ -268,17 +275,17 @@ func failedText(in stateIn) (string, bool) {
 		return zhBrokerSilent, true
 	case reasonSlotNear:
 		if in.DueAt.IsZero() {
-			return "stopped before the next key because a slot starts soon; press Run again after it", true
+			return zhFailedSlotNear, true
 		}
-		return "stopped before the next key because a slot starts at " + hhmm(in.DueAt) + " UTC; press Run again after it", true
+		return fmt.Sprintf(zhFailedSlotNearAtFmt, hhmm(in.DueAt)), true
 	case "lease_held":
-		return "another run holds the lease", true
+		return zhFailedLeaseHeld, true
 	case "plan_failed":
-		return "the plan of the day could not be read", true
+		return zhFailedPlanFailed, true
 	case "error":
-		return "the run failed with an error; see the scheduler log", true
+		return zhFailedError, true
 	case "restart":
-		return "the scheduler restarted while it ran", true
+		return zhFailedRestart, true
 	}
 	return "", false
 }
@@ -294,7 +301,7 @@ func waitingLine(since time.Time) string {
 
 // runningLine is one line of "Running now".
 func runningLine(f jobrunapi.Figure, startedAt time.Time) string {
-	parts := []string{f.JobID, "started " + hhmm(startedAt) + " UTC", fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal)}
+	parts := []string{f.JobID, fmt.Sprintf(zhStartedFmt, hhmm(startedAt)), fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal)}
 	if f.Step != "" {
 		parts = append(parts, f.Step)
 	}
@@ -307,4 +314,50 @@ func runningLine(f jobrunapi.Figure, startedAt time.Time) string {
 		parts = append(parts, zhSlowNote)
 	}
 	return strings.Join(parts, "; ")
+}
+
+// outcomeName is the Chinese name of an outcome code, with its English beside it.
+func outcomeName(code string) string {
+	switch code {
+	case outAlreadyPresent:
+		return zhOutAlreadyPresent
+	case outWaiting:
+		return zhOutWaiting
+	case outSkipped:
+		return zhOutSkipped
+	case outNotRun:
+		return zhOutNotRun
+	case outFailed:
+		return zhOutFailed
+	case outPartial:
+		return zhOutPartial
+	case outProduced:
+		return zhOutProduced
+	case outUnconfirmed:
+		return zhOutUnconfirmed
+	case outNothingFound:
+		return zhOutNothingFound
+	}
+	return code
+}
+
+// stateName is the Chinese name of a request state, with its English beside it.
+func stateName(s jobrequest.State) string {
+	switch s {
+	case jobrequest.StateQueued:
+		return zhStateQueued
+	case jobrequest.StateRunning:
+		return zhStateRunning
+	case jobrequest.StateDone:
+		return zhStateDone
+	case jobrequest.StateRefused:
+		return zhStateRefused
+	case jobrequest.StateFailed:
+		return zhStateFailed
+	case jobrequest.StateInterrupted:
+		return zhStateInterrupted
+	case jobrequest.StateWithdrawn:
+		return zhStateWithdrawn
+	}
+	return string(s)
 }

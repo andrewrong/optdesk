@@ -295,7 +295,7 @@ func sentenceFor(reqs []requestJSON, sel *jobrequest.Row) string {
 			return sentenceText
 		}
 	}
-	return fmt.Sprintf("Request %d (%s, %s): %s.", focus.ID, focus.Job, focus.Day, nothingProducedText)
+	return fmt.Sprintf(zhNothingProducedFmt, focus.ID, focus.Job, focus.Day)
 }
 
 // openRuns is the open runs as lines, and the jobs that have one.
