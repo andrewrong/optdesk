@@ -63,13 +63,14 @@ func adminDatabase(t *testing.T) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newDatabase makes a throwaway database with the roles, the schema rd and migration 0021, dropped in t.Cleanup.
+// newDatabase makes a throwaway database with the roles, the schema rd and migrations 0021 to 0064 that the bar tables use, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	name := newBaseDatabase(t)
 	applyUp(t, name, "0039_fx_rate_repair.sql")
 	applyUp(t, name, "0041_price_bar_repair.sql")
 	applyUp(t, name, "0050_fx_rate_source.sql")
+	applyUp(t, name, "0064_price_bar_source.sql")
 	return name
 }
 
