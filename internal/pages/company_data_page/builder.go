@@ -1,4 +1,4 @@
-// builder.go builds page.company_data_page.v1: one row per stock that is not retired, each filled by
+// builder.go builds page.company_data_page.v2: one row per stock that is not retired, each filled by
 // rows.go from the stored values and Calculator.Summarize. It computes nothing (docs/design/data-collection.md,
 // Decisions 9 to 12).
 package company_data_page
@@ -11,6 +11,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/companydataapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
@@ -68,32 +69,40 @@ type viewModel struct {
 	Companies      []Company     `json:"companies"`
 	Glossary       []glossaryRow `json:"glossary"`
 	Gaps           []Gap         `json:"gaps"`
+	// BarsSource and BarsSourceNote are left out when every bar is ibkr.
+	BarsSource     string `json:"bars_source,omitempty"`
+	BarsSourceNote string `json:"bars_source_note,omitempty"`
 }
 
-// Build returns the JSON of page.company_data_page.v1. A failed read of one company gives that company a
+// Build returns the JSON of page.company_data_page.v2. A failed read of one company gives that company a
 // gap line and no row, and the other rows stay; a failed read of the list gives one gap and no row. Only a
 // nil dependency is an error.
 func Build(ctx context.Context, in Input) ([]byte, error) {
 	if in.Underlyings == nil || in.Bars == nil || in.Facts == nil || in.Earnings == nil || in.Calc == nil {
 		return nil, errors.New("company_data_page: a reader or the calculator is nil")
 	}
-	vm := viewModel{Schema: pageName, SchemaVersion: 1, RunID: runID, BuiltAt: in.Now.Format(timeLayout),
+	vm := viewModel{Schema: pageName, SchemaVersion: 2, RunID: runID, BuiltAt: in.Now.Format(timeLayout),
 		DataHealthPath: dataHealthPath, Columns: columnsVM(), Companies: []Company{}, Glossary: glossaryRows(), Gaps: []Gap{}}
 	rows, err := in.Underlyings.Current(ctx)
 	if err != nil {
 		vm.Gaps = append(vm.Gaps, Gap{"gap", gapUnderlyings, textUnderlyings})
 		return json.Marshal(vm)
 	}
+	var read []contracts.PriceBar
 	for _, u := range rows {
 		if u.Kind != underlying.KindStock || u.Status == underlying.StatusRetired {
 			continue
 		}
-		c, err := companyRow(ctx, in, u)
+		c, bars, err := companyRow(ctx, in, u)
 		if err != nil {
 			vm.Gaps = append(vm.Gaps, Gap{"gap", gapRead, readFailedText(u.Key)})
 			continue
 		}
 		vm.Companies = append(vm.Companies, c)
+		read = append(read, bars...)
+	}
+	if kind, note := shared.BarSourceOf(read); kind != shared.BarSourceIbkr {
+		vm.BarsSource, vm.BarsSourceNote = kind, note
 	}
 	return json.Marshal(vm)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -97,9 +98,12 @@ type viewModel struct {
 	Freshness     string       `json:"freshness_text"`
 	Market        marketBlock  `json:"market"`
 	Sectors       sectorBlock  `json:"sectors"`
+	// BarsSource and BarsSourceNote are left out when every bar is ibkr.
+	BarsSource     string `json:"bars_source,omitempty"`
+	BarsSourceNote string `json:"bars_source_note,omitempty"`
 }
 
-// Build returns the page.market_state_page.v1 JSON for day. Series come from r, readings from
+// Build returns the page.market_state_page.v2 JSON for day. Series come from r, readings from
 // c.Readings, bars from c.Bars; the figures are copied from c.Market and c.Liquidity and only
 // shifted and rounded as decimal text. A reader error is an error of Build, never a Gap.
 func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
@@ -142,7 +146,7 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		days.add(spySymbol, sec.EndDayText)
 	}
 	vm := viewModel{
-		Schema: "market_state_page", SchemaVersion: 1,
+		Schema: "market_state_page", SchemaVersion: 2,
 		RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
 		GeneratedAt: generatedAt.In(c.Zone).Format(timeLayout),
 		DataTimes:   []sourceTime{}, RunStatus: "ok",
@@ -150,6 +154,9 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		Freshness: freshnessText(sec.EndDayText),
 		Market:    marketBlock{Title: marketTitle, Rows: rows},
 		Sectors:   sec.sectorBlock,
+	}
+	if kind, note := shared.BarSourceOf(bars.rows); kind != shared.BarSourceIbkr {
+		vm.BarsSource, vm.BarsSourceNote = kind, note
 	}
 	vm.Gaps = collectGaps(vm)
 	if len(vm.Gaps) > 0 {

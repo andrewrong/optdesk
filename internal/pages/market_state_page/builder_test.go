@@ -171,7 +171,7 @@ func compileSchema(t *testing.T) *jsonschema.Schema {
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
 	c.UseLoader(fileLoader{})
-	s, err := c.Compile(schemaHost + "page.market_state_page.v1.json")
+	s, err := c.Compile(schemaHost + "page.market_state_page.v2.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,11 +343,39 @@ func dayAfter(i int) contracts.Day {
 func TestNewPageMeta(t *testing.T) {
 	t.Parallel()
 	p := NewPage(fullConfig(t, sampleResult()))
-	if p.Meta.Name != "market_state_page" || p.Meta.Schema != "page.market_state_page.v1" {
+	if p.Meta.Name != "market_state_page" || p.Meta.Schema != "page.market_state_page.v2" {
 		t.Errorf("meta = %v", p.Meta)
 	}
 	b, err := p.Build(context.Background(), fakeSeries{}, testDay, time.Date(2026, 11, 13, 12, 0, 0, 0, time.UTC))
 	if err != nil || decode(t, b)["schema"] != "market_state_page" {
 		t.Errorf("build: %v", err)
+	}
+}
+
+func TestBarsSourceMixed(t *testing.T) {
+	t.Parallel()
+	ib := contracts.PriceBar{InstrumentID: 1, Basis: "trades", SessionDay: sdate("2026-11-11"), Close: "600.00", Source: "ibkr"}
+	yf := contracts.PriceBar{InstrumentID: 1, Basis: "trades", SessionDay: sdate("2026-11-12"), Close: "601.00", Source: "yfinance"}
+	c := fullConfig(t, sampleResult())
+	c.Bars = &fakeBars{bars: map[int64][]contracts.PriceBar{1: {ib, yf}}}
+	c.StockIDs = fakeIDs{ids: map[string]int64{"SPY": 1}}
+	b, err := Build(context.Background(), c, fakeSeries{}, testDay, time.Date(2026, 11, 13, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := compileSchema(t).Validate(inst); err != nil {
+		t.Fatalf("%v\n%s", err, b)
+	}
+	m := decode(t, b)
+	if fmt.Sprint(m["schema_version"]) != "2" || m["bars_source"] != "mixed" || m["bars_source_note"] == "" {
+		t.Fatalf("source = %v %v, version %v", m["bars_source"], m["bars_source_note"], m["schema_version"])
+	}
+	ok := build(t, fullConfig(t, sampleResult()))
+	if _, has := ok["bars_source_note"]; has || ok["bars_source"] != nil {
+		t.Fatalf("all-ibkr page carries a source: %v", ok["bars_source"])
 	}
 }

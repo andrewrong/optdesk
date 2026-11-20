@@ -57,6 +57,7 @@ type sectorResult struct {
 // barsIn holds the closes read from the bar store; ok is false when a reader is missing.
 type barsIn struct {
 	ok              bool
+	rows            []contracts.PriceBar // every bar row read, for shared.BarSourceOf
 	bench           blockapi.CloseIn
 	funds, industry []blockapi.CloseIn
 }
@@ -101,6 +102,7 @@ func readBars(ctx context.Context, c Config, d time.Time) (barsIn, error) {
 	}
 	from := contracts.Day(d.AddDate(0, 0, -barsLookback).Format(dayLayout))
 	to := contracts.Day(d.Format(dayLayout))
+	var read []contracts.PriceBar
 	closes := func(symbol, label string) (blockapi.CloseIn, error) {
 		in := blockapi.CloseIn{Name: label, Symbol: symbol}
 		switch len(ids[symbol]) {
@@ -110,6 +112,7 @@ func readBars(ctx context.Context, c Config, d time.Time) (barsIn, error) {
 			if err != nil {
 				return in, fmt.Errorf("market_state_page: read bars of %s: %w", symbol, err)
 			}
+			read = append(read, bars...)
 			for i := len(bars) - 1; i >= 0; i-- { // the reader gives ascending days
 				in.Closes = append(in.Closes, bars[i].Close)
 				in.Days = append(in.Days, contracts.Day(bars[i].SessionDay.Format(dayLayout)))
@@ -137,6 +140,7 @@ func readBars(ctx context.Context, c Config, d time.Time) (barsIn, error) {
 		}
 		out.industry = append(out.industry, in)
 	}
+	out.rows = read
 	return out, nil
 }
 

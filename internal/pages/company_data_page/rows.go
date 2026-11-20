@@ -26,44 +26,47 @@ const (
 	statusListed   = "listed"
 )
 
-// companyRow reads what is stored for one company and returns its row. An error is the failure of a read.
-func companyRow(ctx context.Context, in Input, u underlying.Row) (Company, error) {
+// companyRow reads what is stored for one company and returns its row and the bar rows it read. An error is
+// the failure of a read.
+func companyRow(ctx context.Context, in Input, u underlying.Row) (Company, []contracts.PriceBar, error) {
 	today, err := time.Parse(dayLayout, string(in.Today))
 	if err != nil {
-		return Company{}, err
+		return Company{}, nil, err
 	}
+	var read []contracts.PriceBar
 	si := companydataapi.SummaryInput{Market: u.Market, Issuer: u.Issuer, Fundamentals: u.Fundamentals, HasInstrument: u.ConID != 0}
 	if si.HasInstrument {
 		from := contracts.Day(today.AddDate(0, 0, -barWindow).Format(dayLayout))
 		bars, err := in.Bars.PriceBars(ctx, u.ConID, barBasis, from, in.Today)
 		if err != nil {
-			return Company{}, err
+			return Company{}, nil, err
 		}
+		read = bars
 		si.BarDays = barDays(bars)
 	}
 	if strings.HasPrefix(u.Issuer, "cik:") {
 		if si.Facts, err = in.Facts.FactsWithPeriodFiledBy(ctx, sourceSEC, u.Issuer, in.Today); err != nil {
-			return Company{}, err
+			return Company{}, nil, err
 		}
 	}
 	if u.Issuer != "" {
 		from := contracts.Day(today.AddDate(0, 0, -reportLookback).Format(dayLayout))
 		rows, err := in.Earnings.EarningsDates(ctx, u.Issuer, from, in.Today)
 		if err != nil {
-			return Company{}, err
+			return Company{}, nil, err
 		}
 		si.NextReport = nextReport(rows, in.Today)
 	}
 	sum, err := in.Calc.Summarize(si)
 	if err != nil {
-		return Company{}, err
+		return Company{}, nil, err
 	}
 	c := copySummary(u, sum)
 	if si.NextReport != nil {
 		d := string(*si.NextReport)
 		c.NextReport = &d
 	}
-	return c, nil
+	return c, read, nil
 }
 
 // barDays lists the days of the bars to pass on. A stored bar row has no status column: every row the
