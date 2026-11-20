@@ -46,7 +46,7 @@ func TestNumericCellsCarryValue(t *testing.T) {
 	if !strings.Contains(string(b), `"value":100.50`) {
 		t.Fatalf("json = %s", b)
 	}
-	if g := asGap(t, numCell("abc", codeNoValue)); g.Reason != "no_data" || g.Text != "Unreadable" {
+	if g := asGap(t, numCell("abc", codeNoValue)); g.Reason != "no_data" || g.Text != codeTexts["unreadable"] {
 		t.Fatalf("gap = %+v", g)
 	}
 	m := asValue(t, moneynessCell(sampleOpen("p")))
@@ -238,7 +238,7 @@ func TestPremiumCellUnknownCurrency(t *testing.T) {
 	t.Parallel()
 	for _, cur := range []string{"", "XYZ"} {
 		g := asGap(t, moneyCell("100", cur))
-		if g.Reason != "no_data" || g.Text != "Unreadable" {
+		if g.Reason != "no_data" || g.Text != codeTexts["unreadable"] {
 			t.Errorf("%q: gap = %+v", cur, g)
 		}
 	}
@@ -262,7 +262,7 @@ func TestDecimalCellRounds(t *testing.T) {
 	if g := asGap(t, decimalCell("", codeNoMark, 2)); g.Reason != "missing_quote" {
 		t.Fatalf("empty = %+v", g)
 	}
-	if g := asGap(t, decimalCell("abc", codeNoValue, 2)); g.Text != "Unreadable" {
+	if g := asGap(t, decimalCell("abc", codeNoValue, 2)); g.Text != codeTexts["unreadable"] {
 		t.Fatalf("abc = %+v", g)
 	}
 }
@@ -294,7 +294,7 @@ func TestKeptPercentCell(t *testing.T) {
 	if g := asGap(t, keptPercentCell("", codeNoMark)); g.Reason != "missing_quote" {
 		t.Errorf("empty = %+v", g)
 	}
-	if g := asGap(t, keptPercentCell("abc", codeNoValue)); g.Text != "Unreadable" {
+	if g := asGap(t, keptPercentCell("abc", codeNoValue)); g.Text != codeTexts["unreadable"] {
 		t.Errorf("abc = %+v", g)
 	}
 }
@@ -347,11 +347,11 @@ func TestMoneynessGaps(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
 	o.OtmPercent = "abc"
-	if g := asGap(t, moneynessCell(o)); g.Text != "Unreadable" {
+	if g := asGap(t, moneynessCell(o)); g.Text != codeTexts["unreadable"] {
 		t.Fatalf("unreadable gap = %+v", g)
 	}
 	o.OtmPercent = ""
-	if g := asGap(t, moneynessCell(o)); g.Text == "Unreadable" || g.Kind != "gap" {
+	if g := asGap(t, moneynessCell(o)); g.Text == codeTexts["unreadable"] || g.Kind != "gap" {
 		t.Fatalf("empty gap = %+v", g)
 	}
 }

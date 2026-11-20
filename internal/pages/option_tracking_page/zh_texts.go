@@ -26,6 +26,7 @@ const (
 	noValueZh    = "没有该数值"
 	noCloseZh    = "没有正股收盘价"
 	noReaderZh   = "没有读取器"
+	unreadableZh = "无法读取该数值"
 
 	noSessionsZh   = "没有交易日读取器，页面无法判断交易日"
 	noEodReaderZh  = "没有日终价读取器，财报日和除息日未知"

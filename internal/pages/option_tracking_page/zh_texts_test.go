@@ -53,11 +53,20 @@ func TestTrackingTextsAreChinese(t *testing.T) {
 			continue
 		}
 		gaps++
-		if txt, _ := m["text"].(string); !hasHan(txt) && txt != unreadable {
+		if txt, _ := m["text"].(string); !hasHan(txt) {
 			t.Errorf("gap %s = %q has no Chinese character", id, txt)
 		}
 	}
 	if gaps == 0 {
 		t.Fatal("no gap cell in the page")
+	}
+}
+
+func TestEveryCodeTextIsChinese(t *testing.T) {
+	t.Parallel()
+	for code, txt := range codeTexts {
+		if !hasHan(txt) {
+			t.Errorf("%s = %q has no Chinese character", code, txt)
+		}
 	}
 }

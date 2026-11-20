@@ -15,7 +15,6 @@ const (
 	labelClose   = ")"
 
 	dash       = "—"
-	unreadable = "Unreadable"
 	notApply   = "Not applicable"
 	inLife     = "In term"
 	earlyBadge = "Early"
@@ -59,7 +58,7 @@ var codeTexts = map[string]string{
 	codeNoValue:    noValueZh,
 	codeNoClose:    noCloseZh,
 	codeMarkOnly:   markOnlyZh,
-	codeUnreadable: unreadable,
+	codeUnreadable: unreadableZh,
 	"no_reader":    noReaderZh,
 
 	"no_sessions":   noSessionsZh,
