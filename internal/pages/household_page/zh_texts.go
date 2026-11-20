@@ -39,3 +39,7 @@ const (
 	familyLineEarlierDay = "%s用的是 %s 的采集，早于最新交易日，已计入合计"
 	familyLineReadError  = "%s读取失败，合计不含"
 )
+
+// textEarlierMark is the note of the household page for positions priced from an earlier mark day:
+// the number of positions and the mark day.
+const textEarlierMark = "有 %d 个持仓用的是 %s 的收盘标记，采集日尚无标记"

@@ -469,3 +469,122 @@ func TestCompositionRowsWithoutShareComeLastBySymbol(t *testing.T) {
 		t.Fatalf("composition = %v, want %v", comp, want)
 	}
 }
+
+const earlierNote = "有 1 个持仓用的是 2026-11-09 的收盘标记，采集日尚无标记"
+
+func noteTexts(m map[string]any) []string {
+	var out []string
+	for _, n := range m["notes"].([]any) {
+		out = append(out, n.(string))
+	}
+	return out
+}
+
+func rowNames(m map[string]any, blk string) []string {
+	var out []string
+	for _, r := range m[blk].(map[string]any)["rows"].([]any) {
+		out = append(out, r.(map[string]any)["name"].(string))
+	}
+	return out
+}
+
+func TestHoldingsFallBackToEarlierMark(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-09": {markOf(1, "240")}}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, b := build(t, c, "main")
+	validate(t, b)
+	for _, blk := range []string{"composition", "concentration", "allocation"} {
+		if m[blk].(map[string]any)["gap"] != nil {
+			t.Fatalf("%s has a gap: %v", blk, m[blk])
+		}
+	}
+	row := m["composition"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	if v := row["amount"].(map[string]any)["value"].(float64); v != 24000 {
+		t.Fatalf("value = %v, want 24000 (100 sh at 240)", v)
+	}
+	if got := noteTexts(m); !slices.Contains(got, earlierNote) {
+		t.Fatalf("notes = %v, want %q", got, earlierNote)
+	}
+}
+
+func TestCaptureDayMarkWinsOverEarlier(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-10": {markOf(1, "250")},
+		"2026-11-09": {markOf(1, "240")},
+	}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, _ := build(t, c, "main")
+	row := m["composition"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	if v := row["amount"].(map[string]any)["value"].(float64); v != 25000 {
+		t.Fatalf("value = %v, want 25000", v)
+	}
+	for _, n := range noteTexts(m) {
+		if strings.Contains(n, "收盘标记") {
+			t.Fatalf("unexpected mark note %q", n)
+		}
+	}
+}
+
+func TestEarlierMarksOneNotePerDayNewestFirstAndOlderOnlyForGaps(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-10": {markOf(1, "250")},
+		"2026-11-09": {markOf(2, "100")},
+		"2026-11-07": {markOf(2, "90"), markOf(3, "10")},
+	}}
+	ps := []store.Position{stock("AAA", 1, "1", "1"), stock("BBB", 2, "1", "1"), stock("CCC", 3, "1", "1")}
+	c, _ := holdingsConfig(ps, marks)
+	m, _ := build(t, c, "main")
+	want := []string{"有 1 个持仓用的是 2026-11-09 的收盘标记，采集日尚无标记", "有 1 个持仓用的是 2026-11-07 的收盘标记，采集日尚无标记"}
+	var got []string
+	for _, n := range noteTexts(m) {
+		if strings.Contains(n, "收盘标记") {
+			got = append(got, n)
+		}
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("notes = %v, want %v", got, want)
+	}
+}
+
+func TestNoMarkWithinFiveDaysIsMissingQuote(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-04": {markOf(1, "240")}}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, b := build(t, c, "main")
+	validate(t, b)
+	if g := gapOf(t, m, "composition"); g["reason"] != "missing_quote" {
+		t.Fatalf("gap = %v", g)
+	}
+	for _, n := range noteTexts(m) {
+		if strings.Contains(n, "收盘标记") {
+			t.Fatalf("unexpected mark note %q", n)
+		}
+	}
+}
+
+func TestMoversUseEarlierMark(t *testing.T) {
+	t.Parallel()
+	days := map[string]dayData{
+		"2026-11-06": twoDays()["2026-11-09"],
+		"2026-11-09": twoDays()["2026-11-10"],
+		"2026-11-10": {net: "100000.00", pos: []store.Position{capStock("AAA", 1, "100", "c1")}},
+	}
+	c, _ := moversConfig(days)
+	m, b := buildOn(t, c, "2026-11-10")
+	validate(t, b)
+	mv := moversOf(m)
+	stocks := mv["stocks"].([]any)
+	if mv["gap"] != nil || len(stocks) != 1 {
+		t.Fatalf("movers = %v", mv)
+	}
+	cur := stocks[0].(map[string]any)["current"].(map[string]any)
+	if cur["value"].(float64) != 250 {
+		t.Fatalf("current = %v, want 250", cur)
+	}
+	if got := rowNames(m, "composition"); !slices.Equal(got, []string{"AAA"}) {
+		t.Fatalf("composition rows = %v", got)
+	}
+}

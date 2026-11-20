@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
@@ -28,6 +29,7 @@ const (
 type holdingBlocks struct {
 	composition, concentration moneyBlock
 	allocation                 allocationBlock
+	notes                      []string // one line per earlier mark day that priced positions
 }
 
 // shareText is a share the schema accepts: 0 to 100, no sign.
@@ -39,7 +41,19 @@ type held struct {
 	positions     []store.Position
 	price         map[int64]string
 	usdJpy, rateD string
+	// earlier lists the earlier mark days that priced positions, newest first, with the number of
+	// positions each priced; empty when the capture day priced them all.
+	earlier []earlierDay
 }
+
+// earlierDay is a mark day before the capture day and the positions priced from it.
+type earlierDay struct {
+	day   string
+	count int
+}
+
+// markFallbackDays is how many calendar days before the capture day a position is looked up.
+const markFallbackDays = 5
 
 // readHeld reads the positions once, the marks when Marks is set, and the USDJPY rate when a value,
 // mark or position of the capture is JPY. A rate that is not found, a nil Fx and a rate read error
@@ -62,12 +76,12 @@ func (c Config) readHeld(ctx context.Context, alias string, cp capture) (held, e
 		if err != nil {
 			return h, fmt.Errorf("household_page: read marks: %w", err)
 		}
-		for _, m := range marks {
-			jpy = jpy || m.Currency == currencyJPY
-			if m.Basis != mark.BasisNone && m.Price != "" {
-				h.price[m.ConID] = m.Price
-			}
+		jpy = h.addMarks(marks, func(int64) bool { return true }) || jpy
+		earlierJPY, err := c.earlierMarks(ctx, alias, cp.day, &h)
+		if err != nil {
+			return h, err
 		}
+		jpy = jpy || earlierJPY
 	}
 	if jpy && c.Fx != nil {
 		if r, found, err := c.Fx.LatestFxRate(ctx, pairUsdJpy, contracts.Day(cp.day)); err == nil && found {
@@ -75,6 +89,63 @@ func (c Config) readHeld(ctx context.Context, alias string, cp capture) (held, e
 		}
 	}
 	return h, nil
+}
+
+// addMarks takes the price of every mark that has one and whose position has none yet; it reports
+// whether a mark is in yen. only says which conids may take a price.
+func (h *held) addMarks(marks []mark.PositionMark, only func(conID int64) bool) (jpy bool) {
+	for _, m := range marks {
+		jpy = jpy || m.Currency == currencyJPY
+		if _, ok := h.price[m.ConID]; !ok && only(m.ConID) && m.Basis != mark.BasisNone && m.Price != "" {
+			h.price[m.ConID] = m.Price
+		}
+	}
+	return jpy
+}
+
+// isStock is true for the conid of a stock position.
+func (h held) isStock(conID int64) bool {
+	for _, p := range h.positions {
+		if p.ConID == conID && p.SecType == secTypeStock {
+			return true
+		}
+	}
+	return false
+}
+
+// unpriced is the number of stock positions with no price yet; an option is never looked up on an
+// earlier day, its figures stay as the capture day left them.
+func (h held) unpriced() int {
+	n := 0
+	for _, p := range h.positions {
+		if _, ok := h.price[p.ConID]; !ok && p.SecType == secTypeStock {
+			n++
+		}
+	}
+	return n
+}
+
+// earlierMarks prices the stock positions the capture day left without a price from the marks of the
+// calendar days before it, one day at a time, up to markFallbackDays back; the newest mark of a
+// position wins. It reports whether a mark read is in yen.
+func (c Config) earlierMarks(ctx context.Context, alias, day string, h *held) (jpy bool, err error) {
+	d, perr := time.Parse(dayLayout, day)
+	if perr != nil {
+		return false, nil
+	}
+	for i := 1; i <= markFallbackDays && h.unpriced() > 0; i++ {
+		before := h.unpriced()
+		ed := d.AddDate(0, 0, -i).Format(dayLayout)
+		marks, err := c.Marks.Marks(ctx, alias, ed)
+		if err != nil {
+			return jpy, fmt.Errorf("household_page: read marks: %w", err)
+		}
+		jpy = h.addMarks(marks, h.isStock) || jpy
+		if n := before - h.unpriced(); n > 0 {
+			h.earlier = append(h.earlier, earlierDay{day: ed, count: n})
+		}
+	}
+	return jpy, nil
 }
 
 // positionsIn is the stored positions as the figures take them; an option is named with its right,
@@ -136,7 +207,12 @@ func (c Config) holdings(alias string, cp capture, h held) *holdingBlocks {
 		}
 		return m
 	}
+	var notes []string
+	for _, e := range h.earlier {
+		notes = append(notes, fmt.Sprintf(textEarlierMark, e.count, e.day))
+	}
 	return &holdingBlocks{
+		notes:         notes,
 		composition:   compositionRows(meaning(meaningComposition), x, res),
 		concentration: concentrationOf(meaning(meaningConcentration), x, res),
 		allocation:    allocationOf(meaning(meaningAllocation), x, res),
