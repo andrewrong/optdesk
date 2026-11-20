@@ -15,20 +15,21 @@ import (
 
 // The reason codes the host stores (every ended state has one).
 const (
-	reasonCompleted   = "completed"
-	reasonWithdrawn   = "withdrawn"
-	reasonStopped     = "stopped"
-	reasonNoPlan      = "no_plan"
-	reasonNoKey       = "no_key"
-	reasonNotDue      = "not_due"
-	reasonNotToday    = "not_today"
-	reasonNotRunnable = "not_runnable"
-	reasonLeftOut     = "left_out"
-	reasonLeaseHeld   = "lease_held"
-	reasonPlanFailed  = "plan_failed"
-	reasonError       = "error"
-	reasonSlotNear    = "slot_near"
-	reasonJobRunning  = "job_running"
+	reasonCompleted    = "completed"
+	reasonWithdrawn    = "withdrawn"
+	reasonStopped      = "stopped"
+	reasonNoPlan       = "no_plan"
+	reasonNoKey        = "no_key"
+	reasonNotDue       = "not_due"
+	reasonNotToday     = "not_today"
+	reasonNotRunnable  = "not_runnable"
+	reasonLeftOut      = "left_out"
+	reasonLeaseHeld    = "lease_held"
+	reasonPlanFailed   = "plan_failed"
+	reasonError        = "error"
+	reasonSlotNear     = "slot_near"
+	reasonBrokerSilent = "broker_silent"
+	reasonJobRunning   = "job_running"
 )
 
 // outcome is how a claimed request ended.
@@ -269,8 +270,8 @@ func classify(ctx context.Context, res runner.BackfillResult, err error) outcome
 		return outcome{jobrequest.StateRefused, reasonJobRunning, lines}
 	}
 	for _, l := range lines {
-		if l.Group == runner.GroupNotReached && l.ReasonCode == reasonSlotNear {
-			return outcome{jobrequest.StateFailed, reasonSlotNear, lines}
+		if l.Group == runner.GroupNotReached && (l.ReasonCode == reasonSlotNear || l.ReasonCode == reasonBrokerSilent) {
+			return outcome{jobrequest.StateFailed, l.ReasonCode, lines}
 		}
 	}
 	return outcome{jobrequest.StateDone, reasonCompleted, lines}

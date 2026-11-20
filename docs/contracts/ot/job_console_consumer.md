@@ -28,7 +28,7 @@ Every ended state stores a reason code.
 | `withdrawn` | `withdrawn` |
 | `interrupted` | `stopped` |
 | `refused` | `no_plan`, `no_key`, `not_due`, `left_out`, `not_runnable`, `not_today` |
-| `failed` | `slot_near`, `lease_held`, `plan_failed`, `error`, `restart` |
+| `failed` | `slot_near`, `broker_silent`, `lease_held`, `plan_failed`, `error`, `restart` |
 
 ## Precedence of the end state
 
@@ -36,7 +36,7 @@ Every ended state stores a reason code.
 2. `Refused` set: `RefusedNoPlan` is `refused` `no_plan`, `RefusedNoKey` is `refused` `no_key`.
 3. An error: `Retryable` (the lease is held) is `failed` `lease_held`; a `Plan` error is `failed` `plan_failed`; any other is `failed` `error`.
 4. No line `ran` or `rerun` and at least one `not_due`: `refused` `not_due`.
-5. A line `not_reached` with the reason `slot_near`: `failed` `slot_near`.
+5. A line `not_reached` with the reason `slot_near`: `failed` `slot_near`; a line `not_reached` with the reason `broker_silent`: `failed` `broker_silent`. The first such line in the order of the lines gives the reason.
 6. Otherwise `done` `completed`.
 
 A request is never run again by itself.

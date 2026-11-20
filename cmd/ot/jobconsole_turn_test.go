@@ -310,6 +310,23 @@ func TestSlotNearEndsFailedSlotNear(t *testing.T) {
 	}
 }
 
+func TestBrokerSilentEndsFailedBrokerSilent(t *testing.T) {
+	t.Parallel()
+	res := jcLines(runner.GroupRan, runner.GroupNotReached)
+	res.Keys[1].ReasonCode = "broker_silent"
+	if f := jcResult(t, res, nil, jobrequest.StateFailed, "broker_silent"); len(f.lines) != 2 {
+		t.Fatalf("lines %v", f.lines)
+	}
+}
+
+func TestFirstNotReachedReasonWins(t *testing.T) {
+	t.Parallel()
+	res := jcLines(runner.GroupNotReached, runner.GroupNotReached)
+	res.Keys[0].ReasonCode = "broker_silent"
+	res.Keys[1].ReasonCode = "slot_near"
+	jcResult(t, res, nil, jobrequest.StateFailed, "broker_silent")
+}
+
 func TestRefusedNoKeyEndsRefusedNoKey(t *testing.T) {
 	t.Parallel()
 	jcResult(t, runner.BackfillResult{Refused: runner.RefusedNoKey}, nil, jobrequest.StateRefused, "no_key")
