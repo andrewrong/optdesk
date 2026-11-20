@@ -2,7 +2,7 @@
   "pages": {
     "report_page": ["actions", "account_moves", "risks", "market_watch", "global_assets"],
     "market_page": ["weather", "indices", "breadth", "term"],
-    "macro_rates": ["series"],
+    "macro_page": ["indicators"],
     "option_candidates_page": ["groups"],
     "option_notices_page": ["accounts"],
     "option_tracking_page": ["accounts"],

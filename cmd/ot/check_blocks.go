@@ -31,7 +31,6 @@ func mustBlockTable(b []byte) map[string][]string {
 // option_data_page) declares its day only in data_times.
 var pageDayKeys = map[string]string{
 	"report_page":            "session_date",
-	"macro_rates":            "session_day",
 	"option_candidates_page": "chain_day",
 	"option_notices_page":    "day",
 	"option_tracking_page":   "as_of",
@@ -47,7 +46,9 @@ var pageDayKeys = map[string]string{
 var pageMetaKeys = map[string][]string{
 	"market_page": {"build_id", "data_times", "gaps", "generated_at", "notes", "run_id", "run_status", "schema", "schema_version",
 		"scope", "sentence", "stale", "stale_after", "title"},
-	"macro_rates": {"gaps", "generated_at", "schema", "schema_version", "sentence", "session_day", "title"},
+	"macro_page": {"build_id", "data_times", "ease", "ease_title", "events", "events_title", "gaps", "generated_at", "indicators_title",
+		"lead", "liquidity", "liquidity_title", "notes", "notes_title", "run_id", "run_status", "schema", "schema_version", "scope",
+		"sentence", "stale", "title"},
 	"option_candidates_page": {"build_id", "chain_day", "computed_at", "data_times", "estimate_note", "gaps", "generated_at", "notes",
 		"rule_version", "run_id", "run_status", "schema", "schema_version", "scope", "short_put_list", "short_put_tiers", "stale", "stale_after", "title"},
 	"option_notices_page": {"build_id", "data_times", "day", "gaps", "generated_at", "notes", "run_id", "run_status", "schema",

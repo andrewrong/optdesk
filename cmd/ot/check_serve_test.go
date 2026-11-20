@@ -146,11 +146,11 @@ func TestCheckServeRoutes(t *testing.T) {
 
 	// a body that declares a schema version with no file is FAIL.
 	bad := goodBodies(t, "2026-11-06")
-	bad["/macro"] = []byte(`{"schema":"macro_rates","schema_version":7,"session_day":"2026-11-06","series":[]}`)
+	bad["/macro"] = []byte(`{"schema":"macro_page","schema_version":7,"session_day":"2026-11-06","series":[]}`)
 	e3, out3 := serveEnv(t)
 	var calls3 []string
 	checkServeRoutes(context.Background(), e3, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bad, nil, &calls3), nil)
-	if !e3.c.failed || !strings.Contains(out3.String(), "FAIL serve.macro_rates.schema - ") {
+	if !e3.c.failed || !strings.Contains(out3.String(), "FAIL serve.macro_page.schema - ") {
 		t.Fatalf("schema failure not reported:\n%s", out3)
 	}
 }
@@ -249,7 +249,7 @@ func TestCheckServeStaleDay(t *testing.T) {
 	var calls []string
 	bodies := goodBodies(t, "2026-11-06")
 	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: latest}, fakeSite(bodies, nil, &calls), nil)
-	if !strings.Contains(out.String(), "FAIL serve.macro_rates.fresh 2026-11-06 older than the latest closed window 2026-11-09\n") {
+	if !strings.Contains(out.String(), "FAIL serve.macro_page.fresh 2026-11-06 older than the latest closed window 2026-11-09\n") {
 		t.Fatalf("stale page not FAIL:\n%s", out)
 	}
 	// no closed window at all is an error, and every page's freshness line says so.

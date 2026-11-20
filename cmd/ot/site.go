@@ -587,13 +587,24 @@ func serveHealth(a *app, clk clock.Clock, rd siteReaders, w http.ResponseWriter,
 	_, _ = io.WriteString(w, `{"status":"ok"}`)
 }
 
-// buildMacro builds the first page of deps.pageList (macro_rates) for the requested day from the series reader.
+// buildMacro builds macro_page for the requested day: the readings of the home page, the stored events and the
+// owner settings when the site has events (newMacroPageOwner), else the page without events.
 func buildMacro(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
+	if a.profile.Zone == nil {
+		return nil, errors.New(macroPageName + ": no zone")
+	}
 	day, err := dayOrDefault(clk, dayFlag)
 	if err != nil {
 		return nil, err
 	}
-	return a.deps.pageList[0].Build(ctx, rd.series, day, clk.Now().UTC())
+	read := homeReadings(a, rd)
+	var p pages.Page
+	if rd.macroEvents != nil {
+		p = newMacroPageOwner(a.profile.Zone, buildIDOf(version), read, rd.macroEvents, rd.owner)
+	} else {
+		p = a.deps.macroPage(a.profile.Zone, buildIDOf(version), read)
+	}
+	return p.Build(ctx, rd.series, day, clk.Now().UTC())
 }
 
 // buildSite builds the view model of the underlying id, or of the one with the greatest latest day
