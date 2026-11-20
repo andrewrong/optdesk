@@ -141,7 +141,7 @@ Acceptance:
 ### 6 index-iv-column-home-market
 
 Module: pages. Size: M.
-Order: after 5; Depends: #3422 (open; it rewrites `newestReading` in `member.go` and its tests, the same files).
+Order: after 4, 5; Depends: #3422 (open; it rewrites `newestReading` in `member.go` and its tests, the same files).
 Files: `internal/pages/home_market/member.go`, `internal/pages/home_market/indexiv.go`, `internal/pages/home_market/indexiv_test.go`, `internal/pages/home_market/strings.go`, `internal/pages/home_market/member_test.go`, `internal/pages/home_market/testdata/ok.golden.json`
 Design: docs/design/market-iv-rv20.md#decisions (13, 14, 15, 16)
 Acceptance:
