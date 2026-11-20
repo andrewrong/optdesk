@@ -583,6 +583,26 @@ func TestRefreshAsksThePlanOnlyAndKeepsFreshRows(t *testing.T) {
 	}
 }
 
+func TestRefreshKeepsQuoteUndPriceWithoutStock(t *testing.T) {
+	t.Parallel()
+	b := newFake(339)
+	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+		qs := okQuotes(b.clk, cs)
+		qs[0].UndPrice = f(358.32)
+		return qs, nil
+	}
+	res := Refresh(context.Background(), b, b.clk, []Target{target(1, 11, ClassPuts, 90, Put), target(1, 12, ClassPuts, 91, Put)}, 2)
+	if len(res.Rows) != 2 || b.underCalls != 0 {
+		t.Fatalf("rows %d, underlying snapshots %d; want 2 rows and none", len(res.Rows), b.underCalls)
+	}
+	if p := rowOf(t, Result{Rows: res.Rows}, 11).UnderlyingPrice; p == nil || *p != 358.32 {
+		t.Errorf("price %v, want the quote's 358.32", p)
+	}
+	if p := rowOf(t, Result{Rows: res.Rows}, 12).UnderlyingPrice; p != nil {
+		t.Errorf("price %v, want nil for a quote with no UndPrice", p)
+	}
+}
+
 func TestRefreshDropsEverythingWhenTheBrokerIsUnavailable(t *testing.T) {
 	t.Parallel()
 	b := newFake(100)
