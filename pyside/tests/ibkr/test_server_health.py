@@ -27,7 +27,7 @@ class DownThenUp:
 
     async def open_session(self) -> None:
         if self.clock.monotonic() < self.up_at:
-            raise ConnectionError("refused at port 4001 for account DU1234567")
+            raise ConnectionError("refused at port 4001 for account ACCT-MARKER")
         self.opened = True
 
     async def status(self) -> SessionState:
@@ -62,7 +62,7 @@ class TestLogOnStateChange:
         assert len(ups) == 1 and "last_failure=ConnectionError" in ups[0]
         assert all("gateway=main" in m for m in lines)
         text = "\n".join(lines)
-        assert "4001" not in text and "DU1234567" not in text
+        assert "4001" not in text and "ACCT-MARKER" not in text
 
 
 class TestSizeCeiling:
