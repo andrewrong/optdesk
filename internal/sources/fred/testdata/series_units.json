@@ -23,5 +23,10 @@
   {"series_id": "STLFSI4", "units": "Index", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
   {"series_id": "TLAACBW027SBOG", "units": "Billions of U.S. Dollars", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
   {"series_id": "WLCFLPCL", "units": "Millions of U.S. Dollars", "note": "units text read on the FRED series page on 2026-11-14 by the dispatcher"},
-  {"series_id": "DEXJPUS", "units": "Japanese Yen to One U.S. Dollar", "note": "read on the FRED series page on 2026-11-14, not downloaded metadata"}
+  {"series_id": "DEXJPUS", "units": "Japanese Yen to One U.S. Dollar", "note": "read on the FRED series page on 2026-11-14, not downloaded metadata"},
+  {"series_id": "T10Y2Y", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
+  {"series_id": "T10Y3M", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
+  {"series_id": "T10YIE", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
+  {"series_id": "IRLTLT01JPM156N", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
+  {"series_id": "DTWEXBGS", "units": "Index Jan 2006=100", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"}
 ]

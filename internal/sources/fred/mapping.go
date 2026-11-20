@@ -82,6 +82,12 @@ var seriesUnits = map[string]unitRow{
 	"WLCFLPCL":       {unit: ccyAmount, currency: "USD", shift: 6, pinVintage: true},
 	// FX rate: JPY per one USD (source-rank Decision 4); the fx job turns the point into an FxRate.
 	"DEXJPUS": {unit: jpyPerUsd},
+	// Macro page series (macro-page-v2 Decision 4); DGS2 and DEXJPUS are mapped above.
+	"T10Y2Y":          {unit: percent},
+	"T10Y3M":          {unit: percent},
+	"T10YIE":          {unit: percent},
+	"IRLTLT01JPM156N": {unit: percent},
+	"DTWEXBGS":        {unit: indexPoints},
 }
 
 // shiftDecimalText moves the decimal point of a plain decimal text n places right, on the text,

@@ -145,7 +145,7 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
 		case units != "Percent" && u == contracts.SeriesUnit("percent"):
 			fails = append(fails, fmt.Sprintf("%s: table says percent, recorded units %q", id, units))
-		case units != "Index" && u == indexPoints:
+		case !isIndexUnits(units) && u == indexPoints:
 			fails = append(fails, fmt.Sprintf("%s: table says index_points, recorded units %q", id, units))
 		case u == ccyAmount && !ccyTextMatchesShift(units, row.shift):
 			fails = append(fails, fmt.Sprintf("%s: ccy_amount shift %d does not match recorded units %q", id, row.shift, units))
@@ -160,7 +160,7 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 		if units == "Percent" && u != contracts.SeriesUnit("percent") {
 			fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
 		}
-		if units == "Index" && u != indexPoints {
+		if isIndexUnits(units) && u != indexPoints {
 			fails = append(fails, fmt.Sprintf("%s: recorded Index, table says %q", id, u))
 		}
 		if strings.HasSuffix(units, "of U.S. Dollars") && u != ccyAmount {
@@ -168,6 +168,12 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 		}
 	}
 	return fails
+}
+
+// isIndexUnits holds the two texts an index_points row may record: "Index" and the
+// trade-weighted dollar's "Index Jan 2006=100".
+func isIndexUnits(units string) bool {
+	return units == "Index" || units == "Index Jan 2006=100"
 }
 
 // ccyTextMatchesShift holds the two full texts a ccy_amount row may record.
@@ -443,5 +449,32 @@ func TestMapDEXJPUSValueAndMissing(t *testing.T) {
 	}
 	if got[1].Unit != jpyPerUsd || got[1].Value != nil || got[1].Status != "no_value" {
 		t.Errorf("missing point: %+v", got[1])
+	}
+}
+
+func TestMacroSeriesHaveUnitRows(t *testing.T) {
+	t.Parallel()
+	pub := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	body := []byte(`{"observations":[{"realtime_start":"2026-11-10","realtime_end":"2026-11-10","date":"2026-11-06","value":"1.25"}]}`)
+	want := map[string]contracts.SeriesUnit{
+		"DGS2":            percent,
+		"T10Y2Y":          percent,
+		"T10Y3M":          percent,
+		"T10YIE":          percent,
+		"IRLTLT01JPM156N": percent,
+		"DTWEXBGS":        indexPoints,
+		"DEXJPUS":         jpyPerUsd,
+	}
+	for id, unit := range want {
+		got, err := mapObservations(id, body, pub)
+		if err != nil || len(got) != 1 {
+			t.Fatalf("%s: %v %v", id, got, err)
+		}
+		if got[0].Unit != unit || got[0].Value == nil || *got[0].Value != 1.25 {
+			t.Errorf("%s: %+v", id, got[0])
+		}
+	}
+	if got, err := mapObservations("UNKNOWN9", body, pub); err == nil || got != nil {
+		t.Errorf("UNKNOWN9: got %v, err %v", got, err)
 	}
 }
