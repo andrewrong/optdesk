@@ -10,9 +10,10 @@ import (
 // payoff is the piecewise linear payoff at expiry (Decision 8): the corners are the strikes of
 // the legs plus a margin of 20 percent of the top strike on both sides (the low side stops
 // at zero), so at most 2 plus legs points. A covered call includes its shares at the basis.
-// An `other` unit has none: its legs need not share an expiry.
+// An `other` unit has none, and neither has a unit whose legs differ in expiry.
 func payoff(u unit) []compute.PayoffPoint {
-	if u.kind == kindOther || (u.kind == kindCovered && u.basis == nil) {
+	if u.kind == kindOther || (u.kind == kindCovered && u.basis == nil) ||
+		(len(u.legs) >= 2 && !sameExpiry(u)) {
 		return nil
 	}
 	top := u.legs[len(u.legs)-1].strike

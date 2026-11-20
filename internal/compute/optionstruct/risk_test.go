@@ -104,3 +104,80 @@ func TestJPYIsUnsupported(t *testing.T) {
 		t.Errorf("payoff = %v, want none", s.Payoff)
 	}
 }
+
+// unitOf builds a unit of the given kind from positions, legs ordered as recognise does.
+func unitOf(t *testing.T, kind string, ps ...compute.LedgerPosition) compute.Structure {
+	t.Helper()
+	u := unit{kind: kind}
+	for _, p := range ps {
+		l, ok := parseLeg(p)
+		if !ok {
+			t.Fatalf("leg %s does not parse", p.PositionID)
+		}
+		u.legs = append(u.legs, l)
+	}
+	sortLegs(u.legs)
+	return build("acct", u)
+}
+
+func wantFigures(t *testing.T, s compute.Structure, loss, gain, be compute.FigureValue) {
+	t.Helper()
+	wantFigure(t, "max loss", s.Figures.MaxLoss, loss)
+	wantFigure(t, "max gain", s.Figures.MaxGain, gain)
+	wantFigure(t, "break even", s.Figures.BreakEven, be)
+}
+
+func TestPayoffFiguresCreditVertical(t *testing.T) {
+	t.Parallel()
+	put := unitOf(t, kindPutSpread, pos("s1", "P", "50", "-1", "1.50"), pos("b1", "P", "45", "1", "0.50"))
+	wantFigures(t, put, compute.FigureValue{Value: "-400.0000"}, compute.FigureValue{Value: "100.0000"}, compute.FigureValue{Value: "49.0000"})
+	call := unitOf(t, kindCallSpread, pos("s1", "C", "100", "-1", "2.00"), pos("b1", "C", "105", "1", "0.80"))
+	wantFigures(t, call, compute.FigureValue{Value: "-380.0000"}, compute.FigureValue{Value: "120.0000"}, compute.FigureValue{Value: "101.2000"})
+}
+
+func TestPayoffFiguresFourLegs(t *testing.T) {
+	t.Parallel()
+	s := unitOf(t, "iron_condor",
+		pos("a", "P", "90", "1", "0.50"), pos("b", "P", "95", "-1", "1.50"),
+		pos("c", "C", "105", "-1", "1.50"), pos("d", "C", "110", "1", "0.50"))
+	wantFigures(t, s, compute.FigureValue{Value: "-300.0000"}, compute.FigureValue{Value: "200.0000"}, noRule)
+}
+
+func TestPayoffFiguresSlices(t *testing.T) {
+	t.Parallel()
+	one := unitOf(t, kindPutSpread, pos("s1", "P", "50", "-3", "1.50"), pos("b1", "P", "45", "3", "0.50"))
+	three := unitOf(t, kindPutSpread, pos("s1", "P", "50", "-1", "1.50"), pos("s2", "P", "50", "-1", "1.50"),
+		pos("s3", "P", "50", "-1", "1.50"), pos("b1", "P", "45", "3", "0.50"))
+	wantFigures(t, three, one.Figures.MaxLoss, one.Figures.MaxGain, one.Figures.BreakEven)
+	wantFigure(t, "max loss", three.Figures.MaxLoss, compute.FigureValue{Value: "-1200.0000"})
+}
+
+func TestPayoffFiguresUnbounded(t *testing.T) {
+	t.Parallel()
+	long := unitOf(t, "long_straddle", pos("p", "P", "100", "1", "3.00"), pos("c", "C", "100", "1", "2.00"))
+	wantFigure(t, "straddle gain", long.Figures.MaxGain, noRule)
+	wantFigure(t, "straddle loss", long.Figures.MaxLoss, compute.FigureValue{Value: "-500.0000"})
+	short := unitOf(t, "short_strangle", pos("p", "P", "95", "-1", "1.00"), pos("c", "C", "105", "-1", "1.00"))
+	wantFigure(t, "strangle loss", short.Figures.MaxLoss, noRule)
+	wantFigure(t, "strangle gain", short.Figures.MaxGain, compute.FigureValue{Value: "200.0000"})
+}
+
+func TestPayoffFiguresOtherKeepsNoRule(t *testing.T) {
+	t.Parallel()
+	s := unitOf(t, kindOther, pos("s1", "P", "50", "-1", "1.50"), pos("b1", "P", "45", "1", "0.50"))
+	wantFigures(t, s, noRule, noRule, noRule)
+	if len(s.Payoff) != 0 {
+		t.Errorf("payoff = %v, want none", s.Payoff)
+	}
+}
+
+func TestPayoffFiguresCalendar(t *testing.T) {
+	t.Parallel()
+	far := pos("b1", "P", "50", "1", "2.00")
+	far.Expiry = "2027-01-15"
+	s := unitOf(t, "calendar_spread", pos("s1", "P", "50", "-1", "1.50"), far)
+	wantFigures(t, s, noRule, noRule, noRule)
+	if len(s.Payoff) != 0 {
+		t.Errorf("payoff = %v, want none", s.Payoff)
+	}
+}

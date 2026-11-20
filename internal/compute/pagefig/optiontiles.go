@@ -34,7 +34,7 @@ func (optionTiles) Tiles(in blockapi.OptionTilesIn) blockapi.OptionTilesOut {
 			out.Unreadable++
 			continue
 		}
-		if short && s.Kind != "long_put" && s.Kind != "long_call" {
+		if short && s.Kind != "long_put" && s.Kind != "long_call" && p.Sign() > 0 {
 			premium.Add(premium, p)
 		}
 		if s.Kind == "naked_call" {
@@ -51,11 +51,7 @@ func (optionTiles) Tiles(in blockapi.OptionTilesIn) blockapi.OptionTilesOut {
 		out.OpenPremiumGap, out.MaxLossGap = "unsupported_currency", "unsupported_currency"
 		return out
 	}
-	if premium.Sign() < 0 {
-		out.OpenPremiumGap = "no_data"
-	} else {
-		out.OpenPremium = usdText(premium)
-	}
+	out.OpenPremium = usdText(premium)
 	if out.Uncovered == 0 || numbered > 0 {
 		out.MaxLossUsd = usdText(new(big.Rat).Abs(loss))
 	}

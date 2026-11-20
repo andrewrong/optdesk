@@ -463,11 +463,20 @@ func TestNoStoredEventsIsNoDataGap(t *testing.T) {
 	}
 }
 
-func TestEventsReaderErrorIsBuildError(t *testing.T) {
+func TestEventsReadErrorIsGap(t *testing.T) {
 	t.Parallel()
-	boom := errors.New("boom")
-	if _, err := buildEvents(t, &fakeEvents{err: boom}); !errors.Is(err, boom) {
-		t.Fatalf("err = %v", err)
+	b, err := buildEvents(t, &fakeEvents{err: errors.New("boom")})
+	if err != nil {
+		t.Fatalf("Build err = %v", err)
+	}
+	validate(t, b)
+	card := decode(t, b)["card"].(map[string]any)
+	if ev := card["events"].([]any); len(ev) != 0 {
+		t.Fatalf("events = %v", ev)
+	}
+	gaps := card["gaps"].([]any)
+	if len(gaps) != 1 || gaps[0].(map[string]any)["reason"] != "no_reader" {
+		t.Fatalf("gaps = %v", gaps)
 	}
 }
 
