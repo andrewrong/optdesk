@@ -192,7 +192,7 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 			return r.j.noValue("no currency in watch entry", u)
 		}
 	}
-	price, terr := r.price(ctx, u)
+	price, own, terr := r.price(ctx, u)
 	if terr != nil {
 		return terr
 	}
@@ -225,7 +225,7 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	var chunkErr contracts.TypedError
 	for i := 0; i < len(listed); i += r.j.m.Chunk {
 		end := min(i+r.j.m.Chunk, len(listed))
-		if chunkErr = r.chunk(ctx, u, undID, price, capture, listed[i:end], res, &tl); chunkErr != nil {
+		if chunkErr = r.chunk(ctx, u, undID, price, own, capture, listed[i:end], res, &tl); chunkErr != nil {
 			break
 		}
 	}
@@ -246,34 +246,36 @@ func (r *runState) writeReasons(ctx context.Context, k contracts.ExpectedKey, tl
 }
 
 // price is Last of the underlying's snapshot, else Close, else UndPrice, else the stored spot of an index row, else the
-// mid of a positive Bid and Ask; none is Retryable and its text names the quote status and the absent fields.
-func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.TypedError) {
+// mid of a positive Bid and Ask; none is Retryable and its text names the quote status and the absent fields. own is
+// true when the price is the stock's own (Last or Close of the snapshot): only such a price overrides the option quote's
+// UndPrice on a row.
+func (r *runState) price(ctx context.Context, u underlying) (price float64, own bool, terr contracts.TypedError) {
 	if terr := r.checkBudget(); terr != nil {
-		return 0, terr
+		return 0, false, terr
 	}
 	qs, err := r.j.b.Snapshot(ctx, broker.KindSnapshot, []broker.Contract{u.contract()})
 	if err != nil {
-		return 0, asTyped(err, contracts.Permanent)
+		return 0, false, asTyped(err, contracts.Permanent)
 	}
 	var q *broker.Quote
 	if len(qs) > 0 {
 		q = &qs[0]
-		for _, p := range []*float64{q.Last, q.Close, q.UndPrice} {
-			if p != nil && *p > 0 {
-				return *p, nil
+		for i, p := range []*float64{q.Last, q.Close, q.UndPrice} {
+			if positive(p) {
+				return *p, i < 2, nil
 			}
 		}
 	}
 	if row, ok := r.j.m.indexOf(u.Symbol); ok {
 		if v, ok := r.storedSpot(ctx, row); ok {
-			return v, nil
+			return v, false, nil
 		}
 	}
 	if q != nil && positive(q.Bid) && positive(q.Ask) {
-		return (*q.Bid + *q.Ask) / 2, nil
+		return (*q.Bid + *q.Ask) / 2, false, nil
 	}
 	if q == nil {
-		return 0, newErr(contracts.Retryable, "no price of %s: no quote returned", u.Symbol)
+		return 0, false, newErr(contracts.Retryable, "no price of %s: no quote returned", u.Symbol)
 	}
 	var absent []string
 	for _, f := range []struct {
@@ -284,7 +286,7 @@ func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.
 			absent = append(absent, f.name)
 		}
 	}
-	return 0, newErr(contracts.Retryable, "no price of %s: quote status %d, absent %s", u.Symbol, q.Status,
+	return 0, false, newErr(contracts.Retryable, "no price of %s: quote status %d, absent %s", u.Symbol, q.Status,
 		strings.Join(absent, ","))
 }
 
@@ -389,8 +391,9 @@ func (r *runState) underlyingID(ctx context.Context, u underlying) (int64, contr
 	return id, nil
 }
 
-// chunk resolves the instruments of cs, asks their quotes and writes the rows; price fills underlying_price where a quote has none.
-func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price float64, capture jobs.CaptureID, cs []broker.Contract,
+// chunk resolves the instruments of cs, asks their quotes and writes the rows; price is the row's underlying_price
+// (see withUnderlyingPrice for own).
+func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price float64, own bool, capture jobs.CaptureID, cs []broker.Contract,
 	res *contracts.JobResult, tl *tally) contracts.TypedError {
 	ids := make([]int64, len(cs))
 	for i, c := range cs {
@@ -423,7 +426,7 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price f
 	rows := make([]contracts.OptionEod, len(qs))
 	usable := 0
 	for i, q := range qs {
-		rows[i] = withUnderlyingPrice(mapRow(q, ids[i], undID, r.dayTime, capture, u.Currency), price)
+		rows[i] = withUnderlyingPrice(mapRow(q, ids[i], undID, r.dayTime, capture, u.Currency), price, own)
 		if rows[i].Status == statusOK {
 			usable++
 		}

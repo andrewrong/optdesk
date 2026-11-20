@@ -553,7 +553,7 @@ func TestRunStoresFetchedUnderlyingPrice(t *testing.T) {
 		name       string
 		noUndPrice bool
 		want       float64
-	}{{"quote without UndPrice takes the fetched price", true, 100}, {"quote with UndPrice keeps its own", false, 100}} {
+	}{{"quote without UndPrice takes the fetched price", true, 101}, {"quote with UndPrice yields to the stock price", false, 101}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			r := newRig(t, "2026-11-06 17:00")
@@ -563,9 +563,6 @@ func TestRunStoresFetchedUnderlyingPrice(t *testing.T) {
 				t.Fatalf("%+v", res)
 			}
 			want := tc.want
-			if tc.noUndPrice {
-				want = 101
-			}
 			for i, row := range r.w.all() {
 				if row.UnderlyingPrice == nil || *row.UnderlyingPrice != want {
 					t.Fatalf("row %d underlying_price %v, want %v", i, row.UnderlyingPrice, want)
@@ -769,7 +766,7 @@ func TestChunkResolvesTwoSeriesOfOneStrike(t *testing.T) {
 	weekly := std
 	weekly.TradingClass, weekly.ConID = "TESTW", 951
 	var res contracts.JobResult
-	terr := rs.chunk(context.Background(), u, 1, 100, jobs.CaptureID{}, []broker.Contract{std, weekly}, &res, &tally{})
+	terr := rs.chunk(context.Background(), u, 1, 100, false, jobs.CaptureID{}, []broker.Contract{std, weekly}, &res, &tally{})
 	if terr != nil {
 		t.Fatal(terr)
 	}
