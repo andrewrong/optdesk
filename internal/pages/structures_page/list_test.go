@@ -342,7 +342,7 @@ func TestUnidentifiedHasReason(t *testing.T) {
 		legs []compute.StructureLeg
 		want string
 	}{
-		{"opposite sides at different expiries", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("P", "2027-01-15", "1")}, reasonOppositeSidesExpiries},
+		{"opposite sides at different expiries has no reason", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("P", "2027-01-15", "1")}, ""},
 		{"put and call at one expiry", []compute.StructureLeg{leg("P", "2026-12-18", "-1"), leg("C", "2026-12-18", "-1")}, reasonPutCallOneExpiry},
 	}
 	for _, tc := range cases {
@@ -351,6 +351,12 @@ func TestUnidentifiedHasReason(t *testing.T) {
 			res := compute.StructureResult{Other: []compute.Structure{{ID: "main:T9:1", Underlying: "AMD", Kind: "other", Legs: tc.legs}}}
 			m := decode(t, newRig(res).build(t, "main"))
 			note := m["note"].(string)
+			if tc.want == "" {
+				if strings.Contains(note, "AMD:") {
+					t.Fatalf("note = %q, want no reason", note)
+				}
+				return
+			}
 			if !strings.Contains(note, "AMD: "+tc.want) {
 				t.Fatalf("note = %q, want reason %q", note, tc.want)
 			}
@@ -568,5 +574,63 @@ func TestSentenceAndNoteAreChinese(t *testing.T) {
 				t.Fatalf("%s holds %q: %q", name, old, s)
 			}
 		}
+	}
+}
+
+func TestListNewKindLabels(t *testing.T) {
+	t.Parallel()
+	want := map[string]string{
+		"put_debit_spread": "Put debit spread", "call_debit_spread": "Call debit spread",
+		"calendar_spread": "Calendar spread", "diagonal_spread": "Diagonal spread",
+		"long_straddle": "Long straddle", "short_straddle": "Short straddle",
+		"long_strangle": "Long strangle", "short_strangle": "Short strangle",
+		"iron_condor": "Iron condor", "reverse_iron_condor": "Reverse iron condor", "collar": "Collar",
+	}
+	var res compute.StructureResult
+	for kind := range want {
+		res.Structures = append(res.Structures, compute.Structure{ID: "main:" + kind, Underlying: "X", Kind: kind, Currency: "USD",
+			Legs: []compute.StructureLeg{{Right: "P", Expiry: "2026-12-18"}}})
+	}
+	m := decode(t, newRig(res).build(t, "main"))
+	got := map[string]string{}
+	for _, i := range []int{0, 1} {
+		for _, r := range groupRows(t, m, i) {
+			got[strings.TrimPrefix(r["href"].(string), "/options/structures/main:")] = r["kind_text"].(string)
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("rows = %v", got)
+	}
+	for kind, label := range want {
+		if got[kind] != label {
+			t.Errorf("%s: kind_text = %q, want %q", kind, got[kind], label)
+		}
+	}
+}
+
+func TestLinkOfRemainderRow(t *testing.T) {
+	t.Parallel()
+	const id = "acct:p1#2"
+	href := hrefOf(id)
+	if href != "/options/structures/acct:p1%232" && href != "/options/structures/acct%3Ap1%232" {
+		t.Fatalf("href = %q, # not escaped", href)
+	}
+	if strings.Contains(href, "#") {
+		t.Fatalf("href = %q holds a raw #", href)
+	}
+	path, err := url.PathUnescape(strings.TrimPrefix(href, routePrefix))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := compute.StructureResult{Structures: []compute.Structure{{ID: id, Alias: "acct", Underlying: "MSFT", Kind: "short_put",
+		Currency: "USD", Legs: []compute.StructureLeg{{Right: "P", Expiry: "2026-12-18", Quantity: "-1"}}}}}
+	r := newRig(res)
+	r.cfg.Aliases = []string{"acct"}
+	b, err := buildDetail(context.Background(), r.cfg, "acct", path, testDay, testAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decode(t, b)["title"]; got != "MSFT Short put" {
+		t.Fatalf("title = %v, want the structure found by %q", got, path)
 	}
 }

@@ -209,7 +209,11 @@ func (b *builder) fill(vm *detailModel) {
 		vm.Title = kind
 	}
 	expiry := earliestExpiry(s)
-	vm.Subline = clip(kind + " · expiry " + expiry + " · account " + s.Alias)
+	vm.Subline = kind + " · expiry " + expiry + " · account " + s.Alias
+	if g := kindGlosses[s.Kind]; g != "" {
+		vm.Subline += " · " + g
+	}
+	vm.Subline = clip(vm.Subline)
 	vm.Tiles = tiles{
 		PnL:       tile{Label: "Current P&L", Figure: b.note(b.money(s.Figures.UnrealizedPnL)), Caption: "Valued at mid price"},
 		MaxGain:   tile{Label: "Max profit", Figure: b.note(b.money(s.Figures.MaxGain)), Caption: "At expiry"},

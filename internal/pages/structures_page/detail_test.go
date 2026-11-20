@@ -275,3 +275,28 @@ func TestOutputValidatesAgainstSchema(t *testing.T) {
 		t.Errorf("run_status = %v, gaps = %v", m["run_status"], m["gaps"])
 	}
 }
+
+func TestDetailKindGloss(t *testing.T) {
+	t.Parallel()
+	mk := func(kind string, qty ...string) compute.StructureResult {
+		var legs []compute.StructureLeg
+		for i, q := range qty {
+			legs = append(legs, compute.StructureLeg{PositionID: "main:T1:" + string(rune('1'+i)), Right: "P", Strike: "300",
+				Expiry: "2026-12-18", Quantity: q, Multiplier: "100"})
+		}
+		return compute.StructureResult{Structures: []compute.Structure{{ID: "main:T1:1", Alias: "main", Underlying: "MSFT",
+			Currency: "USD", Kind: kind, Legs: legs}}}
+	}
+	spread := readFixtureless(mk("put_debit_spread", "1", "-1")).build(t, "main:T1:1", false)
+	sub, _ := spread["subline"].(string)
+	const head = "Put debit spread · expiry 2026-12-18 · account main · "
+	if len(sub) <= len(head) || sub[:len(head)] != head {
+		t.Fatalf("subline = %q, want the gloss after %q", sub, head)
+	}
+	short := readFixtureless(mk("short_put", "-1")).build(t, "main:T1:1", false)
+	if got := short["subline"]; got != "Short put · expiry 2026-12-18 · account main" {
+		t.Fatalf("subline = %v, want no gloss", got)
+	}
+}
+
+func readFixtureless(res compute.StructureResult) fixture { return fixture{Result: res} }

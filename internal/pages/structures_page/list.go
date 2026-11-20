@@ -25,6 +25,11 @@ const (
 var kindTexts = map[string]string{
 	"short_put": "Short put", "covered_call": "Covered call", "naked_call": "Naked call",
 	"put_spread": "Put spread", "call_spread": "Call spread", "long_put": "Long put", "long_call": "Long call",
+	"put_debit_spread": "Put debit spread", "call_debit_spread": "Call debit spread",
+	"calendar_spread": "Calendar spread", "diagonal_spread": "Diagonal spread",
+	"long_straddle": "Long straddle", "short_straddle": "Short straddle",
+	"long_strangle": "Long strangle", "short_strangle": "Short strangle",
+	"iron_condor": "Iron condor", "reverse_iron_condor": "Reverse iron condor", "collar": "Collar",
 	"other": "Unidentified",
 }
 
@@ -235,19 +240,10 @@ func otherReason(legs []compute.StructureLeg) string {
 		return ""
 	}
 	rights, expiries := map[string]bool{}, map[string]bool{}
-	long, short := false, false
 	for _, l := range legs {
 		rights[l.Right], expiries[l.Expiry] = true, true
-		if strings.HasPrefix(l.Quantity, "-") {
-			short = true
-		} else {
-			long = true
-		}
 	}
-	switch {
-	case len(rights) == 1 && len(expiries) > 1 && long && short:
-		return reasonOppositeSidesExpiries
-	case len(rights) == 2 && rights["P"] && rights["C"] && len(expiries) == 1:
+	if len(rights) == 2 && rights["P"] && rights["C"] && len(expiries) == 1 {
 		return reasonPutCallOneExpiry
 	}
 	return ""
