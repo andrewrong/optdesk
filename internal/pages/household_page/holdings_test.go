@@ -101,8 +101,11 @@ func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 		t.Fatalf("run_status = %v", m["run_status"])
 	}
 	wantReads := []string{"main 2026-11-10", "main 2026-11-10", "main 2026-11-09"}
-	if !slices.Equal(acc.asked, wantReads) || !slices.Equal(marks.asks, wantReads) {
-		t.Fatalf("reads: %v %v, want %v", acc.asked, marks.asks, wantReads)
+	// The option has no mark on any day: five earlier days are tried for it after the capture day.
+	wantMarkReads := []string{"main 2026-11-10", "main 2026-11-09", "main 2026-11-08", "main 2026-11-07",
+		"main 2026-11-06", "main 2026-11-05", "main 2026-11-10", "main 2026-11-09"}
+	if !slices.Equal(acc.asked, wantReads) || !slices.Equal(marks.asks, wantMarkReads) {
+		t.Fatalf("reads: %v %v, want %v %v", acc.asked, marks.asks, wantReads, wantMarkReads)
 	}
 	golden := filepath.Join("testdata", "holdings.golden.json")
 	if os.Getenv("UPDATE_GOLDEN") != "" {
@@ -586,5 +589,17 @@ func TestMoversUseEarlierMark(t *testing.T) {
 	}
 	if got := rowNames(m, "composition"); !slices.Equal(got, []string{"AAA"}) {
 		t.Fatalf("composition rows = %v", got)
+	}
+}
+
+func TestOptionFallsBackToEarlierMark(t *testing.T) {
+	t.Parallel()
+	opt := stock("AAA 250C", 9, "1", "5")
+	opt.SecType = "OPT"
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-09": {markOf(9, "6")}}}
+	c, _ := holdingsConfig([]store.Position{opt}, marks)
+	m, _ := build(t, c, "main")
+	if !slices.Contains(noteTexts(m), earlierNote) {
+		t.Fatalf("notes = %v, want the earlier-mark line for the option", noteTexts(m))
 	}
 }

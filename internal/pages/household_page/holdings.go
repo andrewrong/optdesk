@@ -76,7 +76,7 @@ func (c Config) readHeld(ctx context.Context, alias string, cp capture) (held, e
 		if err != nil {
 			return h, fmt.Errorf("household_page: read marks: %w", err)
 		}
-		jpy = h.addMarks(marks, func(int64) bool { return true }) || jpy
+		jpy = h.addMarks(marks) || jpy
 		earlierJPY, err := c.earlierMarks(ctx, alias, cp.day, &h)
 		if err != nil {
 			return h, err
@@ -92,40 +92,29 @@ func (c Config) readHeld(ctx context.Context, alias string, cp capture) (held, e
 }
 
 // addMarks takes the price of every mark that has one and whose position has none yet; it reports
-// whether a mark is in yen. only says which conids may take a price.
-func (h *held) addMarks(marks []mark.PositionMark, only func(conID int64) bool) (jpy bool) {
+// whether a mark is in yen.
+func (h *held) addMarks(marks []mark.PositionMark) (jpy bool) {
 	for _, m := range marks {
 		jpy = jpy || m.Currency == currencyJPY
-		if _, ok := h.price[m.ConID]; !ok && only(m.ConID) && m.Basis != mark.BasisNone && m.Price != "" {
+		if _, ok := h.price[m.ConID]; !ok && m.Basis != mark.BasisNone && m.Price != "" {
 			h.price[m.ConID] = m.Price
 		}
 	}
 	return jpy
 }
 
-// isStock is true for the conid of a stock position.
-func (h held) isStock(conID int64) bool {
-	for _, p := range h.positions {
-		if p.ConID == conID && p.SecType == secTypeStock {
-			return true
-		}
-	}
-	return false
-}
-
-// unpriced is the number of stock positions with no price yet; an option is never looked up on an
-// earlier day, its figures stay as the capture day left them.
+// unpriced is the number of positions with no price yet.
 func (h held) unpriced() int {
 	n := 0
 	for _, p := range h.positions {
-		if _, ok := h.price[p.ConID]; !ok && p.SecType == secTypeStock {
+		if _, ok := h.price[p.ConID]; !ok {
 			n++
 		}
 	}
 	return n
 }
 
-// earlierMarks prices the stock positions the capture day left without a price from the marks of the
+// earlierMarks prices the positions the capture day left without a price from the marks of the
 // calendar days before it, one day at a time, up to markFallbackDays back; the newest mark of a
 // position wins. It reports whether a mark read is in yen.
 func (c Config) earlierMarks(ctx context.Context, alias, day string, h *held) (jpy bool, err error) {
@@ -140,7 +129,7 @@ func (c Config) earlierMarks(ctx context.Context, alias, day string, h *held) (j
 		if err != nil {
 			return jpy, fmt.Errorf("household_page: read marks: %w", err)
 		}
-		jpy = h.addMarks(marks, h.isStock) || jpy
+		jpy = h.addMarks(marks) || jpy
 		if n := before - h.unpriced(); n > 0 {
 			h.earlier = append(h.earlier, earlierDay{day: ed, count: n})
 		}
