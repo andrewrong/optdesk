@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-13
-Revision: 2
+Revision: 3 (amendment 2026-11-20: Decisions 8 and 13 to 16, entries 5 to 7)
 
 Source: owner 2026-11-11 "4. a" (the implied-minus-realised cell of the market page is built); owner 2026-11-13 "advisor settles the definitions first". The definitions are section A of the advisor's proposal of 2026-11-13; this design takes them as they are. Where the code or the coordinator's word differs from one, Doubts says so (the age limit, Doubt 1).
 
@@ -37,21 +37,34 @@ Decisions 1 to 8 are the advisor's definitions A1 to A7 and A9, in his order; 9 
 5. Cell (market page `iv_minus_rv20`, home market `IVMinusRV20`): the newest stored `market.iv_rv20` reading of the index (the page's own reading function, newest day then rev). If its state is `missing_input` with code 3, the cell is Gap `stale_input`, naming the `data_day` when there is one (the pattern of `failure()`); any other missing state, or an ok reading without a usable `data_day`, is Gap `missing_input`; no reading in the window is Gap `no_data`. An ok reading whose `data_day` is more than 5 calendar days before the page's day is Gap `stale_input` naming that day. Otherwise the value is the stored fraction times 100 rounded half-even to one place (`shiftRound(v, 2, 1)`), unit `vol_points`, `text` signed (`+3.2`, `-1.4`, `0.0`; the `value` number has no plus, `3.2`). When `data_day` is not the page's day the text names it (`+3.2 (11-12)`), because through the US night the page shows the figure of D-1. "The page's day" is the day Build is called for (Doubt 2). Each page parses `data_day` itself; `home_market` gets its own parser.
 6. No rich or cheap threshold, no colour, no word: plan v2.5 gives none and no document in the repo does. The cell is descriptive.
 7. Named limits (Left out and the register `excludes`): the implied side looks 30 calendar days forward, the realised side 20 sessions back; the figure is not a variance premium and not IBKR's index implied volatility (`market.index_iv` and `market.iv_ibkr` stay as they are). N225 stays Gap `not_built`.
-8. The `iv` cell of the same row (it reads `market.iv_ibkr`, empty for an index) is not changed here.
+8. The `iv` cell of the same row (it reads `market.iv_ibkr`, empty for an index) is not changed here. The home card shows the volatility index of the row in a separate column `Index IV` (Decision 13), so the row shows both terms of the difference without the `iv` cell changing meaning.
 9. Where: computed and stored in `compute_figures` in a new step in a new file; the pages read the stored reading and compute nothing. The manifest gains `iv_rv20 = "market.iv_rv20"` and a table of the three name and series pairs (names and FRED ids only). `Plan` appends the three keys after the rv20 keys. `Run` gives the key `(market.iv_rv20, underlying, <name>)` its own `case` before `case known && kind == kindUnderlying` (`job.go:264`), the way `isRv20Key` has one, so it is not looked up among the option-chain underlyings (where it would fail `Retryable` with "has no option rows"). The step reads the series points, the stored rv20 readings of the name over `lookbackDays(rule)` days and the newest session day S not after D (its own lookup, as `runMarket` does; `steps.go` is not edited); it builds the two parts as `compute.Figure` (ok, `DataDay` D', the series value divided by 100 and the stored rv20 value) and calls `Combine("market.iv_rv20", parts, D)`; no part, or no common day, is `r.missing(t, compute.NoInput, "")`. It stores through `r.store` with the hash of the input lines (series points, and the rv20 value, state and `data_day`), the inputs `obs.series_point` and `readings.reading`, and `volParams` (`data_day`, `observations`). The step does not depend on the rv20 key of the same run, because keys run alone.
 10. Retry: the key ends `Retryable` whenever S is known and the stored figure's `data_day` is before S, with or without a series point and with or without an rv20 reading (the key cannot know whether the rv20 key has run). Within the 10-minute window the key runs again; FRED publishes after it, so normally the key is `expired` and the figure of D is stored by the run of D+1, whose D' is D: the cell lags one session and names the day (Doubt 5). A whole-job run of a world with no FRED point of S therefore returns a `Retryable` error; the tests that expect another first error or none are updated (entry 2).
 11. Rule and register content (entry 1): the `market.iv_rv20` entry of `docs/conventions/register.toml` (formula of Decision 2, inputs, unit decimal scale 6, `excludes` of Decision 7, `gap_text` of Decision 4, `implemented_by` `internal/compute/figures.(*calc).Combine`, `source_hash` the value `TestHashesMatchSource` reports), its line in `internal/compute/rules/rules.json` with the same hash, and a case in `internal/compute/own/testdata/stored_text.json` (`stored_text_test.go:69` fails for a rule without a case). The three files and the test land in one pull request (`TestRulesMatchRegister`, `TestNoPendingForGoIds`).
 12. There is no owner step: rules table, register and stored-text case are ordinary files of an ordinary entry, as in `market-rv20.md` issue 3 and `vol-edge.md` entry 1.
 
+Amendment of 2026-11-20 (owner UI doc row 1, ask optdesk-5479; the advisor decided the result the same day). The goal: the market index table of the home card gains an `Index IV` column, filled from the stored VIX, VXN and RVX readings, with its source and day. Decisions 13 to 16.
+
+13. Column and cell. The index table of the card (schema `page.market_summary.v3`) gains an optional `index_table.index_iv` (`{label, hint}`, both strings of 1 to 200 characters) and every index row an optional `index_iv` figure (a `VolPointsFigure` or a Gap). `index_iv` is not in the schema's `required` list and `columns` stays four names, so every payload and fixture written before stays valid. The column stands between `Implied volatility` and `20-day realised`; its label is `Index IV`. The map is fixed in the builder: SPX to `VIXCLS` (shown as VIX), NDX to `VXNCLS` (VXN), RUT to `RVXCLS` (RVX). The cell is built in `buildRow` (`internal/pages/home_market/member.go`), the one function that builds the `IVMinusRV20` cell, from the stored series points of the mapped series: the newest point not after the page day D, with the `storedPoints` rule of `vol_indices` (one point per observation date, the newest realtime start not after D, a missing value dropped). `Build` reads the three series once, before the rows, and gives the points to `buildRow` and to the `vol_indices` builder; no second read.
+    The value is the point as vol points (18.5 is 18.5 percent, the same unit as `iv` and `rv20`), one decimal, half even, no sign, `unit` `vol_points`. The `source` of the figure is the text `FRED <series id> <MM-DD>` (for example `FRED VIXCLS 11-19`), the series id and the observation date of the point, always written, also when the date is D. The web shows `source` next to the figure (the DataTable `source` badge) and nothing else of it.
+    Gaps, one per cell, copied into `gaps` by `collectGaps` like the other cells: no stored point, `no_data`; newest point more than `freshDays` (4) before D, `stale` with the data day in the text; a negative point, `missing_input`; a name that is not in the map, `no_data` with the text `<name> index IV: no volatility index is mapped (SPX, NDX and RUT only)`, shown as the dash with its reason. The card has rows for SPX, NDX and RUT only (`indexNames`), so the last case is a guard that no row reaches today.
+14. The cell has its own day. Decision 3 gives the Difference cell a same-day rule (implied and realised of one `data_day`); the `Index IV` cell shows the newest point whatever the day of the Difference cell is. The two days may differ by a day (FRED publishes late); each cell names its own (`source` here, the bracket day in the Difference cell). No cell is made to agree with the other, and the Difference cell does not read the new cell. A Gap of the new cell does not change `run_status` and does not count in `failed`.
+15. Hint. The column hint is written by the producer in Chinese, one sentence, a constant of `strings.go`: `指数隐含波动率：标普500用VIX，纳斯达克100用VXN，罗素2000用RVX，取FRED已存收盘值（不是期权实时报价）；标签里是数据日。` The web passes `index_iv.label` and `index_iv.hint` to the column and writes no text of its own. The web computes nothing: it picks the column when `index_table.index_iv` is present and shows each cell as sent.
+16. Not changed: the `Implied volatility` column and `market.iv_ibkr`, the Difference cell and its rules (Decisions 1 to 7; the open issue #3422 changes `newestReading` for it and entry 6 comes after it), `vol_indices`, `say`, the golden `say` text, the market page, the stored figures, jobs and rules.
+
 ## Modules
 
 No row of `docs/design/modules.md` changes. Entry 1 is a judged two-module entry, compute plus docs, and the (interface) entry (its rule and register entry are what the others read by id) (`internal/compute/**` for `rules.json`, `rules_test.go` and `own/testdata/stored_text.json`; `docs/**` for `register.toml`), because the register entry and its rule row must be one pull request. Entry 2 is jobs (`internal/jobs/**`, `docs/contracts/jobs/**`); entries 3 and 4 are pages (`internal/pages/**`, `docs/contracts/pages.md`). `cmd/ot` is not edited (the manifest is embedded; `wire.go` at 793 of 800 is untouched).
+
+Amendment (entries 5 to 7): three modules, contracts (`contracts/schemas/page.market_summary.v3.json`, `web/src/generated/**`, `docs/contracts/page-schemas.md`, `internal/contracts/**`), pages (`internal/pages/home_market/**`) and web (`web/**`). No row of `docs/design/modules.md` changes. Entry 5 is the (interface) entry: the schema is what entries 6 and 7 read, so it lands first.
 
 ## Interface
 
 One shared item changes: entry 1 adds the rule `market.iv_rv20` to the rules table and its register entry, which entries 2, 3 and 4 read by id (entry 2 through `findRules`, entry 3 through `ids_test.go`, entry 4 by name only). Entry 1 is marked (interface) and lands before them. No Go declaration changes: `compute.Figures.Combine` (`internal/compute/api.go`), `computefigures.ComputeStores`, `internal/jobs/api.go` and `internal/pages/api.go` keep their declarations.
 
 `Contracts: unchanged` (no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto` changes; the pages already declare `iv_minus_rv20` as a figure or a gap).
+
+Amendment: one shared item changes, the schema `page.market_summary.v3` (and with it the generated types of `market_summary.v3`, `home_page.v2` and `home_page.v3`, which embed it by `$ref`): `IndexTable.index_iv` and `IndexRow.index_iv`, both optional (Decision 13). `Contracts: changed` for entry 5 (a file under `contracts/schemas` changes); entries 6 and 7 are `Contracts: unchanged`. No Go declaration changes.
 
 ## Issues
 
@@ -112,14 +125,64 @@ Acceptance:
 5. A Gap of this cell does not change `run_status` (the `ok` and `partial` cases of `member_test.go` keep their expectations); `purity_test.go` is unchanged.
 6. `git diff --name-only BASE` lists only paths of the Files line.
 
-## Checked by CI
+### 5 index-iv-column-schema (interface)
+
+Module: contracts. Size: S.
+Order: none (the three entries of this amendment come after entry 5; entries 1 to 4 have landed).
+Files: `contracts/schemas/page.market_summary.v3.json`, `web/src/generated/market_summary.v3.ts`, `web/src/generated/home_page.v2.ts`, `web/src/generated/home_page.v3.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/pagev3_test.go`
+Design: docs/design/market-iv-rv20.md#decisions (13, 15)
+Acceptance:
+1. `page.market_summary.v3.json` has `IndexRow.properties.index_iv` (a `oneOf` of `VolPointsFigure` and `common.v2.json#/$defs/Gap`) and `IndexTable.properties.index_iv` (an object with `label` and `hint`, strings of 1 to 200 characters, `additionalProperties` false, both required); neither is in the `required` list of its object and `IndexTable.columns` keeps `minItems` and `maxItems` 4.
+2. `web/src/generated/market_summary.v3.ts`, `home_page.v2.ts` and `home_page.v3.ts` are regenerated with `pnpm generate:types` (not edited by hand) and hold `index_iv?` on the row and the table.
+3. `docs/contracts/page-schemas.md` names the two optional fields in its v3 line.
+4. `internal/contracts/pagev3_test.go` has `TestV3IndexIvOptional` (new): the minimal v3 instance without the fields validates, with a figure row and a table object it validates, and with a table object without `hint` it does not.
+5. No other schema file, no fixture and no file outside the Files line changes.
+
+### 6 index-iv-column-home-market
+
+Module: pages. Size: M.
+Order: after 5; Depends: #3422 (open; it rewrites `newestReading` in `member.go` and its tests, the same files).
+Files: `internal/pages/home_market/member.go`, `internal/pages/home_market/indexiv.go`, `internal/pages/home_market/indexiv_test.go`, `internal/pages/home_market/strings.go`, `internal/pages/home_market/member_test.go`, `internal/pages/home_market/testdata/ok.golden.json`
+Design: docs/design/market-iv-rv20.md#decisions (13, 14, 15, 16)
+Acceptance:
+1. `indexiv.go` (new) declares the map `indexVolSeries` (SPX to `VIXCLS`, NDX to `VXNCLS`, RUT to `RVXCLS`) and `indexIvCell(name string, pts []point, d time.Time) any`; `volPoints` in `member.go` gains `Source string` with the tag `json:"source,omitempty"`.
+2. `buildRow` sets `IndexIV` of `indexRow` (tag `json:"index_iv"`) through `indexIvCell`, in the same function that sets `IVMinusRV20`; `Build` reads the three series with `storedPoints` once before the row loop and passes the points to `buildRow` and to `buildVol`; `git grep -n 'storedPoints' -- internal/pages/home_market` prints no second read of the same series in non-test files.
+3. `indexTable` gains `IndexIV *indexIvColumn` (tag `json:"index_iv"`, fields `label` and `hint`), set by `Build` from constants of `strings.go`: label `Index IV` and the Chinese hint of Decision 15; `columns` stays four names.
+4. The cell is a value with one decimal half even, `unit` `vol_points`, `source` `FRED <series id> <MM-DD>`, for a newest point not more than `freshDays` before D; a Gap `no_data` for no point, `stale` beyond `freshDays` with the day in the text, `missing_input` for a negative point, `no_data` for a name outside the map; `collectGaps` copies the Gap of `IndexIV` one per cell; `failed` and `run_status` do not count it (Decision 14).
+5. `indexiv_test.go` (new) names `TestIndexIvCellValueWithSource`, `TestIndexIvCellOtherDayThanPage`, `TestIndexIvCellNoPoint`, `TestIndexIvCellStaleBeyondFreshDays`, `TestIndexIvCellNegativeIsMissingInput`, `TestIndexIvCellUnmappedName`, each calling `t.Parallel()`; `member_test.go` has `TestIndexIvGapDoesNotChangeRunStatus` (new) and `TestIndexIvAndDifferenceKeepOwnDays` (new: the Difference cell of the day before and the index IV of the day show their own days) and a test (new) that validates the card with the new fields against `page.market_summary.v3.json`.
+6. `testdata/ok.golden.json` is edited by hand to hold `index_iv` on the three rows and the table `index_iv` object; `git grep -n 'Implied volatility' -- internal/pages/home_market/strings.go` still prints the `columns` line, and the Difference cell, `vol_indices` and `say` text of the golden are unchanged.
+7. `git diff --name-only BASE` lists only paths of the Files line.
+
+### 7 index-iv-column-web
+
+Module: web. Size: S.
+Order: after 5 (no file shared with entry 6; it may run beside it).
+Files: `web/src/pages/home/MarketSummaryCard.tsx`, `web/test/pages/home/MarketSummaryCard.test.tsx`, `web/fixtures/v3/market-summary/ok.json`
+Design: docs/design/market-iv-rv20.md#decisions (13, 15)
+Acceptance:
+1. `MarketSummaryCard.tsx` builds the column list so that a column with id `index_iv`, label and `hint` from `card.index_table.index_iv`, `align: 'right'`, stands after the `iv` column when `index_table.index_iv` is present, and no such column otherwise; each row cell is `cellOf(row.index_iv)` with the figure's `source` passed to the cell; the file adds no number format, no text of its own and no computation.
+2. `web/fixtures/v3/market-summary/ok.json` holds `index_iv` on the table and on the SPX, NDX and RUT rows (a value with its `source`), validated by the generated types.
+3. `MarketSummaryCard.test.tsx` has `index IV column shows source and hint` (new), which renders the ok fixture and checks the header `Index IV` with the hint as tooltip text, the cell of SPX with its `source` text, and that the column stands between `Implied volatility` and `20-day realised`; and `no index IV column without the table field` (new), which renders `stale.json` (no `index_iv`) and checks four headers.
+4. The existing tests of the file still hold; no other file changes.
+
+
+## Checked by CI (amendment, entries 5 to 7)
+
+- Entry 5: `go test ./internal/contracts/...`, the contracts generation check and `pnpm generate:types` leave no diff.
+- Entry 6: `go test ./internal/pages/... -race -count=1`, `go run ./scripts/arch --check`, `golangci-lint`.
+- Entry 7: `ci-web`: `tsc`, `eslint`, `vitest` and the build.
+- After the deploy of all three the window opens `/home` and checks, with a screenshot (owner rule of 2026-11-14), that the market table shows `Index IV` with a figure and `FRED VIXCLS <day>` for SPX (and VXN and RVX for NDX and RUT), and that the Difference cell is as before.
+
+
+## Checked by CI (entries 1 to 4)
 
 `go test ./internal/compute/... ./internal/jobs/... ./internal/pages/... ./cmd/ot/... -race -count=1`, `go run ./scripts/arch --check`, `go build ./...`, `golangci-lint`, and the contracts generation check (no change expected). The review runs no test. These runs decide the behaviour the named tests pin: the stored value `0.042940` for `VIXCLS` 20.5 against rv20 `0.162060`; the `Retryable` error of a key that runs alone before the rv20 of its day; a mismatched rv20 `data_day` stored as `missing_input`; `TestHashesMatchSource`, `TestRulesMatchRegister`, `TestNoPendingForGoIds` and the stored-text test for entry 1; the page tests and the schema validation for entries 3 and 4. Size: the files touched stay under their ceilings (`job.go` 344, `cells.go` 307, `member.go` 514 lines; the new files are far under 600; no file is in `docs/design/ratchet.json`).
 
 ## Left out
 
+- (amendment) A second `Index IV` for the market page, any index other than SPX, NDX and RUT (N225 has none), IBKR index implied volatility, a colour or a rich/cheap word on the cell, and any change of the Difference cell.
 - N225: the cell stays `not_built` (`market.iv_rv20_n225` of `docs/GLOSSARY.md`, by the owner's word later). A glossary entry for the three indices is not in any Files line (`docs/GLOSSARY.md` is a docs file the register entry makes optional).
-- The `iv` cell of an index row (Decision 8): advice only, a later change shows the FRED value there so the row shows both terms of the difference.
+- The `iv` cell of an index row (Decision 8): stays on `market.iv_ibkr`. The new `Index IV` column of the home card is Decision 13. The market page (`market_page`) is not touched by this amendment; its own implied volatility cell is the subject of the draft `bug-1118-market-iv-column-uses-volatility-index`.
 - A rich or cheap threshold, a colour, a word; a variance premium, IBKR's index implied volatility, an at-the-money figure.
 - Any carry of an older day's figure into the cell, and any mixing of an implied day with a different realised day.
 - Ageing the rv20 cell the same way (Doubt 1); editing the item at `docs/design/market-rv20.md:211` (history of a merged issue).
@@ -151,3 +214,12 @@ Source: the author's adversarial notes (scratchpad) and the advisor's review r1 
 10. Stored code-3 reading on the page: adopted in Decision 5 (Gap `stale_input`, as `failure()` does) with `TestIvRvCellStoredCode3IsStale`. `home_market` own `data_day` parse: adopted (entry 4 item 1).
 11. Retry window: adopted as a named fact (Decision 10, Today, Doubt 5). Not adopted: moving the 5-day rule into the job only and letting the page show what is stored (adversarial 3), because a stored ok figure still ages after it is stored.
 12. Golden update flag: adopted (hand edit, Doubt 8).
+
+### Amendment of 2026-11-20 (Decisions 13 to 16)
+
+1. Gap against the goal: the goal is a column with the VIX, VXN or RVX figure, its source and its day, built by the one function that builds the Difference cell. Decision 13 names the function (`buildRow`), the map, the source text and the day; the dash with a reason is the Gap of an unmapped name. Residual: the card has only the three mapped rows, so the dash is a guard no row reaches; adopted as stated, not padded with a fourth row.
+2. Biggest unnamed risk: #3422 and entry 6 edit `member.go` and `member_test.go` together. Adopted: entry 6 carries `Depends: #3422` and `Order: after`; the entry changes `buildRow` by adding a parameter and one assignment, not `newestReading`.
+3. A simpler way: fill the existing `Implied volatility` column. Not adopted: that column is `market.iv_ibkr` (IBKR implied volatility of the option chain), another measure than Cboe's 30-day index; the owner asked for an added column and the two numbers would be mixed under one label. A column built from the existing `vol_indices` card block is not adopted either, because the table row must show the figure beside its own realised value.
+4. Lock-in: the schema change is optional fields on `v3`, so no `v4`, no change of `home_page` and no old fixture to rewrite; the cost is that the field is optional for ever. Adopted over a required field or a new version, which would force the home page, its testdata and all fixtures into one pull request. The map is a Go variable; a later strike or index goes there.
+5. Claim most likely false: "the series points are already read once and can be shared". `buildVol` reads them after the rows today; entry 6 item 2 moves the read before the rows. If `storedPoints` for `VIXCLS` fails the whole `Build` fails today as well (a reader error is an error of `Build`), so the order changes no outcome; entry 6 pins it by the grep of item 2.
+6. Likeliest slip: the web guessing the column by position, or a worker computing the day text in the web. Adopted: Decision 13 gives the column by field presence, `source` is a producer string, and entry 7 item 1 forbids number formats and text; the Chinese hint is a producer constant. Second slip: fixtures of other tests break on the golden; they do not, because the fields are optional and only `ok.golden.json` and `ok.json` change.
