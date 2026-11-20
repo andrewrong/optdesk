@@ -26,7 +26,7 @@ export function CompanyDataPage({ payload }: { payload: Payload }) {
               <AlertDescription>{g.text}</AlertDescription>
             </Alert>
           ))}
-          <BarsSourceNote note={'bars_source_note' in payload ? payload.bars_source_note : undefined} />
+          <BarsSourceNote payload={payload} />
           <CompanyTable columns={payload.columns} companies={payload.companies} />
         </CardContent>
       </Card>

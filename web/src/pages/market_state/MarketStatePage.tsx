@@ -20,10 +20,10 @@ export function MarketStatePage({ payload }: { payload: Payload }) {
         </p>
         {payload.stale ? <p data-stale>{payload.stale.text}</p> : null}
       </header>
-      <BarsSourceNote note={'bars_source_note' in payload ? payload.bars_source_note : undefined} />
       <MarketRows block={payload.market} />
       <SectorTable block={payload.sectors} />
       <RotationMap block={payload.sectors} />
+      <BarsSourceNote payload={payload} />
       <ExcessBars block={payload.sectors} />
     </div>
   )

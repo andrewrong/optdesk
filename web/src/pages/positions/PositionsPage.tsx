@@ -50,7 +50,7 @@ export function PositionsPage({ payload }: { payload: Payload }) {
         </Button>
       </div>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
-      <BarsSourceNote note={'bars_source_note' in payload ? payload.bars_source_note : undefined} />
+      <BarsSourceNote payload={payload} />
       <Tabs defaultValue={payload.views[0].key} className="min-w-0">
         <TabsList className="group-data-horizontal/tabs:h-auto w-full flex-wrap">
           {payload.views.map((view) => (
