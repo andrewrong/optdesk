@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"html"
 	"net/http"
 	"strconv"
 	"time"
@@ -46,18 +47,18 @@ func postOwnerJobConsole(a *app, clk clock.Clock, rd siteReaders, w http.Respons
 	case "run":
 		var ok bool
 		if run, ok = readJobRun(r, now); !ok {
-			http.Error(w, textBadForm, http.StatusUnprocessableEntity)
+			refusePage(w, textBadForm, http.StatusUnprocessableEntity)
 			return
 		}
 	case "withdraw":
 		var err error
 		if id, err = strconv.ParseInt(r.PostForm.Get("id"), 10, 64); err != nil || id <= 0 {
-			http.Error(w, textBadForm, http.StatusUnprocessableEntity)
+			refusePage(w, textBadForm, http.StatusUnprocessableEntity)
 			return
 		}
 	case "repair":
 	default:
-		http.Error(w, textBadForm, http.StatusUnprocessableEntity)
+		refusePage(w, textBadForm, http.StatusUnprocessableEntity)
 		return
 	}
 	ctx := r.Context()
@@ -86,7 +87,7 @@ func postOwnerJobConsole(a *app, clk clock.Clock, rd siteReaders, w http.Respons
 // storeFailed answers 503 with the fixed text and logs a line that holds no error text (it may hold a DSN).
 func storeFailed(a *app, w http.ResponseWriter, msg string) {
 	a.log.Error(msg, "component", "ot", "status", "failed")
-	http.Error(w, textStoreFailure, http.StatusServiceUnavailable)
+	refusePage(w, textStoreFailure, http.StatusServiceUnavailable)
 }
 
 // readJobRun validates the fields of a run; false is 422 and no row.
@@ -135,7 +136,7 @@ func postRun(ctx context.Context, a *app, st jobrequest.Poster, run jobRun, w ht
 	case err != nil:
 		storeFailed(a, w, "job console post: enqueue failed")
 	case res.Outcome == jobrequest.EnqueueWithdrawing:
-		http.Error(w, textWithdrawing, http.StatusConflict)
+		refusePage(w, textWithdrawing, http.StatusConflict)
 	case res.Outcome == jobrequest.EnqueueCreated || res.Outcome == jobrequest.EnqueueExisting:
 		redirectToRequest(w, r, res.Row.ID)
 	default:
@@ -150,7 +151,7 @@ func postWithdraw(ctx context.Context, a *app, st jobrequest.Poster, id int64, w
 		storeFailed(a, w, "job console post: read failed")
 		return
 	case !found:
-		http.Error(w, textBadForm, http.StatusUnprocessableEntity)
+		refusePage(w, textBadForm, http.StatusUnprocessableEntity)
 		return
 	}
 	if err := st.Withdraw(ctx, id); err != nil {
@@ -163,4 +164,14 @@ func postWithdraw(ctx context.Context, a *app, st jobrequest.Poster, id int64, w
 // redirectToRequest answers 303 to the page with the request selected, so a reload never repeats the post.
 func redirectToRequest(w http.ResponseWriter, r *http.Request, id int64) {
 	http.Redirect(w, r, "/"+siteJobConsoleRoute+"?request="+strconv.FormatInt(id, 10), http.StatusSeeOther)
+}
+
+// refusePage answers a refusal as a small HTML page: the fixed text, escaped, and a link back to the console.
+// The text is one of the fixed constants; never a field value or an error text.
+func refusePage(w http.ResponseWriter, text string, status int) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte("<!doctype html><html><head><meta charset=\"utf-8\"><title>Job console</title></head><body><p>" +
+		html.EscapeString(text) + "</p><p><a href=\"/" + siteJobConsoleRoute + "\">Back to the job console</a></p></body></html>\n"))
 }
