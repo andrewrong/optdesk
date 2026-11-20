@@ -414,6 +414,9 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	if slices.Contains(c.Statement, alias) {
 		p.Notes = append(p.Notes, textStatementFrom+cp.day+textStatementNote)
 	}
+	if hb != nil {
+		p.Notes = append(p.Notes, hb.notes...)
+	}
 
 	captured := at
 	if len(cp.values) > 0 && !cp.values[0].CapturedAt.IsZero() {

@@ -101,8 +101,11 @@ func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 		t.Fatalf("run_status = %v", m["run_status"])
 	}
 	wantReads := []string{"main 2026-11-10", "main 2026-11-10", "main 2026-11-09"}
-	if !slices.Equal(acc.asked, wantReads) || !slices.Equal(marks.asks, wantReads) {
-		t.Fatalf("reads: %v %v, want %v", acc.asked, marks.asks, wantReads)
+	// The option has no mark on any day: five earlier days are tried for it after the capture day.
+	wantMarkReads := []string{"main 2026-11-10", "main 2026-11-09", "main 2026-11-08", "main 2026-11-07",
+		"main 2026-11-06", "main 2026-11-05", "main 2026-11-10", "main 2026-11-09"}
+	if !slices.Equal(acc.asked, wantReads) || !slices.Equal(marks.asks, wantMarkReads) {
+		t.Fatalf("reads: %v %v, want %v %v", acc.asked, marks.asks, wantReads, wantMarkReads)
 	}
 	golden := filepath.Join("testdata", "holdings.golden.json")
 	if os.Getenv("UPDATE_GOLDEN") != "" {
@@ -467,5 +470,180 @@ func TestCompositionRowsWithoutShareComeLastBySymbol(t *testing.T) {
 	comp, _ := compositionNames(t, "", "", "5.0")
 	if want := []string{"CCC", "AAA", "BBB"}; !slices.Equal(comp, want) {
 		t.Fatalf("composition = %v, want %v", comp, want)
+	}
+}
+
+const earlierNote = "有 1 个持仓用的是 2026-11-09 的收盘标记，采集日尚无标记"
+
+func noteTexts(m map[string]any) []string {
+	var out []string
+	for _, n := range m["notes"].([]any) {
+		out = append(out, n.(string))
+	}
+	return out
+}
+
+func rowNames(m map[string]any, blk string) []string {
+	var out []string
+	for _, r := range m[blk].(map[string]any)["rows"].([]any) {
+		out = append(out, r.(map[string]any)["name"].(string))
+	}
+	return out
+}
+
+func TestHoldingsFallBackToEarlierMark(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-09": {markOf(1, "240")}}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, b := build(t, c, "main")
+	validate(t, b)
+	for _, blk := range []string{"composition", "concentration", "allocation"} {
+		if m[blk].(map[string]any)["gap"] != nil {
+			t.Fatalf("%s has a gap: %v", blk, m[blk])
+		}
+	}
+	row := m["composition"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	if v := row["amount"].(map[string]any)["value"].(float64); v != 24000 {
+		t.Fatalf("value = %v, want 24000 (100 sh at 240)", v)
+	}
+	if got := noteTexts(m); !slices.Contains(got, earlierNote) {
+		t.Fatalf("notes = %v, want %q", got, earlierNote)
+	}
+}
+
+func TestCaptureDayMarkWinsOverEarlier(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-10": {markOf(1, "250")},
+		"2026-11-09": {markOf(1, "240")},
+	}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, _ := build(t, c, "main")
+	row := m["composition"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	if v := row["amount"].(map[string]any)["value"].(float64); v != 25000 {
+		t.Fatalf("value = %v, want 25000", v)
+	}
+	for _, n := range noteTexts(m) {
+		if strings.Contains(n, "收盘标记") {
+			t.Fatalf("unexpected mark note %q", n)
+		}
+	}
+}
+
+func TestEarlierMarksOneNotePerDayNewestFirstAndOlderOnlyForGaps(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-10": {markOf(1, "250")},
+		"2026-11-09": {markOf(2, "100")},
+		"2026-11-07": {markOf(2, "90"), markOf(3, "10")},
+	}}
+	ps := []store.Position{stock("AAA", 1, "1", "1"), stock("BBB", 2, "1", "1"), stock("CCC", 3, "1", "1")}
+	c, _ := holdingsConfig(ps, marks)
+	m, _ := build(t, c, "main")
+	want := []string{"有 1 个持仓用的是 2026-11-09 的收盘标记，采集日尚无标记", "有 1 个持仓用的是 2026-11-07 的收盘标记，采集日尚无标记"}
+	var got []string
+	for _, n := range noteTexts(m) {
+		if strings.Contains(n, "收盘标记") {
+			got = append(got, n)
+		}
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("notes = %v, want %v", got, want)
+	}
+}
+
+func TestNoMarkWithinFiveDaysIsMissingQuote(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-04": {markOf(1, "240")}}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, b := build(t, c, "main")
+	validate(t, b)
+	if g := gapOf(t, m, "composition"); g["reason"] != "missing_quote" {
+		t.Fatalf("gap = %v", g)
+	}
+	for _, n := range noteTexts(m) {
+		if strings.Contains(n, "收盘标记") {
+			t.Fatalf("unexpected mark note %q", n)
+		}
+	}
+}
+
+func TestMarkFiveDaysBackStillPrices(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-05": {markOf(1, "240")}}}
+	c, _ := holdingsConfig([]store.Position{stock("AAA", 1, "100", "200")}, marks)
+	m, _ := build(t, c, "main")
+	if m["composition"].(map[string]any)["gap"] != nil {
+		t.Fatalf("composition has a gap: %v", m["composition"])
+	}
+	want := "有 1 个持仓用的是 2026-11-05 的收盘标记，采集日尚无标记"
+	if !slices.Contains(noteTexts(m), want) {
+		t.Fatalf("notes = %v, want %q", noteTexts(m), want)
+	}
+}
+
+func TestMoversUseEarlierMark(t *testing.T) {
+	t.Parallel()
+	days := map[string]dayData{
+		"2026-11-06": twoDays()["2026-11-09"],
+		"2026-11-09": twoDays()["2026-11-10"],
+		"2026-11-10": {net: "100000.00", pos: []store.Position{capStock("AAA", 1, "100", "c1")}},
+	}
+	c, _ := moversConfig(days)
+	m, b := buildOn(t, c, "2026-11-10")
+	validate(t, b)
+	mv := moversOf(m)
+	stocks := mv["stocks"].([]any)
+	if mv["gap"] != nil || len(stocks) != 1 {
+		t.Fatalf("movers = %v", mv)
+	}
+	cur := stocks[0].(map[string]any)["current"].(map[string]any)
+	if cur["value"].(float64) != 250 {
+		t.Fatalf("current = %v, want 250", cur)
+	}
+	if got := rowNames(m, "composition"); !slices.Equal(got, []string{"AAA"}) {
+		t.Fatalf("composition rows = %v", got)
+	}
+}
+
+func TestOptionFallsBackToEarlierMark(t *testing.T) {
+	t.Parallel()
+	opt := stock("AAA 250C", 9, "1", "5")
+	opt.SecType = "OPT"
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{"2026-11-09": {markOf(9, "6")}}}
+	c, _ := holdingsConfig([]store.Position{opt}, marks)
+	m, _ := build(t, c, "main")
+	if !slices.Contains(noteTexts(m), earlierNote) {
+		t.Fatalf("notes = %v, want the earlier-mark line for the option", noteTexts(m))
+	}
+}
+
+// TestThreeHoldingsPricedFromEarlierMarkRenderTheDayLabel is the page of the issue on synthetic data:
+// three stocks, marks only on the day before the capture, the schema-valid page lists each with a value
+// and a share and names the mark day and the count in its notes.
+func TestThreeHoldingsPricedFromEarlierMarkRenderTheDayLabel(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-09": {markOf(1, "240"), markOf(2, "100"), markOf(3, "10")},
+	}}
+	ps := []store.Position{stock("AAA", 1, "100", "200"), stock("BBB", 2, "50", "10"), stock("CCC", 3, "10", "5")}
+	c, _ := holdingsConfig(ps, marks)
+	m, b := build(t, c, "main")
+	validate(t, b)
+	want := "有 3 个持仓用的是 2026-11-09 的收盘标记，采集日尚无标记"
+	if got := noteTexts(m); !slices.Contains(got, want) {
+		t.Fatalf("notes = %v, want %q", got, want)
+	}
+	for _, blk := range []string{"composition", "concentration"} {
+		rows := m[blk].(map[string]any)["rows"].([]any)
+		if len(rows) != 3 {
+			t.Fatalf("%s rows = %v", blk, rows)
+		}
+		for _, r := range rows {
+			row := r.(map[string]any)
+			if row["amount"] == nil || row["share"] == nil {
+				t.Fatalf("%s row without value or share: %v", blk, row)
+			}
+		}
 	}
 }
