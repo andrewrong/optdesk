@@ -229,7 +229,7 @@ func TestNoSeriesIsGap(t *testing.T) {
 			t.Errorf("iv = %v", row["iv"])
 		}
 	}
-	if len(d.Card.Gaps) != 3+3+3+3+1+1 {
+	if len(d.Card.Gaps) != 3+3+3+3+3+1+1 {
 		t.Errorf("gaps = %d", len(d.Card.Gaps))
 	}
 }
@@ -252,8 +252,8 @@ func TestGapTextsAreDistinctAndNameTheirIndex(t *testing.T) {
 				n++
 			}
 		}
-		if n != 3 {
-			t.Errorf("%s: %d gap texts start with its name, want 3 (iv, rv20, diff)", name, n)
+		if n != 4 {
+			t.Errorf("%s: %d gap texts start with its name, want 4 (iv, index iv, rv20, diff)", name, n)
 		}
 	}
 }
@@ -428,7 +428,7 @@ func TestDiffGapKeepsRunStatusOk(t *testing.T) {
 
 func rowWith(t *testing.T, rv map[string]contracts.ReadingRecord) indexRow {
 	t.Helper()
-	row, _, err := buildRow(context.Background(), configRv(nil, rv), "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	row, _, err := buildRow(context.Background(), configRv(nil, rv), "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +476,7 @@ func TestRowRv20NotOkIsMissingInput(t *testing.T) {
 func TestRowRv20GapLeavesIVOk(t *testing.T) {
 	t.Parallel()
 	iv := map[string]contracts.ReadingRecord{"SPX": reading("2026-11-06", "ok", "0.2")}
-	row, ok, err := buildRow(context.Background(), configRv(iv, nil), "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	row, ok, err := buildRow(context.Background(), configRv(iv, nil), "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), nil)
 	if err != nil || !ok {
 		t.Fatalf("ok = %v err = %v", ok, err)
 	}
@@ -504,7 +504,7 @@ func diffRows(rows ...contracts.ReadingRecord) Config {
 
 func diffCell(t *testing.T, c Config) any {
 	t.Helper()
-	row, _, err := buildRow(context.Background(), c, "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	row, _, err := buildRow(context.Background(), c, "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,5 +537,66 @@ func TestOkReadingOlderThanFiveDaysIsNotUsed(t *testing.T) {
 	g, isGap := diffCell(t, diffRows(reading("2026-11-06", "missing_input", ""), diffReading("2026-10-30", "0.032000"))).(gap)
 	if !isGap || g.Reason != "missing_input" {
 		t.Fatalf("cell = %+v, want the missing_input gap", g)
+	}
+}
+
+func TestIndexIvGapDoesNotChangeRunStatus(t *testing.T) {
+	t.Parallel()
+	iv := map[string]contracts.ReadingRecord{}
+	for _, n := range indexNames {
+		iv[n] = reading("2026-11-06", "ok", "0.2")
+	}
+	// No stored point: the index IV cell is a Gap, the row (IV ok) does not fail.
+	row, ok, err := buildRow(context.Background(), configAll(iv, nil, nil), "NDX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, isGap := row.IndexIV.(gap); !isGap || !ok {
+		t.Fatalf("index IV = %v, ok = %v: a Gap of the cell must not fail the row", row.IndexIV, ok)
+	}
+	if got := parse(t, build(t, configAll(iv, nil, diffAll()), fullSeries())).RunStatus; got != "ok" {
+		t.Fatalf("run_status = %s", got)
+	}
+}
+
+func TestIndexIvAndDifferenceKeepOwnDays(t *testing.T) {
+	t.Parallel()
+	d := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+	diff := diffReading("2026-11-05", "0.032000")
+	diff.Parameters = []gen.ReadingRecordParametersElem{{Param: "data_day", ValueTag: func() *string { s := "2026-11-05"; return &s }()}}
+	row, _, err := buildRow(context.Background(), diffRows(diff), "SPX", d, []point{{date: d, text: "18.20"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := row.IVMinusRV20.(volPoints); !ok || v.Text != "+3.2 (11-05)" {
+		t.Fatalf("difference = %+v", row.IVMinusRV20)
+	}
+	if v, ok := row.IndexIV.(volPoints); !ok || v.Source != "FRED VIXCLS 11-06" {
+		t.Fatalf("index IV = %+v", row.IndexIV)
+	}
+}
+
+func TestIndexIvCardMatchesSchema(t *testing.T) {
+	t.Parallel()
+	b := build(t, configAll(nil, nil, diffAll()), fullSeries()) // build validates against the schema
+	var d struct {
+		Card struct {
+			IndexTable struct {
+				IndexIV map[string]string `json:"index_iv"`
+				Rows    []map[string]any  `json:"rows"`
+			} `json:"index_table"`
+		} `json:"card"`
+	}
+	if err := json.Unmarshal(b, &d); err != nil {
+		t.Fatal(err)
+	}
+	tbl := d.Card.IndexTable
+	if tbl.IndexIV["label"] != "Index IV" || tbl.IndexIV["hint"] == "" || len(tbl.Rows) != 3 {
+		t.Fatalf("table = %+v", tbl)
+	}
+	for i, want := range []string{"FRED VIXCLS 11-06", "FRED VXNCLS 11-06", "FRED RVXCLS 11-06"} {
+		if got := cell(tbl.Rows[i], "index_iv")["source"]; got != want {
+			t.Errorf("row %d source = %v, want %s", i, got, want)
+		}
 	}
 }
