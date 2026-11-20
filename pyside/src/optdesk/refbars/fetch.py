@@ -47,7 +47,16 @@ def _bars(frame: Any, zone: datetime.tzinfo, from_day: str, to_day: str) -> list
             stamp = stamp.astimezone(zone)
         day = stamp.date().isoformat()
         if from_day <= day <= to_day:
-            bars.append({"session_day": day, "close": close_text(float(value))})
+            bars.append(
+                {
+                    "session_day": day,
+                    "open": "",
+                    "high": "",
+                    "low": "",
+                    "close": close_text(float(value)),
+                    "volume": "",
+                }
+            )
     bars.sort(key=lambda bar: bar["session_day"])
     return bars
 
