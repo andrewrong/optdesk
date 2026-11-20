@@ -48,7 +48,10 @@ export function MacroPage({ payload }: { payload: Payload }) {
     latest:
       'reason' in indicator.latest
         ? indicator.latest
-        : { ...indicator.latest, tone: indicator.latest.tone ?? undefined },
+        : {
+            ...indicator.latest,
+            ...('tone' in indicator.latest && { tone: indicator.latest.tone ?? undefined }),
+          },
     source: { text: indicator.source_text },
     ...(indicator.detail_href && { detail: { text: 'Detail', href: indicator.detail_href } }),
   }))
