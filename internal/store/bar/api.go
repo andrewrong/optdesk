@@ -31,7 +31,9 @@ type BarWriteCount struct {
 
 // PriceBarUpserter writes daily bars by the key (InstrumentID, Basis,
 // SessionDay): a differing row replaces the stored one, an equal row changes
-// nothing, no old value is kept, and the row's AdjustEpoch is ignored.
+// nothing, no old value is kept, and the row's AdjustEpoch is ignored. A row
+// whose source is not ibkr never replaces a stored row whose source is ibkr and
+// counts as unchanged.
 // writtenBy names the run (job and day). It is an optional method of the value
 // OpenBarFunc returns; the job asserts it at Run.
 type PriceBarUpserter interface {

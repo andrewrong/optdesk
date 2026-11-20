@@ -307,3 +307,63 @@ func TestPriceBarUpserterContract(t *testing.T) {
 		t.Fatalf("second upsert = %+v, %v; want 1 written, 1 unchanged", c, err)
 	}
 }
+
+// srcIbkr is the source whose stored rows no other source replaces.
+const srcIbkr = "ibkr"
+
+// sourceUpsertFake applies the source rule of bar.PriceBarUpserter: a row whose
+// source is not ibkr never replaces a stored ibkr row and counts as unchanged.
+type sourceUpsertFake struct {
+	rows map[string]contracts.PriceBar
+}
+
+var _ bar.PriceBarUpserter = (*sourceUpsertFake)(nil)
+
+func (f *sourceUpsertFake) UpsertPriceBars(_ context.Context, rows []contracts.PriceBar, _ string) (bar.BarWriteCount, error) {
+	var c bar.BarWriteCount
+	if f.rows == nil {
+		f.rows = map[string]contracts.PriceBar{}
+	}
+	for _, r := range rows {
+		k := fmt.Sprintf("%d/%s/%s", r.InstrumentID, r.Basis, r.SessionDay.Format("2006-01-02"))
+		old, ok := f.rows[k]
+		if ok && (old.Close == r.Close && old.Source == r.Source ||
+			old.Source == srcIbkr && r.Source != srcIbkr) {
+			c.Unchanged++
+			continue
+		}
+		f.rows[k] = r
+		c.Written++
+	}
+	return c, nil
+}
+
+func TestPriceBarUpserterSourceDoc(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := &sourceUpsertFake{}
+	var u bar.PriceBarUpserter = f
+	ib := priceBar(t, 7, "2026-01-05", 1, "10")
+	ib.Source = srcIbkr
+	yf := priceBar(t, 7, "2026-01-05", 1, "11")
+	yf.Source = "yfinance"
+	key := "7/trades/2026-01-05"
+
+	if c, err := u.UpsertPriceBars(ctx, []contracts.PriceBar{ib}, "x"); err != nil || c.Written != 1 {
+		t.Fatalf("ibkr row = %+v, %v; want 1 written", c, err)
+	}
+	c, err := u.UpsertPriceBars(ctx, []contracts.PriceBar{yf}, "x")
+	if err != nil || c.Written != 0 || c.Unchanged != 1 || f.rows[key].Close != "10" {
+		t.Fatalf("yfinance over ibkr = %+v, %v, stored close %q; want unchanged, ibkr kept", c, err, f.rows[key].Close)
+	}
+
+	g := &sourceUpsertFake{}
+	u = g
+	if _, err := u.UpsertPriceBars(ctx, []contracts.PriceBar{yf}, "x"); err != nil {
+		t.Fatal(err)
+	}
+	c, err = u.UpsertPriceBars(ctx, []contracts.PriceBar{ib}, "x")
+	if err != nil || c.Written != 1 || g.rows[key].Source != srcIbkr {
+		t.Fatalf("ibkr over yfinance = %+v, %v, stored source %q; want replaced", c, err, g.rows[key].Source)
+	}
+}
