@@ -49,7 +49,7 @@ None changed. `contracts.OptionOpen` keeps its fields; a row of an added contrac
 
 - `ListOptions` fails: retryable, as every store read of the pull.
 - Gateway down: as today, `disconnected` rows, retryable.
-- Every stock outside its band and nothing added (stored chain and chain call empty): `NoValue` as in Decision 1.
+- Every stock outside its band and nothing added (the stored chain, `ListOptions`, gives no contract in the live band): `NoValue` as in Decision 1.
 - A re-run of the key the same morning: the stored contracts are read again; the resume treats final rows as final.
 
 ## Issues
