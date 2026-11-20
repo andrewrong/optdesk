@@ -20,7 +20,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -316,7 +315,7 @@ func newestReading(ctx context.Context, c Config, fig, name string, d time.Time)
 		return nil, err
 	}
 	if best := newest(rows, func(r *contracts.ReadingRecord) bool {
-		return r.State == gen.ReadingRecordStateOk && r.Value != nil
+		return string(r.State) == "ok" && r.Value != nil
 	}); best != nil {
 		return best, nil
 	}
