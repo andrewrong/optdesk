@@ -15,7 +15,7 @@ import os
 import signal
 import stat
 import sys
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -32,8 +32,8 @@ from optdesk.ibkr.gateways import (
     positive_int,
 )
 from optdesk.ibkr.health import PROBE_DEADLINE_S, HealthServer, Probe, start_health
-from optdesk.ibkr.lister import ListingGateway
 from optdesk.ibkr.model import Gateway, SessionState
+from optdesk.ibkr.session_probe import ProbedGateway, StateLog, watch_for
 from optdesk.ibkr.timing import Clock, SystemClock
 from optdesk.ibkr.transport import (
     build_server,
@@ -122,52 +122,59 @@ class Supervised(Protocol):
     async def status(self) -> SessionState: ...
 
 
-def _gateway_line(logger: logging.Logger, event: str, name: str, **fields: int) -> None:
-    """Log `event gateway=<name> [field=int ...]`; the name is the configured one only.
-
-    Own code until `gateway` is in transport.FIELDS, which log_event then replaces.
-    """
-    parts = [f"gateway={name}", *(f"{key}={value}" for key, value in fields.items())]
-    logger.info("%s %s", event, " ".join(parts))
-
-
-async def supervise(gateway: Supervised, clock: Clock, name: str) -> None:
+async def supervise(
+    gateway: Supervised,
+    clock: Clock,
+    name: str,
+    watch: Callable[[], Awaitable[None]] | None = None,
+) -> None:
     """Keep the session open: connect, poll, and reconnect with a capped backoff.
 
     A session that was never connected nor soft_lost, or that ends within
     STABLE_SESSION_S, keeps the backoff growing; only a longer one sends it back to
     BACKOFF_FIRST_S. A soft loss (a 1100, the socket still up) keeps the session
     for RESTORE_WAIT_S, so a 1101 or 1102 restores it; the wait counts as session time.
+    watch (the probes of session_probe) runs for the life of each session.
+    One log line per state change (StateLog), none per attempt.
 
     Runs until cancelled.
     """
     delay = BACKOFF_FIRST_S
+    log = StateLog(_LOG, name)
     while True:
         try:
             await gateway.open_session()
-        except Exception:  # noqa: BLE001 - any connect failure means retry
-            _gateway_line(_LOG, "connect_failed", name)
+        except Exception as exc:  # noqa: BLE001 - any connect failure means retry
+            log.failed(exc)
             await clock.sleep(delay)
             delay = next_delay(delay)
             continue
         state = await gateway.status()
-        _gateway_line(_LOG, "connect_ok", name, generation=state.generation)
+        log.up(state.generation)
         started = clock.monotonic()
         healthy = state.connected or state.soft_lost
         soft_since: float | None = None
-        while healthy:
-            current = await gateway.status()
-            at = clock.monotonic()
-            if current.connected:
-                soft_since = None
-            elif current.soft_lost:
-                soft_since = at if soft_since is None else soft_since
-                if at - soft_since >= RESTORE_WAIT_S:
+        watched = asyncio.ensure_future(watch()) if watch is not None else None
+        try:
+            while healthy:
+                current = await gateway.status()
+                at = clock.monotonic()
+                if current.connected:
+                    log.restore()
+                    soft_since = None
+                elif current.soft_lost:
+                    log.soft_loss()
+                    soft_since = at if soft_since is None else soft_since
+                    if at - soft_since >= RESTORE_WAIT_S:
+                        break
+                else:
                     break
-            else:
-                break
-            await clock.sleep(POLL_S)
-        _gateway_line(_LOG, "session_lost", name)
+                await clock.sleep(POLL_S)
+        finally:
+            if watched is not None:
+                watched.cancel()
+                await asyncio.gather(watched, return_exceptions=True)
+        log.down()
         if healthy and clock.monotonic() - started >= STABLE_SESSION_S:
             delay = BACKOFF_FIRST_S
         await clock.sleep(delay)
@@ -178,7 +185,7 @@ GatewayFactory = Callable[[GatewaySpec], Gateway]
 
 
 def gateway_factory(
-    config: Config, clock: Clock, build: Callable[..., Gateway] = ListingGateway
+    config: Config, clock: Clock, build: Callable[..., Gateway] = ProbedGateway
 ) -> GatewayFactory:
     """Return the factory that builds a guarded gateway for a spec."""
 
@@ -192,6 +199,7 @@ def gateway_factory(
             lines=config.lines,
             snapshots=config.snapshots,
             clock=clock,
+            name=spec.name,
         )
 
     return make
@@ -269,7 +277,16 @@ async def serve(
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, stopping.set)
         supervisors = [
-            asyncio.ensure_future(supervise(gateways[spec.name], clock, spec.name))
+            asyncio.ensure_future(
+                supervise(
+                    gateways[spec.name],
+                    clock,
+                    spec.name,
+                    watch_for(
+                        gateways[spec.name], clock, history=spec.name == config.default
+                    ),
+                )
+            )
             for spec in config.gateways
         ]
         log_event(_LOG, "server_started")

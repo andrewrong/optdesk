@@ -291,8 +291,8 @@ def test_supervisor_keeps_a_soft_lost_session_until_the_restore(
     gateway = SoftLostGateway(clock, 45.0)
     asyncio.run(run_supervised(cast(Any, gateway), clock, 200.0))
     assert gateway.opened_at == [0.0]
-    assert "session_lost" not in caplog.text
-    assert "connect_ok" in caplog.text
+    assert "session_down" not in caplog.text
+    assert "session_up" in caplog.text
 
 
 def test_supervisor_reconnects_when_the_restore_never_comes() -> None:
@@ -597,7 +597,7 @@ def test_connection_lines_name_their_gateway(caplog: pytest.LogCaptureFixture) -
     with caplog.at_level(logging.INFO, logger="optdesk.ibkr.server"):
         asyncio.run(run())
     lines = [r.getMessage() for r in caplog.records]
-    assert any(m.startswith("connect_ok gateway=main generation=1") for m in lines)
-    assert any(m.startswith("connect_failed gateway=wife") for m in lines)
-    assert any(m.startswith("session_lost gateway=main") for m in lines)
+    assert any(m.startswith("session_up gateway=main generation=1") for m in lines)
+    assert any(m.startswith("session_down gateway=wife") for m in lines)
+    assert any(m.startswith("session_down gateway=main") for m in lines)
     assert not any("gateway=wife" in m and m.startswith("connect_ok") for m in lines)
