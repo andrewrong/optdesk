@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -67,6 +68,12 @@ type Config struct {
 	Scope      string
 	Zone       *time.Location
 	Indicators []Indicator
+	// Groups is optional: the grouped rows of the Indicators card, written after Indicators with the fields group,
+	// change_text, data_day and hint (indicators.go). Empty keeps the payload as it is.
+	Groups []Group
+	// Window is optional: the option window in days and whether the owner stored it. With it, Build writes the lead
+	// block and days_to and in_window on each event (lead.go). Nil keeps the payload as it is.
+	Window WindowFunc
 	// Read is optional. Nil keeps the page as it is: the ease is a no_data gap. With it,
 	// Build may read stored readings through it; an error of Read is an error of Build,
 	// never a gap.
@@ -102,6 +109,11 @@ type indicatorRow struct {
 	Label      string  `json:"label"`
 	SourceText string  `json:"source_text"`
 	DetailHref *string `json:"detail_href"`
+	// Written only for the rows of a group.
+	Group      string  `json:"group,omitempty"`
+	ChangeText *string `json:"change_text,omitempty"`
+	DataDay    *string `json:"data_day,omitempty"`
+	Hint       string  `json:"hint,omitempty"`
 }
 
 type sourceTime struct {
@@ -139,6 +151,9 @@ type viewModel struct {
 	// Written only with a Liquidity function (version 2).
 	LiquidityTitle string          `json:"liquidity_title,omitempty"`
 	Liquidity      *liquidityBlock `json:"liquidity,omitempty"`
+	// Written only with a Window function.
+	Lead   *lead `json:"lead,omitempty"`
+	events []macroevent.Event
 }
 
 func validate(c Config) error {
@@ -150,13 +165,17 @@ func validate(c Config) error {
 			return fmt.Errorf("macro_page: bad %s %q", name, v)
 		}
 	}
-	if len(c.Indicators) == 0 {
+	all := slices.Clone(c.Indicators)
+	for _, g := range c.Groups {
+		all = append(all, g.Indicators...)
+	}
+	if len(all) == 0 {
 		return fmt.Errorf("macro_page: no indicators")
 	}
-	if len(c.Indicators) > maxIndicators {
-		return fmt.Errorf("macro_page: %d indicators, at most %d", len(c.Indicators), maxIndicators)
+	if len(all) > maxIndicators {
+		return fmt.Errorf("macro_page: %d indicators, at most %d", len(all), maxIndicators)
 	}
-	for i, ind := range c.Indicators {
+	for i, ind := range all {
 		if ind.SeriesID == "" || ind.Name == "" {
 			return fmt.Errorf("macro_page: indicator %d has an empty series id or name", i)
 		}
@@ -238,6 +257,18 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 				o := obs
 				oldest = &o
 			}
+		}
+	}
+	grouped, err := buildGroups(ctx, r, c.Groups, d)
+	if err != nil {
+		return nil, err
+	}
+	vm.Indicators = append(vm.Indicators, grouped...)
+	if c.Window != nil {
+		days, stored := windowOf(ctx, c, generatedAt)
+		markWindow(vm.Events, d, days)
+		if vm.Lead, err = buildLead(ctx, r, vm.events, d, days, stored); err != nil {
+			return nil, err
 		}
 	}
 	vm.Stale = staleOf(d, oldest, c.Zone)

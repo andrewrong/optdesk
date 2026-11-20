@@ -44,7 +44,9 @@ func builtPages() map[string]builtPage {
 				return pages.Page{}, nil, err
 			}
 			if events != nil {
-				return newMacroPageEvents(a.profile.Zone, buildIDOf(version), read, events), func() { closeEvents(); closeRead() }, nil
+				owner, closeOwner := openMacroOwner(ctx, a)
+				return newMacroPageOwner(a.profile.Zone, buildIDOf(version), read, events, owner),
+					func() { closeOwner(); closeEvents(); closeRead() }, nil
 			}
 			return a.deps.macroPage(a.profile.Zone, buildIDOf(version), read), closeRead, nil
 		}},

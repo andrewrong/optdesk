@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/liquidity"
 	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
 // liquidityIDs are the fourteen series of the liquidity figures.
@@ -140,4 +142,57 @@ func TestMacroPageWiresRealLiquidity(t *testing.T) {
 		return
 	}
 	t.Fatal("no net_liquidity tap")
+}
+
+// fakeOwner is an owner settings reader with fixed stored parameters.
+type fakeOwner struct {
+	ownerset.Reader
+	params []ownerset.Param
+	err    error
+}
+
+func (f fakeOwner) Params(context.Context, time.Time) ([]ownerset.Param, error) {
+	return f.params, f.err
+}
+
+func TestMacroPageConfigGroups(t *testing.T) {
+	t.Parallel()
+	cfg := macroPageConfig(time.UTC, "dev", nil)
+	var got []string
+	var keys []string
+	for _, g := range cfg.Groups {
+		keys = append(keys, g.Key)
+		for _, ind := range g.Indicators {
+			got = append(got, ind.SeriesID)
+		}
+	}
+	want := "DFF DGS3MO DGS2 DGS10 T10Y2Y T10Y3M T10YIE BAMLH0A0HYM2 NFCI DTWEXBGS DEXJPUS IRLTLT01JPM156N"
+	if strings.Join(got, " ") != want || strings.Join(keys, " ") != "rates credit dollar_japan" {
+		t.Fatalf("groups %v %v", keys, got)
+	}
+	if len(cfg.Indicators) != 0 {
+		t.Fatalf("the old Indicators entry is back: %v", cfg.Indicators)
+	}
+	at := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name  string
+		owner ownerset.Reader
+		days  int
+		set   bool
+	}{
+		{"stored", fakeOwner{params: []ownerset.Param{{Key: "max_dte", Value: "30"}}}, 30, true},
+		{"other key only", fakeOwner{params: []ownerset.Param{{Key: "min_dte", Value: "10"}}}, 45, false},
+		{"none stored", fakeOwner{}, 45, false},
+		{"read fails", fakeOwner{err: errors.New("down")}, 45, false},
+		{"nil reader", nil, 45, false},
+	}
+	for _, tc := range cases {
+		days, set := ownerWindow(tc.owner)(t.Context(), at)
+		if days != tc.days || set != tc.set {
+			t.Errorf("%s: got %d,%v want %d,%v", tc.name, days, set, tc.days, tc.set)
+		}
+	}
+	if days, set := cfg.Window(t.Context(), at); days != 45 || set {
+		t.Errorf("config window %d,%v", days, set)
+	}
 }

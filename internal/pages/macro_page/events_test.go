@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/macroevent"
@@ -302,5 +303,77 @@ func TestEventsReaderErrorFailsBuild(t *testing.T) {
 	c.Events = &fakeEvents{err: errors.New("boom")}
 	if _, err := Build(t.Context(), fakeReader{}, c, eventsDay, fixedAt); err == nil {
 		t.Fatal("want an error")
+	}
+}
+
+func windowBuild(t *testing.T, ev *fakeEvents, w WindowFunc) map[string]any {
+	t.Helper()
+	c := cfg("A")
+	c.Events, c.Window = ev, w
+	return buildWith(t, fakeReader{}, c)
+}
+
+func TestEventWindowFlag(t *testing.T) {
+	t.Parallel()
+	ev := healthy()
+	ev.events = append(ev.events,
+		eventOn("cpi", "2026-11-04"), eventOn("cpi", "2026-11-05"), eventOn("pce", "2026-12-20"), eventOn("gdp", "2026-12-21"))
+	rows := eventRows(windowBuild(t, ev, windowOf45(true)))
+	got := map[string][2]any{}
+	for _, r := range rows {
+		got[r["date"].(string)] = [2]any{r["days_to"], r["in_window"]}
+	}
+	want := map[string][2]any{
+		"2026-11-05": {float64(0), true}, "2026-12-20": {float64(45), true}, "2026-12-21": {float64(46), false},
+	}
+	for d, w := range want {
+		if got[d] != w {
+			t.Errorf("%s: got %v want %v", d, got[d], w)
+		}
+	}
+	if _, ok := got["2026-11-04"]; ok {
+		t.Error("an event before the page day is listed")
+	}
+	// a window of 46 days takes the last in
+	rows = eventRows(windowBuild(t, ev, func(context.Context, time.Time) (int, bool) { return 46, true }))
+	for _, r := range rows {
+		if r["date"] == "2026-12-21" && r["in_window"] != true {
+			t.Errorf("46-day window: %v", r)
+		}
+	}
+	// no Window: no new field
+	c := cfg("A")
+	c.Events = ev
+	for _, r := range eventRows(buildWith(t, fakeReader{}, c)) {
+		if _, ok := r["days_to"]; ok {
+			t.Fatalf("days_to without Window: %v", r)
+		}
+		if _, ok := r["in_window"]; ok {
+			t.Fatalf("in_window without Window: %v", r)
+		}
+	}
+}
+
+func TestWindowSourceWords(t *testing.T) {
+	t.Parallel()
+	ev := healthy()
+	ev.events = append(ev.events, eventOn("fomc", "2026-11-20"))
+	cases := []struct {
+		name string
+		w    WindowFunc
+		want string
+	}{
+		{"stored", func(context.Context, time.Time) (int, bool) { return 30, true }, "the 30-day option window (your max_dte setting)"},
+		{"none stored", windowOf45(false), "the 45-day option window (default, none set)"},
+		{"failed read", func(context.Context, time.Time) (int, bool) { return 0, true }, "the 45-day option window (default, none set)"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			text := leadRows(t, windowBuild(t, ev, tc.w))[2]["text"].(string)
+			if !strings.HasSuffix(text, tc.want) || !strings.HasPrefix(text, "FOMC decision, 2026-11-20, in 15 days, inside ") {
+				t.Fatalf("text %q", text)
+			}
+		})
 	}
 }
