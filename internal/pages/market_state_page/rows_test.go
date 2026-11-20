@@ -1,12 +1,17 @@
 package market_state_page
 
 import (
+	"bytes"
+	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 func TestRowsCarryWindowAndDay(t *testing.T) {
@@ -157,4 +162,69 @@ func TestHistoryPointTextUsesTypographicMinus(t *testing.T) {
 	if h.Points[0].Text != "0.00%" {
 		t.Errorf("zero text = %q", h.Points[0].Text)
 	}
+}
+
+// longLine is n points of value v(i), one per day.
+func longLine(n int, v func(i int) float64) marketstateapi.Line {
+	l := marketstateapi.Line{Total: n}
+	for i := 0; i < n; i++ {
+		l.Points = append(l.Points, marketstateapi.Point{Day: dayAfter(i), Value: fmt.Sprintf("%.4f", v(i))})
+	}
+	return l
+}
+
+func TestRowsCarryRangeAndHint(t *testing.T) {
+	t.Parallel()
+	res := sampleResult()
+	up := func(i int) float64 { return 10 + float64(i)/100 }
+	res.History = marketstateapi.History{
+		Sp500Vs200d: longLine(300, func(i int) float64 { return float64(i-100) / 1000 }),
+		Drawdown:    longLine(300, func(i int) float64 { return -float64(i) / 10 }),
+		VIX:         longLine(300, up), VIXTerm: longLine(300, up), HighYield: longLine(300, up),
+	}
+	b := buildBytes(t, fullConfig(t, res))
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := compileSchema(t).Validate(inst); err != nil {
+		t.Fatalf("%v\n%s", err, b)
+	}
+	rows := marketRows(decode(t, b))
+	for _, r := range rows {
+		row := obj(r)
+		hint, _ := row["hint"].(string)
+		if hint == "" {
+			t.Errorf("%v: no hint", row["id"])
+		}
+		rg := obj(row["range"])
+		if isGap(rg) {
+			t.Errorf("%v: range is a Gap: %v", row["id"], rg)
+			continue
+		}
+		if !strings.HasSuffix(rg["state_text"].(string), "trial") || len(list(rg["cuts"])) != 2 {
+			t.Errorf("%v: range = %v", row["id"], rg)
+		}
+	}
+	if st := obj(obj(rows[2])["range"])["state"]; st != "normal" {
+		t.Errorf("vix 18.5 state = %v", st)
+	}
+	// a row with a Gap figure has a Gap range and still carries the hint
+	c := fullConfig(t, res)
+	c.Liquidity = func(liquidityapi.Input) liquidityapi.Result {
+		return liquidityapi.Result{HighYield: liquidityapi.Num{Reason: "stale_input"}}
+	}
+	hy := obj(marketRows(build(t, c))[4])
+	if !isGap(hy["range"]) || hy["hint"] == "" {
+		t.Errorf("hy_spread = %v", hy)
+	}
+}
+
+func buildBytes(t *testing.T, c Config) []byte {
+	t.Helper()
+	b, err := Build(context.Background(), c, fakeSeries{}, testDay, time.Date(2026, 11, 13, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
