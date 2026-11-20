@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	jobrunfig "github.com/andrewrong/optdesk/internal/compute/jobrun"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -205,6 +206,22 @@ func newMorningNotifier(
 	return n, closeAll, nil
 }
 
+// newSlowNotifier builds the slow-run notifier over the job-run store (the reader and the marker of the
+// ledger), the figures function of compute/jobrun and the same Config as the other notifiers. It returns nil
+// when there is no store or no constructor in deps, or when the build fails (one log line, no error text): the
+// slow pass is a notice only, so the scheduler goes on without it.
+func newSlowNotifier(a *app, st jobRunStore, s notify.Sender, clk clockwork.Clock, quiet bool) notify.SlowNotifier {
+	if st == nil || a.deps.newSlowNotifier == nil {
+		return nil
+	}
+	n, err := a.deps.newSlowNotifier(notify.SlowDeps{Runs: st, Mark: st, Figures: jobrunfig.Figures}, s, clk, notifyConfig(a, quiet))
+	if err != nil {
+		a.log.Warn("slow notifier not built", "component", "ot", "status", "failed")
+		return nil
+	}
+	return n
+}
+
 // readOnlySent is the sent store of a dry run: it reads the marks and writes none.
 type readOnlySent struct{ store.SentStore }
 
@@ -244,6 +261,7 @@ type notifyingGaps struct {
 	n      notify.Notifier
 	alerts notify.AlertNotifier   // nil: no alert pass
 	morn   notify.MorningNotifier // nil: no morning pass
+	slow   notify.SlowNotifier    // nil: no slow-run pass
 	log    *slog.Logger
 }
 
@@ -252,6 +270,7 @@ func (g notifyingGaps) Sync(ctx context.Context, day contracts.Day, disabled map
 	g.notify(ctx)
 	g.notifyAlerts(ctx)
 	g.notifyMorning(ctx)
+	g.notifySlow(ctx)
 	return err
 }
 
@@ -293,5 +312,20 @@ func (g notifyingGaps) notifyMorning(ctx context.Context) {
 	}()
 	if _, err := g.morn.NotifyMorning(ctx); err != nil {
 		g.log.Warn("morning notify failed", "component", "ot", "class", errorClass(err))
+	}
+}
+
+// notifySlow is the slow-run pass, beside the alert and morning passes; it fails and panics on its own.
+func (g notifyingGaps) notifySlow(ctx context.Context) {
+	if g.slow == nil {
+		return
+	}
+	defer func() {
+		if recover() != nil {
+			g.log.Error("slow notify panicked", "component", "ot", "class", "panic")
+		}
+	}()
+	if _, err := g.slow.NotifySlowRuns(ctx); err != nil {
+		g.log.Warn("slow notify failed", "component", "ot", "class", errorClass(err))
 	}
 }

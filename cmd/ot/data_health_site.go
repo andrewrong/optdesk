@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	jobrunfig "github.com/andrewrong/optdesk/internal/compute/jobrun"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
@@ -74,6 +75,7 @@ func buildDataHealth(ctx context.Context, _ *app, clk clock.Clock, dayFlag strin
 	}
 	return data_health_page.Build(ctx, data_health_page.Input{
 		Now: clk.Now().UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs(), Form: form,
+		Runs: rd.jobRuns, Figures: jobrunfig.Figures,
 	})
 }
 
@@ -96,7 +98,8 @@ func dataHealthPageNamed(ctx context.Context, a *app) (pages.Page, func(), error
 	}
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
 		cov, _ := siteReaderOf[coverage.Reader](rd, siteDataHealthKey)
-		return data_health_page.Build(ctx, data_health_page.Input{Now: now.UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs()})
+		return data_health_page.Build(ctx, data_health_page.Input{Now: now.UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs(),
+			Runs: rd.jobRuns, Figures: jobrunfig.Figures})
 	}
 	return pages.Page{Meta: pages.Meta{Name: dataHealthName, Schema: "page.data_health_page.v1"}, Build: build}, closeFn, nil
 }
