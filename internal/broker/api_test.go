@@ -314,3 +314,32 @@ func TestResolvedCarriesHoursThroughThePort(t *testing.T) {
 		t.Fatalf("got %+v, %v", r, err)
 	}
 }
+
+type fakeHealth struct{ down bool }
+
+func (f fakeHealth) Health(context.Context) (broker.Health, error) {
+	if f.down {
+		return broker.Health{}, typedErr{contracts.Retryable}
+	}
+	return broker.Health{Name: "gw", State: "farm_broken", Farms: []broker.Farm{{Name: "ushmds"}}}, nil
+}
+
+func (fakeHealth) Close() error { return nil }
+
+func TestHealthReaderContract(t *testing.T) {
+	t.Parallel()
+	var f broker.NewHealthFunc = func(context.Context, string, broker.Options) (broker.HealthReader, error) {
+		return fakeHealth{}, nil
+	}
+	r, err := f(context.Background(), "x", broker.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := r.Health(context.Background())
+	if err != nil || h.Name != "gw" || h.State != "farm_broken" || len(h.Farms) != 1 || h.Farms[0].Up {
+		t.Fatalf("got %+v, %v", h, err)
+	}
+	if _, err := broker.HealthReader(fakeHealth{down: true}).Health(context.Background()); !retryable(err) {
+		t.Fatalf("got %v", err)
+	}
+}
