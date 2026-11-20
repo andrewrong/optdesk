@@ -314,9 +314,17 @@ func startJobRuns(ctx context.Context, a *app, dsn string, clk clockwork.Clock) 
 	return st, release
 }
 
+// ledgerOf is the ledger side of st; a nil store gives a nil ledger, not a non-nil interface over nil.
+func ledgerOf(st jobRunStore) jobrun.JobRunLedger {
+	if st == nil {
+		return nil
+	}
+	return st
+}
+
 // withJobLocksAndRuns is withJobLocks that also gives the ledger to the reconciler and backfiller; a nil store
 // gives none.
-func withJobLocksAndRuns(st jobRunStore) func(runner.Reconciler, runner.Backfiller, runner.JobLocks) {
+func withJobLocksAndRuns(st jobrun.JobRunLedger) func(runner.Reconciler, runner.Backfiller, runner.JobLocks) {
 	return func(r runner.Reconciler, bf runner.Backfiller, locks runner.JobLocks) {
 		withJobLocks(r, bf, locks)
 		if st != nil {
