@@ -112,7 +112,16 @@ func newDatabase(t *testing.T) string {
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
 		t.Fatalf("apply 0048: %v", err)
 	}
-	if _, err := c.Exec(ctx, `GRANT USAGE ON SCHEMA obs TO ot_w_series_fred, ot_ro_pages`); err != nil {
+	raw65, err := os.ReadFile("../../../migrations/0065_pages_obs_usage.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	up65, _, _ := strings.Cut(string(raw65), "-- +goose Down")
+	if _, err := c.Exec(ctx, strings.Replace(up65, "-- +goose Up", "", 1)); err != nil {
+		t.Fatalf("apply 0065: %v", err)
+	}
+	// 0002_series.sql grants the writer its usage on obs in production; this test does not apply 0002.
+	if _, err := c.Exec(ctx, `GRANT USAGE ON SCHEMA obs TO ot_w_series_fred`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_series_fred, ot_ro_pages, ot_runner`); err != nil {
