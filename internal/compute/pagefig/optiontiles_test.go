@@ -75,7 +75,31 @@ func TestOpenPremiumNetPaid(t *testing.T) {
 	o := tiles(blockapi.OptionTilesIn{Structures: []compute.Structure{
 		st("other", "USD", "", leg("-1", "1.00"), leg("2", "2.00")),
 	}})
-	if o.OpenPremiumGap != "no_data" || o.OpenPremium != (blockapi.UsdText{}) {
+	if o.OpenPremiumGap != "" || o.OpenPremium != (blockapi.UsdText{Value: "0.00", Dollars: "0"}) {
+		t.Fatalf("%+v", o)
+	}
+}
+
+func TestTilesDebitVerticalSkipped(t *testing.T) {
+	t.Parallel()
+	o := tiles(blockapi.OptionTilesIn{Structures: []compute.Structure{
+		st("put_spread", "USD", "-300", leg("-1", "2.50"), leg("1", "1.00")),
+		st("call_debit_spread", "USD", "-200", leg("-1", "1.00"), leg("1", "3.00")),
+	}})
+	if o.OpenPremium != (blockapi.UsdText{Value: "150.00", Dollars: "150"}) || o.OpenPremiumGap != "" {
+		t.Fatalf("%+v", o)
+	}
+}
+
+func TestTilesDebitOnly(t *testing.T) {
+	t.Parallel()
+	o := tiles(blockapi.OptionTilesIn{Structures: []compute.Structure{
+		st("call_debit_spread", "USD", "-200", leg("-1", "1.00"), leg("1", "3.00")),
+	}})
+	if o.OpenPremium != (blockapi.UsdText{Value: "0.00", Dollars: "0"}) || o.OpenPremiumGap != "" {
+		t.Fatalf("%+v", o)
+	}
+	if o.MaxLossUsd != (blockapi.UsdText{Value: "200.00", Dollars: "200"}) || o.MaxLossGap != "" {
 		t.Fatalf("%+v", o)
 	}
 }
