@@ -67,6 +67,14 @@
           "title": "Date",
           "type": "string"
         },
+        "days_to": {
+          "title": "Days To",
+          "type": "integer"
+        },
+        "in_window": {
+          "title": "In Window",
+          "type": "boolean"
+        },
         "name_text": {
           "maxLength": 200,
           "minLength": 1,
@@ -155,6 +163,31 @@
     "Indicator": {
       "additionalProperties": false,
       "properties": {
+        "change_text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Change Text"
+        },
+        "data_day": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data Day"
+        },
         "detail_href": {
           "anyOf": [
             {
@@ -168,6 +201,21 @@
           ],
           "title": "Detail Href"
         },
+        "group": {
+          "enum": [
+            "rates",
+            "credit",
+            "dollar_japan"
+          ],
+          "title": "Group",
+          "type": "string"
+        },
+        "hint": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Hint",
+          "type": "string"
+        },
         "label": {
           "maxLength": 200,
           "minLength": 1,
@@ -178,6 +226,9 @@
           "anyOf": [
             {
               "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/LevelFigure"
             },
             {
               "$ref": "common.v1.json#/$defs/Gap"
@@ -216,6 +267,168 @@
         "detail_href"
       ],
       "title": "Indicator",
+      "type": "object"
+    },
+    "Lead": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/LeadRow"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Rows",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "rows",
+        "note"
+      ],
+      "title": "Lead",
+      "type": "object"
+    },
+    "LeadRow": {
+      "additionalProperties": false,
+      "properties": {
+        "change_text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Change Text"
+        },
+        "data_day": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data Day"
+        },
+        "hint": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Hint",
+          "type": "string"
+        },
+        "key": {
+          "enum": [
+            "tbill",
+            "hy_spread",
+            "next_event",
+            "index_iv"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "gap"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "text",
+        "data_day",
+        "change_text",
+        "hint",
+        "state"
+      ],
+      "title": "LeadRow",
+      "type": "object"
+    },
+    "LevelFigure": {
+      "additionalProperties": false,
+      "description": "A level that is not a percent: index points, yen per dollar or a percent level.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "enum": [
+            "index_points",
+            "jpy_per_usd",
+            "percent"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000,
+          "minimum": -1000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "LevelFigure",
       "type": "object"
     },
     "Liquidity": {
@@ -569,6 +782,9 @@
       "minLength": 1,
       "title": "Indicators Title",
       "type": "string"
+    },
+    "lead": {
+      "$ref": "#/$defs/Lead"
     },
     "liquidity": {
       "anyOf": [
