@@ -603,3 +603,33 @@ func TestOptionFallsBackToEarlierMark(t *testing.T) {
 		t.Fatalf("notes = %v, want the earlier-mark line for the option", noteTexts(m))
 	}
 }
+
+// TestThreeHoldingsPricedFromEarlierMarkRenderTheDayLabel is the page of the issue on synthetic data:
+// three stocks, marks only on the day before the capture, the schema-valid page lists each with a value
+// and a share and names the mark day and the count in its notes.
+func TestThreeHoldingsPricedFromEarlierMarkRenderTheDayLabel(t *testing.T) {
+	t.Parallel()
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-09": {markOf(1, "240"), markOf(2, "100"), markOf(3, "10")},
+	}}
+	ps := []store.Position{stock("AAA", 1, "100", "200"), stock("BBB", 2, "50", "10"), stock("CCC", 3, "10", "5")}
+	c, _ := holdingsConfig(ps, marks)
+	m, b := build(t, c, "main")
+	validate(t, b)
+	want := "有 3 个持仓用的是 2026-11-09 的收盘标记，采集日尚无标记"
+	if got := noteTexts(m); !slices.Contains(got, want) {
+		t.Fatalf("notes = %v, want %q", got, want)
+	}
+	for _, blk := range []string{"composition", "concentration"} {
+		rows := m[blk].(map[string]any)["rows"].([]any)
+		if len(rows) != 3 {
+			t.Fatalf("%s rows = %v", blk, rows)
+		}
+		for _, r := range rows {
+			row := r.(map[string]any)
+			if row["amount"] == nil || row["share"] == nil {
+				t.Fatalf("%s row without value or share: %v", blk, row)
+			}
+		}
+	}
+}
