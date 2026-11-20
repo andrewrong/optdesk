@@ -132,7 +132,8 @@ func TestCardHintsAreChinese(t *testing.T) {
 		"the bet that the stock does not fall", "implied volatility,", "steps whose IV", "fill price", "the option side", "the ledger's figure",
 	}
 	o := outcome{lot: pnlLot{pos: compute.LedgerPosition{Currency: "USD", Status: "closed"}},
-		res: optionattrapi.Result{Currency: "USD", Entry: "1", Exit: "1", AssignedIntrinsic: "2", LedgerPnL: "3", Unsplit: "1", UnsplitSteps: 1, Time: "1", MoveCost: "1", Direction: "1", IVRemark: "1"}}
+		res: optionattrapi.Result{Currency: "USD", Entry: "1", Exit: "1", AssignedIntrinsic: "2", LedgerPnL: "3",
+			Unsplit: "1", UnsplitSteps: 1, Time: "1", MoveCost: "1", Direction: "1", IVRemark: "1"}}
 	card, err := lotCard(Config{}, "p", "a", o, true)
 	if err != nil {
 		t.Fatal(err)
