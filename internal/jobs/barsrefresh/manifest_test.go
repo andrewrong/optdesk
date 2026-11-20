@@ -230,3 +230,25 @@ func TestManifestRefusesUnknownGroup(t *testing.T) {
 		t.Fatalf("industry: %v", err)
 	}
 }
+
+func TestManifestFallbackTolerance(t *testing.T) {
+	t.Parallel()
+	m, err := barsrefresh.DefaultManifest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.FallbackTolerance == nil || m.FallbackTolerance.Cmp(mustRat(t, "1/200")) != 0 {
+		t.Fatalf("fallback_tolerance %v, want exactly 1/200", m.FallbackTolerance)
+	}
+	missing := strings.Replace(raw(t), `fallback_tolerance = "0.005"`, "", 1)
+	for name, src := range map[string]string{
+		"missing":  missing,
+		"zero":     strings.Replace(raw(t), `"0.005"`, `"0"`, 1),
+		"not text": strings.Replace(raw(t), `"0.005"`, `"abc"`, 1),
+		"negative": strings.Replace(raw(t), `"0.005"`, `"-0.1"`, 1),
+	} {
+		if _, err := barsrefresh.LoadManifest([]byte(src)); err == nil || !strings.Contains(err.Error(), "fallback_tolerance") {
+			t.Fatalf("%s: got %v", name, err)
+		}
+	}
+}
