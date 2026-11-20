@@ -106,9 +106,10 @@ func mapRow(q broker.Quote, instrumentID, underlyingID int64, day time.Time, cap
 	}
 }
 
-// withUnderlyingPrice sets underlying_price to price when the row has none and price is positive; a quote's own UndPrice stays.
-func withUnderlyingPrice(row contracts.OptionEod, price float64) contracts.OptionEod {
-	if row.UnderlyingPrice == nil && price > 0 {
+// withUnderlyingPrice sets underlying_price to price when price is positive and either own (the stock's own Last or
+// Close) or the row has none: the stock's price beats the option quote's UndPrice, which stays only as the fallback.
+func withUnderlyingPrice(row contracts.OptionEod, price float64, own bool) contracts.OptionEod {
+	if price > 0 && (own || row.UnderlyingPrice == nil) {
 		row.UnderlyingPrice = &price
 	}
 	return row

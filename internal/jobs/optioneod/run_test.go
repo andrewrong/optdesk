@@ -553,7 +553,7 @@ func TestRunStoresFetchedUnderlyingPrice(t *testing.T) {
 		name       string
 		noUndPrice bool
 		want       float64
-	}{{"quote without UndPrice takes the fetched price", true, 100}, {"quote with UndPrice keeps its own", false, 100}} {
+	}{{"quote without UndPrice takes the fetched price", true, 101}, {"quote with UndPrice yields to the stock price", false, 101}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			r := newRig(t, "2026-11-06 17:00")
@@ -563,15 +563,80 @@ func TestRunStoresFetchedUnderlyingPrice(t *testing.T) {
 				t.Fatalf("%+v", res)
 			}
 			want := tc.want
-			if tc.noUndPrice {
-				want = 101
-			}
 			for i, row := range r.w.all() {
 				if row.UnderlyingPrice == nil || *row.UnderlyingPrice != want {
 					t.Fatalf("row %d underlying_price %v, want %v", i, row.UnderlyingPrice, want)
 				}
 			}
 		})
+	}
+}
+
+// stockQuoteBroker answers the underlying snapshot with stock and gives every option quote UndPrice 358.32.
+type stockQuoteBroker struct {
+	*fakeBroker
+	stock broker.Quote
+}
+
+func (s *stockQuoteBroker) Snapshot(ctx context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
+	if kind == broker.KindSnapshot {
+		q := s.stock
+		q.Contract = cs[0]
+		return []broker.Quote{q}, nil
+	}
+	qs, err := s.fakeBroker.Snapshot(ctx, kind, cs)
+	for i := range qs {
+		qs[i].UndPrice = num(358.32)
+	}
+	return qs, err
+}
+
+func underlyingPrices(t *testing.T, stock broker.Quote) []float64 {
+	t.Helper()
+	r := newRig(t, "2026-11-06 17:00")
+	r.b.chains[0].Strikes = append(r.b.chains[0].Strikes, "335", "340", "350", "355", "360")
+	r.job.b = &stockQuoteBroker{fakeBroker: r.b, stock: stock}
+	if res := r.run(testDay, testKey); res.Err != nil || res.Returned == 0 {
+		t.Fatalf("%+v", res)
+	}
+	var out []float64
+	for i, row := range r.w.all() {
+		if row.UnderlyingPrice == nil {
+			t.Fatalf("row %d has no underlying_price", i)
+		}
+		out = append(out, *row.UnderlyingPrice)
+	}
+	return out
+}
+
+func TestUnderlyingPriceIsTheStockPrice(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		stock broker.Quote
+		want  float64
+	}{
+		{"last", broker.Quote{Last: num(339), Close: num(352.09)}, 339},
+		{"close when last is absent", broker.Quote{Close: num(352.09)}, 352.09},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			for i, got := range underlyingPrices(t, tc.stock) {
+				if got != tc.want {
+					t.Fatalf("row %d underlying_price %v, want %v", i, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestUnderlyingPriceFallsBackToQuoteUndPrice(t *testing.T) {
+	t.Parallel()
+	got := underlyingPrices(t, broker.Quote{Bid: num(350), Ask: num(352)})
+	for i, v := range got {
+		if v != 358.32 {
+			t.Fatalf("row %d underlying_price %v, want 358.32", i, v)
+		}
 	}
 }
 
@@ -769,7 +834,7 @@ func TestChunkResolvesTwoSeriesOfOneStrike(t *testing.T) {
 	weekly := std
 	weekly.TradingClass, weekly.ConID = "TESTW", 951
 	var res contracts.JobResult
-	terr := rs.chunk(context.Background(), u, 1, 100, jobs.CaptureID{}, []broker.Contract{std, weekly}, &res, &tally{})
+	terr := rs.chunk(context.Background(), u, 1, 100, false, jobs.CaptureID{}, []broker.Contract{std, weekly}, &res, &tally{})
 	if terr != nil {
 		t.Fatal(terr)
 	}
