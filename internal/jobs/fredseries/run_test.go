@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -165,6 +166,7 @@ func keysOf(ids ...string) []contracts.ExpectedKey {
 
 var (
 	plainIDs    = []string{"DGS10", "DGS3MO", "IRLTLT01JPM156N", "RVXCLS", "SP500", "VIXCLS", "VXNCLS", "VXVCLS"}
+	longIDs     = []string{"A191RL1Q225SBEA", "CPIAUCNS", "DFEDTARL", "DFEDTARU", "JTSJOL", "PAYEMS", "PCEPI", "PPIFID", "RSAFS"}
 	windowedIDs = []string{"BAA10Y", "BAMLC0A0CM", "BAMLH0A0HYM2", "DEXJPUS", "DFF", "DGS2", "DTWEXBGS", "IORB", "NFCI", "RRPONTSYD", "SOFR", "SOFR99", "STLFSI4",
 		"T10Y2Y", "T10Y3M", "T10YIE", "TLAACBW027SBOG", "WALCL", "WDTGAL", "WLCFLPCL", "WRESBAL"}
 )
@@ -181,11 +183,11 @@ func TestRunFetchWindowPerGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ks) != 29 {
+	if len(ks) != 38 {
 		t.Fatalf("keys = %d", len(ks))
 	}
 	j.Run(context.Background(), day, ks)
-	if len(src.plans) != 2 {
+	if len(src.plans) != 3 {
 		t.Fatalf("fetch calls = %d", len(src.plans))
 	}
 	for _, p := range src.plans {
@@ -196,13 +198,16 @@ func TestRunFetchWindowPerGroup(t *testing.T) {
 		if slices.Contains(p.SeriesIDs, "WALCL") {
 			from = "2026-10-23"
 		}
+		if slices.Contains(p.SeriesIDs, "CPIAUCNS") {
+			from = "2025-08-03"
+		}
 		if p.From != from {
 			t.Fatalf("ids %v From = %s, want %s", p.SeriesIDs, p.From, from)
 		}
 	}
 	ids := func(p sources.FetchPlan) []string { s := slices.Clone(p.SeriesIDs); slices.Sort(s); return s }
-	got := [][]string{ids(src.plans[0]), ids(src.plans[1])}
-	if !slices.Equal(got[0], plainIDs) || !slices.Equal(got[1], windowedIDs) {
+	got := [][]string{ids(src.plans[0]), ids(src.plans[1]), ids(src.plans[2])}
+	if !slices.Equal(got[0], plainIDs) || !slices.Equal(got[1], windowedIDs) || !slices.Equal(got[2], longIDs) {
 		t.Fatalf("groups = %v", got)
 	}
 }
@@ -282,5 +287,79 @@ func TestRunEmptyFetchMakesNoUpsert(t *testing.T) {
 	res := j.Run(context.Background(), "2026-11-05", keys)
 	if res.Err != nil || res.Returned != 0 || len(w.calls) != 0 {
 		t.Fatalf("result = %+v, calls %v", res, w.calls)
+	}
+}
+
+// monthlyFake answers a fetch with the stored points inside the asked range, like FRED.
+type monthlyFake struct {
+	plans  []sources.FetchPlan
+	points []contracts.SeriesPoint
+}
+
+func (s *monthlyFake) Fetch(_ context.Context, p sources.FetchPlan) ([]contracts.SeriesPoint, error) {
+	s.plans = append(s.plans, p)
+	var out []contracts.SeriesPoint
+	for _, pt := range s.points {
+		d := contracts.Day(pt.ObservationDate.Format("2006-01-02"))
+		if slices.Contains(p.SeriesIDs, pt.SeriesID) && d >= p.From && d <= p.To {
+			out = append(out, pt)
+		}
+	}
+	return out, nil
+}
+
+// keyedWriter keeps rows by (series, date) like the by-key upsert and counts the rows new or changed per call.
+type keyedWriter struct {
+	rows    map[string]float64
+	changed []int
+}
+
+func (w *keyedWriter) InsertSeriesPoints(context.Context, []contracts.SeriesPoint) error {
+	return errors.New("keyedWriter: insert must not be used")
+}
+
+func (w *keyedWriter) UpsertSeriesPoints(_ context.Context, rows []contracts.SeriesPoint, _ string) (seriesdef.WriteCount, error) {
+	n := 0
+	for _, r := range rows {
+		k := r.SeriesID + "@" + r.ObservationDate.Format("2006-01-02")
+		if old, ok := w.rows[k]; !ok || old != *r.Value {
+			w.rows[k] = *r.Value
+			n++
+		}
+	}
+	w.changed = append(w.changed, n)
+	return seriesdef.WriteCount{Written: n}, nil
+}
+
+func TestLongSeriesLookback(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	day := contracts.Day("2026-11-06")
+	// 16 monthly points, 2025-08-04 .. 2026-11-04, and one older point before the 460 days.
+	src := &monthlyFake{}
+	for i := -1; i < 16; i++ {
+		v := float64(300 + i)
+		d := time.Date(2025, time.August, 4, 0, 0, 0, 0, time.UTC).AddDate(0, i, 0)
+		src.points = append(src.points, contracts.SeriesPoint{SeriesID: "CPIAUCNS", ObservationDate: types.SerializableDate{Time: d}, Status: "present", Value: &v})
+	}
+	w := &keyedWriter{rows: map[string]float64{}}
+	j, err := New(src, w, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks := keysOf("CPIAUCNS")
+	res := j.Run(ctx, day, ks)
+	if res.Err != nil || res.Returned != 16 || res.Usable != 16 {
+		t.Fatalf("first run = %+v", res)
+	}
+	if len(src.plans) != 1 || src.plans[0].From != "2025-08-03" || src.plans[0].To != day {
+		t.Fatalf("plans = %+v", src.plans)
+	}
+	if len(w.rows) != 16 || w.changed[0] != 16 {
+		t.Fatalf("rows %d, changed %v", len(w.rows), w.changed)
+	}
+	res = j.Run(ctx, day, ks)
+	if res.Err != nil || res.Returned != 16 || len(w.changed) != 2 || w.changed[1] != 0 || len(w.rows) != 16 {
+		t.Fatalf("second run = %+v, changed %v, rows %d", res, w.changed, len(w.rows))
 	}
 }

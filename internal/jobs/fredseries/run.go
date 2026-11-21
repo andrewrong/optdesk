@@ -68,16 +68,18 @@ func (j *job) ID() string { return j.m.ID }
 
 // Run fetches the series of keys for day and upserts the points in one call.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
-	var plain, windowed []string
+	var plain, windowed, long []string
 	for _, k := range keys {
-		if slices.Contains(j.m.Windowed, k.SubjectKey) {
+		if slices.Contains(j.m.Long, k.SubjectKey) {
+			long = append(long, k.SubjectKey)
+		} else if slices.Contains(j.m.Windowed, k.SubjectKey) {
 			windowed = append(windowed, k.SubjectKey)
 		} else {
 			plain = append(plain, k.SubjectKey)
 		}
 	}
 	var points []contracts.SeriesPoint
-	groups := []fetchGroup{{plain, day}, {windowed, daysBefore(day, j.m.LookbackDays)}}
+	groups := []fetchGroup{{plain, day}, {windowed, daysBefore(day, j.m.LookbackDays)}, {long, daysBefore(day, j.m.LongLookbackDays)}}
 	for _, g := range groups {
 		if len(g.ids) == 0 {
 			continue
