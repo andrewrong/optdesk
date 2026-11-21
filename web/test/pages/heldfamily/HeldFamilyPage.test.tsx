@@ -2,17 +2,18 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it } from 'vitest'
+import type { HeldFamilyPage as Payload } from '@/generated/held_family_page.v1'
 import { HeldFamilyPage } from '@/pages/heldfamily/HeldFamilyPage'
 import { held } from './fixtures/held'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-async function show() {
+async function show(payload: Payload = held) {
   const host = document.createElement('div')
   document.body.appendChild(host)
   const root = createRoot(host)
   await act(async () => {
-    root.render(<HeldFamilyPage payload={held} />)
+    root.render(<HeldFamilyPage payload={payload} />)
   })
   return {
     host,
@@ -59,6 +60,14 @@ describe('HeldFamilyPage', () => {
     const row = host.querySelector('tr[data-company="EEE"]')
     expect(row?.textContent).toContain('-2,000')
     expect(row?.textContent).toContain('-0.6 %')
+    await done()
+  })
+
+  it('lists the gaps of the payload with their text', async () => {
+    const gaps: Payload['gaps'] = [{ kind: 'gap', reason: 'stale', text: 'Synthetic gap: the close is old' }]
+    const { host, done } = await show({ ...held, gaps })
+    const item = host.querySelector('[data-gaps] [data-gap="stale"]')
+    expect(item?.textContent).toBe('Synthetic gap: the close is old')
     await done()
   })
 })
