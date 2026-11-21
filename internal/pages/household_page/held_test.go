@@ -324,11 +324,116 @@ func TestBuildHeldNotesAndCounts(t *testing.T) {
 	t.Parallel()
 	m, _ := buildHeld(t, heldConfig())
 	notes := strings.Join(strs(m["lead_notes"]), "\n")
-	for _, sub := range []string{"最多早 5 天", "空头", "只有期权", "daughter", "3 行的收盘价早于", "行没有财报日期"} {
+	for _, sub := range []string{"最多早 5 天", "空头", "只有期权", "daughter", "3 行的收盘价早于", "HHH", "4063", "行没有财报日期"} {
 		if !strings.Contains(notes, sub) {
 			t.Errorf("lead_notes lack %q:\n%s", sub, notes)
 		}
 	}
+	for _, line := range strs(m["lead_notes"]) {
+		if strings.Contains(line, "收盘价早于") && strings.Contains(line, "BBB") {
+			t.Errorf("a fresh row is named as stale: %s", line)
+		}
+	}
+}
+
+// countFx counts the reads; it answers rate 150 unless none is set.
+type countFx struct {
+	bar.FxRateReader
+	rate  string
+	calls *[][2]string
+}
+
+func (f countFx) LatestFxRate(_ context.Context, pair string, asOf contracts.Day) (contracts.FxRate, bool, error) {
+	*f.calls = append(*f.calls, [2]string{pair, string(asOf)})
+	if f.rate == "" {
+		return contracts.FxRate{}, false, nil
+	}
+	return contracts.FxRate{Pair: pair, Rate: f.rate, RateDay: sday("2026-11-09")}, true, nil
+}
+
+// yenInUsdConfig is one USD account holding a yen stock (100 x 3000 yen) and a USD stock (10 x 50).
+func yenInUsdConfig(fx bar.FxRateReader, yen bool) household_page.Config {
+	pos := []store.Position{hstock("USDA", 1, "10", "USD")}
+	mk := []mark.PositionMark{hmark(1, "50", "USD")}
+	if yen {
+		pos = append(pos, hstock("9999", 2, "100", "JPY"))
+		mk = append(mk, hmark(2, "3000", "JPY"))
+	}
+	return household_page.Config{
+		RunID: "run1", BuildID: "b1", Zone: zone, Aliases: []string{"solo"},
+		Account: heldAccount{
+			values:    map[string]map[string][]store.AccountValue{"solo": {"2026-11-10": netValues("solo", "2026-11-10", "10000", "USD", "10T01:00:00Z")}},
+			positions: map[string][]store.Position{"solo": pos},
+		},
+		Sessions: fakeSessions{}, Marks: heldMarks{"solo 2026-11-10": mk}, Holdings: pagefig.NewHoldings, Family: pagefig.NewFamily,
+		Fx: fx, Held: pagefig.NewHeld(),
+	}
+}
+
+func cellOf(row map[string]any, k string) map[string]any { return row[k].(map[string]any) }
+
+func TestBuildHeldYenStockInUsdAccount(t *testing.T) {
+	t.Parallel()
+	var calls [][2]string
+	m, _ := buildHeld(t, yenInUsdConfig(countFx{rate: "150", calls: &calls}, true))
+	rows := heldRows(m)
+	if v := cellOf(rows["9999"], "value"); v["text"] != "2,000.00" {
+		t.Fatalf("yen value = %v", v)
+	}
+	if s := cellOf(rows["9999"], "share"); s["text"] != "20.0 %" {
+		t.Fatalf("yen share = %v", s)
+	}
+	if s := cellOf(rows["USDA"], "share"); s["text"] != "5.0 %" {
+		t.Fatalf("usd share = %v", s)
+	}
+	if sum := m["rows_sum"].(map[string]any); sum["text"] != "2,500.00 USD" {
+		t.Fatalf("rows_sum = %v", sum)
+	}
+}
+
+func TestBuildHeldYenStockNoRate(t *testing.T) {
+	t.Parallel()
+	var calls [][2]string
+	m, _ := buildHeld(t, yenInUsdConfig(countFx{calls: &calls}, true))
+	rows := heldRows(m)
+	for _, k := range []string{"value", "share"} {
+		if c := cellOf(rows["9999"], k); c["kind"] != "gap" {
+			t.Fatalf("yen %s = %v", k, c)
+		}
+	}
+	if sum := m["rows_sum"].(map[string]any); sum["text"] != "500.00 USD" {
+		t.Fatalf("rows_sum = %v", sum)
+	}
+	if m["run_status"] != "partial" {
+		t.Fatalf("run_status = %v", m["run_status"])
+	}
+}
+
+func TestBuildHeldRateReadOnlyForYenLines(t *testing.T) {
+	t.Parallel()
+	var none [][2]string
+	buildHeld(t, yenInUsdConfig(countFx{rate: "150", calls: &none}, false))
+	if len(none) != 0 {
+		t.Fatalf("rate read without a yen line: %v", none)
+	}
+	var one [][2]string
+	buildHeld(t, yenInUsdConfig(countFx{rate: "150", calls: &one}, true))
+	if len(one) != 1 || one[0] != [2]string{"USDJPY", "2026-11-10"} {
+		t.Fatalf("calls = %v", one)
+	}
 }
 
 var _ blockapi.HeldFigure = pagefig.NewHeld()
+
+// TestBuildHeldFamilyRateNoSecondRead: with a JPY account counted the family figure reads the rate once and the
+// page makes no second read for its yen lines.
+func TestBuildHeldFamilyRateNoSecondRead(t *testing.T) {
+	t.Parallel()
+	var calls [][2]string
+	c := heldConfig()
+	c.Fx = countFx{rate: "150", calls: &calls}
+	buildHeld(t, c)
+	if len(calls) != 1 {
+		t.Fatalf("calls = %v", calls)
+	}
+}
