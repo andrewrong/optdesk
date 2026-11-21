@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // Config is what the builder needs. Zone is the owner's zone (nil is an error of Build); Aliases are
@@ -45,6 +46,12 @@ type Config struct {
 	Statement []string
 	// Family is the figure of the family page; nil gives BuildFamily the gap page no_reader.
 	Family blockapi.NewFamilyFigureFunc
+	// Underlying, Earnings and Held are read only by BuildHeld: the underlying rows (company and issuer of a
+	// symbol), the stored earnings rows of an issuer and the figure of the held companies. A nil one gives
+	// the page gaps no_reader.
+	Underlying underlying.Reader
+	Earnings   store.EarningsDateReader
+	Held       blockapi.HeldFigure
 }
 
 // NewPage is the household_page page of one account; alias "" means the main account.

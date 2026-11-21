@@ -63,6 +63,8 @@ var pageMetaKeys = map[string][]string{
 		"schema", "schema_version", "scope", "title"},
 	"flex_import": {"form", "gaps", "schema", "schema_version", "scope_note", "sentence", "title"},
 	"underlyings": {"confirm", "form", "gaps", "generated_at", "notice", "schema", "schema_version", "sentence", "session_day", "title"},
+	"held_family_page": {"build_id", "columns", "data_times", "gaps", "generated_at", "lead_notes", "notes", "rows_sum", "run_id",
+		"run_status", "schema", "schema_version", "scope", "stale", "title", "total"},
 	"job_console": {"form", "gaps", "generated_at", "refresh_seconds", "schema", "schema_version", "selected", "sentence", "title"},
 }
 
