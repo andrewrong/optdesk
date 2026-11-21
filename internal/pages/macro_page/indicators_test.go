@@ -203,3 +203,27 @@ func TestGroupsOnlyPageKeepsDataDay(t *testing.T) {
 		t.Fatalf("page with a 2026-11-04 row says no data day: %s", b)
 	}
 }
+
+func TestWeeklyLateAfter10Days(t *testing.T) {
+	t.Parallel()
+	// The page day is 2026-11-05.
+	cases := []struct{ day, status, label string }{
+		{"2026-10-31", "good", "On time"}, // 5 days
+		{"2026-10-26", "good", "On time"}, // 10 days
+		{"2026-10-25", "late", "Late"},    // 11 days
+	}
+	for _, tc := range cases {
+		t.Run(tc.day, func(t *testing.T) {
+			t.Parallel()
+			r := groupSeries(t)
+			r.points["NFCI"] = monthly(t, tc.day)
+			row := indicator(buildWith(t, r, groupCfg()), 2)
+			if row["status"] != tc.status || row["label"] != tc.label {
+				t.Fatalf("row %v", row)
+			}
+			if row["data_day"] != tc.day {
+				t.Fatalf("data_day %v", row["data_day"])
+			}
+		})
+	}
+}

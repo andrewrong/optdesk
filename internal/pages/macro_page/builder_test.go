@@ -3,6 +3,7 @@ package macro_page
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -330,5 +331,32 @@ func TestBuildV2SchemaVersion(t *testing.T) {
 	}
 	if strings.Contains(string(b), `"liquidity`) {
 		t.Fatalf("v1 carries a liquidity field: %s", b)
+	}
+}
+
+func TestWeeklySeriesDoesNotSetStale(t *testing.T) {
+	t.Parallel()
+	r := fakeReader{points: map[string][]contracts.SeriesPoint{
+		"NFCI": {pt(t, "2026-10-28", "2026-10-28", "percent", f64(-0.5))},
+		"DFF":  {pt(t, "2026-11-04", "2026-11-04", "percent", f64(4))},
+	}}
+	c := cfg()
+	c.Groups = []Group{
+		{Key: "rates", Indicators: []Indicator{{SeriesID: "DFF", Name: "ff", SourceText: "FRED"}}},
+		{Key: "credit", Indicators: []Indicator{{SeriesID: "NFCI", Name: "nfci", SourceText: "FRED"}}},
+	}
+	m := buildWith(t, r, c)
+	s := m["stale"].(map[string]any)
+	if s["text"] != "Data day 11-04" {
+		t.Fatalf("stale = %v", s)
+	}
+	found := false
+	for _, e := range m["data_times"].([]any) {
+		if strings.Contains(fmt.Sprint(e), "NFCI") {
+			found = true
+		}
+	}
+	if !found || len(m["data_times"].([]any)) != 2 {
+		t.Fatalf("data_times = %v", m["data_times"])
 	}
 }
