@@ -26,7 +26,7 @@ const links = () => [...host.querySelectorAll('a')]
 
 const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]])[] = [
   ['Market', [['Macro', '/macro'], ['Market state', '/market-state']]],
-  ['Portfolio', [['Household', '/household'], ['Positions', '/positions'], ['Risk', '/risk']]],
+  ['Portfolio', [['Household', '/household'], ['Positions', '/positions'], ['Held companies', '/held-family'], ['Risk', '/risk']]],
   [
     'Options',
     [
@@ -153,7 +153,7 @@ describe('TopNav', () => {
     expect(flat).toEqual([
       'Home',
       'Market', 'Macro', 'Market state',
-      'Portfolio', 'Household', 'Positions', 'Risk',
+      'Portfolio', 'Household', 'Positions', 'Held companies', 'Risk',
       'Options', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
       'Companies', 'Watch list', 'Price lines', 'Valuation', 'Import valuations', 'Data',
       'System', 'Settings', 'Job console', 'Base data', 'Data health', 'Option data',

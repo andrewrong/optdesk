@@ -30,6 +30,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { label: 'Household', path: '/household' },
       { label: 'Positions', path: '/positions' },
+      { label: 'Held companies', path: '/held-family' },
       { label: 'Risk', path: '/risk' },
     ],
   },
