@@ -19,7 +19,7 @@ All at origin/main.
 
 1. No stored per-day reading and no backfill. `marketstate.Compute` adds four lines to `History` in the same one pass as `Sp500Vs200d`: `Close`, `Ma200`, `BandLow`, `BandHigh`, over the whole raw `SP500` series, cut by `line()` to the chart window. The past shows at once.
 2. The average is `Indicators.SMA(closes, 200)`, the band `Indicators.BBands(closes, 20, 2, 2, SMA)` (Bollinger, "Bollinger on Bollinger Bands", 2001): lower and upper, 20-day simple average, 2 standard deviations. TA-Lib uses the population standard deviation (divisor n), not the sample one of `Stats.StdDev`; the page text says so. A day before the window is full (NaN) has no point for that line, never a zero. Texts: 2 decimals, `Units.RoundHalfEven`. These numbers are display series, not registered figures: no rules.json or register.toml entry (as `Drawdown` and `VIX` histories have none). `market.sp500_vs_200d` still divides by `Rolling.Mean`; the two averages agree to float noise, equal at 2 decimals.
-3. Wiring: `Indicators compute.Indicators` is a new field of `marketstateapi.Input` (interface change, entry 2) because a `compute` sub-package imports no sibling (modules.md); `market_state_page.Config` gains the same field and copies it into `Input` (entry 4); `cmd/ot/market_state_site.go` sets `talibind.New()` (entry 5). A nil `Indicators` leaves the three lines empty, like a nil `Figures`.
+3. Wiring: `Indicators compute.Indicators` is a new field of `marketstateapi.Input` (interface change, entry 2) because a `compute` sub-package imports no sibling (modules.md); `market_state_page.Config` gains the same field and copies it into `Input` (entry 4); `cmd/ot/market_state_site.go` sets `talibind.New()` (entry 4, folded in). A nil `Indicators` leaves the three lines empty, like a nil `Figures`.
 4. The band is the Bollinger band, the sourced band of the library; the owner's "range band" is read as this and asked back once (Left out).
 5. Payload: `page.market_state_page.v2.json` gains optional fields (v2 payloads stay valid): on the row `sp500_vs_200d` an optional `price_chart` (caption, aria_text, unit, points of day, close, optional ma200, band_low, band_high, each with its text); a top-level optional `vol_gap` (title, hint, rows of three indices, each a Figure in vol points or a Gap, with its day text). The old `history` stays.
 6. The page joins the five lines by day (copying text, computing nothing) and builds `price_chart` over the days of `Close`. A day without an average or band point has no such field.
@@ -29,7 +29,7 @@ All at origin/main.
 
 ## Modules
 
-contracts (entry 1), compute (entries 2, 3), pages (entry 4), ot (entry 5), web (entry 6).
+contracts (entry 1), compute (entries 2, 3), pages and ot (entry 4), web (entry 6).
 
 ## Interface
 
@@ -66,21 +66,12 @@ Acceptance: `History` carries the four lines from one pass over `SP500` through 
 
 ### 4 ms-chart-4-page
 
-Module: pages. Size: M.
-Order: after 1 and 3. Depends on: ms-chart-1-schema, ms-chart-3-series.
+Module: pages and ot (a judged two-module entry: the one-line wiring of `Indicators` in `cmd/ot` is folded in, so no issue waits on a sibling's unmerged work). Size: M.
+Order: after 1, 2. Depends on: ms-chart-1-schema, ms-chart-2-api.
 Plan: P1.
-Files: `internal/pages/market_state_page/page.go`, `internal/pages/market_state_page/builder.go`, `internal/pages/market_state_page/chart.go`, `internal/pages/market_state_page/volgap.go`, `internal/pages/market_state_page/zh_texts.go`, `internal/pages/market_state_page/chart_test.go`, `internal/pages/market_state_page/volgap_test.go`
+Files: `internal/pages/market_state_page/page.go`, `internal/pages/market_state_page/builder.go`, `internal/pages/market_state_page/chart.go`, `internal/pages/market_state_page/volgap.go`, `internal/pages/market_state_page/zh_texts.go`, `internal/pages/market_state_page/chart_test.go`, `internal/pages/market_state_page/volgap_test.go`, `cmd/ot/market_state_site.go`, `cmd/ot/market_state_site_test.go`
 Design: Decisions 3, 6, 7, 8.
-Acceptance: `Config.Indicators` is copied into `Input`; the payload carries `price_chart` joined by day from `History` and `vol_gap` from the stored `market.iv_rv20` (a new read here), validates against entry 1, gaps are named, texts are Chinese in `zh_texts.go`.
-
-### 5 ms-chart-5-wire
-
-Module: ot. Size: S.
-Order: after 4. Depends on: ms-chart-4-page.
-Plan: P1.
-Files: `cmd/ot/market_state_site.go`, `cmd/ot/market_state_site_test.go`
-Design: Decision 3.
-Acceptance: `marketStateConfig` sets `Indicators` to `talibind.New()`; a test builds the page over a 250-close series and finds `price_chart` with an average point.
+Acceptance: `Config.Indicators` is copied into `Input`; the payload carries `price_chart` joined by day from `History` and `vol_gap` from the stored `market.iv_rv20` (a new read here), validates against entry 1, gaps are named, texts are Chinese in `zh_texts.go`; the page tests use a fake `marketstateapi.Func` that returns the four lines, not `marketstate.Compute`; `marketStateConfig` sets `Indicators` to `talibind.New()`, and a test in `market_state_site_test.go` finds `Indicators` non-nil and of `talibind.New()`'s type.
 
 ### 6 ms-chart-6-web
 
@@ -104,5 +95,5 @@ Full answer: kept in the dispatcher draft store (adversarial-answer of this desi
 2. Rule hash circularity: adopted by removal. No rules or register entry exists.
 3. Simpler way: adopted in the form of the `history.go` pass, not as a figure function.
 4. Lock-in (band, population sd): adopted; sd stated (2); no stored contract.
-5. "No new code" false: adopted. Wiring is entries 2, 4, 5 (3).
+5. "No new code" false: adopted. Wiring is entries 2 and 4 (3).
 6. Modules refusal of register.toml: adopted by removal; every Files path is of its entry's module.
