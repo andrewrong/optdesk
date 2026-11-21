@@ -13,7 +13,7 @@ import ib_async
 import pytest
 from ib_async import RequestError
 from kit.fakeclock import FakeClock
-from real_ib import RealIb, real_ib, sent_messages
+from real_ib import ACCOUNT, RealIb, real_ib, sent_messages
 from test_ibgateway_real_ib import _ID, _connected, _turn, _until
 
 from optdesk.ibkr.accounts import SUMMARY_REQ_ID, drop_resubscribe, read_account
@@ -137,7 +137,7 @@ def test_read_account_retries_once_after_322() -> None:
         return await task, sent_messages(stub)
 
     rows, sent = asyncio.run(run())
-    assert rows.account == "DU7654321"
+    assert rows.account == ACCOUNT
     assert [m[0] for m in sent] == [
         _ID["summary"],
         CANCEL_SUMMARY_ID,
