@@ -52,7 +52,7 @@ var seriesSpecs = map[string]seriesSpec{
 	"T10Y3M":          {unit: unitPercent, hint: hintT10Y3M},
 	"T10YIE":          {unit: unitPercent, hint: hintT10YIE},
 	"BAMLH0A0HYM2":    {unit: unitPercent, hint: hintHySpread},
-	"NFCI":            {unit: unitPercent, weekly: true, hint: hintNFCI},
+	"NFCI":            {unit: unitIndex, weekly: true, hint: hintNFCI},
 	"DTWEXBGS":        {unit: unitIndex, hint: hintDTWEXBGS},
 	"DEXJPUS":         {unit: unitJPY, hint: hintDEXJPUS},
 	"IRLTLT01JPM156N": {unit: unitPercent, monthly: true, hint: hintIRLTJP},
