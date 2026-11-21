@@ -91,6 +91,9 @@ func (f jobFactory) optionEodWith(b broker.Broker, rd optioneod.ContractReader) 
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		j, err := buildOptionEod(f.d, b, f.inst, f.eod, entries, f.clk)
 		j, err = withOptionEodReasons(j, err, f.reasons)
+		if err == nil {
+			j, err = f.withCalendar(j)
+		}
 		if err != nil || rd == nil {
 			return j, err
 		}
@@ -145,8 +148,21 @@ func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store
 func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		j, err := buildOptionEodJP(f.d, b, f.inst, f.eod, f.fixedEntries(entries), f.clk)
-		return withOptionEodReasons(j, err, f.reasons)
+		j, err = withOptionEodReasons(j, err, f.reasons)
+		if err != nil {
+			return j, err
+		}
+		return f.withCalendar(j)
 	})
+}
+
+// withCalendar gives j the session calendar of the factory, which a close-anchored slot needs to tell an early run; a
+// nil calendar (dry run, preflight) leaves j as it is.
+func (f jobFactory) withCalendar(j contracts.Job) (contracts.Job, error) {
+	if f.cal == nil {
+		return j, nil
+	}
+	return optioneod.WithCalendar(j, f.cal)
 }
 
 // fixedEntries is es after entryFix when it is set, es itself otherwise.
