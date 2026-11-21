@@ -131,13 +131,22 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
 	}
-	r := &runState{j: j, day: day, dayTime: dayTime, start: now}
+	early := j.beforeSlot(day, now)
+	slot := j.m.Slot
+	if early {
+		slot = "early" + now.UTC().Format(time.RFC3339Nano) // its own capture, not the scheduled run's
+	}
+	r := &runState{j: j, day: day, dayTime: dayTime, start: now, slot: slot}
 	var res contracts.JobResult
 	for _, k := range keys {
 		if err := r.runKey(ctx, k, &res); err != nil {
 			res.Err = err
 			return res
 		}
+	}
+	if early && res.Err == nil {
+		res.Err = newErr(contracts.Retryable, "option_eod: %s: the run started before the slot %s; its rows are stored under their own capture, "+
+			"the key stays open for the scheduled run", reasonBeforeSlot, j.m.Slot)
 	}
 	return res
 }
@@ -147,6 +156,7 @@ type runState struct {
 	day     contracts.Day
 	dayTime time.Time
 	start   time.Time
+	slot    string // the slot argument of the capture id
 }
 
 // checkBudget is read before every broker call.
@@ -220,7 +230,7 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 			return terr
 		}
 	}
-	capture := captureID(r.day, k, r.j.m.Slot)
+	capture := captureID(r.day, k, r.slot)
 	var tl tally
 	var chunkErr contracts.TypedError
 	for i := 0; i < len(listed); i += r.j.m.Chunk {
