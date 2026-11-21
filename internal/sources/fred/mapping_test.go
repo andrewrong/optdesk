@@ -143,10 +143,14 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 		switch {
 		case !ok:
 			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
-		case units != "Percent" && u == contracts.SeriesUnit("percent"):
+		case !isPercentUnits(units) && u == contracts.SeriesUnit("percent"):
 			fails = append(fails, fmt.Sprintf("%s: table says percent, recorded units %q", id, units))
 		case !isIndexUnits(units) && u == indexPoints:
 			fails = append(fails, fmt.Sprintf("%s: table says index_points, recorded units %q", id, units))
+		case !isCountUnits(units) && u == countUnit:
+			fails = append(fails, fmt.Sprintf("%s: table says count, recorded units %q", id, units))
+		case isCountUnits(units) && u == countUnit && row.shift != 3:
+			fails = append(fails, fmt.Sprintf("%s: count shift %d does not match recorded units %q", id, row.shift, units))
 		case u == ccyAmount && !ccyTextMatchesShift(units, row.shift):
 			fails = append(fails, fmt.Sprintf("%s: ccy_amount shift %d does not match recorded units %q", id, row.shift, units))
 		}
@@ -160,10 +164,13 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 		if units == "Percent" && u != contracts.SeriesUnit("percent") {
 			fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
 		}
+		if isCountUnits(units) && u != countUnit {
+			fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
+		}
 		if isIndexUnits(units) && u != indexPoints {
 			fails = append(fails, fmt.Sprintf("%s: recorded Index, table says %q", id, u))
 		}
-		if strings.HasSuffix(units, "of U.S. Dollars") && u != ccyAmount {
+		if (strings.HasSuffix(units, "of U.S. Dollars") || units == "Millions of Dollars") && u != ccyAmount {
 			fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
 		}
 	}
@@ -173,13 +180,24 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 // isIndexUnits holds the two texts an index_points row may record: "Index" and the
 // trade-weighted dollar's "Index Jan 2006=100".
 func isIndexUnits(units string) bool {
-	return units == "Index" || units == "Index Jan 2006=100"
+	return strings.HasPrefix(units, "Index")
+}
+
+// isPercentUnits holds the two texts a percent row may record.
+func isPercentUnits(units string) bool {
+	return units == "Percent" || units == "Percent Change from Preceding Period"
+}
+
+// isCountUnits holds the two texts a count row may record; both are thousands.
+func isCountUnits(units string) bool {
+	return units == "Thousands of Persons" || units == "Level in Thousands"
 }
 
 // ccyTextMatchesShift holds the two full texts a ccy_amount row may record.
 func ccyTextMatchesShift(units string, shift int) bool {
 	return (units == "Millions of U.S. Dollars" && shift == 6) ||
-		(units == "Billions of U.S. Dollars" && shift == 9)
+		(units == "Billions of U.S. Dollars" && shift == 9) ||
+		(units == "Millions of Dollars" && shift == 6)
 }
 
 func loadMeta(t *testing.T) []seriesMeta {
@@ -210,7 +228,8 @@ func TestSeriesUnitsDetectsWrongClaim(t *testing.T) {
 	}
 	table["CPIAUCSL"] = unitRow{unit: contracts.SeriesUnit("percent")}
 	fails := compareUnits(table, loadMeta(t))
-	if len(fails) != 1 || !strings.Contains(fails[0], "CPIAUCSL") {
+	// An "Index 1982-1984=100" text is an index text: both directions of the check fire.
+	if len(fails) != 2 || !strings.Contains(fails[0], "CPIAUCSL") || !strings.Contains(fails[1], "CPIAUCSL") {
 		t.Errorf("fails = %v", fails)
 	}
 }
@@ -476,5 +495,46 @@ func TestMacroSeriesHaveUnitRows(t *testing.T) {
 	}
 	if got, err := mapObservations("UNKNOWN9", body, pub); err == nil || got != nil {
 		t.Errorf("UNKNOWN9: got %v, err %v", got, err)
+	}
+}
+
+func TestMacroEventSeriesHaveUnitRows(t *testing.T) {
+	t.Parallel()
+	want := map[string]unitRow{
+		"CPIAUCNS":        {unit: indexPoints},
+		"PCEPI":           {unit: indexPoints},
+		"PPIFID":          {unit: indexPoints},
+		"PAYEMS":          {unit: countUnit, shift: 3},
+		"JTSJOL":          {unit: countUnit, shift: 3},
+		"RSAFS":           {unit: ccyAmount, currency: "USD", shift: 6},
+		"A191RL1Q225SBEA": {unit: percent},
+		"DFEDTARU":        {unit: percent},
+		"DFEDTARL":        {unit: percent},
+	}
+	for id, w := range want {
+		if got, ok := seriesUnits[id]; !ok || got != w {
+			t.Errorf("%s: row %+v (present %v), want %+v", id, got, ok, w)
+		}
+	}
+	one := func(v string) []byte {
+		return []byte(`{"observations":[{"realtime_start":"2026-11-06","realtime_end":"2026-11-06","date":"2026-10-01","value":"` + v + `"}]}`)
+	}
+	for _, c := range []struct {
+		id, in string
+		want   float64
+	}{{"PAYEMS", "158000", 158000000}, {"RSAFS", "712345.6", 712345600000}} {
+		got, err := mapObservations(c.id, one(c.in), time.Time{})
+		if err != nil || len(got) != 1 || got[0].Value == nil || *got[0].Value != c.want {
+			t.Errorf("%s %s: %+v %v, want %v", c.id, c.in, got, err, c.want)
+		}
+	}
+	got, err := mapObservations("PAYEMS", one("."), time.Time{})
+	if err != nil || len(got) != 1 || got[0].Value != nil || got[0].Status != "no_value" || got[0].Unit != countUnit {
+		t.Errorf("PAYEMS dot: %+v %v", got, err)
+	}
+	// a PAYEMS row with another shift still fails.
+	table := map[string]unitRow{"PAYEMS": {unit: countUnit, shift: 6}}
+	if fails := compareUnits(table, loadMeta(t)); len(fails) != 1 || !strings.Contains(fails[0], "PAYEMS") {
+		t.Errorf("PAYEMS shift 6: %v", fails)
 	}
 }

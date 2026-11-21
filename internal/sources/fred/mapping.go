@@ -49,6 +49,7 @@ const (
 	percent     = contracts.SeriesUnit("percent")
 	indexPoints = contracts.SeriesUnit("index_points")
 	jpyPerUsd   = contracts.SeriesUnit("jpy_per_usd")
+	countUnit   = contracts.SeriesUnit("count")
 )
 
 // seriesUnits states the unit of each configured series; a series absent here is refused.
@@ -88,6 +89,17 @@ var seriesUnits = map[string]unitRow{
 	"T10YIE":          {unit: percent},
 	"IRLTLT01JPM156N": {unit: percent},
 	"DTWEXBGS":        {unit: indexPoints},
+	// Macro event series (macro-event-values Decisions 2 and 9). PAYEMS and JTSJOL are
+	// stored in whole persons (thousands, shift 3), RSAFS in whole dollars (millions, shift 6).
+	"CPIAUCNS":        {unit: indexPoints},
+	"PCEPI":           {unit: indexPoints},
+	"PPIFID":          {unit: indexPoints},
+	"PAYEMS":          {unit: countUnit, shift: 3},
+	"JTSJOL":          {unit: countUnit, shift: 3},
+	"RSAFS":           {unit: ccyAmount, currency: "USD", shift: 6},
+	"A191RL1Q225SBEA": {unit: percent},
+	"DFEDTARU":        {unit: percent},
+	"DFEDTARL":        {unit: percent},
 }
 
 // shiftDecimalText moves the decimal point of a plain decimal text n places right, on the text,

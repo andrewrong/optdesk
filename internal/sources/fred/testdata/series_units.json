@@ -28,5 +28,14 @@
   {"series_id": "T10Y3M", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
   {"series_id": "T10YIE", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
   {"series_id": "IRLTLT01JPM156N", "units": "Percent", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
-  {"series_id": "DTWEXBGS", "units": "Index Jan 2006=100", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"}
+  {"series_id": "DTWEXBGS", "units": "Index Jan 2006=100", "note": "units text per macro-page-v2 Decision 4; not downloaded metadata"},
+  {"series_id": "CPIAUCNS", "units": "Index 1982-1984=100", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "PCEPI", "units": "Index 2017=100", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "PPIFID", "units": "Index Nov 2009=100", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "PAYEMS", "units": "Thousands of Persons", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "JTSJOL", "units": "Level in Thousands", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "RSAFS", "units": "Millions of Dollars", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "A191RL1Q225SBEA", "units": "Percent Change from Preceding Period", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "DFEDTARU", "units": "Percent", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"},
+  {"series_id": "DFEDTARL", "units": "Percent", "note": "units text read on the FRED series page on 2026-11-21; not downloaded metadata"}
 ]
