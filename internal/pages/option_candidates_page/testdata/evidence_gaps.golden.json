@@ -17,7 +17,8 @@
   "subtitle": "先卖出看跌期权（short put）的候选合约，按公司分组；只有你设了买入价的公司才会被评判。",
   "notes": [
     "日本期权候选单独成组；设置了日元数据源时，金额以日元计。",
-    "bid 与预测价比较所用的现金利率，对所有币种都是 DGS3MO；这是试用口径。"
+    "bid 与预测价比较所用的现金利率，对所有币种都是 DGS3MO；这是试用口径。",
+    "Open chain: 1 names, last close: 0 names. Last close: the open pull had no usable quote, so the price is from the previous close."
   ],
   "gaps": [],
   "chain_day": "2026-11-09",
@@ -28,6 +29,10 @@
     "run_status": "运行状态",
     "run_status_text": "部分完成",
     "rule_version": "规则版本"
+  },
+  "source_counts": {
+    "open": 1,
+    "eod_fallback": 0
   },
   "estimate_note": "bid（收盘估计）是收盘时的 bid，按下一个交易日卖出来估计，不是成交价。",
   "groups": [

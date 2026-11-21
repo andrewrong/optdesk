@@ -22,6 +22,12 @@ const (
 	staleTextTail = ", not the current day"
 	fitSeparator  = " "
 	listSeparator = ";"
+
+	markEodFallback = "eod_fallback"
+	countsLineOpen  = "Open chain: "
+	countsLineClose = " names, last close: "
+	countsLineTail  = " names. "
+	countsGloss     = "Last close: the open pull had no usable quote, so the price is from the previous close."
 )
 
 var groupTitles = map[string]string{
