@@ -36,6 +36,7 @@ type Input struct {
 	Figures                             compute.Figures    // the one the registered figures use (cmd/ot/wire.go)
 	Units                               compute.Units
 	Rules                               compute.Rules
+	Indicators                          compute.Indicators // nil leaves the Ma200, BandLow and BandHigh lines empty
 	Params                              Params
 }
 
@@ -77,9 +78,12 @@ type Line struct {
 	Total  int
 }
 
-// History is the line of each market row.
+// History is the line of each market row. Close, Ma200, BandLow and BandHigh are the chart window of the SP500
+// series: the close, its 200-day simple average and the lower and upper Bollinger band, each 2 decimals as text;
+// a day without a defined value has no point.
 type History struct {
 	Sp500Vs200d, Drawdown, VIX, VIXTerm, HighYield Line
+	Close, Ma200, BandLow, BandHigh                Line
 }
 
 // Result holds every figure of the page that this package computes.
