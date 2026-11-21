@@ -91,8 +91,9 @@ func checkInput(key store.Identifier, spec store.InstrumentSpec, extra []store.I
 // ResolveInstrument returns the id of the instrument that key names now. When none exists it creates the instrument
 // with spec (status "active" when spec has none) and the identifiers key and extra, valid from the database's now(),
 // in one transaction that first takes an advisory lock over key. For a new option with a valid osi identifier it also
-// inserts the current master.option_terms row inside a savepoint; a failure there never fails the call. An extra identifier that already names an
-// instrument is a Permanent error and nothing is written; so is any invalid input, before any statement. A new
+// inserts the current master.option_terms row inside a savepoint; a failure there never fails the call. An osi extra that already names an instrument
+// with no ibkr_conid is the same contract: the key joins it and its id is returned. Any other extra that already names
+// an instrument, or an osi that holds another ibkr_conid, is a Permanent error and nothing is written; so is any invalid input, before any statement. A new
 // instrument also gets its symbol and, for a stock or index, its master.stock row; a found stock or index with an empty
 // symbol gets both once (docs/design/instrument-company.md Decision 8a); a JPY symbol with a dot is Permanent.
 func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier) (int64, error) {
@@ -146,14 +147,8 @@ func resolveTx(ctx context.Context, tx execer, key store.Identifier, spec store.
 	if found != 0 {
 		return found, repairSymbol(ctx, tx, found, spec, symbol)
 	}
-	for _, e := range ids[1:] {
-		taken, err := lookup(ctx, tx, e)
-		if err != nil {
-			return 0, err
-		}
-		if taken != 0 {
-			return 0, permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d", e.Scheme, e.Value, taken))
-		}
+	if reused, err := checkExtras(ctx, tx, key, ids[1:]); err != nil || reused != 0 {
+		return reused, err
 	}
 	var id int64
 	err = tx.Query(ctx, insertInstrumentSQL, []any{spec.Type, spec.Name, spec.Currency, spec.MIC, spec.CalendarID,
@@ -242,6 +237,53 @@ func firstOSI(ids []store.Identifier) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// checkExtras looks at every extra identifier of a key that is not stored, before it writes anything. It returns the id
+// of the instrument the key was added to when an osi extra names one that holds no ibkr_conid (the same contract stored
+// before its broker id was known); the extras that name no instrument are added to it too. It returns 0 when no extra
+// is taken, and a Permanent error, with nothing written, for any other taken extra, whatever its place in extras.
+func checkExtras(ctx context.Context, tx execer, key store.Identifier, extras []store.Identifier) (int64, error) {
+	var reuse int64
+	var free []store.Identifier
+	for _, e := range extras {
+		taken, err := lookup(ctx, tx, e)
+		if err != nil {
+			return 0, err
+		}
+		if taken == 0 {
+			free = append(free, e)
+			continue
+		}
+		if e.Scheme != "osi" || key.Scheme != "ibkr_conid" || (reuse != 0 && taken != reuse) {
+			return 0, permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d", e.Scheme, e.Value, taken))
+		}
+		held, err := heldConid(ctx, tx, taken)
+		if err != nil {
+			return 0, err
+		}
+		if held != "" {
+			return 0, permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d, which holds ibkr_conid %q, not the asked %q",
+				e.Scheme, e.Value, taken, held, key.Value))
+		}
+		reuse = taken
+	}
+	if reuse == 0 {
+		return 0, nil
+	}
+	for _, i := range append([]store.Identifier{key}, free...) {
+		if err := tx.Exec(ctx, insertIdentifierSQL, reuse, i.Scheme, i.Value); err != nil {
+			return 0, err
+		}
+	}
+	return reuse, nil
+}
+
+// heldConid returns the valid ibkr_conid of the instrument id, "" when it has none.
+func heldConid(ctx context.Context, tx execer, id int64) (string, error) {
+	var value string
+	err := tx.Query(ctx, identifierSQL, []any{id, "ibkr_conid"}, func(r scanner) error { return r.Scan(&value) })
+	return value, err
 }
 
 // lookup returns the id of the instrument the valid identifier names, or 0.
