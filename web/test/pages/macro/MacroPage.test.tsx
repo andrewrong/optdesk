@@ -107,7 +107,8 @@ it('draws the 0 to 100 scale, every status text, the detail links and the missin
   expect(hrefs).toEqual(
     payload.indicators.flatMap((i: { detail_href: string | null }) => (i.detail_href ? [i.detail_href] : [])),
   )
-  expect(host.textContent?.split('data source not connected')).toHaveLength(2)
+  // once in the dash's sr-only text and once printed beside it
+  expect(host.textContent?.split('data source not connected')).toHaveLength(3)
   expect(host.textContent).toContain('No gaps.')
 })
 
@@ -288,4 +289,19 @@ it('TestGroupedIndicators: groups in payload order with change, day and hint', a
   expect(rates[1]!.textContent).toContain('99.1')
   expect(rates[1]!.querySelector('[data-hint]')).toBeNull()
   expect(groups[1]!.textContent).toContain('data source not connected')
+})
+
+it('prints the reason of an indicator gap beside the dash, as the payload sent it', async () => {
+  const payload = v2('golden')
+  payload.indicators[1].latest = { reason: 'no_data', text: 'no data yet' }
+  await show(payload)
+  const row = host.querySelectorAll('[data-indicators] tbody tr')[1]!
+  expect(row.querySelector('[data-missing-reason]')?.textContent).toBe('no data yet')
+  expect(row.querySelector('[data-missing]')).not.toBeNull()
+})
+
+it('prints no missing reason for an indicator with a value', async () => {
+  await show(v2('golden'))
+  const row = host.querySelectorAll('[data-indicators] tbody tr')[0]!
+  expect(row.querySelector('[data-missing-reason]')).toBeNull()
 })
