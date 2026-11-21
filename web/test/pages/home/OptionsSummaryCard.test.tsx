@@ -61,6 +61,16 @@ const KEYS = ['sold_count_month', 'premium_month_usd', 'open_premium_usd', 'max_
 const tile = (key: string) => host.querySelector(`[data-tile=${key}]`)!
 
 describe('OptionsSummaryCard', () => {
+  it('links the Sold this month tile to the Structures page and no other tile', async () => {
+    const ok = os('ok.json')
+    await showCard(ok)
+    const link = tile('sold_count_month').querySelector('[data-tile-label] a')!
+    expect(link.getAttribute('href')).toBe('/options/structures')
+    expect(link.textContent).toBe(ok.card.tiles.sold_count_month.label)
+    expect(tile('sold_count_month').querySelectorAll('a')).toHaveLength(1)
+    for (const key of KEYS.slice(1)) expect(tile(key).querySelector('a')).toBeNull()
+  })
+
   it('draws two series, premium and closed, with a label per point and the caption', async () => {
     const ok = os('ok.json')
     await showCard(ok)
