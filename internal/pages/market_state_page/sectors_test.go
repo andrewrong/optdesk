@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
 )
 
@@ -197,5 +198,36 @@ func TestGapTextUsesTypographicMinus(t *testing.T) {
 		if got := signed(in); got != want {
 			t.Errorf("signed(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestSectorGapCellNamesFundAndDay(t *testing.T) {
+	t.Parallel()
+	res := sampleResult()
+	miss := liquidityapi.Num{Day: "2026-11-19", Reason: liquidityapi.MissingInput}
+	res.Funds = append(res.Funds, marketstateapi.Fund{Symbol: "XLB", Gap21: miss, Gap63: miss,
+		Rank21: marketstateapi.Position{Reason: liquidityapi.MissingInput},
+		Rank63: marketstateapi.Position{Reason: liquidityapi.MissingInput}})
+	m := build(t, fullConfig(t, res))
+	var found bool
+	for _, r := range sectorRows(m) {
+		row := obj(r)
+		switch row["symbol"] {
+		case "XLB":
+			found = true
+			for _, k := range []string{"gap_21", "gap_63", "rank_21", "rank_63"} {
+				g := obj(row[k])
+				if g["kind"] != "gap" || g["reason"] != "missing_input" || g["text"] != "XLB has no close on 2026-11-19" {
+					t.Errorf("XLB %s = %v", k, g)
+				}
+			}
+		case "XLK":
+			if isGap(row["gap_21"]) || isGap(row["rank_21"]) {
+				t.Errorf("XLK cells are gaps: %v", row)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no XLB row")
 	}
 }

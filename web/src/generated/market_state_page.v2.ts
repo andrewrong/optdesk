@@ -79,6 +79,7 @@ export interface MarketStatePage {
    * Visible text saying that the bars are not from IB, when bars_source is yfinance or mixed.
    */
   bars_source_note?: string;
+  vol_gap?: VolGap;
 }
 /**
  * The data time of one source behind the card.
@@ -148,6 +149,7 @@ export interface MarketRow {
    * The Chinese hover hint of the row: what the figure is and what the ranges mean.
    */
   hint?: string;
+  price_chart?: PriceChart;
 }
 /**
  * A number the producer wrote; the view prints text.
@@ -195,6 +197,41 @@ export interface HistoryPoint {
    * The display text of the point, as the tooltip shows it.
    */
   text: string;
+}
+/**
+ * The close, its 200-day average and a range band by day, for the row that shows the index. Optional.
+ */
+export interface PriceChart {
+  caption: Text1;
+  aria_text: LongText;
+  unit: string;
+  /**
+   * @maxItems 800
+   */
+  points: PriceChartPoint[];
+}
+export interface PriceChartPoint {
+  day: Day;
+  close: number;
+  /**
+   * The display text of close, as the tooltip shows it.
+   */
+  close_text: string;
+  ma200?: number;
+  /**
+   * The display text of ma200, as the tooltip shows it.
+   */
+  ma200_text?: string;
+  band_low?: number;
+  /**
+   * The display text of band_low, as the tooltip shows it.
+   */
+  band_low_text?: string;
+  band_high?: number;
+  /**
+   * The display text of band_high, as the tooltip shows it.
+   */
+  band_high_text?: string;
 }
 export interface SectorBlock {
   caption: LongText;
@@ -288,4 +325,25 @@ export interface RotationPoint {
    * Starts with the point's own day.
    */
   text: string;
+}
+/**
+ * Implied minus 20-day realised volatility of SPX, NDX and RUT, in volatility points; the producer's text. Optional.
+ */
+export interface VolGap {
+  title: Text1;
+  hint: LongText;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  rows: [VolGapRow, VolGapRow, VolGapRow];
+}
+export interface VolGapRow {
+  id: "spx" | "ndx" | "rut";
+  label: Text1;
+  figure: FigureOrGap;
+  /**
+   * The data day of the figure in words, or the reason there is none.
+   */
+  day_text: string;
 }
