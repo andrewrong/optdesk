@@ -239,19 +239,23 @@ func firstOSI(ids []store.Identifier) (string, bool) {
 	return "", false
 }
 
-// checkExtras looks at the extra identifiers of a key that is not stored. It returns the id of the instrument the key
-// was added to when an osi extra names one that holds no ibkr_conid (the same contract stored before its broker id was
-// known), 0 when no extra is taken, and a Permanent error, with nothing written, for any other taken extra.
+// checkExtras looks at every extra identifier of a key that is not stored, before it writes anything. It returns the id
+// of the instrument the key was added to when an osi extra names one that holds no ibkr_conid (the same contract stored
+// before its broker id was known); the extras that name no instrument are added to it too. It returns 0 when no extra
+// is taken, and a Permanent error, with nothing written, for any other taken extra, whatever its place in extras.
 func checkExtras(ctx context.Context, tx execer, key store.Identifier, extras []store.Identifier) (int64, error) {
+	var reuse int64
+	var free []store.Identifier
 	for _, e := range extras {
 		taken, err := lookup(ctx, tx, e)
 		if err != nil {
 			return 0, err
 		}
 		if taken == 0 {
+			free = append(free, e)
 			continue
 		}
-		if e.Scheme != "osi" || key.Scheme != "ibkr_conid" {
+		if e.Scheme != "osi" || key.Scheme != "ibkr_conid" || (reuse != 0 && taken != reuse) {
 			return 0, permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d", e.Scheme, e.Value, taken))
 		}
 		held, err := heldConid(ctx, tx, taken)
@@ -262,9 +266,17 @@ func checkExtras(ctx context.Context, tx execer, key store.Identifier, extras []
 			return 0, permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d, which holds ibkr_conid %q, not the asked %q",
 				e.Scheme, e.Value, taken, held, key.Value))
 		}
-		return taken, tx.Exec(ctx, insertIdentifierSQL, taken, key.Scheme, key.Value)
+		reuse = taken
 	}
-	return 0, nil
+	if reuse == 0 {
+		return 0, nil
+	}
+	for _, i := range append([]store.Identifier{key}, free...) {
+		if err := tx.Exec(ctx, insertIdentifierSQL, reuse, i.Scheme, i.Value); err != nil {
+			return 0, err
+		}
+	}
+	return reuse, nil
 }
 
 // heldConid returns the valid ibkr_conid of the instrument id, "" when it has none.

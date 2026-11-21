@@ -258,6 +258,31 @@ func assertNoWrite(t *testing.T, f *fakeDB, key store.Identifier) {
 	}
 }
 
+func TestResolveOsiReuseStillRejectsOtherTakenExtra(t *testing.T) {
+	t.Parallel()
+	isin := store.Identifier{Scheme: "isin", Value: "US0000000001"}
+	f := newFake()
+	f.ids[extraO] = 7 // osi held by an instrument with no ibkr_conid
+	f.ids[isin] = 8   // isin held by a different instrument
+	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO, isin})
+	assertPermanent(t, err)
+	assertNoWrite(t, f, keyID)
+}
+
+func TestResolveOsiReuseAddsFreeExtras(t *testing.T) {
+	t.Parallel()
+	isin := store.Identifier{Scheme: "isin", Value: "US0000000001"}
+	f := newFake()
+	f.ids[extraO] = 7
+	id, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO, isin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 7 || f.ids[keyID] != 7 || f.ids[isin] != 7 {
+		t.Fatalf("id %d, stored %v: want key and isin on 7", id, f.ids)
+	}
+}
+
 func TestResolveOsiSameContractAfterConid(t *testing.T) {
 	t.Parallel()
 	f := newFake()
