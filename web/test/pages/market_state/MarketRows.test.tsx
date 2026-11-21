@@ -4,8 +4,17 @@ import path from 'node:path'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
+import type { ChartSpec } from '@/charts/spec'
 import { MarketRows } from '@/pages/market_state/MarketRows'
 import type { Payload } from '@/types/market_state_page'
+
+const drawn: { spec: ChartSpec; ariaText: string }[] = []
+vi.mock('@/charts/Chart', () => ({
+  Chart: (props: { spec: ChartSpec; ariaText: string }) => {
+    drawn.push(props)
+    return <div data-chart-stub />
+  },
+}))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -122,6 +131,71 @@ describe('MarketRows hint placement', () => {
     const { host, done } = await render({ hint: '提示' })
     const mark = host.querySelector('[data-hint-mark]')!
     expect(mark.closest('button')).toBeNull()
+    await done()
+  })
+})
+
+describe('MarketRows price_chart', () => {
+  const priceChart = {
+    caption: 'caption of the price chart',
+    aria_text: 'aria of the price chart',
+    unit: 'index_points',
+    points: [
+      { day: '2026-11-10', close: 100, close_text: '100.00' },
+      {
+        day: '2026-11-11',
+        close: 101,
+        close_text: '101.00',
+        ma200: 95,
+        ma200_text: '95.00',
+        band_low: 98,
+        band_low_text: '98.00',
+        band_high: 104,
+        band_high_text: '104.00',
+      },
+    ],
+  }
+  const open = async (patch: Partial<TestRow>) => {
+    drawn.length = 0
+    const view = await render(patch)
+    await act(async () => {
+      view.host.querySelector('button')!.click()
+    })
+    return view
+  }
+
+  it('draws the average and the band from price_chart', async () => {
+    const { host, done } = await open({ price_chart: priceChart } as unknown as Partial<TestRow>)
+    const { spec, ariaText } = drawn.at(-1)!
+    expect(spec.categories).toEqual(['2026-11-10', '2026-11-11'])
+    expect(spec.series).toHaveLength(2)
+    expect(spec.series[0]!.dashed).toBeUndefined()
+    expect(spec.series[0]!.points).toEqual([
+      { value: 100, text: '100.00' },
+      { value: 101, text: '101.00' },
+    ])
+    expect(spec.series[1]!.dashed).toBe(true)
+    expect(spec.series[1]!.points).toEqual([{ value: null }, { value: 95, text: '95.00' }])
+    expect(spec.band!.low).toEqual([{ value: null }, { value: 98, text: '98.00' }])
+    expect(spec.band!.high).toEqual([{ value: null }, { value: 104, text: '104.00' }])
+    expect(spec.unit).toBe('index_points')
+    expect(ariaText).toBe('aria of the price chart')
+    expect(host.querySelector('[data-history-caption]')?.textContent).toBe('caption of the price chart')
+    await done()
+  })
+
+  it('draws the history chart for a row without price_chart', async () => {
+    const { done } = await open({
+      history: {
+        caption: 'old caption',
+        aria_text: 'old aria',
+        unit: 'x',
+        points: [{ day: '2026-11-10', value: 1, text: '1.0' }],
+      },
+    } as unknown as Partial<TestRow>)
+    const { spec } = drawn.at(-1)!
+    expect(spec.band).toBeUndefined()
+    expect(spec.series).toHaveLength(1)
     await done()
   })
 })
