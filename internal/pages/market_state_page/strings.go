@@ -29,7 +29,7 @@ const (
 	axisY = "21-session gap minus a third of the 63-session gap, pp"
 	// rotationNote names both windows and the tail offsets.
 	rotationNote = "x is the 63-session gap to SPY, y the 21-session gap minus a third of the 63-session gap; " +
-		"tail points are 5, 10, 15 and 20 sessions before end_day; position, not a forecast"
+		"tail points are 5, 10, 15 and 20 sessions before end_day; position, not a forecast; click a fund's dot to draw its tail"
 
 	freshnessHead = "Sector funds and SPY: daily closes stored 10 minutes after the NYSE close, last close "
 	freshnessNone = "none stored"
