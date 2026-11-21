@@ -48,6 +48,7 @@ var serveRoutes = []serveRoute{
 	{"underlyings", "/" + siteUnderlyingsRoute, "underlyings"},
 	{"job_console", "/" + siteJobConsoleRoute, "job_console"},
 	{"flex_import", "/" + siteFlexImportRoute, "flex_import"},
+	{"held_family_page", "/" + siteHeldFamilyRoute, "held_family_page"},
 }
 
 // serveWindowDays is how many calendar days back the closed windows are read for the freshness lines.
@@ -127,6 +128,8 @@ func buildRoute(ctx context.Context, a *app, clk clock.Clock, rd siteReaders, rt
 		return buildJobConsolePage(ctx, clk, rd, 0)
 	case "flex_import":
 		return buildFlexImportPage(ctx, a, clk, rd, flexImportResult{recent: true})
+	case "held_family_page":
+		return buildHeldFamily(ctx, a, clk, "", rd)
 	}
 	return nil, fmt.Errorf("no builder for %s", rt.page)
 }

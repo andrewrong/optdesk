@@ -1,0 +1,256 @@
+{
+  "schema": "held_family_page",
+  "schema_version": 1,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "held-family",
+  "generated_at": "2026-11-10T00:00:00+08:00",
+  "data_times": [
+    {
+      "source": "account",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    },
+    {
+      "source": "account",
+      "data_time": "2026-11-09T09:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "stale": null,
+  "title": "Held companies 持仓公司",
+  "notes": [
+    "把全家持有的股票按公司合并：哪些账户持有、值多少钱、占全家总资产几成、下次财报几号。"
+  ],
+  "gaps": [],
+  "total": {
+    "text": "105,000.00",
+    "currency": "USD",
+    "day": "2026-11-10",
+    "accounts_text": "main + wife"
+  },
+  "columns": [
+    {
+      "id": "company",
+      "label": "Company",
+      "hint": "公司"
+    },
+    {
+      "id": "accounts",
+      "label": "Held in",
+      "hint": "持有账户"
+    },
+    {
+      "id": "value",
+      "label": "Market value (USD)",
+      "hint": "市值（美元）"
+    },
+    {
+      "id": "share",
+      "label": "Share of total",
+      "hint": "占全家总资产"
+    },
+    {
+      "id": "earnings",
+      "label": "Next earnings",
+      "hint": "下次财报（距今天数）"
+    }
+  ],
+  "rows": [
+    {
+      "company": "AAA",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        },
+        {
+          "alias": "wife",
+          "label": "wife"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "7,500.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "7.1 %"
+      },
+      "earnings": {
+        "kind": "date",
+        "date": "2026-11-14",
+        "days_to": 4,
+        "text": "2026-11-14 (in 4 days)"
+      }
+    },
+    {
+      "company": "4063",
+      "accounts": [
+        {
+          "alias": "wife",
+          "label": "wife"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "2,000.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "1.9 %"
+      },
+      "earnings": {
+        "kind": "date",
+        "date": "2026-11-10",
+        "days_to": 0,
+        "text": "2026-11-10 (today)"
+      }
+    },
+    {
+      "company": "EEE",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "500.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "0.5 %"
+      },
+      "earnings": {
+        "kind": "gap",
+        "text": "no date: the stored date is already past",
+        "reason": "past_date"
+      }
+    },
+    {
+      "company": "DDD",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "400.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "0.4 %"
+      },
+      "earnings": {
+        "kind": "gap",
+        "text": "no date: the earnings row is an error",
+        "reason": "row_error"
+      }
+    },
+    {
+      "company": "CCC",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "300.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "0.3 %"
+      },
+      "earnings": {
+        "kind": "gap",
+        "text": "no date: the earnings job does not support this company",
+        "reason": "unsupported"
+      }
+    },
+    {
+      "company": "HHH",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "200.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "0.2 %"
+      },
+      "earnings": {
+        "kind": "gap",
+        "text": "no date: underlying row has no issuer",
+        "reason": "no_issuer"
+      }
+    },
+    {
+      "company": "BBB",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        }
+      ],
+      "value": {
+        "kind": "value",
+        "text": "−300.00"
+      },
+      "share": {
+        "kind": "value",
+        "text": "−0.3 %"
+      },
+      "earnings": {
+        "kind": "gap",
+        "text": "no date: the earnings job has no row for this company",
+        "reason": "no_row"
+      }
+    },
+    {
+      "company": "GGG",
+      "accounts": [
+        {
+          "alias": "main",
+          "label": "main"
+        }
+      ],
+      "value": {
+        "kind": "gap",
+        "text": "gap: no mark",
+        "reason": "missing_quote"
+      },
+      "share": {
+        "kind": "gap",
+        "text": "gap",
+        "reason": "missing_quote"
+      },
+      "earnings": {
+        "kind": "gap",
+        "text": "no date: no underlying row for this symbol",
+        "reason": "no_underlying"
+      }
+    }
+  ],
+  "rows_sum": {
+    "kind": "value",
+    "text": "10,600.00 USD"
+  },
+  "lead_notes": [
+    "市值 = 持股数 x 最近一次收盘价（最多早 5 天，日元按全家同一个 USDJPY 折成美元）；总资产 = 各账户采集日的净值之和（含现金和期权），所以各行占比之和小于 100 %。",
+    "空头股票显示负数。",
+    "只有期权、没有股票的公司不在此表。",
+    "账户（daughter）未采集到，其持仓不在上表",
+    "3 行的收盘价早于采集日",
+    "6 行没有财报日期"
+  ]
+}
