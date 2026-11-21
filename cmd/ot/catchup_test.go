@@ -139,8 +139,8 @@ func TestCatchUpPassStopsAtCap(t *testing.T) {
 		t.Fatalf("first pass enqueued %d, want %d", first, catchUpCap)
 	}
 	r.host.catchUpPass(t.Context())
-	if rest := len(r.post.enqueued) - first; rest != 9 { // 46 gap days of jobs outside the window rule and the newest day of three window jobs
-		t.Fatalf("second pass enqueued %d, want the other 9", rest)
+	if rest := len(r.post.enqueued) - first; rest != 7 { // gap days of jobs outside the window rule and the newest day of the window jobs, today of the close-slot jobs excluded
+		t.Fatalf("second pass enqueued %d, want the other 7", rest)
 	}
 	r.host.catchUpPass(t.Context())
 	for _, e := range r.post.enqueued[49:] { // only the next newest day of a window job is left
@@ -208,11 +208,11 @@ func TestCatchUpPassWindowJobNewestGapOnly(t *testing.T) {
 		only: map[contracts.Day]bool{"2026-11-04": true, "2026-11-05": true, "2026-11-06": true}}
 	r := newCURig(t, bars)
 	r.host.catchUpPass(t.Context())
-	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-06"}) || len(r.post.enqueued) != 1 {
+	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-05"}) || len(r.post.enqueued) != 1 {
 		t.Fatalf("enqueued %v, want the newest gap day only", r.post.enqueued)
 	}
-	r.host.catchUpPass(t.Context()) // 11-06 is blocked for today: the next newest
-	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-06", "2026-11-05"}) {
+	r.host.catchUpPass(t.Context()) // 11-05 is blocked for today: the next newest (11-06 is no button before the close slot)
+	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-05", "2026-11-04"}) {
 		t.Fatalf("second pass: %v", got)
 	}
 
@@ -233,7 +233,7 @@ func TestCatchUpPassLogsCounts(t *testing.T) {
 		Request: jobrequest.Request{JobID: "fundamentals", Day: "2026-11-04"}}}
 	r.host.catchUpPass(t.Context())
 	line := r.out.String()
-	for _, want := range []string{"catch-up", "requested=2", "skipped_today=1", "skipped_window=2"} {
+	for _, want := range []string{"catch-up", "requested=2", "skipped_today=1", "skipped_window=1"} {
 		if !strings.Contains(line, want) {
 			t.Fatalf("log %q lacks %q", line, want)
 		}
@@ -303,6 +303,43 @@ func TestOpenConsoleHostWithoutCoverageKeepsConsole(t *testing.T) {
 			host.set(nil, &jcBackfill{log: q.log})
 			if took, run := host.claimNext(t.Context()); took || run != nil {
 				t.Fatal("claimed a request from an empty queue")
+			}
+		})
+	}
+}
+
+func TestCatchUpPassSkipsTodayBeforeCloseSlot(t *testing.T) {
+	t.Parallel()
+	jobs := []string{"bars_refresh", "iv_history", "account_capture", "position_marks"}
+	gap := map[string]coverage.State{}
+	for _, j := range dataHealthJobs() {
+		if slices.Contains(jobs, j.ID) {
+			for _, ds := range j.Datasets {
+				gap[ds] = coverage.StateMissing
+			}
+		}
+	}
+	const today = "2026-11-06"
+	pastBefore := map[string][]string{}
+	for _, c := range []struct {
+		name  string
+		hour  int
+		fired bool
+	}{{"before the close slot", 6, false}, {"after the close slot", 22, true}} {
+		t.Run(c.name, func(t *testing.T) {
+			r := newCURig(t, cuCoverage{days: cuDays, gap: gap})
+			r.clk.Advance(time.Date(2026, 11, 6, c.hour, 0, 0, 0, time.UTC).Sub(r.clk.Now()))
+			r.host.catchUpPass(t.Context())
+			for _, j := range jobs {
+				got := r.enqueuedOf(j)
+				if has := slices.Contains(got, today); has != c.fired {
+					t.Errorf("%s: today queued=%v, want %v (%v)", j, has, c.fired, got)
+				}
+				past := slices.DeleteFunc(slices.Clone(got), func(d string) bool { return d == today })
+				if prev, ok := pastBefore[j]; ok && !slices.Contains(windowEndingJobs, j) && !slices.Equal(prev, past) {
+					t.Errorf("%s: days before today %v, want %v as before the slot", j, past, prev)
+				}
+				pastBefore[j] = past
 			}
 		})
 	}

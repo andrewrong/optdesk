@@ -274,7 +274,7 @@ func TestDueAtFromSlot(t *testing.T) {
 		}
 	}
 	for _, j := range jobs {
-		if j.DueAt != "" && !slices.Contains([]string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events"}, j.ID) {
+		if j.DueAt != "" && !slices.Contains([]string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events", "bars_refresh", "iv_history", "account_capture", "position_marks"}, j.ID) {
 			t.Errorf("%s carries DueAt %q", j.ID, j.DueAt)
 		}
 	}
@@ -346,5 +346,18 @@ func TestDataHealthGateways(t *testing.T) {
 	}
 	if len(want.Gateways) != 2 || !reflect.DeepEqual(got.Gateways, want.Gateways) {
 		t.Fatalf("gateways %v, want the fixture's %v", got.Gateways, want.Gateways)
+	}
+}
+
+func TestDataHealthJobsCloseSlots(t *testing.T) {
+	t.Parallel()
+	jobs := dataHealthJobs()
+	for id, due := range map[string]string{
+		"bars_refresh": "16:10", "iv_history": "16:10", "account_capture": "16:30", "position_marks": "16:40",
+	} {
+		j := dataHealthJobOf(t, jobs, id)
+		if j.DueAt != due || j.Zone != "America/New_York" {
+			t.Errorf("%s: DueAt %q zone %q, want %q America/New_York", id, j.DueAt, j.Zone, due)
+		}
 	}
 }
