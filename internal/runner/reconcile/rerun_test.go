@@ -62,8 +62,8 @@ func TestMarkedDependentRerunsWhenUpstreamOk(t *testing.T) {
 	if len(d.calls) != 1 {
 		t.Fatalf("first turn: dep calls %d, want 1", len(d.calls))
 	}
-	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != "upstream_missing" {
-		t.Fatalf("row %+v, want upstream_missing", r)
+	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != "upstream_partial" {
+		t.Fatalf("row %+v, want upstream_partial", r)
 	}
 	reconcileN(t, rec, 1)
 	if len(d.calls) != 2 {
@@ -75,7 +75,7 @@ func TestMarkedDependentRerunsWhenUpstreamOk(t *testing.T) {
 			runs = append(runs, r)
 		}
 	}
-	if len(runs) != 2 || !strings.HasSuffix(runs[1].ID, "|2") || runs[1].ReasonCode != "" || runs[0].ReasonCode != "upstream_missing" {
+	if len(runs) != 2 || !strings.HasSuffix(runs[1].ID, "|2") || runs[1].ReasonCode != "" || runs[0].ReasonCode != "upstream_partial" {
 		t.Fatalf("runs of dep %+v, want attempt 2 with no reason after the marked one", runs)
 	}
 }
@@ -127,7 +127,7 @@ func TestUnmarkedDependentNotRerun(t *testing.T) {
 	if _, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Job: "up"}); err != nil {
 		t.Fatal(err)
 	}
-	if r := rowOf(t, l.fakeLedger, bfDay, keyC); len(d.calls) != 1 || r.ReasonCode == "upstream_missing" {
+	if r := rowOf(t, l.fakeLedger, bfDay, keyC); len(d.calls) != 1 || r.ReasonCode == "upstream_partial" {
 		t.Fatalf("dep calls %d row %+v, want one unmarked run", len(d.calls), r)
 	}
 	if _, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Job: "up", Force: true}); err != nil {
