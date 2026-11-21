@@ -141,6 +141,25 @@ describe('HouseholdCard', () => {
     expect(tile('cash').textContent).not.toMatch(/\b0(\.0+)?%?\b|\$0\b/)
   })
 
+  it('prints a gap once when the figure and the caption of a tile are the same gap', async () => {
+    const payload = fixture('gap.json')
+    const g = { reason: 'missing_input', text: 'same gap text' }
+    payload.card.tiles.day_change.figure = { ...g }
+    payload.card.tiles.day_change.caption = { ...g }
+    await show(payload)
+    const badges = host.querySelectorAll('[data-tile="day_change"] [data-gap]')
+    expect(badges).toHaveLength(1)
+    expect(badges[0]?.textContent).toBe('same gap text')
+  })
+
+  it('prints both gaps when the figure and the caption of a tile are gaps of different texts', async () => {
+    const payload = fixture('gap.json')
+    payload.card.tiles.day_change.figure = { reason: 'missing_input', text: 'first gap' }
+    payload.card.tiles.day_change.caption = { reason: 'missing_input', text: 'second gap' }
+    await show(payload)
+    expect(host.querySelectorAll('[data-tile="day_change"] [data-gap]')).toHaveLength(2)
+  })
+
   it('shows the stale label as sent', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(stale.generated_at))
