@@ -13,10 +13,7 @@ var unregistered = []string{"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG
 
 func TestRegistrySeedCoversManifest(t *testing.T) {
 	t.Parallel()
-	sql, err := os.ReadFile("../../../migrations/0043_series_registry.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
+	sql := readRegistrySQL(t)
 	m, err := parseManifest(manifestBytes)
 	if err != nil {
 		t.Fatal(err)
@@ -25,7 +22,7 @@ func TestRegistrySeedCoversManifest(t *testing.T) {
 		if slices.Contains(unregistered, id) {
 			continue
 		}
-		if !strings.Contains(string(sql), "'"+id+"'") {
+		if !strings.Contains(sql, "'"+id+"'") {
 			t.Errorf("series %s is not in the registry seed", id)
 		}
 	}
@@ -33,10 +30,7 @@ func TestRegistrySeedCoversManifest(t *testing.T) {
 
 func TestUnregisteredAreInManifest(t *testing.T) {
 	t.Parallel()
-	sql, err := os.ReadFile("../../../migrations/0043_series_registry.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
+	sql := readRegistrySQL(t)
 	m, err := parseManifest(manifestBytes)
 	if err != nil {
 		t.Fatal(err)
@@ -45,8 +39,22 @@ func TestUnregisteredAreInManifest(t *testing.T) {
 		if !slices.Contains(m.Series, id) {
 			t.Errorf("unregistered id %s is not in the manifest series", id)
 		}
-		if strings.Contains(string(sql), "'"+id+"'") {
+		if strings.Contains(sql, "'"+id+"'") {
 			t.Errorf("unregistered id %s is in the registry seed", id)
 		}
 	}
+}
+
+// readRegistrySQL returns the registry seed: 0043 and the macro-page series of 0066.
+func readRegistrySQL(t *testing.T) string {
+	t.Helper()
+	var all strings.Builder
+	for _, f := range []string{"0043_series_registry.sql", "0066_macro_series.sql"} {
+		b, err := os.ReadFile("../../../migrations/" + f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		all.Write(b)
+	}
+	return all.String()
 }
