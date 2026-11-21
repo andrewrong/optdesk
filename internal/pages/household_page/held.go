@@ -432,7 +432,7 @@ func (c Config) assembleHeld(p *HeldPage, res blockapi.FamilyResult, caps map[st
 		p.RunStatus = "partial"
 	}
 	if len(old) > 0 {
-		p.LeadNotes = append(p.LeadNotes, fmt.Sprintf(heldNoteOldMark, len(old), strings.Join(old, "、")))
+		p.LeadNotes = append(p.LeadNotes, fmt.Sprintf(heldNoteOldMark, len(old), strings.Join(old, ", ")))
 	}
 	if noDate > 0 {
 		p.LeadNotes = append(p.LeadNotes, fmt.Sprintf(heldNoteNoDate, noDate))
