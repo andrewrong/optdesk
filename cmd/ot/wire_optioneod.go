@@ -163,10 +163,14 @@ func (f jobFactory) withCalendar(j contracts.Job) contracts.Job {
 	if f.cal == nil {
 		return j
 	}
-	if c, err := optioneod.WithCalendar(j, f.cal); err == nil {
-		return c
+	c, err := optioneod.WithCalendar(j, f.cal)
+	if err != nil {
+		if f.log != nil {
+			f.log.Warn("option_eod job runs without the session calendar", "component", "ot", "reason", err.Error())
+		}
+		return j
 	}
-	return j
+	return c
 }
 
 // fixedEntries is es after entryFix when it is set, es itself otherwise.
