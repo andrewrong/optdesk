@@ -73,6 +73,7 @@ type job struct {
 
 	mu      sync.Mutex
 	started map[contracts.Day]map[string]bool // keys that began a first pull, per day
+	conIDs  map[string]int64                  // con id of a key after one listed ResolveContract answer
 }
 
 // New builds the bars_refresh job from the embedded job.toml: one key per watch entry (its Issuer, or sym:<symbol> when it has none) and
@@ -89,7 +90,7 @@ func New(
 		return nil, err
 	}
 	j := &job{m: m, b: b, h: h, res: res, w: w, r: r, clk: clk, byKey: map[string]target{}, log: slog.Default(),
-		started: map[contracts.Day]map[string]bool{}}
+		started: map[contracts.Day]map[string]bool{}, conIDs: map[string]int64{}}
 	add := func(key string, t target) error {
 		if key == "" || key == indexPrefix {
 			return errors.New("barsrefresh: an entry needs a key")

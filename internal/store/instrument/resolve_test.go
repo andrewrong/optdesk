@@ -208,16 +208,96 @@ func TestResolveLock(t *testing.T) {
 func TestResolveExtraTaken(t *testing.T) {
 	t.Parallel()
 	f := newFake()
-	f.ids[extraO] = 7 // another instrument already has this osi symbol
-	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO})
-	assertPermanent(t, err)
+	f.ids[extraO] = 7 // the same contract, stored by osi before its broker id was known
+	id, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 7 {
+		t.Fatalf("id = %d, want the held id 7", id)
+	}
+	if f.ids[keyID] != 7 {
+		t.Fatalf("key stored for %d, want 7", f.ids[keyID])
+	}
 	for _, q := range f.stmts {
-		if q == insertInstrumentSQL || q == insertIdentifierSQL {
-			t.Fatalf("insert after a taken extra: %s", q)
+		if q == insertInstrumentSQL || q == insertTermsSQL {
+			t.Fatalf("write of a new row: %s", q)
 		}
 	}
-	if _, ok := f.ids[keyID]; ok {
+}
+
+func TestResolveExtraTakenOtherScheme(t *testing.T) {
+	t.Parallel()
+	isin := store.Identifier{Scheme: "isin", Value: "US0000000001"}
+	f := newFake()
+	f.ids[isin] = 7
+	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{isin})
+	assertPermanent(t, err)
+	assertNoWrite(t, f, keyID)
+}
+
+func TestResolveExtraTakenKeyNotConid(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	f.ids[extraO] = 7
+	key := store.Identifier{Scheme: "jpx_option_code", Value: "X1"}
+	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), key, goodSpec(), []store.Identifier{extraO})
+	assertPermanent(t, err)
+	assertNoWrite(t, f, key)
+}
+
+func assertNoWrite(t *testing.T, f *fakeDB, key store.Identifier) {
+	t.Helper()
+	for _, q := range f.stmts {
+		if q == insertInstrumentSQL || q == insertIdentifierSQL {
+			t.Fatalf("write after a taken extra: %s", q)
+		}
+	}
+	if _, ok := f.ids[key]; ok {
 		t.Fatal("key was written")
+	}
+}
+
+func TestResolveOsiReuseStillRejectsOtherTakenExtra(t *testing.T) {
+	t.Parallel()
+	isin := store.Identifier{Scheme: "isin", Value: "US0000000001"}
+	f := newFake()
+	f.ids[extraO] = 7 // osi held by an instrument with no ibkr_conid
+	f.ids[isin] = 8   // isin held by a different instrument
+	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO, isin})
+	assertPermanent(t, err)
+	assertNoWrite(t, f, keyID)
+}
+
+func TestResolveOsiReuseAddsFreeExtras(t *testing.T) {
+	t.Parallel()
+	isin := store.Identifier{Scheme: "isin", Value: "US0000000001"}
+	f := newFake()
+	f.ids[extraO] = 7
+	id, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO, isin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 7 || f.ids[keyID] != 7 || f.ids[isin] != 7 {
+		t.Fatalf("id %d, stored %v: want key and isin on 7", id, f.ids)
+	}
+}
+
+func TestResolveOsiSameContractAfterConid(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	f.ids[extraO] = 7
+	s := &instrumentStore{db: f}
+	first, err := s.ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != 7 || second != 7 {
+		t.Fatalf("ids %d then %d, want 7 both", first, second)
 	}
 }
 
@@ -378,10 +458,21 @@ func TestResolveNoTerms(t *testing.T) {
 func TestResolveOsiCollision(t *testing.T) {
 	t.Parallel()
 	f := newFake()
-	f.ids[extraO] = 7 // an SPX option already holds this osi; the new key is an SPXW option with the same osi
+	f.ids[extraO] = 7 // an SPX option already holds this osi under another broker id
+	f.answer = func(sql string, args []any, scan func(scanner) error) (bool, error) {
+		if sql == identifierSQL && args[0] == int64(7) && args[1] == "ibkr_conid" {
+			return true, scan(valsScanner{"555"})
+		}
+		return false, nil
+	}
 	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), store.Identifier{Scheme: "ibkr_conid", Value: "999"},
 		goodSpec(), []store.Identifier{extraO})
 	assertPermanent(t, err)
+	for _, want := range []string{"already names instrument", "7", "555", "999"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q lacks %q", err, want)
+		}
+	}
 	if got := termsStmts(f); len(got) != 0 {
 		t.Fatalf("terms statements %q", got)
 	}
