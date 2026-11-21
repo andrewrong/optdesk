@@ -145,7 +145,8 @@ func cellWords(reason string) string {
 }
 
 // assembleFamily writes the page of a family result. Every figure is copied from res.
-func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps map[string]capture, newest string, at time.Time, trend *trendBlock, trendNotes []string) pageJSON {
+func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps map[string]capture, newest string, at time.Time,
+	trend *trendBlock, trendNotes []string) pageJSON {
 	p := base(c, familyScopes(aliases), familyAliasKey, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = familyTitle, familySentence
