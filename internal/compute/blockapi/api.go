@@ -468,3 +468,54 @@ type HeldFigure interface {
 
 // NewHeldFigureFunc constructs the implementation (internal/compute/pagefig.NewHeld).
 type NewHeldFigureFunc func() HeldFigure
+
+// FamilyTrendAccountIn is one counted account and its net liquidation of each day it has one.
+type FamilyTrendAccountIn struct {
+	Alias string
+	Days  []DayValue // ascending by day; Currency "USD" or "JPY"; a negative or malformed value is no point
+}
+
+// FamilyTrendIn: the counted accounts and the USDJPY rate of each day a yen account has a value (decimal text).
+type FamilyTrendIn struct {
+	Accounts []FamilyTrendAccountIn
+	UsdJpy   map[contracts.Day]string
+	Window   []contracts.Day // the session days asked, ascending
+}
+
+// FamilyTrendPoint is the net value of one day in USD.
+type FamilyTrendPoint struct {
+	Day contracts.Day
+	Net string // USD, 2 decimal places, half-even
+}
+
+// FamilyTrendAccountOut is the points of one account, in USD, on the Window days it has a point.
+type FamilyTrendAccountOut struct {
+	Alias  string
+	Points []FamilyTrendPoint
+}
+
+// FamilyTrendResult: Family holds only days on which every account has a point. LeftOut is the number of
+// Window days without a family point. Gap is "" or "no_data" (fewer than 2 family points).
+type FamilyTrendResult struct {
+	Family   []FamilyTrendPoint
+	Accounts []FamilyTrendAccountOut // input order
+	LeftOut  int
+	YenUsed  bool
+	Gap      string
+}
+
+// FamilyTrendFigure is the daily family net value. It is a figure of its own, not a method of FamilyFigure or
+// PageFigures.
+type FamilyTrendFigure interface {
+	// FamilyTrend sums the accounts of in per day. Pure: no I/O, no clock, no float.
+	//
+	// An account point is its day's NetLiquidation in USD, 2 places half-even; a JPY value is divided by the
+	// UsdJpy rate of its own day. A negative, empty or malformed value, a currency other than USD or JPY, a yen
+	// day without a positive rate, or a day outside Window gives no point, never a zero. A family day needs every
+	// account: the family point is the sum of the account points of that day, and a day on which one account has
+	// no point is not in Family, not filled and not zero. YenUsed is true only when a yen value became a point.
+	FamilyTrend(in FamilyTrendIn) FamilyTrendResult
+}
+
+// NewFamilyTrendFigureFunc constructs the implementation (internal/compute/pagefig.NewFamilyTrend).
+type NewFamilyTrendFigureFunc func() FamilyTrendFigure
