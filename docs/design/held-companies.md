@@ -27,7 +27,7 @@ Each column header has the Chinese hint under it. Rows are sorted by market valu
 
 `docs/design/modules.md` is not changed. Paths match the rows contracts, compute, pages, ot and web; the first matching row owns each path. No store, dataset or migration change; the auto-deploy is not held. `cmd/ot/wire.go` (791 of 800 lines) is not edited: `registerPage` in `init` is enough.
 
-- contracts (entry 2): `contracts/schemas/page.held_family_page.v1.json`, `contracts/fixtures/page.held_family_page.v1.example.json` (new, the example payload of the schema: value, short, gap and each earnings reason), `web/src/generated/held_family_page.v1.ts` (generated), `docs/contracts/page-schemas.md`, new `internal/contracts/held_family_page_test.go`.
+- contracts (entry 2): `contracts/schemas/page.held_family_page.v1.json`, `contracts/fixtures/page.held_family_page.v1.ok.json` (new, the example payload of the schema: value, short, gap and each earnings reason), `web/src/generated/held_family_page.v1.ts` (generated), `docs/contracts/page-schemas.md`, new `internal/contracts/held_family_page_test.go`.
 - compute (entry 1): `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `internal/compute/pagefig/held.go` and `held_test.go` (new), `docs/contracts/compute.md`.
 - pages (entry 3, with ot): in `household_page`, new `held.go`, `held_test.go`, `testdata/held.golden.json`; edited `page.go` (Config), `zh_texts.go`, `docs/contracts/pages.md`. Exception, stated: a second page in this package, because `readBook`, `distinctAliases` and `whoseOf` are unexported and a second package would copy them.
 - ot (entry 3, with pages): new `cmd/ot/held_family_site.go` and `held_family_site_test.go`; edited `cmd/ot/check_serve.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`.
@@ -73,7 +73,7 @@ Module: compute. Order: first. Files: `internal/compute/blockapi/api.go`, `inter
 
 ### 2 held-co-2-schema (interface)
 
-Module: contracts. Order: first. Files: `contracts/schemas/page.held_family_page.v1.json`, `contracts/fixtures/page.held_family_page.v1.example.json`, `web/src/generated/held_family_page.v1.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/held_family_page_test.go`.
+Module: contracts. Order: first. Files: `contracts/schemas/page.held_family_page.v1.json`, `contracts/fixtures/page.held_family_page.v1.ok.json`, `web/src/generated/held_family_page.v1.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/held_family_page_test.go`.
 
 ### 3 held-co-3-page
 
