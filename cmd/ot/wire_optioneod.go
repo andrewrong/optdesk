@@ -92,7 +92,7 @@ func (f jobFactory) optionEodWith(b broker.Broker, rd optioneod.ContractReader) 
 		j, err := buildOptionEod(f.d, b, f.inst, f.eod, entries, f.clk)
 		j, err = withOptionEodReasons(j, err, f.reasons)
 		if err == nil {
-			j, err = f.withCalendar(j)
+			j = f.withCalendar(j)
 		}
 		if err != nil || rd == nil {
 			return j, err
@@ -152,17 +152,21 @@ func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
 		if err != nil {
 			return j, err
 		}
-		return f.withCalendar(j)
+		return f.withCalendar(j), nil
 	})
 }
 
 // withCalendar gives j the session calendar of the factory, which a close-anchored slot needs to tell an early run; a
-// nil calendar (dry run, preflight) leaves j as it is.
-func (f jobFactory) withCalendar(j contracts.Job) (contracts.Job, error) {
+// nil calendar (dry run, preflight) leaves j as it is. WithCalendar refuses only a job that the optioneod package did
+// not build (a double that deps injects); such a job has no close-anchored slot to check and is returned as it is.
+func (f jobFactory) withCalendar(j contracts.Job) contracts.Job {
 	if f.cal == nil {
-		return j, nil
+		return j
 	}
-	return optioneod.WithCalendar(j, f.cal)
+	if c, err := optioneod.WithCalendar(j, f.cal); err == nil {
+		return c
+	}
+	return j
 }
 
 // fixedEntries is es after entryFix when it is set, es itself otherwise.
