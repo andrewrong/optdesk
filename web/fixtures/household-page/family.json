@@ -341,21 +341,130 @@
   },
   "title": "家庭合计",
   "trend": {
-    "change": {
-      "text": "+2.5%: last point against first",
-      "tone": "up",
-      "unit": "percent",
-      "value": 2.5
-    },
-    "gap": {
-      "reason": "not_built",
-      "text": "家庭合计暂不含此项，请看单个账户"
-    },
-    "meaning": "Household assets by day; the change is the last point against the first.",
-    "rows": [],
-    "series": [],
+    "meaning": "全家净值每天的变化；细线是各账户。",
+    "rows": [
+      {
+        "day": "2026-10-01",
+        "value": {
+          "text": "$100,000",
+          "unit": "USD",
+          "value": 100000.0
+        }
+      },
+      {
+        "day": "2026-10-02",
+        "value": {
+          "text": "$100,750",
+          "unit": "USD",
+          "value": 100750.0
+        }
+      },
+      {
+        "day": "2026-10-03",
+        "value": {
+          "text": "$101,500",
+          "unit": "USD",
+          "value": 101500.0
+        }
+      }
+    ],
+    "series": [
+      {
+        "label": "全家合计",
+        "rows": [
+          {
+            "day": "2026-10-01",
+            "value": {
+              "text": "$100,000",
+              "unit": "USD",
+              "value": 100000.0
+            }
+          },
+          {
+            "day": "2026-10-02",
+            "value": {
+              "text": "$100,750",
+              "unit": "USD",
+              "value": 100750.0
+            }
+          },
+          {
+            "day": "2026-10-03",
+            "value": {
+              "text": "$101,500",
+              "unit": "USD",
+              "value": 101500.0
+            }
+          }
+        ],
+        "scope": "household",
+        "window": "2026-10-01 至 2026-10-03，共 3 天，最后一天 101,500 美元。"
+      },
+      {
+        "label": "账户（main）",
+        "rows": [
+          {
+            "day": "2026-10-01",
+            "value": {
+              "text": "$60,000",
+              "unit": "USD",
+              "value": 60000.0
+            }
+          },
+          {
+            "day": "2026-10-02",
+            "value": {
+              "text": "$60,500",
+              "unit": "USD",
+              "value": 60500.0
+            }
+          },
+          {
+            "day": "2026-10-03",
+            "value": {
+              "text": "$61,000",
+              "unit": "USD",
+              "value": 61000.0
+            }
+          }
+        ],
+        "scope": "main",
+        "window": "2026-10-01 至 2026-10-03"
+      },
+      {
+        "label": "账户（daughter）",
+        "rows": [
+          {
+            "day": "2026-10-01",
+            "value": {
+              "text": "$40,000",
+              "unit": "USD",
+              "value": 40000.0
+            }
+          },
+          {
+            "day": "2026-10-02",
+            "value": {
+              "text": "$40,250",
+              "unit": "USD",
+              "value": 40250.0
+            }
+          },
+          {
+            "day": "2026-10-03",
+            "value": {
+              "text": "$40,500",
+              "unit": "USD",
+              "value": 40500.0
+            }
+          }
+        ],
+        "scope": "daughter",
+        "window": "2026-10-01 至 2026-10-03"
+      }
+    ],
     "title": "Trend",
-    "window": "2026-10-01 to 2026-10-03, last point against first"
+    "window": "2026-10-01 至 2026-10-03，共 3 天，最后一天 101,500 美元。"
   },
   "views": [
     {
