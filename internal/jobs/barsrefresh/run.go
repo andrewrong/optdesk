@@ -210,12 +210,18 @@ func (r *runState) upsert(ctx context.Context, rows []contracts.PriceBar) contra
 	return nil
 }
 
-// conID is the contract id of the key: the one it carries, else one ResolveContract answer per run.
+// conID is the contract id of the key: the one it carries, else the one the job kept from an earlier ResolveContract answer, else a new answer (kept once listed).
 func (r *runState) conID(ctx context.Context, key string, t target) (int64, contracts.TypedError) {
 	if t.contract.ConID != 0 {
 		return t.contract.ConID, nil
 	}
 	if id, ok := r.conIDs[key]; ok {
+		return id, nil
+	}
+	r.j.mu.Lock()
+	id, ok := r.j.conIDs[key]
+	r.j.mu.Unlock()
+	if ok {
 		return id, nil
 	}
 	got, err := r.j.b.ResolveContract(ctx, t.contract)
@@ -226,6 +232,9 @@ func (r *runState) conID(ctx context.Context, key string, t target) (int64, cont
 		return 0, newErr(contracts.Permanent, "%s is not listed", key)
 	}
 	r.conIDs[key] = got.Contract.ConID
+	r.j.mu.Lock()
+	r.j.conIDs[key] = got.Contract.ConID
+	r.j.mu.Unlock()
 	return got.Contract.ConID, nil
 }
 
