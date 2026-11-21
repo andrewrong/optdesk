@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/google/uuid"
 )
@@ -71,6 +72,15 @@ type Core struct {
 	// Flush, when set, writes the rows added since its last call: after each group, after each stock and once at the
 	// end (core_flush.go). Nil: Core writes nothing itself.
 	Flush func(ctx context.Context, rows []contracts.OptionOpen) error
+	// Contracts reads the stored chain of a stock: the live band runs over it, not over the plan items
+	// (Decision 2 of option-open-band). Nil: the band runs over the plan items.
+	Contracts ContractLister
+	// Instruments gives the con_ids of an added contract. Nil: nothing is added.
+	Instruments store.InstrumentReader
+	// Done is the set of instrument ids whose final row is stored already (plan items and added contracts): the live
+	// band does not add them again. StoredAdded is how many of them are added contracts, for the summary.
+	Done        map[int64]bool
+	StoredAdded int
 }
 
 // kindOf is the kind of snapshot the core sends: wave 1 asks for the option_open kind (Decisions 9 and 10), with
@@ -93,6 +103,7 @@ type runState struct {
 	lastBeat time.Time
 	flushed  int   // the rows already passed to Flush
 	err      error // the error of a Flush
+	added    int   // the added contracts of the live band met in this run
 }
 
 // Pull quotes the targets: per stock the first underlying snapshot, the band at the open spot, then the groups
@@ -232,22 +243,12 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 		return
 	}
 	day := ts[0].Item.SessionDay.Time
-	keep := c.band(day, spot, ts)
-	groups := map[time.Time][]Target{}
-	var exps []time.Time
-	for _, t := range ts {
-		switch {
-		case t.Item.Deferred:
-			c.add(st, t, c.unasked(t, stDeferred, "", false, spot, spotTs))
-		case !keep[int64(t.Item.InstrumentID)]:
-			c.add(st, t, c.unasked(t, stDeferred, "", true, spot, spotTs))
-		default:
-			if _, ok := groups[t.Expiry]; !ok {
-				exps = append(exps, t.Expiry)
-			}
-			groups[t.Expiry] = append(groups[t.Expiry], t)
-		}
+	lb, err := c.liveBand(ctx, day, spot, ts)
+	if err != nil {
+		st.err = err // the stored chain could not be read: retryable, as every store read of the pull
+		return
 	}
+	groups, exps := c.sort(st, lb, ts, spot, spotTs)
 	sort.Slice(exps, func(i, j int) bool { return exps[i].Before(exps[j]) })
 	for _, e := range exps {
 		if st.err != nil || ctx.Err() != nil {
@@ -257,6 +258,49 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 		sort.SliceStable(g, func(i, j int) bool { return g[i].Item.Rank < g[j].Item.Rank })
 		spot, spotTs = c.group(ctx, st, g, spot, spotTs)
 	}
+}
+
+// sort writes the rows of the targets that are not asked and groups the others by expiry: the plan items the live band
+// kept and the contracts it added.
+func (c *Core) sort(st *runState, lb liveBand, ts []Target, spot float64, spotTs *time.Time) (map[time.Time][]Target, []time.Time) {
+	groups := map[time.Time][]Target{}
+	var exps []time.Time
+	for _, t := range ts {
+		switch {
+		case t.Item.Deferred:
+			c.add(st, t, c.unasked(t, stDeferred, "", false, spot, spotTs))
+		case !lb.keep[int64(t.Item.InstrumentID)]:
+			c.add(st, t, c.unasked(t, stDeferred, "", true, spot, spotTs))
+		default:
+			if _, ok := groups[t.Expiry]; !ok {
+				exps = append(exps, t.Expiry)
+			}
+			groups[t.Expiry] = append(groups[t.Expiry], t)
+		}
+	}
+	for _, t := range lb.added {
+		if t.Problem != "" {
+			c.addAdded(st, t, c.unasked(t, stError, t.Problem, false, spot, spotTs))
+			continue
+		}
+		if _, ok := groups[t.Expiry]; !ok {
+			exps = append(exps, t.Expiry)
+		}
+		groups[t.Expiry] = append(groups[t.Expiry], t)
+		st.added++
+		st.progress[int64(t.Item.UnderlyingID)].Total++
+	}
+	for _, t := range lb.over {
+		c.addAdded(st, t, c.unasked(t, stDeferred, "", false, spot, spotTs))
+	}
+	return groups, exps
+}
+
+// addAdded writes the row of an added contract that is not asked.
+func (c *Core) addAdded(st *runState, t Target, r contracts.OptionOpen) {
+	st.added++
+	st.progress[int64(t.Item.UnderlyingID)].Total++
+	c.add(st, t, r)
 }
 
 // finish writes one unasked row per target with the status and code.
@@ -325,32 +369,21 @@ func statusName(s broker.Status) string {
 	return "NO_DATA"
 }
 
-// band runs the plan function over the stored candidates with the open spot: the instrument ids it keeps are asked,
-// the others are outside the band (Decisions 3 and 12). Held contracts are always kept; a ceiling never drops one.
+// band is the live band over the stored plan items, for a Core with no Contracts port: the instrument ids the plan
+// function keeps at the open spot are asked, the others are outside the band (Decisions 3 and 12). Held contracts
+// are always kept; the items are capped already, so no ceiling applies.
 func (c *Core) band(day time.Time, spot float64, ts []Target) map[int64]bool {
-	n := NameInput{UnderlyingID: int64(ts[0].Item.UnderlyingID), Symbol: ts[0].Symbol, Spot: spot}
-	switch SigmaSource(ts[0].Item.SigmaSource) {
-	case SigmaPriorClose:
-		n.PriorCloseSigma = ts[0].Item.Sigma
-	case SigmaLastKnown:
-		n.LastKnownSigma = ts[0].Item.Sigma
-	case SigmaDefault: // ResolveSigma gives the default itself
-	}
+	n := c.nameInput(spot, ts)
 	keep := map[int64]bool{}
 	for _, t := range ts {
 		ct := Contract{InstrumentID: int64(t.Item.InstrumentID), Expiry: t.Expiry, Strike: t.Strike, Right: t.Right}
 		if t.class() == ClassHeld {
-			n.Held = append(n.Held, ct)
 			keep[ct.InstrumentID] = true
 		} else if !t.Item.Deferred {
 			n.Candidates = append(n.Candidates, ct)
 		}
-		// Calls are planned only for a name with a held position.
-		n.HasPosition = n.HasPosition || t.class() == ClassHeld || t.class() == ClassCalls
 	}
-	p := c.Params
-	p.CeilAroundSpot, p.CeilPuts, p.CeilCalls, p.CeilPerStock = math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32
-	for _, it := range c.plan()(day, p, []NameInput{n}).Items {
+	for _, it := range c.plan()(day, uncapped(c.Params), []NameInput{n}).Items {
 		if !it.Deferred {
 			keep[it.Contract.InstrumentID] = true
 		}

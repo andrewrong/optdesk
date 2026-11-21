@@ -286,7 +286,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok, unread, partial, outside := 0, 0, 0, 0, 0
+	planned, ok, unread, partial, outside, added := 0, 0, 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -305,6 +305,8 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 			return withErr(res, terr)
 		}
 		res.Returned += len(rows)
+		rows, extra := splitAdded(b.items, rows)
+		added += extra
 		outside += outsideBand(rows)
 		for _, r := range rows {
 			switch {
@@ -318,19 +320,20 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		}
 		res.Usable = ok
 	}
-	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside)
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, added)
 }
 
 // runKey is pull.runKey with the JP parameters of the core.
 func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, contracts.TypedError) {
-	final, ask, err := p.resume(ctx, b.items)
+	chain := newChainCache(p.d.Contracts)
+	final, ask, err := p.resume(ctx, b.items, chain)
 	if err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
 	if len(ask) == 0 {
 		return final, nil
 	}
-	ts, err := p.targets(ctx, ask)
+	ts, err := p.targets(ctx, ask, chain)
 	if err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
@@ -339,10 +342,11 @@ func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, c
 			ts[i].Under.SecType, ts[i].Under.Exchange = "IND", p.rules.Chain.Exchange
 		}
 	}
+	done, storedAdded := finalIDs(b.items, final)
 	c := &Core{
 		B: p.d.Broker, Clk: p.d.Clock, Params: p.params, Slot: p.m.Slot, Chunk: p.m.Chunk, Retry: p.retry,
 		Budget: time.Duration(p.m.BudgetMinutes) * time.Minute, Beat: time.Duration(p.m.HeartbeatSeconds) * time.Second,
-		Log: p.d.Log,
+		Log: p.d.Log, Contracts: chain, Instruments: p.d.Instruments, Done: done, StoredAdded: storedAdded,
 	}
 	r := c.Pull(ctx, ts)
 	c.logger().Info(r.Summary.String(), "key", b.subject)

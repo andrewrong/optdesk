@@ -273,7 +273,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok, unread, partial, outside := 0, 0, 0, 0, 0
+	planned, ok, unread, partial, outside, added := 0, 0, 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -292,6 +292,8 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		if terr != nil {
 			return withErr(res, terr)
 		}
+		rows, extra := splitAdded(b.items, rows)
+		added += extra
 		outside += outsideBand(rows)
 		for _, r := range rows {
 			switch {
@@ -305,24 +307,24 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		}
 		res.Usable = ok
 	}
-	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside)
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, added)
 }
 
 // underShare is the result of a batch that ended under the ok share: Retryable when rows were not asked (the broker
 // answered nothing at the moment) or are partial (a slow broker; the same captureID keeps the run idempotent), else Permanent.
-func underShare(res contracts.JobResult, ok, planned, unread, partial, outside int, share float64) contracts.JobResult {
+func underShare(res contracts.JobResult, ok, planned, unread, partial, outside, added int, share float64) contracts.JobResult {
 	if unread > 0 {
 		return withErr(res, newErr(contracts.Retryable,
-			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d (not asked: spot unread or broker unavailable)",
-			ok, planned, share, ok, partial, unread, outside))
+			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d (not asked: spot unread or broker unavailable)",
+			ok, planned, share, ok, partial, unread, outside, added))
 	}
 	if partial > 0 {
 		return withErr(res, newErr(contracts.Retryable,
-			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d (slow broker)",
-			ok, planned, share, ok, partial, unread, outside))
+			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d (slow broker)",
+			ok, planned, share, ok, partial, unread, outside, added))
 	}
-	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d",
-		ok, planned, share, ok, partial, unread, outside))
+	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d",
+		ok, planned, share, ok, partial, unread, outside, added))
 }
 
 func withErr(r contracts.JobResult, e contracts.TypedError) contracts.JobResult {
@@ -342,21 +344,24 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 // stored final rows are returned with the new ones, so the postcondition counts the whole batch. On a cancel the rows
 // in hand are returned with the error.
 func (p *pull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, contracts.TypedError) {
-	final, ask, err := p.resume(ctx, b.items)
+	chain := newChainCache(p.d.Contracts)
+	final, ask, err := p.resume(ctx, b.items, chain)
 	if err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
 	if len(ask) == 0 {
 		return final, nil
 	}
-	ts, err := p.targets(ctx, ask)
+	ts, err := p.targets(ctx, ask, chain)
 	if err != nil {
 		return nil, asTyped(err, contracts.Retryable)
 	}
+	done, storedAdded := finalIDs(b.items, final)
 	c := &Core{
 		B: p.d.Broker, Clk: p.d.Clock, Params: DefaultPlanParams(), Slot: p.m.Slot, Chunk: p.m.Chunk, Retry: p.retry,
 		Budget: time.Duration(p.m.BudgetMinutes) * time.Minute, Beat: time.Duration(p.m.HeartbeatSeconds) * time.Second,
 		Log: p.d.Log, Flush: p.d.Writer.InsertOptionOpen,
+		Contracts: chain, Instruments: p.d.Instruments, Done: done, StoredAdded: storedAdded,
 	}
 	r := c.Pull(ctx, ts)
 	c.logger().Info(r.Summary.String(), "key", b.subject)
@@ -372,7 +377,7 @@ func (p *pull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, con
 
 // targets builds the contracts of the items from the stored option contracts and instruments. An item whose
 // contract cannot be built is a target with a Problem, which ends `error`.
-func (p *pull) targets(ctx context.Context, items []contracts.OptionOpenItem) ([]Target, error) {
+func (p *pull) targets(ctx context.Context, items []contracts.OptionOpenItem, chain ContractLister) ([]Target, error) {
 	ids := map[int64]bool{}
 	for _, it := range items {
 		ids[int64(it.UnderlyingID)], ids[int64(it.InstrumentID)] = true, true
@@ -400,7 +405,7 @@ func (p *pull) targets(ctx context.Context, items []contracts.OptionOpenItem) ([
 	for _, it := range items {
 		u, o := int64(it.UnderlyingID), int64(it.InstrumentID)
 		if refs[u] == nil {
-			list, err := p.d.Contracts.ListOptions(ctx, u)
+			list, err := chain.ListOptions(ctx, u)
 			if err != nil {
 				return nil, err
 			}
