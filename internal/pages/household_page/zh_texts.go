@@ -61,3 +61,13 @@ const (
 	heldNoteOldMark  = "%d 行的收盘价早于采集日"
 	heldNoteNoDate   = "%d 行没有财报日期"
 )
+
+// The Chinese words of the family trend block.
+const (
+	familyTrendLabel      = "全家合计"
+	familyTrendNoData     = "全家净值记录不足 2 天，画不出走势"
+	familyTrendMany       = "账户超过 3 个，只画全家合计"
+	familyTrendWindowText = "全家合计：%s 至 %s，共 %d 天。"
+	familyTrendLeftOut    = "有 %s 天没有画点：当天至少一个账户没有净值记录。"
+	familyTrendYen        = "日元账户按当天的美元兑日元汇率折成美元。"
+)

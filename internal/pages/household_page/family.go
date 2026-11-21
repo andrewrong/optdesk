@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -55,7 +56,8 @@ func BuildFamily(ctx context.Context, c Config, day contracts.Day, at time.Time)
 		return nil, err
 	}
 	res := c.Family().Family(in)
-	return marshal(c.assembleFamily(distinct, res, caps, newest, at))
+	trend, trendNotes := c.familyTrend(ctx, res, caps, sessions)
+	return marshal(c.assembleFamily(distinct, res, caps, newest, at, trend, trendNotes))
 }
 
 // readBook reads the capture of every alias and the rate when a capture holds yen; it is the input of the
@@ -143,7 +145,7 @@ func cellWords(reason string) string {
 }
 
 // assembleFamily writes the page of a family result. Every figure is copied from res.
-func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps map[string]capture, newest string, at time.Time) pageJSON {
+func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps map[string]capture, newest string, at time.Time, trend *trendBlock, trendNotes []string) pageJSON {
 	p := base(c, familyScopes(aliases), familyAliasKey, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = familyTitle, familySentence
@@ -184,6 +186,10 @@ func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps
 	lines := familyNotesAndGaps(&p, res, newest)
 	p.Gaps = append(lines, p.Gaps...)
 	detailGaps(&p)
+	if trend != nil {
+		p.setTrend(*trend)
+	}
+	p.LeadNotes = append(p.LeadNotes, trendNotes...)
 	p.Notes = append(p.Notes, familyCashNote)
 	var oldestAt time.Time
 	for _, alias := range res.Included {
@@ -287,4 +293,14 @@ func detailGaps(p *pageJSON) {
 		p.Gaps = append(p.Gaps, gapJSON{Reason: g.Reason, Text: title + ": " + g.Text})
 	}
 
+}
+
+// setTrend replaces the trend block of p and the page gap line that named it not_built; a block that is
+// itself a gap names that gap instead.
+func (p *pageJSON) setTrend(t trendBlock) {
+	p.Trend = t
+	p.Gaps = slices.DeleteFunc(p.Gaps, func(g gapJSON) bool { return g.Reason == "not_built" && strings.HasPrefix(g.Text, titleTrend+": ") })
+	if t.Gap != nil {
+		p.Gaps = append(p.Gaps, gapJSON{Reason: t.Gap.Reason, Text: titleTrend + ": " + t.Gap.Text})
+	}
 }
