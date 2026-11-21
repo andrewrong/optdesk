@@ -129,7 +129,42 @@ async def read_account(
 
     Raises MultipleAccounts unless the login reports exactly one account, and
     TimeoutError when the end messages do not come within DEADLINE_S of clock.
+    A summary read that fails with error 322 (too many account subscriptions)
+    has already cancelled SUMMARY_REQ_ID, the only summary id this session
+    knows, and is retried once through the same pacer; a second 322, and any
+    other error, is raised.
     """
+    try:
+        return await _read_once(
+            ib,
+            pacer,
+            clock,
+            generation=generation,
+            summary=summary,
+            positions=positions,
+        )
+    except Exception as exc:
+        if not _is_322(exc):
+            raise
+    return await _read_once(
+        ib, pacer, clock, generation=generation, summary=summary, positions=positions
+    )
+
+
+def _is_322(exc: Exception) -> bool:
+    # ib_async is not imported here: its RequestError is told by name.
+    return type(exc).__name__ == "RequestError" and getattr(exc, "code", None) == 322
+
+
+async def _read_once(
+    ib: Any,
+    pacer: MessagePacer,
+    clock: Clock,
+    *,
+    generation: int,
+    summary: bool,
+    positions: bool,
+) -> AccountRows:
     account = _one_account(ib)
     client = ib.client
     seen: list[Any] = []
@@ -154,6 +189,12 @@ async def read_account(
             sent_positions = True
             client.reqPositions()
         results = await with_timeout(clock, asyncio.gather(*waiting), DEADLINE_S)
+    except Exception as exc:
+        if _is_322(exc) and sent_summary:
+            # sent at once, so it is on the wire before the retry's request
+            _cancel_summary(client)
+            sent_summary = False
+        raise
     finally:
         if summary:
             ib.accountSummaryEvent -= collect
@@ -170,10 +211,22 @@ async def read_account(
 
 
 def drop_resubscribe(ib: Any) -> None:
-    """Take the library's own 1102 handler out of ib.errorEvent, when ib has one."""
+    """Take the library's own 1102 handler out of ib.errorEvent.
+
+    A real ib (its class is of a module starting with ib_async) without a
+    callable _onError, or still holding it after the removal, raises
+    RuntimeError: the 1102 subscription leak would otherwise return unseen.
+    Any other ib without the handler is left alone.
+    """
+    real = type(ib).__module__.split(".")[0] == "ib_async"
     handler = getattr(ib, "_onError", None)
-    if handler is not None:
-        ib.errorEvent -= handler
+    if not callable(handler):
+        if real:
+            raise RuntimeError("ib_async IB has no callable _onError to drop")
+        return
+    ib.errorEvent -= handler
+    if real and handler in ib.errorEvent:
+        raise RuntimeError("ib_async IB still has _onError in errorEvent")
 
 
 def _cancel_summary(client: Any) -> None:
