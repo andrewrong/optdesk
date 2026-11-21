@@ -75,15 +75,15 @@ Module: contracts. Order: first. Files: the contracts files of Modules.
 
 ### 3 held-co-3-page
 
-Module: pages. Order: after 1 held-co-1-figure and 2 held-co-2-schema. Files: the pages files of Modules.
+Module: pages. Order: after 1, 2. Files: the pages files of Modules.
 
 ### 4 held-co-4-site
 
-Module: ot. Order: after 3 held-co-3-page. Files: the ot files of Modules.
+Module: ot. Order: after 3. Files: the ot files of Modules.
 
 ### 5 held-co-5-web
 
-Module: web. Order: after 2 held-co-2-schema and 3 held-co-3-page. Files: the web files of Modules.
+Module: web. Order: after 2, 3. Files: the web files of Modules.
 
 ## Checked by CI
 
