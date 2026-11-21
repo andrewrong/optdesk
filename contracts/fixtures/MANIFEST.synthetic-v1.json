@@ -90,6 +90,7 @@
     {"path": "page.market_state_page.v2.ok.json", "sha256": "723af251559703a0f6a4eb9c1e433ccfcd005bb5a36da34014ed2c6163d99c4c"},
     {"path": "page.held_family_page.v1.ok.json", "sha256": "70fb6536a1877fa74030b71cf9ceef47b46bbc96dc713a112f035cc3e63ed377"},
     {"path": "page.company_data_page.v2.ok.json", "sha256": "bbbb38cf57dae7b67e6f1fb9546281e114236dcd916a82e72d74a626f0b239e8"},
-    {"path": "page.positions_page.v4.ok.json", "sha256": "9b92cda71851393b3aa9598767883e16632ff480c75ff4eacfc30c795a0ea82d"}
+    {"path": "page.positions_page.v4.ok.json", "sha256": "9b92cda71851393b3aa9598767883e16632ff480c75ff4eacfc30c795a0ea82d"},
+    {"path": "page.spread_legs_page.v1.ok.json", "sha256": "fcfedf55a96c5e2a0e70cbb5e2e0ad06b59b314073b24da314a196752421ba91"}
   ]
 }
