@@ -48,8 +48,10 @@ type viewModel struct {
 	ComputedAt    *string      `json:"computed_at"`
 	RuleVersion   *string      `json:"rule_version"`
 	HeadLabels    headLabels   `json:"head_labels"`
-	EstimateNote  string       `json:"estimate_note"`
-	Groups        []group      `json:"groups"`
+	// SourceCounts is omitted without stored rows.
+	SourceCounts *sourceCounts `json:"source_counts,omitempty"`
+	EstimateNote string        `json:"estimate_note"`
+	Groups       []group       `json:"groups"`
 	// ShortPutList is the grouped short list, omitted without a Shortlist reader or short-put rows.
 	ShortPutList *shortListView `json:"short_put_list,omitempty"`
 	// ShortPutTiers is the tier view of the short-put rows, null without a Tiers judge or rows.
@@ -86,6 +88,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 	}
 	var chainDay, oldestStale contracts.Day
 	var first *store.Candidate
+	tally := newMarkTally()
 	if c.Candidates == nil {
 		vm.noReader()
 	} else {
@@ -96,6 +99,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 				return nil, err
 			}
 			gd, rows := gr.day, gr.rows
+			tally.add(gr.cur, rows)
 			if len(rows) == 0 {
 				vm.Groups = append(vm.Groups, gapGroup(s, mkGap("no_rows", gapNoRows)))
 				continue
@@ -116,6 +120,10 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 		if chainDay == "" {
 			vm.Gaps = append(vm.Gaps, mkGap("no_run", gapNoRun))
 		}
+	}
+	if sc := tally.counts(); sc != nil {
+		vm.SourceCounts = sc
+		vm.Notes = append(vm.Notes, sc.line())
 	}
 	if chainDay != "" {
 		if err := fillRun(&vm, c.Zone, chainDay, oldestStale, first); err != nil {
