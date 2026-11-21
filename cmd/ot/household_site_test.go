@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/andrewrong/optdesk/internal/pages/household_page"
 	"io"
 	"net/http"
 	"strings"
@@ -319,5 +321,62 @@ func TestHouseholdPageConfigGetsStatementAliases(t *testing.T) {
 	writeBookText(t, a, bookText("a", "a", "b"))
 	if got := householdConfig(a, siteReaders{}).Statement; got != nil {
 		t.Fatalf("plain book gave %v", got)
+	}
+}
+
+func TestHouseholdConfigHasFamilyTrend(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	if householdConfig(a, siteReaders{}).FamilyTrend == nil {
+		t.Fatal("householdConfig has no FamilyTrend")
+	}
+}
+
+// trendAccount holds a net liquidation for every alias on the three days of trendSessions.
+type trendAccount struct{ householdAccount }
+
+func (trendAccount) Values(_ context.Context, alias, day string) ([]store.AccountValue, error) {
+	net := map[string]string{"2026-11-03": "100", "2026-11-04": "110", "2026-11-05": "120"}[day]
+	if net == "" {
+		return []store.AccountValue{}, nil
+	}
+	return []store.AccountValue{{Alias: alias, SessionDay: day, Tag: "NetLiquidation", Value: net, Currency: "USD"}}, nil
+}
+
+type trendSessions struct{}
+
+func (trendSessions) SessionDays(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SessionDay, error) {
+	var out []contracts.SessionDay
+	for d := 3; d <= 5; d++ {
+		out = append(out, contracts.SessionDay{CalendarID: "XNYS", IsSession: true,
+			SessionDay: types.SerializableDate{Time: time.Date(2026, 11, d, 0, 0, 0, 0, time.UTC)}})
+	}
+	return out, nil
+}
+
+func TestHouseholdFamilyTrendBuilt(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	var asked []string
+	rd := householdReaders(&asked)
+	rd.noticeAccount = trendAccount{}
+	rd.sessions = trendSessions{}
+	rd.aliases = []string{"main", "other"}
+	b, err := household_page.BuildFamily(t.Context(), householdConfig(a, rd), "2026-11-05", householdClock.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var page struct {
+		Trend struct {
+			Series []struct{ Scope string }
+			Rows   []any
+			Gap    *struct{ Reason string }
+		}
+	}
+	if err := json.Unmarshal(b, &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Trend.Series) != 3 || page.Trend.Gap != nil || len(page.Trend.Rows) != 3 || page.Trend.Series[0].Scope != "household" {
+		t.Fatalf("trend: %+v\n%s", page.Trend, b)
 	}
 }
