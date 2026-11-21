@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
+	"github.com/andrewrong/optdesk/internal/compute/liquidityapi"
 	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -217,10 +218,26 @@ func fundRow(f marketstateapi.Fund, group string, labels map[string]string) sect
 	if label == "" {
 		label = f.Symbol
 	}
-	return sectorRow{Symbol: f.Symbol, Label: label,
+	row := sectorRow{Symbol: f.Symbol, Label: label,
 		Gap21:  gapFigure(f.Gap21.Value, f.Gap21.Reason, "21-session gap"),
 		Gap63:  gapFigure(f.Gap63.Value, f.Gap63.Reason, "63-session gap"),
 		Rank21: rankCell(f.Rank21, group, "21-session rank"),
 		Rank63: rankCell(f.Rank63, group, "63-session rank"),
 		Group:  group, Rotation: rotationCell(f.Rotation)}
+	if g, ok := noCloseGap(label, f.Gap21); ok {
+		row.Gap21, row.Rank21 = g, g
+	}
+	if g, ok := noCloseGap(label, f.Gap63); ok {
+		row.Gap63, row.Rank63 = g, g
+	}
+	return row
+}
+
+// noCloseGap is the Gap of a fund that has no close on the common day: its gap is missing_input and
+// names the day. A gap without a day is not one, and keeps its generic text.
+func noCloseGap(label string, n liquidityapi.Num) (gap, bool) {
+	if n.Reason != liquidityapi.MissingInput || n.Day == "" {
+		return gap{}, false
+	}
+	return mkGap(reasonMissingInput, label+" has no close on "+string(n.Day)), true
 }
