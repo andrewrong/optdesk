@@ -118,5 +118,10 @@ func ivRvFigure(name string, r *contracts.ReadingRecord, d time.Time) (any, stri
 	if strings.Trim(v, "0.") == "" {
 		text = v
 	}
-	return figure{Kind: "value", Value: json.Number(v), Text: text, Unit: unitVolPoints}, volGapDayPrefix + day.Format("01-02")
+	dayText := volGapSameDay
+	if !day.Equal(d) {
+		dayText = volGapDayPrefix + day.Format("01-02")
+		text += " (" + day.Format("01-02") + ")"
+	}
+	return figure{Kind: "value", Value: json.Number(v), Text: text, Unit: unitVolPoints}, dayText
 }

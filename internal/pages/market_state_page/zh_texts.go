@@ -12,8 +12,10 @@ const (
 	volGapHint  = "数值为隐含波动率（VIX、VXN、RVX 除以 100）减 20 日已实现波动率（21 个收盘价的对数收益，样本标准差，乘以 252 的平方根），单位为波动率点。正数表示期权定价高于实际波动，负数表示低于实际波动。"
 
 	volGapDayPrefix = "数据日 "
-	volGapNoRow     = "隐含减已实现：暂无数据，尚未存储"
-	volGapMissing   = "隐含减已实现：输入不全"
-	volGapStale     = "隐含减已实现：数据已过期"
-	volGapNoReader  = "隐含减已实现：未接入读取器"
+	// volGapSameDay is the day text of a figure whose data day is the page day: the day is not repeated.
+	volGapSameDay  = "当日数据"
+	volGapNoRow    = "隐含减已实现：暂无数据，尚未存储"
+	volGapMissing  = "隐含减已实现：输入不全"
+	volGapStale    = "隐含减已实现：数据已过期"
+	volGapNoReader = "隐含减已实现：未接入读取器"
 )

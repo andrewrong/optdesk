@@ -3,6 +3,7 @@ package market_state_page
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,10 +70,10 @@ func TestVolGapRows(t *testing.T) {
 		t.Fatalf("rows %v", vr)
 	}
 	f := obj(vr[0]["figure"])
-	if f["text"] != "+3.5" || f["unit"] != "vol_points" || f["value"] != json.Number("3.5") {
+	if f["text"] != "+3.5 (11-12)" || f["unit"] != "vol_points" || f["value"] != json.Number("3.5") {
 		t.Errorf("spx %v", f)
 	}
-	if vr[0]["day_text"] != volGapDayPrefix+"11-12" {
+	if vr[0]["day_text"] != volGapDayPrefix+"11-12" || obj(vr[0]["figure"])["text"] != "+3.5 (11-12)" {
 		t.Errorf("day_text %v", vr[0]["day_text"])
 	}
 	if f := obj(vr[1]["figure"]); f["text"] != "−2.1" {
@@ -114,5 +115,24 @@ func TestVolGapWithoutReaderIsGaps(t *testing.T) {
 		if g := obj(r["figure"]); g["kind"] != "gap" {
 			t.Errorf("%v", g)
 		}
+	}
+}
+
+// Decision 7: the day is shown only when it is not the page day. The schema requires a non-empty
+// day_text, so on the page day it is a fixed text without the date and the figure text has no date.
+func TestVolGapSameDayHidesDay(t *testing.T) {
+	t.Parallel()
+	r := rec("2026-11-13", "-0.0212", "2026-11-13")
+	fig, dayText := ivRvFigure("NDX", &r, mustDay("2026-11-13"))
+	if dayText != volGapSameDay || strings.Contains(dayText, "11-13") {
+		t.Errorf("day_text %q on the page day", dayText)
+	}
+	if f := fig.(figure); strings.Contains(f.Text, "11-13") || f.Text != "−2.1" {
+		t.Errorf("figure text %q", f.Text)
+	}
+	old := rec("2026-11-12", "-0.0212", "2026-11-12")
+	fig, dayText = ivRvFigure("NDX", &old, mustDay("2026-11-13"))
+	if dayText != volGapDayPrefix+"11-12" || fig.(figure).Text != "−2.1 (11-12)" {
+		t.Errorf("off-day: %q %q", dayText, fig.(figure).Text)
 	}
 }
