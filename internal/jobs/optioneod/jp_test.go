@@ -1,6 +1,7 @@
 package optioneod
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestJPManifestSlotAndWindow(t *testing.T) {
 		t.Fatalf("zone %q id %q", jj.m.Zone, j.ID())
 	}
 	cal, anchor, zone, off := jj.Schedule()
-	if cal != "XTKS" || anchor != "session_open" || zone != "" || off != 90*time.Minute {
+	if cal != "XTKS" || anchor != "session_close" || zone != "" || off != -15*time.Minute {
 		t.Fatalf("schedule %s %s %s %s", cal, anchor, zone, off)
 	}
 	wc, open, closeOff := jj.Window()
@@ -143,6 +144,40 @@ func TestJPRowsCurrencyJPY(t *testing.T) {
 	for _, row := range rows {
 		if row.Currency != "JPY" {
 			t.Fatalf("currency %q", row.Currency)
+		}
+	}
+}
+
+func TestJPCloseSlotEarlyRun(t *testing.T) {
+	t.Parallel()
+	cal := fakeCalendar{close: map[string]time.Time{"XTKS": time.Date(2026, 11, 9, 6, 30, 0, 0, time.UTC)}} // 15:30 JST
+	run := func(at string) *rig {
+		r := newJPRig(t, at)
+		if _, err := WithCalendar(r.job, cal); err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	want := captureID(jpDay, jpKey, "close-15m").String()
+	early := run("2026-11-09 14:30")
+	if res := early.run(jpDay, jpKey); kindOf(res) != contracts.Retryable || !strings.Contains(res.Err.Error(), "before_slot") {
+		t.Fatalf("early run: %+v", res)
+	}
+	if len(early.w.all()) == 0 {
+		t.Fatal("early run wrote no rows")
+	}
+	for _, id := range idsOf(early) {
+		if id == want {
+			t.Fatalf("early run capture %s", id)
+		}
+	}
+	ref := run("2026-11-09 15:15")
+	if res := ref.run(jpDay, jpKey); res.Err != nil {
+		t.Fatalf("run at the slot: %v", res.Err)
+	}
+	for _, id := range idsOf(ref) {
+		if id != want {
+			t.Fatalf("capture %s, want %s", id, want)
 		}
 	}
 }

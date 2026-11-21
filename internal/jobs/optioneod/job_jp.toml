@@ -2,7 +2,7 @@
 version = 1
 id = "option_eod_jp"
 zone = "Asia/Tokyo"
-slot = "1030"
+slot = "close-15m"
 trading_class = "225"
 ledger_dataset = "obs.option_eod_jp"
 max_expiries = 3
@@ -33,12 +33,13 @@ calendar_id = "XTKS"
 price_increment = "1"
 lot_size = "1000"
 
-# Slot: 90 minutes after the open of the day session.
+# Slot: 15 minutes before the XTKS close (15:15 JST). The run takes 8 minutes (budget_minutes) and ends about 15:23, before the
+# XTKS close (15:30) and before the OSE regular session end (15:40 since 2024-11-05), so stock and option quotes are both live.
 [schedule]
 calendar = "XTKS"
-anchor = "session_open"
-offset = "90m"
-run_bound = "16m"
+anchor = "session_close"
+offset = "-15m"
+run_bound = "14m"
 restart_sensitive = true
 
 # What a JP stock of the watch list gets besides its watch entry (symbol, exchange, currency, con_id); no code and no

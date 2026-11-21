@@ -30,11 +30,17 @@ func TestSlotMatchesSchedule(t *testing.T) {
 			"XNYS": time.Date(2026, 11, 9, 14, 30, 0, 0, time.UTC),
 			"XTKS": time.Date(2026, 11, 9, 0, 0, 0, 0, time.UTC),
 		},
-		close: map[string]time.Time{"XNYS": time.Date(2026, 11, 9, 21, 0, 0, 0, time.UTC)},
+		close: map[string]time.Time{
+			"XNYS": time.Date(2026, 11, 9, 21, 0, 0, 0, time.UTC),
+			"XTKS": time.Date(2026, 11, 9, 6, 30, 0, 0, time.UTC), // 15:30 JST
+		},
 	}
 	half := fakeCalendar{
-		open:  map[string]time.Time{"XNYS": time.Date(2026, 11, 27, 14, 30, 0, 0, time.UTC)},
-		close: map[string]time.Time{"XNYS": time.Date(2026, 11, 27, 18, 0, 0, 0, time.UTC)},
+		open: map[string]time.Time{"XNYS": time.Date(2026, 11, 27, 14, 30, 0, 0, time.UTC)},
+		close: map[string]time.Time{
+			"XNYS": time.Date(2026, 11, 27, 18, 0, 0, 0, time.UTC),
+			"XTKS": time.Date(2026, 11, 27, 6, 30, 0, 0, time.UTC), // Tokyo has no half day
+		},
 	}
 	for name, tc := range map[string]struct {
 		data       []byte
@@ -45,7 +51,7 @@ func TestSlotMatchesSchedule(t *testing.T) {
 	}{
 		"us":    {manifestBytes, anchorClose, "close-15m", "1545", "1245"},
 		"index": {manifestIndexBytes, anchorClose, "close-15m", "1545", "1245"},
-		"jp":    {manifestJPBytes, anchorOpen, "1030", "1030", ""},
+		"jp":    {manifestJPBytes, anchorClose, "close-15m", "1515", "1515"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
