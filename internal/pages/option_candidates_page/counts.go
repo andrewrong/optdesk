@@ -62,3 +62,11 @@ func (t *markTally) counts() *sourceCounts {
 func (c sourceCounts) line() string {
 	return countsLineOpen + strconv.Itoa(c.Open) + countsLineClose + strconv.Itoa(c.EodFallback) + countsLineTail + countsGloss
 }
+
+// fillCounts writes source_counts and its line into the notes; without rows it leaves vm as it is.
+func (vm *viewModel) fillCounts(t *markTally) {
+	if sc := t.counts(); sc != nil {
+		vm.SourceCounts = sc
+		vm.Notes = append(vm.Notes, sc.line())
+	}
+}

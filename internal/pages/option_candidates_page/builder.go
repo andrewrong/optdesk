@@ -121,10 +121,7 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 			vm.Gaps = append(vm.Gaps, mkGap("no_run", gapNoRun))
 		}
 	}
-	if sc := tally.counts(); sc != nil {
-		vm.SourceCounts = sc
-		vm.Notes = append(vm.Notes, sc.line())
-	}
+	vm.fillCounts(tally)
 	if chainDay != "" {
 		if err := fillRun(&vm, c.Zone, chainDay, oldestStale, first); err != nil {
 			return nil, err
