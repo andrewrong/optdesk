@@ -589,3 +589,39 @@ func TestLogFailureClassTimeoutNotConnection(t *testing.T) {
 		t.Fatalf("line %q", line)
 	}
 }
+
+func TestLogFailureGrpcCode(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		text string
+		want []string
+	}{
+		{"broker: account: Internal", []string{"grpc=Internal"}},
+		{"broker: account: Unknown: broker error 322: Maximum number of account summary requests exceeded MARKERWORD account 99999",
+			[]string{"grpc=Unknown", "ibkr=322"}},
+	}
+	for _, c := range cases {
+		line := logFailureLine(t, &typedError{kind: contracts.Retryable, text: c.text})
+		for _, w := range c.want {
+			if !strings.Contains(line, w) {
+				t.Fatalf("line %q lacks %q", line, w)
+			}
+		}
+		if strings.Contains(line, "MARKERWORD") || strings.Contains(line, "99999") {
+			t.Fatalf("line %q leaks the text", line)
+		}
+		if c.text == cases[0].text && strings.Contains(line, "ibkr=") {
+			t.Fatalf("line %q has ibkr", line)
+		}
+	}
+}
+
+func TestLogFailureGrpcCodeIgnoresOther(t *testing.T) {
+	t.Parallel()
+	for _, text := range []string{"broker: account: NotACode", "error 322 account 99999", "boom 99999"} {
+		line := logFailureLine(t, &typedError{kind: contracts.Retryable, text: text})
+		if strings.Contains(line, "grpc=") || strings.Contains(line, "ibkr=") || strings.Contains(line, "99999") {
+			t.Fatalf("text %q: line %q", text, line)
+		}
+	}
+}
