@@ -340,7 +340,7 @@ func noteData(vm *viewModel, zone *time.Location, oldest *time.Time, id string, 
 	return oldest
 }
 
-// withGroupsAndLead appends the grouped rows, with their data times (a monthly series is listed but does not set the
+// withGroupsAndLead appends the grouped rows, with their data times (a monthly or weekly series is listed but does not set the
 // stale label) and, with c.Window, writes the event flags and the lead block. It returns the oldest data day.
 func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel, oldest *time.Time) (*time.Time, error) {
 	grouped, days, err := buildGroups(ctx, r, c.Groups, d)
@@ -349,7 +349,7 @@ func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, g
 	}
 	vm.Indicators = append(vm.Indicators, grouped...)
 	for _, g := range days {
-		oldest = noteData(vm, c.Zone, oldest, g.id, g.day, !g.monthly)
+		oldest = noteData(vm, c.Zone, oldest, g.id, g.day, !g.monthly && !g.weekly)
 	}
 	if c.Window == nil {
 		return oldest, nil
