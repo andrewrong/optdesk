@@ -60,6 +60,53 @@
               "text": "+3.1%"
             }
           ]
+        },
+        "price_chart": {
+          "caption": "Synthetic fixture: from 2026-11-10, 4 points.",
+          "aria_text": "Synthetic fixture chart of the close, its 200-day average and a range band, 4 daily points, from 2026-11-10 to 2026-11-13.",
+          "unit": "index_points",
+          "points": [
+            {
+              "day": "2026-11-10",
+              "close": 5800.12,
+              "close_text": "5800.12",
+              "ma200": 5650.5,
+              "ma200_text": "5650.50"
+            },
+            {
+              "day": "2026-11-11",
+              "close": 5812.4,
+              "close_text": "5812.40",
+              "ma200": 5650.5,
+              "ma200_text": "5650.50",
+              "band_low": 5780.0,
+              "band_low_text": "5780.00",
+              "band_high": 5850.0,
+              "band_high_text": "5850.00"
+            },
+            {
+              "day": "2026-11-12",
+              "close": 5805.77,
+              "close_text": "5805.77",
+              "ma200": 5650.5,
+              "ma200_text": "5650.50",
+              "band_low": 5780.0,
+              "band_low_text": "5780.00",
+              "band_high": 5850.0,
+              "band_high_text": "5850.00"
+            },
+            {
+              "day": "2026-11-13",
+              "close": 5830.0,
+              "close_text": "5830.00",
+              "ma200": 5650.5,
+              "ma200_text": "5650.50",
+              "band_low": 5780.0,
+              "band_low_text": "5780.00",
+              "band_high": 5850.0,
+              "band_high_text": "5850.00"
+            }
+          ]
         }
       },
       {
@@ -886,6 +933,44 @@
             "text": "2026-11-13: 63-session +9.10, pace +1.97"
           }
         ]
+      }
+    ]
+  },
+  "vol_gap": {
+    "title": "Implied minus realised volatility",
+    "hint": "隐含波动率减去 20 日实现波动率，单位为波动率点；正数表示期权定价高于实际波动。",
+    "rows": [
+      {
+        "id": "spx",
+        "label": "SPX",
+        "figure": {
+          "kind": "value",
+          "value": 2.4,
+          "text": "+2.4",
+          "unit": "vol_points"
+        },
+        "day_text": "2026-11-13"
+      },
+      {
+        "id": "ndx",
+        "label": "NDX",
+        "figure": {
+          "kind": "value",
+          "value": -1.1,
+          "text": "-1.1",
+          "unit": "vol_points"
+        },
+        "day_text": "2026-11-12"
+      },
+      {
+        "id": "rut",
+        "label": "RUT",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No reading in the last 5 days"
+        },
+        "day_text": "No reading"
       }
     ]
   }

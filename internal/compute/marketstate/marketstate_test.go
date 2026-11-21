@@ -117,7 +117,7 @@ func TestSectorRankDropsGapFund(t *testing.T) {
 	f := load(t)
 	in := f.input()
 	gapSym := in.Funds[3].Symbol
-	in.Funds[3].Closes, in.Funds[3].Days = in.Funds[3].Closes[1:], in.Funds[3].Days[1:]
+	in.Funds[3] = hole(in.Funds[3], 10) // a hole inside the window: no close on the day 21 and 63 sessions back
 	r := marketstate.Compute(in)
 	if len(r.Funds) != 11 {
 		t.Fatalf("funds %d", len(r.Funds))
@@ -142,13 +142,21 @@ func TestSectorMatchesReportRule(t *testing.T) {
 	f := load(t)
 	in := f.input()
 	in.Params.ShortSessions = 20
-	in.Funds[0].Closes, in.Funds[0].Days = in.Funds[0].Closes[1:], in.Funds[0].Days[1:] // no close on SPY's newest day
+	in.Funds[0].Closes, in.Funds[0].Days = in.Funds[0].Closes[1:], in.Funds[0].Days[1:] // no close on SPY's newest day: no gap, the common day moves back
 	in.Funds[1].Days = append(append([]contracts.Day(nil), in.Funds[1].Days[:20]...), in.Funds[1].Days[21:]...)
 	in.Funds[1].Closes = append(append([]string(nil), in.Funds[1].Closes[:20]...), in.Funds[1].Closes[21:]...) // none on the window start
 	in.Funds[2].Closes, in.Funds[2].Days = in.Funds[2].Closes[:10], in.Funds[2].Days[:10]                      // short history
 	in.Funds[3].Closes, in.Funds[3].Days = nil, nil                                                            // no closes
 	got := marketstate.Compute(in)
-	want := pagefig.NewGlobal().Global(blockapi.GlobalIn{Day: in.Day, Benchmark: in.Benchmark, Sectors: in.Funds})
+	common := cut(in.Benchmark, 1) // the common day: the newest day all funds that are not left out have
+	onCommon := make([]blockapi.CloseIn, len(in.Funds))
+	for i, fd := range in.Funds {
+		for fd.Days = fd.Days[:len(fd.Days):len(fd.Days)]; len(fd.Days) > 0 && fd.Days[0] > common.Days[0]; {
+			fd.Closes, fd.Days = fd.Closes[1:], fd.Days[1:]
+		}
+		onCommon[i] = fd
+	}
+	want := pagefig.NewGlobal().Global(blockapi.GlobalIn{Day: in.Day, Benchmark: common, Sectors: onCommon})
 	if len(want.Sectors) != len(got.Funds) {
 		t.Fatalf("rows %d %d", len(want.Sectors), len(got.Funds))
 	}
@@ -167,8 +175,86 @@ func TestSectorMatchesReportRule(t *testing.T) {
 			gaps++
 		}
 	}
-	if gaps != 4 {
+	if gaps != 3 {
 		t.Fatalf("gap funds %d", gaps)
+	}
+}
+
+// hole is the series without its close at index i.
+func hole(c blockapi.CloseIn, i int) blockapi.CloseIn {
+	c.Days = append(append([]contracts.Day(nil), c.Days[:i]...), c.Days[i+1:]...)
+	c.Closes = append(append([]string(nil), c.Closes[:i]...), c.Closes[i+1:]...)
+	return c
+}
+
+func TestSectorCommonDayAcrossFunds(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	in := f.input()
+	in.Benchmark = cut(in.Benchmark, 1)
+	for _, i := range []int{0, 4, 8} { // the three funds behind the others by one session
+		in.Funds[i] = cut(in.Funds[i], 1)
+	}
+	older := in.Benchmark.Days[0]
+	r := marketstate.Compute(in)
+	if r.EndDay != older {
+		t.Fatalf("end day %q want %q", r.EndDay, older)
+	}
+	if len(r.Funds) != 11 {
+		t.Fatalf("funds %d", len(r.Funds))
+	}
+	for i, fd := range r.Funds {
+		if fd.Gap21.Value == "" || fd.Gap63.Value == "" || fd.Gap21.Day != older || fd.Gap63.Day != older {
+			t.Fatalf("%s: %+v %+v", fd.Symbol, fd.Gap21, fd.Gap63)
+		}
+		if fd.Rank63.At != i+1 || fd.Rank63.Of != 11 || fd.Rank21.Of != 11 || fd.Rank21.At < 1 || fd.Rank21.At > 11 {
+			t.Fatalf("%s: ranks %+v %+v", fd.Symbol, fd.Rank21, fd.Rank63)
+		}
+	}
+	if smh := r.Industry[0]; smh.Gap63.Value == "" || smh.Gap63.Day != older {
+		t.Fatalf("smh %+v", smh)
+	}
+}
+
+func TestSectorLateFundNamesDay(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	in := f.input()
+	in.Funds[2] = hole(in.Funds[2], 10) // no close on the days 21 and 63 sessions back
+	r := marketstate.Compute(in)
+	common := in.Benchmark.Days[0]
+	if r.EndDay != common {
+		t.Fatalf("end day %q", r.EndDay)
+	}
+	var late marketstateapi.Fund
+	for _, fd := range r.Funds {
+		if fd.Symbol == in.Funds[2].Symbol {
+			late = fd
+			continue
+		}
+		if fd.Gap21.Value == "" || fd.Gap63.Value == "" || fd.Rank63.Of != 10 {
+			t.Fatalf("%s: %+v", fd.Symbol, fd)
+		}
+	}
+	for _, p := range []liquidityapi.Num{late.Gap21, late.Gap63} {
+		if p.Reason != liquidityapi.MissingInput || p.Value != "" || p.Day != common {
+			t.Fatalf("late gap %+v", p)
+		}
+	}
+	if late.Rank21.Reason != liquidityapi.MissingInput || late.Rank63.Reason != liquidityapi.MissingInput {
+		t.Fatalf("late ranks %+v %+v", late.Rank21, late.Rank63)
+	}
+	// A fund more than StaleWeekdays behind is left out of the pick: the others keep the newest day.
+	in = f.input()
+	in.Funds[2] = cut(in.Funds[2], 5)
+	r = marketstate.Compute(in)
+	if r.EndDay != common {
+		t.Fatalf("end day with stale fund %q", r.EndDay)
+	}
+	for _, fd := range r.Funds {
+		if fd.Symbol == in.Funds[2].Symbol && (fd.Gap21.Reason != liquidityapi.MissingInput || fd.Gap21.Day != common) {
+			t.Fatalf("stale fund %+v", fd.Gap21)
+		}
 	}
 }
 
@@ -452,7 +538,7 @@ func TestRotationDropsTailNoClose(t *testing.T) {
 	}
 	// Today has no figure: the rotation is empty.
 	y := in.Funds[1]
-	y.Closes, y.Days = y.Closes[1:], y.Days[1:]
+	y = hole(y, 10)
 	in.Funds = []blockapi.CloseIn{in.Funds[0], y}
 	if rot := marketstate.Compute(in).Funds[1].Rotation; len(rot) != 0 {
 		t.Fatalf("rotation %+v", rot)

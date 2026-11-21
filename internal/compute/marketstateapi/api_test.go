@@ -47,3 +47,32 @@ func TestMarketStateComputeAssignableToFunc(t *testing.T) {
 		t.Fatalf("empty input %+v", r)
 	}
 }
+
+// stubIndicators is a caller-side double of compute.Indicators; only the embedded nil interface is needed to fill the field.
+type stubIndicators struct{ compute.Indicators }
+
+// TestMarketStateAPIChartLines: the caller sets Indicators and reads the four chart lines; Compute with a nil
+// Indicators returns them empty.
+func TestMarketStateAPIChartLines(t *testing.T) {
+	t.Parallel()
+	var f marketstateapi.Func = func(in marketstateapi.Input) marketstateapi.Result {
+		if in.Indicators == nil {
+			return marketstateapi.Result{}
+		}
+		l := marketstateapi.Line{Points: []marketstateapi.Point{{Day: in.Day, Value: "5400.00"}}, Total: 1}
+		return marketstateapi.Result{History: marketstateapi.History{Close: l, Ma200: l, BandLow: l, BandHigh: l}}
+	}
+	h := f(marketstateapi.Input{Day: "2026-11-13", Indicators: stubIndicators{}}).History
+	if h.Close.Total != 1 || h.Ma200.Points[0].Value != "5400.00" || len(h.BandLow.Points) != 1 || len(h.BandHigh.Points) != 1 {
+		t.Fatalf("history %+v", h)
+	}
+
+	in := marketstateapi.Input{
+		Day: "2026-11-13", SP500: compute.Series{{Day: "2026-11-13", Value: 1}},
+		Params: marketstate.TrialParams(),
+	}
+	h = marketstate.Compute(in).History
+	if len(h.Ma200.Points) != 0 || len(h.BandLow.Points) != 0 || len(h.BandHigh.Points) != 0 {
+		t.Fatalf("nil Indicators left lines %+v", h)
+	}
+}

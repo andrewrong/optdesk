@@ -176,7 +176,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 		RunID: runID, BuildID: build, Scope: scope, Zone: zone,
 		Title: "Today", Say: "Five cards, one page.",
 		CardLinks: home_page.CardLinks{
-			Macro: "/macro", Market: "/" + siteMarketRoute, Household: "/" + siteHouseholdRoute,
+			Macro: "/macro", Market: "/" + siteMarketStateRoute, Household: "/" + siteHouseholdRoute,
 			Companies: "/" + siteCompaniesRoute, Options: "/" + siteOptionRoute,
 		},
 		ReportLinks: []home_page.Link{},

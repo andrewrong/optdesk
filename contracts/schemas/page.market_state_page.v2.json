@@ -104,6 +104,10 @@
     "bars_source_note": {
       "type": "string",
       "description": "Visible text saying that the bars are not from IB, when bars_source is yfinance or mixed."
+    },
+    "vol_gap": {
+      "description": "Implied minus 20-day realised volatility of SPX, NDX and RUT, in volatility points; the producer's text. Optional.",
+      "$ref": "#/$defs/VolGap"
     }
   },
   "$defs": {
@@ -334,6 +338,10 @@
         "hint": {
           "description": "The Chinese hover hint of the row: what the figure is and what the ranges mean.",
           "$ref": "#/$defs/LongText"
+        },
+        "price_chart": {
+          "description": "The close, its 200-day average and a range band by day, for the row that shows the index. Optional.",
+          "$ref": "#/$defs/PriceChart"
         }
       }
     },
@@ -594,6 +602,144 @@
         },
         "text": {
           "description": "Starts with the point's own day.",
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "PriceChart": {
+      "description": "The daily points of the index chart, ascending. A day without an average or band point has no such field.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caption",
+        "aria_text",
+        "unit",
+        "points"
+      ],
+      "properties": {
+        "caption": {
+          "$ref": "#/$defs/Text"
+        },
+        "aria_text": {
+          "$ref": "#/$defs/LongText"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "points": {
+          "type": "array",
+          "maxItems": 800,
+          "items": {
+            "$ref": "#/$defs/PriceChartPoint"
+          }
+        }
+      }
+    },
+    "PriceChartPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "day",
+        "close",
+        "close_text"
+      ],
+      "properties": {
+        "day": {
+          "$ref": "#/$defs/Day"
+        },
+        "close": {
+          "type": "number"
+        },
+        "close_text": {
+          "description": "The display text of close, as the tooltip shows it.",
+          "$ref": "#/$defs/Text"
+        },
+        "ma200": {
+          "type": "number"
+        },
+        "ma200_text": {
+          "description": "The display text of ma200, as the tooltip shows it.",
+          "$ref": "#/$defs/Text"
+        },
+        "band_low": {
+          "type": "number"
+        },
+        "band_low_text": {
+          "description": "The display text of band_low, as the tooltip shows it.",
+          "$ref": "#/$defs/Text"
+        },
+        "band_high": {
+          "type": "number"
+        },
+        "band_high_text": {
+          "description": "The display text of band_high, as the tooltip shows it.",
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "dependentRequired": {
+        "ma200": [
+          "ma200_text"
+        ],
+        "band_low": [
+          "band_low_text"
+        ],
+        "band_high": [
+          "band_high_text"
+        ]
+      }
+    },
+    "VolGap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "hint",
+        "rows"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "$ref": "#/$defs/LongText"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/VolGapRow"
+          }
+        }
+      }
+    },
+    "VolGapRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "figure",
+        "day_text"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "spx",
+            "ndx",
+            "rut"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "figure": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "day_text": {
+          "description": "The data day of the figure in words, or the reason there is none.",
           "$ref": "#/$defs/Text"
         }
       }
