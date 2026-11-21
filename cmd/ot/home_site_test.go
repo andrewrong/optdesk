@@ -607,3 +607,31 @@ func TestOpenSiteReadersDemoHasNoMacroEventReader(t *testing.T) {
 		t.Fatalf("macroEvents %v", rd.macroEvents)
 	}
 }
+
+func TestHomeOverviewMarketLineLinksToMarketState(t *testing.T) {
+	t.Parallel()
+	for name, demo := range map[string]bool{"no reader": false, "demo": true} {
+		rec := companiesGet(t, homeFixture(t, demo), http.MethodGet, "/"+siteHomeRoute)
+		if rec.Code != 200 {
+			t.Fatalf("%s: %d %q", name, rec.Code, rec.Body.String())
+		}
+		var p struct {
+			Overview struct {
+				Items []struct{ Label, Href string } `json:"items"`
+			} `json:"overview"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		// Overview lines come in the order macro, market, household, companies, options.
+		want := []string{"/macro", "/market-state", "/household", "/companies", "/options"}
+		if len(p.Overview.Items) != len(want) {
+			t.Fatalf("%s: %d items", name, len(p.Overview.Items))
+		}
+		for i, it := range p.Overview.Items {
+			if it.Href != want[i] {
+				t.Errorf("%s: item %d (%s) href %q, want %q", name, i, it.Label, it.Href, want[i])
+			}
+		}
+	}
+}
