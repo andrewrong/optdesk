@@ -22,7 +22,7 @@ from typing import Any
 from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
-from optdesk.ibkr.accounts import read_account, read_executions
+from optdesk.ibkr.accounts import drop_resubscribe, read_account, read_executions
 from optdesk.ibkr.api import (
     DividendKey,
     DividendReading,
@@ -211,6 +211,8 @@ class IbGateway:
         self._install(ib.client)
         ib.client.apiEnd += lambda: self._on_end(ib)
         ib.errorEvent += self._on_error
+        # the library's 1102 handler opens a summary it never cancels (limit 2)
+        drop_resubscribe(ib)
         ib.RaiseRequestErrors = True
         self._ib = ib
         self._id_in_use = False

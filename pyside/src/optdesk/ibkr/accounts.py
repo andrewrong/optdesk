@@ -169,6 +169,13 @@ async def read_account(
     )
 
 
+def drop_resubscribe(ib: Any) -> None:
+    """Take the library's own 1102 handler out of ib.errorEvent, when ib has one."""
+    handler = getattr(ib, "_onError", None)
+    if handler is not None:
+        ib.errorEvent -= handler
+
+
 def _cancel_summary(client: Any) -> None:
     try:
         client.cancelAccountSummary(SUMMARY_REQ_ID)
