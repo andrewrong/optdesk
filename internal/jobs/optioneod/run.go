@@ -40,6 +40,8 @@ type job struct {
 	logger *slog.Logger           // nil: slog.Default; set by tests
 	stored ContractReader         // nil: every pair is resolved at run time; set by WithContracts
 	insts  store.InstrumentReader // the instruments of the stored contracts
+	// calendar gives the session close for a close-anchored slot; nil: such a run is never early. Set by WithCalendar.
+	calendar clock.Calendar
 
 	cal         string
 	open, close time.Duration
@@ -131,7 +133,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
 	}
-	early := j.beforeSlot(day, now)
+	early := j.beforeSlot(ctx, day, now)
 	slot := j.m.Slot
 	if early {
 		slot = "early" + now.UTC().Format(time.RFC3339Nano) // its own capture, not the scheduled run's

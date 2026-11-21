@@ -2,7 +2,7 @@
 version = 1
 id = "option_eod"
 zone = "America/New_York"
-slot = "1100"
+slot = "close-15m"
 max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
@@ -36,10 +36,11 @@ calendar_id = "XNYS"
 price_increment = "0.01"
 lot_size = "1"
 
-# Slot: 90 minutes after the open, inside the session; the bound is 8 minutes plus the job's own budget_minutes.
+# Slot: 15 minutes before the calendar close (15:45 New York, 12:45 on a half day), inside the session. The run takes 8 minutes
+# (budget_minutes) and ends about 7 minutes before the close; run_bound is that budget plus 6, so start plus bound stays in the session.
 [schedule]
 calendar = "XNYS"
-anchor = "session_open"
-offset = "90m"
-run_bound = "16m"
+anchor = "session_close"
+offset = "-15m"
+run_bound = "14m"
 restart_sensitive = true

@@ -85,7 +85,8 @@ type manifest struct {
 	Zone     string        `toml:"zone"`
 	Window   window        `toml:"window"`
 	Schedule scheduleTable `toml:"schedule"`
-	// Slot is the label "HHMM" of the run's slot, a manifest key only: it is in the capture id, never in the plan hash.
+	// Slot is the label of the run's slot: "HHMM", or "close-<minutes>m" for a schedule anchored at the session close.
+	// A manifest key only: it is in the capture id, never in the plan hash.
 	Slot                 string  `toml:"slot"`
 	MaxExpiries          int     `toml:"max_expiries"`
 	StrikeBand           float64 `toml:"strike_band"`
@@ -131,14 +132,14 @@ func parseManifest(data []byte) (manifest, error) {
 		return manifest{}, fmt.Errorf("optioneod: manifest needs an id and an underlying")
 	}
 	m.applyDefaults()
-	if err := m.validate(); err != nil {
-		return manifest{}, err
-	}
 	sched, err := scheduleOf(m.Schedule)
 	if err != nil {
 		return manifest{}, err
 	}
 	m.sched = sched
+	if err := m.validate(); err != nil {
+		return manifest{}, err
+	}
 	// An index manifest keeps the order of its file: the last key is the one a spent budget cuts.
 	if len(m.Index) == 0 {
 		sort.Slice(m.Underlying, func(i, j int) bool { return m.Underlying[i].Symbol < m.Underlying[j].Symbol })
@@ -196,8 +197,8 @@ func (m manifest) validate() error {
 	if _, err := time.LoadLocation(m.Zone); err != nil {
 		return fmt.Errorf("optioneod: manifest: zone is unknown")
 	}
-	if m.Slot != "" && !fourDigits(m.Slot) {
-		return fmt.Errorf("optioneod: manifest: slot must be four digits")
+	if err := m.validateSlot(); err != nil {
+		return err
 	}
 	if _, err := parseHHMM(m.FreezeAfter); err != nil {
 		return fmt.Errorf("optioneod: manifest: freeze_after must be HHMM")
@@ -327,6 +328,44 @@ func (m manifest) validateUnderlying(u underlying) error {
 
 // underlyingDecimalRe is the decimal the instrument store accepts: digits with an optional fraction.
 var underlyingDecimalRe = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
+
+// closeSlotPrefix starts the slot label of a manifest whose schedule is anchored at the session close.
+const closeSlotPrefix = "close-"
+
+// closeSlotMinutes reads the label "close-<minutes>m"; ok is false for any other text.
+func closeSlotMinutes(s string) (minutes int, ok bool) {
+	rest, found := strings.CutPrefix(s, closeSlotPrefix)
+	if !found {
+		return 0, false
+	}
+	digits, found := strings.CutSuffix(rest, "m")
+	if !found || digits == "" || len(digits) > 4 {
+		return 0, false
+	}
+	n := 0
+	for _, c := range digits {
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, true
+}
+
+// validateSlot accepts an empty slot, four digits, or "close-<minutes>m" that agrees with a session_close schedule offset.
+func (m manifest) validateSlot() error {
+	if m.Slot == "" || fourDigits(m.Slot) {
+		return nil
+	}
+	n, ok := closeSlotMinutes(m.Slot)
+	if !ok {
+		return fmt.Errorf("optioneod: manifest: slot must be four digits or close-<minutes>m")
+	}
+	if m.sched.anchor != anchorClose || m.sched.offset != -time.Duration(n)*time.Minute {
+		return fmt.Errorf("optioneod: manifest: slot disagrees with the schedule anchor and offset")
+	}
+	return nil
+}
 
 // fourDigits reports whether s is exactly four ASCII digits.
 func fourDigits(s string) bool {

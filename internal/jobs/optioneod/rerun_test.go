@@ -12,10 +12,10 @@ import (
 )
 
 // fakeCalendar answers one ordinary session day per calendar with the open instants of an ordinary day.
-type fakeCalendar struct{ open map[string]time.Time }
+type fakeCalendar struct{ open, close map[string]time.Time }
 
 func (f fakeCalendar) Session(_ context.Context, id string, day contracts.Day) (clock.Session, error) {
-	return clock.Session{CalendarID: id, Day: day, IsSession: true, OpenAt: f.open[id]}, nil
+	return clock.Session{CalendarID: id, Day: day, IsSession: true, OpenAt: f.open[id], CloseAt: f.close[id]}, nil
 }
 
 func (f fakeCalendar) NextSession(ctx context.Context, id string, day contracts.Day) (clock.Session, error) {
@@ -24,18 +24,28 @@ func (f fakeCalendar) NextSession(ctx context.Context, id string, day contracts.
 
 func TestSlotMatchesSchedule(t *testing.T) {
 	t.Parallel()
-	// Monday 2026-11-09: XNYS opens 09:30 EST (14:30Z), XTKS opens 09:00 JST (00:00Z).
-	cal := fakeCalendar{open: map[string]time.Time{
-		"XNYS": time.Date(2026, 11, 9, 14, 30, 0, 0, time.UTC),
-		"XTKS": time.Date(2026, 11, 9, 0, 0, 0, 0, time.UTC),
-	}}
+	// Monday 2026-11-09: XNYS 09:30-16:00 EST, XTKS opens 09:00 JST (00:00Z). Friday 2026-11-27 is a half day: close 13:00 EST.
+	cal := fakeCalendar{
+		open: map[string]time.Time{
+			"XNYS": time.Date(2026, 11, 9, 14, 30, 0, 0, time.UTC),
+			"XTKS": time.Date(2026, 11, 9, 0, 0, 0, 0, time.UTC),
+		},
+		close: map[string]time.Time{"XNYS": time.Date(2026, 11, 9, 21, 0, 0, 0, time.UTC)},
+	}
+	half := fakeCalendar{
+		open:  map[string]time.Time{"XNYS": time.Date(2026, 11, 27, 14, 30, 0, 0, time.UTC)},
+		close: map[string]time.Time{"XNYS": time.Date(2026, 11, 27, 18, 0, 0, 0, time.UTC)},
+	}
 	for name, tc := range map[string]struct {
-		data []byte
-		want string
+		data       []byte
+		anchor     string
+		want       string
+		wantOrd    string
+		wantHalfAt string
 	}{
-		"us":    {manifestBytes, "1100"},
-		"index": {manifestIndexBytes, "1100"},
-		"jp":    {manifestJPBytes, "1030"},
+		"us":    {manifestBytes, anchorClose, "close-15m", "1545", "1245"},
+		"index": {manifestIndexBytes, anchorClose, "close-15m", "1545", "1245"},
+		"jp":    {manifestJPBytes, anchorOpen, "1030", "1030", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -44,16 +54,34 @@ func TestSlotMatchesSchedule(t *testing.T) {
 				t.Fatal(err)
 			}
 			calID, anchor, _, offset := j.Schedule()
-			if anchor != anchorOpen {
+			if anchor != tc.anchor {
 				t.Fatalf("anchor %q", anchor)
 			}
-			s, err := cal.Session(context.Background(), calID, "2026-11-09")
+			ctx := context.Background()
+			day := contracts.Day("2026-11-09")
+			s, err := cal.Session(ctx, calID, day)
 			if err != nil {
 				t.Fatal(err)
 			}
-			at := s.OpenAt.Add(offset).In(j.loc)
-			if got := at.Format("1504"); got != j.m.Slot || got != tc.want {
-				t.Fatalf("scheduled %s, slot %q, want %q", got, j.m.Slot, tc.want)
+			if anchor == anchorOpen {
+				at := s.OpenAt.Add(offset).In(j.loc)
+				if got := at.Format("1504"); got != j.m.Slot || got != tc.want {
+					t.Fatalf("scheduled %s, slot %q, want %q", got, j.m.Slot, tc.want)
+				}
+				return
+			}
+			if j.m.Slot != tc.want {
+				t.Fatalf("slot %q, want %q", j.m.Slot, tc.want)
+			}
+			if got := s.CloseAt.Add(offset).In(j.loc).Format("1504"); got != tc.wantOrd {
+				t.Fatalf("ordinary day slot instant %s, want %s", got, tc.wantOrd)
+			}
+			hs, err := half.Session(ctx, calID, "2026-11-27")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := hs.CloseAt.Add(offset).In(j.loc).Format("1504"); got != tc.wantHalfAt {
+				t.Fatalf("half day slot instant %s, want %s", got, tc.wantHalfAt)
 			}
 		})
 	}
@@ -163,15 +191,18 @@ lot_size = "1"
 
 func TestSlotMustBeFourDigits(t *testing.T) {
 	t.Parallel()
-	parse := func(slot string) error {
-		_, err := parseManifest([]byte("id = \"x\"\nslot = \"" + slot + "\"\n[[underlying]]\nsymbol = \"A\"\ncon_id = 1\ncurrency = \"USD\"\n" + keys))
+	parse := func(slot, offset string) error {
+		sched := "\n[schedule]\ncalendar = \"XNYS\"\nanchor = \"session_close\"\noffset = \"" + offset + "\"\n"
+		_, err := parseManifest([]byte("id = \"x\"\nslot = \"" + slot + "\"\n[[underlying]]\nsymbol = \"A\"\ncon_id = 1\ncurrency = \"USD\"\n" + keys + sched))
 		return err
 	}
-	if err := parse("1100"); err != nil {
-		t.Fatal(err)
+	for _, ok := range []string{"1100", "close-15m"} {
+		if err := parse(ok, "-15m"); err != nil {
+			t.Fatalf("slot %q: %v", ok, err)
+		}
 	}
-	for _, bad := range []string{"11", "11000", "11a0", "abcd"} {
-		if err := parse(bad); err == nil {
+	for _, bad := range []string{"11", "11000", "11a0", "abcd", "close-", "close-15", "close-30m"} {
+		if err := parse(bad, "-15m"); err == nil {
 			t.Fatalf("slot %q accepted", bad)
 		}
 	}
