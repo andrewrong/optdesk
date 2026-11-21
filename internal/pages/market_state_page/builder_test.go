@@ -49,6 +49,9 @@ func rec(day, value, dataDay string) contracts.ReadingRecord {
 // fakeReadings answers the three readings of the market rows.
 func fakeReadings(t *testing.T) compute.ReadingFunc {
 	return func(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
+		if name == "market.iv_rv20" {
+			return nil, nil // the volatility block; its tests are in volgap_test.go
+		}
 		if kind != "market" {
 			t.Errorf("%s: kind %q", name, kind)
 		}

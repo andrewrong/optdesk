@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/marketstateapi"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
+	"github.com/andrewrong/optdesk/internal/compute/talibind"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -211,5 +212,16 @@ func TestMarketStateRouteServes(t *testing.T) {
 	var m msPage
 	if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil || m.Schema != marketStateName {
 		t.Fatalf("schema %q: %v", m.Schema, err)
+	}
+}
+
+func TestMarketStateSiteIndicators(t *testing.T) {
+	t.Parallel()
+	c := marketStateConfig(msApp(t), siteReaders{})
+	if c.Indicators == nil {
+		t.Fatal("Indicators is nil")
+	}
+	if got, want := fmt.Sprintf("%T", c.Indicators), fmt.Sprintf("%T", talibind.New()); got != want {
+		t.Errorf("Indicators is %s, want %s", got, want)
 	}
 }

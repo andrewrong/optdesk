@@ -43,6 +43,7 @@ type Config struct {
 	Figures               compute.Figures
 	Units                 compute.Units
 	Rules                 compute.Rules
+	Indicators            compute.Indicators // copied into marketstateapi.Input; nil leaves the average and band lines empty
 	MarketParams          marketstateapi.Params
 	LiquidityParams       liquidityapi.Params
 	Symbols               []Symbol // the funds (group sector) and SMH (group industry), in page order

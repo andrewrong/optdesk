@@ -77,6 +77,8 @@ type marketRow struct {
 	// Range and Hint come from ranges.toml; a range is a notice only and never a page gap.
 	Range any    `json:"range,omitempty"`
 	Hint  string `json:"hint,omitempty"`
+	// PriceChart is set on the row sp500_vs_200d only.
+	PriceChart *priceChart `json:"price_chart,omitempty"`
 }
 
 type marketBlock struct {
@@ -101,6 +103,7 @@ type viewModel struct {
 	Freshness     string       `json:"freshness_text"`
 	Market        marketBlock  `json:"market"`
 	Sectors       sectorBlock  `json:"sectors"`
+	VolGap        *volGap      `json:"vol_gap,omitempty"`
 	// BarsSource and BarsSourceNote are left out when every bar is ibkr.
 	BarsSource     string `json:"bars_source,omitempty"`
 	BarsSourceNote string `json:"bars_source_note,omitempty"`
@@ -117,7 +120,7 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 	if err := validate(c, r); err != nil {
 		return nil, err
 	}
-	in := marketstateapi.Input{Day: day, Figures: c.Figures, Units: c.Units, Rules: c.Rules, Params: c.MarketParams}
+	in := marketstateapi.Input{Day: day, Figures: c.Figures, Units: c.Units, Rules: c.Rules, Indicators: c.Indicators, Params: c.MarketParams}
 	lq := liquidityapi.Input{Day: day, Params: c.LiquidityParams}
 	if c.Market != nil || c.Liquidity != nil {
 		if err := readSeries(ctx, r, d, &in, &lq); err != nil {
@@ -144,6 +147,10 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		return nil, err
 	}
 	rows, days := buildRows(c, rd, ms, lr)
+	vg, err := attachChart(ctx, c, d, rows, ms)
+	if err != nil {
+		return nil, err
+	}
 	sec := buildSectors(c, ms, bars.ok && c.Market != nil)
 	if sec.EndDayText != "" {
 		days.add(spySymbol, sec.EndDayText)
@@ -157,10 +164,9 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		Freshness: freshnessText(sec.EndDayText),
 		Market:    marketBlock{Title: marketTitle, Rows: rows},
 		Sectors:   sec.sectorBlock,
+		VolGap:    vg,
 	}
-	if kind, note := shared.BarSourceOf(bars.rows); kind != shared.BarSourceIbkr {
-		vm.BarsSource, vm.BarsSourceNote = kind, note
-	}
+	vm.BarsSource, vm.BarsSourceNote = barsSourceOf(bars)
 	vm.Gaps = collectGaps(vm)
 	if len(vm.Gaps) > 0 {
 		vm.RunStatus = "partial"
@@ -308,4 +314,20 @@ func collectGaps(vm viewModel) []gap {
 		out = append(out, g)
 	}
 	return out
+}
+
+// attachChart sets price_chart on the first row (sp500_vs_200d) and returns the volatility block.
+func attachChart(ctx context.Context, c Config, d time.Time, rows []marketRow, ms marketstateapi.Result) (*volGap, error) {
+	if c.Market != nil && len(rows) > 0 {
+		rows[0].PriceChart = priceChartOf(ms.History)
+	}
+	return buildVolGap(ctx, c, d)
+}
+
+// barsSourceOf is the source of the bars and its note; both are empty when every bar is ibkr.
+func barsSourceOf(b barsIn) (string, string) {
+	if kind, note := shared.BarSourceOf(b.rows); kind != shared.BarSourceIbkr {
+		return kind, note
+	}
+	return "", ""
 }

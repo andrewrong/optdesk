@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/liquidity"
 	"github.com/andrewrong/optdesk/internal/compute/marketstate"
+	"github.com/andrewrong/optdesk/internal/compute/talibind"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/barsrefresh"
 	"github.com/andrewrong/optdesk/internal/pages"
@@ -80,6 +81,7 @@ func marketStateConfig(a *app, rd siteReaders) market_state_page.Config {
 		Readings: homeReadings(a, rd), StockIDs: ids,
 		Market: marketstate.Compute, Liquidity: liquidity.Compute,
 		Figures: a.deps.computeFigures, Units: a.deps.computeUnits, Rules: a.deps.computeRules,
+		Indicators:   talibind.New(),
 		MarketParams: marketstate.TrialParams(), LiquidityParams: liquidity.TrialParams(),
 		Symbols: marketStateSymbols(),
 	}
