@@ -31,14 +31,14 @@ type serveRoute struct {
 }
 
 // serveRoutes are the routes of siteHandler that serve a page of the table in check_blocks.json. /report is
-// called for every variant: market us|jp and slot open|close. macro_page has no route and is not here.
+// called for every variant: market us|jp and slot open|close.
 var serveRoutes = []serveRoute{
 	{"report_page.us.open", "/report?market=us&slot=open", "report_page"},
 	{"report_page.us.close", "/report?market=us&slot=close", "report_page"},
 	{"report_page.jp.open", "/report?market=jp&slot=open", "report_page"},
 	{"report_page.jp.close", "/report?market=jp&slot=close", "report_page"},
 	{"market_page", "/market", "market_page"},
-	{"macro_rates", "/macro", "macro_rates"},
+	{"macro_page", "/macro", "macro_page"},
 	{"option_candidates_page", "/" + siteCandidatesRoute, "option_candidates_page"},
 	{"option_notices_page", "/" + siteNoticesRoute, "option_notices_page"},
 	{"option_tracking_page", "/" + siteTrackingRoute, "option_tracking_page"},
@@ -107,7 +107,7 @@ func buildRoute(ctx context.Context, a *app, clk clock.Clock, rd siteReaders, rt
 		return buildReport(ctx, a, clk, "", rd.view, u.Query())
 	case "market_page":
 		return buildMarket(ctx, a, clk, "", rd)
-	case "macro_rates":
+	case "macro_page":
 		return buildMacro(ctx, a, clk, "", rd)
 	case "option_candidates_page":
 		return buildCandidates(ctx, a, clk, "", rd)

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -46,16 +46,18 @@ func newSiteFixture(t *testing.T, entries ...store.OptionEodLatest) *siteFixture
 	t.Helper()
 	a, _ := testApp(t, "")
 	f := &siteFixture{cat: &fakeCatalog{entries: entries}}
-	a.deps.pageList = []pages.Page{{
-		Meta: pages.Meta{Name: "macro_rates"},
-		Build: func(_ context.Context, _ store.SeriesReader, d contracts.Day, _ time.Time) ([]byte, error) {
-			f.macroDays = append(f.macroDays, d)
-			if f.macroErr != nil {
-				return nil, f.macroErr
-			}
-			return []byte("MACRO"), nil
-		},
-	}}
+	a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page {
+		return pages.Page{
+			Meta: pages.Meta{Name: "macro_page"},
+			Build: func(_ context.Context, _ store.SeriesReader, d contracts.Day, _ time.Time) ([]byte, error) {
+				f.macroDays = append(f.macroDays, d)
+				if f.macroErr != nil {
+					return nil, f.macroErr
+				}
+				return []byte("MACRO"), nil
+			},
+		}
+	}
 	a.deps.optionDataPage = func(_ *time.Location, _ string, in sitePageInput) pages.Page {
 		f.inputs = append(f.inputs, in)
 		p := fakePage("option_data_page", "PAGE")
@@ -247,17 +249,8 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 		t.Error("a store was opened")
 		return nil, errors.New("opened")
 	}
-	golden, err := os.ReadFile("../../contracts/fixtures/page.macro_rates.v3.golden.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	a.deps.pageList = []pages.Page{{
-		Meta: pages.Meta{Name: "macro_rates"},
-		Build: func(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error) {
-			return golden, nil
-		},
-	}}
 	a.deps.optionDataPage = newOptionDataPage
+	a.deps.macroPage = newMacroPage
 	rd, closeFn, err := openSiteReaders(t.Context(), a)
 	if err != nil {
 		t.Fatal(err)
@@ -266,7 +259,7 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 	h := siteHandler(a, a.deps.newClock(), "", rd, echoHandler, http.NotFoundHandler())
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/macro", nil))
-	if rec.Code != 200 || !bytes.Equal(rec.Body.Bytes(), golden) {
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"schema":"macro_page"`) {
 		t.Fatalf("macro: %d %.200q", rec.Code, rec.Body)
 	}
 	for _, p := range []string{"/options/data", "/options/data/9010"} {
@@ -335,6 +328,7 @@ func realSite(t *testing.T, cat *fakeCatalog, names *fakeNames) (http.Handler, *
 	t.Helper()
 	a, log := testApp(t, "")
 	a.deps.optionDataPage = newOptionDataPage
+	a.deps.macroPage = newMacroPage
 	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
 	rd := siteReaders{eod: noRows{}, quotes: noRows{}, catalog: cat, terms: noRows{}, names: names}
 	return siteHandler(a, clk, "2026-11-06", rd, func(vm []byte) http.Handler {
