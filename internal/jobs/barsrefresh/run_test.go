@@ -465,3 +465,52 @@ func TestUnresolvedSMHKeepsRun(t *testing.T) {
 		t.Fatalf("result %+v queries %d", res, len(h.queries))
 	}
 }
+
+// failFirstBroker fails its first ResolveContract call and answers like fakeBroker afterwards.
+type failFirstBroker struct {
+	fakeBroker
+	failFirst bool
+}
+
+func (f *failFirstBroker) ResolveContract(ctx context.Context, c broker.Contract) (broker.Resolved, error) {
+	f.mu.Lock()
+	first := f.resolved == 0 && f.failFirst
+	if first {
+		f.resolved++
+	}
+	f.mu.Unlock()
+	if first {
+		return broker.Resolved{}, errors.New("DeadlineExceeded: the gateway did not answer in time")
+	}
+	return f.fakeBroker.ResolveContract(ctx, c)
+}
+
+func TestConIDKeptBetweenRuns(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		failFirst bool
+		want      int
+	}{
+		{"kept after a successful resolve", false, 1},
+		{"a failed resolve stores nothing", true, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "50.0000"))}
+			st := &memBars{}
+			b := &failFirstBroker{fakeBroker: fakeBroker{listed: true}, failFirst: tc.failFirst}
+			j, err := New(b, h, fakeResolver{}, st, st, nil, fixedClock{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			j.(*job).m.AdjustedCadenceDays = 0
+			for i := 0; i < 2; i++ {
+				j.Run(context.Background(), runDay, keysOf("index:SPX"))
+			}
+			if b.resolved != tc.want {
+				t.Fatalf("ResolveContract called %d times, want %d", b.resolved, tc.want)
+			}
+		})
+	}
+}
