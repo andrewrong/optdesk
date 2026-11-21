@@ -30,9 +30,7 @@ var _ marketstateapi.Func = Compute
 // Compute is the one implementation of marketstateapi.Func.
 func Compute(in marketstateapi.Input) marketstateapi.Result {
 	r := marketstateapi.Result{}
-	if len(in.Benchmark.Days) > 0 {
-		r.EndDay = in.Benchmark.Days[0]
-	}
+	r.EndDay = commonDay(in)
 	r.Drawdown = drawdown(in)
 	r.Funds, r.Industry = sectors(in)
 	r.History = history(in)
