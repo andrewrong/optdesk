@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
@@ -259,7 +260,10 @@ func TestRepairReachesEveryJobOfDataset(t *testing.T) {
 	if first != 101 {
 		t.Fatalf("first id %d", first)
 	}
-	fp, _, _, err = repairOver(t, acc, repairMissing(acc, "2026-11-06"))
+	// today is a button only after the close slot of account_capture (16:30 New York, 21:30 UTC).
+	fp = newFakePoster()
+	_, _, err = repairGaps(t.Context(), repairCoverage{[]coverage.Cell{repairMissing(acc, "2026-11-06")}}, fp, acc,
+		fakeClock{time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC)})
 	if err != nil {
 		t.Fatal(err)
 	}
