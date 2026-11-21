@@ -58,7 +58,7 @@ const (
 	heldNoteOptions  = "只有期权、没有股票的公司不在此表。"
 	heldNoteLeftOut  = "%s%s，其持仓不在上表"
 	heldNoteReadFail = "%s的持仓读取失败，其股票不在上表"
-	heldNoteOldMark  = "%d 行的收盘价早于采集日"
+	heldNoteOldMark  = "%d 行的收盘价早于采集日：%s"
 	heldNoteNoDate   = "%d 行没有财报日期"
 )
 
