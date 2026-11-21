@@ -578,3 +578,17 @@ func TestPullDoesNotRetryPermanent(t *testing.T) {
 		}
 	}
 }
+
+func TestPullMakesNoCallAfterContextDone(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) {
+		cancel() // the context ends during the first call, which times out
+		return nil, errDeadline
+	}}
+	res := buildAt(t, h, &memBars{}, entry("cik:1", "AAA", 101)).Run(ctx, runDay, keysOf("cik:1"))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || len(h.queries) != 1 {
+		t.Fatalf("err %v calls %d", res.Err, len(h.queries))
+	}
+}
