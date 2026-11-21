@@ -127,6 +127,23 @@ type frPutAcc struct {
 
 func (familyRisk) FamilyRisk(in blockapi.FamilyRiskIn) blockapi.FamilyRiskResult {
 	var res blockapi.FamilyRiskResult
+	puts, putOrder, unread := familyAccounts(in, &res)
+	res.Puts = familyPutRows(puts, putOrder)
+	res.Companies = familyCompanyRows(in, puts, putOrder, unread)
+	if n := len(res.Puts); n > familyRiskCap {
+		res.Hidden += n - familyRiskCap
+		res.Puts = res.Puts[:familyRiskCap]
+	}
+	if n := len(res.Companies); n > familyRiskCap {
+		res.Hidden += n - familyRiskCap
+		res.Companies = res.Companies[:familyRiskCap]
+	}
+	return res
+}
+
+// familyAccounts fills the account rows, the totals and the shares of res and returns the puts per underlying,
+// their order of first appearance and whether an account was unread.
+func familyAccounts(in blockapi.FamilyRiskIn, res *blockapi.FamilyRiskResult) (map[string]*frPutAcc, []string, bool) {
 	needT, cashT, afterT := newSum(), newSum(), newSum()
 	unread := false
 	puts := map[string]*frPutAcc{}
@@ -189,8 +206,11 @@ func (familyRisk) FamilyRisk(in blockapi.FamilyRiskIn) blockapi.FamilyRiskResult
 		res.NeedTotal, res.CashTotal, res.AfterTotal = gap("missing_input"), gap("missing_input"), gap("missing_input")
 	}
 	res.NeedShare, res.AfterShare = pctOf(res.NeedTotal, in.Net), pctOf(res.AfterTotal, in.Net)
+	return puts, putOrder, unread
+}
 
-	// Puts rows.
+// familyPutRows is the sorted Puts list, not yet capped.
+func familyPutRows(puts map[string]*frPutAcc, putOrder []string) []blockapi.FamilyRiskPut {
 	type rankedPut struct {
 		row blockapi.FamilyRiskPut
 		val *big.Rat
@@ -207,11 +227,16 @@ func (familyRisk) FamilyRisk(in blockapi.FamilyRiskIn) blockapi.FamilyRiskResult
 	sort.SliceStable(rp, func(i, j int) bool {
 		return rankLess(rp[i].val, rp[j].val, rp[i].row.Underlying, rp[j].row.Underlying)
 	})
+	var out []blockapi.FamilyRiskPut
 	for _, x := range rp {
-		res.Puts = append(res.Puts, x.row)
+		out = append(out, x.row)
 	}
+	return out
+}
 
-	// Company rows: one per underlying of the stock lines and the puts.
+// familyCompanyRows is the sorted Companies list, one per underlying of the stock lines and the puts, not yet
+// capped.
+func familyCompanyRows(in blockapi.FamilyRiskIn, puts map[string]*frPutAcc, putOrder []string, unread bool) []blockapi.FamilyRiskCompany {
 	stocks := map[string]*frSum{}
 	var cOrder []string
 	touch := func(u string) {
@@ -255,18 +280,11 @@ func (familyRisk) FamilyRisk(in blockapi.FamilyRiskIn) blockapi.FamilyRiskResult
 	sort.SliceStable(rc, func(i, j int) bool {
 		return rankLess(rc[i].val, rc[j].val, rc[i].row.Underlying, rc[j].row.Underlying)
 	})
+	var out []blockapi.FamilyRiskCompany
 	for _, x := range rc {
-		res.Companies = append(res.Companies, x.row)
+		out = append(out, x.row)
 	}
-	if n := len(res.Puts); n > familyRiskCap {
-		res.Hidden += n - familyRiskCap
-		res.Puts = res.Puts[:familyRiskCap]
-	}
-	if n := len(res.Companies); n > familyRiskCap {
-		res.Hidden += n - familyRiskCap
-		res.Companies = res.Companies[:familyRiskCap]
-	}
-	return res
+	return out
 }
 
 // rankLess orders by amount descending, a nil amount (a gap row) last, ties by underlying.

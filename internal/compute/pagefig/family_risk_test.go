@@ -95,7 +95,12 @@ func TestFamilyRiskCompanies(t *testing.T) {
 	if len(r.Companies) != 3 {
 		t.Fatalf("companies %+v", r.Companies)
 	}
-	a, b, c := r.Companies[0], r.Companies[1], r.Companies[2]
+	checkCompanies(t, r.Companies)
+}
+
+func checkCompanies(t *testing.T, cs []blockapi.FamilyRiskCompany) {
+	t.Helper()
+	a, b, c := cs[0], cs[1], cs[2]
 	if a.Underlying != "AAA" || a.Stock.Value != "1000.00" || a.Put.Value != "36000.00" || a.Exposure.Value != "37000.00" || a.Share.Value != "37.00" {
 		t.Fatalf("AAA %+v", a)
 	}
