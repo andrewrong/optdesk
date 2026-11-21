@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.held_family_page.v1.json",
+  "title": "HeldFamilyPage",
+  "description": "The held companies of the family: each company with the accounts that hold it, its market value, its share of the family total and its next earnings date. A render of text a producer wrote; nothing is computed here. Not the home card held_companies_summary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "notes",
+    "gaps",
+    "total",
+    "columns",
+    "rows",
+    "rows_sum",
+    "lead_notes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "held_family_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "total": {
+      "$ref": "#/$defs/Total"
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/Column"
+      }
+    },
+    "rows": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/Row"
+      }
+    },
+    "rows_sum": {
+      "$ref": "#/$defs/Cell"
+    },
+    "lead_notes": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    }
+  },
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Total": {
+      "description": "The family total the shares are taken of.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "currency",
+        "day",
+        "accounts_text"
+      ],
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "currency": {
+          "$ref": "#/$defs/Text"
+        },
+        "day": {
+          "$ref": "#/$defs/Text"
+        },
+        "accounts_text": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "hint"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "hint": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Account": {
+      "description": "One holding account, named by its alias word.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "label"
+      ],
+      "properties": {
+        "alias": {
+          "$ref": "#/$defs/Text"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Cell": {
+      "description": "A figure as text, or a gap with its reason. Never a zero for a missing figure.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "value",
+            "gap"
+          ],
+          "type": "string"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "reason": {
+          "type": "string",
+          "pattern": "^[a-z_]{1,32}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "gap"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "reason"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "EarningsCell": {
+      "description": "The next earnings date and the days to it, or a gap with its reason.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "date",
+            "gap"
+          ],
+          "type": "string"
+        },
+        "date": {
+          "$ref": "#/$defs/Text"
+        },
+        "days_to": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "reason": {
+          "enum": [
+            "no_row",
+            "unsupported",
+            "row_error",
+            "no_reader",
+            "no_underlying",
+            "no_issuer",
+            "past_date"
+          ],
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "date"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "date",
+              "days_to"
+            ],
+            "not": {
+              "required": [
+                "reason"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "reason"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "date"
+                  ]
+                },
+                {
+                  "required": [
+                    "days_to"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "company",
+        "accounts",
+        "value",
+        "share",
+        "earnings"
+      ],
+      "properties": {
+        "company": {
+          "$ref": "#/$defs/Text"
+        },
+        "accounts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Account"
+          }
+        },
+        "value": {
+          "$ref": "#/$defs/Cell"
+        },
+        "share": {
+          "$ref": "#/$defs/Cell"
+        },
+        "earnings": {
+          "$ref": "#/$defs/EarningsCell"
+        }
+      }
+    }
+  }
+}
