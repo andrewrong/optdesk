@@ -2,9 +2,9 @@
 import { useState } from 'react'
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { MarketRow as RowV2 } from '@/generated/market_state_page.v2'
 import type { Payload } from '@/types/market_state_page'
+import { HintMark } from './HintMark'
 
 // The v1 payload has no range or hint; the v2 payload may send both.
 type Row = Payload['market']['rows'][number] & Pick<RowV2, 'range' | 'hint' | 'price_chart'>
@@ -40,34 +40,6 @@ function RowRange({ range }: { range: Range }) {
         {range.notice}
       </span>
     </span>
-  )
-}
-
-function HintMark({ hint }: { hint: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <TooltipProvider>
-      <Tooltip open={open} onOpenChange={setOpen}>
-        <TooltipTrigger asChild>
-          <span
-            role="button"
-            tabIndex={0}
-            data-hint-mark
-            className="absolute right-3 top-3 cursor-help text-muted-foreground"
-            onClick={() => setOpen(!open)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                setOpen(!open)
-              }
-            }}
-          >
-            ⓘ
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{hint}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   )
 }
 
@@ -143,7 +115,7 @@ function MarketRow({ row }: { row: Row }) {
     const { history } = row
     return (
       <li className="relative rounded-md border p-3" data-market-row={row.id}>
-        {row.hint ? <HintMark hint={row.hint} /> : null}
+        {row.hint ? <HintMark hint={row.hint} className="absolute right-3 top-3" /> : null}
         <RowText row={row} />
         <p className="mt-2 text-sm text-muted-foreground" data-history-gap>
           {'kind' in history ? history.text : null}
@@ -153,7 +125,7 @@ function MarketRow({ row }: { row: Row }) {
   }
   return (
     <li className="relative rounded-md border" data-market-row={row.id}>
-      {row.hint ? <HintMark hint={row.hint} /> : null}
+      {row.hint ? <HintMark hint={row.hint} className="absolute right-3 top-3" /> : null}
       <button
         type="button"
         aria-expanded={open}
