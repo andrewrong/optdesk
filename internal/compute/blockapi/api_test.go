@@ -450,3 +450,34 @@ func TestFamilyFigureContract(t *testing.T) {
 		t.Fatalf("family %+v", r)
 	}
 }
+
+type fakeHeld struct{}
+
+func (fakeHeld) HeldCompanies(in blockapi.HeldIn) blockapi.HeldResult {
+	l := in.Lines[0]
+	c := in.Companies[0]
+	return blockapi.HeldResult{
+		Rows: []blockapi.HeldRow{{
+			Underlying: l.Underlying, Currency: l.Currency, Aliases: []string{l.Alias}, Value: l.Value, Share: in.TotalUSD,
+			OldestMark: l.MarkDay, Next: c.Earnings.Rows[0].Report, DaysTo: 4, EarnReason: c.Resolve,
+		}},
+		RowsSum: l.Value,
+	}
+}
+
+func TestHeldFigureContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewHeldFigureFunc = func() blockapi.HeldFigure { return fakeHeld{} }
+	r := mk().HeldCompanies(blockapi.HeldIn{
+		Lines: []blockapi.HeldLineIn{{Alias: "main", Underlying: "AAA", Currency: "USD", Value: fv("10"), MarkDay: "2026-11-20"}},
+		Companies: []blockapi.HeldCompanyIn{{Underlying: "AAA", Currency: "USD", Resolve: "ok", Earnings: blockapi.HeldEarningsIn{
+			Rows: []blockapi.HeldEarningsRow{{Status: "listed", Report: "2026-11-25", ObservedOn: "2026-11-20"}}, Override: "", Read: true,
+		}}},
+		TotalUSD: fv("100"), Today: "2026-11-21",
+	})
+	w := r.Rows[0]
+	if w.Underlying != "AAA" || w.Aliases[0] != "main" || w.Value.Value != "10" || w.Share.Value != "100" ||
+		w.OldestMark != "2026-11-20" || w.Next != "2026-11-25" || w.DaysTo != 4 || w.EarnReason != "ok" || r.RowsSum.Value != "10" {
+		t.Fatalf("held %+v", r)
+	}
+}

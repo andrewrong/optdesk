@@ -115,6 +115,10 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - The state is decided on exact rationals from the 1-month and 3-month gap of NDX minus SPX; the texts are rounded half-even to 2 places for evidence only. The published state is a two-close fold over the raw states. Band, Hard and Fold are trial. Pure: no I/O, no clock, no float.
 
+## Held figure
+
+`HeldFigure` (method `HeldCompanies(HeldIn) HeldResult`), `NewHeldFigureFunc`, `HeldLineIn`, `HeldEarningsIn`, `HeldEarningsRow`, `HeldCompanyIn`, `HeldIn`, `HeldRow` and `HeldResult` are declared in `internal/compute/blockapi/api.go`, a figure of its own and not a method of `PageFigures`; the merge, share, sort and earnings rules are in the doc comment of `HeldCompanies`; the implementation is `pagefig.NewHeld`. Design: `docs/design/held-companies.md#Interface`. Tests: `TestHeldFigureContract` (`blockapi`) and `TestHeldMergesAccounts`, `TestHeldGapLine`, `TestHeldShare`, `TestHeldEarnings`, `TestHeldSortOrder` (`pagefig`).
+
 ## Family figure
 
 `FamilyFigure` (method `Family(FamilyIn) FamilyResult`), `NewFamilyFigureFunc`, `FamilyIn`, `FamilyAccountIn`, `FamilyAccountOut` and `FamilyResult` are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which keeps its six methods; the counting, sum and gap rules are in the doc comment of `Family`. Design: `docs/design/household-family-total.md#Interface`. Test: `TestFamilyFigureContract` (`blockapi`).

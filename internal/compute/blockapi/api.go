@@ -391,3 +391,80 @@ type FamilyFigure interface {
 
 // NewFamilyFigureFunc constructs the implementation (internal/compute/pagefig.NewFamily, a later issue).
 type NewFamilyFigureFunc func() FamilyFigure
+
+// HeldLineIn is one held stock line of one account. Alias is never the account id. Value is in USD, as
+// HoldingFigures.Holdings gives it (a gap when the line has no mark). MarkDay is the day of the mark.
+type HeldLineIn struct {
+	Alias, Underlying, Currency string
+	Value                       compute.FigureValue
+	MarkDay                     contracts.Day
+}
+
+// HeldEarningsIn is what is known of the next earnings date of one company. Rows are the stored earnings rows
+// of the window; Override is the owner's date (empty when none); Read is false when no earnings reader exists.
+type HeldEarningsIn struct {
+	Rows     []HeldEarningsRow
+	Override contracts.Day
+	Read     bool
+}
+
+// HeldEarningsRow is one stored earnings row: Status is listed, absent, unsupported or error; Report is the
+// reported date; ObservedOn is the day the row was observed.
+type HeldEarningsRow struct {
+	Status             string
+	Report, ObservedOn contracts.Day
+}
+
+// HeldCompanyIn is the company of one (Underlying, Currency). Resolve is ok, no_underlying (no underlying row
+// for the symbol) or no_issuer (the row has no issuer); any other value counts as no_underlying.
+type HeldCompanyIn struct {
+	Underlying, Currency string
+	Resolve              string
+	Earnings             HeldEarningsIn
+}
+
+// HeldIn is the input of HeldFigure. TotalUSD is the family net in USD; Today is the day earnings are counted from.
+type HeldIn struct {
+	Lines     []HeldLineIn
+	Companies []HeldCompanyIn
+	TotalUSD  compute.FigureValue
+	Today     contracts.Day
+}
+
+// HeldRow is one company. Aliases are in input order, without repeats. OldestMark is the oldest MarkDay of its
+// lines. Next is the next earnings date, empty when EarnReason is set; DaysTo counts calendar days from Today.
+type HeldRow struct {
+	Underlying, Currency string
+	Aliases              []string
+	Value, Share         compute.FigureValue
+	OldestMark           contracts.Day
+	Next                 contracts.Day
+	DaysTo               int
+	EarnReason           string
+}
+
+// HeldResult holds the rows in display order and the sum of the rows that have a value.
+type HeldResult struct {
+	Rows    []HeldRow
+	RowsSum compute.FigureValue
+}
+
+// HeldFigure merges held stock lines into one row per company. It is a figure of its own, not a method of
+// PageFigures.
+type HeldFigure interface {
+	// HeldCompanies is pure: no I/O, no clock, no float; exact decimals.
+	//
+	// Merge: lines of one (Underlying, Currency) are one row; Value is the sum of its lines, and one line with a
+	// gap makes Value the gap missing_quote. A negative line (short stock) counts as its negative value.
+	// Share is Value over TotalUSD in percent, a gap when either is a gap. Rows sort by Value descending, gap rows
+	// last, ties by Underlying. RowsSum sums the rows with a value (gap no_data when none has one).
+	//
+	// Earnings (the one copy of the rule): Resolve is checked first (no_underlying, no_issuer), then Read false
+	// gives no_reader. Then Override is the date; else the newest row by ObservedOn (a tie keeps the later) is the
+	// state: absent or no rows is no_row, unsupported is unsupported, error is row_error, otherwise its Report.
+	// A date before Today is past_date. A company with no HeldCompanyIn is no_underlying.
+	HeldCompanies(HeldIn) HeldResult
+}
+
+// NewHeldFigureFunc constructs the implementation (internal/compute/pagefig.NewHeld).
+type NewHeldFigureFunc func() HeldFigure
