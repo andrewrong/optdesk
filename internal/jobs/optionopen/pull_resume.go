@@ -21,14 +21,37 @@ func slotReader(d PullDeps) openquote.OptionOpenSlotReader {
 func isFinal(status int) bool { return status == stOK || status == stNotListed }
 
 // resume reads the rows stored for the batch for the session day of its items and the slot of the manifest and splits
-// the items into the final rows in hand (in the order of the items) and the items still to ask.
-func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem) (final []contracts.OptionOpen, ask []contracts.OptionOpenItem, err error) {
+// the items into the final rows in hand (in the order of the items) and the items still to ask. The final rows of
+// added contracts (the stock's stored contracts that are not items of the plan: only a live band that kept them wrote a
+// row for them) follow the rows of the items, so an added contract is final or asked again like a planned one.
+func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, chain ContractLister) (
+	final []contracts.OptionOpen, ask []contracts.OptionOpenItem, err error) {
 	if len(items) == 0 {
 		return nil, nil, nil
 	}
 	ids := make([]int64, len(items))
+	inPlan := make(map[int64]bool, len(items))
 	for i, it := range items {
 		ids[i] = int64(it.InstrumentID)
+		inPlan[ids[i]] = true
+	}
+	seen := map[int64]bool{}
+	for _, it := range items {
+		u := int64(it.UnderlyingID)
+		if seen[u] {
+			continue
+		}
+		seen[u] = true
+		refs, err := chain.ListOptions(ctx, u)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, r := range refs {
+			if !inPlan[r.InstrumentID] {
+				inPlan[r.InstrumentID] = true
+				ids = append(ids, r.InstrumentID)
+			}
+		}
 	}
 	stored, err := p.reader.OptionOpenSlot(ctx, contracts.Day(items[0].SessionDay.Format("2006-01-02")), p.m.Slot, ids)
 	if err != nil {
@@ -43,8 +66,14 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem) (fi
 	for _, it := range items {
 		if r, ok := have[it.InstrumentID]; ok {
 			final = append(final, r)
+			delete(have, it.InstrumentID)
 		} else {
 			ask = append(ask, it)
+		}
+	}
+	for _, id := range ids[len(items):] {
+		if r, ok := have[int(id)]; ok {
+			final = append(final, r)
 		}
 	}
 	return final, ask, nil

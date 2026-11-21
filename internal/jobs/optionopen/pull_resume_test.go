@@ -1,8 +1,12 @@
 package optionopen
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -148,4 +152,67 @@ func TestNewPullNeedsAReader(t *testing.T) {
 	if _, err := NewPull(d); err != nil {
 		t.Errorf("a pull with a Reader: %v", err)
 	}
+}
+
+func TestResumeAddedRow(t *testing.T) {
+	t.Parallel()
+	run := func(s *pullStores, b *fakeBroker, log *bytes.Buffer) contracts.JobResult {
+		j, err := NewPull(PullDeps{Broker: b, Plans: s, Contracts: s, Writer: s, Instruments: s, Clock: b.clk,
+			Log: slog.New(slog.NewTextHandler(log, nil))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return runAll(t, j)
+	}
+	s := gapStore(2, 60, 99, 89, 99)
+	var log1 bytes.Buffer
+	b1 := newFake(90)
+	first := run(s, b1, &log1)
+	if first.Err != nil {
+		t.Fatal(first.Err)
+	}
+	added := 0
+	for id := range askedIDs(b1) {
+		if !isPlanItem(s, id) {
+			added++
+		}
+	}
+	if added < 2 {
+		t.Fatalf("first run asked %d added contracts", added)
+	}
+	if !strings.Contains(log1.String(), "added="+strconv.Itoa(added)) {
+		t.Errorf("first run log lacks added=%d: %s", added, log1.String())
+	}
+	// One added row is lost: the re-run asks that contract and nothing else; the other added rows are final.
+	lost := gapID(1, 85)
+	delete(s.stored, sessDay.Format(time.DateOnly)+"|0945|"+strconv.Itoa(lost))
+	var log2 bytes.Buffer
+	b2 := newFake(90)
+	second := run(s, b2, &log2)
+	if second.Err != nil {
+		t.Fatal(second.Err)
+	}
+	if got := askedIDs(b2); len(got) != 1 || !got[lost] {
+		t.Errorf("re-run asked %v, want only the contract of the missing row %d", got, lost)
+	}
+	if !strings.Contains(log2.String(), "added="+strconv.Itoa(added)+" ") {
+		t.Errorf("re-run counts the added rows once as added=%d: %s", added, log2.String())
+	}
+	if second.Usable != first.Usable {
+		t.Errorf("ok share of the re-run %d, first run %d: an added row must not count", second.Usable, first.Usable)
+	}
+	// With every added row stored final, nothing added is asked again.
+	b3 := newFake(90)
+	if res := run(s, b3, &bytes.Buffer{}); res.Err != nil || len(askedIDs(b3)) != 0 {
+		t.Errorf("third run err %v asked %v, want nothing asked", res.Err, askedIDs(b3))
+	}
+}
+
+func isPlanItem(s *pullStores, id int) bool {
+	for _, it := range s.items {
+		if it.InstrumentID == id {
+			return true
+		}
+	}
+	return false
 }
