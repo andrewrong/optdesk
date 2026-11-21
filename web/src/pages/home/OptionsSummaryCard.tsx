@@ -33,7 +33,7 @@ function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
     <div className="space-y-1" data-tile={tileKey}>
       <div className="text-xs text-muted-foreground" data-tile-label>
         {tileKey === 'sold_count_month' ? (
-          <Button asChild variant="link" className="h-auto p-0 text-xs">
+          <Button asChild variant="link" className="inline h-auto border-0 p-0 align-baseline text-xs font-normal">
             <a href={STRUCTURES_HREF}>{tile.label}</a>
           </Button>
         ) : (
