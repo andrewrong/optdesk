@@ -210,7 +210,7 @@ func (r *runState) upsert(ctx context.Context, rows []contracts.PriceBar) contra
 	return nil
 }
 
-// conID is the contract id of the key: the one it carries, else the one the job kept from an earlier ResolveContract answer, else a new answer (kept once listed).
+// conID is the contract id of the key: the one it carries, else the one the job kept from an earlier answer, else a new ResolveContract answer.
 func (r *runState) conID(ctx context.Context, key string, t target) (int64, contracts.TypedError) {
 	if t.contract.ConID != 0 {
 		return t.contract.ConID, nil
