@@ -7,6 +7,7 @@ import { ExcessBars } from './ExcessBars'
 import { MarketRows } from './MarketRows'
 import { RotationMap } from './RotationMap'
 import { SectorTable } from './SectorTable'
+import { VolGap } from './VolGap'
 export { validate as validateMarketStatePage } from '@/types/market_state_page'
 export type { Payload as MarketStatePagePayload } from '@/types/market_state_page'
 
@@ -21,6 +22,7 @@ export function MarketStatePage({ payload }: { payload: Payload }) {
         {payload.stale ? <p data-stale>{payload.stale.text}</p> : null}
       </header>
       <MarketRows block={payload.market} />
+      {'vol_gap' in payload && payload.vol_gap ? <VolGap block={payload.vol_gap} /> : null}
       <SectorTable block={payload.sectors} />
       <RotationMap block={payload.sectors} />
       <BarsSourceNote payload={payload} />

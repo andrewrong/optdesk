@@ -1,12 +1,15 @@
 // The five market rows: a row opens its chart below it. Every text, day and point is the payload's; nothing is parsed.
 import { useState } from 'react'
 import { Chart } from '@/charts/Chart'
+import type { ChartSpec } from '@/charts/spec'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { MarketRow as RowV2 } from '@/generated/market_state_page.v2'
 import type { Payload } from '@/types/market_state_page'
 
 // The v1 payload has no range or hint; the v2 payload may send both.
-type Row = Payload['market']['rows'][number] & Pick<RowV2, 'range' | 'hint'>
+type Row = Payload['market']['rows'][number] & Pick<RowV2, 'range' | 'hint' | 'price_chart'>
+type HistoryOk = Extract<Row['history'], { points: unknown }>
+type PriceChart = NonNullable<RowV2['price_chart']>
 type Range = NonNullable<RowV2['range']>
 
 const TONE = {
@@ -90,16 +93,60 @@ function RowText({ row }: { row: Row }) {
   )
 }
 
+// A day without an average or band point is a gap of the line, never a zero.
+const pointOf = (value: number | undefined, text: string | undefined) =>
+  value === undefined ? { value: null } : { value, text }
+
+function priceSpec(label: string, chart: PriceChart): ChartSpec {
+  const { points } = chart
+  return {
+    kind: 'line',
+    legend: true,
+    categories: points.map((point) => point.day),
+    unit: chart.unit,
+    series: [
+      { name: label, points: points.map((point) => ({ value: point.close, text: point.close_text })) },
+      {
+        name: '200 日均线',
+        dashed: true,
+        points: points.map((point) => pointOf(point.ma200, point.ma200_text)),
+      },
+    ],
+    band: {
+      name: '布林带',
+      low: points.map((point) => pointOf(point.band_low, point.band_low_text)),
+      high: points.map((point) => pointOf(point.band_high, point.band_high_text)),
+    },
+  }
+}
+
+function historySpec(label: string, history: HistoryOk): ChartSpec {
+  return {
+    kind: 'line',
+    categories: history.points.map((point) => point.day),
+    unit: history.unit,
+    series: [{ name: label, points: history.points.map(({ value, text }) => ({ value, text })) }],
+  }
+}
+
+// The chart of a row: price_chart when it has one, else its history; none for a history that is a gap.
+function chartOf(row: Row): { source: PriceChart | HistoryOk; spec: ChartSpec } | null {
+  if (row.price_chart) return { source: row.price_chart, spec: priceSpec(row.label, row.price_chart) }
+  if ('kind' in row.history) return null
+  return { source: row.history, spec: historySpec(row.label, row.history) }
+}
+
 function MarketRow({ row }: { row: Row }) {
   const [open, setOpen] = useState(false)
-  const { history } = row
-  if ('kind' in history) {
+  const chart = chartOf(row)
+  if (!chart) {
+    const { history } = row
     return (
       <li className="relative rounded-md border p-3" data-market-row={row.id}>
         {row.hint ? <HintMark hint={row.hint} /> : null}
         <RowText row={row} />
         <p className="mt-2 text-sm text-muted-foreground" data-history-gap>
-          {history.text}
+          {'kind' in history ? history.text : null}
         </p>
       </li>
     )
@@ -119,18 +166,11 @@ function MarketRow({ row }: { row: Row }) {
         <div className="border-t p-3">
           <Chart
             name={`market-state-${row.id}`}
-            ariaText={history.aria_text}
-            spec={{
-              kind: 'line',
-              categories: history.points.map((point) => point.day),
-              unit: history.unit,
-              series: [
-                { name: row.label, points: history.points.map(({ value, text }) => ({ value, text })) },
-              ],
-            }}
+            ariaText={chart.source.aria_text}
+            spec={chart.spec}
           />
           <p className="mt-2 text-sm text-muted-foreground" data-history-caption>
-            {history.caption}
+            {chart.source.caption}
           </p>
         </div>
       ) : null}
