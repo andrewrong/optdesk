@@ -6,6 +6,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { HouseholdPage, validateHouseholdPage } from '@/pages/household/HouseholdPage'
+import { trendToSpec } from '@/pages/household/householdToSpec'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const fixture = (name: string) =>
@@ -74,4 +75,43 @@ it('prints no row of links, no lead note and no error for a page without them', 
   expect(host.querySelector('[data-lead-note]')).toBeNull()
   expect(host.querySelector('[data-block-gap]')).toBeNull()
   expect(host.querySelector('[data-block=overview]')).not.toBeNull()
+})
+
+// Issue #3589: the family trend of docs/design/net-value-trend.md, entry 3: the page draws `trend.series` as sent.
+it('draws the family line and one line per account', async () => {
+  const payload = fixture('family.json')
+  expect(validateHouseholdPage(payload).ok).toBe(true)
+  const series = payload.trend.series as {
+    label: string
+    scope: string
+    window: string
+    rows: { day: string; value: { value: number } }[]
+  }[]
+  expect(series.map((s) => s.scope)[0]).toBe('household')
+  expect(series).toHaveLength(3)
+  await show(<HouseholdPage payload={payload} />)
+  const trend = host.querySelector('[data-block=trend]')!
+  expect(trend.querySelectorAll('[data-chart]')).toHaveLength(1)
+  expect(trend.querySelector('[data-block-gap]')).toBeNull()
+  const spec = trendToSpec(payload.trend.series)!
+  expect(spec.legend).toBe(true)
+  expect(spec.series.map((s) => s.name)).toEqual(['全家合计', '账户（main）', '账户（daughter）'])
+  expect(spec.series[0]!.points.map((p) => p.value)).toEqual([100000, 100750, 101500])
+  expect(trend.querySelector('[data-scope-rows=household] [data-trend-window]')!.textContent).toBe(
+    payload.trend.window,
+  )
+})
+
+it('shows the gap when the trend has no series', async () => {
+  const payload = fixture('family.json')
+  payload.trend.series = []
+  payload.trend.rows = []
+  payload.trend.gap = { reason: 'no_data', text: '全家净值记录不足 2 天，画不出走势' }
+  await show(<HouseholdPage payload={payload} />)
+  const trend = host.querySelector('[data-block=trend]')!
+  const gaps = trend.querySelectorAll('[data-block-gap]')
+  expect(gaps).toHaveLength(1)
+  expect(gaps[0]!.textContent).toBe('全家净值记录不足 2 天，画不出走势')
+  expect(gaps[0]!.getAttribute('data-reason')).toBe('no_data')
+  expect(trend.querySelector('[data-chart]')).toBeNull()
 })
