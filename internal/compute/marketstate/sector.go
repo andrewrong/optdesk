@@ -94,22 +94,18 @@ func spotOf(g gapPair, day contracts.Day) (marketstateapi.Spot, bool) {
 }
 
 // fundOf is one fund with its gaps, today's position left to the caller and the rotation tail.
-func fundOf(in marketstateapi.Input, s blockapi.CloseIn, g gapPair) marketstateapi.Fund {
-	p := in.Params
+// spy is the benchmark cut at the common day; s is the fund cut at the same day.
+func fundOf(p marketstateapi.Params, spy, s blockapi.CloseIn, common contracts.Day, g gapPair) marketstateapi.Fund {
 	f := marketstateapi.Fund{Symbol: s.Symbol, Name: s.Name}
-	f.Gap21 = numOf(in.Benchmark, g.short, g.shortWhy, p.ShortSessions)
-	f.Gap63 = numOf(in.Benchmark, g.long, g.longWhy, p.LongSessions)
-	var endDay contracts.Day
-	if len(in.Benchmark.Days) > 0 {
-		endDay = in.Benchmark.Days[0]
-	}
-	today, ok := spotOf(g, endDay)
+	f.Gap21 = numOf(spy, g.short, g.shortWhy, p.ShortSessions, common)
+	f.Gap63 = numOf(spy, g.long, g.longWhy, p.LongSessions, common)
+	today, ok := spotOf(g, common)
 	if !ok {
 		return f
 	}
 	for k := p.TailPoints; k >= 1; k-- {
 		off := k * p.TailStep
-		spy := skipDepth(in.Benchmark, off)
+		spy := skipDepth(spy, off)
 		if len(spy.Days) == 0 {
 			continue
 		}
@@ -123,7 +119,11 @@ func fundOf(in marketstateapi.Input, s blockapi.CloseIn, g gapPair) marketstatea
 	return f
 }
 
-func numOf(spy blockapi.CloseIn, v *big.Rat, why compute.Reason, back int) liquidityapi.Num {
+// numOf is one cell; a fund that lacks a close names the common day it lacks.
+func numOf(spy blockapi.CloseIn, v *big.Rat, why compute.Reason, back int, common contracts.Day) liquidityapi.Num {
+	if why == liquidityapi.MissingInput {
+		return liquidityapi.Num{Reason: why, Day: common}
+	}
 	if why != "" {
 		return gapNum(why)
 	}
@@ -151,15 +151,59 @@ func rank(vals []*big.Rat, whys []compute.Reason) []marketstateapi.Position {
 	return out
 }
 
-// sectors returns the ranked and sorted sector funds and the unranked industry funds.
+// commonDay is the newest day on which the benchmark and every fund that is not left out have a close. A fund is
+// left out when it has no close or its newest close is more than StaleWeekdays weekdays behind the benchmark's
+// newest day. It is empty when the benchmark has no closes; with no shared day it is the benchmark's newest day.
+func commonDay(in marketstateapi.Input) contracts.Day {
+	b := in.Benchmark
+	if len(b.Days) == 0 || len(b.Days) != len(b.Closes) {
+		return ""
+	}
+	var sets []map[contracts.Day]bool
+	for _, list := range [][]blockapi.CloseIn{in.Funds, in.Industry} {
+		for _, f := range list {
+			if len(f.Days) == 0 || len(f.Days) != len(f.Closes) ||
+				weekdaysBehind(f.Days[0], b.Days[0], in.Params.StaleWeekdays) > in.Params.StaleWeekdays {
+				continue
+			}
+			set := make(map[contracts.Day]bool, len(f.Days))
+			for _, d := range f.Days {
+				set[d] = true
+			}
+			sets = append(sets, set)
+		}
+	}
+next:
+	for _, d := range b.Days {
+		for _, set := range sets {
+			if !set[d] {
+				continue next
+			}
+		}
+		return d
+	}
+	return b.Days[0]
+}
+
+// sectors returns the ranked and sorted sector funds and the unranked industry funds. Benchmark and funds are cut
+// at the common day; a stale benchmark is judged on its own newest day.
 func sectors(in marketstateapi.Input) ([]marketstateapi.Fund, []marketstateapi.Fund) {
+	common := commonDay(in)
+	spy, day := cutAt(in.Benchmark, common), common
+	if len(in.Benchmark.Days) > 0 && weekdaysBehind(in.Benchmark.Days[0], in.Day, in.Params.StaleWeekdays) > in.Params.StaleWeekdays {
+		spy, day = in.Benchmark, in.Day
+	}
+	one := func(s blockapi.CloseIn) (marketstateapi.Fund, gapPair) {
+		c := cutAt(s, common)
+		g := pairOf(spy, c, day, in.Params)
+		return fundOf(in.Params, spy, c, common, g), g
+	}
 	pairs := make([]gapPair, len(in.Funds))
 	funds := make([]marketstateapi.Fund, len(in.Funds))
 	shorts, longs := make([]*big.Rat, len(pairs)), make([]*big.Rat, len(pairs))
 	shortWhy, longWhy := make([]compute.Reason, len(pairs)), make([]compute.Reason, len(pairs))
 	for i, s := range in.Funds {
-		pairs[i] = pairOf(in.Benchmark, s, in.Day, in.Params)
-		funds[i] = fundOf(in, s, pairs[i])
+		funds[i], pairs[i] = one(s)
 		shorts[i], shortWhy[i] = pairs[i].short, pairs[i].shortWhy
 		longs[i], longWhy[i] = pairs[i].long, pairs[i].longWhy
 	}
@@ -176,7 +220,8 @@ func sectors(in marketstateapi.Input) ([]marketstateapi.Fund, []marketstateapi.F
 	})
 	ind := make([]marketstateapi.Fund, 0, len(in.Industry))
 	for _, s := range in.Industry {
-		ind = append(ind, fundOf(in, s, pairOf(in.Benchmark, s, in.Day, in.Params)))
+		f, _ := one(s)
+		ind = append(ind, f)
 	}
 	return funds, ind
 }
