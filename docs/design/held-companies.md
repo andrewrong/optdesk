@@ -27,11 +27,11 @@ Each column header has the Chinese hint under it. Rows are sorted by market valu
 
 `docs/design/modules.md` is not changed. Paths match the rows contracts, compute, pages, ot and web; the first matching row owns each path. No store, dataset or migration change; the auto-deploy is not held. `cmd/ot/wire.go` (791 of 800 lines) is not edited: `registerPage` in `init` is enough.
 
-- contracts (entry 2): `contracts/schemas/page.held_family_page.v1.json`, `web/src/generated/held_family_page.v1.ts` (generated), `docs/contracts/page-schemas.md`, new `internal/contracts/held_family_page_test.go`.
+- contracts (entry 2): `contracts/schemas/page.held_family_page.v1.json`, `contracts/fixtures/page.held_family_page.v1.example.json` (new, the example payload of the schema: value, short, gap and each earnings reason), `web/src/generated/held_family_page.v1.ts` (generated), `docs/contracts/page-schemas.md`, new `internal/contracts/held_family_page_test.go`.
 - compute (entry 1): `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `internal/compute/pagefig/held.go` and `held_test.go` (new), `docs/contracts/compute.md`.
-- pages (entry 3): in `household_page`, new `held.go`, `held_test.go`, `testdata/held.golden.json`; edited `page.go` (Config), `zh_texts.go`, `docs/contracts/pages.md`. Exception, stated: a second page in this package, because `readBook`, `distinctAliases` and `whoseOf` are unexported and a second package would copy them.
-- ot (entry 4): new `cmd/ot/held_family_site.go` and `held_family_site_test.go`; edited `cmd/ot/check_serve.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`.
-- web (entry 5): new `web/src/pages/heldfamily/HeldFamilyPage.tsx`, `web/src/types/held_family_page.ts`, test and fixture under `web/test/pages/heldfamily/`; edited `web/src/shell/TopNav.tsx`. Frontend stack (ADR 0034): table = TanStack Table through the shadcn Data Table; no chart; Tailwind for layout.
+- pages (entry 3, with ot): in `household_page`, new `held.go`, `held_test.go`, `testdata/held.golden.json`; edited `page.go` (Config), `zh_texts.go`, `docs/contracts/pages.md`. Exception, stated: a second page in this package, because `readBook`, `distinctAliases` and `whoseOf` are unexported and a second package would copy them.
+- ot (entry 3, with pages): new `cmd/ot/held_family_site.go` and `held_family_site_test.go`; edited `cmd/ot/check_serve.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`.
+- web (entry 4): new `web/src/pages/heldfamily/HeldFamilyPage.tsx`, `web/src/types/held_family_page.ts`, test `web/test/pages/heldfamily/HeldFamilyPage.test.tsx` and fixture `web/test/pages/heldfamily/fixtures/held.ts` (a typed copy of the schema example of entry 2); edited `web/src/shell/TopNav.tsx`. Frontend stack (ADR 0034): table = TanStack Table through the shadcn Data Table; no chart; Tailwind for layout.
 
 ## Interface
 
@@ -42,13 +42,15 @@ Owner of the figure: compute. `blockapi/api.go` gains, declarations only, a figu
     type HeldLineIn struct { Alias, Underlying, Currency string; Value compute.FigureValue; MarkDay contracts.Day } // Value in USD, from Holdings
     type HeldEarningsIn struct { Rows []HeldEarningsRow; Override contracts.Day; Read bool } // Read false: no reader
     type HeldEarningsRow struct { Status string; Report, ObservedOn contracts.Day }
-    type HeldCompanyIn struct { Underlying, Currency string; Resolved bool; Earnings HeldEarningsIn }
+    type HeldCompanyIn struct { Underlying, Currency string; Resolve string; Earnings HeldEarningsIn } // Resolve: ok, no_underlying or no_issuer
     type HeldIn struct { Lines []HeldLineIn; Companies []HeldCompanyIn; TotalUSD compute.FigureValue; Today contracts.Day }
     type HeldRow struct { Underlying, Currency string; Aliases []string; Value, Share compute.FigureValue; OldestMark contracts.Day; Next contracts.Day; DaysTo int; EarnReason string }
     type HeldResult struct { Rows []HeldRow; RowsSum compute.FigureValue }
     type HeldFigure interface { HeldCompanies(HeldIn) HeldResult }   // pure: no I/O, no clock, exact decimals
 
-`NewHeldFigureFunc` constructs it (`internal/compute/pagefig`). Rules, each stated once and only here: lines of one `(Underlying, Currency)` merge into a row; value is the sum of its lines, and one line with a gap makes the row value the gap `missing_quote`; a negative line (short stock) counts as its negative value, so the share is negative; share is value over `TotalUSD` in percent, a gap when either is a gap; rows sort by value descending, gaps last, ties by underlying. Earnings, the one copy of the rule for this page: the newest row by `ObservedOn` (a tie keeps the later) is the state; `Override` first, else its `Report`; a date before `Today` is `past_date`; `DaysTo` counts calendar days; state `absent` or no rows gives `no_row`, `unsupported` gives `unsupported`, `error` gives `row_error`, `Read` false gives `no_reader`, `Resolved` false gives `no_underlying` (no underlying row for the symbol) or `no_issuer` (a row without issuer).
+`NewHeldFigureFunc` constructs it (`internal/compute/pagefig`). Rules, each stated once and only here: lines of one `(Underlying, Currency)` merge into a row; value is the sum of its lines, and one line with a gap makes the row value the gap `missing_quote`; a negative line (short stock) counts as its negative value, so the share is negative; share is value over `TotalUSD` in percent, a gap when either is a gap; rows sort by value descending, gaps last, ties by underlying. Earnings, the one copy of the rule for this page: the newest row by `ObservedOn` (a tie keeps the later) is the state; `Override` first, else its `Report`; a date before `Today` is `past_date`; `DaysTo` counts calendar days; state `absent` or no rows gives `no_row`, `unsupported` gives `unsupported`, `error` gives `row_error`, `Read` false gives `no_reader`, `Resolve` is checked before the rows: `ok` reads the rows as above, `no_underlying` gives `no_underlying` (no underlying row for the symbol), `no_issuer` gives `no_issuer` (a row without issuer); any other value is `no_underlying`.
+
+Owner of the page builder: pages, declared here and landed together with its only user, entry 3 (pages and ot in one entry, so no module entry waits on a sibling module entry). In `internal/pages/household_page/held.go`: `func BuildHeld(ctx context.Context, cfg Config, day contracts.Day) (HeldPage, error)`; `HeldPage` is the Go struct of the schema of entry 2. `Config` in `page.go` gains `Underlying underlying.Reader`, `Earnings store.EarningsDateReader`, `Held blockapi.HeldFigure` (nil gives gaps `no_reader`). `cmd/ot` calls `BuildHeld` and nothing else of the package. The web page reads the payload through the schema and the example of entry 2 only.
 
 ## Decisions
 
@@ -58,12 +60,12 @@ Owner of the figure: compute. `blockapi/api.go` gains, declarations only, a figu
 4. Share = market value over the family net liquidation (cash and options in the denominator), so rows sum below 100 %. The hint names the basis: marks are the latest close up to 5 days old, the total is the net of each account's capture day; one lead note counts the rows whose mark is older than the data day (`OldestMark`). It is not the share among stocks, which `/household` shows per account.
 5. Short stock: kept as a row with negative value and share, sorted last among rows with a value, the hint says "空头显示负数". Options-only companies have no row and the page says so (the owner sells puts; their exposure is on `/options`).
 6. Earnings: the page reads the stored rows through `store.EarningsDateReader` for the 120 days up to the data day (the window `home_companies` uses) and hands them to the figure; the window rule and the override rule live only in `pagefig/held.go`. Not a third copy: the page imports nothing from `internal/jobs`, and `household_page` stays free of `sort`, `math/big`, `internal/jobs` (its purity test).
-7. Company and issuer come from `underlying.Reader.Current(symbol)`. A miss shows its real reason (`no_underlying`: "no underlying row for symbol X"; `no_issuer`: "underlying row has no issuer"), never a generic "not resolved". Risk named: broker symbols of JP and HK names may not match an underlying row, and the earnings job covers few JP names, so some rows will be gaps with those reasons. A lead note counts the rows without a date, so the owner sees coverage; before cut the window counts the gaps on live data (outcome check) and reports the number.
+7. Company and issuer come from `underlying.Reader.Current(symbol)`. A miss shows its real reason, carried as `HeldCompanyIn.Resolve` (`no_underlying`: "no underlying row for symbol X"; `no_issuer`: "underlying row has no issuer"), never a generic "not resolved". Risk named: broker symbols of JP and HK names may not match an underlying row, and the earnings job covers few JP names, so some rows will be gaps with those reasons. A lead note counts the rows without a date, so the owner sees coverage; before cut the window counts the gaps on live data (outcome check) and reports the number.
 8. No price line, buy price or sell price: owner data, not shown. Chinese words are consts of `zh_texts.go`; column labels and numbers are English; `reason` fields are the English words of the figure.
 
 ## Issues
 
-Build order: each entry compiles and passes its tests against main. Entries 1 and 2 are first and independent; 3 after 1 and 2; 4 after 3; 5 after 2 and 3 (its fixture is the payload of 3). Only entry 2 changes a file under `contracts/schemas`; the others say `Contracts: unchanged`.
+Build order: each entry compiles and passes its tests against main. Entries 1 and 2 are interface entries, first and independent; 3 (pages and ot, one judged entry) and 4 (web) depend only on them. Only entry 2 changes a file under `contracts/schemas`; the others say `Contracts: unchanged`.
 
 ### 1 held-co-1-figure (interface)
 
@@ -71,19 +73,15 @@ Module: compute. Order: first. Files: `internal/compute/blockapi/api.go`, `inter
 
 ### 2 held-co-2-schema (interface)
 
-Module: contracts. Order: first. Files: `contracts/schemas/page.held_family_page.v1.json`, `web/src/generated/held_family_page.v1.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/held_family_page_test.go`.
+Module: contracts. Order: first. Files: `contracts/schemas/page.held_family_page.v1.json`, `contracts/fixtures/page.held_family_page.v1.example.json`, `web/src/generated/held_family_page.v1.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/held_family_page_test.go`.
 
 ### 3 held-co-3-page
 
-Module: pages. Order: after 1, 2. Files: `internal/pages/household_page/held.go`, `internal/pages/household_page/held_test.go`, `internal/pages/household_page/testdata/held.golden.json`, `internal/pages/household_page/page.go`, `internal/pages/household_page/zh_texts.go`, `docs/contracts/pages.md`.
+Module: pages and ot. Order: after 1, 2. Files: `internal/pages/household_page/held.go`, `internal/pages/household_page/held_test.go`, `internal/pages/household_page/testdata/held.golden.json`, `internal/pages/household_page/page.go`, `internal/pages/household_page/zh_texts.go`, `docs/contracts/pages.md`, `cmd/ot/held_family_site.go`, `cmd/ot/held_family_site_test.go`, `cmd/ot/check_serve.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`.
 
-### 4 held-co-4-site
+### 4 held-co-4-web
 
-Module: ot. Order: after 3. Files: `cmd/ot/held_family_site.go`, `cmd/ot/held_family_site_test.go`, `cmd/ot/check_serve.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`.
-
-### 5 held-co-5-web
-
-Module: web. Order: after 2, 3. Files: `web/src/pages/heldfamily/HeldFamilyPage.tsx`, `web/src/types/held_family_page.ts`, `web/test/pages/heldfamily/**`, `web/src/shell/TopNav.tsx`.
+Module: web. Order: after 2. Files: `web/src/pages/heldfamily/HeldFamilyPage.tsx`, `web/src/types/held_family_page.ts`, `web/test/pages/heldfamily/HeldFamilyPage.test.tsx`, `web/test/pages/heldfamily/fixtures/held.ts`, `web/src/shell/TopNav.tsx`.
 
 ## Checked by CI
 
@@ -96,7 +94,7 @@ Full answer path: this section with Decisions 1 to 7, for each point of the revi
 
 1. Gap vs goal (quantity, basis, FX, short stock, options-only, section vs page): adopted. `quantity_text` and `Name` and `RowsShare` dropped; basis in the hint and a lead note (4); one FX rate (3); short and options-only rules (5); the two nearer homes weighed and the page renamed (1).
 2. Symbol-to-issuer risk: adopted; real reasons and a coverage note, live count before cut (7).
-3. Simpler way: adopted for the dead fields; the figure interface stays (pure sort and decimals must be in `pagefig`); five issues stay, one module each.
+3. Simpler way: adopted for the dead fields; the figure interface stays (pure sort and decimals must be in `pagefig`); four issues stay (pages and ot are one entry, so the builder needs no interface entry of its own).
 4. Lock-in: the second page in `household_page` is stated as an exception (Modules); the fixed 5 columns lock a v2 for a new column, accepted.
 5. False claim (reuse of the jobs `earnings`): adopted; no reuse, one copy of the rule in `pagefig` (6). Rows and denominator may differ in day: stated in 2 and 4.
-6. Likeliest slip: adopted; `Order:` in every draft, `wire.go` out of Files, purity respected (6).
+6. Likeliest slip: adopted; `Order:` in every draft (entry numbers only), `wire.go` out of Files, purity respected (6).
