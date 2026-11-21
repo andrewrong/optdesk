@@ -274,7 +274,9 @@ func TestDueAtFromSlot(t *testing.T) {
 		}
 	}
 	for _, j := range jobs {
-		if j.DueAt != "" && !slices.Contains([]string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events", "bars_refresh", "iv_history", "account_capture", "position_marks"}, j.ID) {
+		timed := []string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events",
+			"bars_refresh", "iv_history", "account_capture", "position_marks"}
+		if j.DueAt != "" && !slices.Contains(timed, j.ID) {
 			t.Errorf("%s carries DueAt %q", j.ID, j.DueAt)
 		}
 	}
