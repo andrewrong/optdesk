@@ -126,9 +126,9 @@ var dataHealthManifests = map[string]dataHealthManifest{
 	"compute_figures":         {calUS, []string{"readings.reading"}, ""},
 	"option_candidates":       {calUS, []string{"candidates.option_candidate"}, ""},
 	"book_risk":               {calUS, []string{"strategy.result"}, ""},
-	"account_capture":         {calUS, []string{"account.capture"}, ""},
+	"account_capture":         {calUS, []string{"account.capture"}, "1630"},
 	"statement_capture":       {calUS, []string{"account.capture"}, ""},
-	"position_marks":          {calUS, []string{"account.position_mark"}, ""},
+	"position_marks":          {calUS, []string{"account.position_mark"}, "1640"},
 	"earnings_refresh":        {calUS, []string{"obs.earnings_date"}, ""},
 	"dividend_capture":        {calUS, []string{"obs.dividend_expectation"}, ""},
 	"option_eod":              {calUS, []string{"obs.option_eod"}, "1100"},
@@ -140,7 +140,7 @@ var dataHealthManifests = map[string]dataHealthManifest{
 	"calendar_hours_jp":       {calJP, []string{"master.session_hours_notice"}, ""},
 	"underlying_resolve":      {calUS, []string{"settings.underlying"}, ""},
 	"fx_refresh":              {calUS, []string{"obs.fx_rate"}, ""},
-	"iv_history":              {calUS, []string{"readings.reading"}, ""},
+	"iv_history":              {calUS, []string{"readings.reading"}, "1610"},
 	"option_list_preopen":     {calUS, []string{"master.option_list"}, ""},
 	"option_list_zone":        {calUS, []string{"master.option_list"}, ""},
 	"option_list_preopen_jp":  {calJP, []string{"master.option_list.jp"}, ""},
@@ -186,6 +186,7 @@ var dataHealthTimeSlots = map[string]dataHealthTimeSlot{
 	"fred_series":  {"0730", "America/New_York"},
 	"fundamentals": {"0800", "America/New_York"},
 	"macro_events": {"0600", "America/New_York"},
+	"bars_refresh": {"1610", "America/New_York"},
 }
 
 // dataHealthJobs builds the jobs of the page from jobTable, one per row in its order, and the manifests.
