@@ -77,19 +77,24 @@ func TestFamilyRiskUnreadAccount(t *testing.T) {
 
 func TestFamilyRiskCompanies(t *testing.T) {
 	t.Parallel()
+	// Names are chosen so that the required order (amount descending, gap last) differs from alphabetical:
+	// AAA is the gap row and sorts first by name, ZZZ is the largest and sorts last by name.
 	r := NewFamilyRisk().FamilyRisk(blockapi.FamilyRiskIn{
 		Accounts: []blockapi.FamilyRiskAccountIn{
-			frAcc("main", "99999", frPut("AAA", "USD", "180", "1", "100"), frPut("BBB", "USD", "100", "1", "50")),
-			frAcc("wife", "99999", frPut("AAA", "USD", "180", "1", "40")),
+			frAcc("main", "99999", frPut("ZZZ", "USD", "180", "1", "100"), frPut("BBB", "USD", "100", "1", "50")),
+			frAcc("wife", "99999", frPut("ZZZ", "USD", "180", "1", "40"), frPut("AAA", "JPY", "15000", "1", "")),
 		},
 		Stocks: []blockapi.HeldLineIn{
-			{Alias: "main", Underlying: "AAA", Currency: "USD", Value: hv("1000")},
-			{Alias: "main", Underlying: "CCC", Currency: "USD", Value: compute.FigureValue{Gap: "missing_quote"}},
+			{Alias: "main", Underlying: "ZZZ", Currency: "USD", Value: hv("1000")},
+			{Alias: "main", Underlying: "AAA", Currency: "USD", Value: compute.FigureValue{Gap: "missing_quote"}},
 		},
 		Net: hv("100000"),
 	})
-	if len(r.Puts) != 2 || r.Puts[0].Underlying != "AAA" || r.Puts[0].Cash.Value != "36000.00" ||
-		len(r.Puts[0].Aliases) != 2 || r.Puts[0].Aliases[0] != "main" || r.Puts[0].Aliases[1] != "wife" || r.Puts[0].Premium != "140.00" {
+	if len(r.Puts) != 3 || r.Puts[0].Underlying != "ZZZ" || r.Puts[1].Underlying != "BBB" || r.Puts[2].Underlying != "AAA" ||
+		r.Puts[2].Cash.Gap != "unsupported_currency" {
+		t.Fatalf("puts order %+v", r.Puts)
+	}
+	if p := r.Puts[0]; p.Cash.Value != "36000.00" || len(p.Aliases) != 2 || p.Aliases[0] != "main" || p.Aliases[1] != "wife" || p.Premium != "140.00" {
 		t.Fatalf("puts %+v", r.Puts)
 	}
 	if len(r.Companies) != 3 {
@@ -101,14 +106,32 @@ func TestFamilyRiskCompanies(t *testing.T) {
 func checkCompanies(t *testing.T, cs []blockapi.FamilyRiskCompany) {
 	t.Helper()
 	a, b, c := cs[0], cs[1], cs[2]
-	if a.Underlying != "AAA" || a.Stock.Value != "1000.00" || a.Put.Value != "36000.00" || a.Exposure.Value != "37000.00" || a.Share.Value != "37.00" {
-		t.Fatalf("AAA %+v", a)
+	if a.Underlying != "ZZZ" || a.Stock.Value != "1000.00" || a.Put.Value != "36000.00" || a.Exposure.Value != "37000.00" || a.Share.Value != "37.00" {
+		t.Fatalf("ZZZ %+v", a)
 	}
 	if b.Underlying != "BBB" || b.Stock.Value != "0.00" || b.Exposure.Value != "10000.00" || b.Share.Value != "10.00" {
 		t.Fatalf("BBB %+v", b)
 	}
-	if c.Underlying != "CCC" || c.Stock.Gap != "missing_quote" || c.Exposure.Gap != "missing_quote" || c.Share.Gap == "" {
-		t.Fatalf("CCC %+v", c)
+	if c.Underlying != "AAA" || c.Stock.Gap != "missing_quote" || c.Exposure.Gap != "missing_quote" || c.Share.Gap == "" {
+		t.Fatalf("AAA %+v", c)
+	}
+}
+
+func TestFamilyRiskNetGapAndPutCap(t *testing.T) {
+	t.Parallel()
+	var obs []blockapi.ObligationIn
+	for i := 0; i < 61; i++ {
+		obs = append(obs, frPut(fmt.Sprintf("P%02d", i), "USD", fmt.Sprint(10+i), "1", ""))
+	}
+	r := NewFamilyRisk().FamilyRisk(blockapi.FamilyRiskIn{
+		Accounts: []blockapi.FamilyRiskAccountIn{frAcc("main", "1", obs...)},
+		Net:      compute.FigureValue{Gap: "no_data"},
+	})
+	if len(r.Puts) != 60 || r.Puts[0].Underlying != "P60" || len(r.Companies) != 60 || r.Hidden != 2 {
+		t.Fatalf("puts %d companies %d hidden %d", len(r.Puts), len(r.Companies), r.Hidden)
+	}
+	if r.Companies[0].Share.Gap != "no_data" || r.NeedShare.Gap != "no_data" {
+		t.Fatalf("share %+v %+v", r.Companies[0].Share, r.NeedShare)
 	}
 }
 
