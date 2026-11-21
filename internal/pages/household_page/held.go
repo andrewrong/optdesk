@@ -171,13 +171,14 @@ func BuildHeld(ctx context.Context, c Config, day contracts.Day) (HeldPage, erro
 	}
 	res := c.Family().Family(in)
 
+	rate := c.heldRate(ctx, res, caps)
 	var lines []blockapi.HeldLineIn
 	var notes []string
 	for i, alias := range distinct {
 		if !slices.Contains(res.Included, alias) {
 			continue
 		}
-		got, err := c.heldLines(ctx, alias, caps[alias].day, res.FxRate)
+		got, err := c.heldLines(ctx, alias, caps[alias].day, rate)
 		switch {
 		case err != nil && i == 0:
 			return p, err
@@ -204,9 +205,37 @@ func heldBase(c Config, at time.Time) HeldPage {
 	}
 }
 
+// heldRate gives the USD/JPY rate for the yen lines: the family rate when set, otherwise the stored rate at the
+// latest capture day of the included accounts, as readBook reads it. It reads at most once and only when asked.
+func (c Config) heldRate(ctx context.Context, res blockapi.FamilyResult, caps map[string]capture) func() string {
+	var rate string
+	done := res.FxRate != ""
+	if done {
+		rate = res.FxRate
+	}
+	return func() string {
+		if done {
+			return rate
+		}
+		done = true
+		latest := ""
+		for _, a := range res.Included {
+			latest = max(latest, caps[a].day)
+		}
+		if c.Fx == nil || latest == "" {
+			return ""
+		}
+		if r, found, err := c.Fx.LatestFxRate(ctx, pairUsdJpy, contracts.Day(latest)); err == nil && found {
+			rate = r.Rate
+		}
+		return rate
+	}
+}
+
 // heldLines values the stock lines of one account at its capture day with the family rate, and names the
-// mark day of each line.
-func (c Config) heldLines(ctx context.Context, alias, day, rate string) ([]blockapi.HeldLineIn, error) {
+// mark day of each line. A line has a value only when its figure row is in USD; a yen row left in yen is a gap.
+// rate is read only when a yen stock is held.
+func (c Config) heldLines(ctx context.Context, alias, day string, rateOf func() string) ([]blockapi.HeldLineIn, error) {
 	positions, err := c.Account.Positions(ctx, alias, day)
 	if err != nil {
 		return nil, fmt.Errorf("household_page: read positions: %w", err)
@@ -224,6 +253,13 @@ func (c Config) heldLines(ctx context.Context, alias, day, rate string) ([]block
 	if err != nil {
 		return nil, err
 	}
+	rate := ""
+	for _, p := range stocks {
+		if p.Currency == "JPY" {
+			rate = rateOf()
+			break
+		}
+	}
 	in := blockapi.HoldingsIn{Currency: currencyUSD, UsdJpy: rate, Rows: make([]blockapi.HoldingIn, 0, len(stocks))}
 	for _, p := range stocks {
 		mult := p.Multiplier
@@ -236,8 +272,12 @@ func (c Config) heldLines(ctx context.Context, alias, day, rate string) ([]block
 	res := c.Holdings().Holdings(in)
 	out := make([]blockapi.HeldLineIn, 0, len(stocks))
 	for i, p := range stocks {
+		v := res.Rows[i].Value
+		if res.Rows[i].Currency != currencyUSD && v.Gap == "" {
+			v = compute.FigureValue{Gap: "unsupported_currency"}
+		}
 		out = append(out, blockapi.HeldLineIn{Alias: alias, Underlying: p.Symbol, Currency: p.Currency,
-			Value: res.Rows[i].Value, MarkDay: contracts.Day(markDay[p.ConID])})
+			Value: v, MarkDay: contracts.Day(markDay[p.ConID])})
 	}
 	return out, nil
 }
@@ -391,8 +431,8 @@ func (c Config) assembleHeld(p *HeldPage, res blockapi.FamilyResult, caps map[st
 	if len(notes) > 0 {
 		p.RunStatus = "partial"
 	}
-	if old > 0 {
-		p.LeadNotes = append(p.LeadNotes, fmt.Sprintf(heldNoteOldMark, old))
+	if len(old) > 0 {
+		p.LeadNotes = append(p.LeadNotes, fmt.Sprintf(heldNoteOldMark, len(old), strings.Join(old, "、")))
 	}
 	if noDate > 0 {
 		p.LeadNotes = append(p.LeadNotes, fmt.Sprintf(heldNoteNoDate, noDate))
@@ -403,8 +443,8 @@ func (c Config) assembleHeld(p *HeldPage, res blockapi.FamilyResult, caps map[st
 	}
 }
 
-// heldRows appends the rows of out to p and returns the counts of rows with an older mark and without a date.
-func heldRows(p *HeldPage, out blockapi.HeldResult, dataDay string) (old, noDate int) {
+// heldRows appends the rows of out to p and returns the companies of rows with an older mark and the count of rows without a date.
+func heldRows(p *HeldPage, out blockapi.HeldResult, dataDay string) (old []string, noDate int) {
 	for _, r := range out.Rows {
 		row := HeldPageRow{Company: r.Underlying, Value: heldCell(r.Value, true), Share: heldShare(r.Share), Earnings: heldEarningsCell(r)}
 		for _, a := range r.Aliases {
@@ -412,7 +452,7 @@ func heldRows(p *HeldPage, out blockapi.HeldResult, dataDay string) (old, noDate
 		}
 		p.Rows = append(p.Rows, row)
 		if r.OldestMark != "" && string(r.OldestMark) < dataDay {
-			old++
+			old = append(old, r.Underlying)
 		}
 		if r.EarnReason != "" {
 			noDate++
