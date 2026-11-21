@@ -139,40 +139,52 @@ func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 	}
 	for id, row := range table {
 		units, ok := recorded[id]
-		u := row.unit
-		switch {
-		case !ok:
-			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
-		case !isPercentUnits(units) && u == contracts.SeriesUnit("percent"):
-			fails = append(fails, fmt.Sprintf("%s: table says percent, recorded units %q", id, units))
-		case !isIndexUnits(units) && u == indexPoints:
-			fails = append(fails, fmt.Sprintf("%s: table says index_points, recorded units %q", id, units))
-		case !isCountUnits(units) && u == countUnit:
-			fails = append(fails, fmt.Sprintf("%s: table says count, recorded units %q", id, units))
-		case isCountUnits(units) && u == countUnit && row.shift != 3:
-			fails = append(fails, fmt.Sprintf("%s: count shift %d does not match recorded units %q", id, row.shift, units))
-		case u == ccyAmount && !ccyTextMatchesShift(units, row.shift):
-			fails = append(fails, fmt.Sprintf("%s: ccy_amount shift %d does not match recorded units %q", id, row.shift, units))
-		}
-	}
-	for id, units := range recorded {
-		row, ok := table[id]
 		if !ok {
+			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
 			continue
 		}
-		u := row.unit
-		if units == "Percent" && u != contracts.SeriesUnit("percent") {
-			fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
+		fails = append(fails, tableClaimFails(id, row, units)...)
+	}
+	for id, units := range recorded {
+		if row, ok := table[id]; ok {
+			fails = append(fails, recordedTextFails(id, row.unit, units)...)
 		}
-		if isCountUnits(units) && u != countUnit {
-			fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
-		}
-		if isIndexUnits(units) && u != indexPoints {
-			fails = append(fails, fmt.Sprintf("%s: recorded Index, table says %q", id, u))
-		}
-		if (strings.HasSuffix(units, "of U.S. Dollars") || units == "Millions of Dollars") && u != ccyAmount {
-			fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
-		}
+	}
+	return fails
+}
+
+// tableClaimFails checks one table row against its recorded text; the first disagreement is reported.
+func tableClaimFails(id string, row unitRow, units string) []string {
+	u := row.unit
+	switch {
+	case !isPercentUnits(units) && u == contracts.SeriesUnit("percent"):
+		return []string{fmt.Sprintf("%s: table says percent, recorded units %q", id, units)}
+	case !isIndexUnits(units) && u == indexPoints:
+		return []string{fmt.Sprintf("%s: table says index_points, recorded units %q", id, units)}
+	case !isCountUnits(units) && u == countUnit:
+		return []string{fmt.Sprintf("%s: table says count, recorded units %q", id, units)}
+	case isCountUnits(units) && u == countUnit && row.shift != 3:
+		return []string{fmt.Sprintf("%s: count shift %d does not match recorded units %q", id, row.shift, units)}
+	case u == ccyAmount && !ccyTextMatchesShift(units, row.shift):
+		return []string{fmt.Sprintf("%s: ccy_amount shift %d does not match recorded units %q", id, row.shift, units)}
+	}
+	return nil
+}
+
+// recordedTextFails checks one recorded text against the unit its table row claims.
+func recordedTextFails(id string, u contracts.SeriesUnit, units string) []string {
+	var fails []string
+	if units == "Percent" && u != contracts.SeriesUnit("percent") {
+		fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
+	}
+	if isCountUnits(units) && u != countUnit {
+		fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
+	}
+	if isIndexUnits(units) && u != indexPoints {
+		fails = append(fails, fmt.Sprintf("%s: recorded Index, table says %q", id, u))
+	}
+	if (strings.HasSuffix(units, "of U.S. Dollars") || units == "Millions of Dollars") && u != ccyAmount {
+		fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
 	}
 	return fails
 }
