@@ -15,7 +15,9 @@ const (
 // own series.
 func history(in marketstateapi.Input) marketstateapi.History {
 	p := in.Params
+	closeLine, ma200, bandLow, bandHigh := chartLines(in)
 	return marketstateapi.History{
+		Close: closeLine, Ma200: ma200, BandLow: bandLow, BandHigh: bandHigh,
 		Sp500Vs200d: line(in.SP500, p, func(i int) (string, bool) {
 			return registered(in, idSp500Vs200d, func(d contracts.Day) compute.Figure {
 				return in.Figures.MovingAverageGap(idSp500Vs200d, in.SP500[:i+1], d)
