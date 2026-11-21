@@ -227,3 +227,21 @@ func TestWeeklyLateAfter10Days(t *testing.T) {
 		})
 	}
 }
+
+func TestNFCIPrintedAsIndex(t *testing.T) {
+	t.Parallel()
+	r := groupSeries(t)
+	r.points["NFCI"] = daily(t, "2026-11-04", 8, -0.5, 0.01)
+	m := buildWith(t, r, groupCfg())
+	row := indicator(m, 2)
+	latest := row["latest"].(map[string]any)
+	if latest["unit"] != "index_points" {
+		t.Fatalf("unit %v", latest)
+	}
+	if text, _ := latest["text"].(string); text == "" || strings.Contains(text, "%") {
+		t.Fatalf("latest text %q", latest["text"])
+	}
+	if got := row["change_text"]; got != "+0.05 index points vs five sessions" {
+		t.Fatalf("change %v", got)
+	}
+}
