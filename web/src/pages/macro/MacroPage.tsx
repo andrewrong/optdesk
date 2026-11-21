@@ -61,7 +61,12 @@ function IndicatorRow({ indicator }: { indicator: Indicator }) {
       </TableCell>
       <TableCell className="py-1.5">
         {gap ? (
-          <MissingValue text={latest.text} />
+          <>
+            <MissingValue text={latest.text} />{' '}
+            <span className="text-muted-foreground text-xs" data-missing-reason>
+              {latest.text}
+            </span>
+          </>
         ) : tone && tone !== 'none' ? (
           <span className={TONE_CLASS[tone]}>{latest.text}</span>
         ) : (
