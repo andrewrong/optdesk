@@ -146,7 +146,7 @@ func TestFallbackAfterRetryableBars(t *testing.T) {
 	if res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	for id, want := range map[int64]int{101: 1, 102: 1, 103: 0, 104: 0} {
+	for id, want := range map[int64]int{101: historyAttempts, 102: historyAttempts, 103: 0, 104: 0} {
 		if got := countQueries(h, id); got != want {
 			t.Fatalf("Bars calls of %d: %d, want %d", id, got, want)
 		}
@@ -184,7 +184,7 @@ func TestOneDeadSymbolDoesNotFlipOthers(t *testing.T) {
 	if len(src.calls) != 1 || len(src.calls[0].Pairs) != 1 || src.calls[0].Pairs[0].Symbol != "AAA" {
 		t.Fatalf("DailyBars %+v", src.calls)
 	}
-	if countQueries(h, 102) != 1 || countQueries(h, 103) != 1 {
+	if countQueries(h, 101) != historyAttempts || countQueries(h, 102) != 1 || countQueries(h, 103) != 1 {
 		t.Fatalf("queries %+v", h.queries)
 	}
 	by := map[int]string{}
@@ -262,7 +262,7 @@ func TestFallbackNoWeeklyNoDeepen(t *testing.T) {
 	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if len(h.queries) != 1 {
+	if len(h.queries) != historyAttempts {
 		t.Fatalf("history calls %+v: the fallback pulls no weekly window and no deepening piece", h.queries)
 	}
 	for _, r := range st.rows {
@@ -505,3 +505,17 @@ func TestWithFallbackRefusals(t *testing.T) {
 }
 
 type otherJob struct{ contracts.Job }
+
+func TestAttemptsCountKeyOnceForHistDown(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: failAll("")}
+	src := &fakeBarSource{fn: yahooAll(yb("2026-11-09", "10.0000"))}
+	j, _ := buildFB(t, closed, fakeCal{}, h, &memBars{}, src,
+		entry("cik:1", "AAA", 101), entry("cik:2", "BBB", 102), entry("cik:3", "CCC", 103))
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1", "cik:2", "cik:3")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if countQueries(h, 101) != historyAttempts || countQueries(h, 102) != historyAttempts || countQueries(h, 103) != 0 {
+		t.Fatalf("queries %+v", h.queries)
+	}
+}

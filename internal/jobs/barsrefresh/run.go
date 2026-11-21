@@ -2,6 +2,7 @@ package barsrefresh
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -169,6 +170,10 @@ func (r *runState) collect(
 	return bars, append(rows, older...), terr
 }
 
+// historyAttempts is the number of Bars calls one pull makes for a window: a gateway timeout is usually over
+// on the next call. The calls follow each other with no wait; the call's own timeout is the wait.
+const historyAttempts = 3
+
 // pull asks the trades bars of c for days days ending at the run day, and drops the bars after it.
 // A run of today sends no End.
 func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]broker.Bar, error) {
@@ -179,11 +184,21 @@ func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]bro
 	if r.histDown {
 		return nil, r.historyFailed(errHistDown)
 	}
-	bars, err := r.j.h.Bars(ctx, q)
-	if err != nil {
-		return nil, r.historyFailed(err)
+	var bars []broker.Bar
+	var err error
+	for attempt := 0; attempt < historyAttempts; attempt++ {
+		if attempt > 0 && ctx.Err() != nil {
+			break
+		}
+		if bars, err = r.j.h.Bars(ctx, q); err == nil {
+			return r.dropAfterDay(bars, nil)
+		}
+		var te contracts.TypedError
+		if !errors.As(err, &te) || te.Kind() != contracts.Retryable {
+			break
+		}
 	}
-	return r.dropAfterDay(bars, nil)
+	return nil, r.historyFailed(err)
 }
 
 func (r *runState) dropAfterDay(bars []broker.Bar, err error) ([]broker.Bar, error) {
