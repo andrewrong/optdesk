@@ -65,19 +65,19 @@ Acceptance: 1. The file inserts the nine rows with `ON CONFLICT DO NOTHING`. 2. 
 
 ### 4 macro-ev-4-fred-long-lookback
 
-Module: jobs. Size: M. Order: after macro-ev-2-fred-units and macro-ev-3-series-registry.
+Module: jobs. Size: M. Order: after 2, 3.
 Files: `internal/jobs/fredseries/job.toml`, `internal/jobs/fredseries/plan.go`, `internal/jobs/fredseries/run.go`, `internal/jobs/fredseries/window.go`, `internal/jobs/fredseries/plan_test.go`, `internal/jobs/fredseries/run_test.go`
 Acceptance: 1. `job.toml` lists the nine ids in `series` and `long`, with `long_lookback_days = 460`. 2. A `long` series is fetched from the day minus that lookback in the one run; the 1..31 rule of `lookback_days` is unchanged. 3. The plan hash differs when `long` or its lookback differs. 4. `TestLongSeriesLookback`, `TestPlanHashIncludesLong`, `TestManifestLongInSeries` (new), the first with a fake source that holds 16 monthly points and a second run that writes no row.
 
 ### 5 macro-ev-5-event-values
 
-Module: pages. Size: M. Order: after macro-ev-1-event-schema and macro-ev-4-fred-long-lookback.
+Module: pages. Size: M. Order: after 1, 4.
 Files: `internal/pages/macro_page/eventvalues.go`, `internal/pages/macro_page/eventvalues_test.go`, `internal/pages/macro_page/events.go`, `internal/pages/macro_page/events_test.go`, `internal/pages/macro_page/lead.go`, `internal/pages/macro_page/zh_texts.go`, `internal/pages/macro_page/testdata/`
 Acceptance: 1. `newEventRow` no longer writes `not_built`; Decisions 3 to 5 give `previous`, `previous_figure` and `actual`. 2. The window starts 7 days before the day; `lead.go` skips past events. 3. Every Chinese hint is in `zh_texts.go`. Tests in "Checked by CI".
 
 ### 6 macro-ev-6-web-actual-column
 
-Module: web. Size: S. Order: after macro-ev-1-event-schema.
+Module: web. Size: S. Order: after 1.
 Files: `web/src/pages/macro/MacroPage.tsx`, `web/test/pages/macro/MacroPage.test.tsx`, `web/fixtures/macro-page/ok.json`
 Acceptance: 1. The events table has an "Actual" column after "Previous" printing `actual.text` or the gap, with the hints. 2. A page without `actual` renders as before. 3. The web computes nothing.
 
