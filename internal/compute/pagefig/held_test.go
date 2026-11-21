@@ -76,9 +76,18 @@ func TestHeldEarnings(t *testing.T) {
 	row := func(st, rep, obs string) blockapi.HeldEarningsRow {
 		return blockapi.HeldEarningsRow{Status: st, Report: contracts.Day(rep), ObservedOn: contracts.Day(obs)}
 	}
-	ok := func(e blockapi.HeldEarningsIn) blockapi.HeldCompanyIn {
-		return blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: "ok", Earnings: e}
+	rd := func(rs ...blockapi.HeldEarningsRow) blockapi.HeldCompanyIn {
+		return blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: "ok", Earnings: blockapi.HeldEarningsIn{Read: true, Rows: rs}}
 	}
+	res := func(resolve string) blockapi.HeldCompanyIn {
+		return blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: resolve, Earnings: blockapi.HeldEarningsIn{Read: true}}
+	}
+	over := rd(row("listed", "2026-11-25", "2026-11-20"))
+	over.Earnings.Override = "2026-12-01"
+	pastOver := rd()
+	pastOver.Earnings.Override = "2026-11-01"
+	noReader := rd()
+	noReader.Earnings.Read = false
 	cases := []struct {
 		name   string
 		c      blockapi.HeldCompanyIn
@@ -86,20 +95,20 @@ func TestHeldEarnings(t *testing.T) {
 		days   int
 		reason string
 	}{
-		{"listed", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("listed", "2026-11-25", "2026-11-20")}}), "2026-11-25", 4, ""},
-		{"today", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("listed", "2026-11-21", "2026-11-20")}}), "2026-11-21", 0, ""},
-		{"newest wins", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("listed", "2026-11-25", "2026-11-19"), row("absent", "", "2026-11-20")}}), "", 0, "no_row"},
-		{"tie keeps later", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("listed", "2026-11-25", "2026-11-20"), row("error", "", "2026-11-20")}}), "", 0, "row_error"},
-		{"override", ok(blockapi.HeldEarningsIn{Read: true, Override: "2026-12-01", Rows: []blockapi.HeldEarningsRow{row("listed", "2026-11-25", "2026-11-20")}}), "2026-12-01", 10, ""},
-		{"past", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("listed", "2026-11-20", "2026-11-20")}}), "", 0, "past_date"},
-		{"past override", ok(blockapi.HeldEarningsIn{Read: true, Override: "2026-11-01"}), "", 0, "past_date"},
-		{"absent", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("absent", "", "2026-11-20")}}), "", 0, "no_row"},
-		{"no rows", ok(blockapi.HeldEarningsIn{Read: true}), "", 0, "no_row"},
-		{"unsupported", ok(blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{row("unsupported", "", "2026-11-20")}}), "", 0, "unsupported"},
-		{"no reader", ok(blockapi.HeldEarningsIn{}), "", 0, "no_reader"},
-		{"no underlying", blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: "no_underlying", Earnings: blockapi.HeldEarningsIn{Read: true}}, "", 0, "no_underlying"},
-		{"no issuer", blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: "no_issuer", Earnings: blockapi.HeldEarningsIn{Read: true}}, "", 0, "no_issuer"},
-		{"other resolve", blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: "?", Earnings: blockapi.HeldEarningsIn{Read: true}}, "", 0, "no_underlying"},
+		{"listed", rd(row("listed", "2026-11-25", "2026-11-20")), "2026-11-25", 4, ""},
+		{"today", rd(row("listed", "2026-11-21", "2026-11-20")), "2026-11-21", 0, ""},
+		{"newest wins", rd(row("listed", "2026-11-25", "2026-11-19"), row("absent", "", "2026-11-20")), "", 0, "no_row"},
+		{"tie keeps later", rd(row("listed", "2026-11-25", "2026-11-20"), row("error", "", "2026-11-20")), "", 0, "row_error"},
+		{"override", over, "2026-12-01", 10, ""},
+		{"past", rd(row("listed", "2026-11-20", "2026-11-20")), "", 0, "past_date"},
+		{"past override", pastOver, "", 0, "past_date"},
+		{"absent", rd(row("absent", "", "2026-11-20")), "", 0, "no_row"},
+		{"no rows", rd(), "", 0, "no_row"},
+		{"unsupported", rd(row("unsupported", "", "2026-11-20")), "", 0, "unsupported"},
+		{"no reader", noReader, "", 0, "no_reader"},
+		{"no underlying", res("no_underlying"), "", 0, "no_underlying"},
+		{"no issuer", res("no_issuer"), "", 0, "no_issuer"},
+		{"other resolve", res("?"), "", 0, "no_underlying"},
 	}
 	for _, tc := range cases {
 		r := NewHeld().HeldCompanies(blockapi.HeldIn{

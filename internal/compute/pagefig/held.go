@@ -26,10 +26,11 @@ type heldAcc struct {
 	alias map[string]bool
 }
 
-func (heldFigure) HeldCompanies(in blockapi.HeldIn) blockapi.HeldResult {
+// heldMerge folds the lines into one accumulator per (Underlying, Currency), in first-seen order.
+func heldMerge(lines []blockapi.HeldLineIn) ([]heldKey, map[heldKey]*heldAcc) {
 	var order []heldKey
 	accs := map[heldKey]*heldAcc{}
-	for _, l := range in.Lines {
+	for _, l := range lines {
 		k := heldKey{l.Underlying, l.Currency}
 		a := accs[k]
 		if a == nil {
@@ -52,6 +53,11 @@ func (heldFigure) HeldCompanies(in blockapi.HeldIn) blockapi.HeldResult {
 		}
 		a.sum.Add(a.sum, v)
 	}
+	return order, accs
+}
+
+func (heldFigure) HeldCompanies(in blockapi.HeldIn) blockapi.HeldResult {
+	order, accs := heldMerge(in.Lines)
 	companies := map[heldKey]blockapi.HeldCompanyIn{}
 	for _, c := range in.Companies {
 		companies[heldKey{c.Underlying, c.Currency}] = c
