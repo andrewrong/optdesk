@@ -164,9 +164,9 @@ func keysOf(ids ...string) []contracts.ExpectedKey {
 }
 
 var (
-	plainIDs    = []string{"DGS10", "DGS3MO", "RVXCLS", "SP500", "VIXCLS", "VXNCLS", "VXVCLS"}
-	windowedIDs = []string{"BAA10Y", "BAMLC0A0CM", "BAMLH0A0HYM2", "DFF", "IORB", "NFCI", "RRPONTSYD", "SOFR", "SOFR99", "STLFSI4",
-		"TLAACBW027SBOG", "WALCL", "WDTGAL", "WLCFLPCL", "WRESBAL"}
+	plainIDs    = []string{"DGS10", "DGS3MO", "IRLTLT01JPM156N", "RVXCLS", "SP500", "VIXCLS", "VXNCLS", "VXVCLS"}
+	windowedIDs = []string{"BAA10Y", "BAMLC0A0CM", "BAMLH0A0HYM2", "DEXJPUS", "DFF", "DGS2", "DTWEXBGS", "IORB", "NFCI", "RRPONTSYD", "SOFR", "SOFR99", "STLFSI4",
+		"T10Y2Y", "T10Y3M", "T10YIE", "TLAACBW027SBOG", "WALCL", "WDTGAL", "WLCFLPCL", "WRESBAL"}
 )
 
 func TestRunFetchWindowPerGroup(t *testing.T) {
@@ -181,7 +181,7 @@ func TestRunFetchWindowPerGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ks) != 22 {
+	if len(ks) != 29 {
 		t.Fatalf("keys = %d", len(ks))
 	}
 	j.Run(context.Background(), day, ks)
