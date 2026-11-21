@@ -198,3 +198,13 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - A run is slow when elapsed is more than the larger of 3 times usual and 10 minutes, with usual taken only from 5 or more samples; with fewer samples or none it is slow when elapsed is more than 60 minutes. Usual is not scaled by source or key count. `HasUsual` is false under 5 samples.
 - The rule gives a notice only: nothing in compute stops, cancels or refuses a job. Pure: no I/O, no clock beyond the `now` argument.
+
+## Family risk figure
+
+`FamilyRiskFigure` (method `FamilyRisk(FamilyRiskIn) FamilyRiskResult`), `NewFamilyRiskFigureFunc`, `FamilyRiskAccountIn`, `FamilyRiskIn`, `FamilyRiskPut`, `FamilyRiskAccountOut`, `FamilyRiskCompany` and `FamilyRiskResult` are declared in `internal/compute/blockapi/api.go`, a figure of its own and not a method of `PageFigures`, `FamilyFigure` or `HeldFigure`; the implementation is `pagefig.NewFamilyRisk`. Design: `docs/design/household-risk.md#Interface`. Tests: `TestFamilyRiskFigureContract` (`blockapi`) and `TestFamilyRiskNeedAndCashAfter`, `TestFamilyRiskYen`, `TestFamilyRiskUnreadAccount`, `TestFamilyRiskCompanies`, `TestFamilyRiskEqualsHousehold`, `TestFamilyRiskCap` (`pagefig`).
+
+- Pure: exact rationals (`math/big`), no I/O, no clock, no float. Amounts are USD text with 2 places, half-even.
+- `Need` of an account is the sum of strike x multiplier x contracts of its `Obligations`; a JPY obligation is divided by `UsdJpy`; without a positive rate, or for another currency, the obligation and every sum it is part of is the gap `unsupported_currency`; an unreadable number is the gap `missing_input`. `CashAfter` is `Cash` minus `Need`; `Short` is true when it is below zero; `ShortCount` counts them.
+- An account with `Read` false has the gap `missing_input` in `Need` and `CashAfter`, and `NeedTotal`, `CashTotal` and `AfterTotal` are that gap; no partial sum is returned. Its puts are not listed in `Puts`, and every company's `Put` and `Exposure` is then the gap `missing_input` (a sum that left an account out is never shown as complete).
+- `Puts` has one row per underlying (USD cash of all accounts, aliases in input order without repeats, premium text, "" when unknown). `Companies` has one row per underlying of the stock lines and the puts: `Exposure` = `Stock` + `Put`, `Share` = `Exposure` over `Net` in percent; a stock line with a gap makes `Stock` and `Exposure` the gap `missing_quote`; a `Net` with a gap (or not above zero) makes `Share` a gap.
+- `Puts` and `Companies` sort by amount descending, a row with a gap last, ties by underlying; at most 60 rows each, the rest counted in `Hidden` (the sum of both lists).

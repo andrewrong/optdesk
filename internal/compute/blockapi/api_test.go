@@ -505,3 +505,28 @@ func TestFamilyTrendFigureContract(t *testing.T) {
 		t.Fatalf("trend %+v", r)
 	}
 }
+
+type fakeFamilyRisk struct{}
+
+func (fakeFamilyRisk) FamilyRisk(in blockapi.FamilyRiskIn) blockapi.FamilyRiskResult {
+	a := in.Accounts[0]
+	return blockapi.FamilyRiskResult{
+		Puts:      []blockapi.FamilyRiskPut{{Underlying: in.Stocks[0].Underlying, Cash: a.Cash, Aliases: []string{a.Alias}, Premium: in.UsdJpy}},
+		Accounts:  []blockapi.FamilyRiskAccountOut{{Alias: a.Alias, Cash: a.Cash, Short: !a.Read}},
+		Companies: []blockapi.FamilyRiskCompany{{Underlying: "AAA", Share: in.Net}},
+		NeedTotal: a.Cash, ShortCount: len(a.Obligations),
+	}
+}
+
+func TestFamilyRiskFigureContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewFamilyRiskFigureFunc = func() blockapi.FamilyRiskFigure { return fakeFamilyRisk{} }
+	r := mk().FamilyRisk(blockapi.FamilyRiskIn{
+		Accounts: []blockapi.FamilyRiskAccountIn{{Alias: "main", Cash: fv("5"), Obligations: []blockapi.ObligationIn{{}}}},
+		Stocks:   []blockapi.HeldLineIn{{Underlying: "AAA"}}, Net: fv("9"), UsdJpy: "150",
+	})
+	if r.Puts[0].Underlying != "AAA" || r.Puts[0].Premium != "150" || r.Accounts[0].Alias != "main" || !r.Accounts[0].Short ||
+		r.Companies[0].Share.Value != "9" || r.NeedTotal.Value != "5" || r.ShortCount != 1 {
+		t.Fatalf("risk %+v", r)
+	}
+}

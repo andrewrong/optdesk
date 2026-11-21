@@ -519,3 +519,74 @@ type FamilyTrendFigure interface {
 
 // NewFamilyTrendFigureFunc constructs the implementation (internal/compute/pagefig.NewFamilyTrend).
 type NewFamilyTrendFigureFunc func() FamilyTrendFigure
+
+// FamilyRiskAccountIn is one counted account: its cash in USD (FamilyAccountOut.Cash), its open short puts and
+// whether its ledger was read. Alias is never the account id.
+type FamilyRiskAccountIn struct {
+	Alias       string
+	Cash        compute.FigureValue
+	Obligations []ObligationIn
+	Read        bool // false: the ledger or the positions of the account could not be read
+}
+
+// FamilyRiskIn: the counted accounts, the stock lines of all of them (USD, as HeldLineIn), the family net in USD
+// and the USDJPY rate (empty without one).
+type FamilyRiskIn struct {
+	Accounts []FamilyRiskAccountIn
+	Stocks   []HeldLineIn
+	Net      compute.FigureValue
+	UsdJpy   string
+}
+
+// FamilyRiskPut is one company's short puts of the family: the assignment cash in USD, the aliases that hold them.
+type FamilyRiskPut struct {
+	Underlying string
+	Cash       compute.FigureValue
+	Aliases    []string
+	Premium    string // USD text, "" when unknown
+}
+
+// FamilyRiskAccountOut is one account: cash, the cash its puts need, cash after (negative is a shortfall).
+type FamilyRiskAccountOut struct {
+	Alias                 string
+	Cash, Need, CashAfter compute.FigureValue
+	Short                 bool // CashAfter is below zero
+}
+
+// FamilyRiskCompany is one company of the concentration: stock value, put cash, their sum and its share of Net.
+type FamilyRiskCompany struct {
+	Underlying                  string
+	Stock, Put, Exposure, Share compute.FigureValue
+}
+
+// FamilyRiskResult. Puts and Companies are sorted by amount descending, a gap row last, ties by Underlying, at
+// most 60 rows each; Hidden counts the rows cut. NeedTotal, CashTotal and AfterTotal are the gap of the first
+// missing part, never a partial sum. ShortCount is the number of accounts with Short.
+type FamilyRiskResult struct {
+	Puts                             []FamilyRiskPut
+	Accounts                         []FamilyRiskAccountOut // input order
+	Companies                        []FamilyRiskCompany
+	NeedTotal, CashTotal, AfterTotal compute.FigureValue
+	NeedShare, AfterShare            compute.FigureValue // of Net, percent
+	ShortCount, Hidden               int
+}
+
+// FamilyRiskFigure is the family's assignment cash, cash after assignment and company exposure. It is a figure
+// of its own, not a method of FamilyFigure, HeldFigure or PageFigures.
+type FamilyRiskFigure interface {
+	// FamilyRisk is pure: no I/O, no clock, no float; exact decimals.
+	//
+	// Need of an account is the sum of strike x multiplier x contracts of its Obligations in USD; a JPY
+	// obligation is divided by UsdJpy; without a positive rate, or for another currency, it is the gap
+	// unsupported_currency, an unreadable number the gap missing_input, and every sum it is part of is that gap.
+	// CashAfter is Cash minus Need; Short is true when it is below zero. An account with Read false has the gap
+	// missing_input in Need and CashAfter, and the three totals are that gap. Puts has one row per underlying
+	// (USD cash of all accounts, aliases in input order without repeats, the premium text). Companies has one row
+	// per underlying of Stocks and Puts: Exposure is Stock plus Put, Share is Exposure over Net in percent; a
+	// stock line with a gap makes Stock and Exposure the gap missing_quote, a Net with a gap makes Share a gap.
+	// Both lists sort by amount descending, a gap row last, ties by Underlying, at most 60 rows each.
+	FamilyRisk(in FamilyRiskIn) FamilyRiskResult
+}
+
+// NewFamilyRiskFigureFunc constructs the implementation (internal/compute/pagefig.NewFamilyRisk).
+type NewFamilyRiskFigureFunc func() FamilyRiskFigure
