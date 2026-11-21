@@ -123,6 +123,10 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 `FamilyFigure` (method `Family(FamilyIn) FamilyResult`), `NewFamilyFigureFunc`, `FamilyIn`, `FamilyAccountIn`, `FamilyAccountOut` and `FamilyResult` are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which keeps its six methods; the counting, sum and gap rules are in the doc comment of `Family`. Design: `docs/design/household-family-total.md#Interface`. Test: `TestFamilyFigureContract` (`blockapi`).
 
+## Family trend figure
+
+`FamilyTrendFigure` (method `FamilyTrend(FamilyTrendIn) FamilyTrendResult`), `NewFamilyTrendFigureFunc`, `FamilyTrendAccountIn`, `FamilyTrendIn`, `FamilyTrendPoint`, `FamilyTrendAccountOut` and `FamilyTrendResult` are declared in `internal/compute/blockapi/api.go`, a figure of its own and not a method of `FamilyFigure` or `PageFigures`; the implementation is `pagefig.NewFamilyTrend`. The rule: a family day needs every account. A day on which one account has no point (missing, negative or malformed value, other currency, yen day without a rate) is not in `Family`, is never filled or zero, and counts in `LeftOut`; the family point is the sum of the account points of that day, USD, 2 places half-even; fewer than 2 family points give `Gap` `no_data`. Design: `docs/design/net-value-trend.md#Interface`. Tests: `TestFamilyTrendFigureContract` (`blockapi`) and `TestFamilyTrendSumsSameDay`, `TestFamilyTrendDropsDayWithMissingMember`, `TestFamilyTrendYenUsesDayRate`, `TestFamilyTrendBadValues`, `TestFamilyTrendGap` (`pagefig`).
+
 ## Holding figures
 
 `HoldingFigures` (methods `Holdings(HoldingsIn) HoldingsResult`, `Risk(RiskIn) RiskResult` and `Movers(MoversIn) MoversResult`), `NewHoldingFiguresFunc` and their types are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which is unchanged. Design: `docs/design/pages-real-data.md#Interface`.

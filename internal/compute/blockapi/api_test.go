@@ -481,3 +481,27 @@ func TestHeldFigureContract(t *testing.T) {
 		t.Fatalf("held %+v", r)
 	}
 }
+
+type fakeFamilyTrend struct{}
+
+func (fakeFamilyTrend) FamilyTrend(in blockapi.FamilyTrendIn) blockapi.FamilyTrendResult {
+	p := blockapi.FamilyTrendPoint{Day: in.Window[0], Net: in.Accounts[0].Days[0].NetLiquidation}
+	return blockapi.FamilyTrendResult{
+		Family:   []blockapi.FamilyTrendPoint{p},
+		Accounts: []blockapi.FamilyTrendAccountOut{{Alias: in.Accounts[0].Alias, Points: []blockapi.FamilyTrendPoint{p}}},
+		LeftOut:  len(in.Window) - 1, YenUsed: in.UsdJpy["2026-11-18"] != "", Gap: "no_data",
+	}
+}
+
+func TestFamilyTrendFigureContract(t *testing.T) {
+	t.Parallel()
+	var mk blockapi.NewFamilyTrendFigureFunc = func() blockapi.FamilyTrendFigure { return fakeFamilyTrend{} }
+	r := mk().FamilyTrend(blockapi.FamilyTrendIn{
+		Accounts: []blockapi.FamilyTrendAccountIn{{Alias: "main", Days: []blockapi.DayValue{{Day: "2026-11-18", NetLiquidation: "100.00", Currency: "USD"}}}},
+		UsdJpy:   map[contracts.Day]string{"2026-11-18": "150"},
+		Window:   []contracts.Day{"2026-11-18", "2026-11-19"},
+	})
+	if len(r.Family) != 1 || r.Family[0].Net != "100.00" || r.Accounts[0].Alias != "main" || r.LeftOut != 1 || !r.YenUsed || r.Gap != "no_data" {
+		t.Fatalf("trend %+v", r)
+	}
+}
