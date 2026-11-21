@@ -111,3 +111,42 @@ func TestMacroPageV2NoHalfUp(t *testing.T) {
 		t.Error("page.macro_page.v2.json contains ROUND_HALF_UP; the v2 line requires ROUND_HALF_EVEN")
 	}
 }
+
+// TestMacroPageEventFigureOptional validates an event without actual and previous_figure, with a
+// Figure in each, and with a Gap in each; a unit outside the five is rejected.
+func TestMacroPageEventFigureOptional(t *testing.T) {
+	t.Parallel()
+	s := compilePageV2(t, "page.macro_page.v2.json")
+	figure := func(unit string) map[string]any {
+		return map[string]any{"value": 3.1, "unit": unit, "text": "3.1%"}
+	}
+	gap := map[string]any{"reason": "no_data", "text": "not yet published by FRED"}
+	cases := []struct {
+		name    string
+		actual  any
+		prev    any
+		wantErr bool
+	}{
+		{"absent", nil, nil, false},
+		{"figure", figure("percent"), figure("percent_range"), false},
+		{"gap", gap, gap, false},
+		{"bad-unit", figure("bps"), nil, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			m := loadMacroPageV2(t, "golden")
+			ev := m["events"].([]any)[0].(map[string]any)
+			if c.actual != nil {
+				ev["actual"] = c.actual
+			}
+			if c.prev != nil {
+				ev["previous_figure"] = c.prev
+			}
+			err := s.Validate(m)
+			if c.wantErr != (err != nil) {
+				t.Fatalf("err = %v, wantErr %v", err, c.wantErr)
+			}
+		})
+	}
+}

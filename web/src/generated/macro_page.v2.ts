@@ -343,11 +343,16 @@ export type Events =
       Event,
       Event
     ];
+export type Actual = EventFigure | Gap;
+export type Text3 = string;
+export type Unit2 = "percent" | "thousands" | "millions" | "usd_trillions" | "percent_range";
+export type Value2 = number;
 export type Date = string;
 export type DaysTo = number;
 export type InWindow = boolean;
 export type NameText = string;
 export type Previous = string | Gap;
+export type PreviousFigure = EventFigure | Gap;
 export type WhenText = string;
 export type EventsTitle = string;
 /**
@@ -576,13 +581,13 @@ export type Group = "rates" | "credit" | "dollar_japan";
 export type Hint = string;
 export type Label = string;
 export type Latest = PercentFigure | LevelFigure | Gap;
-export type Text3 = string;
-export type Tone1 = ("up" | "down" | "flat" | "none") | null;
-export type Unit2 = "percent";
-export type Value2 = number;
 export type Text4 = string;
-export type Unit3 = "index_points" | "jpy_per_usd" | "percent";
+export type Tone1 = ("up" | "down" | "flat" | "none") | null;
+export type Unit3 = "percent";
 export type Value3 = number;
+export type Text5 = string;
+export type Unit4 = "index_points" | "jpy_per_usd" | "percent";
+export type Value4 = number;
 export type Name = string;
 export type SourceText = string;
 export type Status = "good" | "late" | "missing";
@@ -599,7 +604,7 @@ export type Hint1 = string;
 export type Key = "tbill" | "hy_spread" | "next_event" | "index_iv";
 export type Label1 = string;
 export type State = "ok" | "gap";
-export type Text5 = string;
+export type Text6 = string;
 export type Title = string;
 export type Liquidity = Liquidity1 | Gap;
 export type BackgroundText = string;
@@ -634,8 +639,8 @@ export type Rows1 =
   | [LiquidityRow, LiquidityRow, LiquidityRow]
   | [LiquidityRow, LiquidityRow, LiquidityRow, LiquidityRow];
 export type Label4 = string;
-export type Text6 = Text7 | Gap;
-export type Text7 = string;
+export type Text7 = Text8 | Gap;
+export type Text8 = string;
 export type DataDay2 = string | null;
 export type Note1 = Note2 | null;
 export type Note2 = string;
@@ -789,7 +794,7 @@ export type Timestamp1 = string;
  * An RFC 3339 time with any offset.
  */
 export type Timestamp2 = string;
-export type Text8 = string;
+export type Text9 = string;
 export type Title1 = string;
 
 export interface MacroPageV2 {
@@ -865,12 +870,22 @@ export interface Gap {
   text: Text2;
 }
 export interface Event {
+  actual?: Actual;
   date: Date;
   days_to?: DaysTo;
   in_window?: InWindow;
   name_text: NameText;
   previous: Previous;
+  previous_figure?: PreviousFigure;
   when_text: WhenText;
+}
+/**
+ * A released or previous value of an event: the number and unit are the data, the text is what the web prints.
+ */
+export interface EventFigure {
+  text: Text3;
+  unit: Unit2;
+  value: Value2;
 }
 export interface Indicator {
   change_text?: ChangeText;
@@ -888,18 +903,18 @@ export interface Indicator {
  * A fraction times 100, signed (``+2.1%``).
  */
 export interface PercentFigure {
-  text: Text3;
+  text: Text4;
   tone?: Tone1;
-  unit: Unit2;
-  value: Value2;
+  unit: Unit3;
+  value: Value3;
 }
 /**
  * A level that is not a percent: index points, yen per dollar or a percent level.
  */
 export interface LevelFigure {
-  text: Text4;
-  unit: Unit3;
-  value: Value3;
+  text: Text5;
+  unit: Unit4;
+  value: Value4;
 }
 export interface Lead {
   note: Note;
@@ -913,7 +928,7 @@ export interface LeadRow {
   key: Key;
   label: Label1;
   state: State;
-  text: Text5;
+  text: Text6;
 }
 export interface Liquidity1 {
   background_text: BackgroundText;
@@ -934,7 +949,7 @@ export interface LiquidityTap {
 }
 export interface LiquidityRow {
   label: Label4;
-  text: Text6;
+  text: Text7;
   data_day: DataDay2;
 }
 /**
@@ -943,5 +958,5 @@ export interface LiquidityRow {
 export interface StaleLabel {
   data_time: Timestamp1;
   stale_after: Timestamp2;
-  text: Text8;
+  text: Text9;
 }
