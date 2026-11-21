@@ -107,13 +107,13 @@ function priceSpec(label: string, chart: PriceChart): ChartSpec {
     series: [
       { name: label, points: points.map((point) => ({ value: point.close, text: point.close_text })) },
       {
-        name: '200 日均线',
+        name: '200-day average',
         dashed: true,
         points: points.map((point) => pointOf(point.ma200, point.ma200_text)),
       },
     ],
     band: {
-      name: '布林带',
+      name: 'Bollinger band',
       low: points.map((point) => pointOf(point.band_low, point.band_low_text)),
       high: points.map((point) => pointOf(point.band_high, point.band_high_text)),
     },
