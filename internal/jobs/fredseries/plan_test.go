@@ -36,9 +36,11 @@ func TestEmbeddedManifest(t *testing.T) {
 	t.Parallel()
 	want := []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS",
 		"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL",
-		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL"}
+		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL",
+		"DGS2", "T10Y2Y", "T10Y3M", "T10YIE", "DTWEXBGS", "DEXJPUS", "IRLTLT01JPM156N"}
 	wantWindowed := []string{"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL",
-		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL"}
+		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL",
+		"DGS2", "T10Y2Y", "T10Y3M", "T10YIE", "DTWEXBGS", "DEXJPUS"}
 	m, err := parseManifest(manifestBytes)
 	if err != nil {
 		t.Fatal(err)
