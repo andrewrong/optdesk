@@ -208,3 +208,11 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - An account with `Read` false has the gap `missing_input` in `Need` and `CashAfter`, and `NeedTotal`, `CashTotal` and `AfterTotal` are that gap; no partial sum is returned. Its puts are not listed in `Puts`, and every company's `Put` and `Exposure` is then the gap `missing_input` (a sum that left an account out is never shown as complete).
 - `Puts` has one row per underlying (USD cash of all accounts, aliases in input order without repeats, premium text, "" when unknown). `Companies` has one row per underlying of the stock lines and the puts: `Exposure` = `Stock` + `Put`, `Share` = `Exposure` over `Net` in percent; a stock line with a gap makes `Stock` and `Exposure` the gap `missing_quote`; a `Net` with a gap (or not above zero) makes `Share` a gap.
 - `Puts` and `Companies` sort by amount descending, a row with a gap last, ties by underlying; at most 60 rows each, the rest counted in `Hidden` (the sum of both lists).
+
+## Spread legs
+
+`SpreadIn`, `SpreadFigures`, `SpreadResult`, `SpreadFigure` and `NewSpreadFunc` are in `internal/compute/spreadlegsapi/api.go` (a package of its own, as `internal/compute/api.go` is at its ratchet ceiling); the implementation is `internal/compute/spreadlegs` (`New()`). Design: `docs/design/spread-legs.md#1-legs-1-figure`.
+
+- Net credit: the sum over the legs of `-Quantity x OpenPrice x Multiplier`, exact decimals, 2 places half-even; positive a credit, negative a debit. A leg with an empty or non-numeric open price gives the gap `missing_input`; a structure not in USD gives `unsupported_currency`; never "0".
+- Break-evens: every price where the expiry payoff is zero, ascending, 4 places. Only for two or more legs of one expiry and not `other`, `collar` or `covered_call`; any other gives `BreakEvenGap` `no_rule`. A single crossing equals `Structure.Figures.BreakEven` of the matcher.
+- `Expiry` is the shortest expiry of the legs; `DaysToExpiry` its calendar days from `AsOf` (0 or more). Rows come in `DaysToExpiry` ascending, then underlying, then id. Pure: no I/O, no clock.
