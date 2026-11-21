@@ -37,7 +37,9 @@ func TestEmbeddedManifest(t *testing.T) {
 	want := []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS",
 		"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL",
 		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL",
-		"DGS2", "T10Y2Y", "T10Y3M", "T10YIE", "DTWEXBGS", "DEXJPUS", "IRLTLT01JPM156N"}
+		"DGS2", "T10Y2Y", "T10Y3M", "T10YIE", "DTWEXBGS", "DEXJPUS", "IRLTLT01JPM156N",
+		"CPIAUCNS", "PAYEMS", "PCEPI", "A191RL1Q225SBEA", "PPIFID", "RSAFS", "JTSJOL", "DFEDTARU", "DFEDTARL"}
+	wantLong := []string{"CPIAUCNS", "PAYEMS", "PCEPI", "A191RL1Q225SBEA", "PPIFID", "RSAFS", "JTSJOL", "DFEDTARU", "DFEDTARL"}
 	wantWindowed := []string{"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL",
 		"IORB", "SOFR99", "NFCI", "STLFSI4", "TLAACBW027SBOG", "WLCFLPCL",
 		"DGS2", "T10Y2Y", "T10Y3M", "T10YIE", "DTWEXBGS", "DEXJPUS"}
@@ -46,7 +48,7 @@ func TestEmbeddedManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	if m.Version != 1 || m.ID != "fred_series" || !slices.Equal(m.Series, want) ||
-		!slices.Equal(m.Windowed, wantWindowed) || m.LookbackDays != 14 ||
+		!slices.Equal(m.Windowed, wantWindowed) || m.LookbackDays != 14 || !slices.Equal(m.Long, wantLong) || m.LongLookbackDays != 460 ||
 		m.Window.Rule != "after_close" || m.Window.LatenessHours != 96 {
 		t.Fatalf("manifest = %+v", m)
 	}
@@ -111,5 +113,50 @@ func TestPlanHashCoversWindowed(t *testing.T) {
 	}
 	if hash("windowed = [\"WALCL\", \"DGS10\"]\nlookback_days = 14\n") != hash("windowed = [\"DGS10\", \"WALCL\"]\nlookback_days = 14\n") {
 		t.Fatal("windowed order changed the hash")
+	}
+}
+
+func TestPlanHashIncludesLong(t *testing.T) {
+	t.Parallel()
+	day := contracts.Day("2026-11-05")
+	hash := func(extra string) string {
+		_, h, err := planFrom(manifestWith(extra), day)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return h
+	}
+	base := hash("long = [\"WALCL\"]\nlong_lookback_days = 460\n")
+	if base != hash("long = [\"WALCL\"]\nlong_lookback_days = 460\n") {
+		t.Fatal("same input, different hashes")
+	}
+	if base == hash("long = [\"WALCL\"]\nlong_lookback_days = 461\n") {
+		t.Fatal("another long_lookback_days gave the same hash")
+	}
+	if base == hash("long = [\"WALCL\", \"DGS10\"]\nlong_lookback_days = 460\n") {
+		t.Fatal("another long list gave the same hash")
+	}
+	if hash("long = [\"WALCL\", \"DGS10\"]\nlong_lookback_days = 460\n") != hash("long = [\"DGS10\", \"WALCL\"]\nlong_lookback_days = 460\n") {
+		t.Fatal("the order of the long list changed the hash")
+	}
+}
+
+func TestManifestLongInSeries(t *testing.T) {
+	t.Parallel()
+	if _, err := parseManifest(manifestWith("long = [\"DFF\"]\nlong_lookback_days = 460\n")); err == nil {
+		t.Fatal("long id outside series accepted")
+	}
+	if _, err := parseManifest(manifestWith("long = [\"WALCL\"]\nlong_lookback_days = 460\n")); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []string{"0", "399", "801"} {
+		if _, err := parseManifest(manifestWith("long = [\"WALCL\"]\nlong_lookback_days = " + n + "\n")); err == nil {
+			t.Fatalf("long_lookback_days %s accepted", n)
+		}
+	}
+	for _, n := range []string{"400", "800"} {
+		if _, err := parseManifest(manifestWith("long = [\"WALCL\"]\nlong_lookback_days = " + n + "\n")); err != nil {
+			t.Fatalf("long_lookback_days %s: %v", n, err)
+		}
 	}
 }

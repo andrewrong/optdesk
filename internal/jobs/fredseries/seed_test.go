@@ -45,11 +45,11 @@ func TestUnregisteredAreInManifest(t *testing.T) {
 	}
 }
 
-// readRegistrySQL returns the registry seed: 0043 and the macro-page series of 0066.
+// readRegistrySQL returns the registry seed: 0043, the macro-page series of 0066 and the macro event series of 0068.
 func readRegistrySQL(t *testing.T) string {
 	t.Helper()
 	var all strings.Builder
-	for _, f := range []string{"0043_series_registry.sql", "0066_macro_series.sql"} {
+	for _, f := range []string{"0043_series_registry.sql", "0066_macro_series.sql", "0068_macro_event_series.sql"} {
 		b, err := os.ReadFile("../../../migrations/" + f)
 		if err != nil {
 			t.Fatal(err)
