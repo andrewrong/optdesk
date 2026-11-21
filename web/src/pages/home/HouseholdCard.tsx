@@ -59,6 +59,11 @@ function Gapped({
   )
 }
 
+// The producer sets figure and caption to the same gap on purpose; the view prints that gap once.
+function sameGap({ figure, caption }: Tile): boolean {
+  return 'reason' in figure && 'reason' in caption && figure.text === caption.text
+}
+
 function TileCard({ id, tile }: { id: string; tile: Tile }) {
   return (
     <Card size="sm" data-tile={id}>
@@ -79,7 +84,9 @@ function TileCard({ id, tile }: { id: string; tile: Tile }) {
       </CardHeader>
       <CardContent className="space-y-1">
         <Gapped item={tile.figure} className="text-2xl font-semibold" />
-        <Gapped item={tile.caption} className="text-xs text-muted-foreground" />
+        {!sameGap(tile) && (
+          <Gapped item={tile.caption} className="text-xs text-muted-foreground" />
+        )}
       </CardContent>
     </Card>
   )
