@@ -83,7 +83,7 @@ func TestDependentRunsMarkedAfterFailedUpstreamEnd(t *testing.T) {
 	if len(d.calls) != 1 {
 		t.Fatalf("dep %d", len(d.calls))
 	}
-	if r := rowOf(t, l.fakeLedger, bfDay, keyC); r.ReasonCode != "upstream_missing" {
+	if r := rowOf(t, l.fakeLedger, bfDay, keyC); r.ReasonCode != "upstream_partial" {
 		t.Fatalf("row %+v", r)
 	}
 }

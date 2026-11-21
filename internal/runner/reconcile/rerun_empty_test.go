@@ -46,12 +46,12 @@ func TestEmptyMarkedDependentRerunsWhenUpstreamOk(t *testing.T) {
 	e := &emptyThenUsable{depJob: d, usableAt: 2}
 	rec := dueRec(led, "2026-11-05T20:55:00Z", up, e)
 	reconcileN(t, rec, 1)
-	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != reasonUpstreamMissing {
+	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != reasonUpstreamPartial {
 		t.Fatalf("row %+v, want upstream_missing kept on the empty run", r)
 	}
 	reconcileN(t, rec, 1)
 	runs := runsOfKey(led, keyC)
-	if len(e.calls) != 2 || len(runs) != 2 || runs[0].ReasonCode != reasonUpstreamMissing || runs[1].ReasonCode != "" {
+	if len(e.calls) != 2 || len(runs) != 2 || runs[0].ReasonCode != reasonUpstreamPartial || runs[1].ReasonCode != "" {
 		t.Fatalf("calls %d runs %+v, want a marked run then an unmarked one", len(e.calls), runs)
 	}
 	reconcileN(t, rec, 3)
@@ -85,7 +85,7 @@ func TestEmptyMarkedDependentNotRerunByFailedUpstream(t *testing.T) {
 	if len(e.calls) != 1 {
 		t.Fatalf("dep calls %d, want 1 while the upstream is not ok", len(e.calls))
 	}
-	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != reasonUpstreamMissing {
+	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != reasonUpstreamPartial {
 		t.Fatalf("row %+v, want upstream_missing", r)
 	}
 }

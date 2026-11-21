@@ -247,8 +247,8 @@ func (k *keyRunner) verdict(
 		return store.StatusPresent, nil
 	case !closeAt.IsZero() && k.clk.Now().Before(closeAt):
 		// An empty answer is no explanation: retry until the window closes. A run that carries the mark
-		// upstream_missing keeps it: the end of its upstream runs it again (rerunMarked reads the mark).
-		if rec.ReasonCode != reasonUpstreamMissing {
+		// upstream_missing or upstream_partial keeps it: the upstream's end or ok runs it again (rerunMarked).
+		if rec.ReasonCode != reasonUpstreamMissing && rec.ReasonCode != reasonUpstreamPartial {
 			rec.ReasonCode = reasonEmptyBeforeClose
 		}
 		return "", nil
@@ -456,8 +456,9 @@ type upState int
 
 const (
 	upOK      upState = iota // every key of the upstream is marked for the day
-	upMissing                // failed, ended without ok, or not run
-	upRunning                // a run of the upstream is going on
+	upMissing                // the upstream has no run for the day
+	upRunning                // a run of the upstream is going on, or a key of it may still be retried
+	upEnded                  // not every key is stored and none will be run again (upstreamEnded)
 )
 
 func (r *reconciler) jobByID(id string) contracts.Job {
@@ -490,13 +491,10 @@ func (r *reconciler) upstreamDay(ctx context.Context, dc *dayCtx, job contracts.
 }
 
 // upstreamState reads the state of upstream id for the day of dc. ends holds the upstreams whose run just
-// ended in the triggering call, with their outcome, which wins over the ledger.
+// ended ok in the triggering call, which wins over the ledger; any other end is read from the ledger.
 func (r *reconciler) upstreamState(ctx context.Context, dc *dayCtx, id string, ends map[string]bool) (upState, error) {
-	if ok, has := ends[id]; has {
-		if ok {
-			return upOK, nil
-		}
-		return upMissing, nil
+	if ok, has := ends[id]; has && ok {
+		return upOK, nil // a failed end is read from the ledger below (upstreamEnded)
 	}
 	if dc.running(id) {
 		return upRunning, nil
@@ -540,12 +538,12 @@ func (r *reconciler) upstreamState(ctx context.Context, dc *dayCtx, id string, e
 	case live:
 		return upRunning, nil
 	}
-	return upMissing, nil
+	return r.upstreamEnded(ctx, dc, job, d, keys, present, byKey)
 }
 
 // gate decides how job starts on the day of dc: leave is true while an upstream is running or due in the
 // call and not ended (no wait: the end of that upstream starts the job); mark is reasonUpstreamMissing when
-// an upstream is not ok. A job with no upstream has neither.
+// an upstream did not run, reasonUpstreamPartial when one ended with a key not stored. A job with no upstream has neither.
 func (r *reconciler) gate(ctx context.Context, dc *dayCtx, job contracts.Job, ends map[string]bool) (mark string, leave bool, err error) {
 	dep, ok := job.(runner.Dependent)
 	if !ok {
@@ -560,6 +558,10 @@ func (r *reconciler) gate(ctx context.Context, dc *dayCtx, job contracts.Job, en
 		case upOK:
 		case upRunning:
 			leave = true
+		case upEnded:
+			if mark == "" {
+				mark = reasonUpstreamPartial
+			}
 		case upMissing:
 			mark = reasonUpstreamMissing
 		}
