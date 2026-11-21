@@ -424,3 +424,16 @@ func TestBuildHeldRateReadOnlyForYenLines(t *testing.T) {
 }
 
 var _ blockapi.HeldFigure = pagefig.NewHeld()
+
+// TestBuildHeldFamilyRateNoSecondRead: with a JPY account counted the family figure reads the rate once and the
+// page makes no second read for its yen lines.
+func TestBuildHeldFamilyRateNoSecondRead(t *testing.T) {
+	t.Parallel()
+	var calls [][2]string
+	c := heldConfig()
+	c.Fx = countFx{rate: "150", calls: &calls}
+	buildHeld(t, c)
+	if len(calls) != 1 {
+		t.Fatalf("calls = %v", calls)
+	}
+}

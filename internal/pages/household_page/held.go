@@ -171,7 +171,7 @@ func BuildHeld(ctx context.Context, c Config, day contracts.Day) (HeldPage, erro
 	}
 	res := c.Family().Family(in)
 
-	rate := c.heldRate(ctx, res, caps)
+	rate := c.lazyYenRate(ctx, res, caps)
 	var lines []blockapi.HeldLineIn
 	var notes []string
 	for i, alias := range distinct {
@@ -205,9 +205,9 @@ func heldBase(c Config, at time.Time) HeldPage {
 	}
 }
 
-// heldRate gives the USD/JPY rate for the yen lines: the family rate when set, otherwise the stored rate at the
+// lazyYenRate gives the USD/JPY rate for the yen lines: the family rate when set, otherwise the stored rate at the
 // latest capture day of the included accounts, as readBook reads it. It reads at most once and only when asked.
-func (c Config) heldRate(ctx context.Context, res blockapi.FamilyResult, caps map[string]capture) func() string {
+func (c Config) lazyYenRate(ctx context.Context, res blockapi.FamilyResult, caps map[string]capture) func() string {
 	var rate string
 	done := res.FxRate != ""
 	if done {
