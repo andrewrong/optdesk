@@ -9,7 +9,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
@@ -138,7 +137,8 @@ func (c *Core) addedTargets(ctx context.Context, ts []Target, want []openquote.O
 		it := items[r.InstrumentID]
 		t := Target{Item: tpl.Item, Symbol: tpl.Symbol, Under: tpl.Under, Currency: tpl.Currency,
 			Expiry: ct.Expiry, Strike: ct.Strike, Right: ct.Right}
-		t.Item.InstrumentID, t.Item.Class, t.Item.Rank, t.Item.Deferred = int(r.InstrumentID), gen.OptionOpenItemClass(it.Class), it.Rank, false
+		t.Item.InstrumentID, t.Item.Rank, t.Item.Deferred = int(r.InstrumentID), it.Rank, false
+		setClass(&t.Item.Class, it.Class)
 		switch {
 		case !ok:
 			t.Problem = "BAD_CONTRACT"
@@ -233,3 +233,7 @@ func finalIDs(items []contracts.OptionOpenItem, final []contracts.OptionOpen) (d
 	}
 	return done, added
 }
+
+// setClass sets the class of a stored item, whose type is generated: the module imports no generated package, so the
+// type is inferred from the field.
+func setClass[T ~string](dst *T, c Class) { *dst = T(c) }
