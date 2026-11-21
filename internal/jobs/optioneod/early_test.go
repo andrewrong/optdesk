@@ -9,6 +9,7 @@ import (
 	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -130,5 +131,128 @@ func TestSlotInstantIsNotEarly(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// closeCalendar answers every calendar and day with a session that closes at closeAt.
+func closeCalendar(closeAt time.Time) fakeCalendar {
+	return fakeCalendar{close: map[string]time.Time{"XNYS": closeAt}}
+}
+
+// noSessionCalendar answers every day as not a session.
+type noSessionCalendar struct{}
+
+func (noSessionCalendar) Session(_ context.Context, id string, day contracts.Day) (clock.Session, error) {
+	return clock.Session{CalendarID: id, Day: day}, nil
+}
+
+func (c noSessionCalendar) NextSession(ctx context.Context, id string, day contracts.Day) (clock.Session, error) {
+	return c.Session(ctx, id, day)
+}
+
+// closeRig is a rig whose manifest has the slot close-15m on the schedule session_close -15m; the calendar is optional.
+func closeRig(t *testing.T, at string, cal clock.Calendar) *rig {
+	t.Helper()
+	r := newRig(t, at)
+	toml := strings.Replace(runToml, `slot = "1100"`, `slot = "close-15m"`, 1) +
+		"\n[schedule]\ncalendar = \"XNYS\"\nanchor = \"session_close\"\noffset = \"-15m\"\n"
+	j, err := build([]byte(toml), r.b, r.res, r.w, r.clk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.job = j
+	if cal != nil {
+		if _, err := WithCalendar(j, cal); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return r
+}
+
+func TestCloseSlotEarlyRun(t *testing.T) {
+	t.Parallel()
+	cal := closeCalendar(time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)) // 16:00 EST
+	early := closeRig(t, "2026-11-06 15:30", cal)
+	got := early.run(testDay, testKey)
+	if kindOf(got) != contracts.Retryable || !strings.Contains(got.Err.Error(), "before_slot") {
+		t.Fatalf("early run: %+v", got)
+	}
+	want := captureID(testDay, testKey, "close-15m").String()
+	if len(early.w.all()) == 0 {
+		t.Fatal("early run wrote no rows")
+	}
+	for _, id := range idsOf(early) {
+		if id == want {
+			t.Fatalf("early run used the scheduled capture %s", id)
+		}
+	}
+	ref := closeRig(t, "2026-11-06 15:45", cal)
+	if res := ref.run(testDay, testKey); res.Err != nil {
+		t.Fatalf("run at the slot: %v", res.Err)
+	}
+	for _, id := range idsOf(ref) {
+		if id != want {
+			t.Fatalf("capture %s, want %s", id, want)
+		}
+	}
+	if ids := idsOf(early); ids[0] == idsOf(ref)[0] {
+		t.Fatal("early and scheduled share a capture")
+	}
+}
+
+func TestCloseSlotHalfDay(t *testing.T) {
+	t.Parallel()
+	cal := closeCalendar(time.Date(2026, 11, 6, 18, 0, 0, 0, time.UTC)) // 13:00 EST
+	if res := closeRig(t, "2026-11-06 12:45", cal).run(testDay, testKey); res.Err != nil {
+		t.Fatalf("12:45: %+v", res)
+	}
+	if res := closeRig(t, "2026-11-06 12:30", cal).run(testDay, testKey); kindOf(res) != contracts.Retryable || !strings.Contains(res.Err.Error(), "before_slot") {
+		t.Fatalf("12:30: %+v", res)
+	}
+}
+
+func TestCloseSlotNoCalendarNeverEarly(t *testing.T) {
+	t.Parallel()
+	want := captureID(testDay, testKey, "close-15m").String()
+	for name, cal := range map[string]clock.Calendar{"no calendar": nil, "not a session": noSessionCalendar{}, "zero close": fakeCalendar{}} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := closeRig(t, "2026-11-06 09:40", cal)
+			if res := r.run(testDay, testKey); res.Err != nil {
+				t.Fatalf("%+v", res)
+			}
+			for _, id := range idsOf(r) {
+				if id != want {
+					t.Fatalf("capture %s, want %s", id, want)
+				}
+			}
+		})
+	}
+}
+
+func TestCloseSlotCaptureID(t *testing.T) {
+	t.Parallel()
+	a, b := captureID(testDay, testKey, "close-15m"), captureID(testDay, testKey, "1100")
+	if a == b {
+		t.Fatal("close-15m and 1100 give one capture id")
+	}
+	if a != captureID(testDay, testKey, "close-15m") {
+		t.Fatal("two runs of one day differ")
+	}
+}
+
+func TestWithCalendar(t *testing.T) {
+	t.Parallel()
+	r := closeRig(t, "2026-11-06 15:45", nil)
+	got, err := WithCalendar(r.job, nil)
+	if err != nil || got != contracts.Job(r.job) {
+		t.Fatalf("nil calendar: %v %v", got, err)
+	}
+	got, err = WithCalendar(r.job, noSessionCalendar{})
+	if err != nil || got != contracts.Job(r.job) {
+		t.Fatalf("calendar: %v %v", got, err)
+	}
+	if _, err := WithCalendar(nil, noSessionCalendar{}); err == nil {
+		t.Fatal("foreign job accepted")
 	}
 }
