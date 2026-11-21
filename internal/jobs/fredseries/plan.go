@@ -33,9 +33,12 @@ type manifest struct {
 	Series   []string `toml:"series"`
 	Windowed []string `toml:"windowed"`
 	// LookbackDays is how many days back the windowed series are fetched.
-	LookbackDays int           `toml:"lookback_days"`
-	Window       window        `toml:"window"`
-	Schedule     scheduleTable `toml:"schedule"`
+	LookbackDays int `toml:"lookback_days"`
+	// Long lists the series fetched from the day minus LongLookbackDays on every run.
+	Long             []string      `toml:"long"`
+	LongLookbackDays int           `toml:"long_lookback_days"`
+	Window           window        `toml:"window"`
+	Schedule         scheduleTable `toml:"schedule"`
 
 	sched schedule
 }
@@ -55,6 +58,14 @@ func parseManifest(data []byte) (manifest, error) {
 	}
 	if (len(m.Windowed) > 0 || m.LookbackDays != 0) && (m.LookbackDays < 1 || m.LookbackDays > 31) {
 		return manifest{}, fmt.Errorf("fredseries: lookback_days %d is outside 1..31", m.LookbackDays)
+	}
+	for _, id := range m.Long {
+		if !slices.Contains(m.Series, id) {
+			return manifest{}, fmt.Errorf("fredseries: long id %q is not in series", id)
+		}
+	}
+	if (len(m.Long) > 0 || m.LongLookbackDays != 0) && (m.LongLookbackDays < 400 || m.LongLookbackDays > 800) {
+		return manifest{}, fmt.Errorf("fredseries: long_lookback_days %d is outside 400..800", m.LongLookbackDays)
 	}
 	sched, err := scheduleOf(m.Schedule)
 	if err != nil {
@@ -82,8 +93,11 @@ func (m manifest) plan(day contracts.Day) ([]contracts.ExpectedKey, string, erro
 	}
 	windowed := append([]string(nil), m.Windowed...)
 	sort.Strings(windowed)
+	long := append([]string(nil), m.Long...)
+	sort.Strings(long)
 	parts := append([]string{m.ID, fmt.Sprint(m.Version), string(day)}, ids...)
 	parts = append(parts, "windowed", strings.Join(windowed, ","), fmt.Sprint(m.LookbackDays))
+	parts = append(parts, "long", strings.Join(long, ","), "long_lookback_days", fmt.Sprint(m.LongLookbackDays))
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
 	return keys, hex.EncodeToString(sum[:]), nil
 }
