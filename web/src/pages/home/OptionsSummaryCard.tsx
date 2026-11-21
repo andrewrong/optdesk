@@ -3,6 +3,7 @@
 import { Chart } from '@/charts/Chart'
 import type { ChartPoint, ChartSpec } from '@/charts/spec'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/options_summary'
@@ -18,6 +19,10 @@ const TILE_KEYS = [
   'max_loss_usd',
 ] as const satisfies readonly (keyof Tiles)[]
 
+// The Structures page lists the structures that make up the count of the first tile; the address is the one of the
+// Structures link of TopNav.
+const STRUCTURES_HREF = '/options/structures'
+
 type Point = Payload['card']['premium_series_6m'][number]
 type Figure = Point['premium'] | Point['closed']
 type Tile = Tiles[(typeof TILE_KEYS)[number]]
@@ -27,7 +32,13 @@ function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
   return (
     <div className="space-y-1" data-tile={tileKey}>
       <div className="text-xs text-muted-foreground" data-tile-label>
-        {tile.label}
+        {tileKey === 'sold_count_month' ? (
+          <Button asChild variant="link" className="inline h-auto border-0 p-0 align-baseline text-xs font-normal">
+            <a href={STRUCTURES_HREF}>{tile.label}</a>
+          </Button>
+        ) : (
+          tile.label
+        )}
       </div>
       {figure.kind === 'gap' ? (
         <Badge variant="secondary" className="h-auto whitespace-normal text-left" data-tile-gap>
