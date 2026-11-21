@@ -71,19 +71,19 @@ Module: compute. Order: first. Files: `internal/compute/blockapi/api.go`, `inter
 
 ### 2 held-co-2-schema (interface)
 
-Module: contracts. Order: first. Files: the contracts files of Modules.
+Module: contracts. Order: first. Files: `contracts/schemas/page.held_family_page.v1.json`, `web/src/generated/held_family_page.v1.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/held_family_page_test.go`.
 
 ### 3 held-co-3-page
 
-Module: pages. Order: after 1, 2. Files: the pages files of Modules.
+Module: pages. Order: after 1, 2. Files: `internal/pages/household_page/held.go`, `internal/pages/household_page/held_test.go`, `internal/pages/household_page/testdata/held.golden.json`, `internal/pages/household_page/page.go`, `internal/pages/household_page/zh_texts.go`, `docs/contracts/pages.md`.
 
 ### 4 held-co-4-site
 
-Module: ot. Order: after 3. Files: the ot files of Modules.
+Module: ot. Order: after 3. Files: `cmd/ot/held_family_site.go`, `cmd/ot/held_family_site_test.go`, `cmd/ot/check_serve.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go`.
 
 ### 5 held-co-5-web
 
-Module: web. Order: after 2, 3. Files: the web files of Modules.
+Module: web. Order: after 2, 3. Files: `web/src/pages/heldfamily/HeldFamilyPage.tsx`, `web/src/types/held_family_page.ts`, `web/test/pages/heldfamily/**`, `web/src/shell/TopNav.tsx`.
 
 ## Checked by CI
 
