@@ -76,6 +76,19 @@ func TestEmptyEndDayMakesEveryFundAGap(t *testing.T) {
 	}
 }
 
+func TestRotationNoteSaysClick(t *testing.T) {
+	t.Parallel()
+	note, _ := obj(obj(build(t, realConfig(t, nil))["sectors"])["rotation_axes"])["note"].(string)
+	for _, want := range []string{
+		"click a fund's dot to draw its tail",
+		"tail points are 5, 10, 15 and 20 sessions before end_day",
+	} {
+		if !strings.Contains(note, want) {
+			t.Errorf("note %q lacks %q", note, want)
+		}
+	}
+}
+
 func TestAxesQuadrantsFixedText(t *testing.T) {
 	t.Parallel()
 	quadOf := func(m map[string]any) string {
