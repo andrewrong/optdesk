@@ -16,6 +16,8 @@ import (
 const (
 	// monthlyFreshnessDays is the freshness limit of a monthly series.
 	monthlyFreshnessDays = 45
+	// weeklyFreshnessDays is the freshness limit of a weekly series: published on the Wednesday after the week's Friday.
+	weeklyFreshnessDays = 10
 	// changeBack is the number of observations a daily change looks back.
 	changeBack = 5
 	// groupLookbackDays is how far before the page day a grouped series is read: a monthly series needs two points.
@@ -32,10 +34,11 @@ type Group struct {
 	Indicators []Indicator
 }
 
-// seriesSpec is how the producer prints a series: its unit, whether it is monthly, and its Chinese hint.
+// seriesSpec is how the producer prints a series: its unit, whether it is monthly or weekly, and its Chinese hint.
 type seriesSpec struct {
 	unit    string
 	monthly bool
+	weekly  bool
 	hint    string
 }
 
@@ -49,7 +52,7 @@ var seriesSpecs = map[string]seriesSpec{
 	"T10Y3M":          {unit: unitPercent, hint: hintT10Y3M},
 	"T10YIE":          {unit: unitPercent, hint: hintT10YIE},
 	"BAMLH0A0HYM2":    {unit: unitPercent, hint: hintHySpread},
-	"NFCI":            {unit: unitPercent, hint: hintNFCI},
+	"NFCI":            {unit: unitPercent, weekly: true, hint: hintNFCI},
 	"DTWEXBGS":        {unit: unitIndex, hint: hintDTWEXBGS},
 	"DEXJPUS":         {unit: unitJPY, hint: hintDEXJPUS},
 	"IRLTLT01JPM156N": {unit: unitPercent, monthly: true, hint: hintIRLTJP},
@@ -146,6 +149,7 @@ type groupDay struct {
 	id      string
 	day     time.Time
 	monthly bool
+	weekly  bool
 }
 
 // buildGroups reads the series of every group and returns their rows in order, and the day of each series that has a
@@ -161,7 +165,8 @@ func buildGroups(ctx context.Context, r store.SeriesReader, groups []Group, d ti
 			}
 			rows = append(rows, groupRow(g.Key, ind, obs, d))
 			if len(obs) > 0 {
-				days = append(days, groupDay{ind.SeriesID, obs[len(obs)-1].day, specOf(ind.SeriesID).monthly})
+				sp := specOf(ind.SeriesID)
+				days = append(days, groupDay{ind.SeriesID, obs[len(obs)-1].day, sp.monthly, sp.weekly})
 			}
 		}
 	}
@@ -191,6 +196,8 @@ func groupRow(key string, ind Indicator, obs []obsPoint, d time.Time) indicatorR
 	limit := freshnessLimitDays
 	if sp.monthly {
 		limit = monthlyFreshnessDays
+	} else if sp.weekly {
+		limit = weeklyFreshnessDays
 	}
 	if d.Sub(last.day) > time.Duration(limit)*24*time.Hour {
 		out.Status, out.Label = "late", "Late"
