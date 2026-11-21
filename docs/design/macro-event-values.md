@@ -24,6 +24,8 @@ contracts (schema + generated type), sources (units), store (migration), jobs (f
 
 ## Interface
 
+Landed in #3581
+
 One shared item changes: `Event` in `page.macro_page.v2` gains two optional members, no version bump (an instance without them stays valid): `actual` and `previous_figure`, each a `Figure` object `{value: number, unit: string, text: string}` or a Gap. `value` and `unit` (`percent`, `thousands`, `millions`, `usd_trillions`, `percent_range` with `value` the upper bound) are the data; `text` is the display string Go formats; the web prints `text` and computes nothing. `previous` stays the string or Gap it is, equal to the `text` of `previous_figure`, so a later consensus or surprise column compares numbers with no schema break. No Go interface file changes.
 
 ## Decisions
