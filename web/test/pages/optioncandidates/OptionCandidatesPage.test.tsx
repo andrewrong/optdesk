@@ -218,4 +218,19 @@ describe('OptionCandidatesPage tiers', () => {
     expect(page.querySelector('[data-subtitle]')).toBeNull()
     expect(page.querySelector('h1')!.textContent).toBe(ok.title)
   })
+
+  it('prints the source counts line from source_counts, with none when present', async () => {
+    const page = await show({ ...ok, source_counts: { open: 3, eod_fallback: 2, none: 1 } } as never)
+    expect(page.querySelector('[data-source-counts]')!.textContent).toBe('Open chain: 3 names, last close: 2 names, none: 1')
+  })
+
+  it('prints the source counts line without none when source_counts leaves it out', async () => {
+    const page = await show({ ...ok, source_counts: { open: 3, eod_fallback: 2 } } as never)
+    expect(page.querySelector('[data-source-counts]')!.textContent).toBe('Open chain: 3 names, last close: 2 names')
+  })
+
+  it('prints no source counts line when the payload has no source_counts', async () => {
+    const page = await show({ ...ok, source_counts: undefined } as never)
+    expect(page.querySelector('[data-source-counts]')).toBeNull()
+  })
 })

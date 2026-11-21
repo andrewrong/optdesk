@@ -87,6 +87,12 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
               {payload.subtitle}
             </p>
           ) : null}
+          {payload.source_counts ? (
+            <p data-source-counts className="text-muted-foreground">
+              Open chain: {payload.source_counts.open} names, last close: {payload.source_counts.eod_fallback} names
+              {payload.source_counts.none === undefined ? null : `, none: ${payload.source_counts.none}`}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {payload.chain_day ? (
               <Badge data-chain-day>
