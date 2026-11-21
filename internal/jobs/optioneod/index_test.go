@@ -48,6 +48,8 @@ func newIndexRig(t *testing.T, closes IndexCloseReader) *indexRig {
 		t.Fatal(err)
 	}
 	r.job = j.(*job)
+	// The index slot is the calendar close minus 15 minutes: a close at 11:15 New York keeps the slot of these tests at 11:00.
+	r.job.calendar = closeCalendar(time.Date(2026, 11, 13, 11, 15, 0, 0, loc))
 	return r
 }
 

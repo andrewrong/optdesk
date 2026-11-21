@@ -108,9 +108,8 @@ func TestSlotInstantIsNotEarly(t *testing.T) {
 			r.job.clk = clockwork.NewFakeClockAt(at)
 			return r.run(testDay, testKey)
 		}},
-		"option_eod_index": {slot: time.Date(2026, 11, 13, 15, 45, 0, 0, ny), run: func(t *testing.T, at time.Time) contracts.JobResult {
+		"option_eod_index": {slot: time.Date(2026, 11, 13, 11, 0, 0, 0, ny), run: func(t *testing.T, at time.Time) contracts.JobResult {
 			r := newIndexRig(t, nil)
-			r.job.calendar = closeCalendar(time.Date(2026, 11, 13, 21, 0, 0, 0, time.UTC)) // the index slot follows the calendar close
 			r.job.clk = clockwork.NewFakeClockAt(at)
 			return r.run("SPX")
 		}},
