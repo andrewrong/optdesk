@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -188,15 +190,61 @@ func errClass(err error) string {
 	return "other"
 }
 
-// logFailure logs the alias, the step, the error kind and the error class of a failed capture step. It
-// never logs the error text, which can carry an account id.
+// grpcCode reads the gRPC code word and the broker error number from the text of a TypedError of the
+// shape grpcbroker.wrapErr makes: "broker: <op>: <Code>" and, for a pyside UNKNOWN answer,
+// ": broker error <digits>: <text>". The code is read from the text because wrapErr does not keep the
+// original error. ok is false for any other shape; ibkr is "" unless 1 to 5 digits follow "broker error ".
+// Only the code word and the digits are returned, never the free text.
+func grpcCode(err error) (code, ibkr string, ok bool) {
+	var te contracts.TypedError
+	if !errors.As(err, &te) {
+		return "", "", false
+	}
+	rest, found := strings.CutPrefix(err.Error(), "broker: ")
+	if !found {
+		return "", "", false
+	}
+	op, rest, found := strings.Cut(rest, ": ")
+	if !found || op == "" || strings.ContainsAny(op, " :") {
+		return "", "", false
+	}
+	for c := codes.OK; c <= codes.Unauthenticated; c++ {
+		name := c.String()
+		after, has := strings.CutPrefix(rest, name)
+		if !has || (after != "" && !strings.HasPrefix(after, ": ")) {
+			continue
+		}
+		if num, has := strings.CutPrefix(after, ": broker error "); has {
+			n := 0
+			for n < len(num) && num[n] >= '0' && num[n] <= '9' {
+				n++
+			}
+			if n >= 1 && n <= 5 {
+				ibkr = num[:n]
+			}
+		}
+		return name, ibkr, true
+	}
+	return "", "", false
+}
+
+// logFailure logs the alias, the step, the error kind and the error class of a failed capture step, and
+// for a broker TypedError the gRPC code word (grpc) and the broker error number (ibkr). It never logs
+// the error text, which can carry an account id.
 func (j *job) logFailure(alias, step string, err error) {
 	kind := "unknown"
 	var k interface{ Kind() contracts.ErrorKind }
 	if errors.As(err, &k) {
 		kind = string(k.Kind())
 	}
-	j.log.Warn("capture failed", "alias", alias, "step", step, "kind", kind, "class", errClass(err))
+	attrs := []any{"alias", alias, "step", step, "kind", kind, "class", errClass(err)}
+	if code, ibkr, ok := grpcCode(err); ok {
+		attrs = append(attrs, "grpc", code)
+		if ibkr != "" {
+			attrs = append(attrs, "ibkr", ibkr)
+		}
+	}
+	j.log.Warn("capture failed", attrs...)
 }
 
 func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day, key string, acc broker.Account) (int, error) {
