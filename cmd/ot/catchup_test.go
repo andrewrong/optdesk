@@ -335,6 +335,15 @@ func TestCatchUpPassSkipsTodayBeforeCloseSlot(t *testing.T) {
 				if has := slices.Contains(got, today); has != c.fired {
 					t.Errorf("%s: today queued=%v, want %v (%v)", j, has, c.fired, got)
 				}
+				if j == "bars_refresh" { // a window job queues its newest gap day only: the last close before the slot, today after it
+					want := []string{"2026-11-05"}
+					if c.fired {
+						want = []string{today}
+					}
+					if !slices.Equal(got, want) {
+						t.Errorf("bars_refresh: queued %v, want %v", got, want)
+					}
+				}
 				past := slices.DeleteFunc(slices.Clone(got), func(d string) bool { return d == today })
 				if prev, ok := pastBefore[j]; ok && !slices.Contains(windowEndingJobs, j) && !slices.Equal(prev, past) {
 					t.Errorf("%s: days before today %v, want %v as before the slot", j, past, prev)
