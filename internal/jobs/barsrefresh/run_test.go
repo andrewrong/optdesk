@@ -514,3 +514,81 @@ func TestConIDKeptBetweenRuns(t *testing.T) {
 		})
 	}
 }
+
+// buildAt builds a job with no fallback and the fake clock atClock.
+func buildAt(t *testing.T, h *fakeHistory, st *memBars, entries ...jobs.WatchEntry) contracts.Job {
+	t.Helper()
+	j, err := New(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, entries, atClock{closed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.(*job).m.AdjustedCadenceDays = 0
+	return j
+}
+
+func TestPullRetriesTimeoutThenStores(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{}
+	h.answer = func(q broker.BarQuery) ([]broker.Bar, error) {
+		if countQueries(h, q.Contract.ConID) == 1 {
+			return nil, errDeadline
+		}
+		return []broker.Bar{mkbar("2026-11-09", "20.0000")}, nil
+	}
+	st := &memBars{}
+	res := buildAt(t, h, st, entry("cik:1", "AAA", 101)).Run(context.Background(), runDay, keysOf("cik:1"))
+	if res.Err != nil || len(st.rows) != 1 || countQueries(h, 101) != 2 {
+		t.Fatalf("result %+v rows %+v calls %d", res, st.rows, countQueries(h, 101))
+	}
+}
+
+func TestPullGivesUpAfterAttempts(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
+		if q.Contract.ConID == 101 {
+			return nil, errDeadline
+		}
+		return []broker.Bar{mkbar("2026-11-09", "20.0000")}, nil
+	}}
+	st := &memBars{}
+	res := buildAt(t, h, st, entry("cik:1", "AAA", 101), entry("cik:2", "BBB", 102)).
+		Run(context.Background(), runDay, keysOf("cik:1", "cik:2"))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("err %v", res.Err)
+	}
+	if countQueries(h, 101) != historyAttempts || countQueries(h, 102) != 1 || len(st.rows) != 1 || st.rows[0].InstrumentID != 102 {
+		t.Fatalf("calls %d/%d rows %+v", countQueries(h, 101), countQueries(h, 102), st.rows)
+	}
+}
+
+func TestPullDoesNotRetryPermanent(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		err  error
+		kind contracts.ErrorKind
+	}{
+		"permanent": {newErr(contracts.Permanent, "no permission"), contracts.Permanent},
+		"untyped":   {errors.New("boom"), contracts.Retryable},
+	}
+	for name, c := range cases {
+		h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) { return nil, c.err }}
+		res := buildAt(t, h, &memBars{}, entry("cik:1", "AAA", 101)).Run(context.Background(), runDay, keysOf("cik:1"))
+		if res.Err == nil || res.Err.Kind() != c.kind || len(h.queries) != 1 {
+			t.Fatalf("%s: err %v calls %d", name, res.Err, len(h.queries))
+		}
+	}
+}
+
+func TestPullMakesNoCallAfterContextDone(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) {
+		cancel() // the context ends during the first call, which times out
+		return nil, errDeadline
+	}}
+	res := buildAt(t, h, &memBars{}, entry("cik:1", "AAA", 101)).Run(ctx, runDay, keysOf("cik:1"))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || len(h.queries) != 1 {
+		t.Fatalf("err %v calls %d", res.Err, len(h.queries))
+	}
+}
