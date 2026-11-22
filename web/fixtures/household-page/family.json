@@ -444,10 +444,9 @@
         },
         "name": "股票跌 10%",
         "share": {
-          "text": "−5%",
-          "tone": "down",
+          "text": "5%",
           "unit": "share_percent",
-          "value": -5.0
+          "value": 5.0
         }
       },
       {
@@ -460,10 +459,9 @@
         },
         "name": "股票跌 20%",
         "share": {
-          "text": "−10%",
-          "tone": "down",
+          "text": "10%",
           "unit": "share_percent",
-          "value": -10.0
+          "value": 10.0
         }
       },
       {
@@ -476,10 +474,9 @@
         },
         "name": "股票跌 30%",
         "share": {
-          "text": "−15%",
-          "tone": "down",
+          "text": "15%",
           "unit": "share_percent",
-          "value": -15.0
+          "value": 15.0
         }
       }
     ],
