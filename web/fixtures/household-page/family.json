@@ -113,14 +113,41 @@
   },
   "build_id": "build-demo-0001",
   "cash_after": {
-    "gap": {
-      "reason": "not_built",
-      "text": "家庭合计暂不含此项，请看单个账户"
-    },
-    "meaning": "Cash left in each account if assigned.",
-    "rows": [],
-    "title": "Cash after assignment",
-    "totals": []
+    "meaning": "每个账户的现金只用来付自己的看跌期权；全家合计仅供参考，不是共用的钱。",
+    "result": "有 1 个账户现金不够",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "+$1,000.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 1000.0
+        },
+        "name": "账户（main）"
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "−$15,000.00",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -15000.0
+        },
+        "name": "账户（daughter）",
+        "note": "缺口：现金不够"
+      }
+    ],
+    "title": "家庭风险：指派后现金",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "−$14,000.00",
+        "tone": "down",
+        "unit": "usd_signed",
+        "value": -14000.0
+      }
+    ]
   },
   "composition": {
     "gap": {
@@ -138,19 +165,54 @@
     "totals": []
   },
   "concentration": {
-    "gap": {
-      "reason": "not_built",
-      "text": "家庭合计暂不含此项，请看单个账户"
-    },
     "heads": [
-      "Company",
-      "Share of household net value",
-      "Market value"
+      "公司",
+      "占全家净值比例",
+      "市值"
     ],
-    "meaning": "Share of net value of the largest items; each is computed on its own, the total can exceed 100%. Flex account (spouse) has data day 10-29 (Flex statement), the rest use this page's data day.",
-    "rows": [],
-    "title": "Concentration",
-    "totals": []
+    "meaning": "最大几项占净值的比例，各自独立计算，合计可能超过 100%。",
+    "result": "最大单一敞口 AAA 30%。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$30,000.00",
+          "unit": "usd",
+          "value": 30000.0
+        },
+        "name": "AAA",
+        "scope": "household",
+        "share": {
+          "text": "30%",
+          "unit": "share_percent",
+          "value": 30.0
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$45,000.00",
+          "unit": "usd",
+          "value": 45000.0
+        },
+        "name": "BBB",
+        "scope": "household",
+        "share": {
+          "text": "45%",
+          "unit": "share_percent",
+          "value": 45.0
+        }
+      }
+    ],
+    "title": "家庭风险：集中度",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$75,000.00",
+        "unit": "usd",
+        "value": 75000.0
+      }
+    ]
   },
   "data_times": [
     {
@@ -256,22 +318,57 @@
     "现金分放在各账户，只担保本账户的卖出看跌；合计现金不是可共用的保证金"
   ],
   "obligations": {
-    "approx_usd_label": "Total ≈USD (for reference only)",
     "columns": [
-      "Name",
-      "Expiry",
-      "Open price",
-      "Amount"
+      "名称",
+      "到期",
+      "开仓价",
+      "金额"
     ],
-    "gap": {
-      "reason": "not_built",
-      "text": "家庭合计暂不含此项，请看单个账户"
-    },
-    "meaning": "Obligations due within 30 days that need cash.",
-    "rows": [],
-    "title": "Obligations due in the next 30 days",
-    "total_labels": [],
-    "totals": []
+    "meaning": "若全部卖出的看跌期权被指派，各账户 30 天内需要的现金（按行权额计，不含权利金）。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$30,000.00",
+          "unit": "usd",
+          "value": 30000.0
+        },
+        "due": "2026-11-21",
+        "name": "AAA 看跌 $150 · 2 张",
+        "note": "账户（main），到期 2026-11-21，还有 21 天；权利金 $400.00 不扣减",
+        "open_price": {
+          "reason": "missing_input",
+          "text": "无开仓价"
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$45,000.00",
+          "unit": "usd",
+          "value": 45000.0
+        },
+        "due": "2026-11-28",
+        "name": "BBB 看跌 $90 · 5 张",
+        "note": "账户（daughter），到期 2026-11-28，还有 28 天；权利金 $650.00 不扣减",
+        "open_price": {
+          "reason": "missing_input",
+          "text": "无开仓价"
+        }
+      }
+    ],
+    "title": "家庭风险：30 天内的指派义务",
+    "total_labels": [
+      "合计 USD"
+    ],
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$75,000.00",
+        "unit": "usd",
+        "value": 75000.0
+      }
+    ]
   },
   "overview": {
     "meaning": "家庭合计净值，只含已计入的账户。",
@@ -330,14 +427,72 @@
     "text": "Data day 2026-10-31, Data time 2026-10-31 09:00 (UTC+8)"
   },
   "stress": {
-    "gap": {
-      "reason": "not_built",
-      "text": "家庭合计暂不含此项，请看单个账户"
-    },
-    "meaning": "Estimated change under a few what-if cases, for reference only.",
-    "rows": [],
-    "title": "Stress",
-    "totals": []
+    "heads": [
+      "情景",
+      "变化",
+      "占全家净值"
+    ],
+    "meaning": "几种假设下的估计变化，仅供参考。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "−$5,000.00",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -5000.0
+        },
+        "name": "股票跌 10%",
+        "share": {
+          "text": "−5%",
+          "tone": "down",
+          "unit": "share_percent",
+          "value": -5.0
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "−$10,000.00",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -10000.0
+        },
+        "name": "股票跌 20%",
+        "share": {
+          "text": "−10%",
+          "tone": "down",
+          "unit": "share_percent",
+          "value": -10.0
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "−$15,000.00",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -15000.0
+        },
+        "name": "股票跌 30%",
+        "share": {
+          "text": "−15%",
+          "tone": "down",
+          "unit": "share_percent",
+          "value": -15.0
+        }
+      }
+    ],
+    "title": "家庭风险：压力测试",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "−$30,000.00",
+        "tone": "down",
+        "unit": "usd_signed",
+        "value": -30000.0
+      }
+    ]
   },
   "title": "家庭合计",
   "trend": {
