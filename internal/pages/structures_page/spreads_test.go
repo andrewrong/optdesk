@@ -170,26 +170,44 @@ func TestSpreadsGroupsAndCounts(t *testing.T) {
 	}
 }
 
-func TestSpreadsFiguresCopied(t *testing.T) {
-	t.Parallel()
+func spreadsBySymbol(t *testing.T) map[string]spreadBlock {
+	t.Helper()
 	m := spreadsModelOf(t, spreadsRig(spreadsResult()).buildSpreadsPage(t, "main"))
 	by := map[string]spreadBlock{}
 	for _, b := range m.Groups[0].Structures {
 		by[b.Symbol] = b
 	}
-	aaa := by["AAA"]
+	return by
+}
+
+func TestSpreadsFiguresCopiedPutSpread(t *testing.T) {
+	t.Parallel()
+	aaa := spreadsBySymbol(t)["AAA"]
 	if aaa.NetCredit.Text != "+260.00"+spreadsCreditUnit || aaa.MaxLoss.Text != "-740.00" || aaa.MaxGain.Text != "+260.00" ||
 		aaa.BreakEven.Text != "93.70" || aaa.ExpiryText != spreadsExpiryHead+"2026-12-18"+spreadsDaysOpen+"28"+spreadsDaysClose {
 		t.Errorf("put spread %+v", aaa)
 	}
-	if bbb := by["BBB"]; bbb.BreakEven.Text != "86.90"+spreadsBreakJoin+"113.10" || len(bbb.BreakEven.Values) != 2 {
+}
+
+func TestSpreadsFiguresCopiedIronCondor(t *testing.T) {
+	t.Parallel()
+	if bbb := spreadsBySymbol(t)["BBB"]; bbb.BreakEven.Text != "86.90"+spreadsBreakJoin+"113.10" || len(bbb.BreakEven.Values) != 2 {
 		t.Errorf("iron condor break-even %+v", bbb.BreakEven)
 	}
-	ccc := by["CCC"]
+}
+
+func TestSpreadsFiguresCopiedCoveredCall(t *testing.T) {
+	t.Parallel()
+	ccc := spreadsBySymbol(t)["CCC"]
 	if len(ccc.Legs) != 1 || ccc.MaxLoss.Kind != "gap" || ccc.MaxLoss.Text != gapTextCallMaxLoss ||
 		ccc.BreakEven.Kind != "gap" || ccc.BreakEven.Text != gapTextCallBreak || ccc.MaxGain.Text != "+1,420.00" {
 		t.Errorf("covered call %+v", ccc)
 	}
+}
+
+func TestSpreadsFiguresCopiedGaps(t *testing.T) {
+	t.Parallel()
+	by := spreadsBySymbol(t)
 	if jjj := by["JJJ"]; jjj.NetCredit.Reason != "unsupported_currency" || jjj.NetCredit.Text != gapTextUnsupported ||
 		jjj.BreakEven.Reason != "unsupported_currency" || jjj.MaxLoss.Reason != "unsupported_currency" {
 		t.Errorf("yen %+v", jjj)

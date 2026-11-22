@@ -63,80 +63,79 @@ func spreadLegsReaders(asked *[]string) siteReaders {
 	}
 }
 
-func TestSpreadLegsSite(t *testing.T) {
+func TestSpreadLegsSitePageAndRoute(t *testing.T) {
 	t.Parallel()
-	t.Run("ot page and the route give a valid payload", func(t *testing.T) {
-		t.Parallel()
-		a, _ := testApp(t, "OT_UNUSED=1\n")
-		page, closeFn, err := pageNamed(a, spreadLegsName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer closeFn()
-		got, err := page.Build(t.Context(), nil, contracts.Day("2026-11-05"), householdClock.Now().UTC())
-		if err != nil {
-			t.Fatal(err)
-		}
-		validateSpreadLegs(t, got)
-		if page.Meta.Name != "spread_legs_page" || page.Meta.Schema != "page.spread_legs_page.v1" {
-			t.Fatalf("meta %+v", page.Meta)
-		}
-		var asked []string
-		h := siteHandler(a, householdClock, "2026-11-05", spreadLegsReaders(&asked), echoHandler, http.NotFoundHandler())
-		rec := companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute)
-		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"spread_legs_page"`) {
-			t.Fatalf("%d %s", rec.Code, rec.Body)
-		}
-		m := validateSpreadLegs(t, rec.Body.Bytes())
-		if m["run_status"] != "ok" || len(asked) != 1 || asked[0] != "main" {
-			t.Fatalf("status %v asked %v", m["run_status"], asked)
-		}
-	})
-	t.Run("the account query selects the alias and an unknown alias gives the gap page", func(t *testing.T) {
-		t.Parallel()
-		a, _ := testApp(t, "")
-		writeBook(t, a, "acct-a", "acct-b")
-		var asked []string
-		rd := spreadLegsReaders(&asked)
-		rd.aliases = siteAliasList(a)
-		h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
-		rec := companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute+"?account=acct-b")
-		if rec.Code != 200 {
-			t.Fatalf("%d %s", rec.Code, rec.Body)
-		}
-		m := validateSpreadLegs(t, rec.Body.Bytes())
-		if m["scope"] != "acct-b" || len(asked) != 1 || asked[0] != "acct-b" {
-			t.Fatalf("scope %v asked %v", m["scope"], asked)
-		}
-		asked = nil
-		rec = companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute+"?account=nobody")
-		m = validateSpreadLegs(t, rec.Body.Bytes())
-		if rec.Code != 200 || m["run_status"] != "failed" || len(asked) != 0 {
-			t.Fatalf("unknown alias: %d %v asked %v", rec.Code, m["run_status"], asked)
-		}
-	})
-	t.Run("demo profile gives fixed rows with no read", func(t *testing.T) {
-		t.Parallel()
-		a, _ := testApp(t, "OT_UNUSED=1\n")
-		a.profile.Name = "demo"
-		page, closeFn, err := pageNamed(a, spreadLegsName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer closeFn()
-		got, err := page.Build(t.Context(), nil, contracts.Day("2026-11-05"), householdClock.Now().UTC())
-		if err != nil {
-			t.Fatal(err)
-		}
-		validateSpreadLegs(t, got)
-		if !strings.Contains(string(got), "DEMOA") || strings.Contains(string(got), `"no_reader"`) {
-			t.Fatalf("demo page %s", got)
-		}
-		h := siteHandler(a, householdClock, "2026-11-05", siteReaders{}, echoHandler, http.NotFoundHandler())
-		rec := companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute)
-		if rec.Code != 200 || !strings.Contains(rec.Body.String(), "DEMOA") {
-			t.Fatalf("%d %s", rec.Code, rec.Body)
-		}
-		validateSpreadLegs(t, rec.Body.Bytes())
-	})
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	page, closeFn, err := pageNamed(a, spreadLegsName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	got, err := page.Build(t.Context(), nil, contracts.Day("2026-11-05"), householdClock.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSpreadLegs(t, got)
+	if page.Meta.Name != "spread_legs_page" || page.Meta.Schema != "page.spread_legs_page.v1" {
+		t.Fatalf("meta %+v", page.Meta)
+	}
+	var asked []string
+	h := siteHandler(a, householdClock, "2026-11-05", spreadLegsReaders(&asked), echoHandler, http.NotFoundHandler())
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"spread_legs_page"`) {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	m := validateSpreadLegs(t, rec.Body.Bytes())
+	if m["run_status"] != "ok" || len(asked) != 1 || asked[0] != "main" {
+		t.Fatalf("status %v asked %v", m["run_status"], asked)
+	}
+}
+
+func TestSpreadLegsSiteAccountQuery(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	writeBook(t, a, "acct-a", "acct-b")
+	var asked []string
+	rd := spreadLegsReaders(&asked)
+	rd.aliases = siteAliasList(a)
+	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute+"?account=acct-b")
+	if rec.Code != 200 {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	m := validateSpreadLegs(t, rec.Body.Bytes())
+	if m["scope"] != "acct-b" || len(asked) != 1 || asked[0] != "acct-b" {
+		t.Fatalf("scope %v asked %v", m["scope"], asked)
+	}
+	asked = nil
+	rec = companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute+"?account=nobody")
+	m = validateSpreadLegs(t, rec.Body.Bytes())
+	if rec.Code != 200 || m["run_status"] != "failed" || len(asked) != 0 {
+		t.Fatalf("unknown alias: %d %v asked %v", rec.Code, m["run_status"], asked)
+	}
+}
+
+func TestSpreadLegsSiteDemo(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	a.profile.Name = "demo"
+	page, closeFn, err := pageNamed(a, spreadLegsName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	got, err := page.Build(t.Context(), nil, contracts.Day("2026-11-05"), householdClock.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSpreadLegs(t, got)
+	if !strings.Contains(string(got), "DEMOA") || strings.Contains(string(got), `"no_reader"`) {
+		t.Fatalf("demo page %s", got)
+	}
+	h := siteHandler(a, householdClock, "2026-11-05", siteReaders{}, echoHandler, http.NotFoundHandler())
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteSpreadLegsRoute)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "DEMOA") {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	validateSpreadLegs(t, rec.Body.Bytes())
 }
