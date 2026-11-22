@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/spreadlegsapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -30,6 +31,7 @@ type Config struct {
 	Dividends      dividend.Reader            // nil gives the Chinese gap no_reader in the Ex-dividend cell of the list
 	Ledgers        compute.NewOptionLedgerFunc
 	Structures     compute.NewOptionStructuresFunc
+	Spreads        spreadlegsapi.NewSpreadFunc // nil gives the gap no_reader on the spread legs page; the other pages ignore it
 }
 
 // NewListPage is the structures_list page of alias.
@@ -48,6 +50,17 @@ func NewDetailPage(c Config, alias, structureID string) pages.Page {
 		Meta: pages.Meta{Name: "structure_detail", Schema: "page.structure_detail.v3"},
 		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 			return buildDetail(ctx, c, alias, structureID, day, at)
+		},
+	}
+}
+
+// NewSpreadsPage is the spread_legs_page of alias: one block per spread with its legs, net credit, max loss and
+// break-evens. An alias not in Aliases and a nil Spreads give the gap page, not an error.
+func NewSpreadsPage(c Config, alias string) pages.Page {
+	return pages.Page{
+		Meta: pages.Meta{Name: "spread_legs_page", Schema: "page.spread_legs_page.v1"},
+		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+			return buildSpreads(ctx, c, alias, day, at)
 		},
 	}
 }
