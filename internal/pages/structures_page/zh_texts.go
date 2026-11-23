@@ -56,3 +56,73 @@ const (
 	glossReverseIronCondor = "同一到期日，买入内侧认沽和认购、卖出外侧认沽和认购，共四腿"
 	glossCollar            = "持有正股，买入认沽并卖出认购"
 )
+
+// The texts of the spread legs page (docs/design/spread-legs.md, Decision 10).
+const (
+	spreadsTitle        = "价差腿 Spread legs"
+	spreadsGroupSpreads = "价差组合 Spreads"
+	spreadsGroupOther   = "未识别组合 Unidentified"
+	spreadsStaleHead    = "数据日 "
+	spreadsNoReader     = "价差腿的账本、交易日读取器或计算器未连接（no_reader）"
+	spreadsUnknownAcct  = "未知账户"
+	spreadsEmptyHead    = "账户 "
+	spreadsEmptyTail    = " 当前没有价差组合"
+	spreadsSentenceHead = "共 "
+	spreadsSentenceMid  = " 个组合，另有 "
+	spreadsSentenceTail = " 个单腿持仓不在此页（见“持仓结构”页）；按到期天数由近到远排列。"
+	spreadsNote         = "净收入 = 各腿（-数量 x 开仓价 x 合约乘数）之和，只含开仓价，不含手续费和平仓。"
+	spreadsLegHeads     = "腿列：数量 Qty（负数为卖出）、行权价 Strike、开仓价 Open price（成交时的价格）。"
+	spreadsExpiryHead   = "到期 "
+	spreadsDaysOpen     = "（"
+	spreadsDaysClose    = " 天）"
+	spreadsCreditUnit   = " 美元"
+	spreadsBreakJoin    = " 和 "
+	spreadsNoOpenPrice  = "无开仓价"
+	spreadsUnnamedLine  = "匹配器未能命名这组腿"
+	spreadsReasonOpen   = "（"
+	spreadsReasonClose  = "）"
+)
+
+// The gap texts of a figure cell, by reason.
+const (
+	gapTextMissingInput = "有一条腿缺开仓价"
+	gapTextUnsupported  = "非美元，此页不算"
+	gapTextNoRule       = "此结构没有这项规则"
+	gapTextNoData       = "暂无数据"
+	gapTextCallMaxLoss  = "无上限规则（含股票，此页不算）"
+	gapTextCallBreak    = "没有盈亏平衡价（含股票，此页不算）"
+)
+
+// The sides of a leg.
+const (
+	sideShortPut  = "卖出认沽 Short put"
+	sideLongPut   = "买入认沽 Long put"
+	sideShortCall = "卖出认购 Short call"
+	sideLongCall  = "买入认购 Long call"
+	sideOther     = "腿 Leg"
+)
+
+// The kind names with their gloss.
+const (
+	kindPutSpread         = "认沽价差 Put spread"
+	glossPutSpread        = "卖出价格较高的认沽、买入价格较低的认沽"
+	kindCallSpread        = "认购价差 Call spread"
+	glossCallSpread       = "卖出价格较低的认购、买入价格较高的认购"
+	kindPutDebitSpread    = "认沽借方价差 Put debit spread"
+	kindCallDebitSpread   = "认购借方价差 Call debit spread"
+	kindCalendarSpread    = "日历价差 Calendar spread"
+	kindDiagonalSpread    = "对角价差 Diagonal spread"
+	kindLongStraddle      = "买入跨式 Long straddle"
+	kindShortStraddle     = "卖出跨式 Short straddle"
+	kindLongStrangle      = "买入宽跨式 Long strangle"
+	kindShortStrangle     = "卖出宽跨式 Short strangle"
+	kindIronCondor        = "铁鹰 Iron condor"
+	kindReverseIronCondor = "反向铁鹰 Reverse iron condor"
+	kindCollar            = "领口 Collar"
+	kindCoveredCall       = "备兑认购 Covered call"
+	glossCoveredCall      = "持有正股、卖出认购"
+	kindOther             = "未识别组合 Unidentified"
+	glossOther            = "匹配器未能命名的一组期权腿"
+	kindUnknown           = "其他结构"
+	glossUnknown          = "此类型没有说明"
+)
