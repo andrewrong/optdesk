@@ -113,39 +113,39 @@
   },
   "build_id": "build-demo-0001",
   "cash_after": {
-    "meaning": "每个账户的现金只用来付自己的看跌期权；全家合计仅供参考，不是共用的钱。",
+    "meaning": "各账户现金减去本账户全部卖出看跌被指派所需现金，负数是缺口。现金分放在各账户，不能互相担保。",
     "result": "有 1 个账户现金不够",
     "rows": [
       {
         "amount": {
           "currency": "USD",
-          "text": "+$1,000.00",
+          "text": "+$4,000.00",
           "tone": "up",
           "unit": "usd_signed",
-          "value": 1000.0
+          "value": 4000.0
         },
-        "name": "账户（main）"
+        "name": "账户（main）",
+        "note": "现金 $22,000.00 − 需要 $18,000.00"
       },
       {
         "amount": {
           "currency": "USD",
-          "text": "−$15,000.00",
+          "text": "−$4,000.00",
           "tone": "down",
           "unit": "usd_signed",
-          "value": -15000.0
+          "value": -4000.0
         },
         "name": "账户（daughter）",
         "note": "缺口：现金不够"
       }
     ],
-    "title": "家庭风险：指派后现金",
+    "title": "家庭风险 · 指派后现金",
     "totals": [
       {
         "currency": "USD",
-        "text": "−$14,000.00",
-        "tone": "down",
-        "unit": "usd_signed",
-        "value": -14000.0
+        "text": "$0.00",
+        "unit": "usd",
+        "value": 0.0
       }
     ]
   },
@@ -170,47 +170,49 @@
       "占全家净值比例",
       "市值"
     ],
-    "meaning": "最大几项占净值的比例，各自独立计算，合计可能超过 100%。",
-    "result": "最大单一敞口 AAA 30%。",
+    "meaning": "若全部被指派，每家公司占全家净值几成：股票市值 + 被指派要买入的金额（行权价计）。注：现金结算的指数期权不会交割股票，这里仍按行权价全额计入，数字偏高。",
+    "result": "最大单一敞口 AAA 14.4%。",
     "rows": [
       {
         "amount": {
           "currency": "USD",
-          "text": "$30,000.00",
+          "text": "$48,900.00",
           "unit": "usd",
-          "value": 30000.0
+          "value": 48900.0
         },
         "name": "AAA",
+        "note": "股票 $30,900.00 + 指派 $18,000.00",
         "scope": "household",
         "share": {
-          "text": "30%",
+          "text": "14.4%",
           "unit": "share_percent",
-          "value": 30.0
+          "value": 14.4
         }
       },
       {
         "amount": {
           "currency": "USD",
-          "text": "$45,000.00",
+          "text": "$10,000.00",
           "unit": "usd",
-          "value": 45000.0
+          "value": 10000.0
         },
         "name": "BBB",
+        "note": "股票 $0.00 + 指派 $10,000.00",
         "scope": "household",
         "share": {
-          "text": "45%",
+          "text": "2.9%",
           "unit": "share_percent",
-          "value": 45.0
+          "value": 2.9
         }
       }
     ],
-    "title": "家庭风险：集中度",
+    "title": "家庭风险 · 集中度",
     "totals": [
       {
         "currency": "USD",
-        "text": "$75,000.00",
+        "text": "$58,900.00",
         "unit": "usd",
-        "value": 75000.0
+        "value": 58900.0
       }
     ]
   },
@@ -318,55 +320,39 @@
     "现金分放在各账户，只担保本账户的卖出看跌；合计现金不是可共用的保证金"
   ],
   "obligations": {
-    "columns": [
-      "名称",
-      "到期",
-      "开仓价",
-      "金额"
-    ],
-    "meaning": "若全部卖出的看跌期权被指派，各账户 30 天内需要的现金（按行权额计，不含权利金）。",
+    "meaning": "每张未平仓卖出看跌一旦被指派，要付多少现金买入股票：行权价 x 每张股数 x 张数，按公司合并，美元。",
     "rows": [
       {
         "amount": {
           "currency": "USD",
-          "text": "$30,000.00",
+          "text": "$18,000.00",
           "unit": "usd",
-          "value": 30000.0
+          "value": 18000.0
         },
-        "due": "2026-11-21",
-        "name": "AAA 看跌 $150 · 2 张",
-        "note": "账户（main），到期 2026-11-21，还有 21 天；权利金 $400.00 不扣减",
-        "open_price": {
-          "reason": "missing_input",
-          "text": "无开仓价"
-        }
+        "name": "AAA 卖出看跌",
+        "note": "账户（main）、账户（daughter）；权利金 $740.00，不扣减"
       },
       {
         "amount": {
           "currency": "USD",
-          "text": "$45,000.00",
+          "text": "$10,000.00",
           "unit": "usd",
-          "value": 45000.0
+          "value": 10000.0
         },
-        "due": "2026-11-28",
-        "name": "BBB 看跌 $90 · 5 张",
-        "note": "账户（daughter），到期 2026-11-28，还有 28 天；权利金 $650.00 不扣减",
-        "open_price": {
-          "reason": "missing_input",
-          "text": "无开仓价"
-        }
+        "name": "BBB 卖出看跌",
+        "note": "账户（main）；权利金 $300.00，不扣减"
       }
     ],
-    "title": "家庭风险：30 天内的指派义务",
+    "title": "家庭风险 · 期权义务",
     "total_labels": [
-      "合计 USD"
+      "合计"
     ],
     "totals": [
       {
         "currency": "USD",
-        "text": "$75,000.00",
+        "text": "$28,000.00",
         "unit": "usd",
-        "value": 75000.0
+        "value": 28000.0
       }
     ]
   },
@@ -428,68 +414,57 @@
   },
   "stress": {
     "heads": [
-      "情景",
-      "变化",
+      "情形",
+      "金额",
       "占全家净值"
     ],
-    "meaning": "几种假设下的估计变化，仅供参考。",
+    "meaning": "全部卖出看跌都被指派的情形（跌幅 10/20/30 % 的档位还没有，因为没有存下标的最新价）。",
     "rows": [
       {
         "amount": {
           "currency": "USD",
-          "text": "−$5,000.00",
-          "tone": "down",
-          "unit": "usd_signed",
-          "value": -5000.0
+          "text": "$28,000.00",
+          "unit": "usd",
+          "value": 28000.0
         },
-        "name": "股票跌 10%",
+        "name": "全部指派所需现金",
         "share": {
-          "text": "5%",
+          "text": "8.2%",
           "unit": "share_percent",
-          "value": 5.0
+          "value": 8.2
         }
       },
       {
         "amount": {
           "currency": "USD",
-          "text": "−$10,000.00",
-          "tone": "down",
-          "unit": "usd_signed",
-          "value": -10000.0
+          "text": "$28,000.00",
+          "unit": "usd",
+          "value": 28000.0
         },
-        "name": "股票跌 20%",
+        "name": "全家现金",
         "share": {
-          "text": "10%",
+          "text": "8.2%",
           "unit": "share_percent",
-          "value": 10.0
+          "value": 8.2
         }
       },
       {
         "amount": {
           "currency": "USD",
-          "text": "−$15,000.00",
-          "tone": "down",
-          "unit": "usd_signed",
-          "value": -15000.0
+          "text": "$0.00",
+          "unit": "usd",
+          "value": 0.0
         },
-        "name": "股票跌 30%",
+        "name": "指派后全家现金",
         "share": {
-          "text": "15%",
+          "text": "0.0%",
           "unit": "share_percent",
-          "value": 15.0
+          "value": 0.0
         }
       }
     ],
-    "title": "家庭风险：压力测试",
-    "totals": [
-      {
-        "currency": "USD",
-        "text": "−$30,000.00",
-        "tone": "down",
-        "unit": "usd_signed",
-        "value": -30000.0
-      }
-    ]
+    "title": "家庭风险 · 压力测试",
+    "totals": []
   },
   "title": "家庭合计",
   "trend": {

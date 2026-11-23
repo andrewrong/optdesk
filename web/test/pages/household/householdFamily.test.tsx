@@ -117,6 +117,14 @@ it('shows the gap when the trend has no series', async () => {
 })
 
 // Issue #3613: the family risk blocks of docs/design/household-risk.md, entry 3: rows, notes and totals as sent.
+type PayloadRow = { name: string; amount: { text: string }; share: { text: string } }
+// Each table row holds its payload row's name and the one text given, as sent.
+function expectRowsShow(rows: Element[], given: PayloadRow[], text: (r: PayloadRow) => string) {
+  given.forEach((r, i) => {
+    expect(rows[i]!.textContent).toContain(r.name)
+    expect(rows[i]!.textContent).toContain(text(r))
+  })
+}
 const RISK_BLOCKS = ['obligations', 'cash_after', 'stress', 'concentration'] as const
 
 it('shows the family risk blocks', async () => {
@@ -132,21 +140,13 @@ it('shows the family risk blocks', async () => {
   const cash = host.querySelector('[data-block=cash_after]')!
   const rows = [...cash.querySelectorAll('tbody tr')]
   expect(rows).toHaveLength(3)
-  payload.cash_after.rows.forEach((r: { name: string; amount: { text: string } }, i: number) => {
-    expect(rows[i]!.textContent).toContain(r.name)
-    expect(rows[i]!.textContent).toContain(r.amount.text)
-  })
+  expectRowsShow(rows, payload.cash_after.rows, (r) => r.amount.text)
   expect(rows[1]!.textContent).toContain('缺口：现金不够')
   expect(rows[0]!.textContent).not.toContain('缺口')
   expect(rows[2]!.textContent).toContain(payload.cash_after.totals[0].text)
   const stress = [...host.querySelectorAll('[data-block=stress] tbody tr')]
-  expect(stress).toHaveLength(4)
-  payload.stress.rows.forEach(
-    (r: { name: string; share: { text: string } }, i: number) => {
-      expect(stress[i]!.textContent).toContain(r.name)
-      expect(stress[i]!.textContent).toContain(r.share.text)
-    },
-  )
+  expect(stress).toHaveLength(payload.stress.rows.length)
+  expectRowsShow(stress, payload.stress.rows, (r) => r.share.text)
   expect(host.querySelector('[data-block=obligations]')!.textContent).toContain(
     payload.obligations.rows[0].note,
   )
@@ -161,13 +161,8 @@ it('shows the concentration rows of the family scope', async () => {
   // the household total row stays under the household scope, after the rows
   expect(rows).toHaveLength(payload.concentration.rows.length + 1)
   expect(rows[rows.length - 1]!.textContent).toContain(payload.concentration.totals[0].text)
-  payload.concentration.rows.forEach(
-    (r: { name: string; scope: string; share: { text: string } }, i: number) => {
-      expect(r.scope).toBe('household')
-      expect(rows[i]!.textContent).toContain(r.name)
-      expect(rows[i]!.textContent).toContain(r.share.text)
-    },
-  )
+  payload.concentration.rows.forEach((r: { scope: string }) => expect(r.scope).toBe('household'))
+  expectRowsShow(rows, payload.concentration.rows, (r) => r.share.text)
 })
 
 it('shows the gap of a risk block', async () => {
