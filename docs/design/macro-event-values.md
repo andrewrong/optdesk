@@ -50,7 +50,7 @@ All entries: `Plan: P1`, `Design: docs/design/macro-event-values.md#issues`. Slu
 ### 1 macro-ev-1-event-schema (interface)
 
 Module: contracts. Size: S. Order: none.
-Files: `contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/macropage_v2_test.go`, `contracts/fixtures/page.macro_page.v2.golden.json`
+Files: `contracts/schemas/page.macro_page.v2.json`, `web/src/generated/macro_page.v2.ts`, `docs/contracts/page-schemas.md`, `internal/contracts/macropage_v2_test.go`
 Acceptance: 1. `Event` has optional `actual` and `previous_figure` of type Figure-or-Gap (Interface). 2. The generated type has both. 3. `TestMacroPageEventFigureOptional` (new) validates an event without and with them.
 
 ### 2 macro-ev-2-fred-units
@@ -68,7 +68,7 @@ Acceptance: 1. The file inserts the nine rows with `ON CONFLICT DO NOTHING`. 2. 
 ### 4 macro-ev-4-fred-long-lookback
 
 Module: jobs. Size: M. Order: after 2, 3.
-Files: `internal/jobs/fredseries/job.toml`, `internal/jobs/fredseries/seed_test.go`, `internal/jobs/fredseries/plan.go`, `internal/jobs/fredseries/run.go`, `internal/jobs/fredseries/window.go`, `internal/jobs/fredseries/plan_test.go`, `internal/jobs/fredseries/run_test.go`
+Files: `internal/jobs/fredseries/job.toml`, `internal/jobs/fredseries/seed_test.go`, `internal/jobs/fredseries/plan.go`, `internal/jobs/fredseries/run.go`, `internal/jobs/fredseries/plan_test.go`, `internal/jobs/fredseries/run_test.go`
 Acceptance: 1. `job.toml` lists the nine ids in `series` and `long`, with `long_lookback_days = 460`. 2. A `long` series is fetched from the day minus that lookback in the one run; the 1..31 rule of `lookback_days` is unchanged. 3. The plan hash differs when `long` or its lookback differs. 4. `readRegistrySQL` in `seed_test.go` reads `0068_macro_event_series.sql` too; `TestRegistrySeedCoversManifest` and `TestUnregisteredAreInManifest` pass with the nine ids in the manifest and `unregistered` unchanged. 5. `TestLongSeriesLookback`, `TestPlanHashIncludesLong`, `TestManifestLongInSeries` (new), the first with a fake source that holds 16 monthly points and a second run that writes no row.
 
 ### 5 macro-ev-5-event-values
