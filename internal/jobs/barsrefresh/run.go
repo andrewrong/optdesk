@@ -14,6 +14,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
+// A key with a yfinance route (a USD or JPY stock or ETF, once the job has a yfinance source) asks IB for no
+// daily bar: history.go gives its trades and adjusted_last rows. The rest of this comment is the IB path of
+// a key with no route.
+//
 // Run pulls the trades bars of keys in a window that ends at day and upserts every pulled bar by key
 // with writtenBy "bars_refresh:<day>". A day before the UTC date of the clock is a repair: the query
 // carries End = day and asks the gap of the key, and neither the weekly adjusted_last step nor the deepening
@@ -30,6 +34,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	}
 	r := &runState{j: j, up: up, day: day, dayTime: dayTime, past: string(day) < j.clk.Now().UTC().Format(dayLayout),
 		conIDs: map[string]int64{}}
+	r.rep, _ = j.w.(bar.PriceBarReplacer)
 	var res contracts.JobResult
 	add := func(returned, usable int, kerr contracts.TypedError) {
 		res.Returned += returned
@@ -41,22 +46,20 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	for _, k := range keys {
 		add(r.runKey(ctx, k.SubjectKey))
 	}
-	r.runFallback(ctx, add)
 	return res
 }
 
 type runState struct {
 	j       *job
 	up      bar.PriceBarUpserter
+	rep     bar.PriceBarReplacer // nil when the store has no ReplacePriceBars: a full yfinance pull then fails Retryable
+	yfDown  bool                 // yfinance answered rate_limited in this run: the later keys are not asked
 	day     contracts.Day
 	dayTime time.Time
 	past    bool             // the day is before the UTC date of the clock: a repair run
 	conIDs  map[string]int64 // con id of a key resolved through the broker in this run
 
-	retries   int       // history retries made in this run: at most histDownAfter
-	histFails int       // keys whose history call ended Retryable in this run (the fallback, fallback.go)
-	histDown  bool      // the IB pull is skipped for the rest of the run
-	pending   []pending // keys waiting for the fallback
+	retries int // history retries made in this run: at most histDownAfter
 }
 
 // firstDay is before any stored bar: the read that starts there gives every winner row of the pair.
@@ -111,6 +114,9 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	if err != nil {
 		return 0, 0, asTyped(err, contracts.Retryable)
 	}
+	if pair, ok := r.routeOf(c); ok {
+		return r.yfinanceKey(ctx, key, id, c, pair, stored) // no IB history request for a key with a route
+	}
 	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
 	var days int
 	backfilled := hasDayFrom(stored, from)
@@ -128,9 +134,6 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 		var rows []contracts.PriceBar
 		bars, rows, terr = r.collect(ctx, id, c, stored, days)
 		if terr != nil {
-			if r.deferToFallback(key, id, c, stored, days, terr) {
-				return 0, 0, nil
-			}
 			return 0, 0, terr
 		}
 		if terr := r.upsert(ctx, rows); terr != nil {
@@ -201,9 +204,6 @@ func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]bro
 	if r.past {
 		q.End = string(r.day)
 	}
-	if r.histDown {
-		return nil, r.historyFailed(errHistDown)
-	}
 	var bars []broker.Bar
 	var err error
 	for attempt := 0; attempt < historyAttempts; attempt++ {
@@ -224,7 +224,7 @@ func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]bro
 			break
 		}
 	}
-	return nil, r.historyFailed(err)
+	return nil, err
 }
 
 func (r *runState) dropAfterDay(bars []broker.Bar, err error) ([]broker.Bar, error) {

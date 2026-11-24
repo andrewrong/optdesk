@@ -73,6 +73,8 @@ type memBars struct {
 	rows  []contracts.PriceBar
 	calls [][]contracts.PriceBar // the rows of every UpsertPriceBars call
 	by    []string               // the writtenBy of every call
+	// replaced holds the rows of every ReplacePriceBars call
+	replaced [][]contracts.PriceBar
 }
 
 func (m *memBars) InsertPriceBars(_ context.Context, rows []contracts.PriceBar) (int, error) {
@@ -122,6 +124,32 @@ func (m *memBars) UpsertPriceBars(_ context.Context, rows []contracts.PriceBar, 
 			m.rows[at] = r
 			n.Written++
 		}
+	}
+	return n, nil
+}
+
+// ReplacePriceBars writes by key whatever the stored source: a stored row of the key is replaced.
+func (m *memBars) ReplacePriceBars(_ context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.replaced = append(m.replaced, append([]contracts.PriceBar(nil), rows...))
+	m.by = append(m.by, writtenBy)
+	var n bar.BarWriteCount
+	for _, r := range rows {
+		at := -1
+		for i, o := range m.rows {
+			if o.InstrumentID == r.InstrumentID && o.Basis == r.Basis && o.SessionDay.Equal(r.SessionDay.Time) {
+				at = i
+			}
+		}
+		if at < 0 {
+			r.AdjustEpoch = 1
+			m.rows = append(m.rows, r)
+		} else {
+			r.AdjustEpoch = m.rows[at].AdjustEpoch
+			m.rows[at] = r
+		}
+		n.Written++
 	}
 	return n, nil
 }

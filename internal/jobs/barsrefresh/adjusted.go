@@ -10,7 +10,7 @@ import (
 
 const basisAdjusted = "adjusted_last"
 
-// adjusted is the weekly step of one key: when the key has no adjusted_last winner row, or its newest
+// adjusted is the weekly IB step of one key with no yfinance route (a routed key never reaches it): when the key has no adjusted_last winner row, or its newest
 // winner row was received adjusted_cadence_days or more calendar days before the run day, it asks
 // once for the whole backfill window up to now and upserts every answered row by key in one
 // call. A failure leaves the stored rows as they are. A cadence of 0 or less switches the step off.

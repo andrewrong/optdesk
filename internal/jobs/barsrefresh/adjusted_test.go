@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/sources"
 )
 
 // storedAdjusted is an adjusted_last winner row received on the given day (YYYY-MM-DD).
@@ -29,13 +30,22 @@ func adjustedHistory(adj func() ([]broker.Bar, error)) *fakeHistory {
 	}}
 }
 
-// runAdjusted runs one key with the weekly step on (the shared build turns it off).
+// noRoute is a stock in a currency with no yfinance route: it keeps the weekly IB adjusted_last step.
+func noRoute() jobs.WatchEntry {
+	e := entry("cik:1", "AAA", 101)
+	e.Contract.Currency = "EUR"
+	return e
+}
+
+// runAdjusted runs one key with no yfinance route and the weekly step on (the shared build turns it off).
+// A yfinance source is attached and must not be asked.
 func runAdjusted(t *testing.T, h *fakeHistory, st *memBars) contracts.JobResult {
 	t.Helper()
-	j, err := newJob(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, []jobs.WatchEntry{entry("cik:1", "AAA", 101)}, fixedClock{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	j, _ := buildFB(t, closed, fakeCal{}, h, st, &fakeBarSource{fn: func(sources.BarRequest) (sources.BarResult, error) {
+		t.Error("yfinance asked for a key with no route")
+		return sources.BarResult{}, nil
+	}}, noRoute())
+	j.m.AdjustedCadenceDays = 7
 	return j.Run(context.Background(), runDay, keysOf("cik:1"))
 }
 
@@ -65,7 +75,7 @@ func TestAdjustedPulledWhenNone(t *testing.T) {
 		t.Fatalf("queries %+v", qs)
 	}
 	got, _ := st.PriceBars(context.Background(), 101, "adjusted_last", firstDay, runDay)
-	if len(got) != 2 || got[0].AdjustEpoch != 1 || got[0].Source != "ibkr" || got[0].Currency != "USD" {
+	if len(got) != 2 || got[0].AdjustEpoch != 1 || got[0].Source != "ibkr" || got[0].Currency != "EUR" {
 		t.Fatalf("rows %+v", got)
 	}
 }
@@ -141,5 +151,23 @@ func TestAdjustedFailureKeepsStoredRows(t *testing.T) {
 	}
 	if len(st.rows) != 2 || len(st.epoch(2)) != 0 {
 		t.Fatalf("rows %+v", st.rows)
+	}
+}
+
+func TestAdjustedStepNotTakenForRoutedStock(t *testing.T) {
+	t.Parallel()
+	h := adjustedHistory(func() ([]broker.Bar, error) {
+		t.Error("IB adjusted_last asked for a stock with a route")
+		return nil, nil
+	})
+	st := &memBars{rows: []contracts.PriceBar{tradesRow(), storedAdjusted(101, "2026-11-09", "9.0000", 1, "2026-10-01")}}
+	src := &fakeBarSource{fn: answerFrom([]sources.RefBar{ybAdj("2026-11-09", "10.0000", "9.5000")})}
+	j, _ := buildFB(t, closed, fakeCal{}, h, st, src, entry("cik:1", "AAA", 101))
+	j.m.AdjustedCadenceDays = 7
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 0 {
+		t.Fatalf("IB queries %+v", h.queries)
 	}
 }
