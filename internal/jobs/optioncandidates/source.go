@@ -142,10 +142,11 @@ func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.Watc
 		return res, nil
 	}
 	openPrice, openAt, openFound := openSpot(s.open[int(ul.id)], s.day)
+	openMark := markSpotOpenPrefix + string(s.day)
 	if s.j.st.Quotes == nil {
 		// no quote reader: the open price of today when there is one, else the chain price with no new mark
 		if openFound {
-			res.spot, res.spotMark = openPrice, markSpotOpenPrefix+string(s.day)
+			res.spot, res.spotMark = openPrice, openMark
 		}
 		return res, nil
 	}
@@ -158,7 +159,7 @@ func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.Watc
 	quoteFound := qerr == nil && found
 	switch {
 	case openFound && (!quoteFound || openAt.After(quoteAt)):
-		res.spot, res.spotMark = openPrice, markSpotOpenPrefix+string(s.day)
+		res.spot, res.spotMark = openPrice, openMark
 	case quoteFound:
 		res.spot, res.spotMark = price, markSpotQuotePrefix+string(d)
 	default:
