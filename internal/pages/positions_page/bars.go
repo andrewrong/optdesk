@@ -74,20 +74,13 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 	}
 	out.Price = price
 	from := contracts.Day(capD.AddDate(0, 0, -barLookbackDays).Format(dayLayout))
-	var shut []store.Position
-	open := map[string]bool{} // calendar -> has a session on capDay (true when unknown)
+	shut, err := c.shutStocks(ctx, ps, ids, capDay)
+	if err != nil {
+		return out, err
+	}
 	for _, p := range ps {
 		if p.SecType != typeStock || len(ids[p.Symbol]) != 1 {
 			continue
-		}
-		cal := calendarOf(p.Exchange)
-		if _, ok := open[cal]; !ok {
-			if open[cal], err = c.hasSession(ctx, cal, capDay); err != nil {
-				return out, err
-			}
-		}
-		if !open[cal] {
-			shut = append(shut, p)
 		}
 		bars, err := c.Bars.PriceBars(ctx, ids[p.Symbol][0], barBasis, from, contracts.Day(capDay))
 		if err != nil {
@@ -118,6 +111,28 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 		}
 	}
 	return out, nil
+}
+
+// shutStocks are the resolved stock rows of ps whose exchange had no session on capDay.
+func (c Config) shutStocks(ctx context.Context, ps []store.Position, ids map[string][]int64, capDay string) ([]store.Position, error) {
+	var shut []store.Position
+	open := map[string]bool{} // calendar -> has a session on capDay
+	for _, p := range ps {
+		if p.SecType != typeStock || len(ids[p.Symbol]) != 1 {
+			continue
+		}
+		cal := calendarOf(p.Exchange)
+		if _, ok := open[cal]; !ok {
+			var err error
+			if open[cal], err = c.hasSession(ctx, cal, capDay); err != nil {
+				return nil, err
+			}
+		}
+		if !open[cal] {
+			shut = append(shut, p)
+		}
+	}
+	return shut, nil
 }
 
 // calendarOf is the session calendar that decides whether the exchange traded.

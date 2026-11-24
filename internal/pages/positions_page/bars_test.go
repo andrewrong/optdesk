@@ -321,7 +321,8 @@ func (f closedSessions) SessionDays(ctx context.Context, cal string, from, to co
 }
 
 func tokyoDay(isSession bool) []contracts.SessionDay {
-	return []contracts.SessionDay{{CalendarID: "XTKS", SessionDay: types.SerializableDate{Time: time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)}, IsSession: isSession}}
+	d := types.SerializableDate{Time: time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)}
+	return []contracts.SessionDay{{CalendarID: "XTKS", SessionDay: d, IsSession: isSession}}
 }
 
 // jpStock is a held TSEJ stock marked 14.9 over its last bar close of 4840.
