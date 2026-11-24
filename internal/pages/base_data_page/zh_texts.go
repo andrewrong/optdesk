@@ -106,3 +106,21 @@ const (
 	nameSourceLacks  = "数据源没有这一天"
 	toleranceJoinZh  = "；"
 )
+
+// Texts of the gaps (reasons facts_unavailable, view_unavailable, coverage_unavailable).
+const (
+	gapFactsText    = "四组基础数据都读不到，所以不显示任何行。"
+	gapCoverageText = "读不到台账的覆盖情况，所以不判定台账规则。"
+	gapReconText    = "读不到交叉检查的运行记录，所以日线一行在没有它们的情况下判定。"
+	gapViewHead     = "这些基础数据读不到，没有判定："
+	gapViewSep      = "；"
+	gapViewTail     = "。"
+)
+
+// viewWords names a view group in words.
+var viewWords = map[string]string{
+	"bars":    "股票日线",
+	"option":  "在用的期权报价、期权链和合约",
+	"other":   "利率、事件、交易日历和公司财报数据",
+	"account": "券商账户数据",
+}
