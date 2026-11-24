@@ -109,16 +109,25 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 		return keyRun{err: asTyped(err, contracts.Retryable)}
 	}
 	have := map[string]contracts.ReadingRecord{}
-	anyOk := false
+	var newestOk time.Time
 	for _, s := range stored {
 		have[s.Day.Format(dayLayout)] = s
-		anyOk = anyOk || isOk(s)
+		if isOk(s) && s.Day.Time.After(newestOk) {
+			newestOk = s.Day.Time
+		}
 	}
-	days := j.m.DailyDays
-	if !anyOk {
-		days = j.m.BackfillDays
+	// The window runs from the day after the newest ok reading through the day; a stored missing reading does
+	// not move its start, so a repair of that day is inside it.
+	days := j.m.BackfillDays
+	if !newestOk.IsZero() {
+		gap := int(dayTime.Sub(newestOk).Hours()/24 + 0.5)
+		days = min(max(gap, j.m.DailyDays), j.m.BackfillDays)
 	}
-	bars, err := j.h.Bars(ctx, broker.BarQuery{Contract: j.contract[name], Kind: broker.BarOptionImpliedVol, DurationDays: days})
+	q := broker.BarQuery{Contract: j.contract[name], Kind: broker.BarOptionImpliedVol, DurationDays: days}
+	if dayTime.Before(j.clk.Now().UTC().Truncate(24 * time.Hour)) {
+		q.End = string(day)
+	}
+	bars, err := j.h.Bars(ctx, q)
 	if err != nil && !isNoData(err) {
 		return keyRun{err: asTyped(err, contracts.Retryable)}
 	}
