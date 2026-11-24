@@ -56,6 +56,7 @@ from optdesk.ibkr.transport import NotAllowed, OrderRefused
 _log = logging.getLogger(__name__)
 
 _DIVIDEND_LOG_MAX = 120  # characters of an exception text kept in dividend_failed
+_QUOTE_LOG_MAX = 200  # the same for quote_failed
 
 
 def _log_failed(event: str, exc: Exception, cut: int) -> None:
@@ -478,7 +479,7 @@ class IbGateway:
                 except (ConnectionError, spec.BrokerError, OrderRefused, NotAllowed):
                     raise  # the read-only guard's refusals are never an answer
                 except Exception as exc:  # noqa: BLE001
-                    _log_failed("quote_failed", exc, 200)
+                    _log_failed("quote_failed", exc, _QUOTE_LOG_MAX)
                     ts = self._clock.now().timestamp()
                     row = QuoteRow(
                         target.con_id,
