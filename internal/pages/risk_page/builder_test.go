@@ -286,7 +286,8 @@ func TestForeignStockGivesGapNotZero(t *testing.T) {
 	}}, stk("AAA", 1, "100", "USD"), stk("JJJ", 3, "10", "JPY"))
 	m, _ := build(t, c, "main")
 	d := block(m, "delta")
-	if d["total"] != nil || d["gap"].(map[string]any)["reason"] != "unsupported_currency" {
+	if d["total"] != nil || d["gap"].(map[string]any)["reason"] != "unsupported_currency" ||
+		d["gap"].(map[string]any)["text"] != "非美元的股票未计入 Delta" {
 		t.Fatalf("delta = %v", d)
 	}
 	if len(d["rows"].([]any)) != 1 {
@@ -297,16 +298,49 @@ func TestForeignStockGivesGapNotZero(t *testing.T) {
 	}
 }
 
+func gapStructure(under string) compute.Structure {
+	s := structure(under, "USD", "2026-12-18", "", "")
+	s.Greeks = compute.GreekSet{Delta: compute.FigureValue{Gap: "missing_quote"}, Vega: compute.FigureValue{Gap: "missing_quote"}}
+	return s
+}
+
 func TestGreekGapGivesMissingInput(t *testing.T) {
 	t.Parallel()
-	s := structure("AAA", "USD", "2026-12-18", "", "")
-	s.Greeks = compute.GreekSet{Delta: compute.FigureValue{Gap: "missing_quote"}, Vega: compute.FigureValue{Gap: "missing_quote"}}
-	m, _ := build(t, okConfig(compute.StructureResult{Structures: []compute.Structure{s}}, stk("AAA", 1, "100", "USD")), "main")
-	if g := block(m, "delta")["gap"].(map[string]any); g["reason"] != "missing_input" {
-		t.Fatalf("delta gap = %v", g)
+	m, _ := build(t, okConfig(compute.StructureResult{Structures: []compute.Structure{gapStructure("AAA")}}, stk("AAA", 1, "100", "USD")), "main")
+	d := block(m, "delta")
+	if d["gap"] != nil || d["total"] == nil || len(d["rows"].([]any)) != 1 {
+		t.Fatalf("delta = %v", d)
 	}
-	if v := block(m, "vega"); v["total"] != nil || len(v["rows"].([]any)) != 0 || v["gap"] == nil {
+	v := block(m, "vega")
+	if g, _ := v["gap"].(map[string]any); v["total"] != nil || len(v["rows"].([]any)) != 0 || g == nil || g["text"] != "No option structure is counted in Vega" {
 		t.Fatalf("vega = %v", v)
+	}
+	if len(m["notes"].([]any)) != 1 {
+		t.Fatalf("notes = %v", m["notes"])
+	}
+}
+
+func TestGapStructureLeftOutOthersKept(t *testing.T) {
+	t.Parallel()
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("AAA", "USD", "2026-12-18", "-30.5", "12.25"), gapStructure("BBB"),
+	}}, stk("AAA", 1, "100", "USD"))
+	m, _ := build(t, c, "main")
+	d := block(m, "delta")
+	if d["total"] == nil || d["gap"] != nil || len(d["rows"].([]any)) != 1 {
+		t.Fatalf("delta = %v", d)
+	}
+	v := block(m, "vega")
+	if v["total"].(map[string]any)["value"] != 12.25 || len(v["rows"].([]any)) != 1 {
+		t.Fatalf("vega = %v", v)
+	}
+	notes := m["notes"].([]any)
+	if len(notes) != 1 || !strings.Contains(notes[0].(string), "1") {
+		t.Fatalf("notes = %v", notes)
+	}
+	m, _ = build(t, defaultConfig(), "main")
+	if len(m["notes"].([]any)) != 0 {
+		t.Fatalf("notes without a gap structure = %v", m["notes"])
 	}
 }
 

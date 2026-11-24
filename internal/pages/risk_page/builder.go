@@ -57,11 +57,14 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	}
 	res := c.Structures().Evaluate(l.in, compute.StructureParams{MarkMaxAgeSessions: markMaxAgeSessions,
 		CaptureTarget: captureTarget, ExitDTE: exitDTE, CommissionDays: commissionDays})
-	in, foreign, skipped := riskInput(l, res)
+	in, foreign, skipped, noQuote := riskInput(l, res)
 	risk := c.Holdings().Risk(in)
 	p := assemble(c, alias, at, risk, foreign, len(res.Other) > 0)
 	if skipped > 0 {
 		p.Notes = append(p.Notes, textNoExpiry)
+	}
+	if noQuote > 0 {
+		p.Notes = append(p.Notes, fmt.Sprintf(textNoQuoteStructures, noQuote))
 	}
 	captured := l.at
 	if captured.IsZero() {
@@ -112,8 +115,9 @@ func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, fo
 
 // riskInput is the input of Risk: the stocks of the capture and the net greeks of each recognised structure,
 // filed under its nearest expiry. A structure not in USD is left out and foreign is true; one with no leg
-// expiry is left out and counted in skipped.
-func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, foreign bool, skipped int) {
+// expiry is left out and counted in skipped; one whose Delta or Vega is a gap or has no value is left out
+// and counted in noQuote.
+func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, foreign bool, skipped, noQuote int) {
 	in.Currency = currency
 	for _, s := range l.stocks {
 		in.Stocks = append(in.Stocks, blockapi.HoldingIn{Underlying: s.symbol, SecType: "STK", Currency: s.currency,
@@ -134,10 +138,14 @@ func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, forei
 			skipped++
 			continue
 		}
+		if g := s.Greeks; g.Delta.Gap != "" || g.Delta.Value == "" || g.Vega.Gap != "" || g.Vega.Value == "" {
+			noQuote++
+			continue
+		}
 		in.Greeks = append(in.Greeks, blockapi.GreekIn{Underlying: s.Underlying, Expiry: contracts.Day(expiry),
 			Delta: s.Greeks.Delta.Value, Vega: s.Greeks.Vega.Value})
 	}
-	return in, foreign, skipped
+	return in, foreign, skipped, noQuote
 }
 
 func deltaBlock(r blockapi.RiskResult) deltaJSON {
@@ -188,7 +196,7 @@ func riskGap(total compute.FigureValue) *gapJSON {
 func gapText(reason string) string {
 	switch reason {
 	case "unsupported_currency":
-		return textForeign
+		return textForeignStock
 	case "no_data":
 		return textNoCapture
 	}
