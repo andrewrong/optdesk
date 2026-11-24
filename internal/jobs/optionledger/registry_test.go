@@ -74,3 +74,12 @@ func TestLotRowWithoutLotAttributesRefused(t *testing.T) {
 		t.Fatalf("summary row refused: %v", err)
 	}
 }
+
+func TestRegistryEveryContainerNamed(t *testing.T) {
+	t.Parallel()
+	for _, s := range registry {
+		if s.Container == "" {
+			t.Fatalf("section %s names no container", s.Element)
+		}
+	}
+}
