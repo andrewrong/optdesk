@@ -1,5 +1,38 @@
 {
   "$defs": {
+    "AccountLink": {
+      "additionalProperties": false,
+      "description": "One link to the positions page of an account.",
+      "properties": {
+        "current": {
+          "description": "True for the account this page shows.",
+          "type": "boolean"
+        },
+        "href": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^/positions",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "href",
+        "current"
+      ],
+      "title": "AccountLink",
+      "type": "object"
+    },
     "Cell": {
       "additionalProperties": false,
       "description": "One displayed table cell.",
@@ -1048,6 +1081,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "accounts": {
+      "description": "Links to the positions page of each account, the one shown marked current. Absent when the owner has one account.",
+      "items": {
+        "$ref": "#/$defs/AccountLink"
+      },
+      "maxItems": 8,
+      "minItems": 2,
+      "type": "array"
+    },
     "bars_source": {
       "description": "Where the daily bars behind this page came from: ibkr, yfinance (fallback while IB history fails) or mixed. Absent when the page shows no bar-based figure or all bars are ibkr.",
       "enum": [
