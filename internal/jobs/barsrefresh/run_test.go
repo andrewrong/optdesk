@@ -14,6 +14,7 @@ import (
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -177,7 +178,7 @@ func entry(issuer, sym string, conID int64) jobs.WatchEntry {
 func build(t *testing.T, h *fakeHistory, st *memBars, entries ...jobs.WatchEntry) (contracts.Job, *fakeBroker) {
 	t.Helper()
 	b := &fakeBroker{listed: true}
-	j, err := New(b, h, fakeResolver{}, st, st, entries, fixedClock{})
+	j, err := newJob(b, h, fakeResolver{}, st, st, entries, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +228,7 @@ func TestBackfillCapDefersWithoutRequest(t *testing.T) {
 		entries = append(entries, entry("cik:"+strconv.Itoa(i), "N"+strconv.Itoa(i), int64(100+i)))
 	}
 	b := &fakeBroker{listed: true}
-	jb, err := New(b, h, fakeResolver{}, st, st, entries, fixedClock{})
+	jb, err := newJob(b, h, fakeResolver{}, st, st, entries, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +359,7 @@ func TestStockKeyStoresTradesBarsAsStockInstrument(t *testing.T) {
 	var specs []store.InstrumentSpec
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "90.0000"))}
 	st := &memBars{}
-	j, err := New(&fakeBroker{listed: true}, h, specRecorder{specs: &specs}, st, st, nil, fixedClock{})
+	j, err := newJob(&fakeBroker{listed: true}, h, specRecorder{specs: &specs}, st, st, nil, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +402,7 @@ func TestUnresolvedStockFailsOnlyItsOwnKey(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "90.0000"))}
 	st := &memBars{}
-	j, err := New(unlistedBroker{unlisted: "XLK"}, h, fakeResolver{}, st, st, nil, fixedClock{})
+	j, err := newJob(unlistedBroker{unlisted: "XLK"}, h, fakeResolver{}, st, st, nil, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,7 +438,7 @@ func TestUnresolvedSMHKeepsRun(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "90.0000"))}
 	st := &memBars{}
-	j, err := New(distinctBroker{unlistedBroker{unlisted: "SMH"}, map[string]int64{}}, h, fakeResolver{}, st, st, nil, fixedClock{})
+	j, err := newJob(distinctBroker{unlistedBroker{unlisted: "SMH"}, map[string]int64{}}, h, fakeResolver{}, st, st, nil, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +501,7 @@ func TestConIDKeptBetweenRuns(t *testing.T) {
 			h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "50.0000"))}
 			st := &memBars{}
 			b := &failFirstBroker{fakeBroker: fakeBroker{listed: true}, failFirst: tc.failFirst}
-			j, err := New(b, h, fakeResolver{}, st, st, nil, fixedClock{})
+			j, err := newJob(b, h, fakeResolver{}, st, st, nil, fixedClock{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -518,7 +519,7 @@ func TestConIDKeptBetweenRuns(t *testing.T) {
 // buildAt builds a job with no fallback and the fake clock atClock.
 func buildAt(t *testing.T, h *fakeHistory, st *memBars, entries ...jobs.WatchEntry) contracts.Job {
 	t.Helper()
-	j, err := New(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, entries, atClock{closed})
+	j, err := newJob(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, entries, atClock{closed})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,5 +629,112 @@ func TestRunNoStoredBarKeepsBackfill(t *testing.T) {
 	}
 	if len(h.queries) != 1 || h.queries[0].DurationDays != 400 {
 		t.Fatalf("queries %+v", h.queries)
+	}
+}
+
+// newJob is New with a pause that returns at once: no test waits.
+func newJob(
+	b broker.Broker, h broker.HistoryClient, res store.InstrumentResolver, w bar.PriceBarWriter, r bar.PriceBarReader,
+	entries []jobs.WatchEntry, clk clock.Clock,
+) (contracts.Job, error) {
+	j, err := New(b, h, res, w, r, entries, clk)
+	if err == nil {
+		j.(*job).pause = func(ctx context.Context, _ time.Duration) error { return ctx.Err() }
+	}
+	return j, err
+}
+
+// pauses records the pauses asked for and returns at once.
+type pauses struct {
+	mu sync.Mutex
+	ds []time.Duration
+}
+
+func (p *pauses) wait(_ context.Context, d time.Duration) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.ds = append(p.ds, d)
+	return nil
+}
+
+func gwTimeout() error { return newErr(contracts.Retryable, "gateway timeout") }
+
+func TestPullRetriesOnceAfterPause(t *testing.T) {
+	t.Parallel()
+	t.Run("first fails then succeeds", func(t *testing.T) {
+		t.Parallel()
+		n := 0
+		h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) {
+			n++
+			if n == 1 {
+				return nil, gwTimeout()
+			}
+			return []broker.Bar{mkbar("2026-11-09", "10")}, nil
+		}}
+		j, _ := build(t, h, &memBars{}, entry("cik:1", "AAA", 101))
+		p := &pauses{}
+		j.(*job).pause = p.wait
+		res := j.Run(context.Background(), runDay, keysOf("cik:1"))
+		if res.Err != nil || len(h.queries) != 2 || len(p.ds) != 1 || p.ds[0] != 60*time.Second {
+			t.Fatalf("err %v queries %d pauses %v", res.Err, len(h.queries), p.ds)
+		}
+	})
+	t.Run("both fail", func(t *testing.T) {
+		t.Parallel()
+		h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) { return nil, gwTimeout() }}
+		j, _ := build(t, h, &memBars{}, entry("cik:1", "AAA", 101))
+		p := &pauses{}
+		j.(*job).pause = p.wait
+		res := j.Run(context.Background(), runDay, keysOf("cik:1"))
+		if res.Err == nil || res.Err.Kind() != contracts.Retryable || len(h.queries) != 2 || len(p.ds) != 1 {
+			t.Fatalf("err %v queries %d pauses %v", res.Err, len(h.queries), p.ds)
+		}
+	})
+}
+
+func TestPullPauseStopsWithContext(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) { return nil, gwTimeout() }}
+	j, _ := build(t, h, &memBars{}, entry("cik:1", "AAA", 101))
+	j.(*job).pause = defaultPause
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	res := j.Run(ctx, runDay, keysOf("cik:1"))
+	if res.Err == nil || len(h.queries) != 1 {
+		t.Fatalf("err %v queries %d", res.Err, len(h.queries))
+	}
+}
+
+func TestRunStopsRetryingAfterTwo(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) { return nil, gwTimeout() }}
+	var es []jobs.WatchEntry
+	var ks []string
+	for i := int64(1); i <= 5; i++ {
+		k := "cik:" + strconv.FormatInt(i, 10)
+		es = append(es, entry(k, "S"+strconv.FormatInt(i, 10), 100+i))
+		ks = append(ks, k)
+	}
+	j, _ := build(t, h, &memBars{}, es...)
+	j.(*job).m.BackfillNamesPerRun = 10
+	p := &pauses{}
+	j.(*job).pause = p.wait
+	j.Run(context.Background(), runDay, keysOf(ks...))
+	if len(h.queries) != 7 || len(p.ds) != 2 {
+		t.Fatalf("queries %d pauses %d", len(h.queries), len(p.ds))
+	}
+}
+
+func TestPullPermanentIsNotRetried(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(broker.BarQuery) ([]broker.Bar, error) {
+		return nil, newErr(contracts.Permanent, "no such contract")
+	}}
+	j, _ := build(t, h, &memBars{}, entry("cik:1", "AAA", 101))
+	p := &pauses{}
+	j.(*job).pause = p.wait
+	res := j.Run(context.Background(), runDay, keysOf("cik:1"))
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || len(h.queries) != 1 || len(p.ds) != 0 {
+		t.Fatalf("err %v queries %d pauses %v", res.Err, len(h.queries), p.ds)
 	}
 }
