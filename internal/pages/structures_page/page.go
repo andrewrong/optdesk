@@ -14,6 +14,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
+// StockIDReader reads the instruments of type stock whose name is in names; a name returned once is one stock.
+type StockIDReader interface {
+	StockIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
+}
+
 // Config is what the structures pages need besides the series reader. A nil reader is the gap no_reader; a nil
 // Zone or an alias not in Aliases is an error of Build.
 type Config struct {
@@ -25,10 +30,9 @@ type Config struct {
 	Eod            store.OptionEodReader
 	Sessions       store.SessionDayReader
 	Terms          store.OptionTermsReader
-	Catalog        store.OptionEodCatalog     // with Names finds the underlying of a held option; nil with Names nil: the STOCK rows of the capture
-	Names          store.InstrumentNameReader // the name of an instrument is the symbol of the option
-	Bars           bar.PriceBarReader         // nil gives no bars: the close then comes from the option_eod prints
-	Dividends      dividend.Reader            // nil gives the Chinese gap no_reader in the Ex-dividend cell of the list
+	StockIDs       StockIDReader      // the stock instrument id of a held underlying by name, the key of option_eod; nil gives no quotes
+	Bars           bar.PriceBarReader // nil gives no bars: the close then comes from the option_eod prints
+	Dividends      dividend.Reader    // nil gives the Chinese gap no_reader in the Ex-dividend cell of the list
 	Ledgers        compute.NewOptionLedgerFunc
 	Structures     compute.NewOptionStructuresFunc
 	Spreads        spreadlegsapi.NewSpreadFunc // nil gives the gap no_reader on the spread legs page; the other pages ignore it
