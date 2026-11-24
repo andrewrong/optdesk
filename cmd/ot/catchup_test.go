@@ -139,11 +139,12 @@ func TestCatchUpPassStopsAtCap(t *testing.T) {
 		t.Fatalf("first pass enqueued %d, want %d", first, catchUpCap)
 	}
 	r.host.catchUpPass(t.Context())
-	if rest := len(r.post.enqueued) - first; rest != 7 { // gap days outside the window rule and the newest day of the window jobs; no today of a close-slot job
-		t.Fatalf("second pass enqueued %d, want the other 7", rest)
+	if rest := len(r.post.enqueued) - first; rest != 10 { // gap days outside the window rule and the newest day of the window jobs; no today of a close-slot job
+		t.Fatalf("second pass enqueued %d, want the other 10", rest)
 	}
+	second := len(r.post.enqueued)
 	r.host.catchUpPass(t.Context())
-	for _, e := range r.post.enqueued[49:] { // only the next newest day of a window job is left
+	for _, e := range r.post.enqueued[second:] { // only the next newest day of a window job is left
 		if !slices.Contains(windowEndingJobs, e.JobID) {
 			t.Fatalf("third pass enqueued %+v", e)
 		}
@@ -351,5 +352,76 @@ func TestCatchUpPassSkipsTodayBeforeCloseSlot(t *testing.T) {
 				pastBefore[j] = past
 			}
 		})
+	}
+}
+
+func ivHistoryDataset(t *testing.T) string {
+	t.Helper()
+	for _, j := range dataHealthJobs() {
+		if j.ID == "iv_history" && len(j.Datasets) == 1 {
+			return j.Datasets[0]
+		}
+	}
+	t.Fatal("iv_history has no single dataset on the page")
+	return ""
+}
+
+func TestCatchUpQueuesPastDayOfIvHistory(t *testing.T) {
+	t.Parallel()
+	ds := ivHistoryDataset(t)
+	const day = "2026-11-02" // four days before the fake clock's New York day
+	cov := cuCoverage{days: cuDays, gap: map[string]coverage.State{ds: coverage.StateMissing}, only: map[contracts.Day]bool{day: true}}
+	r := newCURig(t, cov)
+	if _, err := r.host.catchUp(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range r.post.enqueued {
+		if e.JobID == "iv_history" {
+			got = append(got, e.Day)
+			if e.Force {
+				t.Fatalf("forced request %+v", e)
+			}
+		}
+	}
+	if !slices.Equal(got, []string{day}) {
+		t.Fatalf("iv_history enqueued %v, want [%s]", got, day)
+	}
+	before := len(r.post.enqueued)
+	n, err := r.host.catchUp(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.post.enqueued) != before || n.skippedToday < 1 {
+		t.Fatalf("second pass: enqueued %d more, skippedToday %d", len(r.post.enqueued)-before, n.skippedToday)
+	}
+	r.clk.Advance(24 * time.Hour)
+	if _, err := r.host.catchUp(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.enqueuedOf("iv_history"); !slices.Equal(got, []string{day, day}) {
+		t.Fatalf("next day: iv_history enqueued %v, want the day again", got)
+	}
+}
+
+func TestCatchUpPastDayStillSkipsOtherTodayOnly(t *testing.T) {
+	t.Parallel()
+	jobs := []string{"quote_snapshot", "option_eod", "calendar_hours_us"}
+	gap := map[string]coverage.State{}
+	for _, j := range dataHealthJobs() {
+		if slices.Contains(jobs, j.ID) {
+			for _, ds := range j.Datasets {
+				gap[ds] = coverage.StateMissing
+			}
+		}
+	}
+	r := newCURig(t, cuCoverage{days: cuDays, gap: gap, only: map[contracts.Day]bool{"2026-11-02": true}})
+	if _, err := r.host.catchUp(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for _, j := range jobs {
+		if got := r.enqueuedOf(j); len(got) != 0 {
+			t.Errorf("%s enqueued %v for a past day", j, got)
+		}
 	}
 }
