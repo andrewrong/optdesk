@@ -120,16 +120,10 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 	// A US name asked for today before the New York close cannot have today's reading: ask the days before
 	// it only, and only when there is a gap there.
 	last := day
-	if j.beforeUSClose(name, dayTime) {
-		prev := dayTime.AddDate(0, 0, -1)
-		for prev.Weekday() == time.Saturday || prev.Weekday() == time.Sunday {
-			prev = prev.AddDate(0, 0, -1)
-		}
-		if !newestOk.IsZero() && !newestOk.Before(prev) {
-			return keyRun{have: have}
-		}
-		dayTime = dayTime.AddDate(0, 0, -1)
-		last = contracts.Day(dayTime.Format(dayLayout))
+	if prev, skip, early := j.beforeClose(name, dayTime, newestOk); skip {
+		return keyRun{have: have}
+	} else if early {
+		dayTime, last = prev, contracts.Day(prev.Format(dayLayout))
 	}
 	// The window runs from the day after the newest ok reading through the day; a stored missing reading does
 	// not move its start, so a repair of that day is inside it.
@@ -179,6 +173,20 @@ func (j *job) beforeUSClose(name string, dayTime time.Time) bool {
 	}
 	ny := j.clk.Now().In(loc)
 	return dayTime.Format(dayLayout) == ny.Format(dayLayout) && ny.Hour() < 16
+}
+
+// beforeClose decides a US name asked for a day that is not over: early is set with prev, the day before, as the
+// last day to ask; skip is set when the name has no gap before the day, so nothing is asked.
+func (j *job) beforeClose(name string, dayTime, newestOk time.Time) (prev time.Time, skip, early bool) {
+	if !j.beforeUSClose(name, dayTime) {
+		return dayTime, false, false
+	}
+	prev = dayTime.AddDate(0, 0, -1)
+	lastWeekday := prev
+	for lastWeekday.Weekday() == time.Saturday || lastWeekday.Weekday() == time.Sunday {
+		lastWeekday = lastWeekday.AddDate(0, 0, -1)
+	}
+	return prev, !newestOk.IsZero() && !newestOk.Before(lastWeekday), true
 }
 
 // add appends rec unless a reading of its day is stored already: a stored ok one is kept, a stored missing
