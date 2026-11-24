@@ -21,11 +21,15 @@ func TestOtherViewSeriesAge(t *testing.T) {
 		{"D_OK", "daily", true, 3},
 		{"D_OLD", "daily", true, 6}, // over 4 days
 		{"W_OK", "weekly", true, 10},
-		{"M_OLD", "monthly", true, 50}, // over 45 days
+		{"M_OLD", "monthly", true, 50}, // not late: under 100 days
 		{"Q_OK", "quarterly", true, 100},
-		{"D_NONE", "daily", true, -1}, // no point at all
-		{"NOFREQ", "", true, 400},     // no frequency: no limit to judge by, not counted
-		{"OFF", "daily", false, 400},  // inactive: not counted
+		{"M_LATE", "monthly", true, 110},    // over 100 days
+		{"M_FRESH", "monthly", true, 90},    // under 100 days
+		{"Q_FRESH", "quarterly", true, 200}, // under 220 days
+		{"Q_LATE", "quarterly", true, 230},  // over 220 days
+		{"D_NONE", "daily", true, -1},       // no point at all
+		{"NOFREQ", "", true, 400},           // no frequency: no limit to judge by, not counted
+		{"OFF", "daily", false, 400},        // inactive: not counted
 	} {
 		pgExec(t, c, `INSERT INTO obs.series_definition VALUES ($1, $2, $3)`, s.id, s.freq, s.active)
 		if s.age >= 0 {
@@ -33,7 +37,27 @@ func TestOtherViewSeriesAge(t *testing.T) {
 		}
 	}
 	facts := viewFacts(t, name, otherView)
-	wantCounts(t, facts, "rates/series_age/", 6, 3)
+	wantCounts(t, facts, "rates/series_age/", 10, 4)
+}
+
+func TestOtherViewSeriesAgeMonthlyQuarterly(t *testing.T) {
+	t.Parallel()
+	name := newViewsDatabase(t)
+	c := adminConn(t, name)
+	for _, s := range []struct {
+		id, freq string
+		age      int
+	}{
+		{"M_90", "monthly", 90},     // not late
+		{"M_110", "monthly", 110},   // late
+		{"Q_200", "quarterly", 200}, // not late
+		{"Q_230", "quarterly", 230}, // late
+	} {
+		pgExec(t, c, `INSERT INTO obs.series_definition VALUES ($1, $2, true)`, s.id, s.freq)
+		pgExec(t, c, `INSERT INTO rd.series_point_r1 VALUES ($1, `+ny+` - $2::int, 1.5)`, s.id, s.age)
+	}
+	facts := viewFacts(t, name, otherView)
+	wantCounts(t, facts, "rates/series_age/", 4, 2)
 }
 
 func TestOtherViewEarningsPast(t *testing.T) {
