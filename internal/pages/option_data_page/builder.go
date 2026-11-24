@@ -233,34 +233,8 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
 	vm.Sentence = fmt.Sprintf("%d contracts on %s.", len(rows), sessionDay)
 
-	terms := make(map[int64]chainRow, len(vm.Chain.Rows))
-	for _, cr := range vm.Chain.Rows {
-		terms[cr.InstrumentID] = cr
-	}
-	var quoteTime time.Time
-	for _, r := range limit(rows, maxSeries) {
-		id := int64(r.InstrumentID)
-		qs, err := c.Quotes.QuoteSnapshots(ctx, id, from, day)
-		if err != nil {
-			return nil, fmt.Errorf("option_data_page: read quotes of %d: %w", id, err)
-		}
-		s := quoteSeries{InstrumentID: id, Caption: quoteCaption(terms[id]), Points: []quotePoint{}}
-		for _, q := range limit(qs, maxPoints) {
-			s.Points = append(s.Points, quotePoint{
-				SessionDay: q.SessionDay.Format(dayLayout), Slot: q.Slot,
-				Bid: priceCell(q.Bid), Ask: priceCell(q.Ask), Last: priceCell(q.Last),
-			})
-			if q.ReceivedAt.After(quoteTime) {
-				quoteTime = q.ReceivedAt
-			}
-		}
-		if len(s.Points) == 0 && len(vm.Gaps) < maxGaps {
-			vm.Gaps = append(vm.Gaps, newGap(fmt.Sprintf("%s: no quote snapshot is stored for this contract in the window read (%s to %s)", s.Caption, from, day)))
-		}
-		vm.QuoteSeries = append(vm.QuoteSeries, s)
-	}
-	if !quoteTime.IsZero() {
-		vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "quote_snapshot", DataTime: fmtTime(quoteTime, c.Zone)})
+	if err := appendQuotes(ctx, c, rows, from, day, &vm); err != nil {
+		return nil, err
 	}
 	return json.Marshal(vm)
 }
@@ -367,4 +341,39 @@ func quoteCaption(r chainRow) string {
 		return "Contract terms not stored"
 	}
 	return *r.Expiry + " " + *r.Right + " " + f.Text
+}
+
+// appendQuotes reads the quote snapshots of the kept rows and adds one series each; a series with no point also
+// adds one page gap that says why it is empty.
+func appendQuotes(ctx context.Context, c Config, rows []contracts.OptionEod, from, day contracts.Day, vm *viewModel) error {
+	terms := make(map[int64]chainRow, len(vm.Chain.Rows))
+	for _, cr := range vm.Chain.Rows {
+		terms[cr.InstrumentID] = cr
+	}
+	var quoteTime time.Time
+	for _, r := range limit(rows, maxSeries) {
+		id := int64(r.InstrumentID)
+		qs, err := c.Quotes.QuoteSnapshots(ctx, id, from, day)
+		if err != nil {
+			return fmt.Errorf("option_data_page: read quotes of %d: %w", id, err)
+		}
+		s := quoteSeries{InstrumentID: id, Caption: quoteCaption(terms[id]), Points: []quotePoint{}}
+		for _, q := range limit(qs, maxPoints) {
+			s.Points = append(s.Points, quotePoint{
+				SessionDay: q.SessionDay.Format(dayLayout), Slot: q.Slot,
+				Bid: priceCell(q.Bid), Ask: priceCell(q.Ask), Last: priceCell(q.Last),
+			})
+			if q.ReceivedAt.After(quoteTime) {
+				quoteTime = q.ReceivedAt
+			}
+		}
+		if len(s.Points) == 0 && len(vm.Gaps) < maxGaps {
+			vm.Gaps = append(vm.Gaps, newGap(fmt.Sprintf("%s: no quote snapshot is stored for this contract in the window read (%s to %s)", s.Caption, from, day)))
+		}
+		vm.QuoteSeries = append(vm.QuoteSeries, s)
+	}
+	if !quoteTime.IsZero() {
+		vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "quote_snapshot", DataTime: fmtTime(quoteTime, c.Zone)})
+	}
+	return nil
 }

@@ -137,7 +137,8 @@ const preChangeBytes = `{"schema":"option_data_page","schema_version":1,"run_id"
 	`"generated_at":"2026-11-07T00:00:00Z","data_times":[{"source":"option_eod","data_time":"2026-11-06T21:00:00Z"}],` +
 	`"run_status":"ok","stale":null,"title":"Option data","sentence":"1 contracts on 2026-11-06.",` +
 	`"chain_title":"Option chain, last stored day","series_title":"Quotes by slot","notes_title":"Notes","notes":[],` +
-	`"gaps":[{"kind":"gap","reason":"no_data","text":"2026-11-20 call 100.00: no quote snapshot is stored for this contract in the window read (2026-10-30 to 2026-11-06)"}],"underlying":{"id":9000,"symbol":null,"label":"Synthetic underlying","session_day":"2026-11-06",` +
+	`"gaps":[{"kind":"gap","reason":"no_data","text":"2026-11-20 call 100.00: no quote snapshot is stored for this contract ` +
+	`in the window read (2026-10-30 to 2026-11-06)"}],"underlying":{"id":9000,"symbol":null,"label":"Synthetic underlying","session_day":"2026-11-06",` +
 	`"price":{"kind":"value","value":100,"text":"100.00","unit":"price"},"currency":"USD"},` +
 	`"chain":{"session_day":"2026-11-06","rows":[{"instrument_id":1,"expiry":"2026-11-20","right":"call",` +
 	`"strike":{"kind":"value","value":100,"text":"100.00","unit":"price"},"status":{"code":1,"text":"ok"},` +
