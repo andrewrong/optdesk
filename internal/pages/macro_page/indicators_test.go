@@ -95,15 +95,15 @@ func TestChangeFiveSessions(t *testing.T) {
 	}
 }
 
-func TestMonthlyLateAfter45Days(t *testing.T) {
+func TestMonthlyLateAfter100Days(t *testing.T) {
 	t.Parallel()
-	cases := []struct{ day, status string }{{"2026-09-21", "good"}, {"2026-09-20", "late"}}
+	cases := []struct{ day, status string }{{"2026-07-28", "good"}, {"2026-07-27", "late"}}
 	for _, tc := range cases {
 		t.Run(tc.day, func(t *testing.T) {
 			t.Parallel()
 			r := groupSeries(t)
-			r.points["IRLTLT01JPM156N"] = monthly(t, "2026-08-01", tc.day)
-			// 2026-11-05 minus 2026-09-21 is 45 days, minus 2026-09-20 is 46.
+			r.points["IRLTLT01JPM156N"] = monthly(t, "2026-06-01", tc.day)
+			// 2026-11-05 minus 2026-07-28 is 100 days, minus 2026-07-27 is 101.
 			m := buildWith(t, r, groupCfg())
 			if got := indicator(m, 5)["status"]; got != tc.status {
 				t.Fatalf("status %v", got)
@@ -204,13 +204,13 @@ func TestGroupsOnlyPageKeepsDataDay(t *testing.T) {
 	}
 }
 
-func TestWeeklyLateAfter10Days(t *testing.T) {
+func TestWeeklyLateAfter14Days(t *testing.T) {
 	t.Parallel()
 	// The page day is 2026-11-05.
 	cases := []struct{ day, status, label string }{
 		{"2026-10-31", "good", "On time"}, // 5 days
-		{"2026-10-26", "good", "On time"}, // 10 days
-		{"2026-10-25", "late", "Late"},    // 11 days
+		{"2026-10-22", "good", "On time"}, // 14 days
+		{"2026-10-21", "late", "Late"},    // 15 days
 	}
 	for _, tc := range cases {
 		t.Run(tc.day, func(t *testing.T) {
@@ -246,13 +246,13 @@ func TestNFCIPrintedAsIndex(t *testing.T) {
 	}
 }
 
-func TestH10LateAfter10Days(t *testing.T) {
+func TestH10LateAfter14Days(t *testing.T) {
 	t.Parallel()
 	// The page day is 2026-11-05.
 	cases := []struct{ day, status, label string }{
 		{"2026-10-31", "good", "On time"}, // 5 days
-		{"2026-10-26", "good", "On time"}, // 10 days
-		{"2026-10-25", "late", "Late"},    // 11 days
+		{"2026-10-22", "good", "On time"}, // 14 days
+		{"2026-10-21", "late", "Late"},    // 15 days
 	}
 	for _, id := range []string{"DTWEXBGS", "DEXJPUS"} {
 		pos := map[string]int{"DTWEXBGS": 3, "DEXJPUS": 4}[id]
@@ -313,5 +313,30 @@ func TestGroupedDailyBannerAgreesWithRow(t *testing.T) {
 	}
 	if late {
 		t.Fatal("grouped daily row 5 days old is Late, want On time under the 6-day limit")
+	}
+}
+
+func TestMonthlyWeeklyLimits(t *testing.T) {
+	t.Parallel()
+	// The page day is 2026-11-05.
+	cases := []struct {
+		name, id, day, label string
+		pos                  int
+	}{
+		{"monthly 60 days", "IRLTLT01JPM156N", "2026-09-06", "On time", 5},
+		{"monthly 110 days", "IRLTLT01JPM156N", "2026-07-18", "Late", 5},
+		{"weekly 12 days", "NFCI", "2026-10-24", "On time", 2},
+		{"weekly 16 days", "NFCI", "2026-10-20", "Late", 2},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := groupSeries(t)
+			r.points[tc.id] = monthly(t, tc.day)
+			row := indicator(buildWith(t, r, groupCfg()), tc.pos)
+			if row["label"] != tc.label {
+				t.Fatalf("label %v, want %s", row["label"], tc.label)
+			}
+		})
 	}
 }
