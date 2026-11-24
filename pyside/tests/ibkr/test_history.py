@@ -330,12 +330,12 @@ def test_error_send_counts() -> None:
             with pytest.raises(spec.BrokerError):
                 task.result()
         await send_n(clock, gateway, reader, 47, first=10)
-        task = await_later(reader, gateway, request(con_id=99))
+        late = await_later(reader, gateway, request(con_id=99))
         await asyncio.sleep(0)
         await clock.advance(1)
-        assert not task.done()  # the 51st waits for the failed send at 0 to age out
-        await drain(clock, task)
-        task.result()
+        assert not late.done()  # the 51st waits for the failed send at 0 to age out
+        await drain(clock, late)
+        late.result()
         return len(gateway.sent)
 
     assert asyncio.run(run()) == 48
