@@ -2,9 +2,11 @@ package household_page_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
+	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/household_page"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -186,5 +188,45 @@ func TestFamilyTrendNoRateReadWithoutYen(t *testing.T) {
 	r.build(t)
 	if len(fx.calls) != 0 {
 		t.Fatalf("rate reads: %v", fx.calls)
+	}
+}
+
+func TestFamilyTrendNewLeftOutSinceFirstRecord(t *testing.T) {
+	t.Parallel()
+	recorded := []string{"2026-11-05", "2026-11-06", "2026-11-09", "2026-11-10"}
+	cases := []struct {
+		name    string
+		wifeAt  []string
+		want    string
+		notWant []string
+	}{
+		{"all four days have family points", recorded,
+			"全家合计：2026-11-05 至 2026-11-10，共 4 天。", []string{"86", "90"}},
+		{"the wife starts one day later", recorded[1:],
+			"全家合计：2026-11-06 至 2026-11-10，共 3 天。有 1 天没有画点：当天至少一个账户没有净值记录。", []string{"86", "87"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r, _ := trendRig(blockapi.FamilyTrendResult{}, "main", "wife")
+			r.c.FamilyTrend = pagefig.NewFamilyTrend
+			r.acc.values["main"], r.acc.values["wife"] = map[string][]store.AccountValue{}, map[string][]store.AccountValue{}
+			for _, d := range recorded {
+				r.acc.values["main"][d] = vals(d, "100.00", "1.00")
+			}
+			for _, d := range tc.wifeAt {
+				r.acc.values["wife"][d] = vals(d, "10.00", "1.00")
+			}
+			m, _ := r.build(t)
+			w, _ := trendOf(m)["window"].(string)
+			if w != tc.want {
+				t.Fatalf("window = %q, want %q", w, tc.want)
+			}
+			for _, n := range tc.notWant {
+				if strings.Contains(w, n) {
+					t.Fatalf("window %q holds %q", w, n)
+				}
+			}
+		})
 	}
 }
