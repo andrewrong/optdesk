@@ -552,8 +552,9 @@ func TestPullPartialUnchangedPermanent(t *testing.T) {
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
 		t.Fatalf("second run: %v, want Permanent", res.Err)
 	}
-	if strings.Contains(res.Err.Error(), "slow broker") || !strings.Contains(res.Err.Error(), "partial=6") || !strings.Contains(res.Err.Error(), "did not change") {
-		t.Errorf("error text %q", res.Err.Error())
+	msg := res.Err.Error()
+	if strings.Contains(msg, "slow broker") || !strings.Contains(msg, "partial=6") || !strings.Contains(msg, "did not change") {
+		t.Errorf("error text %q", msg)
 	}
 	if len(s.stored) != len(before) {
 		t.Fatalf("stored %d rows, want %d", len(s.stored), len(before))

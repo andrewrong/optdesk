@@ -42,7 +42,9 @@ func jpTenPlanned(t *testing.T, opt func(b *fakeBroker) func(int, []broker.Contr
 
 // jpSixPartial answers a bid only (partial) for the strikes below 90 while partial is set, else ok; the strikes in
 // okAlso answer ok even then.
-func jpSixPartial(cutoff string, partial *bool, okAlso map[string]bool, mu *sync.Mutex) func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error) {
+func jpSixPartial(
+	cutoff string, partial *bool, okAlso map[string]bool, mu *sync.Mutex,
+) func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error) {
 	return func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error) {
 		return func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 			qs := okQuotes(b.clk, cs)
@@ -81,7 +83,8 @@ func TestJPPartialUnderShareRetries(t *testing.T) {
 		t.Fatalf("second attempt: %v, want Permanent", res.Err)
 	}
 	msg := res.Err.Error()
-	if strings.Contains(msg, "slow broker") || !strings.Contains(msg, "ok=4 partial=6") || !strings.Contains(msg, "planned") || !strings.Contains(msg, "did not change") {
+	if strings.Contains(msg, "slow broker") || !strings.Contains(msg, "ok=4 partial=6") ||
+		!strings.Contains(msg, "planned") || !strings.Contains(msg, "did not change") {
 		t.Errorf("error text %q", msg)
 	}
 	if len(s.stored) != len(before) {

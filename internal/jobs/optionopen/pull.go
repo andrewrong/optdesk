@@ -331,7 +331,8 @@ func underShare(res contracts.JobResult, ok, planned, unread, partial, outside, 
 			kind = contracts.Permanent
 		}
 		return withErr(res, newErr(kind,
-			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d planned=%d unread=%d outside_band=%d added=%d (partial rows did not change between attempts: %t)",
+			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d planned=%d unread=%d outside_band=%d added=%d "+
+				"(partial rows did not change between attempts: %t)",
 			ok, planned, share, ok, partial, planned, unread, outside, added, unchanged))
 	}
 	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d",
