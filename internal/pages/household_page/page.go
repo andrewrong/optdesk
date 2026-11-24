@@ -48,6 +48,9 @@ type Config struct {
 	Family blockapi.NewFamilyFigureFunc
 	// FamilyTrend is the figure of the family trend block; nil leaves the block the gap not_built.
 	FamilyTrend blockapi.NewFamilyTrendFigureFunc
+	// FamilyRisk is the figure of the family risk blocks (obligations, cash_after, stress, concentration); nil
+	// leaves them the gap not_built. Marks or Holdings nil makes only the concentration the gap no_reader.
+	FamilyRisk blockapi.NewFamilyRiskFigureFunc
 	// Underlying, Earnings and Held are read only by BuildHeld: the underlying rows (company and issuer of a
 	// symbol), the stored earnings rows of an issuer and the figure of the held companies. A nil one gives
 	// the page gaps no_reader.
