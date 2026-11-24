@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/companydataapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/contracts/gen"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -82,6 +83,19 @@ func (f *fakeBars) PriceBars(_ context.Context, id int64, basis string, from, _ 
 	return f.bars[id], nil
 }
 
+// fakeIDs answers StockIDs from ids (symbol to the rows it returns) and counts the calls and the names asked.
+type fakeIDs struct {
+	rows  []store.InstrumentName
+	calls int
+	names [][]string
+}
+
+func (f *fakeIDs) StockIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	f.calls++
+	f.names = append(f.names, names)
+	return f.rows, nil
+}
+
 type fakeFacts struct{}
 
 func (fakeFacts) FactsWithPeriodFiledBy(context.Context, string, string, contracts.Day) ([]contracts.FundamentalFact, error) {
@@ -132,9 +146,15 @@ func summary() companydataapi.Summary {
 }
 
 func newInput(rows []underlying.Row, c *fakeCalc) (Input, *fakeBars) {
+	in, b, _ := newInputIDs(rows, c)
+	return in, b
+}
+
+func newInputIDs(rows []underlying.Row, c *fakeCalc) (Input, *fakeBars, *fakeIDs) {
+	ids := &fakeIDs{rows: []store.InstrumentName{{InstrumentID: 1, Type: "stock", Name: "AAPL"}, {InstrumentID: 2, Type: "stock", Name: "MSFT"}}}
 	b := &fakeBars{bars: map[int64][]contracts.PriceBar{1: {mkBar("2026-11-14"), mkBar("2026-11-16")}, 2: {mkBar("2026-11-13")}}}
 	return Input{Now: time.Date(2026, 11, 17, 9, 0, 0, 0, time.UTC), Today: "2026-11-17",
-		Underlyings: fakeUnderlyings{rows: rows}, Bars: b, Facts: fakeFacts{}, Earnings: fakeEarnings{}, Calc: c}, b
+		Underlyings: fakeUnderlyings{rows: rows}, Bars: b, Facts: fakeFacts{}, Earnings: fakeEarnings{}, Calc: c, StockIDs: ids}, b, ids
 }
 
 func build(t *testing.T, in Input) map[string]any {
@@ -360,5 +380,68 @@ func TestEmptyNameShowsSymbol(t *testing.T) {
 		if cs[i]["name"] != want {
 			t.Errorf("row %d name = %v, want %q", i, cs[i]["name"], want)
 		}
+	}
+}
+
+func TestBarsReadByResolvedInstrumentID(t *testing.T) {
+	t.Parallel()
+	in, b, ids := newInputIDs([]underlying.Row{aapl}, &fakeCalc{})
+	ids.rows = []store.InstrumentName{{InstrumentID: 77, Type: "stock", Name: "AAPL"}}
+	b.bars = map[int64][]contracts.PriceBar{77: {mkBar("2026-11-13"), mkBar("2026-11-16")}}
+	in.Calc = &countingCalc{}
+	c := companies(build(t, in))[0]
+	if c["bar_count"] != "2" {
+		t.Fatalf("bar_count = %v", c["bar_count"])
+	}
+}
+
+// countingCalc reports the number of bar days it was given as BarCount.
+type countingCalc struct{ fakeCalc }
+
+func (*countingCalc) Summarize(in companydataapi.SummaryInput) (companydataapi.Summary, error) {
+	return companydataapi.Summary{BarCount: len(in.BarDays)}, nil
+}
+
+type countBars struct{ calls int }
+
+func (f *countBars) PriceBars(context.Context, int64, string, contracts.Day, contracts.Day) ([]contracts.PriceBar, error) {
+	f.calls++
+	return []contracts.PriceBar{mkBar("2026-11-16")}, nil
+}
+
+func TestSharedSymbolReadsNoBars(t *testing.T) {
+	t.Parallel()
+	in, _, ids := newInputIDs([]underlying.Row{aapl}, &fakeCalc{})
+	ids.rows = []store.InstrumentName{{InstrumentID: 1, Name: "AAPL"}, {InstrumentID: 9, Name: "AAPL"}}
+	cb := &countBars{}
+	in.Bars, in.Calc = cb, &countingCalc{}
+	c := companies(build(t, in))[0]
+	if c["bar_count"] != "0" || cb.calls != 0 {
+		t.Fatalf("bar_count = %v, PriceBars calls = %d", c["bar_count"], cb.calls)
+	}
+}
+
+func TestNilStockIDsReadsNoBars(t *testing.T) {
+	t.Parallel()
+	in, _ := newInput([]underlying.Row{aapl}, &fakeCalc{})
+	cb := &countBars{}
+	in.Bars, in.StockIDs = cb, nil
+	c := companies(build(t, in))[0]
+	if c["bar_count"] != "0" || cb.calls != 0 {
+		t.Fatalf("bar_count = %v, PriceBars calls = %d", c["bar_count"], cb.calls)
+	}
+}
+
+func TestStockIDsReadOncePerBatchOf500(t *testing.T) {
+	t.Parallel()
+	var rows []underlying.Row
+	for i := 0; i < 1001; i++ {
+		s := fmt.Sprintf("S%d", i)
+		rows = append(rows, underlying.Row{Key: "US:" + s, Symbol: s, Market: "US", Kind: "stock", Status: "active"})
+	}
+	in, _, ids := newInputIDs(rows, &fakeCalc{})
+	build(t, in)
+	if ids.calls != 3 || len(ids.names[0]) != 500 || len(ids.names[2]) != 1 {
+		t.Fatalf("calls = %d, batches %d", ids.calls, len(ids.names))
 	}
 }
