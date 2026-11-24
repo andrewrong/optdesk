@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -129,6 +130,50 @@ func jobOf(jobs []Job, dataset string) *Job {
 	return nil
 }
 
+// jpCalendar is the calendar of the job that stores the JP keys of a dataset two jobs list.
+const jpCalendar = "XTKS"
+
+// applyDataset is Apply with the job of jobOf, except that a cell whose missing keys are all "edinet:" keys takes the
+// verdict of the job of the dataset with calendar XTKS, since only that job writes JP keys.
+func applyDataset(cells []Cell, jobs []Job, dataset string, form *Form, now time.Time, today contracts.Day) {
+	job := jobOf(jobs, dataset)
+	Apply(cells, job, form, now, today)
+	var jp *Job
+	for i := range jobs {
+		if jobs[i].Calendar != jpCalendar {
+			continue
+		}
+		for _, d := range jobs[i].Datasets {
+			if d == dataset {
+				jp = &jobs[i]
+			}
+		}
+		if jp != nil {
+			break
+		}
+	}
+	if jp == nil || jp == job {
+		return
+	}
+	for i := range cells {
+		if onlyJPKeys(cells[i].MissingKeys) {
+			Apply(cells[i:i+1], jp, form, now, today)
+		}
+	}
+}
+
+func onlyJPKeys(keys []string) bool {
+	if len(keys) == 0 {
+		return false
+	}
+	for _, k := range keys {
+		if !strings.HasPrefix(k, "edinet:") {
+			return false
+		}
+	}
+	return true
+}
+
 func datasetRow(in Input, id string, rows []coverage.Cell, windows map[string][]contracts.Day, newest []coverage.Newest) Dataset {
 	job := jobOf(in.Jobs, id)
 	cal := calendarOf(in, id, windows)
@@ -137,7 +182,7 @@ func datasetRow(in Input, id string, rows []coverage.Cell, windows map[string][]
 		jobID = &job.ID
 	}
 	cells := DatasetCells(rows, id, windows[cal])
-	Apply(cells, job, in.Form, in.Now, in.Today)
+	applyDataset(cells, in.Jobs, id, in.Form, in.Now, in.Today)
 	LateText(id, cells, windows[cal], newest)
 	gaps := GapDays(cells)
 	d := Dataset{DatasetID: id, Label: id, JobID: jobID, Calendar: cal, GapDays: len(gaps),
