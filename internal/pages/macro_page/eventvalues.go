@@ -90,9 +90,9 @@ func monthlyBefore(months int) func(time.Time) time.Time {
 
 func noPoint(id, label string, s *series, o time.Time) *gap {
 	if _, stored := s.pts[o.Format(dayLayout)]; stored {
-		return &gap{Reason: "no_data", Text: fmt.Sprintf("%s %s not published (stored with no value)", id, label)}
+		return &gap{Reason: "no_data", Text: fmt.Sprintf(gapValueNoNumber, id, label)}
 	}
-	return &gap{Reason: "no_data", Text: fmt.Sprintf("%s %s not stored", id, label)}
+	return &gap{Reason: "no_data", Text: fmt.Sprintf(gapValueNotStored, id, label)}
 }
 
 func round(v float64, places int) float64 {
@@ -319,7 +319,7 @@ func eventValues(ctx context.Context, r store.SeriesReader, rd macroevent.Reader
 		}
 		ed, err := time.Parse(dayLayout, string(e.Date))
 		if err != nil {
-			out[i] = eventCells{Previous: gap{Reason: "no_data", Text: "event date not readable"}}
+			out[i] = eventCells{Previous: gap{Reason: "no_data", Text: gapEventDateUnread}}
 			continue
 		}
 		var cells eventCells
@@ -336,7 +336,7 @@ func eventValues(ctx context.Context, r store.SeriesReader, rd macroevent.Reader
 				return nil, err
 			}
 			if later {
-				g := gap{Reason: "no_data", Text: "earlier estimate not stored (only the latest vintage is kept)"}
+				g := gap{Reason: "no_data", Text: gapEarlierEstimate}
 				cells.Previous, cells.PreviousFigure = g, g
 			}
 		}
@@ -365,7 +365,7 @@ func periodCells(spec kindSpec, m map[string]*series, ed, d time.Time) eventCell
 		f, g := spec.figure(m, prev)
 		c = c.withPrevious(f, g)
 	}
-	c.Actual = gap{Reason: "no_data", Text: "not yet released"}
+	c.Actual = gap{Reason: "no_data", Text: gapNotYetReleased}
 	return c
 }
 
@@ -378,7 +378,7 @@ func fomcCells(spec kindSpec, m map[string]*series, ed, d time.Time) eventCells 
 		c = c.withPrevious(f, g)
 		f, g = spec.figure(m, ed.AddDate(0, 0, 1))
 		if g != nil {
-			g = &gap{Reason: "no_data", Text: "not yet published by FRED"}
+			g = &gap{Reason: "no_data", Text: gapNotYetPublished}
 		}
 		return c.withActual(f, g)
 	}
@@ -390,6 +390,6 @@ func fomcCells(spec kindSpec, m map[string]*series, ed, d time.Time) eventCells 
 		f, g := spec.figure(m, last)
 		c = c.withPrevious(f, g)
 	}
-	c.Actual = gap{Reason: "no_data", Text: "not yet released"}
+	c.Actual = gap{Reason: "no_data", Text: gapNotYetReleased}
 	return c
 }

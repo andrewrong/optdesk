@@ -18,6 +18,7 @@ const (
 	coverageNoteMidZh  = " 个 lot-day，其中 "
 	coverageNoteTailZh = " 个没有双边报价"
 
+	noOpenZh     = "没有未平仓的 short 期权"
 	noMarkZh     = "没有最新收盘价"
 	noEventRowZh = "近 7 天候选表中没有该公司的记录，财报日和除息日未知"
 	noGuardRowZh = "没有持仓 call 的保护行，不按安全处理"

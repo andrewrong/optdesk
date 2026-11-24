@@ -371,7 +371,7 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 		out.Status, out.Label = "missing", "n/a"
 		return out
 	case string(latest.Unit) != "percent":
-		out.Latest = gap{Reason: "missing_input", Text: "unit unknown"}
+		out.Latest = gap{Reason: "missing_input", Text: gapUnitUnknown}
 	default:
 		v := *latest.Value
 		out.Latest = figure{Value: v, Text: strconv.FormatFloat(v, 'f', -1, 64) + "%", Unit: "percent"}
