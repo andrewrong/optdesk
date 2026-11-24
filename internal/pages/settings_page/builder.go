@@ -60,7 +60,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, _ contracts.Day,
 	}
 	if c.Owner == nil {
 		vm.RunStatus = "partial"
-		vm.Gap = &gap{Reason: "no_reader", Text: "The owner settings are not readable here."}
+		vm.Gap = &gap{Reason: "no_reader", Text: noReaderGapText}
 		return json.Marshal(vm)
 	}
 
@@ -112,7 +112,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, _ contracts.Day,
 	if c.Form != nil {
 		vm.Form = newForm(*c.Form)
 	} else {
-		vm.Gap = &gap{Reason: "not_built", Text: "Editing is off: start ot serve with --owner-edit to change the settings."}
+		vm.Gap = &gap{Reason: "not_built", Text: editOffGapText}
 	}
 	return json.Marshal(vm)
 }

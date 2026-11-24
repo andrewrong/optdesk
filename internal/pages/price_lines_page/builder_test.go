@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -160,21 +161,39 @@ func TestBuildFixedFields(t *testing.T) {
 }
 
 const (
-	sentenceWant = "Your hand buy price for each name you keep. The put gate reads it only for a name that has no valuation buy zone."
-	introWant    = "A saved price applies to the next option candidate run; clearing a hand price removes the check only for a name with no valuation."
+	sentenceWant = "为每个持有的标的手填买入价。只有没有估值买入区间的标的，卖出认沽的闸门才会读取这个价格。"
+	introWant    = "保存的价格在下一次期权候选运行时生效；清除手填价格，只会取消没有估值的标的的检查。"
 )
 
 func TestSentenceNamesValuationException(t *testing.T) {
 	t.Parallel()
 	o, _ := build(t, base())
-	if !strings.Contains(o.Sentence, "hand buy price") || !strings.Contains(o.Sentence, "only for a name that has no valuation buy zone") {
+	if !strings.Contains(o.Sentence, "只有没有估值买入区间的标的") {
 		t.Errorf("sentence = %q", o.Sentence)
 	}
-	if strings.HasSuffix(o.Sentence, "The put gate reads it.") {
-		t.Errorf("sentence reads unconditionally: %q", o.Sentence)
-	}
-	if !strings.Contains(o.Intro, "only for a name with no valuation") {
+	if !strings.Contains(o.Intro, "只会取消没有估值的标的的检查") {
 		t.Errorf("intro = %q", o.Intro)
+	}
+}
+
+func TestPriceLinesTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	o, _ := build(t, base())
+	old := []string{
+		"Your hand buy price", "A saved price applies", "Type the code and market", "The price is the buy_price",
+	}
+	for name, text := range map[string]string{"sentence": o.Sentence, "intro": o.Intro, "add.hint": o.Add.Hint, "footnote": o.Footnote} {
+		if !strings.ContainsFunc(text, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Errorf("%s holds no Chinese character: %q", name, text)
+		}
+		for _, e := range old {
+			if strings.Contains(text, e) {
+				t.Errorf("%s holds the old English sentence %q", name, e)
+			}
+		}
+	}
+	if !strings.Contains(o.Footnote, "buy_price") {
+		t.Errorf("footnote lost the field name: %q", o.Footnote)
 	}
 }
 
@@ -185,8 +204,8 @@ func TestBuildFixedTexts(t *testing.T) {
 		"title":    {o.Title, "Price lines"},
 		"sentence": {o.Sentence, sentenceWant},
 		"intro":    {o.Intro, introWant},
-		"add.hint": {o.Add.Hint, "Type the code and market of a name on the underlying list."},
-		"footnote": {o.Footnote, "The price is the buy_price of the name on the underlyings page; the note is shared with it."},
+		"add.hint": {o.Add.Hint, "请输入标的清单中某个标的的代码和市场。"},
+		"footnote": {o.Footnote, "该价格即标的页面上该标的的 buy_price；备注与标的页面共用。"},
 	} {
 		if p[0] != p[1] {
 			t.Errorf("%s = %q, want %q", name, p[0], p[1])

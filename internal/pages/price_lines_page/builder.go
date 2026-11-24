@@ -18,12 +18,7 @@ import (
 const (
 	postPath = "/plan/price-lines"
 
-	titleText    = "Price lines"
-	sentenceText = "Your hand buy price for each name you keep. The put gate reads it only for a name that has no valuation buy zone."
-	introText    = "A saved price applies to the next option candidate run; clearing a hand price removes the check only for a name with no valuation."
-	addHintText  = "Type the code and market of a name on the underlying list."
-	footnoteText = "The price is the buy_price of the name on the underlyings page; the note is shared with it."
-	noReaderText = "The underlying list is not readable here."
+	titleText = "Price lines"
 
 	maxText = 200
 )
