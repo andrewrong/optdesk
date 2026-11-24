@@ -115,3 +115,69 @@ it('shows the gap when the trend has no series', async () => {
   expect(gaps[0]!.getAttribute('data-reason')).toBe('no_data')
   expect(trend.querySelector('[data-chart]')).toBeNull()
 })
+
+// Issue #3613: the family risk blocks of docs/design/household-risk.md, entry 3: rows, notes and totals as sent.
+type PayloadRow = { name: string; amount: { text: string }; share: { text: string } }
+// Each table row holds its payload row's name and the one text given, as sent.
+function expectRowsShow(rows: Element[], given: PayloadRow[], text: (r: PayloadRow) => string) {
+  given.forEach((r, i) => {
+    expect(rows[i]!.textContent).toContain(r.name)
+    expect(rows[i]!.textContent).toContain(text(r))
+  })
+}
+const RISK_BLOCKS = ['obligations', 'cash_after', 'stress', 'concentration'] as const
+
+it('shows the family risk blocks', async () => {
+  const payload = fixture('family.json')
+  expect(validateHouseholdPage(payload).ok).toBe(true)
+  await show(<HouseholdPage payload={payload} />)
+  for (const name of RISK_BLOCKS) {
+    const block = host.querySelector(`[data-block=${name}]`)!
+    expect(payload[name].title).toMatch(/^家庭风险/)
+    expect(block.textContent).toContain(payload[name].title)
+    expect(block.querySelector('[data-block-gap]')).toBeNull()
+  }
+  const cash = host.querySelector('[data-block=cash_after]')!
+  const rows = [...cash.querySelectorAll('tbody tr')]
+  expect(rows).toHaveLength(3)
+  expectRowsShow(rows, payload.cash_after.rows, (r) => r.amount.text)
+  expect(rows[1]!.textContent).toContain('缺口：现金不够')
+  expect(rows[0]!.textContent).not.toContain('缺口')
+  expect(rows[2]!.textContent).toContain(payload.cash_after.totals[0].text)
+  const stress = [...host.querySelectorAll('[data-block=stress] tbody tr')]
+  expect(stress).toHaveLength(payload.stress.rows.length)
+  expectRowsShow(stress, payload.stress.rows, (r) => r.share.text)
+  expect(host.querySelector('[data-block=obligations]')!.textContent).toContain(
+    payload.obligations.rows[0].note,
+  )
+})
+
+it('shows the concentration rows of the family scope', async () => {
+  const payload = fixture('family.json')
+  expect(validateHouseholdPage(payload).ok).toBe(true)
+  await show(<HouseholdPage payload={payload} />)
+  const scope = host.querySelector('[data-block=concentration] [data-scope-rows=household]')!
+  const rows = [...scope.querySelectorAll('tbody tr')]
+  // the household total row stays under the household scope, after the rows
+  expect(rows).toHaveLength(payload.concentration.rows.length + 1)
+  expect(rows[rows.length - 1]!.textContent).toContain(payload.concentration.totals[0].text)
+  payload.concentration.rows.forEach((r: { scope: string }) => expect(r.scope).toBe('household'))
+  expectRowsShow(rows, payload.concentration.rows, (r) => r.share.text)
+})
+
+it('shows the gap of a risk block', async () => {
+  const payload = fixture('family.json')
+  payload.concentration.rows = []
+  payload.concentration.totals = []
+  payload.concentration.gap = { reason: 'no_reader', text: '此处暂时读不到持仓，集中度算不出' }
+  await show(<HouseholdPage payload={payload} />)
+  const gaps = host.querySelectorAll('[data-block=concentration] [data-block-gap]')
+  expect(gaps).toHaveLength(1)
+  expect(gaps[0]!.textContent).toBe('此处暂时读不到持仓，集中度算不出')
+  expect(gaps[0]!.getAttribute('data-reason')).toBe('no_reader')
+  for (const name of ['obligations', 'cash_after', 'stress'] as const) {
+    const block = host.querySelector(`[data-block=${name}]`)!
+    expect(block.querySelector('[data-block-gap]')).toBeNull()
+    expect(block.querySelectorAll('tbody tr').length).toBeGreaterThan(payload[name].rows.length - 1)
+  }
+})
