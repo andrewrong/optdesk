@@ -305,3 +305,29 @@ it('prints no missing reason for an indicator with a value', async () => {
   const row = host.querySelectorAll('[data-indicators] tbody tr')[0]!
   expect(row.querySelector('[data-missing-reason]')).toBeNull()
 })
+
+it('renders actual column', async () => {
+  const payload = structuredClone(v2('golden'))
+  payload.events[0].actual = { text: '3.1%', unit: 'percent', value: 3.1 }
+  payload.events[1].actual = { reason: 'no_data', text: 'not yet published' }
+  expect(validateMacroPage(payload).ok).toBe(true)
+  await show(payload)
+  const heads = [...host.querySelectorAll('[data-events] thead th')].map((th) => th.textContent)
+  const col = heads.indexOf('Actual')
+  expect(col).toBe(heads.indexOf('Previous') + 1)
+  const rows = host.querySelectorAll('[data-events] tbody tr')
+  expect(rows[0]!.querySelectorAll('td')[col]!.textContent).toBe('3.1%')
+  const gap = rows[1]!.querySelectorAll('td')[col]!
+  expect(gap.querySelector('[data-missing]')).not.toBeNull()
+  expect(gap.textContent).toBe('—not yet published')
+})
+
+it('renders an event without actual as before', async () => {
+  const payload = structuredClone(v2('golden'))
+  expect(payload.events[0].actual).toBeUndefined()
+  await show(payload)
+  const col = [...host.querySelectorAll('[data-events] thead th')].findIndex(
+    (th) => th.textContent === 'Actual',
+  )
+  expect(host.querySelectorAll('[data-events] tbody tr')[0]!.querySelectorAll('td')[col]!.textContent).toBe('')
+})
