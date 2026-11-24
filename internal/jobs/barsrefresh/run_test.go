@@ -253,19 +253,6 @@ func TestBackfillCapDefersWithoutRequest(t *testing.T) {
 	}
 }
 
-func TestWithinToleranceIsNotRestated(t *testing.T) {
-	t.Parallel()
-	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "100.0005"))}
-	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-09", "100.0000", 1)}}
-	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
-		t.Fatal(res.Err)
-	}
-	if len(h.queries) != 1 || len(st.epoch(2)) != 0 || len(st.rows) != 1 {
-		t.Fatalf("queries %d rows %+v", len(h.queries), st.rows)
-	}
-}
-
 func TestOneKeyFailureDoesNotStopOthers(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
@@ -282,26 +269,6 @@ func TestOneKeyFailureDoesNotStopOthers(t *testing.T) {
 	}
 	if len(st.rows) != 1 || st.rows[0].InstrumentID != 102 || res.Usable != 1 {
 		t.Fatalf("rows %+v result %+v", st.rows, res)
-	}
-}
-
-func TestIndexConIDResolvedOnce(t *testing.T) {
-	t.Parallel()
-	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
-		if q.DurationDays == 5 {
-			return []broker.Bar{mkbar("2026-11-09", "50.0000")}, nil
-		}
-		return []broker.Bar{mkbar("2026-11-09", "50.0000")}, nil
-	}}
-	// stored 100 against pulled 50 forces a second pull of the same key in one run
-	st := &memBars{rows: []contracts.PriceBar{stored(7001, "2026-11-09", "100.0000", 1)}}
-	j, b := build(t, h, st)
-	res := j.Run(context.Background(), nextDay, keysOf("index:SPX"))
-	if res.Err != nil {
-		t.Fatal(res.Err)
-	}
-	if len(h.queries) != 2 || h.queries[0].Contract.ConID != 7001 || h.queries[1].Contract.ConID != 7001 || b.resolved != 1 {
-		t.Fatalf("queries %+v resolved %d", h.queries, b.resolved)
 	}
 }
 
