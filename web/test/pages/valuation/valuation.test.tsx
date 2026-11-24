@@ -1,19 +1,19 @@
 // The valuation pages print the document as given. Every number is a made-up fixture number.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { act } from 'react'
+import { act, Children, type ReactElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GLOSS } from '@/pages/valuation/CompanyView'
 import * as module from '@/pages/valuation/ValuationPage'
 import type { Payload } from '@/types/valuation_page'
 
-// ComposedChart of recharts is replaced by a stub that records its `data` prop and renders nothing.
-const chartData = vi.hoisted(() => [] as unknown[])
+// ComposedChart of recharts is replaced by a stub that records its children and renders nothing.
+const chartChildren = vi.hoisted(() => [] as unknown[])
 vi.mock('recharts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('recharts')>()),
-  ComposedChart: ({ data }: { data: unknown }) => {
-    chartData.push(data)
+  ComposedChart: ({ children }: { children: unknown }) => {
+    chartChildren.push(children)
     return null
   },
 }))
@@ -207,11 +207,18 @@ describe('company view', () => {
     expect(band.textContent).toContain('core 150')
   })
 
-  it('TestPriceBandHasAxisPoints: the chart gets the two end points of its axis as data', async () => {
-    chartData.length = 0
-    await render(fixture('company'))
-    expect(chartData.length).toBeGreaterThan(0)
-    for (const data of chartData) expect(data).toEqual([{ pos: 0 }, { pos: 1 }])
+  it('TestPriceBandMarksAreSeriesData: the legend lists every mark and the only data points are the marks', async () => {
+    chartChildren.length = 0
+    const payload = fixture('company')
+    const el = await render(payload)
+    const marks = payload.band!.marks
+    const legend = [...el.querySelectorAll('[data-chart="price-band"] li')].map((li) => li.textContent)
+    expect(legend).toEqual(marks.map((m) => `${m.name} ${m.value}`))
+    const elements = chartChildren.flatMap((c) => Children.toArray(c as ReactNode)) as ReactElement<{ data?: unknown }>[]
+    const series = elements.filter((e) => Array.isArray(e.props.data))
+    expect(series).toHaveLength(1)
+    expect(series[0]!.props.data).toEqual(marks.map((m) => ({ pos: Number(m.pos) })))
+    expect(chartChildren.length).toBeGreaterThan(0)
   })
 
   it('TestHistoryColumnsAndExpand: a row prints its columns and expands to detail and report text', async () => {
