@@ -197,7 +197,10 @@ func TestResultSentencesAreChinese(t *testing.T) {
 	texts = append(texts, strs(rel[0].(map[string]any)["lines"])...)
 	acc := strs(rel[len(rel)-1].(map[string]any)["lines"])
 	texts = append(texts, acc[1], acc[2])
-	old := []string{"closed options, each", "Broker figures are taken", "has no value:", "Assigned premium", "trade(s)", "Unpaired closes", "Cancels or corrections", "Same as broker", "No broker figure"}
+	old := []string{
+		"closed options, each", "Broker figures are taken", "has no value:", "Assigned premium", "trade(s)",
+		"Unpaired closes", "Cancels or corrections", "Same as broker", "No broker figure",
+	}
 	for _, x := range texts {
 		if !hanPattern.MatchString(x) {
 			t.Errorf("%q holds no Chinese character", x)
