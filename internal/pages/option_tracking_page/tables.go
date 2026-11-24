@@ -163,7 +163,7 @@ func formatAccount(alias string, res trackapi.TrackResult, heldKnown bool, asOf 
 		}
 	}
 	if a.Open == nil && a.Recent == nil && a.Recon == nil {
-		g := gap{Kind: "gap", Reason: reasonData, Text: noOpenText}
+		g := gap{Kind: "gap", Reason: reasonData, Text: noOpenZh}
 		a.Gap = &g
 	}
 	return a, stale
