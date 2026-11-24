@@ -350,3 +350,15 @@ func TestBarsSourceMixed(t *testing.T) {
 		t.Fatalf("all-ibkr page carries a source: %v", ok["bars_source"])
 	}
 }
+
+func TestEmptyNameShowsSymbol(t *testing.T) {
+	t.Parallel()
+	jp := underlying.Row{Key: "JP:7203", Symbol: "7203", Market: "JP", Kind: "stock", Issuer: "edinet:E02144", Status: "active"}
+	in, _ := newInput([]underlying.Row{msft, jp, aapl}, &fakeCalc{sum: summary()})
+	cs := companies(build(t, in))
+	for i, want := range []string{"MSFT", "7203", "Apple"} {
+		if cs[i]["name"] != want {
+			t.Errorf("row %d name = %v, want %q", i, cs[i]["name"], want)
+		}
+	}
+}

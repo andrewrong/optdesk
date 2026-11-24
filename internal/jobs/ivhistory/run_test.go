@@ -296,3 +296,54 @@ func TestOtherBrokerErrorStaysFailed(t *testing.T) {
 		t.Fatalf("result %+v rows %d", res, len(st.rows))
 	}
 }
+
+func runOne(t *testing.T, st *memReadings, d contracts.Day) broker.BarQuery {
+	t.Helper()
+	h := fixed(bar(string(d), "0.28"))
+	j := build(t, h, st, "AAA")
+	if res := j.Run(context.Background(), d, keysOf("AAA")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 {
+		t.Fatalf("queries %+v", h.queries)
+	}
+	return h.queries[0]
+}
+
+func TestRunPastDaySetsEnd(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{rows: []contracts.ReadingRecord{storedOk("AAA", "2026-11-02", "0.20")}}
+	if q := runOne(t, st, "2026-11-05"); q.End != "2026-11-05" {
+		t.Fatalf("past day End %q", q.End)
+	}
+	if q := runOne(t, &memReadings{rows: st.rows}, runDay); q.End != "" {
+		t.Fatalf("today End %q", q.End)
+	}
+}
+
+func TestRunAsksOnlyTheGap(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{rows: []contracts.ReadingRecord{storedOk("AAA", "2026-10-30", "0.20")}}
+	q := runOne(t, st, "2026-11-05")
+	if q.DurationDays != 6 || q.End != "2026-11-05" {
+		t.Fatalf("query %+v", q)
+	}
+}
+
+func TestRunNoOkReadingAsksBackfill(t *testing.T) {
+	t.Parallel()
+	if q := runOne(t, &memReadings{}, "2026-11-05"); q.DurationDays != 400 {
+		t.Fatalf("query %+v", q)
+	}
+}
+
+func TestRunRepairsStoredMissingDay(t *testing.T) {
+	t.Parallel()
+	mk := contracts.ReadingRecord{Name: "market.iv_ibkr", SubjectKind: "underlying", Subject: "AAA", Day: day("2026-11-04"), State: "missing_input", Rev: 1}
+	st := &memReadings{rows: []contracts.ReadingRecord{
+		storedOk("AAA", "2026-10-20", "0.20"), mk, storedOk("AAA", "2026-11-06", "0.30")}}
+	q := runOne(t, st, "2026-11-04")
+	if q.DurationDays != 15 || q.End != "2026-11-04" {
+		t.Fatalf("query %+v", q)
+	}
+}

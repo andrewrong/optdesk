@@ -592,3 +592,41 @@ func TestPullMakesNoCallAfterContextDone(t *testing.T) {
 		t.Fatalf("err %v calls %d", res.Err, len(h.queries))
 	}
 }
+
+func TestRunPastDayAsksOnlyTheGap(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-05", "11.0"))}
+	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-02", "10.0", 1)}}
+	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
+	if res := j.Run(context.Background(), pastDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].End != "2026-11-05" || h.queries[0].DurationDays != 5 {
+		t.Fatalf("queries %+v", h.queries)
+	}
+}
+
+func TestRunYfinanceRowsAskFromTheOldest(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "11.0"))}
+	st := &memBars{rows: []contracts.PriceBar{yfRow(101, "2026-10-31", "10.0"), yfRow(101, "2026-11-05", "10.0")}}
+	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].DurationDays != 10 {
+		t.Fatalf("queries %+v", h.queries)
+	}
+}
+
+func TestRunNoStoredBarKeepsBackfill(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-05", "11.0"))}
+	j, _ := build(t, h, &memBars{}, entry("cik:1", "AAA", 101))
+	if res := j.Run(context.Background(), pastDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].DurationDays != 400 {
+		t.Fatalf("queries %+v", h.queries)
+	}
+}

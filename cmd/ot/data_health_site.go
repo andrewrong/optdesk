@@ -183,7 +183,8 @@ func dueAtOfSlot(slot string) string {
 	return slot[:2] + ":" + slot[2:]
 }
 
-// dataHealthTimeSlot is the slot ("HHMM") and zone of a time-anchored job whose jobTable row is any-day.
+// dataHealthTimeSlot is the slot ("HHMM") and zone of a time-anchored job whose jobTable row is any-day
+// or listed-only (a row with no zone of its own).
 type dataHealthTimeSlot struct{ slot, zone string }
 
 // dataHealthTimeSlots is by job id; the slots match the anchor offsets of the job.toml of each job.
@@ -192,6 +193,10 @@ var dataHealthTimeSlots = map[string]dataHealthTimeSlot{
 	"fundamentals": {"0800", "America/New_York"},
 	"macro_events": {"0600", "America/New_York"},
 	"bars_refresh": {"1610", "America/New_York"},
+
+	"option_open_resolve":     {"1700", "America/New_York"}, // session_close + 60m of XNYS
+	"option_open_resolve_jp":  {"1630", "Asia/Tokyo"},       // session_close + 60m of XTKS (close 15:30)
+	"option_open_resolve_gap": {"0800", "America/New_York"}, // session_open - 90m
 }
 
 // dataHealthJobs builds the jobs of the page from jobTable, one per row in its order, and the manifests.

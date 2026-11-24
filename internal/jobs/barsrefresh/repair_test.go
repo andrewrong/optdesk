@@ -50,7 +50,7 @@ func TestEqualDayIsNotRewritten(t *testing.T) {
 	}
 }
 
-func TestPastDayAsksEndDayAnd400Days(t *testing.T) {
+func TestPastDayAsksEndDayAndTheGap(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-04", "10.0"), mkbar("2026-11-05", "11.0"))}
 	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-04", "10.0", 1)}}
@@ -58,7 +58,7 @@ func TestPastDayAsksEndDayAnd400Days(t *testing.T) {
 	if res := j.Run(context.Background(), pastDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if len(h.queries) != 1 || h.queries[0].End != "2026-11-05" || h.queries[0].DurationDays != 400 {
+	if len(h.queries) != 1 || h.queries[0].End != "2026-11-05" || h.queries[0].DurationDays != 5 {
 		t.Fatalf("queries %+v", h.queries)
 	}
 	if len(st.calls) != 1 || st.by[0] != "bars_refresh:2026-11-05" || len(st.rows) != 2 {
