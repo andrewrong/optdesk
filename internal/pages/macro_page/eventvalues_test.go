@@ -132,7 +132,7 @@ func TestEventValuesPerKind(t *testing.T) {
 		if row["previous"] != w || figText(t, row["previous_figure"]) != w {
 			t.Errorf("%s: previous %v figure %v, want %s", k, row["previous"], row["previous_figure"], w)
 		}
-		if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != "not yet released" {
+		if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != gapNotYetReleased {
 			t.Errorf("%s: future actual %s %s", k, reason, text)
 		}
 	}
@@ -225,7 +225,7 @@ func TestEventValuesGdpRevision(t *testing.T) {
 		t.Errorf("first estimate: %v %v", first["previous"], first["actual"])
 	}
 	for _, v := range []any{second["previous"], second["previous_figure"]} {
-		if reason, text := cellGap(t, v); reason != "no_data" || text != "earlier estimate not stored (only the latest vintage is kept)" {
+		if reason, text := cellGap(t, v); reason != "no_data" || text != gapEarlierEstimate {
 			t.Errorf("second estimate previous %s %q", reason, text)
 		}
 	}
@@ -245,7 +245,7 @@ func TestEventValuesFomcLag(t *testing.T) {
 	if row["previous"] != "4.00-4.25%" {
 		t.Errorf("previous %v", row["previous"])
 	}
-	if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != "not yet published by FRED" {
+	if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != gapNotYetPublished {
 		t.Errorf("actual %s %q", reason, text)
 	}
 }
@@ -314,5 +314,28 @@ func TestPastEventsNotLead(t *testing.T) {
 		if r["key"] == "next_event" && r["text"] != noBigEvent {
 			t.Errorf("a past event is the next event: %q", r["text"])
 		}
+	}
+}
+
+func TestNoPointTexts(t *testing.T) {
+	t.Parallel()
+	o := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	s := &series{id: "S", pts: map[string]*float64{"2026-09-01": nil}}
+	if g := noPoint("S", "lbl", s, o); g.Reason != "no_data" || g.Text != fmt.Sprintf(gapValueNoNumber, "S", "lbl") {
+		t.Errorf("stored without value: %+v", g)
+	}
+	if g := noPoint("S", "lbl", &series{id: "S", pts: map[string]*float64{}}, o); g.Reason != "no_data" || g.Text != fmt.Sprintf(gapValueNotStored, "S", "lbl") {
+		t.Errorf("not stored: %+v", g)
+	}
+}
+
+func TestEventValuesUnreadableDate(t *testing.T) {
+	t.Parallel()
+	cells, err := eventValues(context.Background(), fakeReader{}, nil, []macroevent.Event{evAt("cpi", "not-a-date")}, time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(cells) != 1 {
+		t.Fatalf("cells %v err %v", cells, err)
+	}
+	if g, ok := cells[0].Previous.(gap); !ok || g.Reason != "no_data" || g.Text != gapEventDateUnread {
+		t.Errorf("previous %+v", cells[0].Previous)
 	}
 }
