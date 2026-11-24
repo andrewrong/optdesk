@@ -320,10 +320,10 @@ describe('market state page', () => {
     const p = fixture('ok')
     await show(p)
     const word = (corner: string) => host.querySelector(`[data-corner=${corner}]`)?.textContent
-    expect(word('insideTopRight')).toMatch(/^Leading — /)
-    expect(word('insideTopLeft')).toMatch(/^Improving — /)
-    expect(word('insideBottomLeft')).toMatch(/^Lagging — /)
-    expect(word('insideBottomRight')).toMatch(/^Weakening — /)
+    expect(word('insideTopRight')).toBe('Leading')
+    expect(word('insideTopLeft')).toBe('Improving')
+    expect(word('insideBottomLeft')).toBe('Lagging')
+    expect(word('insideBottomRight')).toBe('Weakening')
     const map = host.querySelector('[data-rotation-map]')!.textContent!
     for (const q of p.sectors.rotation_axes.quadrants) expect(map).not.toContain(q.text)
     expect(host.querySelector('[data-rotation-note]')?.textContent).toBe(p.sectors.rotation_axes.note)
@@ -447,13 +447,37 @@ describe('market state page', () => {
     for (let i = 1; i < o.length; i++) expect(o[i]!).toBeGreaterThan(o[i - 1]!)
   })
 
-  it('glosses each quadrant word beside it in the same label', async () => {
+  it('glosses each quadrant word in a list under the map, not in the chart label', async () => {
     await show(fixture('ok'))
-    const label = (corner: string) => host.querySelector(`[data-corner=${corner}]`)?.textContent
-    expect(label('insideTopRight')).toBe('Leading — ahead of SPY over 3 months and still gaining')
-    expect(label('insideBottomRight')).toBe('Weakening — ahead of SPY over 3 months but losing pace')
-    expect(label('insideBottomLeft')).toBe('Lagging — behind SPY over 3 months and still losing')
-    expect(label('insideTopLeft')).toBe('Improving — behind SPY over 3 months but gaining pace')
+    const notes = [...host.querySelectorAll('[data-quadrant-notes] li')].map((e) => e.textContent)
+    expect([...notes].sort()).toEqual([
+      'Improving — behind SPY over 3 months but gaining pace',
+      'Lagging — behind SPY over 3 months and still losing',
+      'Leading — ahead of SPY over 3 months and still gaining',
+      'Weakening — ahead of SPY over 3 months but losing pace',
+    ])
+  })
+
+  it('(new) draws the sector table cells as td elements with the class of TableCell', async () => {
+    await show(fixture('ok'))
+    const table = host.querySelector('[data-sector-table] table')!
+    const cells = [...table.querySelectorAll('[data-sector-row] > *')]
+    expect(cells.length).toBeGreaterThan(0)
+    for (const c of cells) {
+      expect(c.tagName).toBe('TD')
+      expect(c.className).toContain('px-[10px]')
+    }
+    expect(table.querySelectorAll('thead th').length).toBe(7)
+    expect(cells[1]!.className).toContain('whitespace-normal')
+    expect(cells[1]!.className).toContain('break-words')
+  })
+
+  it('(new) names the quadrants in the chart with no sentence and lists four notes under the map', async () => {
+    await show(fixture('ok'))
+    const labels = [...host.querySelectorAll('[data-quadrant-area]')].map((e) => e.textContent!)
+    expect(labels).toHaveLength(4)
+    for (const l of labels) expect(l).not.toContain(' — ')
+    expect(host.querySelectorAll('[data-quadrant-notes] li')).toHaveLength(4)
   })
 
   it('moves a label that would print over an earlier one', () => {
