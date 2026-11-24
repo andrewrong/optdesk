@@ -245,7 +245,7 @@ func TestPageHasNoStateWord(t *testing.T) {
 func TestFreshnessTextNamesEndDay(t *testing.T) {
 	t.Parallel()
 	text := build(t, fullConfig(t, sampleResult()))["freshness_text"].(string)
-	for _, want := range []string{"2026-11-13", "daily closes", "not intraday", "daily FRED series", "its own day"} {
+	for _, want := range []string{"2026-11-13", "日收盘价", "非盘中", "FRED 日度序列", "各自的数据日"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("freshness_text lacks %q: %s", want, text)
 		}

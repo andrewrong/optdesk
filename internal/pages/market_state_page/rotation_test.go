@@ -176,7 +176,7 @@ func TestRotationPointCarriesDay(t *testing.T) {
 		}
 	}
 	note := obj(obj(m["sectors"])["rotation_axes"])["note"].(string)
-	for _, n := range []string{"21", "63", "5,", "10,", "15 and 20"} {
+	for _, n := range []string{"21", "63", "5、10、15、20"} {
 		if !strings.Contains(note, n) {
 			t.Errorf("note lacks %q: %s", n, note)
 		}
