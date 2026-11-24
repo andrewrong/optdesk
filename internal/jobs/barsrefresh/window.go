@@ -44,3 +44,18 @@ func calendarDays(from, to time.Time) int {
 	t := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
 	return int(t.Sub(f).Hours() / 24)
 }
+
+// dailyComplete reports whether the daily step has nothing to ask for a key: the newest stored session day
+// is day itself and no stored row has source yfinance (such a row is replaced by a request). No rows is false.
+func dailyComplete(stored []contracts.PriceBar, day time.Time) bool {
+	if len(stored) == 0 || hasSource(stored, sourceYfinance) {
+		return false
+	}
+	newest := stored[0].SessionDay.Time
+	for _, r := range stored {
+		if r.SessionDay.Time.After(newest) {
+			newest = r.SessionDay.Time
+		}
+	}
+	return calendarDays(newest, day) == 0
+}

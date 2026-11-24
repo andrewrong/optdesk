@@ -114,6 +114,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
 	var days int
 	backfilled := hasDayFrom(stored, from)
+	complete := backfilled && dailyComplete(stored, r.dayTime) // nothing to ask: the weekly steps below keep their own gates
 	if !backfilled {
 		if !r.j.claimFirstPull(r.day, key) {
 			return 0, 0, nil // past the cap: no request, no error
@@ -122,15 +123,19 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	} else {
 		days = windowDays(stored, r.dayTime, r.j.m.DailyDays, r.j.m.BackfillDays) // only the gap, or from the oldest yfinance row
 	}
-	bars, rows, terr := r.collect(ctx, id, c, stored, days)
-	if terr != nil {
-		if r.deferToFallback(key, id, c, stored, days, terr) {
-			return 0, 0, nil
+	var bars []broker.Bar
+	if !complete {
+		var rows []contracts.PriceBar
+		bars, rows, terr = r.collect(ctx, id, c, stored, days)
+		if terr != nil {
+			if r.deferToFallback(key, id, c, stored, days, terr) {
+				return 0, 0, nil
+			}
+			return 0, 0, terr
 		}
-		return 0, 0, terr
-	}
-	if terr := r.upsert(ctx, rows); terr != nil {
-		return 0, 0, terr
+		if terr := r.upsert(ctx, rows); terr != nil {
+			return 0, 0, terr
+		}
 	}
 	if r.past {
 		return len(bars), len(bars), nil

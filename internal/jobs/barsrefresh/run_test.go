@@ -23,6 +23,9 @@ import (
 
 const runDay = contracts.Day("2026-11-09")
 
+// nextDay is the day after runDay: a key whose newest stored row is runDay is complete for runDay and is not asked.
+const nextDay = contracts.Day("2026-11-10")
+
 type fixedClock struct{}
 
 func (fixedClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 40, 0, 0, time.UTC) }
@@ -258,7 +261,7 @@ func TestWithinToleranceIsNotRestated(t *testing.T) {
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "100.0005"))}
 	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-09", "100.0000", 1)}}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
 	if len(h.queries) != 1 || len(st.epoch(2)) != 0 || len(st.rows) != 1 {
@@ -296,7 +299,7 @@ func TestIndexConIDResolvedOnce(t *testing.T) {
 	// stored 100 against pulled 50 forces a second pull of the same key in one run
 	st := &memBars{rows: []contracts.PriceBar{stored(7001, "2026-11-09", "100.0000", 1)}}
 	j, b := build(t, h, st)
-	res := j.Run(context.Background(), runDay, keysOf("index:SPX"))
+	res := j.Run(context.Background(), nextDay, keysOf("index:SPX"))
 	if res.Err != nil {
 		t.Fatal(res.Err)
 	}
@@ -736,5 +739,29 @@ func TestPullPermanentIsNotRetried(t *testing.T) {
 	res := j.Run(context.Background(), runDay, keysOf("cik:1"))
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent || len(h.queries) != 1 || len(p.ds) != 0 {
 		t.Fatalf("err %v queries %d pauses %v", res.Err, len(h.queries), p.ds)
+	}
+}
+
+func TestRunKeySkipsCompleteKey(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "11.0"))}
+	st := &memBars{rows: []contracts.PriceBar{
+		stored(101, "2026-11-09", "11.0", 1), // complete for the run day
+		stored(102, "2026-11-08", "11.0", 1), // newest row a day earlier
+	}}
+	j, _ := build(t, h, st, entry("cik:1", "AAA", 101), entry("cik:2", "BBB", 102))
+	for i := 0; i < 2; i++ { // a second run of the same day
+		if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+			t.Fatal(res.Err)
+		}
+	}
+	if len(h.queries) != 0 || len(st.calls) != 0 {
+		t.Fatalf("complete key: queries %+v, upserts %d", h.queries, len(st.calls))
+	}
+	if res := j.Run(context.Background(), runDay, keysOf("cik:2")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].DurationDays != 5 {
+		t.Fatalf("incomplete key: queries %+v", h.queries)
 	}
 }
