@@ -177,3 +177,64 @@ func TestReaderFailureLeavesCrossCheckOut(t *testing.T) {
 		t.Fatalf("cross_check %v pairs %v", cc, got.Pairs)
 	}
 }
+
+// barsSummary is the failed_summary of the bars row of a page.
+func barsSummary(t *testing.T, in Input) string {
+	t.Helper()
+	m, _ := build(t, in)
+	for _, g := range m["groups"].([]any) {
+		for _, r := range g.(map[string]any)["rows"].([]any) {
+			if row := r.(map[string]any); row["dataset"] == "bars" {
+				return row["failed_summary"].(string)
+			}
+		}
+	}
+	t.Fatal("no bars row")
+	return ""
+}
+
+// barsChecks makes the Eval of in give the bars row exactly the given checks, at the level pass.
+func barsChecks(in Input, rules ...string) Input {
+	inner := in.Eval
+	in.Eval = func(i basecheckapi.Input) basecheckapi.Output {
+		out := inner(i)
+		for ri := range out.Rows {
+			if out.Rows[ri].Dataset != "bars" {
+				continue
+			}
+			out.Rows[ri].Checks = nil
+			for _, r := range rules {
+				out.Rows[ri].Checks = append(out.Rows[ri].Checks, basecheckapi.Check{Rule: r, Level: basecheckapi.Warn})
+			}
+		}
+		return out
+	}
+	return in
+}
+
+// TestUnknownCrossCheckNamedInFailedSummary: an unknown cross-check adds one part to failed_summary of the bars row;
+// a cross-check at pass, warn or fail, or none, adds nothing.
+func TestUnknownCrossCheckNamedInFailedSummary(t *testing.T) {
+	t.Parallel()
+	const noRun = "交叉检查 R6 未知：尚未运行"
+	if got := barsSummary(t, barsChecks(reconInput(nil, basecheckapi.Pass, nil))); got != noRun {
+		t.Fatalf("no run: %q", got)
+	}
+	failed := r6Run()
+	failed.Status, failed.Reason = "failed", "rate_limited"
+	if got := barsSummary(t, barsChecks(reconInput([]reconstore.Run{failed}, basecheckapi.Pass, nil))); got != "交叉检查 R6 未知：未能比对：被限流" {
+		t.Fatalf("failed run: %q", got)
+	}
+	if got := barsSummary(t, barsChecks(reconInput(nil, basecheckapi.Pass, nil), "age")); got != "age; "+noRun {
+		t.Fatalf("other check: %q", got)
+	}
+	for _, lv := range []basecheckapi.Level{basecheckapi.Pass, basecheckapi.Warn, basecheckapi.Fail} {
+		if got := barsSummary(t, barsChecks(reconInput([]reconstore.Run{r6Run()}, lv, nil), "age")); got != "age" {
+			t.Fatalf("%s: %q", lv, got)
+		}
+	}
+	in := barsChecks(defaultInput(fakeEval{}), "age")
+	if got := barsSummary(t, in); got != "age" {
+		t.Fatalf("no reader: %q", got)
+	}
+}

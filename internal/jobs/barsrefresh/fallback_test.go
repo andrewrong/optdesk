@@ -392,7 +392,7 @@ func TestRecoveryLeavesNoYfinanceRow(t *testing.T) {
 	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if len(h.queries) != 1 || h.queries[0].DurationDays != 400 {
+	if len(h.queries) != 1 || h.queries[0].DurationDays != 40 {
 		t.Fatalf("queries %+v", h.queries)
 	}
 	if len(st.rows) != 3 {

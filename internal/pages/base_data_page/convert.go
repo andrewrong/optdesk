@@ -1,6 +1,8 @@
 package base_data_page
 
 import (
+	"fmt"
+
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/basefact"
@@ -72,7 +74,8 @@ func pairLevelOf(row string, cc crossCheckVM) basecheckapi.PairLevel {
 	return basecheckapi.PairLevel{Dataset: row, Pair: cc.PairID, Level: basecheckapi.Level(cc.Level)}
 }
 
-// attachCrossCheck carries the cross_check object to the payload of the row with the given id.
+// attachCrossCheck carries the cross_check object to the payload of the row with the given id. An unknown
+// cross-check is also named in the failed_summary of the row, with its reason.
 func attachCrossCheck(groups []groupVM, row string, cc *crossCheckVM) {
 	if cc == nil {
 		return
@@ -81,6 +84,13 @@ func attachCrossCheck(groups []groupVM, row string, cc *crossCheckVM) {
 		for ri := range groups[gi].Rows {
 			if groups[gi].Rows[ri].Dataset == row {
 				groups[gi].Rows[ri].CrossCheck = cc
+				if cc.Level == string(basecheckapi.Unknown) {
+					part := fmt.Sprintf(crossUnknownFormat, cc.PairID, cc.ReasonZh)
+					if s := groups[gi].Rows[ri].FailedSummary; s != "" {
+						part = s + "; " + part
+					}
+					groups[gi].Rows[ri].FailedSummary = part
+				}
 			}
 		}
 	}
