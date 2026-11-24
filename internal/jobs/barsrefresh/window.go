@@ -53,7 +53,7 @@ func dailyComplete(stored []contracts.PriceBar, day time.Time) bool {
 	}
 	newest := stored[0].SessionDay.Time
 	for _, r := range stored {
-		if r.SessionDay.Time.After(newest) {
+		if r.SessionDay.After(newest) {
 			newest = r.SessionDay.Time
 		}
 	}
