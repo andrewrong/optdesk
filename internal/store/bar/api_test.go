@@ -367,3 +367,54 @@ func TestPriceBarUpserterSourceDoc(t *testing.T) {
 		t.Fatalf("ibkr over yfinance = %+v, %v, stored source %q; want replaced", c, err, g.rows[key].Source)
 	}
 }
+
+// replaceFake applies the contract of bar.PriceBarReplacer: a stored row of the same key is
+// replaced whatever its source, and no row is deleted.
+type replaceFake struct {
+	rows map[string]contracts.PriceBar
+}
+
+var _ bar.PriceBarReplacer = (*replaceFake)(nil)
+
+func (f *replaceFake) ReplacePriceBars(_ context.Context, rows []contracts.PriceBar, _ string) (bar.BarWriteCount, error) {
+	var c bar.BarWriteCount
+	if f.rows == nil {
+		f.rows = map[string]contracts.PriceBar{}
+	}
+	for _, r := range rows {
+		k := fmt.Sprintf("%d/%s/%s", r.InstrumentID, r.Basis, r.SessionDay.Format("2006-01-02"))
+		if old, ok := f.rows[k]; ok && old == r {
+			c.Unchanged++
+			continue
+		}
+		f.rows[k] = r
+		c.Written++
+	}
+	return c, nil
+}
+
+func TestPriceBarReplacerContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := &replaceFake{}
+	var r bar.PriceBarReplacer = f
+	ib := priceBar(t, 7, "2026-01-05", 1, "10")
+	ib.Source = srcIbkr
+	other := priceBar(t, 7, "2026-01-06", 1, "20")
+	if c, err := r.ReplacePriceBars(ctx, []contracts.PriceBar{ib, other}, "x"); err != nil || c.Written != 2 {
+		t.Fatalf("first replace = %+v, %v; want 2 written", c, err)
+	}
+	yf := ib
+	yf.Source = "yfinance"
+	yf.Close = "11"
+	c, err := r.ReplacePriceBars(ctx, []contracts.PriceBar{yf}, "x")
+	if err != nil || c.Written != 1 || f.rows["7/trades/2026-01-05"].Close != "11" {
+		t.Fatalf("replace over ibkr = %+v, %v, row %+v; want replaced", c, err, f.rows["7/trades/2026-01-05"])
+	}
+	if len(f.rows) != 2 {
+		t.Fatalf("rows = %d, want 2: none deleted", len(f.rows))
+	}
+	if c, err := r.ReplacePriceBars(ctx, []contracts.PriceBar{yf}, "x"); err != nil || c.Unchanged != 1 {
+		t.Fatalf("equal row = %+v, %v; want unchanged", c, err)
+	}
+}

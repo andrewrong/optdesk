@@ -219,6 +219,10 @@ type BarRequest struct {
 	Pairs []BarPair
 	From  contracts.Day
 	To    contracts.Day
+	// Actions asks for the dividends and splits of the range (BarResult.Actions).
+	Actions bool
+	// Adjusted asks for the adjusted close of each bar (RefBar.AdjClose).
+	Adjusted bool
 }
 
 // RefBar is one daily bar of a pair: the session day and the prices as decimal text. Open, High, Low
@@ -231,6 +235,18 @@ type RefBar struct {
 	High   string
 	Low    string
 	Volume string
+	// AdjClose is the adjusted close as the source gives it, decimal text; empty when not asked or
+	// not given.
+	AdjClose string
+}
+
+// RefAction is one dividend or split of a pair on a day, as the source lists it. Kind is
+// "dividend" or "split"; Value is decimal text (the amount of a dividend, the ratio of a split).
+type RefAction struct {
+	Pair  BarPair
+	Day   contracts.Day
+	Kind  string
+	Value string
 }
 
 // BarUnanswered is a pair the source could not answer, with one of the BarCode constants.
@@ -243,6 +259,8 @@ type BarUnanswered struct {
 type BarResult struct {
 	Bars       []RefBar
 	Unanswered []BarUnanswered
+	// Actions holds the dividends and splits found, when BarRequest.Actions was set.
+	Actions []RefAction
 }
 
 // BarSource fetches daily bars of a second source. An implementation fills Open, High, Low and Volume of

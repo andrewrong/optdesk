@@ -187,3 +187,29 @@ func TestRefBarKeyedLiteral(t *testing.T) {
 		t.Fatalf("new fields not carried: %+v", filled)
 	}
 }
+
+func TestBarsApiKeyedLiteral(t *testing.T) {
+	t.Parallel()
+	pair := sources.BarPair{Symbol: "AAPL", Currency: "USD"}
+	oldReq := sources.BarRequest{Pairs: []sources.BarPair{pair}}
+	if oldReq.Actions || oldReq.Adjusted {
+		t.Fatalf("new request fields are not false by default: %+v", oldReq)
+	}
+	oldBar := sources.RefBar{Pair: pair, Close: "10.0000", Volume: "5"}
+	if oldBar != (sources.RefBar{Pair: pair, Close: "10.0000", Volume: "5", AdjClose: ""}) {
+		t.Fatalf("old bar literal differs from the one with AdjClose empty")
+	}
+	oldRes := sources.BarResult{Bars: []sources.RefBar{oldBar}}
+	if oldRes.Actions != nil || len(oldRes.Unanswered) != 0 {
+		t.Fatalf("old result literal holds actions: %+v", oldRes)
+	}
+	act := sources.RefAction{Pair: pair, Kind: "split", Value: "4.0000"}
+	res := sources.BarResult{Actions: []sources.RefAction{act}}
+	if len(res.Actions) != 1 || res.Actions[0] != act || res.Actions[0].Kind != "split" {
+		t.Fatalf("action not carried: %+v", res)
+	}
+	req := sources.BarRequest{Pairs: []sources.BarPair{pair}, Actions: true, Adjusted: true}
+	if !req.Actions || !req.Adjusted {
+		t.Fatalf("request flags not carried: %+v", req)
+	}
+}
