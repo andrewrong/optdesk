@@ -2,6 +2,7 @@ package optioncandidates
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -568,5 +569,133 @@ func TestUSPlanHashUnchanged(t *testing.T) {
 	}
 	if want := "22f8b4b731d6f5aa8960b112e1eaf1f1b2e450bfeac2662ab7d384c05b61d7c4"; hash != want {
 		t.Fatalf("hash %s", hash)
+	}
+}
+
+// quotesByID is a QuoteSnapshotReader that answers the rows of each instrument id.
+type quotesByID map[int64][]contracts.QuoteSnapshot
+
+func (q quotesByID) QuoteSnapshots(_ context.Context, id int64, _, _ contracts.Day) ([]contracts.QuoteSnapshot, error) {
+	return q[id], nil
+}
+
+// spotMarksOf keeps the marks of the spot and chain rules of a stored Marks text, in their stored order.
+func spotMarksOf(t *testing.T, text string) string {
+	t.Helper()
+	var marks []string
+	if err := json.Unmarshal([]byte(text), &marks); err != nil {
+		t.Fatalf("marks %q: %v", text, err)
+	}
+	var keep []string
+	for _, m := range marks {
+		if m == markEodFallback || m == markSpotChain || strings.HasPrefix(m, markChainDayPrefix) || strings.HasPrefix(m, markSpotQuotePrefix) {
+			keep = append(keep, m)
+		}
+	}
+	return strings.Join(keep, " ")
+}
+
+func TestCandidatesSpotMarks(t *testing.T) {
+	t.Parallel()
+	setup := func(quotes bool) (*srcEnv, *CandidateStores) {
+		e := newSrcEnv()
+		e.underlying(7, "ABC")
+		e.underlying(8, "DEF")
+		e.underlying(9, "GHI")
+		e.put(7, 11, "90")
+		e.put(8, 21, "90")
+		e.put(9, 31, "90")
+		e.open = []contracts.OptionOpen{openRowOf(7, 11, 1, 2.0, 2.1)}
+		e.eod = []contracts.OptionEod{eodRowOf(8, 21, "2026-11-06", 1.7, 1.8, 40), eodRowOf(9, 31, "2026-11-06", 1.7, 1.8, 40)}
+		st := e.stores(true)
+		if quotes {
+			st.Quotes = quotesByID{
+				7: {snap("2026-11-09", "2026-11-09T15:00:00Z", f64(101.5), 1)},
+				8: {snap("2026-11-05", "2026-11-05T20:00:00Z", f64(90), 1), snap("2026-11-06", "2026-11-06T20:00:00Z", f64(98.5), 1)},
+			}
+		}
+		return e, &st
+	}
+	entries := []jobs.WatchEntry{entryFor("ABC", "cik:1", "91.5"), entryFor("DEF", "cik:2", "91.5"), entryFor("GHI", "cik:3", "91.5")}
+	run := func(e *srcEnv, st *CandidateStores) {
+		j, err := New(*st, e, entries, fixedClock{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+			t.Fatal(res.Err)
+		}
+	}
+
+	e, st := setup(true)
+	run(e, st)
+	for _, c := range []struct {
+		id          int
+		spot, marks string
+	}{
+		{11, "101.5", "spot_quote:2026-11-09"},
+		{21, "98.5", "eod_fallback chain_day:2026-11-06 spot_quote:2026-11-06"},
+		{31, "99", "eod_fallback chain_day:2026-11-06 spot_chain"},
+	} {
+		r := e.rowOf(t, c.id)
+		if r.Spot == nil || *r.Spot != c.spot || spotMarksOf(t, r.Marks) != c.marks {
+			t.Errorf("instrument %d: spot %v marks %s, want %q %s", c.id, r.Spot, r.Marks, c.spot, c.marks)
+		}
+	}
+
+	// Quotes nil: the chain price and none of the new spot marks.
+	e, st = setup(false)
+	run(e, st)
+	for id, spot := range map[int]string{11: "100", 21: "99", 31: "99"} {
+		r := e.rowOf(t, id)
+		if r.Spot == nil || *r.Spot != spot || strings.Contains(r.Marks, "spot_") {
+			t.Errorf("nil Quotes, instrument %d: spot %v marks %s", id, r.Spot, r.Marks)
+		}
+	}
+}
+
+func TestCandidatesNilQuotesNoNewMark(t *testing.T) {
+	t.Parallel()
+	e := newSrcEnv()
+	e.underlying(8, "DEF")
+	e.put(8, 21, "90")
+	e.eod = []contracts.OptionEod{eodRowOf(8, 21, "2026-11-06", 1.7, 1.8, 40)}
+	st := e.stores(true) // Quotes nil
+	j, err := New(st, e, []jobs.WatchEntry{entryFor("DEF", "cik:2", "91.5")}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if m := e.rowOf(t, 21).Marks; strings.Contains(m, "chain_day:") {
+		t.Fatalf("nil Quotes wrote a new mark: %s", m)
+	}
+}
+
+type failingQuotes struct{}
+
+func (failingQuotes) QuoteSnapshots(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.QuoteSnapshot, error) {
+	return nil, errors.New("down")
+}
+
+func TestCandidatesQuotesReadErrorFallsBackToChain(t *testing.T) {
+	t.Parallel()
+	e := newSrcEnv()
+	e.underlying(8, "DEF")
+	e.put(8, 21, "90")
+	e.eod = []contracts.OptionEod{eodRowOf(8, 21, "2026-11-06", 1.7, 1.8, 40)}
+	st := e.stores(true)
+	st.Quotes = failingQuotes{}
+	j, err := New(st, e, []jobs.WatchEntry{entryFor("DEF", "cik:2", "91.5")}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	r := e.rowOf(t, 21)
+	if r.Spot == nil || *r.Spot != "99" || spotMarksOf(t, r.Marks) != "chain_day:2026-11-06 spot_chain" {
+		t.Fatalf("spot %v marks %s", r.Spot, r.Marks)
 	}
 }
