@@ -16,9 +16,15 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
+// StockIDReader reads the instruments of type stock whose name is in names; a name returned once is one
+// instrument, a name returned twice is shared and gives no quotes.
+type StockIDReader interface {
+	StockIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
+}
+
 // Config is what the builder needs; the first fields are those of the positions page. Zone is the owner's
 // zone (nil is an error of Build); Aliases are the configured account aliases, the first is the main
-// account. Eod and Terms may be nil: the structures then have no quotes and their greeks are gaps. A nil
+// account. Eod, Terms and StockIDs may be nil: the structures then have no quotes and their greeks are gaps. A nil
 // other reader or constructor gives the gap page no_reader; a reader error is an error of Build.
 type Config struct {
 	RunID, BuildID string
@@ -34,6 +40,8 @@ type Config struct {
 	Terms          store.OptionTermsReader
 	Bars           bar.PriceBarReader // nil gives no bars: the close then comes from the option_eod prints
 	Structures     compute.NewOptionStructuresFunc
+	StockIDs       StockIDReader    // nil gives no quotes, as a nil Eod
+	Fx             bar.FxRateReader // nil gives no USDJPY: the Vega of a JPY structure is then a gap
 }
 
 // NewPage is the household_risk page of one account; alias "" means the main account.
