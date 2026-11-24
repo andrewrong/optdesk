@@ -11,9 +11,9 @@ import (
 // maxStockNames is the most names one StockIDs call accepts.
 const maxStockNames = 500
 
-// stockIDsSQL reads the page view, rows of the type stock only.
+// stockIDsSQL reads the page view rd.stock_id_r1 (migration 0069), rows of the type stock only.
 const stockIDsSQL = `SELECT instrument_id, instrument_type, name
-FROM rd.instrument_r1
+FROM rd.stock_id_r1
 WHERE instrument_type = 'stock' AND name = ANY($1)
 ORDER BY instrument_id`
 
@@ -33,7 +33,8 @@ func OpenStockIDs(ctx context.Context, dsn string) (*StockIDs, error) {
 // Close releases the connections.
 func (s *StockIDs) Close() error { return s.db.Close() }
 
-// StockIDs returns the rows of type stock whose name is in names, ordered by InstrumentID; an unknown name is absent
+// StockIDs returns the rows of type stock whose name is in names; the view leaves out a row whose current ibkr_conid
+// is 0 and a row whose status is not active. The rows are ordered by InstrumentID; an unknown name is absent
 // and a name held by two rows gives two rows. An empty names makes no database call; more than 500 names or a name
 // of empty text is a Permanent error.
 func (s *StockIDs) StockIDs(ctx context.Context, names []string) ([]store.InstrumentName, error) {
