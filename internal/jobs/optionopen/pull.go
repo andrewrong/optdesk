@@ -303,7 +303,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 				partial++
 			case isNoQuoteRow(r):
 				noQuote++
-			case r.Status == stDisconnected, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
+			case r.Status == stDisconnected, r.Status == stError, r.Status == stDeadline, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
 				unread++
 			}
 		}

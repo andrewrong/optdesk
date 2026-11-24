@@ -31,9 +31,10 @@ func TestRowStatusNoQuote(t *testing.T) {
 	c := broker.Contract{ConID: 1}
 	both := okQuote(clk, c)
 	both.Bid, both.Ask, both.Missing = nil, nil, invalid("bid", "ask")
-	both.Status = broker.StatusPartial
 	one := okQuote(clk, c)
 	one.Bid, one.Missing = nil, invalid("bid")
+	bothPartial := both
+	bothPartial.Status = broker.StatusPartial
 	frozen := both
 	frozen.MarketDataType = 2
 	nothing := broker.Quote{Contract: c, Status: broker.StatusNoData, ReceivedAt: clk.Now()}
@@ -45,6 +46,7 @@ func TestRowStatusNoQuote(t *testing.T) {
 		code   string
 	}{
 		{"both sides invalid", both, stNoData, "NO_QUOTE"},
+		{"both sides invalid, broker partial", bothPartial, stNoData, "NO_QUOTE"},
 		{"one side invalid", one, stPartial, ""},
 		{"frozen type", frozen, stNoData, ""},
 		{"nothing arrived", nothing, stNoData, ""},
@@ -130,15 +132,25 @@ func TestNoQuoteLeavesOkShareDenominator(t *testing.T) {
 		if out.Err == nil || out.Err.Kind() != contracts.NoValue || !strings.Contains(out.Err.Error(), "all outside band") {
 			t.Errorf("jp %v all outside: err %v, want NoValue", jp, out.Err)
 		}
-		// Case B stays a failure: rows the broker could not answer still fail the share (an error row as before is
-		// Permanent, a disconnected one is not asked and is Retryable).
+		// Case B stays a failure: rows the broker could not answer still fail the share and end Retryable.
 		res := runGapped(t, gappedPlan(30, 30, expiry), jp, noQuoteFirstOK(12, gone))
 		if res.Err == nil || res.Err.Kind() != contracts.Retryable {
 			t.Errorf("jp %v 12 ok 18 disconnected: err %v, want Retryable", jp, res.Err)
 		}
 		res = runGapped(t, gappedPlan(30, 30, expiry), jp, noQuoteFirstOK(12, bad))
-		if res.Err == nil || res.Err.Kind() != contracts.Permanent {
-			t.Errorf("jp %v 12 ok 18 error: err %v, want Permanent as before", jp, res.Err)
+		if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+			t.Errorf("jp %v 12 ok 18 error: err %v, want Retryable", jp, res.Err)
 		}
+	}
+}
+
+func TestTwelveOkEighteenErrorIsRetryable(t *testing.T) {
+	t.Parallel()
+	bad := func(b *fakeBroker, c broker.Contract) broker.Quote {
+		return broker.Quote{Contract: c, Status: broker.StatusError, ErrorCode: 321, ReceivedAt: b.clk.Now()}
+	}
+	res := runGapped(t, gappedPlan(30, 30, "2026-12-11"), false, noQuoteFirstOK(12, bad))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("12 ok 18 error: %v, want Retryable (acceptance item 5)", res.Err)
 	}
 }
