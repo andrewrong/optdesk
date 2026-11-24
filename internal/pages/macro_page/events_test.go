@@ -427,7 +427,11 @@ func TestMacroGapTextsAreChinese(t *testing.T) {
 	for _, s := range texts {
 		if !strings.ContainsFunc(s, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
 			// the "no data yet" family stays English by the issue; only the texts of items 1 to 5 are checked
-			if !strings.Contains(s, "no data yet") && !strings.Contains(s, "Data day") && !strings.Contains(s, "no stored point") && !strings.Contains(s, "latest stored") {
+			kept := false
+			for _, e := range []string{"no data yet", "Data day", "no stored point", "latest stored"} {
+				kept = kept || strings.Contains(s, e)
+			}
+			if !kept {
 				t.Errorf("no Chinese character: %q", s)
 			}
 		}
