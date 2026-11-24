@@ -192,13 +192,13 @@ export function OwnerForms({ form, latest }: { form: Form; latest: string }) {
         form={form}
         action="r_table"
         title="Add an R table version"
-        hint="One bucket per line: yield up to, US, JP, HKCN"
+        hint="每行一档：收益率上限、US、JP、HKCN"
       />
       <TableVersionForm
         form={form}
         action="margin_table"
         title="Add a margin table version"
-        hint="One bucket per line: P from, M, W, H, S"
+        hint="每行一档：P 起点、M、W、H、S"
       />
       <Card>
         <CardHeader>

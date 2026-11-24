@@ -122,7 +122,7 @@ function MarketTab({ pane }: { pane: Pane }) {
         </Card>
       ) : (
         <Card data-chain-empty>
-          <CardContent>No chain data</CardContent>
+          <CardContent>{'没有期权链数据'}</CardContent>
         </Card>
       )}
     </div>

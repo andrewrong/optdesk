@@ -138,7 +138,7 @@ describe('OptionNoticesPage', () => {
     expect(first.querySelector('[data-cash]')).not.toBeNull()
     expect(first.querySelector('[data-cash-empty]')).toBeNull()
     const second = page.querySelector('[data-alias=ok-second]')!
-    expect(second.querySelector('[data-cash-empty]')!.textContent).toBe('No short put is open: no cash is due.')
+    expect(second.querySelector('[data-cash-empty]')!.textContent).toBe('\u6ca1\u6709\u672a\u5e73\u4ed3\u7684\u5356\u51fa\u770b\u8dcc\uff0c\u4e0d\u9700\u8981\u73b0\u91d1\u3002')
     expect(second.querySelector('[data-cash]')).toBeNull()
     await act(async () => root?.unmount())
     host.remove()

@@ -318,12 +318,12 @@ describe('OptionPage', () => {
     }
   })
 
-  it('shows No chain data for a pane whose chain is null', async () => {
+  it('shows the empty-chain sentence for a pane whose chain is null', async () => {
     const payload = fixture('ok.json')
     payload.markets[0].chain = null
     await show(payload)
     const pane = host.querySelector('[data-market=US]')!
-    expect(pane.textContent).toContain('No chain data')
+    expect(pane.textContent).toContain('\u6ca1\u6709\u671f\u6743\u94fe\u6570\u636e')
     expect(pane.querySelector('[data-table=chain]')).toBeNull()
     expect(pane.querySelector('[data-chain-empty]')).not.toBeNull()
     expect(pane.querySelector('[data-chain]')).toBeNull()

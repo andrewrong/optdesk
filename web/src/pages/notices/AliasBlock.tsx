@@ -50,7 +50,7 @@ export function AliasBlock({ block }: { block: Block }) {
             ) : null}
             {block.cash_by_date.length === 0 ? (
               <Alert data-cash-empty>
-                <AlertDescription>No short put is open: no cash is due.</AlertDescription>
+                <AlertDescription>{'没有未平仓的卖出看跌，不需要现金。'}</AlertDescription>
               </Alert>
             ) : (
               <div data-cash>

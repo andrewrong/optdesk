@@ -21,8 +21,8 @@ const FLAG_TEXT: Record<keyof Flags, string> = {
 
 const NOTE_TEXT: Record<Lines['zone_note'], string> = {
   '': '',
-  no_close: 'No close price is stored, so there is no zone.',
-  no_zone_market: 'This market has no price source, so there is no zone.',
+  no_close: '没有存收盘价，所以没有价格区间。',
+  no_zone_market: '这个市场没有价格来源，所以没有价格区间。',
 }
 
 // Static labels of the codes the profile and the review print; an unknown code prints as given.
