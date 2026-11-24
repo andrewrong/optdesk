@@ -89,6 +89,28 @@ describe('DataTable unnamed column', () => {
   })
 })
 
+describe('DataTable header letter case', () => {
+  it('gives the header span of a column that cannot be sorted the class normal-case', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    const columns = [
+      { id: 'name', label: '' },
+      { id: 'amount', label: 'Ex-dividend' },
+    ]
+    const rows: Record<string, Cell>[] = [
+      { name: { text: 'a', value: 1 }, amount: { text: '1', value: 1 } },
+    ]
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<DataTable columns={columns} rows={rows} />)
+    })
+    const heads = host.querySelectorAll('thead th')
+    expect(heads[1]?.querySelector('button')).not.toBeNull()
+    expect(heads[0]?.querySelector('button')).toBeNull()
+    expect(heads[0]?.querySelector('span')?.classList.contains('normal-case')).toBe(true)
+  })
+})
+
 describe('DataTable', () => {
   it('sorts a column by value and not by text', async () => {
     await show()
