@@ -88,11 +88,12 @@ const (
 
 // Texts of the cross-check of the bars row (entry 22).
 const (
-	reasonNoRunZh   = "尚未运行"
-	reasonFailedZh  = "未能比对："
-	skippedPrefixZh = "未比对："
-	comparedFormat  = "已比对 %d 个，共 %d 个"
-	hintR6          = "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整"
+	reasonNoRunZh      = "尚未运行"
+	reasonFailedZh     = "未能比对："
+	skippedPrefixZh    = "未比对："
+	crossUnknownFormat = "交叉检查 %s 未知：%s"
+	comparedFormat     = "已比对 %d 个，共 %d 个"
+	hintR6             = "两个来源不一致，先看是否有拆股尚未重述；两边都已按拆股调整，都不含分红调整"
 )
 
 // Chinese names of the reason codes of a run.
