@@ -114,7 +114,7 @@ func TestNoOpenShortsSentence(t *testing.T) {
 	c := cfgFor(map[string]trackapi.TrackResult{"main": {}}, "main")
 	c.Account = nil
 	a = buildPage(t, c).Accounts[0]
-	if a.Gap == nil || a.Gap.Text != noOpenZh {
+	if a.Gap == nil || a.Gap.Text != "没有未平仓的 short 期权" {
 		t.Fatalf("empty account = %+v", a)
 	}
 }

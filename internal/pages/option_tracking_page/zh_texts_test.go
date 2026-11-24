@@ -76,7 +76,7 @@ func TestNoOpenGapTextIsChinese(t *testing.T) {
 	c := cfgFor(map[string]trackapi.TrackResult{"main": {}}, "main")
 	c.Account = nil
 	a := buildPage(t, c).Accounts[0]
-	if a.Gap == nil || !hasHan(a.Gap.Text) || a.Gap.Text == "No open short options" {
+	if a.Gap == nil || !hasHan(a.Gap.Text) || a.Gap.Text != "没有未平仓的 short 期权" {
 		t.Fatalf("gap = %+v", a.Gap)
 	}
 }
