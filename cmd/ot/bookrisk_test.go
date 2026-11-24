@@ -26,6 +26,14 @@ type bookRiskResults struct {
 
 func (f bookRiskResults) Close() error { f.closed.Add(1); return nil }
 
+// bookRiskStockIDs is a stock id reader that knows no stock.
+type bookRiskStockIDs struct{}
+
+func (bookRiskStockIDs) StockIDs(context.Context, []string) ([]store.InstrumentName, error) {
+	return nil, nil
+}
+func (bookRiskStockIDs) Close() error { return nil }
+
 // bookRiskRig is a run-once rig whose stores and whose constructor of book_risk are fakes.
 type bookRiskRig struct {
 	*rig
@@ -54,7 +62,10 @@ func newBookRiskRig(t *testing.T, env string) *bookRiskRig {
 	}
 	d.newOptionLedger = func() compute.OptionLedger { return nil }
 	d.newOptionStructures = func() compute.OptionStructures { return nil }
-	d.ext = map[string]any{extBookRisk: bookRiskDeps{newJob: func(st bookrisk.Stores, _ clock.Clock) (contracts.Job, error) {
+	d.ext = map[string]any{extReportGlobal: reportGlobalDeps{openStockIDs: func(_ context.Context, dsn string) (stockIDStore, error) {
+		b.dsns = append(b.dsns, dsn)
+		return bookRiskStockIDs{}, nil
+	}}, extBookRisk: bookRiskDeps{newJob: func(st bookrisk.Stores, _ clock.Clock) (contracts.Job, error) {
 		b.stores = st
 		b.built.Add(1)
 		return plannedJob{namedJob{id: jobBookRisk}}, nil
@@ -80,7 +91,7 @@ func TestBookRiskNewIsRegisteredByRunOnce(t *testing.T) {
 		t.Fatalf("jobs %v hold no book_risk", b.ids())
 	}
 	st := b.stores
-	if st.Stresser == nil || st.Fitter == nil || st.Results == nil || st.Ledger == nil || st.Account == nil || len(st.Aliases) == 0 {
+	if st.StockIDs == nil || st.Stresser == nil || st.Fitter == nil || st.Results == nil || st.Ledger == nil || st.Account == nil || len(st.Aliases) == 0 {
 		t.Errorf("stores %+v", st)
 	}
 	for _, want := range []string{"cand-secret", "led-secret", "acct-secret"} {

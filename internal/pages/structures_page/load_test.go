@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -172,6 +173,7 @@ func TestLoadFeedsTheRules(t *testing.T) {
 		{SecType: "option", Symbol: "AAPL", Right: "put", Strike: "150", Expiry: "2026-12-18", Quantity: "-1"},
 	}}}
 	bid, ask, delta := 1.1, 1.3, -0.25
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}}
 	r.cfg.Eod = stubEod{byUnderlying: map[int64][]contracts.OptionEod{77: {
 		{InstrumentID: 5, SessionDay: types.SerializableDate{Time: time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)}, Bid: &bid, Ask: &ask},
 		{InstrumentID: 5, SessionDay: types.SerializableDate{Time: time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)}, Bid: &bid, Ask: &ask, Delta: &delta},
@@ -197,22 +199,23 @@ func TestLoadFeedsTheRules(t *testing.T) {
 	}
 }
 
-type stubCatalog struct {
-	store.OptionEodCatalog
-	latest []store.OptionEodLatest
+// stubStockIDs answers StockIDs with the listed rows whose name is asked; asked keeps the names of the last call.
+type stubStockIDs struct {
+	rows  []store.InstrumentName
+	asked *[]string
 }
 
-func (s stubCatalog) OptionEodLatest(context.Context, contracts.Day) ([]store.OptionEodLatest, error) {
-	return s.latest, nil
-}
-
-type stubNames struct {
-	store.InstrumentNameReader
-	names []store.InstrumentName
-}
-
-func (s stubNames) InstrumentNames(context.Context, []int64) ([]store.InstrumentName, error) {
-	return s.names, nil
+func (s stubStockIDs) StockIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	if s.asked != nil {
+		*s.asked = names
+	}
+	var out []store.InstrumentName
+	for _, r := range s.rows {
+		if slices.Contains(names, r.Name) {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }
 
 // heldPutRig is a rig holding one short AAPL put, with a capture that has the option row and, when withStock
@@ -225,7 +228,8 @@ func heldPutRig(withStock bool) *rig {
 	}
 	held := []store.Position{{SecType: "option", Symbol: "AAPL", Right: "put", Strike: "150", Expiry: "2026-12-18", Quantity: "-1"}}
 	if withStock {
-		held = append(held, store.Position{SecType: "stock", Symbol: "AAPL", ConID: 77})
+		held = append(held, store.Position{SecType: "stock", Symbol: "AAPL", ConID: 9077})
+		r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}}
 	}
 	r.cfg.Account = stubAccount{byDay: map[string][]store.Position{"2026-11-06": held}}
 	bid := 1.1
@@ -241,15 +245,14 @@ var wantHeldPutQuote = compute.StructureQuote{Underlying: "AAPL", Right: "P", St
 func TestQuotesFoundWithoutStockRow(t *testing.T) {
 	t.Parallel()
 	r := heldPutRig(false)
-	r.cfg.Catalog = stubCatalog{latest: []store.OptionEodLatest{{UnderlyingID: 76}, {UnderlyingID: 77}}}
-	r.cfg.Names = stubNames{names: []store.InstrumentName{{InstrumentID: 76, Name: "MSFT"}, {InstrumentID: 77, Name: "AAPL"}}}
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 76, Name: "MSFT"}, {InstrumentID: 77, Name: "AAPL"}}}
 	r.build(t, "main")
 	if len(r.in.Quotes) != 1 || r.in.Quotes[0] != wantHeldPutQuote {
 		t.Fatalf("quotes = %+v, want %+v", r.in.Quotes, wantHeldPutQuote)
 	}
 }
 
-func TestQuotesFromStockRowWhenNoCatalog(t *testing.T) {
+func TestQuotesNeedStockIDReader(t *testing.T) {
 	t.Parallel()
 	r := heldPutRig(true)
 	r.build(t, "main")
@@ -260,6 +263,31 @@ func TestQuotesFromStockRowWhenNoCatalog(t *testing.T) {
 	r.build(t, "main")
 	if len(r.in.Quotes) != 0 {
 		t.Fatalf("quotes without stock row or catalog = %+v", r.in.Quotes)
+	}
+}
+
+// TestStructuresQuotesUseStockInstrumentID: a quote stored under the stock instrument id is read, one stored
+// under the con_id of the capture is not, and a symbol with no row or two rows has no quotes.
+func TestStructuresQuotesUseStockInstrumentID(t *testing.T) {
+	t.Parallel()
+	r := heldPutRig(true) // the capture holds AAPL with con_id 9077; option_eod holds the put under 77
+	var asked []string
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}, asked: &asked}
+	r.build(t, "main")
+	if len(r.in.Quotes) != 1 || r.in.Quotes[0] != wantHeldPutQuote || len(asked) != 1 || asked[0] != "AAPL" {
+		t.Fatalf("quotes = %+v asked %v", r.in.Quotes, asked)
+	}
+	r = heldPutRig(true)
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 9077, Name: "AAPL"}}}
+	r.build(t, "main")
+	if len(r.in.Quotes) != 0 {
+		t.Fatalf("quotes under the con_id = %+v", r.in.Quotes)
+	}
+	r = heldPutRig(true)
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}, {InstrumentID: 78, Name: "AAPL"}}}
+	r.build(t, "main")
+	if len(r.in.Quotes) != 0 {
+		t.Fatalf("quotes of a name with two rows = %+v", r.in.Quotes)
 	}
 }
 
@@ -287,8 +315,7 @@ func barOn(d int, closeText string) contracts.PriceBar {
 // underlying price: 91.5 on 2026-11-05 (held contract), 93.25 on 2026-11-06 (another contract).
 func printsRig() *rig {
 	r := heldPutRig(false)
-	r.cfg.Catalog = stubCatalog{latest: []store.OptionEodLatest{{UnderlyingID: 77}}}
-	r.cfg.Names = stubNames{names: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}}
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}}
 	bid, p1, p2 := 1.1, 91.5, 93.25
 	day := func(d int) types.SerializableDate {
 		return types.SerializableDate{Time: time.Date(2026, 11, d, 0, 0, 0, 0, time.UTC)}

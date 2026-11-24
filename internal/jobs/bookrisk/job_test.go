@@ -44,6 +44,7 @@ type world struct {
 	capture   map[string][]store.Position // the capture of the Friday before, by alias
 	values    map[string][]store.AccountValue
 	eod       map[int64][]contracts.OptionEod // by underlying instrument id
+	stockIDs  map[string]int64                // symbol -> stock instrument id; a symbol not here has the con_id of its capture stock
 	terms     []store.OptionTerms
 	marks     map[string][]mark.PositionMark
 	cands     []strategyresult.Row
@@ -168,6 +169,28 @@ func (e eodFake) OptionEod(_ context.Context, id int64, _, _ contracts.Day) ([]c
 	return e.w.eod[id], nil
 }
 
+type stockIDsFake struct{ w *world }
+
+func (s stockIDsFake) StockIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, n := range names {
+		id, ok := s.w.stockIDs[n]
+		if !ok {
+			for _, ps := range s.w.capture {
+				for _, p := range ps {
+					if p.SecType == "STOCK" && p.Symbol == n {
+						id = p.ConID
+					}
+				}
+			}
+		}
+		if id != 0 {
+			out = append(out, store.InstrumentName{InstrumentID: id, Type: "stock", Name: n})
+		}
+	}
+	return out, nil
+}
+
 type termsFake struct{ w *world }
 
 func (t termsFake) OptionTerms(_ context.Context, ids []int64) ([]store.OptionTerms, error) {
@@ -228,7 +251,7 @@ func (f fitFake) Fit(b strategy.RiskBook, _ strategy.RiskOutcome, c strategy.Ris
 func (w *world) stores() Stores {
 	return Stores{Aliases: w.aliases, Account: accountFake{w}, Ledger: ledgerFake{w}, SessionDays: sessionsFake{},
 		Ledgers: func() compute.OptionLedger { return replayFake{w} }, Structures: func() compute.OptionStructures { return structFake{} },
-		OptionEod: eodFake{w}, Terms: termsFake{w}, Marks: marksFake{w}, Results: resultsFake{w},
+		OptionEod: eodFake{w}, StockIDs: stockIDsFake{w}, Terms: termsFake{w}, Marks: marksFake{w}, Results: resultsFake{w},
 		Stresser: stressFake{w}, Fitter: fitFake{w}}
 }
 

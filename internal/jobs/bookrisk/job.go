@@ -49,7 +49,12 @@ type Results interface {
 	strategyresult.Reader
 }
 
-// Stores is what the job reads and writes. Aliases are the account labels in order. OptionEod, Terms, Marks and
+// StockIDReader reads the instruments of type stock whose name is in names.
+type StockIDReader interface {
+	StockIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
+}
+
+// Stores is what the job reads and writes. Aliases are the account labels in order. OptionEod, StockIDs, Terms, Marks and
 // Series may be nil: the book then has no option quotes (no option mark), no share marks, no rate. Every other field
 // is required. Stresser and Fitter are the implementations cmd/ot injects (design Decision 11).
 type Stores struct {
@@ -60,6 +65,7 @@ type Stores struct {
 	Ledgers     compute.NewOptionLedgerFunc
 	Structures  compute.NewOptionStructuresFunc
 	OptionEod   store.OptionEodReader
+	StockIDs    StockIDReader
 	Terms       store.OptionTermsReader
 	Marks       mark.Reader
 	Series      store.SeriesReader

@@ -84,8 +84,8 @@ func TestHeldCallAddedAtTenDTE(t *testing.T) {
 	if n := count(got, "20261116", "100", "C"); n != 1 {
 		t.Fatalf("held short call at 10 DTE asked %d times, want 1", n)
 	}
-	if n := count(got, "20261116", "105", "C"); n != 0 {
-		t.Fatal("a long call must not be captured")
+	if n := count(got, "20261116", "105", "C"); n != 1 {
+		t.Fatalf("a long call asked %d times, want 1", n)
 	}
 	if n := count(got, "20261116", "95", "C"); n != 0 {
 		t.Fatal("a stored stock position must not be held as a call")
@@ -122,8 +122,36 @@ func TestHeldPutAddedAtTenDTE(t *testing.T) {
 	if n := count(got, "20261116", "100", "P"); n != 1 {
 		t.Fatalf("held short put at 10 DTE asked %d times, want 1", n)
 	}
-	if n := count(got, "20261116", "105", "P"); n != 0 {
-		t.Fatal("a long put must not be captured")
+	if n := count(got, "20261116", "105", "P"); n != 1 {
+		t.Fatalf("a long put asked %d times, want 1", n)
+	}
+}
+
+func TestHeldOptionsKeepsLongLeg(t *testing.T) {
+	t.Parallel()
+	longCall := shortCall("2026-11-16", "105")
+	longCall.Quantity = "2"
+	longPut := shortPut("2026-11-16", "95")
+	longPut.Quantity = "1"
+	zero := shortCall("2026-11-16", "200")
+	zero.Quantity = "0"
+	bad := shortPut("2026-11-16", "200")
+	bad.Quantity = "x"
+	acct := &fakeAccount{positions: map[string][]store.Position{
+		"A 2026-11-06": {longCall, longPut, zero, bad},
+	}}
+	j, err := WithHeldAliases(NewWithHeldSymbols, []string{"A"})(heldBroker(), &fakeResolver{}, &fakeWriter{},
+		[]jobs.WatchEntry{watchEntry("US", "TEST", "STK", "100", 1000001)}, acct, clockwork.NewFakeClockAt(etTime(t, "2026-11-06 17:00")), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := j.(*job).heldOptions(context.Background(), "TEST", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []heldOption{{expiry: "20261116", strike: "105", right: "C"}, {expiry: "20261116", strike: "95", right: "P"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("heldOptions = %v, want %v", got, want)
 	}
 }
 

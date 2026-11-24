@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/structures_page"
 )
@@ -108,8 +109,8 @@ func buildPositions(ctx context.Context, a *app, clk clock.Clock, dayFlag string
 	buildID := buildIDOf(version)
 	st := structures_page.Config{RunID: "ot-serve", BuildID: buildID, Zone: a.profile.Zone, Aliases: aliases,
 		Ledger: rd.ledger, Account: rd.account, Eod: rd.eod, Sessions: rd.sessions, Terms: rd.terms,
-		Ledgers: rd.ledgers, Structures: rd.structures, Catalog: rd.catalog, Names: rd.names,
-		Bars: rd.bars, Dividends: rd.dividends}
+		Ledgers: rd.ledgers, Structures: rd.structures, Bars: rd.bars, Dividends: rd.dividends,
+		StockIDs: structuresStockIDs(rd)}
 	page := a.deps.structuresListPage(st, alias)
 	switch kind {
 	case kindList:
@@ -143,4 +144,13 @@ func withGapText(vm []byte, text string) ([]byte, error) {
 		}
 	}
 	return json.Marshal(m)
+}
+
+// structuresStockIDs is the stock-id reader of the site for the structures pages; a nil reader stays a nil
+// interface: the page then has no quotes.
+func structuresStockIDs(rd siteReaders) structures_page.StockIDReader {
+	if ids, ok := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey); ok && ids != nil {
+		return ids
+	}
+	return nil
 }

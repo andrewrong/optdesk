@@ -10,7 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/atombender/go-jsonschema/pkg/types"
+
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -125,5 +128,54 @@ func TestCompanyPagesDemoProfileOpensNoStore(t *testing.T) {
 		if err != nil || !strings.Contains(string(b), `"schema":"`+name+`"`) {
 			t.Fatalf("%s: %v %s", name, err, b)
 		}
+	}
+}
+
+// idsOfSymbols answers StockIDs with one fixed instrument per symbol.
+type idsOfSymbols map[string]int64
+
+func (m idsOfSymbols) StockIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, n := range names {
+		if id, ok := m[n]; ok {
+			out = append(out, store.InstrumentName{InstrumentID: id, Type: "stock", Name: n})
+		}
+	}
+	return out, nil
+}
+
+// barsUnderID has bars only under one instrument id.
+type barsUnderID struct {
+	id   int64
+	bars []contracts.PriceBar
+}
+
+func (b barsUnderID) PriceBars(_ context.Context, id int64, _ string, _, _ contracts.Day) ([]contracts.PriceBar, error) {
+	if id != b.id {
+		return nil, nil
+	}
+	return b.bars, nil
+}
+
+func TestCompanyDataPassesStockIDs(t *testing.T) {
+	t.Parallel()
+	var subjects []string
+	rd := companySiteReaders(&subjects)
+	d := time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC)
+	rd.bars = barsUnderID{id: 77, bars: []contracts.PriceBar{{SessionDay: types.SerializableDate{Time: d}}}}
+	rd.ext[siteMarketStateIDsKey] = market_state_page.StockIDReader(idsOfSymbols{"AAPL": 77})
+	a, _ := testApp(t, "")
+	site, err := buildCompanyData(context.Background(), a, fakeClock{companySiteNow}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(site), `"bar_count":"1"`) {
+		t.Fatalf("site page: %s", site)
+	}
+	// Without the reader the row has no bars.
+	delete(rd.ext, siteMarketStateIDsKey)
+	site, err = buildCompanyData(context.Background(), a, fakeClock{companySiteNow}, "2026-11-05", rd)
+	if err != nil || strings.Contains(string(site), `"bar_count":"1"`) {
+		t.Fatalf("no reader: %v %s", err, site)
 	}
 }
