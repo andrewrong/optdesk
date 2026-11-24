@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -524,5 +525,42 @@ func TestPartialRowsUnderShareAreRetryable(t *testing.T) {
 	}
 	if s.total() != 10 {
 		t.Errorf("written %d rows, want 10", s.total())
+	}
+}
+
+func TestPullPartialUnchangedPermanent(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 10)
+	b := newFake(100)
+	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+		qs := okQuotes(b.clk, cs)
+		for i := 0; i < 6; i++ {
+			bid := qs[i].Bid
+			qs[i] = broker.Quote{Contract: cs[i], Status: broker.StatusOK, Bid: bid, ReceivedAt: b.clk.Now()}
+		}
+		return qs, nil
+	}
+	j := newPull(t, s, b)
+	if res := runAll(t, j); res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("first run: %v, want Retryable", res.Err)
+	}
+	before := map[string]contracts.OptionOpen{}
+	for k, r := range s.stored {
+		before[k] = r
+	}
+	res := runAll(t, j)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("second run: %v, want Permanent", res.Err)
+	}
+	if strings.Contains(res.Err.Error(), "slow broker") || !strings.Contains(res.Err.Error(), "partial=6") || !strings.Contains(res.Err.Error(), "did not change") {
+		t.Errorf("error text %q", res.Err.Error())
+	}
+	if len(s.stored) != len(before) {
+		t.Fatalf("stored %d rows, want %d", len(s.stored), len(before))
+	}
+	for k, r := range s.stored {
+		if !reflect.DeepEqual(r, before[k]) {
+			t.Errorf("row %s was rewritten", k)
+		}
 	}
 }

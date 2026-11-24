@@ -22,14 +22,32 @@ func isFinal(r contracts.OptionOpen) bool {
 	return r.Status == stOK || r.Status == stNotListed || isNoQuoteRow(r)
 }
 
+// storedCounts is how many ok and partial rows the store held for a batch (or a run) at a moment.
+type storedCounts struct{ ok, partial int }
+
+func (c *storedCounts) add(o storedCounts) { c.ok += o.ok; c.partial += o.partial }
+
+// countOKPartial counts the ok and partial rows among rows.
+func countOKPartial(rows []contracts.OptionOpen) (c storedCounts) {
+	for _, r := range rows {
+		switch r.Status {
+		case stOK:
+			c.ok++
+		case stPartial:
+			c.partial++
+		}
+	}
+	return c
+}
+
 // resume reads the rows stored for the batch for the session day of its items and the slot of the manifest and splits
 // the items into the final rows in hand (in the order of the items) and the items still to ask. The final rows of
 // added contracts (the stock's stored contracts that are not items of the plan: only a live band that kept them wrote a
 // row for them) follow the rows of the items, so an added contract is final or asked again like a planned one.
 func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, chain ContractLister) (
-	final []contracts.OptionOpen, ask []contracts.OptionOpenItem, err error) {
+	final []contracts.OptionOpen, ask []contracts.OptionOpenItem, prior storedCounts, err error) {
 	if len(items) == 0 {
-		return nil, nil, nil
+		return nil, nil, prior, nil
 	}
 	ids := make([]int64, len(items))
 	inPlan := make(map[int64]bool, len(items))
@@ -46,7 +64,7 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, cha
 		seen[u] = true
 		refs, err := chain.ListOptions(ctx, u)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, prior, err
 		}
 		for _, r := range refs {
 			if !inPlan[r.InstrumentID] {
@@ -57,10 +75,18 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, cha
 	}
 	stored, err := p.reader.OptionOpenSlot(ctx, contracts.Day(items[0].SessionDay.Format("2006-01-02")), p.m.Slot, ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, prior, err
 	}
 	have := make(map[int]contracts.OptionOpen, len(stored))
 	for _, r := range stored {
+		if r.Slot == p.m.Slot {
+			switch r.Status {
+			case stOK:
+				prior.ok++
+			case stPartial:
+				prior.partial++
+			}
+		}
 		if r.Slot == p.m.Slot && isFinal(r) {
 			have[r.InstrumentID] = r
 		}
@@ -78,5 +104,5 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, cha
 			final = append(final, r)
 		}
 	}
-	return final, ask, nil
+	return final, ask, prior, nil
 }
