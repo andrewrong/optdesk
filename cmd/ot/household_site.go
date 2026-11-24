@@ -36,7 +36,7 @@ func householdConfig(a *app, rd siteReaders) household_page.Config {
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Marks: rd.marks, Holdings: pagefig.NewHoldings, Fx: rd.fx,
 		Statement: pageStatementAliases(a), Family: pagefig.NewFamily,
-		FamilyTrend: pagefig.NewFamilyTrend,
+		FamilyTrend: pagefig.NewFamilyTrend, FamilyRisk: pagefig.NewFamilyRisk,
 	}
 }
 

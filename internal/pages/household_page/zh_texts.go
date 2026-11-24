@@ -71,3 +71,40 @@ const (
 	familyTrendLeftOut    = "有 %s 天没有画点：当天至少一个账户没有净值记录。"
 	familyTrendYen        = "日元账户按当天的美元兑日元汇率折成美元。"
 )
+
+// The Chinese words of the family risk blocks (design docs/design/household-risk.md). A term is explained
+// next to it: 指派, 行权价, 缺口, 现金结算.
+const (
+	riskTitleObligations   = "家庭风险 · 期权义务 Option obligations"
+	riskTitleCashAfter     = "家庭风险 · 指派后现金 Cash after assignment"
+	riskTitleStress        = "家庭风险 · 压力测试 Stress test"
+	riskTitleConcentration = "家庭风险 · 集中度 Concentration"
+
+	riskMeaningObligations = "每张未平仓卖出看跌（short put）一旦被指派（对方要你按行权价买入股票），要付多少现金：行权价（约定的买入价）x 每张股数 x 张数，按公司合并，美元。"
+	riskMeaningCashAfter   = "各账户现金减去本账户全部卖出看跌被指派所需现金，负数是缺口（现金不够的部分）。现金分放在各账户，不能互相担保。"
+	riskMeaningStress      = "全部卖出看跌都被指派的情形；跌幅 -10 / -20 / -30 % 的档位还没有，因为没有存下标的最新价。"
+	riskMeaningConc        = "若全部被指派，每家公司占全家净值几成：股票市值 + 被指派要买入的金额（行权价计）。注：现金结算（只收付现金、不交割股票）的指数期权仍按行权价全额计入，数字偏高。"
+
+	riskNameSuffix   = " 卖出看跌"
+	riskNoteAccounts = "；权利金 "
+	riskNoteList     = "、"
+	riskNoteCash     = "现金 %s − 需要 %s"
+	riskNoteShort    = "；缺口：现金不够"
+	riskNoteStock    = "股票 %s + 指派 %s"
+
+	riskStressNeed  = "全部指派所需现金"
+	riskStressCash  = "全家现金"
+	riskStressAfter = "指派后全家现金"
+	riskStressGap   = "压力测试：跌幅 -10 / -20 / -30 % 的档位还没有，因为没有存下标的最新价"
+
+	riskGapRow      = "%s：数据不全，该行不显示"
+	riskGapTotal    = "合计不显示：有一项数据不全"
+	riskGapUnread   = "%s读取失败，不含在这一块的数字和合计里"
+	riskGapNoMarks  = "没有行情读取器，算不出股票市值"
+	riskGapNoAccts  = "没有计入的账户"
+	riskGapSeparate = "；"
+
+	riskLineNotCounted = "家庭风险各块不含 %d 个账户"
+	riskLineShort      = "指派后现金：有 %d 个账户现金不够"
+	riskLineHidden     = "家庭风险表只列前 60 行，另有 %d 行没有列出"
+)

@@ -56,8 +56,12 @@ func BuildFamily(ctx context.Context, c Config, day contracts.Day, at time.Time)
 		return nil, err
 	}
 	res := c.Family().Family(in)
+	risk, err := c.familyRisk(ctx, distinct, res, caps, sessions)
+	if err != nil {
+		return nil, err
+	}
 	trend, trendNotes := c.familyTrend(ctx, res, caps, sessions)
-	return marshal(c.assembleFamily(distinct, res, caps, newest, at, trend, trendNotes))
+	return marshal(c.assembleFamily(distinct, res, caps, newest, at, trend, trendNotes, risk))
 }
 
 // readBook reads the capture of every alias and the rate when a capture holds yen; it is the input of the
@@ -146,7 +150,7 @@ func cellWords(reason string) string {
 
 // assembleFamily writes the page of a family result. Every figure is copied from res.
 func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps map[string]capture, newest string, at time.Time,
-	trend *trendBlock, trendNotes []string) pageJSON {
+	trend *trendBlock, trendNotes []string, risk *riskBlocks) pageJSON {
 	p := base(c, familyScopes(aliases), familyAliasKey, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = familyTitle, familySentence
@@ -189,6 +193,9 @@ func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps
 	detailGaps(&p)
 	if trend != nil {
 		p.setTrend(*trend)
+	}
+	if risk != nil {
+		p.setRisk(*risk)
 	}
 	p.LeadNotes = append(p.LeadNotes, trendNotes...)
 	p.Notes = append(p.Notes, familyCashNote)
