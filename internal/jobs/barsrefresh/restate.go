@@ -55,7 +55,7 @@ func restated(stored []contracts.PriceBar, pulled []broker.Bar, tol *big.Rat) (b
 	return out, nil
 }
 
-// olderThanWindow pulls again the stored days older than the oldest day of window: pieces of at most
+// olderThanWindow (a key with no yfinance route only) pulls again the stored days older than the oldest day of window: pieces of at most
 // deepen_piece_days ending the day before the oldest pulled day, down to the oldest stored day. A piece
 // with no older day, or answered with no data (error 162), stops the loop. It returns the rows of every piece and writes nothing, so that the
 // restatement is written in one call after the last pull.

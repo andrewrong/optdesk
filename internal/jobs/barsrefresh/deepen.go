@@ -13,7 +13,7 @@ import (
 // date or a holiday gap near the target must not cause a request every week.
 const deepenSlackDays = 30
 
-// deepen is the history deepening step of one key, run on the day its weekly adjusted_last step is
+// deepen is the IB history deepening step of one key with no yfinance route (a routed key never reaches it), run on the day its weekly adjusted_last step is
 // due (so a name is asked at most once a week) and only when the 400-day backfill was complete before
 // this run (backfilled). While the oldest stored trades day is newer than the run day minus
 // deepen_days plus 30 days it asks pieces of at most deepen_piece_days days ending on the day before

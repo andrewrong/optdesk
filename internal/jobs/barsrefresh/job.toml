@@ -1,6 +1,10 @@
 # Manifest of the bars_refresh job. The index exchanges and symbols are proposals the owner sets.
 version = 1
 id = "bars_refresh"
+# backfill_days, daily_days, adjusted_cadence_days and deepen_* below apply only to keys with no yfinance route
+# (the [[index]] keys, and a stock in a currency other than USD or JPY): they keep the IB daily window, the backfill,
+# the restatement re-pull, the deepening pieces and the weekly IB adjusted_last step. A USD or JPY stock or ETF asks IB
+# for no daily bar: its history comes from yfinance, in full only when a dividend or split is listed after its last pull.
 backfill_days = 400
 daily_days = 5
 restate_tolerance = "0.00001"

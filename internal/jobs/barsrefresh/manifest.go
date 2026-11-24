@@ -49,7 +49,8 @@ type Schedule struct {
 	RunBound time.Duration
 }
 
-// Manifest is the job.toml of bars_refresh.
+// Manifest is the job.toml of bars_refresh. BackfillDays, DailyDays, AdjustedCadenceDays and the Deepen fields
+// apply only to keys with no yfinance route (an [[index]] key, a stock in a currency other than USD or JPY).
 type Manifest struct {
 	Version             int
 	ID                  string
