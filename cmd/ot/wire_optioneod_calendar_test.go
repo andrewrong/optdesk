@@ -78,7 +78,7 @@ func TestOptionEodJobsGetCalendar(t *testing.T) {
 		"XTKS": time.Date(2026, 11, 19, 15, 30, 0, 0, tk),
 	}}
 	cases := map[string]time.Time{
-		jobOptionEod:   time.Date(2026, 11, 19, 15, 30, 0, 0, ny),
+		jobOptionEod:   time.Date(2026, 11, 19, 13, 30, 0, 0, ny),
 		jobOptionEodJP: time.Date(2026, 11, 19, 14, 30, 0, 0, tk),
 	}
 	for id, now := range cases {
