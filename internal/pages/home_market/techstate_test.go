@@ -60,7 +60,7 @@ func buildTech(t *testing.T, c Config) (techDoc, []byte) {
 
 func techGapCount(d techDoc) (n int) {
 	for _, g := range d.Card.Gaps {
-		if strings.HasPrefix(g.Text, "Tech state") {
+		if strings.HasPrefix(g.Text, "科技状态") {
 			n++
 		}
 	}
@@ -76,7 +76,7 @@ func TestTechNotesAreFirstAndInOrder(t *testing.T) {
 	if d.Card.Notes[0] != sayLagging {
 		t.Errorf("notes[0] = %q", d.Card.Notes[0])
 	}
-	if want := "NDX minus SPX: 1 month -3.12 pt, 3 months -6.40 pt; trial thresholds, not a forecast"; d.Card.Notes[1] != want {
+	if want := "NDX 减 SPX：近 1 个月 -3.12 点，近 3 个月 -6.40 点；试行阈值，不是预测"; d.Card.Notes[1] != want {
 		t.Errorf("notes[1] = %q", d.Card.Notes[1])
 	}
 	if d.Card.Notes[2] != notes[0] {
@@ -104,7 +104,7 @@ func TestTechNoReadingIsNoDataGap(t *testing.T) {
 		t.Fatalf("notes = %q, gaps = %v", d.Card.Notes, d.Card.Gaps)
 	}
 	for _, g := range d.Card.Gaps {
-		if strings.HasPrefix(g.Text, "Tech state") && g.Reason != "no_data" {
+		if strings.HasPrefix(g.Text, "科技状态") && g.Reason != "no_data" {
 			t.Errorf("reason = %s", g.Reason)
 		}
 	}
@@ -117,7 +117,7 @@ func TestTechStaleReadingIsStaleGap(t *testing.T) {
 		t.Fatalf("notes = %q, gaps = %v", d.Card.Notes, d.Card.Gaps)
 	}
 	for _, g := range d.Card.Gaps {
-		if strings.HasPrefix(g.Text, "Tech state") && g.Reason != "stale_input" {
+		if strings.HasPrefix(g.Text, "科技状态") && g.Reason != "stale_input" {
 			t.Errorf("reason = %s", g.Reason)
 		}
 	}

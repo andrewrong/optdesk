@@ -63,7 +63,7 @@ func buildOverview(in Input) (overview, int, error) {
 	for _, n := range in.HoursNotices {
 		ov.Gaps = append(ov.Gaps, gapItem{
 			Card: "calendar",
-			Text: fmt.Sprintf("%s %s ours %s, IBKR %s", n.Market, n.Day, n.Ours, n.IBKR),
+			Text: fmt.Sprintf(calendarGapFmt, n.Market, n.Day, n.Ours, n.IBKR),
 		})
 	}
 	for _, p := range parts {
@@ -93,10 +93,10 @@ func buildOverview(in Input) (overview, int, error) {
 // gapLine words the number of gaps for the page's gap_line.
 func gapLine(n int) string {
 	if n == 0 {
-		return "No gaps today"
+		return gapLineNone
 	}
 	if n == 1 {
-		return "1 gap, shown in its card"
+		return gapLineOne
 	}
-	return fmt.Sprintf("%d gaps, shown in their cards", n)
+	return fmt.Sprintf(gapLineMany, n)
 }

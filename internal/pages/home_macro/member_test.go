@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -261,10 +262,10 @@ func TestSayIsReservesFact(t *testing.T) {
 	s := seriesFake{points: []contracts.SeriesPoint{wresbal(t, "2026-11-04", 2.97e12)}}
 	read := readerOf(row(t, day, "56.04", "steady"), row(t, weekAgo, "56.24", "steady"))
 	cases := []struct{ level, change, want string }{
-		{"2970000000000", "-40000000000", "Reserves $3.0tn, 4 weeks −$40bn (2026-11-04)."},
-		{"2970000000000", "48000000000", "Reserves $3.0tn, 4 weeks +$48bn (2026-11-04)."},
-		{"820000000000", "0", "Reserves $820bn, 4 weeks $0bn (2026-11-04)."},
-		{"1000000000000", "-400000000", "Reserves $1.0tn, 4 weeks $0bn (2026-11-04)."},
+		{"2970000000000", "-40000000000", "Reserves $3.0tn，4 周 −$40bn（2026-11-04）。"},
+		{"2970000000000", "48000000000", "Reserves $3.0tn，4 周 +$48bn（2026-11-04）。"},
+		{"820000000000", "0", "Reserves $820bn，4 周 $0bn（2026-11-04）。"},
+		{"1000000000000", "-400000000", "Reserves $1.0tn，4 周 $0bn（2026-11-04）。"},
 	}
 	for _, tc := range cases {
 		if got := sayOf(t, buildReserves(t, s, reservesResult(tc.level, tc.change), read)); got != tc.want {
@@ -290,12 +291,12 @@ func TestSayMissingReserves(t *testing.T) {
 	}
 	for name, tc := range cases {
 		b := buildReserves(t, tc.s, tc.res, nil)
-		if got := sayOf(t, b); got != "Reserves: no data yet." {
+		if got := sayOf(t, b); got != "Reserves：暂无数据。" {
 			t.Errorf("%s: say = %q", name, got)
 		}
 		found := false
 		for _, g := range decode(t, b)["card"].(map[string]any)["gaps"].([]any) {
-			if g.(map[string]any)["reason"] == "no_data" && g.(map[string]any)["text"] == "Reserves: no data yet" {
+			if g.(map[string]any)["reason"] == "no_data" && g.(map[string]any)["text"] == "Reserves：暂无数据" {
 				found = true
 			}
 		}
@@ -314,7 +315,7 @@ func TestSayHasNoEaseWords(t *testing.T) {
 		buildReserves(t, nil, liquidityapi.Result{}, read),
 	} {
 		say := sayOf(t, b)
-		if strings.Contains(say, "Ease") || strings.Contains(say, "vs last week") {
+		if strings.Contains(say, "Ease") || strings.Contains(say, "较上周") {
 			t.Errorf("say = %q", say)
 		}
 	}
@@ -330,10 +331,10 @@ func TestSayUnchangedWithoutLiquidity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := sayOf(t, b); got != "Ease neutral, vs last week −0.2." {
+	if got := sayOf(t, b); got != "Ease neutral，较上周 −0.2。" {
 		t.Errorf("say = %q", got)
 	}
-	if got := sayOf(t, build(t, nil)); got != "Ease: no data yet." {
+	if got := sayOf(t, build(t, nil)); got != "Ease：暂无数据。" {
 		t.Errorf("say = %q", got)
 	}
 }
@@ -412,10 +413,10 @@ func TestEventsListKeptKindsInOrder(t *testing.T) {
 		t.Fatalf("events = %v", ev)
 	}
 	first := ev[0].(map[string]any)
-	if first["date"] != "2026-11-12" || first["name_text"] != "CPI" || first["when_text"] != "date only" {
+	if first["date"] != "2026-11-12" || first["name_text"] != "CPI" || first["when_text"] != "仅日期" {
 		t.Fatalf("first = %v", first)
 	}
-	if p := first["previous"].(map[string]any); p["reason"] != "not_built" || p["text"] != "previous value: not built" {
+	if p := first["previous"].(map[string]any); p["reason"] != "not_built" || p["text"] != "前值：尚未建成" {
 		t.Fatalf("previous = %v", p)
 	}
 	if ev[1].(map[string]any)["name_text"] != "FOMC decision" {
@@ -458,7 +459,7 @@ func TestNoStoredEventsIsNoDataGap(t *testing.T) {
 	}
 	gaps := card["gaps"].([]any)
 	g := gaps[len(gaps)-1].(map[string]any)
-	if len(gaps) != 1 || g["reason"] != "no_data" || g["text"] != "No macro events stored for the next 60 days" {
+	if len(gaps) != 1 || g["reason"] != "no_data" || g["text"] != "未来 60 天没有存下的宏观事件" {
 		t.Fatalf("gaps = %v", gaps)
 	}
 }
@@ -499,5 +500,50 @@ func TestGoldenEvents(t *testing.T) {
 	}
 	if !bytes.Equal(pretty.Bytes(), want) {
 		t.Fatalf("golden differs:\n%s", pretty.Bytes())
+	}
+}
+
+func collectTexts(v any, keys map[string]bool, out *[]string) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, e := range x {
+			if s, ok := e.(string); ok && keys[k] {
+				*out = append(*out, s)
+				continue
+			}
+			collectTexts(e, keys, out)
+		}
+	case []any:
+		for _, e := range x {
+			collectTexts(e, keys, out)
+		}
+	}
+}
+
+func TestCardTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	han := regexp.MustCompile(`\p{Han}`)
+	keys := map[string]bool{"say": true, "text": true, "when_text": true}
+	cases := map[string]home_macro.Config{
+		"no reader":    {},
+		"empty reader": {Read: readerOf(), Events: &fakeEvents{}},
+		"one event":    {Read: readerOf(), Events: &fakeEvents{rows: []macroevent.Event{evRow("cpi", "2026-11-12")}}},
+	}
+	for name, c := range cases {
+		c.RunID, c.BuildID, c.Scope, c.Zone = "run-test", "build-test", "scope-test", zone
+		b, err := home_macro.Build(context.Background(), c, day, generated)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		var texts []string
+		collectTexts(decode(t, b)["card"], keys, &texts)
+		if len(texts) == 0 {
+			t.Fatalf("%s: no text fields", name)
+		}
+		for _, s := range texts {
+			if !han.MatchString(s) {
+				t.Errorf("%s: text %q holds no Chinese character", name, s)
+			}
+		}
 	}
 }

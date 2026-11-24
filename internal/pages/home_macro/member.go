@@ -37,20 +37,9 @@ const (
 	bandHigh    = "66.5"
 	minus       = "−"
 
-	title            = "Macro"
-	sayEase          = "Ease %s, %s."
-	sayNoEase        = "Ease: no data yet."
-	textNoData       = "Ease: no data yet"
-	textNoReader     = "Ease: not connected yet"
-	textNoWeek       = "Change vs last week: no data yet"
-	textEvents       = "Event calendar: not connected yet"
-	textNoDay        = "No data day"
-	textEventsUnread = "Event calendar: could not be read"
-	textNoEvents     = "No macro events stored for the next 60 days"
-	textPrevious     = "previous value: not built"
-	whenDateOnly     = "date only"
-	eventWindow      = 60 // days after the day that the event reader is asked for
-	maxEvents        = 8
+	title       = "Macro"
+	eventWindow = 60 // days after the day that the event reader is asked for
+	maxEvents   = 8
 )
 
 var (
@@ -278,7 +267,7 @@ func midnight(t time.Time, zone *time.Location) string {
 // weekSay is the week-change sentence of the card, from the stored ease block.
 func weekSay(b *ease) string {
 	if f, ok := b.WeekChange.(figure); ok {
-		return "vs last week " + f.Text
+		return weekPrefix + f.Text
 	}
 	return textNoWeek
 }
@@ -404,7 +393,7 @@ func easeFor(ctx context.Context, read compute.ReadingFunc, day time.Time) (*eas
 			tone = "down"
 		}
 		b.WeekChange = figure{Value: json.Number(num), Text: text, Unit: "index_points", Tone: tone}
-		weekText = "vs last week " + text
+		weekText = weekPrefix + text
 	}
 	b.ReadingText = "Now " + whole + ", " + word + "; fixed scale 0 to 100."
 	b.AriaText = "Ease " + whole + ", " + word + ", " + weekText +
@@ -417,9 +406,6 @@ func easeFor(ctx context.Context, read compute.ReadingFunc, day time.Time) (*eas
 const (
 	reservesID       = "WRESBAL"
 	reservesLookback = 60 // days read before day: the 4-week change needs 28
-	sayNoReserves    = "Reserves: no data yet."
-	textNoReserves   = "Reserves: no data yet"
-	sayReserves      = "Reserves %s, 4 weeks %s (%s)."
 )
 
 // reservesSay is "Reserves $3.0tn, 4 weeks −$40bn (2026-11-11)." from the Reserves and Reserves4w figures of
