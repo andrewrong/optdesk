@@ -8,7 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-// usWindowChain holds one chain with expiries 14, 15, 45, 46 and 49 days after testDay.
+// usWindowChain holds one chain with expiries 14, 15, 45, 46, 49 and 50 days after testDay.
 func usWindowChain() []Contract {
 	var cs []Contract
 	for _, d := range []int{14, 15, 45, 46, 49, 50} {

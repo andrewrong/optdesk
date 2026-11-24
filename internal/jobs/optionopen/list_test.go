@@ -617,3 +617,18 @@ func TestListSummaryChainExpiryMaxNoneWhenNoExpiry(t *testing.T) {
 	require.Contains(t, line, "chain_expiry_max=none")
 	require.Contains(t, line, "window_names=0")
 }
+
+func TestListSummaryChainExpiryMaxCountsEveryTradingClass(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA")
+	near := strings.ReplaceAll(string(g.exp(22)), "-", "")
+	far := strings.ReplaceAll(string(g.exp(44)), "-", "")
+	g.lst.chains = func(string) ([]broker.Chain, error) {
+		return []broker.Chain{
+			{Exchange: "SMART", TradingClass: "AAA", Multiplier: "100", Expirations: []string{near}},
+			{Exchange: "SMART", TradingClass: "2AAA", Multiplier: "100", Expirations: []string{far}},
+		}, nil
+	}
+	g.run(g.job(nil))
+	require.Contains(t, g.logs[len(g.logs)-1], "chain_expiry_max="+string(g.exp(44)))
+}

@@ -434,6 +434,11 @@ func (r *listRun) chosen(ctx context.Context, n *listName, chains []broker.Chain
 	answered := false
 	for _, ch := range chains {
 		answered = answered || len(ch.Expirations) > 0
+		for _, e := range ch.Expirations {
+			if t, err := time.Parse("20060102", e); err == nil && t.Format(time.DateOnly) > r.chainMax {
+				r.chainMax = t.Format(time.DateOnly)
+			}
+		}
 		if ch.TradingClass != class {
 			continue
 		}
@@ -442,11 +447,7 @@ func (r *listRun) chosen(ctx context.Context, n *listName, chains []broker.Chain
 		}
 		for _, e := range ch.Expirations {
 			if t, err := time.Parse("20060102", e); err == nil {
-				d := t.Format(time.DateOnly)
-				expiries = append(expiries, contracts.Day(d))
-				if d > r.chainMax {
-					r.chainMax = d
-				}
+				expiries = append(expiries, contracts.Day(t.Format(time.DateOnly)))
 			}
 		}
 	}
