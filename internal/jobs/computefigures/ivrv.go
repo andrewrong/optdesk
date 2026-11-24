@@ -63,7 +63,11 @@ func (r *runState) runIvRv20(names []string) {
 		byDay := map[contracts.Day]contracts.ReadingRecord{}
 		for _, rec := range rows {
 			d := dayOf(rec.Day)
-			byDay[d] = rec
+			if dd := contracts.Day(tagParam(rec, "data_day")); dd != "" {
+				if old, ok := byDay[dd]; !ok || dayOf(old.Day) < d {
+					byDay[dd] = rec
+				}
+			}
 			val := ""
 			if rec.Value != nil {
 				val = *rec.Value
