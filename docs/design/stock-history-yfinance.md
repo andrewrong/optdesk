@@ -26,7 +26,7 @@ IBKR is the live trading platform and its history farm shares a budget of 50 req
 
 Landed first by the entry `stock-history-iface` (interface); the module entries use it.
 
-- `pyside/src/optdesk/refbars/api.py`: Request gains `with_actions` and `adjusted` (bool); Bar gains `adj_close` (decimal text, empty when not asked); PairResult gains `dividends` and `splits` (lists of `{day, value}` as decimal text). Declarations only.
+- `pyside/src/optdesk/refbars/api.py`: Request gains `with_actions` and `adjusted` (bool); Bar gains `adj_close` (decimal text, empty when not asked); PairResult gains `dividends` and `splits` (lists of `{day, value}` as decimal text), both `NotRequired`, so the golden `pyside/tests/refbars/answer.json` of today stays valid; the contract test checks that each result holds every required PairResult key and no key outside PairResult. Declarations only.
 - `internal/sources/api.go`: `BarRequest` gains `Actions bool` and `Adjusted bool`; `RefBar` gains `AdjClose string`; `BarResult` gains `Actions []RefAction` with `RefAction{Pair, Day, Kind ("dividend" or "split"), Value}`. Fields are added, none changes.
 - `internal/store/bar/api.go`: `PriceBarReplacer` (new, optional): `ReplacePriceBars(ctx, rows, writtenBy) (BarWriteCount, error)` replaces a stored row of the same key whatever its source; implemented by `barpg`.
 
@@ -44,13 +44,14 @@ Modules: pyside, sources, store (interface files only). Size: S. Order: first.
 Contracts: unchanged
 Files: `pyside/src/optdesk/refbars/api.py`, `pyside/tests/contracts/test_refbars_api.py`, `internal/sources/api.go`, `internal/sources/api_test.go`, `internal/store/bar/api.go`, `internal/store/bar/api_test.go`
 Design: docs/design/stock-history-yfinance.md#Interface
-Acceptance: as the draft `stock-history-iface.md`; declarations only, no behaviour.
+Acceptance: as the draft `stock-history-iface.md`; declarations only, no behaviour. answer.json is not changed here: the new keys are `NotRequired`, and `test_answer_matches_golden` (test_cli.py) and `TestAnswerMatchesGolden` (source_test.go) stay green on the unchanged golden.
 
 ### 2 stock-history-refbars
 
 Module: pyside. Size: M. Order: after 1 (stock-history-iface).
 Contracts: unchanged
-Files: `pyside/src/optdesk/refbars/fetch.py`, `pyside/src/optdesk/refbars/cli.py`, `pyside/tests/refbars/test_fetch.py`, `pyside/tests/refbars/test_cli.py`
+Files: `pyside/src/optdesk/refbars/fetch.py`, `pyside/src/optdesk/refbars/cli.py`, `pyside/tests/refbars/test_fetch.py`, `pyside/tests/refbars/test_cli.py`, `pyside/tests/refbars/answer.json`
+This entry adds dividends, splits and adj_close to the golden answer.json together with the cli.py that writes them.
 Design: docs/design/stock-history-yfinance.md#Decisions
 Acceptance: as the draft `stock-history-refbars.md`.
 
@@ -64,7 +65,7 @@ Acceptance: as the draft `stock-history-store.md`.
 
 ### 4 stock-history-sources
 
-Module: sources. Size: M. Order: after 1 (stock-history-iface).
+Module: sources. Size: M. Order: after 1 (stock-history-iface). Order: after 2 (stock-history-refbars), whose golden answer.json carries the actions source_test.go reads.
 Contracts: unchanged
 Files: `internal/sources/yfinance/source.go`, `internal/sources/yfinance/source_test.go`
 Design: docs/design/stock-history-yfinance.md#Decisions
@@ -80,7 +81,7 @@ Acceptance: as the draft `stock-history-job.md`.
 
 ## Left out
 
-- A yfinance probe of its depth and rate limit: not made here; the issue of entry 3 states what the adapter does on rate_limited, and the owner sees the first full pull in the log.
+- A yfinance probe of its depth and rate limit: not made here; the issue of entry 4 (stock-history-sources) states what the adapter does on rate_limited, and the owner sees the first full pull in the log.
 - A second source for dividends and splits (IB tick 456 is a forward projection and is not used).
 - Intraday bars and option history.
 - Keys with no yfinance route (the `[[index]]` keys, a stock in a currency other than USD or JPY): left as they are today, the whole IB path including the weekly adjusted_last step; no change.
@@ -94,4 +95,4 @@ Acceptance: as the draft `stock-history-job.md`.
 3. Simpler way. Keep IB and ask adjusted_last (2 Y) only on a split seen in trades: that misses dividends, which are the common event, so it is not enough; or drop adjusted_last and let the replay use raw closes plus dividends, which is a replay change outside this cut.
 4. Lock-in. `ReplacePriceBars` lets one source overwrite stored rows of another; a later wrong yfinance answer would overwrite IB rows with no copy kept (rows are not versioned since adjust_epoch was frozen at 1). The replace is limited to the days of a full pull.
 5. Claim most likely false. That yfinance lists a dividend or split by the day it happens and that "Adj Close" of the full pull equals the adjustment of the earlier pull plus the event; the depth to listing and the 4063.T history are assumed from the library, not checked in this repo.
-6. Likeliest slip. The jobs entry (4) is large: it removes the IB steps for routed stocks and adds two sources of rows; a leftover caller of `deepen` or `adjusted` or the restate re-pull would keep IB requests alive. The acceptance names the removals and the issue lists every file.
+6. Likeliest slip. The jobs entry (5) is large: it removes the IB steps for routed stocks and adds two sources of rows; a leftover caller of `deepen` or `adjusted` or the restate re-pull would keep IB requests alive. The acceptance names the removals and the issue lists every file.
