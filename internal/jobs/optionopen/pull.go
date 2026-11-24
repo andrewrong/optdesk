@@ -273,7 +273,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok, unread, partial, outside, added := 0, 0, 0, 0, 0, 0
+	planned, ok, unread, partial, outside, noQuote, added := 0, 0, 0, 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -301,13 +301,15 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 				ok++
 			case r.Status == stPartial:
 				partial++
+			case isNoQuoteRow(r):
+				noQuote++
 			case r.Status == stDisconnected, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
 				unread++
 			}
 		}
 		res.Usable = ok
 	}
-	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, added)
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, noQuote, added)
 }
 
 // underShare is the result of a batch that ended under the ok share: Retryable when rows were not asked (the broker

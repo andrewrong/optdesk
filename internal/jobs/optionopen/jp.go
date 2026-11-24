@@ -286,7 +286,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		byKey[b.subject] = b
 	}
 	var res contracts.JobResult
-	planned, ok, unread, partial, outside, added := 0, 0, 0, 0, 0, 0
+	planned, ok, unread, partial, outside, noQuote, added := 0, 0, 0, 0, 0, 0, 0
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -314,13 +314,15 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 				ok++
 			case r.Status == stPartial:
 				partial++
+			case isNoQuoteRow(r):
+				noQuote++
 			case r.Status == stDisconnected, r.Status == stDeferred && r.ErrorCode != nil && !r.OutsideBand:
 				unread++
 			}
 		}
 		res.Usable = ok
 	}
-	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, added)
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, noQuote, added)
 }
 
 // runKey is pull.runKey with the JP parameters of the core.
