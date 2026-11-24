@@ -113,7 +113,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if alias == "" && len(c.Aliases) > 0 {
 		alias = c.Aliases[0]
 	}
-	label := labelAccount + alias + labelClose
+	label := accountLabel(alias)
 	if !slices.Contains(c.Aliases, alias) {
 		return marshal(c.gapPage(alias, label, at, "no_data", textUnknown))
 	}
@@ -322,7 +322,7 @@ func (c Config) accountLinks(current string) []accountLink {
 	links := make([]accountLink, 0, len(c.Aliases))
 	for _, a := range c.Aliases {
 		links = append(links, accountLink{
-			Key: a, Label: labelAccount + a + labelClose,
+			Key: a, Label: accountLabel(a),
 			Href: "/positions?account=" + url.QueryEscape(a), Current: a == current,
 		})
 	}
