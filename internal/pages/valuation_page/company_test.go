@@ -178,3 +178,17 @@ func TestBadLinesLeaveNoLines(t *testing.T) {
 		t.Errorf("doc = %v", m)
 	}
 }
+
+func TestReportTextPathHidden(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct{ in, want string }{
+		"path":      {"claude/个股报告/GOOG-Alphabet-2026-11-03.md", ""},
+		"plain":     {"report r2", "report r2"},
+		"two lines": {"notes\nclaude/a.md", "notes\nclaude/a.md"},
+	}
+	for name, c := range cases {
+		if got := reportTextOf(c.in); got != c.want {
+			t.Errorf("%s: reportTextOf(%q) = %q, want %q", name, c.in, got, c.want)
+		}
+	}
+}
