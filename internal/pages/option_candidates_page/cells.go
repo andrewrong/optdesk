@@ -3,6 +3,7 @@ package option_candidates_page
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -129,6 +130,13 @@ func marksCell(c store.Candidate) any {
 	for _, m := range marks {
 		if m == buypriceapi.MarkValuation || m == buypriceapi.MarkHand {
 			continue // the source of the price is the badge of the strip and the short list, not a mark
+		}
+		if strings.HasPrefix(m, markSpotQuotePrefix) || m == markSpotChain {
+			continue // the day of the spot is the note of the card
+		}
+		if d, ok := strings.CutPrefix(m, markChainDayPrefix); ok {
+			cell.Badges = append(cell.Badges, zhChainDay+monthDay(d))
+			continue
 		}
 		if h, ok := markHints[m]; ok {
 			m += fitSeparator + h

@@ -229,13 +229,43 @@ func companyTierOf(fits, check int) tierBadge {
 	return tierBadge{ID: legendGreyTier, Word: tierGreyView, Glyph: glyphGrey}
 }
 
-// spotNoteOf is the stored day without its year, cut as text.
-func spotNoteOf(day string) string {
+// monthDay is the stored day without its year, cut as text.
+func monthDay(day string) string {
 	_, md, ok := strings.Cut(day, "-")
 	if !ok {
 		md = day
 	}
-	return zhSpotArchive + md
+	return md
+}
+
+// markDay is the day after the prefix of the first mark that carries it, or "".
+func markDay(marks []string, prefix string) string {
+	for _, m := range marks {
+		if d, ok := strings.CutPrefix(m, prefix); ok {
+			return d
+		}
+	}
+	return ""
+}
+
+// spotNoteOf is the note of the spot from the marks of the row: the day of the quote when it is earlier than
+// the day of the rows (a text comparison of two YYYY-MM-DD texts), the day of the chain price, or the day of
+// the rows as before.
+func spotNoteOf(rowsDay string, marks []string) string {
+	if q := markDay(marks, markSpotQuotePrefix); q != "" {
+		if q < rowsDay {
+			return monthDay(q) + zhSpotQuote
+		}
+		return zhSpotArchive + monthDay(q)
+	}
+	if slices.Contains(marks, markSpotChain) {
+		day := markDay(marks, markChainDayPrefix)
+		if day == "" {
+			day = rowsDay
+		}
+		return zhSpotChain + monthDay(day)
+	}
+	return zhSpotArchive + monthDay(rowsDay)
 }
 
 // stripLabelsOf are the eight words of the card.
@@ -323,17 +353,13 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 		}
 		if m, ok := moneyText(deref(r.Spot), cur); deref(r.Spot) != "" && ok {
 			v.Spot = m
-			note := spotNoteOf(string(rowsDay))
+			marks, _ := parseMarks(pricedOf(rows, cc.Company, r).Marks) // unreadable marks: the note as before
+			note := spotNoteOf(string(rowsDay), marks)
 			v.SpotText, v.SpotNote = &m, &note
 		}
 		// The price and its source come from the first row of the company that has a price; the source is
 		// read from the stored marks and never recomputed.
-		priced := r
-		if j := slices.IndexFunc(rows, func(x store.Candidate) bool {
-			return strconv.Itoa(x.UnderlyingID) == cc.Company && deref(x.BuyPrice) != ""
-		}); j >= 0 {
-			priced = rows[j]
-		}
+		priced := pricedOf(rows, cc.Company, r)
 		v.source = buySourceCode(priced)
 		v.BuySource = buySourceBadge(v.source)
 		if m, ok := moneyText(deref(priced.BuyPrice), cur); deref(priced.BuyPrice) != "" && ok {
@@ -350,6 +376,16 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 		out = append(out, v)
 	}
 	return out
+}
+
+// pricedOf is the first row of the company that has a buy price, or def.
+func pricedOf(rows []store.Candidate, company string, def store.Candidate) store.Candidate {
+	if j := slices.IndexFunc(rows, func(x store.Candidate) bool {
+		return strconv.Itoa(x.UnderlyingID) == company && deref(x.BuyPrice) != ""
+	}); j >= 0 {
+		return rows[j]
+	}
+	return def
 }
 
 // commonOf is the marks every row carries, each with the run line of Decision 11 as its gloss.

@@ -80,7 +80,7 @@ Acceptance: 1. `newEventRow` no longer writes `not_built`; Decisions 3 to 5 give
 ### 6 macro-ev-6-web-actual-column
 
 Module: web. Size: S. Order: after 1.
-Files: `web/src/pages/macro/MacroPage.tsx`, `web/test/pages/macro/MacroPage.test.tsx`, `web/fixtures/macro-page/ok.json`
+Files: `web/src/pages/macro/MacroPage.tsx`, `web/test/pages/macro/MacroPage.test.tsx`
 Acceptance: 1. The events table has an "Actual" column after "Previous" printing `actual.text` or the gap, with the hints. 2. A page without `actual` renders as before. 3. The web computes nothing.
 
 ## Checked by CI

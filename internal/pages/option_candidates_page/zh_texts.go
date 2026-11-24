@@ -224,6 +224,9 @@ const (
 // Chinese texts of the company card (candidates-zh.md Decision 3).
 const (
 	zhSpotArchive    = "存档 "
+	zhSpotQuote      = " 报价"
+	zhSpotChain      = "期权链价 "
+	zhChainDay       = "期权数据 "
 	zhNoBuyPrice     = "没有买入价"
 	zhEarningsNone   = "未知"
 	zhSourceHand     = "手填"

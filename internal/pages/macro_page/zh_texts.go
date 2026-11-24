@@ -22,3 +22,7 @@ const (
 	hintDEXJPUS  = "美元兑日元；日元急升常伴随套利交易平仓，波动放大。"
 	hintIRLTJP   = "日本十年期国债收益率（OECD经FRED，月度）。"
 )
+
+// The hint of the event columns: previous and actual are the last published figure and the release, the figure kinds
+// (y/y 同比, m/m 环比, NFP 非农月增, FOMC 目标区间), the latest vintage and the missing consensus.
+const hintEventValues = "前值/公布值：CPI、PCE、PPI为同比，零售为环比，非农为月增（千人），联储为目标区间；均为FRED最新版本；共识预期没有免费可靠来源，不显示。"

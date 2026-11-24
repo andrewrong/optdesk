@@ -50,3 +50,17 @@ func TestMarksCellHidesSourceMarks(t *testing.T) {
 		t.Errorf("mixed: %v", cell.Badges)
 	}
 }
+
+func TestMarksCellChainDay(t *testing.T) {
+	t.Parallel()
+	c := cand("short_put", 1, "ok")
+	c.Marks = `["eod_fallback","chain_day:2026-11-06","spot_quote:2026-11-06"]`
+	cell := marksCell(c).(valueCell)
+	if len(cell.Badges) != 2 || cell.Badges[1] != "期权数据 11-06" {
+		t.Errorf("badges = %v", cell.Badges)
+	}
+	c.Marks = `["spot_quote:2026-11-06","spot_chain"]`
+	if cell := marksCell(c).(valueCell); len(cell.Badges) != 0 || cell.Text != dash {
+		t.Errorf("spot marks: %+v", cell)
+	}
+}

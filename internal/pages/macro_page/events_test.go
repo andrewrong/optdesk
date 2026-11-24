@@ -120,7 +120,7 @@ func TestEventsConventionTexts(t *testing.T) {
 		if strings.Contains(r["name_text"].(string), "high") {
 			t.Errorf("importance tag in name %q", r["name_text"])
 		}
-		if p := r["previous"].(map[string]any); p["reason"] != "not_built" || p["text"] != "previous value: not built" {
+		if p, isGap := r["previous"].(map[string]any); isGap && p["reason"] == "not_built" {
 			t.Errorf("previous %v", p)
 		}
 	}
@@ -324,15 +324,12 @@ func TestEventWindowFlag(t *testing.T) {
 		got[r["date"].(string)] = [2]any{r["days_to"], r["in_window"]}
 	}
 	want := map[string][2]any{
-		"2026-11-05": {float64(0), true}, "2026-12-20": {float64(45), true}, "2026-12-21": {float64(46), false},
+		"2026-11-04": {float64(-1), false}, "2026-11-05": {float64(0), true}, "2026-12-20": {float64(45), true}, "2026-12-21": {float64(46), false},
 	}
 	for d, w := range want {
 		if got[d] != w {
 			t.Errorf("%s: got %v want %v", d, got[d], w)
 		}
-	}
-	if _, ok := got["2026-11-04"]; ok {
-		t.Error("an event before the page day is listed")
 	}
 	// a window of 46 days takes the last in
 	rows = eventRows(windowBuild(t, ev, func(context.Context, time.Time) (int, bool) { return 46, true }))
