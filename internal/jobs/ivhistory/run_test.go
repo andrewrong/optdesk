@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -345,5 +346,82 @@ func TestRunRepairsStoredMissingDay(t *testing.T) {
 	q := runOne(t, st, "2026-11-04")
 	if q.DurationDays != 15 || q.End != "2026-11-04" {
 		t.Fatalf("query %+v", q)
+	}
+}
+
+// nyClock is a clock fixed at a New York wall time.
+type nyClock struct{ t time.Time }
+
+func (c nyClock) Now() time.Time { return c.t }
+
+func nyAt(t *testing.T, s string) time.Time {
+	t.Helper()
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tm, err := time.ParseInLocation("2006-01-02 15:04", s, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tm
+}
+
+// runAt runs one name of the given currency for 2026-11-24 with the clock at the New York time at.
+func runAt(t *testing.T, ccy, at string, st *memReadings, bars ...broker.Bar) (*fakeHistory, contracts.JobResult) {
+	t.Helper()
+	h := fixed(bars...)
+	e := entry("AAA")
+	e.Contract.Currency = ccy
+	j, err := New(h, st, st, []jobs.WatchEntry{e}, text, nyClock{nyAt(t, at)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h, j.Run(context.Background(), "2026-11-24", keysOf("AAA"))
+}
+
+func TestRunKeyUSTodayBeforeCloseNoGapSendsNothing(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{rows: []contracts.ReadingRecord{storedOk("AAA", "2026-11-23", "0.20")}}
+	h, res := runAt(t, "USD", "2026-11-24 15:00", st)
+	if res.Err != nil || len(h.queries) != 0 || len(st.rows) != 1 {
+		t.Fatalf("res %+v queries %+v rows %d", res, h.queries, len(st.rows))
+	}
+}
+
+func TestRunKeyUSTodayBeforeCloseAsksEarlierGapOnly(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{rows: []contracts.ReadingRecord{storedOk("AAA", "2026-11-19", "0.20")}}
+	h, res := runAt(t, "USD", "2026-11-24 15:00", st, bar("2026-11-20", "0.21"), bar("2026-11-24", "0.30"))
+	if res.Err != nil || len(h.queries) != 1 || h.queries[0].End != "2026-11-23" {
+		t.Fatalf("res %+v queries %+v", res, h.queries)
+	}
+	got := byDay(st)
+	if _, ok := got["2026-11-24"]; ok {
+		t.Fatalf("a row for today: %+v", got)
+	}
+	if _, ok := got["2026-11-20"]; !ok {
+		t.Fatalf("no reading of the earlier day: %+v", got)
+	}
+}
+
+func TestRunKeyUSTodayAfterCloseUnchanged(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{rows: []contracts.ReadingRecord{storedOk("AAA", "2026-11-23", "0.20")}}
+	h, res := runAt(t, "USD", "2026-11-24 16:30", st, bar("2026-11-24", "0.30"))
+	if res.Err != nil || len(h.queries) != 1 || h.queries[0].End != "" {
+		t.Fatalf("res %+v queries %+v", res, h.queries)
+	}
+	if r, ok := byDay(st)["2026-11-24"]; !ok || !isOk(r) {
+		t.Fatalf("no ok reading of today: %+v", byDay(st))
+	}
+}
+
+func TestRunKeyNonUSTodayUnchanged(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{rows: []contracts.ReadingRecord{storedOk("AAA", "2026-11-23", "0.20")}}
+	h, res := runAt(t, "HKD", "2026-11-24 15:00", st, bar("2026-11-24", "0.30"))
+	if res.Err != nil || len(h.queries) != 1 || h.queries[0].End != "" {
+		t.Fatalf("res %+v queries %+v", res, h.queries)
 	}
 }
