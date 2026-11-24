@@ -79,7 +79,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		}
 	}
 	var points []contracts.SeriesPoint
-	groups := []fetchGroup{{plain, day}, {windowed, j.sizedFrom(ctx, windowed, daysBefore(day, j.m.LookbackDays), day)}, {long, j.sizedFrom(ctx, long, daysBefore(day, j.m.LongLookbackDays), day)}}
+	windowedFrom := j.sizedFrom(ctx, windowed, daysBefore(day, j.m.LookbackDays), day)
+	longFrom := j.sizedFrom(ctx, long, daysBefore(day, j.m.LongLookbackDays), day)
+	groups := []fetchGroup{{plain, day}, {windowed, windowedFrom}, {long, longFrom}}
 	for _, g := range groups {
 		if len(g.ids) == 0 {
 			continue
