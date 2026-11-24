@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -172,11 +174,11 @@ func TestFindByID(t *testing.T) {
 func TestIDNotOpenIsGapPage(t *testing.T) {
 	t.Parallel()
 	m := readFixture(t, "detail_spread").build(t, "main:T000:9", true)
-	if m["sentence"] != "Structure is no longer held" || m["run_status"] != "partial" {
+	if m["sentence"] != "该结构已不在持仓中" || m["run_status"] != "partial" {
 		t.Fatalf("sentence = %v, status = %v", m["sentence"], m["run_status"])
 	}
 	for _, k := range []string{"payoff", "greeks"} {
-		if g := obj(t, m[k]); g["text"] != "Structure is no longer held" {
+		if g := obj(t, m[k]); g["text"] != "该结构已不在持仓中" {
 			t.Errorf("%s = %v", k, g)
 		}
 	}
@@ -205,7 +207,7 @@ func TestTilesFromFigures(t *testing.T) {
 	if r := obj(t, obj(t, gt["pnl"])["figure"])["reason"]; r != "missing_quote" {
 		t.Errorf("pnl gap = %v", r)
 	}
-	if loss := obj(t, obj(t, gt["max_loss"])["figure"]); loss["reason"] != "no_rule" || loss["text"] != "No limit" {
+	if loss := obj(t, obj(t, gt["max_loss"])["figure"]); loss["reason"] != "no_rule" || loss["text"] != "无上限" {
 		t.Errorf("max_loss = %v", loss)
 	}
 }
@@ -310,4 +312,82 @@ type stubIDs struct{}
 
 func (stubIDs) StockIDs(context.Context, []string) ([]store.InstrumentName, error) {
 	return []store.InstrumentName{{InstrumentID: 88, Name: "MSFT"}}, nil
+}
+
+// oldEnglishTexts are the English sentences the structure pages used to print.
+var oldEnglishTexts = []string{
+	"No quote", "Stale quote", "Non-USD contract", "No such figure", "No data", "Missing input", "Reader not connected",
+	"Valued at mid price", "At expiry", "Expiry price", "breakeven price", "this expiry price",
+	"Strike of the", "Underlying price where", "Showing only", "Some fills", "No limit",
+	"no longer held", "Cannot read",
+}
+
+// gatherTexts collects the sentences a page prints for a gap or a hint: the text of every gap, the caption of
+// every tile and the note of every key level.
+func gatherTexts(v any, out *[]string) {
+	switch x := v.(type) {
+	case map[string]any:
+		if _, isGap := x["reason"]; isGap {
+			if s, ok := x["text"].(string); ok {
+				*out = append(*out, s)
+			}
+		}
+		for k, c := range x {
+			if s, ok := c.(string); ok && (k == "caption" || k == "note") {
+				*out = append(*out, s)
+			}
+			gatherTexts(c, out)
+		}
+	case []any:
+		for _, c := range x {
+			gatherTexts(c, out)
+		}
+	}
+}
+
+func TestStructureGapTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	pages := map[string]map[string]any{
+		"missing quote": readFixture(t, "detail_gaps").build(t, gapsID, true),
+		"no reader":     readFixture(t, "detail_gaps").build(t, gapsID, false),
+		"spread":        readFixture(t, "detail_spread").build(t, spreadID, true),
+		"not open":      readFixture(t, "detail_spread").build(t, "main:T000:9", true),
+	}
+	fx := readFixture(t, "detail_gaps")
+	fx.Result.Structures[0].Currency = "JPY"
+	pages["foreign currency"] = fx.build(t, gapsID, true)
+	for name, m := range pages {
+		texts := []string{}
+		gatherTexts(m, &texts)
+		if len(texts) == 0 {
+			t.Fatalf("%s: no gap text found", name)
+		}
+		for _, s := range texts {
+			if !hasHan(s) {
+				t.Errorf("%s: %q has no Chinese character", name, s)
+			}
+			for _, old := range oldEnglishTexts {
+				if strings.Contains(s, old) {
+					t.Errorf("%s: %q holds the old sentence %q", name, s, old)
+				}
+			}
+		}
+	}
+	// the tiles and the key levels are among the texts checked
+	m := pages["missing quote"]
+	if c := obj(t, obj(t, m["tiles"])["pnl"])["caption"]; c != "按中间价估值" {
+		t.Errorf("pnl caption = %v", c)
+	}
+	if n := obj(t, list(t, m["key_levels"])[0])["note"]; n != "合约的行权价" {
+		t.Errorf("level note = %v", n)
+	}
+}
+
+func hasHan(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
 }

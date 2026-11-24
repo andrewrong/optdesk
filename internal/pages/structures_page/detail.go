@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	notOpenText  = "Structure is no longer held"
 	maxLegs      = 8
 	maxFills     = 50
 	maxGapsShown = 20
@@ -107,7 +106,7 @@ func newDetail(c Config, alias string, day contracts.Day, at time.Time) (*detail
 		Schema: "structure_detail", SchemaVersion: 3, RunID: c.RunID, BuildID: c.BuildID, Scope: alias,
 		GeneratedAt: at.In(c.Zone).Format(time.RFC3339), DataTimes: []sourceTime{{Source: "option_ledger", DataTime: dayAt}},
 		RunStatus: "ok", Title: "Structure detail",
-		LegsTitle: "Leg detail", PayoffTitle: "Payoff at expiry", GreeksTitle: "Greeks", LevelsTitle: "Key levels",
+		LegsTitle: "Leg detail", PayoffTitle: "Payoff at expiry", GreeksTitle: "Greeks", LevelsTitle: hintOtherLevel,
 		TimelineTitle: "Timeline", FillsTitle: "Fills",
 		Legs: []any{}, KeyLevels: []level{}, Timeline: []stage{}, Fills: []fill{}, Gaps: []gap{},
 		Stale: staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "Ledger and closing prices as of " + string(day)},
@@ -131,7 +130,7 @@ func buildDetail(ctx context.Context, c Config, alias, structureID string, day c
 		return nil, err
 	}
 	if c.Ledger == nil || c.Sessions == nil {
-		vm.gapPage("failed", mkGap(reasonNoReader), "Cannot read the position structures", structureID)
+		vm.gapPage("failed", mkGap(reasonNoReader), cannotReadText, structureID)
 		return json.Marshal(vm)
 	}
 	in, _, err := c.load(ctx, alias, day)
@@ -165,8 +164,8 @@ func (vm *detailModel) gapPage(status string, g gap, sentence, id string) {
 	vm.RunStatus, vm.Sentence, vm.Subline = status, sentence, clip("Structure "+id)
 	label := func(l string, caption string) tile { return tile{Label: l, Figure: g, Caption: caption} }
 	vm.Tiles = tiles{
-		PnL: label("Current P&L", "Valued at mid price"), MaxGain: label("Max profit", "At expiry"),
-		MaxLoss: label("Max loss", "At expiry"), BreakEven: label("Breakeven", "Expiry price"),
+		PnL: label("Current P&L", captionPnL), MaxGain: label("Max profit", captionAtExpiry),
+		MaxLoss: label("Max loss", captionAtExpiry), BreakEven: label("Breakeven", captionExpiryPrice),
 	}
 	vm.Legs = []any{g}
 	vm.LegsTotal = legsTotal{Label: "Total", PnL: g}
@@ -230,9 +229,9 @@ func (b *builder) fill(vm *detailModel) {
 	}
 	vm.Subline = clip(vm.Subline)
 	vm.Tiles = tiles{
-		PnL:       tile{Label: "Current P&L", Figure: b.note(b.money(s.Figures.UnrealizedPnL)), Caption: "Valued at mid price"},
-		MaxGain:   tile{Label: "Max profit", Figure: b.note(b.money(s.Figures.MaxGain)), Caption: "At expiry"},
-		MaxLoss:   tile{Label: "Max loss", Figure: b.note(b.maxLossCell(s)), Caption: "At expiry"},
+		PnL:       tile{Label: "Current P&L", Figure: b.note(b.money(s.Figures.UnrealizedPnL)), Caption: captionPnL},
+		MaxGain:   tile{Label: "Max profit", Figure: b.note(b.money(s.Figures.MaxGain)), Caption: captionAtExpiry},
+		MaxLoss:   tile{Label: "Max loss", Figure: b.note(b.maxLossCell(s)), Caption: captionAtExpiry},
 		BreakEven: tile{Label: "Breakeven", Figure: b.note(b.money(s.Figures.BreakEven)), Caption: breakEvenCaption(s)},
 	}
 	vm.Legs = b.legs()
@@ -276,10 +275,10 @@ func earliestExpiry(s compute.Structure) string {
 }
 
 var levelTexts = map[string][2]string{
-	"strike":       {"Strike", "Strike of the contract"},
-	"short_strike": {"Short strike", "Strike of the short leg"},
-	"long_strike":  {"Long strike", "Strike of the long leg"},
-	"break_even":   {"Breakeven", "Underlying price where the expiry result is zero"},
+	"strike":       {"Strike", hintStrike},
+	"short_strike": {"Short strike", hintShortStrike},
+	"long_strike":  {"Long strike", hintLongStrike},
+	"break_even":   {"Breakeven", hintBreakEven},
 }
 
 // levels are the key levels of compute with their distance, moved two places; a missing quote is a gap.
@@ -297,7 +296,7 @@ func (b *builder) levels() []level {
 		}
 		t, known := levelTexts[lv.Name]
 		if !known {
-			t = [2]string{lv.Name, "Key levels"}
+			t = [2]string{lv.Name, hintOtherLevel}
 		}
 		var dist any = b.missingQuote()
 		if lv.Distance != "" {

@@ -84,7 +84,7 @@ func TestFillsFromRows(t *testing.T) {
 	// the dropped row is named in gaps, so the page is partial
 	found := false
 	for _, g := range list(t, m["gaps"]) {
-		found = found || obj(t, g)["text"] == "Some fills cannot be shown"
+		found = found || obj(t, g)["text"] == "部分成交记录无法显示"
 	}
 	if !found || m["run_status"] != "partial" {
 		t.Fatalf("gaps = %v, status = %v", m["gaps"], m["run_status"])

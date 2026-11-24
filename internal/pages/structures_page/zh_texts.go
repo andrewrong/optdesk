@@ -6,8 +6,7 @@ const (
 	reasonPutCallOneExpiry = "同一到期日同时持有认沽和认购"
 )
 
-// The texts of the Ex-dividend cell of the list (Decision 7 of docs/design/option-pages-r8.md), set on the gap
-// directly: gapTexts holds English.
+// The texts of the Ex-dividend cell of the list (Decision 7 of docs/design/option-pages-r8.md).
 const (
 	exNoReaderText = "没有除息数据来源"
 	exPassedText   = "除息日已过，等待下次采集"
@@ -91,6 +90,43 @@ const (
 	gapTextNoData       = "暂无数据"
 	gapTextCallMaxLoss  = "无上限规则（含股票，此页不算）"
 	gapTextCallBreak    = "没有盈亏平衡价（含股票，此页不算）"
+)
+
+// The reason sentences of gapTexts, by reason code (cells.go).
+const (
+	gapTextMissingQuote = "没有报价"
+	gapTextStaleQuote   = "报价已过期"
+	gapTextForeign      = "非美元合约，未换算"
+	gapTextNoRuleFigure = "此结构没有这项数据"
+	gapTextNoDataReason = "暂无数据"
+	gapTextMissingIn    = "缺少输入"
+	gapTextNoReader     = "读取器未连接"
+	gapTextNoLimit      = "无上限"
+)
+
+// The captions of the tiles of the detail page and the break-even sentences of breakEvenCaption.
+const (
+	captionPnL             = "按中间价估值"
+	captionAtExpiry        = "到期时"
+	captionExpiryPrice     = "到期时标的价格"
+	captionLosesBelow      = "到期价低于此价时亏损"
+	captionLosesAbove      = "到期价高于此价时亏损"
+	captionProfitsBelow    = "到期价低于此价时盈利"
+	captionProfitsAbove    = "到期价高于此价时盈利"
+	captionNoBreakEven     = "没有单一盈亏平衡价"
+	captionLegByLeg        = "逐腿列出，没有单一盈亏平衡价"
+	hintStrike             = "合约的行权价"
+	hintShortStrike        = "卖出腿的行权价"
+	hintLongStrike         = "买入腿的行权价"
+	hintBreakEven          = "到期盈亏为零时的标的价格"
+	hintOtherLevel         = "关键价位"
+	notOpenText            = "该结构已不在持仓中"
+	cannotReadText         = "无法读取持仓结构"
+	legsNoteHead           = "只显示前 "
+	legsNoteTail           = " 条腿"
+	fillsNoteHead          = "只显示前 "
+	fillsNoteTail          = " 条成交记录"
+	fillsCannotBeShownText = "部分成交记录无法显示"
 )
 
 // The sides of a leg.
