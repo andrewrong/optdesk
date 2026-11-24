@@ -95,7 +95,11 @@ func nextReport(rows []contracts.EarningsDate, today contracts.Day) *contracts.D
 }
 
 func copySummary(u underlying.Row, s companydataapi.Summary) Company {
-	c := Company{Key: u.Key, Symbol: u.Symbol, Name: u.Name, Market: u.Market, Issuer: u.Issuer,
+	name := u.Name
+	if name == "" {
+		name = u.Symbol
+	}
+	c := Company{Key: u.Key, Symbol: u.Symbol, Name: name, Market: u.Market, Issuer: u.Issuer,
 		BarCount: strconv.Itoa(s.BarCount), Statements: s.Statements, LatestQuarter: s.LatestLabel,
 		EPSQuarters: strconv.Itoa(s.EPSQuarters), Missing: []Missing{}}
 	if s.FiscalYearEndMonth >= 1 && s.FiscalYearEndMonth <= 12 {
