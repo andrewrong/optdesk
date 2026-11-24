@@ -4,9 +4,9 @@ The only file of src that imports ib_async. The connection is made on the
 client after the guard is installed, with ib_async's async methods only; every
 send waits for the message pacer first. The objects of ib_async are named `ib`
 and `ib.client` and nothing else of ours is. This file returns statuses and
-raises errors, and the transport turns them into records; its one log record is
-`dividend_failed`, written through the stdlib logger of this module when a key
-fails with an unexpected exception (type name and message only).
+raises errors, and the transport turns them into records; its log records are
+`quote_failed` and `dividend_failed` (stdlib logger of this module, one per target
+or key that fails with an unexpected exception: type name and message only).
 """
 
 from __future__ import annotations
@@ -51,10 +51,17 @@ from optdesk.ibkr.pacing import (
 )
 from optdesk.ibkr.readonly_probe import prove_read_only
 from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
+from optdesk.ibkr.transport import NotAllowed, OrderRefused
 
 _log = logging.getLogger(__name__)
 
 _DIVIDEND_LOG_MAX = 120  # characters of an exception text kept in dividend_failed
+_QUOTE_LOG_MAX = 200  # the same for quote_failed
+
+
+def _log_failed(event: str, exc: Exception, cut: int) -> None:
+    _log.error("%s type=%s message=%s", event, type(exc).__name__, str(exc)[:cut])
+
 
 _PRICE_FIELDS = (
     ("bid", "bid"),
@@ -466,8 +473,23 @@ class IbGateway:
 
         async def one(target: QuoteTarget) -> None:
             while True:
-                async with self._snapshots.lease():
-                    row = await self._quote(row_spec, target, generation)
+                try:
+                    async with self._snapshots.lease():
+                        row = await self._quote(row_spec, target, generation)
+                except (ConnectionError, spec.BrokerError, OrderRefused, NotAllowed):
+                    raise  # the read-only guard's refusals are never an answer
+                except Exception as exc:  # noqa: BLE001
+                    _log_failed("quote_failed", exc, _QUOTE_LOG_MAX)
+                    ts = self._clock.now().timestamp()
+                    row = QuoteRow(
+                        target.con_id,
+                        spec.STATUS_ERROR,
+                        self._data_type,
+                        generation,
+                        ts,
+                        ts,
+                        ts,
+                    )
                 if row.status != _HELD:
                     break
                 if not await self._market_data_back(targets):  # the deadline:
@@ -569,41 +591,25 @@ class IbGateway:
                 row_spec, ticker, got, job.error[0] if job.error else 0, grace_ended
             )
             data_type = int(getattr(ticker, "marketDataType", self._data_type))
-        fields = tuple(sorted(got.items()))
+        answer = partial(
+            row,
+            sent=sent,
+            data_type=data_type,
+            fields=tuple(sorted(got.items())),
+            missing=missing,
+        )
         if spec.is_complete(row_spec, got):
-            return row(
-                spec.quote_status(row_spec, got),
-                sent=sent,
-                data_type=data_type,
-                fields=fields,
-                missing=missing,
-            )
+            return answer(spec.quote_status(row_spec, got))
         if job.blocked:  # 10197: the line is cancelled, the item is held
-            return row(
-                _HELD, sent=sent, data_type=data_type, fields=fields, missing=missing
-            )
+            return answer(_HELD)
         if not self._current(generation):
             return row(spec.STATUS_DISCONNECTED, sent=sent)
         if job.error is not None:
             code, text = job.error
             status = spec.classify_error(code).quote_status
-            return row(
-                status,
-                sent=sent,
-                data_type=data_type,
-                fields=fields,
-                error_code=code,
-                error_text=text,
-                missing=missing,
-            )
+            return answer(status, error_code=code, error_text=text)
         assert timed_out
-        return row(
-            spec.quote_status(row_spec, got),
-            sent=sent,
-            data_type=data_type,
-            fields=fields,
-            missing=missing,
-        )
+        return answer(spec.quote_status(row_spec, got))
 
     # --- dividends --------------------------------------------------------
 
@@ -663,11 +669,7 @@ class IbGateway:
             except (ConnectionError, spec.BrokerError):
                 raise
             except Exception as exc:  # noqa: BLE001
-                _log.error(
-                    "dividend_failed type=%s message=%s",
-                    type(exc).__name__,
-                    str(exc)[:_DIVIDEND_LOG_MAX],
-                )
+                _log_failed("dividend_failed", exc, _DIVIDEND_LOG_MAX)
                 reading = self._unanswered(key, spec.STATUS_ERROR)
             await on_reading(reading)
 
