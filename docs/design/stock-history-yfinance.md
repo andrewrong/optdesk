@@ -26,7 +26,7 @@ IBKR is the live trading platform and its history farm shares a budget of 50 req
 
 Landed first by the entry `stock-history-iface` (interface); the module entries use it.
 
-- `pyside/src/optdesk/refbars/api.py`: Request gains `with_actions` and `adjusted` (bool); Bar gains `adj_close` (decimal text, empty when not asked); PairResult gains `dividends` and `splits` (lists of `{day, value}` as decimal text), both `NotRequired`, so the golden `pyside/tests/refbars/answer.json` of today stays valid; the contract test checks that each result holds every required PairResult key and no key outside PairResult. Declarations only.
+- `pyside/src/optdesk/refbars/api.py`: Request gains `with_actions` and `adjusted` (bool, `NotRequired`, absent = false); Bar gains `adj_close` (decimal text, `NotRequired`, absent when not asked); PairResult gains `dividends` and `splits` (lists of `{day, value}` as decimal text), both `NotRequired`, so the golden `pyside/tests/refbars/answer.json` of today stays valid; the contract test checks that each result holds every required PairResult key and no key outside PairResult. Declarations only.
 - `internal/sources/api.go`: `BarRequest` gains `Actions bool` and `Adjusted bool`; `RefBar` gains `AdjClose string`; `BarResult` gains `Actions []RefAction` with `RefAction{Pair, Day, Kind ("dividend" or "split"), Value}`. Fields are added, none changes.
 - `internal/store/bar/api.go`: `PriceBarReplacer` (new, optional): `ReplacePriceBars(ctx, rows, writtenBy) (BarWriteCount, error)` replaces a stored row of the same key whatever its source; implemented by `barpg`.
 
@@ -65,11 +65,11 @@ Acceptance: as the draft `stock-history-store.md`.
 
 ### 4 stock-history-sources
 
-Module: sources. Size: M. Order: after 1 (stock-history-iface). Order: after 2 (stock-history-refbars), whose golden answer.json carries the actions source_test.go reads.
+Module: sources. Size: M. Order: after 1 (stock-history-iface).
 Contracts: unchanged
 Files: `internal/sources/yfinance/source.go`, `internal/sources/yfinance/source_test.go`
 Design: docs/design/stock-history-yfinance.md#Decisions
-Acceptance: as the draft `stock-history-sources.md`.
+Acceptance: as the draft `stock-history-sources.md`. The parsing of dividends, splits and adj_close is tested with an inline JSON answer in source_test.go (as TestDailyBarsOhlcv does), not with the golden answer.json of entry 2; TestAnswerMatchesGolden stays green on either golden, since json.Unmarshal ignores unknown keys.
 
 ### 5 stock-history-job
 
