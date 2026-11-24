@@ -8,6 +8,9 @@ type Band = NonNullable<Payload['band']>
 
 const CONFIG: ChartConfig = {}
 
+// The two end points of the axis: without a data point recharts draws no plot area for the marks.
+const AXIS_POINTS = [{ pos: 0 }, { pos: 1 }]
+
 export function PriceBand({ band }: { band: Band }) {
   const fairLow = band.marks.find((m) => m.name === 'fair_low')
   const fairHigh = band.marks.find((m) => m.name === 'fair_high')
@@ -15,7 +18,7 @@ export function PriceBand({ band }: { band: Band }) {
     <div data-chart="price-band" className="space-y-2">
       <div role="img" aria-label={`Price band from ${band.min} to ${band.max}`} className="h-[120px] w-full">
         <ChartContainer config={CONFIG} className="h-full w-full">
-          <ComposedChart data={[]} margin={{ left: 16, right: 16, top: 24, bottom: 8 }}>
+          <ComposedChart data={AXIS_POINTS} margin={{ left: 16, right: 16, top: 24, bottom: 8 }}>
             <XAxis
               type="number"
               dataKey="pos"
