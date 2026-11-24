@@ -19,6 +19,16 @@ type bucket struct {
 	why string
 }
 
+// bucketFor returns the bucket of key, made when absent.
+func bucketFor(m map[string]*bucket, key string) *bucket {
+	b := m[key]
+	if b == nil {
+		b = &bucket{sum: new(big.Rat)}
+		m[key] = b
+	}
+	return b
+}
+
 // risk sums stock quantity and option delta by underlying, option vega by expiry. Mark is never
 // read. A stock of any currency adds its share count (shares do not depend on the currency). A greek
 // with Currency JPY has its vega divided by in.UsdJpy; without a positive rate its vega line and the
@@ -27,11 +37,7 @@ type bucket struct {
 func risk(in blockapi.RiskIn) blockapi.RiskResult {
 	delta, vega := map[string]*bucket{}, map[string]*bucket{}
 	add := func(m map[string]*bucket, key, text string) {
-		b := m[key]
-		if b == nil {
-			b = &bucket{sum: new(big.Rat)}
-			m[key] = b
-		}
+		b := bucketFor(m, key)
 		if r, ok := parse(text); ok {
 			b.sum.Add(b.sum, r)
 		} else {
@@ -50,12 +56,7 @@ func risk(in blockapi.RiskIn) blockapi.RiskResult {
 			continue
 		}
 		if !rateOK {
-			b := vega[string(g.Expiry)]
-			if b == nil {
-				b = &bucket{sum: new(big.Rat)}
-				vega[string(g.Expiry)] = b
-			}
-			b.why = "unsupported_currency"
+			bucketFor(vega, string(g.Expiry)).why = "unsupported_currency"
 			continue
 		}
 		v, ok := parse(g.Vega)
