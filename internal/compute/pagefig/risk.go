@@ -15,11 +15,15 @@ func (holdingFigures) Risk(in blockapi.RiskIn) blockapi.RiskResult { return risk
 type bucket struct {
 	sum *big.Rat
 	bad bool
+	// why is a gap reason known for the whole line (unsupported_currency); it wins over the sum.
+	why string
 }
 
 // risk sums stock quantity and option delta by underlying, option vega by expiry. Mark is never
-// read. A stock in another currency than in.Currency is skipped and the delta total is the gap
-// unsupported_currency; an unreadable number makes its line and the total missing_input.
+// read. A stock of any currency adds its share count (shares do not depend on the currency). A greek
+// with Currency JPY has its vega divided by in.UsdJpy; without a positive rate its vega line and the
+// vega total are the gap unsupported_currency and its delta is added unchanged. An unreadable number
+// makes its line and the total missing_input.
 func risk(in blockapi.RiskIn) blockapi.RiskResult {
 	delta, vega := map[string]*bucket{}, map[string]*bucket{}
 	add := func(m map[string]*bucket, key, text string) {
@@ -34,24 +38,35 @@ func risk(in blockapi.RiskIn) blockapi.RiskResult {
 			b.bad = true
 		}
 	}
-	foreign := false
+	rate, rateOK := parse(in.UsdJpy)
+	rateOK = rateOK && rate.Sign() > 0
 	for _, s := range in.Stocks {
-		if s.Currency != in.Currency {
-			foreign = true
-			continue
-		}
 		add(delta, s.Underlying, s.Quantity)
 	}
 	for _, g := range in.Greeks {
 		add(delta, g.Underlying, g.Delta)
-		add(vega, string(g.Expiry), g.Vega)
+		if g.Currency != "JPY" {
+			add(vega, string(g.Expiry), g.Vega)
+			continue
+		}
+		if !rateOK {
+			b := vega[string(g.Expiry)]
+			if b == nil {
+				b = &bucket{sum: new(big.Rat)}
+				vega[string(g.Expiry)] = b
+			}
+			b.why = "unsupported_currency"
+			continue
+		}
+		v, ok := parse(g.Vega)
+		if !ok {
+			add(vega, string(g.Expiry), g.Vega)
+			continue
+		}
+		add(vega, string(g.Expiry), new(big.Rat).Quo(v, rate).FloatString(12))
 	}
 	var out blockapi.RiskResult
-	var gd string
-	if foreign {
-		gd = "unsupported_currency"
-	}
-	out.Delta, out.DeltaTotal = lines(delta, gd)
+	out.Delta, out.DeltaTotal = lines(delta, "")
 	out.Vega, out.VegaTotal = lines(vega, "")
 	return out
 }
@@ -67,6 +82,13 @@ func lines(m map[string]*bucket, g string) ([]blockapi.RiskLine, compute.FigureV
 	sum := new(big.Rat)
 	for _, k := range keys {
 		b := m[k]
+		if b.why != "" {
+			out = append(out, blockapi.RiskLine{Key: k, Value: gap(b.why)})
+			if g == "" {
+				g = b.why
+			}
+			continue
+		}
 		if b.bad {
 			out = append(out, blockapi.RiskLine{Key: k, Value: gap("missing_input")})
 			if g == "" {
