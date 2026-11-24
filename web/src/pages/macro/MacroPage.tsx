@@ -33,6 +33,7 @@ const EVENTS: Column[] = [
   { id: 'date', label: 'Date' },
   { id: 'name', label: 'Event' },
   { id: 'previous', label: 'Previous' },
+  { id: 'actual', label: 'Actual' },
   { id: 'days_to', label: 'Days to' },
   { id: 'window', label: 'Window' },
 ]
@@ -109,6 +110,7 @@ export function MacroPage({ payload }: { payload: Payload }) {
     date: { text: event.when_text, value: event.date },
     name: { text: event.name_text, value: event.name_text },
     previous: typeof event.previous === 'string' ? { text: event.previous } : event.previous,
+    ...(event.actual !== undefined && { actual: { text: event.actual.text } }),
     ...(event.days_to !== undefined && { days_to: { text: String(event.days_to) } }),
     ...(event.in_window === true && { window: { text: 'in window', badge: true } }),
   }))

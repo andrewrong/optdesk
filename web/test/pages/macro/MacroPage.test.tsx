@@ -305,3 +305,23 @@ it('prints no missing reason for an indicator with a value', async () => {
   const row = host.querySelectorAll('[data-indicators] tbody tr')[0]!
   expect(row.querySelector('[data-missing-reason]')).toBeNull()
 })
+
+it('renders actual column', async () => {
+  await show(fixture('ok.json'))
+  const heads = [...host.querySelectorAll('[data-events] thead th')].map((th) => th.textContent)
+  expect(heads.indexOf('Actual')).toBe(heads.indexOf('Previous') + 1)
+  const col = heads.indexOf('Actual')
+  const rows = host.querySelectorAll('[data-events] tbody tr')
+  expect(rows[0]!.querySelectorAll('td')[col]!.textContent).toBe('3.1%')
+  expect(rows[1]!.querySelectorAll('td')[col]!.textContent).toContain('not yet published')
+})
+
+it('renders an event without actual as before', async () => {
+  const payload = fixture('ok.json')
+  delete payload.events[0].actual
+  await show(payload)
+  const col = [...host.querySelectorAll('[data-events] thead th')].findIndex((th) =>
+    th.textContent?.includes('Actual'),
+  )
+  expect(host.querySelectorAll('[data-events] tbody tr')[0]!.querySelectorAll('td')[col]!.textContent).not.toContain('3.1%')
+})
