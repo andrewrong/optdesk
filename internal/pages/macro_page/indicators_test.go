@@ -272,3 +272,25 @@ func TestH10LateAfter10Days(t *testing.T) {
 		}
 	}
 }
+
+func TestRhythmLimitsPerSeries(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, id, obs, status, label string
+	}{
+		{"weekly 6 days", "DEXJPUS", "2026-11-14", "good", "On time"},
+		{"monthly 40 days", "IRLTLT01JPM156N", "2026-10-11", "good", "On time"},
+		{"daily 7 days", "DGS10", "2026-11-13", "late", "Late"},
+		{"daily 5 days", "DGS10", "2026-11-15", "good", "On time"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := fakeReader{points: map[string][]contracts.SeriesPoint{tc.id: {pt(t, tc.obs, tc.obs, "percent", f64(1))}}}
+			ind := indicator(build(t, r, cfg(tc.id), "2026-11-20"), 0)
+			if ind["status"] != tc.status || ind["label"] != tc.label {
+				t.Fatalf("status/label = %v/%v, want %s/%s", ind["status"], ind["label"], tc.status, tc.label)
+			}
+		})
+	}
+}

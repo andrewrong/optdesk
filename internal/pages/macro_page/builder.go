@@ -25,10 +25,13 @@ const (
 	dayLayout  = "2006-01-02"
 	timeLayout = "2006-01-02T15:04:05-07:00"
 
-	// freshnessLimitDays is the freshness limit of a series: a weekend plus one holiday.
+	// freshnessLimitDays is the freshness limit of a grouped daily series and the offset of stale_after.
 	freshnessLimitDays = 4
-	// lookbackDays is how far before day each series is read.
-	lookbackDays = 30
+	// dailyFreshnessDays is the freshness limit of a daily series of the Indicators card: a weekend, one FRED
+	// publication day and one holiday (a trial value, to be tuned on observed rows).
+	dailyFreshnessDays = 6
+	// lookbackDays is how far before day each series is read: beyond the monthly freshness limit, so a monthly series inside it is read.
+	lookbackDays = 60
 	// maxIndicators is the maxItems of the indicators array in the schema.
 	maxIndicators = 20
 
@@ -242,7 +245,7 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 	if err := withLiquidity(ctx, r, c, d, &vm); err != nil {
 		return nil, err
 	}
-	var oldest *time.Time
+	var oldest *staleSrc
 	for _, ind := range c.Indicators {
 		rows, err := r.SeriesPoints(ctx, ind.SeriesID, from, day)
 		if err != nil {
@@ -251,7 +254,7 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		latest := latestPoint(rows, d)
 		vm.Indicators = append(vm.Indicators, row(ind, latest, d))
 		if latest != nil {
-			oldest = noteData(&vm, c.Zone, oldest, ind.SeriesID, latest.ObservationDate.Time, true)
+			oldest = noteData(&vm, c.Zone, oldest, ind.SeriesID, ind.Name, latest.ObservationDate.Time, true)
 		}
 	}
 	oldest, err = withGroupsAndLead(ctx, r, c, d, generatedAt, &vm, oldest)
@@ -262,17 +265,66 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 	return json.Marshal(vm)
 }
 
-// staleOf is the stale label: the oldest latest observation of the indicators, else the page day.
-func staleOf(d time.Time, oldest *time.Time, zone *time.Location) staleLabel {
+// staleSrc is the series that holds the oldest data day.
+type staleSrc struct {
+	day  time.Time
+	id   string
+	name string
+}
+
+// staleOf is the stale label: the oldest latest observation of the indicators and the series that holds it, else the page day.
+func staleOf(d time.Time, oldest *staleSrc, zone *time.Location) staleLabel {
 	base, text := d, "No data day"
 	if oldest != nil {
-		base, text = *oldest, "Data day "+oldest.Format("01-02")
+		base = oldest.day
+		rh := rhythmOf(oldest.id)
+		limit := rh.limitDays()
+		if d.Sub(base) > time.Duration(limit)*24*time.Hour {
+			text = fmt.Sprintf("Data day %s, %s is late (%s series, limit %d days)", base.Format("01-02"), oldest.name, rh, limit)
+		} else {
+			text = fmt.Sprintf("Data day %s, %s (%s series, FRED publishes with a lag)", base.Format("01-02"), oldest.name, rh)
+		}
 	}
 	return staleLabel{
 		DataTime:   midnight(base, zone),
 		StaleAfter: time.Date(base.Year(), base.Month(), base.Day()+freshnessLimitDays, 9, 30, 0, 0, zone).Format(timeLayout),
 		Text:       text,
 	}
+}
+
+// rhythm is the publication rhythm of a series.
+type rhythm string
+
+const (
+	rhythmDaily   rhythm = "daily"
+	rhythmWeekly  rhythm = "weekly"
+	rhythmMonthly rhythm = "monthly"
+)
+
+// seriesRhythm maps the series ids of the Indicators card that are not daily to their rhythm.
+var seriesRhythm = map[string]rhythm{
+	"DTWEXBGS":        rhythmWeekly,
+	"DEXJPUS":         rhythmWeekly,
+	"NFCI":            rhythmWeekly,
+	"IRLTLT01JPM156N": rhythmMonthly,
+}
+
+func rhythmOf(id string) rhythm {
+	if r, ok := seriesRhythm[id]; ok {
+		return r
+	}
+	return rhythmDaily
+}
+
+// limitDays is the freshness limit of the rhythm in calendar days.
+func (r rhythm) limitDays() int {
+	switch r {
+	case rhythmMonthly:
+		return monthlyFreshnessDays
+	case rhythmWeekly:
+		return weeklyFreshnessDays
+	}
+	return dailyFreshnessDays
 }
 
 func midnight(t time.Time, zone *time.Location) string {
@@ -322,7 +374,7 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 		v := *latest.Value
 		out.Latest = figure{Value: v, Text: strconv.FormatFloat(v, 'f', -1, 64) + "%", Unit: "percent"}
 	}
-	if d.Sub(latest.ObservationDate.Time) > freshnessLimitDays*24*time.Hour {
+	if d.Sub(latest.ObservationDate.Time) > time.Duration(rhythmOf(ind.SeriesID).limitDays())*24*time.Hour {
 		out.Status, out.Label = "late", "Late"
 	} else {
 		out.Status, out.Label = "good", "On time"
@@ -331,25 +383,24 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 }
 
 // noteData adds the data time of a series to vm and, when it counts for the stale label, moves oldest back to it.
-func noteData(vm *viewModel, zone *time.Location, oldest *time.Time, id string, obs time.Time, counts bool) *time.Time {
+func noteData(vm *viewModel, zone *time.Location, oldest *staleSrc, id, name string, obs time.Time, counts bool) *staleSrc {
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: id, DataTime: midnight(obs, zone)})
-	if counts && (oldest == nil || obs.Before(*oldest)) {
-		o := obs
-		return &o
+	if counts && (oldest == nil || obs.Before(oldest.day)) {
+		return &staleSrc{day: obs, id: id, name: name}
 	}
 	return oldest
 }
 
 // withGroupsAndLead appends the grouped rows, with their data times (a monthly or weekly series is listed but does not set the
 // stale label) and, with c.Window, writes the event flags and the lead block. It returns the oldest data day.
-func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel, oldest *time.Time) (*time.Time, error) {
+func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, generatedAt time.Time, vm *viewModel, oldest *staleSrc) (*staleSrc, error) {
 	grouped, days, err := buildGroups(ctx, r, c.Groups, d)
 	if err != nil {
 		return nil, err
 	}
 	vm.Indicators = append(vm.Indicators, grouped...)
 	for _, g := range days {
-		oldest = noteData(vm, c.Zone, oldest, g.id, g.day, !g.monthly && !g.weekly)
+		oldest = noteData(vm, c.Zone, oldest, g.id, g.name, g.day, !g.monthly && !g.weekly)
 	}
 	if c.Window == nil {
 		return oldest, nil

@@ -147,6 +147,7 @@ func readObs(ctx context.Context, r store.SeriesReader, id string, d time.Time, 
 // groupDay is the day of the latest point of a grouped series.
 type groupDay struct {
 	id      string
+	name    string
 	day     time.Time
 	monthly bool
 	weekly  bool
@@ -166,7 +167,7 @@ func buildGroups(ctx context.Context, r store.SeriesReader, groups []Group, d ti
 			rows = append(rows, groupRow(g.Key, ind, obs, d))
 			if len(obs) > 0 {
 				sp := specOf(ind.SeriesID)
-				days = append(days, groupDay{ind.SeriesID, obs[len(obs)-1].day, sp.monthly, sp.weekly})
+				days = append(days, groupDay{ind.SeriesID, ind.Name, obs[len(obs)-1].day, sp.monthly, sp.weekly})
 			}
 		}
 	}
