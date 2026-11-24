@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // Config is what the builder needs. Zone is the owner's zone (nil is an error of Build); Aliases are the
@@ -39,6 +40,9 @@ type Config struct {
 	// Statement lists the aliases whose capture comes from the broker statement; Build adds the note
 	// textStatementNote to the page of such an alias when a capture was found. Read only by Build.
 	Statement []string
+	// Underlyings gives a stock the company name stored in the registry; it is optional and with it nil
+	// every stock shows TextNoStoredName.
+	Underlyings underlying.Reader
 }
 
 // NewPage is the positions_page page of one account; alias "" means the main account.

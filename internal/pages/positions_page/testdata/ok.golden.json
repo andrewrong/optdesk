@@ -78,8 +78,8 @@
               "value": "AAA"
             },
             "name": {
-              "text": "AAA",
-              "value": "AAA"
+              "text": "未存储名称",
+              "value": "未存储名称"
             },
             "role": {
               "text": "Account (main)",
@@ -122,8 +122,8 @@
               "value": "BBB"
             },
             "name": {
-              "text": "BBB",
-              "value": "BBB"
+              "text": "未存储名称",
+              "value": "未存储名称"
             },
             "role": {
               "text": "Account (main)",
