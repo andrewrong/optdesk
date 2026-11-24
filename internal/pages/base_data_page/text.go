@@ -26,6 +26,14 @@ const (
 	reasonCoverage = "coverage_unavailable"
 )
 
+// viewWords names a view group in words.
+var viewWords = map[string]string{
+	"bars":    viewWordBars,
+	"option":  viewWordOption,
+	"other":   viewWordOther,
+	"account": viewWordAccount,
+}
+
 // rowLabels are the English labels of the rows.
 var rowLabels = map[string]string{
 	"bars": "Stock bars, US and JP", "quotes": "Quotes", "chains": "Option chains end of day",

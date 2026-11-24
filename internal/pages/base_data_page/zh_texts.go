@@ -117,10 +117,10 @@ const (
 	gapViewTail     = "。"
 )
 
-// viewWords names a view group in words.
-var viewWords = map[string]string{
-	"bars":    "股票日线",
-	"option":  "在用的期权报价、期权链和合约",
-	"other":   "利率、事件、交易日历和公司财报数据",
-	"account": "券商账户数据",
-}
+// Names of the view groups, by group id (see viewWords).
+const (
+	viewWordBars    = "股票日线"
+	viewWordOption  = "在用的期权报价、期权链和合约"
+	viewWordOther   = "利率、事件、交易日历和公司财报数据"
+	viewWordAccount = "券商账户数据"
+)
