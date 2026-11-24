@@ -79,7 +79,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		}
 	}
 	var points []contracts.SeriesPoint
-	groups := []fetchGroup{{plain, day}, {windowed, daysBefore(day, j.m.LookbackDays)}, {long, daysBefore(day, j.m.LongLookbackDays)}}
+	windowedFrom := j.sizedFrom(ctx, windowed, daysBefore(day, j.m.LookbackDays), day)
+	longFrom := j.sizedFrom(ctx, long, daysBefore(day, j.m.LongLookbackDays), day)
+	groups := []fetchGroup{{plain, day}, {windowed, windowedFrom}, {long, longFrom}}
 	for _, g := range groups {
 		if len(g.ids) == 0 {
 			continue
@@ -111,6 +113,22 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		res.Err = asTyped(err, contracts.Retryable)
 	}
 	return res
+}
+
+// sizedFrom is the first day to fetch for ids. A run for a day before the UTC date of the clock
+// starts after the newest stored points when the writer also reads points; any other run, and a
+// reader error, keep groupFrom.
+func (j *job) sizedFrom(ctx context.Context, ids []string, groupFrom, day contracts.Day) contracts.Day {
+	r, ok := j.w.(store.SeriesReader)
+	if !ok || len(ids) == 0 || string(day) >= j.clk.Now().UTC().Format(dayLayout) {
+		return groupFrom
+	}
+	from, err := gapFrom(ctx, r, ids, groupFrom, day)
+	if err != nil {
+		j.log.Warn("fred_series: window not sized, stored points unreadable", "day", string(day), "error", err.Error())
+		return groupFrom
+	}
+	return from
 }
 
 // daysBefore is the calendar day n days before day; an unparsable day is returned as it is.
