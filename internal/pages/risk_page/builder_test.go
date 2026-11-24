@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/risk_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden file")
@@ -278,7 +279,7 @@ func TestUnknownAliasIsNoData(t *testing.T) {
 	}
 }
 
-func TestForeignStockGivesGapNotZero(t *testing.T) {
+func TestForeignStockCountedInDelta(t *testing.T) {
 	t.Parallel()
 	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
 		structure("AAA", "USD", "2026-12-18", "-30.5", "12.25"),
@@ -286,16 +287,56 @@ func TestForeignStockGivesGapNotZero(t *testing.T) {
 	}}, stk("AAA", 1, "100", "USD"), stk("JJJ", 3, "10", "JPY"))
 	m, _ := build(t, c, "main")
 	d := block(m, "delta")
-	if d["total"] != nil || d["gap"].(map[string]any)["reason"] != "unsupported_currency" ||
-		d["gap"].(map[string]any)["text"] != "非美元的股票未计入 Delta" {
+	if d["gap"] != nil || d["total"].(map[string]any)["value"] != 78.5 {
 		t.Fatalf("delta = %v", d)
 	}
-	if len(d["rows"].([]any)) != 1 {
+	if len(d["rows"].([]any)) != 2 {
 		t.Fatalf("rows = %v", d["rows"])
 	}
-	if v := block(m, "vega"); v["total"].(map[string]any)["value"] != 12.25 {
-		t.Fatalf("the JPY structure counted in vega: %v", v)
+	if v := block(m, "vega"); v["total"] != nil || v["gap"].(map[string]any)["reason"] != "unsupported_currency" {
+		t.Fatalf("without a rate the vega total must be the gap unsupported_currency: %v", v)
 	}
+	c.Fx = fxOf{rate: "150"}
+	m, _ = build(t, c, "main")
+	// 12.25 USD + 1 JPY / 150 = 12.25666..., the Vega of the JPY structure divided by the stored rate.
+	if v := block(m, "vega"); v["gap"] != nil || len(v["rows"].([]any)) != 1 || v["total"] == nil {
+		t.Fatalf("with a rate the JPY structure counts in vega: %v", v)
+	}
+	if d := block(m, "delta"); d["total"].(map[string]any)["value"] != 78.5 {
+		t.Fatalf("delta = %v", d)
+	}
+}
+
+type fxOf struct {
+	bar.FxRateReader
+	rate string
+}
+
+func (f fxOf) LatestFxRate(_ context.Context, pair string, _ contracts.Day) (contracts.FxRate, bool, error) {
+	if f.rate == "" || pair != "USDJPY" {
+		return contracts.FxRate{}, false, nil
+	}
+	return contracts.FxRate{Pair: pair, Rate: f.rate}, true, nil
+}
+
+// stockIDsOf answers each name with the given rows.
+type stockIDsOf []store.InstrumentName
+
+func (s stockIDsOf) StockIDs(context.Context, []string) ([]store.InstrumentName, error) {
+	return s, nil
+}
+
+// eodByID answers only for the underlying ids it holds rows for, as the store filters on underlying_id.
+type eodByID struct {
+	rows  map[int64][]contracts.OptionEod
+	asked *[]int64
+}
+
+func (e eodByID) OptionEod(_ context.Context, id int64, _, _ contracts.Day) ([]contracts.OptionEod, error) {
+	if e.asked != nil {
+		*e.asked = append(*e.asked, id)
+	}
+	return e.rows[id], nil
 }
 
 func gapStructure(under string) compute.Structure {
@@ -414,7 +455,6 @@ func TestStoredWordsStockAndOption(t *testing.T) {
 func TestEmptyVegaBlockNamesItsGap(t *testing.T) {
 	t.Parallel()
 	cases := map[string]compute.StructureResult{
-		"only JPY":     {Structures: []compute.Structure{structure("JJJ", "JPY", "2026-12-18", "-1", "1")}},
 		"no structure": {},
 	}
 	for name, res := range cases {
@@ -479,6 +519,7 @@ func closeConfig(seen *compute.StructureInput, bars barsOf) risk_page.Config {
 	c.Ledgers = func() compute.OptionLedger { return openReplayer{} }
 	c.Structures = func() compute.OptionStructures { return structures{seen: seen} }
 	c.Terms = termsOf{}
+	c.StockIDs = stockIDsOf{{InstrumentID: 2080, Type: "stock", Name: "AAA"}}
 	c.Bars = bars
 	return c
 }
@@ -525,5 +566,42 @@ func TestRiskBarsErrorNamesPage(t *testing.T) {
 	_, err := risk_page.NewPage(c, "main").Build(context.Background(), nil, day, at)
 	if err == nil || !strings.Contains(err.Error(), "risk_page") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestQuotesUseStockInstrumentID(t *testing.T) {
+	t.Parallel()
+	d := 0.4
+	row := contracts.OptionEod{InstrumentID: 11, Delta: &d}
+	cases := map[string]struct {
+		ids  risk_page.StockIDReader
+		rows map[int64][]contracts.OptionEod
+		want int
+	}{
+		"stored under the stock instrument id": {stockIDsOf{{InstrumentID: 2080, Type: "stock", Name: "AAA"}}, map[int64][]contracts.OptionEod{2080: {row}}, 1},
+		"stored under the con_id":              {stockIDsOf{{InstrumentID: 2080, Type: "stock", Name: "AAA"}}, map[int64][]contracts.OptionEod{1: {row}}, 0},
+		"no row for the name":                  {stockIDsOf{}, map[int64][]contracts.OptionEod{2080: {row}}, 0},
+		"two rows for the name": {stockIDsOf{{InstrumentID: 2080, Name: "AAA"}, {InstrumentID: 2081, Name: "AAA"}},
+			map[int64][]contracts.OptionEod{2080: {row}, 2081: {row}}, 0},
+		"no reader": {nil, map[int64][]contracts.OptionEod{2080: {row}}, 0},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			var seen compute.StructureInput
+			var asked []int64
+			c := closeConfig(&seen, barsOf{})
+			c.Eod = eodByID{rows: tc.rows, asked: &asked}
+			c.StockIDs = tc.ids
+			build(t, c, "main")
+			if len(seen.Quotes) != tc.want {
+				t.Fatalf("quotes = %+v, want %d", seen.Quotes, tc.want)
+			}
+			for _, id := range asked {
+				if id == 1 {
+					t.Fatalf("OptionEod asked with the con_id of the capture")
+				}
+			}
+		})
 	}
 }

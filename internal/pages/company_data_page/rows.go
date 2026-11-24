@@ -26,18 +26,19 @@ const (
 	statusListed   = "listed"
 )
 
-// companyRow reads what is stored for one company and returns its row and the bar rows it read. An error is
+// companyRow reads what is stored for one company and returns its row and the bar rows it read. id is the
+// instrument id StockIDs gave for its symbol, 0 when none. An error is
 // the failure of a read.
-func companyRow(ctx context.Context, in Input, u underlying.Row) (Company, []contracts.PriceBar, error) {
+func companyRow(ctx context.Context, in Input, u underlying.Row, id int64) (Company, []contracts.PriceBar, error) {
 	today, err := time.Parse(dayLayout, string(in.Today))
 	if err != nil {
 		return Company{}, nil, err
 	}
 	var read []contracts.PriceBar
-	si := companydataapi.SummaryInput{Market: u.Market, Issuer: u.Issuer, Fundamentals: u.Fundamentals, HasInstrument: u.ConID != 0}
+	si := companydataapi.SummaryInput{Market: u.Market, Issuer: u.Issuer, Fundamentals: u.Fundamentals, HasInstrument: id != 0}
 	if si.HasInstrument {
 		from := contracts.Day(today.AddDate(0, 0, -barWindow).Format(dayLayout))
-		bars, err := in.Bars.PriceBars(ctx, u.ConID, barBasis, from, in.Today)
+		bars, err := in.Bars.PriceBars(ctx, id, barBasis, from, in.Today)
 		if err != nil {
 			return Company{}, nil, err
 		}

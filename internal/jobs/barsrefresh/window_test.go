@@ -33,3 +33,28 @@ func TestWindowDays(t *testing.T) {
 		}
 	}
 }
+
+func TestDailyComplete(t *testing.T) {
+	t.Parallel()
+	day := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	row := func(n int, src gen.PriceBarSource) contracts.PriceBar {
+		r := stored(101, day.AddDate(0, 0, -n).Format(dayLayout), "10.0", 1)
+		r.Source = src
+		return r
+	}
+	cases := []struct {
+		name string
+		rows []contracts.PriceBar
+		want bool
+	}{
+		{"newest is the run day", []contracts.PriceBar{row(3, "ibkr"), row(0, "ibkr")}, true},
+		{"newest a day before", []contracts.PriceBar{row(2, "ibkr"), row(1, "ibkr")}, false},
+		{"yfinance row with the run day", []contracts.PriceBar{row(2, "yfinance"), row(0, "ibkr")}, false},
+		{"no rows", nil, false},
+	}
+	for _, c := range cases {
+		if got := dailyComplete(c.rows, day); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}

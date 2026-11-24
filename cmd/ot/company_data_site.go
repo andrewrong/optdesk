@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/company_data_page"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -42,8 +43,15 @@ func buildCompanyData(ctx context.Context, _ *app, clk clock.Clock, dayFlag stri
 	}
 	return company_data_page.Build(ctx, company_data_page.Input{
 		Now: clk.Now().UTC(), Today: day, Underlyings: rd.underlying, Bars: rd.bars, Facts: companyFacts(rd),
-		Earnings: rd.earnings, Calc: companydata.Calc{},
+		Earnings: rd.earnings, Calc: companydata.Calc{}, StockIDs: companyStockIDs(rd),
 	})
+}
+
+// companyStockIDs is the stock id reader of the site, as positions_site.go reads it; nil when the site has none
+// (the demo profile), so the page then reads no bars.
+func companyStockIDs(rd siteReaders) company_data_page.StockIDReader {
+	ids, _ := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)
+	return ids
 }
 
 // companyDataPageNamed gives the page to ot page: the demo profile reads no database and shows no company.
@@ -55,7 +63,7 @@ func companyDataPageNamed(ctx context.Context, a *app) (pages.Page, func(), erro
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
 		return company_data_page.Build(ctx, company_data_page.Input{
 			Now: now.UTC(), Today: day, Underlyings: rd.underlying, Bars: rd.bars, Facts: companyFacts(rd),
-			Earnings: rd.earnings, Calc: companydata.Calc{},
+			Earnings: rd.earnings, Calc: companydata.Calc{}, StockIDs: companyStockIDs(rd),
 		})
 	}
 	return pages.Page{Meta: pages.Meta{Name: companyDataName, Schema: "page.company_data_page.v1"}, Build: build}, closeFn, nil

@@ -147,16 +147,21 @@ type HoldingsResult struct {
 }
 
 // GreekIn is the net greeks of the option structures of one underlying and expiry (compute.GreekSet).
-// Delta is in dollars per one dollar move of the underlying; Vega is in dollars per volatility point.
+// Delta is in shares (it does not depend on the currency); Vega is money per volatility point in Currency.
+// Currency is "" or "USD" for a USD structure (Vega as it is) and "JPY" for a JPY one (Vega divided by RiskIn.UsdJpy).
 type GreekIn struct {
 	Underlying  string
 	Expiry      contracts.Day
 	Delta, Vega string
+	Currency    string
 }
 
-// RiskIn is the input of Risk. Stocks are read for Underlying, SecType, Currency and Quantity only; Mark is never read.
+// RiskIn is the input of Risk. Stocks are read for Underlying and Quantity only (any currency counts in Delta); Mark is never read.
+// UsdJpy is the rate in JPY per USD, decimal text; empty or not positive is no rate, and then the Vega of a JPY GreekIn
+// is the gap unsupported_currency.
 type RiskIn struct {
 	Currency string
+	UsdJpy   string
 	Stocks   []HoldingIn
 	Greeks   []GreekIn
 }
@@ -168,8 +173,7 @@ type RiskLine struct {
 }
 
 // RiskResult holds delta by underlying and vega by expiry.
-// Delta is in dollars per one dollar move of the underlying (a stock counts its share quantity);
-// vega is in dollars per volatility point.
+// Delta is in shares (a stock counts its share quantity, of any currency); Vega is in dollars per volatility point.
 type RiskResult struct {
 	Delta, Vega           []RiskLine
 	DeltaTotal, VegaTotal compute.FigureValue
