@@ -100,11 +100,7 @@ func (j *job) load(ctx context.Context, alias string, day contracts.Day) (loaded
 			Strike: p.Strike, Expiry: p.Expiry, Quantity: p.Quantity})
 	}
 	in.HeldDay = cp.day
-	conIDs := map[string]int64{}
-	for _, p := range cp.stocks {
-		conIDs[p.Symbol] = p.ConID
-	}
-	quotes, terms, err := j.quotes(ctx, in.Positions, conIDs, day)
+	quotes, terms, err := j.quotes(ctx, in.Positions, day)
 	if err != nil {
 		return l, err
 	}
@@ -201,11 +197,42 @@ func (j *job) capture(ctx context.Context, alias string, days []contracts.Day) (
 	return c, nil
 }
 
+// stockIDs resolves the open underlyings of ps by name to the instrument id of the stock, in batches; a symbol that
+// is absent or came back more than once has no id, so it has no quotes.
+func (j *job) stockIDs(ctx context.Context, ps []compute.LedgerPosition) (map[string]int64, error) {
+	var names []string
+	seen := map[string]bool{}
+	for _, p := range ps {
+		if p.Status == "open" && p.Underlying != "" && !seen[p.Underlying] {
+			seen[p.Underlying] = true
+			names = append(names, p.Underlying)
+		}
+	}
+	out := map[string]int64{}
+	count := map[string]int{}
+	for lo := 0; lo < len(names); lo += termsBatch {
+		got, err := j.st.StockIDs.StockIDs(ctx, names[lo:min(lo+termsBatch, len(names))])
+		if err != nil {
+			return nil, fmt.Errorf("read stock ids: %w", err)
+		}
+		for _, g := range got {
+			count[g.Name]++
+			out[g.Name] = g.InstrumentID
+		}
+	}
+	for n, c := range count {
+		if c != 1 {
+			delete(out, n)
+		}
+	}
+	return out, nil
+}
+
 // quotes reads the newest option_eod row of each contract of the held underlyings and matches it to its terms, as
 // risk_page does; the terms of each quote are returned beside, by contract.
-func (j *job) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs map[string]int64,
+func (j *job) quotes(ctx context.Context, ps []compute.LedgerPosition,
 	day contracts.Day) ([]compute.StructureQuote, map[termKey]store.OptionTerms, error) {
-	if j.st.OptionEod == nil || j.st.Terms == nil {
+	if j.st.OptionEod == nil || j.st.StockIDs == nil || j.st.Terms == nil {
 		return nil, nil, nil
 	}
 	d, err := time.Parse(dayLayout, string(day))
@@ -213,16 +240,20 @@ func (j *job) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs ma
 		return nil, nil, fmt.Errorf("bad day %q: %w", day, err)
 	}
 	from := contracts.Day(d.AddDate(0, 0, -quoteLookback).Format(dayLayout))
+	stockID, err := j.stockIDs(ctx, ps)
+	if err != nil {
+		return nil, nil, err
+	}
 	newest := map[int]contracts.OptionEod{}
 	under := map[int]string{}
 	var ids []int
 	seen := map[string]bool{}
 	for _, p := range ps {
-		if p.Status != "open" || seen[p.Underlying] || conIDs[p.Underlying] == 0 {
+		if p.Status != "open" || seen[p.Underlying] || stockID[p.Underlying] == 0 {
 			continue
 		}
 		seen[p.Underlying] = true
-		rows, err := j.st.OptionEod.OptionEod(ctx, conIDs[p.Underlying], from, day)
+		rows, err := j.st.OptionEod.OptionEod(ctx, stockID[p.Underlying], from, day)
 		if err != nil {
 			return nil, nil, fmt.Errorf("read option_eod: %w", err)
 		}
