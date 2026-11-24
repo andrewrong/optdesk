@@ -214,7 +214,8 @@ func (c Config) capture(ctx context.Context, alias string, sessions []contracts.
 
 // premiums replays the ledger of alias and returns the remaining premium of each open contract and the
 // newest record time.
-func (c Config) premiums(ctx context.Context, alias string, sessions []contracts.Day, day contracts.Day) (map[string]string, []compute.LedgerPosition, time.Time, error) {
+func (c Config) premiums(ctx context.Context, alias string, sessions []contracts.Day,
+	day contracts.Day) (map[string]string, []compute.LedgerPosition, time.Time, error) {
 	var newest time.Time
 	rows, err := c.Ledger.FlexTradeRows(ctx, alias)
 	if err != nil {
