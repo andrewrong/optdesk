@@ -111,7 +111,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 		return 0, 0, asTyped(err, contracts.Retryable)
 	}
 	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
-	days := r.j.m.DailyDays
+	var days int
 	backfilled := hasDayFrom(stored, from)
 	if !backfilled {
 		if !r.j.claimFirstPull(r.day, key) {

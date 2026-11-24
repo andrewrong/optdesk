@@ -283,13 +283,3 @@ func basisCheck(stored, rows []contracts.PriceBar, tol *big.Rat) (note string, o
 	}
 	return "largest difference " + largest.FloatString(6), largest.Cmp(tol) > 0, nil
 }
-
-// hasSource reports whether a row of rows has the given source.
-func hasSource(rows []contracts.PriceBar, source string) bool {
-	for _, r := range rows {
-		if string(r.Source) == source {
-			return true
-		}
-	}
-	return false
-}
