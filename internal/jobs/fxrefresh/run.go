@@ -86,7 +86,7 @@ type job struct {
 
 // New builds the fx_refresh job from the embedded job.toml: one key, {obs.fx_rate, USDJPY}.
 func New(b broker.Broker, h broker.HistoryClient, w bar.FxRateWriter, r bar.FxRateReader, clk clock.Clock) (contracts.Job, error) {
-	if b == nil || h == nil || w == nil || r == nil || clk == nil { // r is kept for the signature only
+	if b == nil || h == nil || w == nil || r == nil || clk == nil {
 		return nil, errors.New("fxrefresh: broker, history client, writer, reader and clock are required")
 	}
 	return build(manifestBytes, b, h, w, r, clk)
@@ -195,7 +195,11 @@ func (j *job) runPair(ctx context.Context, up bar.FxRateUpserter, day contracts.
 		return 0, newErr(contracts.Permanent, "%s is not listed", pair)
 	}
 	now := j.clk.Now().UTC()
-	q := broker.BarQuery{Contract: got.Contract, Kind: broker.BarMidpoint, DurationDays: j.m.DurationDays}
+	days, err := j.windowDays(ctx, day)
+	if err != nil {
+		return 0, asTyped(err, contracts.Retryable)
+	}
+	q := broker.BarQuery{Contract: got.Contract, Kind: broker.BarMidpoint, DurationDays: days}
 	if string(day) < now.Format(dayLayout) {
 		q.End = string(day)
 	}
@@ -227,4 +231,22 @@ func (j *job) runPair(ctx context.Context, up bar.FxRateUpserter, day contracts.
 		return 0, asTyped(err, contracts.Retryable)
 	}
 	return len(rows), nil
+}
+
+// windowDays is the calendar days from the day after the newest stored rate through day, at least duration_days
+// and at most fill_lookback_days; a pair with no stored rate asks duration_days.
+func (j *job) windowDays(ctx context.Context, day contracts.Day) (int, error) {
+	last, found, err := j.r.LatestFxRate(ctx, pair, day)
+	if err != nil {
+		return 0, err
+	}
+	if !found {
+		return j.m.DurationDays, nil
+	}
+	to, err := time.Parse(dayLayout, string(day))
+	if err != nil {
+		return 0, err
+	}
+	n := int(to.Sub(last.RateDay.Time) / (24 * time.Hour))
+	return min(max(n, j.m.DurationDays), j.m.FillLookbackDays), nil
 }
