@@ -49,6 +49,7 @@ const (
 // Row is one held company. Issuer is the issuer text of the watch list, Market its market (US or
 // JP), Symbol the contract symbol, HandPrice the owner's own buy price as text, empty when none;
 // it is shown as it is and never parsed or changed. cmd/ot fills the rows from companiesSubjects.
+// Issuer may be empty (a fund or a name without a CIK); the row is identified by Market and Symbol.
 type Row struct {
 	Issuer, Market, Symbol, HandPrice string
 	// InstrumentID is the instrument of the symbol; 0 means none.

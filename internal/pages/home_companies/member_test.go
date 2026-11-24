@@ -589,3 +589,35 @@ func TestEarningsReaderErrorFailsBuild(t *testing.T) {
 		t.Errorf("Build error = %v, want %v", err, boom)
 	}
 }
+
+type countingEarnings struct{ calls *atomic.Int32 }
+
+func (c countingEarnings) EarningsDates(context.Context, string, contracts.Day, contracts.Day) ([]contracts.EarningsDate, error) {
+	c.calls.Add(1)
+	return nil, nil
+}
+
+func TestEarningsCellNoIssuerReadsNothing(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	b, err := home_companies.Build(t.Context(), config(home_companies.Config{
+		Rows:     []home_companies.Row{{Issuer: "", Market: "US", Symbol: "SGOV"}},
+		Read:     fakeView{},
+		Earnings: countingEarnings{calls: &calls},
+	}), fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, b)
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	got := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)["earnings"].(map[string]any)
+	if got["kind"] != "gap" || got["reason"] != "no_data" || got["text"] != "earnings date: no issuer" {
+		t.Errorf("cell = %v, want the no-issuer gap", got)
+	}
+	if n := calls.Load(); n != 0 {
+		t.Errorf("EarningsDates called %d times, want 0", n)
+	}
+}
