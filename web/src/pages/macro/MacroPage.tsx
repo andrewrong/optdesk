@@ -107,7 +107,7 @@ function groupRows(indicators: Indicator[]) {
 export function MacroPage({ payload }: { payload: Payload }) {
   const { ease } = payload
   const events = (payload.events as EventRow[]).map((event) => ({
-    date: { text: event.when_text, value: event.date },
+    date: { text: `${event.date} ${event.when_text}`, value: event.date },
     name: { text: event.name_text, value: event.name_text },
     previous: typeof event.previous === 'string' ? { text: event.previous } : event.previous,
     ...(event.actual !== undefined && { actual: event.actual }),
