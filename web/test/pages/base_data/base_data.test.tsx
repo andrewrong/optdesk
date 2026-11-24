@@ -101,4 +101,10 @@ describe('base data page', () => {
     expect(h.querySelector('[data-top]')?.getAttribute('data-top')).toBe('unknown')
     expect(h.querySelectorAll('tr[data-dataset]').length).toBe(0)
   })
+
+  it('TestRepairLinkInWords', async () => {
+    const h = await render(ok)
+    const link = h.querySelector('a[href="/data-health"]') as HTMLElement
+    expect(link.textContent).toBe('到采集记录页处理')
+  })
 })
