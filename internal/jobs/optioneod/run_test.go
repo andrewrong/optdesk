@@ -188,14 +188,18 @@ type resolveCall struct {
 }
 
 type fakeResolver struct {
-	calls []resolveCall
-	err   error
+	calls  []resolveCall
+	err    error
+	refuse map[string]error // by ibkr_conid value: the error of that key
 }
 
 func (r *fakeResolver) ResolveInstrument(_ context.Context, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier) (int64, error) {
 	r.calls = append(r.calls, resolveCall{key, spec, extra})
 	if r.err != nil {
 		return 0, r.err
+	}
+	if err := r.refuse[key.Value]; err != nil {
+		return 0, err
 	}
 	n, _ := strconv.ParseInt(key.Value, 10, 64)
 	return n + 5000000, nil

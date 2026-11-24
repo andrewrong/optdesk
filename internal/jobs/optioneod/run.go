@@ -407,8 +407,9 @@ func (r *runState) underlyingID(ctx context.Context, u underlying) (int64, contr
 // (see withUnderlyingPrice for own).
 func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price float64, own bool, capture jobs.CaptureID, cs []broker.Contract,
 	res *contracts.JobResult, tl *tally) contracts.TypedError {
-	ids := make([]int64, len(cs))
-	for i, c := range cs {
+	ids := make([]int64, 0, len(cs))
+	kept := make([]broker.Contract, 0, len(cs))
+	for _, c := range cs {
 		osi, err := osiSymbolWith(c, osiRootOf(c.TradingClass, r.j.root(c.Symbol)))
 		if err != nil {
 			return asTyped(err, contracts.Permanent)
@@ -420,10 +421,24 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price f
 		spec := store.InstrumentSpec{Type: "option", Name: optionName(c), Currency: u.Currency, MIC: mic, CalendarID: u.CalendarID,
 			Status: "active", PriceIncrement: r.j.m.OptionPriceIncrement, LotSize: c.Multiplier}
 		key := store.Identifier{Scheme: "ibkr_conid", Value: strconv.FormatInt(c.ConID, 10)}
-		ids[i], err = r.j.res.ResolveInstrument(ctx, key, spec, []store.Identifier{{Scheme: "osi", Value: osi}})
+		id, err := r.j.res.ResolveInstrument(ctx, key, spec, []store.Identifier{{Scheme: "osi", Value: osi}})
 		if err != nil {
+			// The store refuses a contract whose osi names an instrument of another conid: that contract is
+			// left out; the rest of the chain is still stored. Any other error ends the key.
+			var te contracts.TypedError
+			if errors.As(err, &te) && te.Kind() == contracts.Permanent {
+				r.j.log().Warn("optioneod: contract skipped, instrument refused", "osi", osi, "err", err.Error())
+				tl.skip(osi, err.Error())
+				continue
+			}
 			return asTyped(err, contracts.Permanent)
 		}
+		ids = append(ids, id)
+		kept = append(kept, c)
+	}
+	cs = kept
+	if len(cs) == 0 {
+		return nil
 	}
 	if terr := r.checkBudget(); terr != nil {
 		return terr
