@@ -29,9 +29,17 @@ def _request(text: str) -> Request:
     try:
         raw = json.loads(text)
         pairs = [
-            PairSpec(symbol=str(p["symbol"]), currency=str(p["currency"])) for p in raw["pairs"]
+            PairSpec(symbol=str(p["symbol"]), currency=str(p["currency"]))
+            for p in raw["pairs"]
         ]
-        request = Request(pairs=pairs, from_day=str(raw["from_day"]), to_day=str(raw["to_day"]))
+        request = Request(
+            pairs=pairs, from_day=str(raw["from_day"]), to_day=str(raw["to_day"])
+        )
+        for flag in ("with_actions", "adjusted"):
+            if flag in raw:
+                if not isinstance(raw[flag], bool):
+                    raise TypeError(flag)
+                request[flag] = raw[flag]
     except (ValueError, KeyError, TypeError):
         raise _UsageError("the request is not the JSON of the interface") from None
     if len(request["pairs"]) > MAX_PAIRS:
@@ -40,7 +48,12 @@ def _request(text: str) -> Request:
 
 
 def _unreached(pair: PairSpec, code: str) -> PairResult:
-    return {"symbol": pair["symbol"], "currency": pair["currency"], "error_code": code, "bars": []}
+    return {
+        "symbol": pair["symbol"],
+        "currency": pair["currency"],
+        "error_code": code,
+        "bars": [],
+    }
 
 
 def run(
@@ -66,7 +79,11 @@ def run(
     stop = ""
     with tempfile.TemporaryDirectory(prefix="refbars-tz-") as cache_dir:
         yf.set_tz_cache_location(cache_dir)
-        fetch = make_fetcher(yf)
+        fetch = make_fetcher(
+            yf,
+            with_actions=request.get("with_actions", False),
+            adjusted=request.get("adjusted", False),
+        )
         # yfinance may print; stdout carries the answer only.
         with contextlib.redirect_stdout(err):
             for index, pair in enumerate(request["pairs"]):
