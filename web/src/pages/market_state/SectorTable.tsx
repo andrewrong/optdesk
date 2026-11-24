@@ -1,4 +1,5 @@
 // The sector table: the rows in payload order, every figure and gap as its text, the rank as `at of of`.
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/market_state_page'
 
 type Sectors = Payload['sectors']
@@ -16,34 +17,32 @@ export function SectorTable({ block }: { block: Sectors }) {
       <p className="text-sm text-muted-foreground" data-sector-end-day>
         {day(block.end_day)}
       </p>
-      <div className="overflow-x-auto">
-        <table className="mt-2 w-full text-sm">
-          <thead>
-            <tr className="text-left">
-              <th>Symbol</th>
-              <th>Name</th>
-              <th>Group</th>
-              <th>21</th>
-              <th>63</th>
-              <th>Rank 21</th>
-              <th>Rank 63</th>
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.map((row) => (
-              <tr key={row.symbol} data-sector-row={row.symbol}>
-                <td>{row.symbol}</td>
-                <td>{row.label}</td>
-                <td>{row.group}</td>
-                <td>{row.gap_21.text}</td>
-                <td>{row.gap_63.text}</td>
-                <td>{rank(row.rank_21)}</td>
-                <td>{rank(row.rank_63)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table className="mt-2">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Symbol</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Group</TableHead>
+            <TableHead>21</TableHead>
+            <TableHead>63</TableHead>
+            <TableHead>Rank 21</TableHead>
+            <TableHead>Rank 63</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {block.rows.map((row) => (
+            <TableRow key={row.symbol} data-sector-row={row.symbol}>
+              <TableCell>{row.symbol}</TableCell>
+              <TableCell className="whitespace-normal break-words">{row.label}</TableCell>
+              <TableCell>{row.group}</TableCell>
+              <TableCell>{row.gap_21.text}</TableCell>
+              <TableCell>{row.gap_63.text}</TableCell>
+              <TableCell>{rank(row.rank_21)}</TableCell>
+              <TableCell>{rank(row.rank_63)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </section>
   )
 }
