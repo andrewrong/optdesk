@@ -63,7 +63,7 @@ func one(day contracts.Day, v float64) compute.Series { return compute.Series{{D
 
 func TestLiquidityTrialParams(t *testing.T) {
 	t.Parallel()
-	if p := liquidity.TrialParams(); p.DailyMaxAgeDays != 4 || p.WeeklyMaxAgeDays != 14 || p.PercentileMinDays != 250 {
+	if p := liquidity.TrialParams(); p.DailyMaxAgeDays != 6 || p.WeeklyMaxAgeDays != 14 || p.PercentileMinDays != 250 {
 		t.Fatalf("%+v", p)
 	}
 }
@@ -74,7 +74,7 @@ func TestLiquidityLevelsStale(t *testing.T) {
 	for _, c := range []struct {
 		age   int
 		stale bool
-	}{{4, false}, {5, true}} {
+	}{{6, false}, {7, true}} {
 		in := f.input()
 		in.Day = plus("2026-11-12", c.age)
 		got := liquidity.Compute(in).RRP
@@ -147,13 +147,29 @@ func TestLiquiditySpreadStale(t *testing.T) {
 	for _, c := range []struct {
 		age   int
 		stale bool
-	}{{4, false}, {5, true}} {
+	}{{6, false}, {7, true}} {
 		in := f.input()
 		in.Day = plus("2026-11-12", c.age)
 		got := liquidity.Compute(in).SofrIorbBP
 		if c.stale != (got.Reason == compute.StaleInput) || (c.stale && got.Value != "") || (!c.stale && got.Value != "16.0") {
 			t.Errorf("age %d: %+v", c.age, got)
 		}
+	}
+}
+
+func TestLiquiditySOFRFiveDaysCurrent(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	in := f.input()
+	in.SOFR = one("2026-11-19", 4.31)
+	in.IORB = one("2026-11-19", 4.15)
+	in.Day = "2026-11-24"
+	r := liquidity.Compute(in)
+	if r.SOFR.Value == "" || r.SOFR.Reason != "" || r.SOFR.Day != "2026-11-19" {
+		t.Errorf("SOFR %+v", r.SOFR)
+	}
+	if r.SofrIorbBP.Value != "16.0" || r.SofrIorbBP.Reason != "" {
+		t.Errorf("spread %+v", r.SofrIorbBP)
 	}
 }
 
