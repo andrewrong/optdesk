@@ -431,3 +431,25 @@ func TestCandidatesOpenStoreErrorKeepsJob(t *testing.T) {
 		t.Fatalf("log %q", log)
 	}
 }
+
+// quoteStoreStub is a quote store the job factory holds; no method is called.
+type quoteStoreStub struct{ store.QuoteSnapshotStore }
+
+func TestOptionCandidatesQuotes(t *testing.T) {
+	t.Parallel()
+	var got optioncandidates.CandidateStores
+	d := deps{}
+	d.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
+	d.newOptionCandidates = func(st optioncandidates.CandidateStores, _ compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
+		got = st
+		return candJobStub{id: jobOptionCandidates}, nil
+	}
+	snap := quoteStoreStub{}
+	f := jobFactory{d: d, snap: snap}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "AAA"}})...)
+	if _, err := f.optionCandidates(); err != nil {
+		t.Fatal(err)
+	}
+	if got.Quotes == nil || got.Quotes != store.QuoteSnapshotReader(snap) {
+		t.Fatalf("Quotes %v", got.Quotes)
+	}
+}
