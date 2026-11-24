@@ -49,7 +49,6 @@ export function PriceBand({ band }: { band: Band }) {
                 x={Number(m.pos)}
                 stroke={m.name === 'close' ? 'var(--foreground)' : 'var(--muted-foreground)'}
                 strokeDasharray={m.name === 'close' ? undefined : '4 4'}
-                label={{ value: m.name, position: 'top', fontSize: 11 }}
                 ifOverflow="visible"
               />
             ))}
