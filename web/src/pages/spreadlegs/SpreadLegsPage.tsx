@@ -32,20 +32,8 @@ function BreakEven({ cell }: { cell: Structure['break_even'] }) {
   return (
     <div data-figure="break_even" data-kind={cell.kind}>
       <dt className="text-xs text-muted-foreground">Break-even</dt>
-      <dd>
-        {cell.kind === 'gap' ? (
-          <span className="text-muted-foreground" data-gap={cell.reason}>
-            {cell.text}
-          </span>
-        ) : (
-          <ul className="tabular-nums">
-            {cell.values.map((v, i) => (
-              <li key={i} data-break-even-value>
-                {v}
-              </li>
-            ))}
-          </ul>
-        )}
+      <dd className={cell.kind === 'gap' ? 'text-muted-foreground' : 'tabular-nums'}>
+        {cell.kind === 'gap' ? <span data-gap={cell.reason}>{cell.text}</span> : cell.text}
       </dd>
     </div>
   )
