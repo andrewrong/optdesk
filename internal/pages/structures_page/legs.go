@@ -53,7 +53,7 @@ func (b *builder) legs() []any {
 	out := []any{}
 	for i, l := range b.s.Legs {
 		if i == maxLegs {
-			b.addGap(gap{Reason: reasonNoData, Text: legsNoteHead + strconv.Itoa(maxLegs) + legsNoteTail})
+			b.addGap(gap{Reason: reasonNoData, Text: capNoteHead + strconv.Itoa(maxLegs) + legsNoteTail})
 			break
 		}
 		out = append(out, b.note(b.legRow(l)))
@@ -109,7 +109,7 @@ func (b *builder) fills() []fill {
 	for _, l := range b.s.Legs {
 		for _, f := range b.pos[l.PositionID].Fills {
 			if len(out) == maxFills {
-				b.addGap(gap{Reason: reasonNoData, Text: fillsNoteHead + strconv.Itoa(maxFills) + fillsNoteTail})
+				b.addGap(gap{Reason: reasonNoData, Text: capNoteHead + strconv.Itoa(maxFills) + fillsNoteTail})
 				return out
 			}
 			row, ok := b.fillRow(l, f)

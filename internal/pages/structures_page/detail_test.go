@@ -391,3 +391,22 @@ func hasHan(s string) bool {
 	}
 	return false
 }
+
+func TestLevelsTitleUnchanged(t *testing.T) {
+	t.Parallel()
+	m := readFixture(t, "detail_spread").build(t, spreadID, true)
+	if m["levels_title"] != "Key levels" {
+		t.Fatalf("levels_title = %v", m["levels_title"])
+	}
+}
+
+func TestDetailNoReaderSentenceIsChinese(t *testing.T) {
+	t.Parallel()
+	fx := readFixture(t, "detail_spread")
+	c := fx.config(true)
+	c.Ledger = nil
+	m := buildWith(t, c, spreadID)
+	if m["run_status"] != "failed" || m["sentence"] != "无法读取持仓结构" {
+		t.Fatalf("status = %v, sentence = %v", m["run_status"], m["sentence"])
+	}
+}

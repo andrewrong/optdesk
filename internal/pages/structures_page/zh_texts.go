@@ -122,9 +122,8 @@ const (
 	hintOtherLevel         = "关键价位"
 	notOpenText            = "该结构已不在持仓中"
 	cannotReadText         = "无法读取持仓结构"
-	legsNoteHead           = "只显示前 "
+	capNoteHead            = "只显示前 "
 	legsNoteTail           = " 条腿"
-	fillsNoteHead          = "只显示前 "
 	fillsNoteTail          = " 条成交记录"
 	fillsCannotBeShownText = "部分成交记录无法显示"
 )
