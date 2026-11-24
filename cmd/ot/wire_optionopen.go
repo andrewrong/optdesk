@@ -95,7 +95,7 @@ func buildOpenPlan(ctx context.Context, a *app, jc *jobCtx, id string,
 		return nil, "", nil
 	}
 	// The JP plan reads the con_id from the entry: a name the list holds without one is asked of the broker, as option_eod_jp does.
-	f := *jc.f
+	f := jc.f.optionsOn()
 	if id == jobOptionOpenPlanJP && jc.brk != nil {
 		f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, jc.brk, es, a.log, id) }
 	}
@@ -146,7 +146,7 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 		}
 	}
 	// The JP resolve asks the broker of the job for the con_id of a name the list holds without one.
-	f := *jc.f
+	f := jc.f.optionsOn()
 	if id == jobOptionOpenResolveJP && brk != nil {
 		f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, brk, es, a.log, id) }
 	}
@@ -204,7 +204,7 @@ func firstReason(rs ...string) string {
 // instrument store of the factory. Eod is the reader of the compute stores (the pages role, which may read
 // rd.option_eod_r1); the writer role of the eod store has no right on schema rd.
 func openStored(jc *jobCtx, stores openquote.Stores, entries []jobs.WatchEntry) optionopen.Stored {
-	s := optionopen.Stored{Watch: entries, Instruments: jc.f.inst, Options: stores, Accounts: jc.f.accounts, HeldAliases: jc.f.bookAliases()}
+	s := optionopen.Stored{Watch: entries, Instruments: jc.f.inst, Options: stores, Accounts: optionsOnAccounts(jc.f.accounts, jc.f.list), HeldAliases: jc.f.bookAliases()}
 	if jc.f.bars != nil {
 		s.Bars = jc.f.bars
 	}
