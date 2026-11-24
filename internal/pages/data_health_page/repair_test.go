@@ -179,3 +179,38 @@ func TestGapDaysAndRepairAll(t *testing.T) {
 		t.Fatalf("no form: %v", g)
 	}
 }
+
+func TestSharedDatasetJPKeysFollowTheJPJob(t *testing.T) {
+	t.Parallel()
+	jobs := []Job{
+		{ID: "option_candidates", Kind: KindAnyDay, Datasets: []string{"candidates.option_candidate"}, Calendar: "XNYS"},
+		{ID: "option_candidates_jp", Kind: KindTodayOnly, Zone: "Asia/Tokyo", WhyText: "JP candidates are built for today only",
+			Datasets: []string{"candidates.option_candidate"}, Calendar: "XTKS"},
+	}
+	now := utc("2026-11-24", 3, 0) // 12:00 in Tokyo
+	today := contracts.Day("2026-11-24")
+	jp := []string{"edinet:E00776", "edinet:E01914", "edinet:E02126", "edinet:E02367", "edinet:E02529", "edinet:E03847", "edinet:E04498"}
+	cells := []Cell{
+		{Day: "2026-11-05", State: "missing", MissingKeys: jp},
+		{Day: "2026-11-24", State: "missing", MissingKeys: jp},
+		{Day: "2026-11-04", State: "missing", MissingKeys: []string{"cik:0000320193"}},
+		{Day: "2026-11-03", State: "missing", MissingKeys: append([]string{"cik:0000320193"}, jp...)},
+	}
+	applyDataset(cells, jobs, "candidates.option_candidate", testForm, now, today)
+	if c := cells[0]; c.Repair != RepairNotRefetchable || c.WhyText == "" {
+		t.Fatalf("past JP: %+v", c)
+	}
+	if c := cells[1]; c.Repair != RepairButton {
+		t.Fatalf("today JP: %+v", c)
+	}
+	if c := cells[2]; c.Repair != RepairButton {
+		t.Fatalf("past cik: %+v", c)
+	}
+	if c := cells[3]; c.Repair != RepairButton {
+		t.Fatalf("past mixed: %+v", c)
+	}
+	gaps := GapDays(cells)
+	if len(gaps) != 3 || gaps[0] != "2026-11-03" || gaps[1] != "2026-11-04" || gaps[2] != "2026-11-24" {
+		t.Fatalf("gaps %v", gaps)
+	}
+}
