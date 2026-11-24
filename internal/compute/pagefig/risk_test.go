@@ -28,17 +28,48 @@ func TestRiskDeltaByUnderlyingVegaByExpiry(t *testing.T) {
 	}
 }
 
-func TestRiskForeignStockSkipped(t *testing.T) {
+func TestRiskForeignStockCounted(t *testing.T) {
 	t.Parallel()
 	got := NewHoldings().Risk(blockapi.RiskIn{
 		Currency: "USD",
 		Stocks:   []blockapi.HoldingIn{hold("A", "USD", "10", "1", "1", ""), hold("T", "JPY", "500", "1", "1", "")},
 	})
-	if len(got.Delta) != 1 || got.Delta[0].Key != "A" || got.DeltaTotal != gap("unsupported_currency") {
+	if len(got.Delta) != 2 || got.Delta[1].Key != "T" || got.Delta[1].Value != fv("500.00") || got.DeltaTotal != fv("510.00") {
 		t.Fatalf("%+v", got)
 	}
 	if got.VegaTotal != fv("0.00") {
 		t.Fatalf("vega total: %+v", got.VegaTotal)
+	}
+}
+
+func TestRiskJpyStockAndStructure(t *testing.T) {
+	t.Parallel()
+	in := blockapi.RiskIn{
+		Currency: "USD",
+		UsdJpy:   "150",
+		Stocks:   []blockapi.HoldingIn{hold("T", "JPY", "500", "1", "1", "")},
+		Greeks: []blockapi.GreekIn{
+			{Underlying: "T", Expiry: "2026-12-18", Delta: "100", Vega: "3000", Currency: "JPY"},
+			{Underlying: "A", Expiry: "2026-12-18", Delta: "5", Vega: "1", Currency: "USD"},
+			{Underlying: "A", Expiry: "2027-01-15", Delta: "5", Vega: "2"},
+		},
+	}
+	got := NewHoldings().Risk(in)
+	if got.Delta[1].Key != "T" || got.Delta[1].Value != fv("600.00") || got.DeltaTotal != fv("610.00") {
+		t.Fatalf("delta: %+v", got)
+	}
+	if got.Vega[0].Value != fv("21.00") || got.Vega[1].Value != fv("2.00") || got.VegaTotal != fv("23.00") {
+		t.Fatalf("vega: %+v", got)
+	}
+	for _, rate := range []string{"", "0", "-1"} {
+		in.UsdJpy = rate
+		got = NewHoldings().Risk(in)
+		if got.Vega[0].Value != gap("unsupported_currency") || got.Vega[1].Value != fv("2.00") || got.VegaTotal != gap("unsupported_currency") {
+			t.Fatalf("rate %q vega: %+v", rate, got)
+		}
+		if got.DeltaTotal != fv("610.00") {
+			t.Fatalf("rate %q delta: %+v", rate, got.DeltaTotal)
+		}
 	}
 }
 
