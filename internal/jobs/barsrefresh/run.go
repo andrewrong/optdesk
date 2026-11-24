@@ -114,7 +114,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
 	var days int
 	backfilled := hasDayFrom(stored, from)
-	complete := backfilled && dailyComplete(stored, r.dayTime) // nothing to ask: the weekly steps below keep their own gates
+	complete := backfilled && dailyComplete(stored, r.dayTime) // nothing to ask: deepen and adjusted below keep their own gates
 	if !backfilled {
 		if !r.j.claimFirstPull(r.day, key) {
 			return 0, 0, nil // past the cap: no request, no error

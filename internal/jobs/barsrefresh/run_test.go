@@ -765,3 +765,31 @@ func TestRunKeySkipsCompleteKey(t *testing.T) {
 		t.Fatalf("incomplete key: queries %+v", h.queries)
 	}
 }
+
+func TestSkippedKeyStillRunsAdjustedByItsOwnGate(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		received string
+		want     int
+	}{
+		{"adjusted due", "2026-11-02", 1},
+		{"adjusted fresh", "2026-11-08", 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			h := adjustedHistory(func() ([]broker.Bar, error) { return []broker.Bar{mkbar("2026-11-09", "9.5000")}, nil })
+			st := &memBars{rows: []contracts.PriceBar{tradesRow(), storedAdjusted(101, "2026-11-09", "9.0000", 1, c.received)}}
+			if res := runAdjusted(t, h, st); res.Err != nil {
+				t.Fatal(res.Err)
+			}
+			if got := len(adjustedQueries(h)); got != c.want {
+				t.Fatalf("adjusted requests %d, want %d", got, c.want)
+			}
+			if trades := len(h.queries) - len(adjustedQueries(h)); trades != 0 {
+				t.Fatalf("daily requests %d, want 0", trades)
+			}
+		})
+	}
+}
