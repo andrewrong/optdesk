@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"strings"
 	"time"
+	_ "time/tzdata" // America/New_York must load on a host without zoneinfo
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/google/uuid"
@@ -116,6 +117,20 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 			newestOk = s.Day.Time
 		}
 	}
+	// A US name asked for today before the New York close cannot have today's reading: ask the days before
+	// it only, and only when there is a gap there.
+	last := day
+	if j.beforeUSClose(name, dayTime) {
+		prev := dayTime.AddDate(0, 0, -1)
+		for prev.Weekday() == time.Saturday || prev.Weekday() == time.Sunday {
+			prev = prev.AddDate(0, 0, -1)
+		}
+		if !newestOk.IsZero() && !newestOk.Before(prev) {
+			return keyRun{have: have}
+		}
+		dayTime = dayTime.AddDate(0, 0, -1)
+		last = contracts.Day(dayTime.Format(dayLayout))
+	}
 	// The window runs from the day after the newest ok reading through the day; a stored missing reading does
 	// not move its start, so a repair of that day is inside it.
 	days := j.m.BackfillDays
@@ -124,8 +139,8 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 		days = min(max(gap, j.m.DailyDays), j.m.BackfillDays)
 	}
 	q := broker.BarQuery{Contract: j.contract[name], Kind: broker.BarOptionImpliedVol, DurationDays: days}
-	if dayTime.Before(j.clk.Now().UTC().Truncate(24 * time.Hour)) {
-		q.End = string(day)
+	if last != day || dayTime.Before(j.clk.Now().UTC().Truncate(24*time.Hour)) {
+		q.End = string(last)
 	}
 	bars, err := j.h.Bars(ctx, q)
 	if err != nil && !isNoData(err) {
@@ -140,16 +155,30 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 		if err != nil {
 			return keyRun{err: newErr(contracts.Permanent, "bad bar day")}
 		}
-		if b.Day > string(day) {
+		if b.Day > string(last) {
 			continue
 		}
-		arrived = arrived || b.Day == string(day)
+		arrived = arrived || b.Day == string(last)
 		rows = j.add(rows, have, j.reading(name, d, b.Close, now, runID))
 	}
-	if !arrived {
+	if !arrived && last == day {
 		rows = j.add(rows, have, j.missing(name, dayTime, "", reasonNoIn, now, runID))
 	}
 	return keyRun{rows: rows, have: have}
+}
+
+// beforeUSClose reports a USD name asked for the New York date of the clock of the job while that clock is
+// before 16:00 there. A half day closes earlier, so the rule is late on it and never early.
+func (j *job) beforeUSClose(name string, dayTime time.Time) bool {
+	if j.contract[name].Currency != "USD" {
+		return false
+	}
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		return false
+	}
+	ny := j.clk.Now().In(loc)
+	return dayTime.Format(dayLayout) == ny.Format(dayLayout) && ny.Hour() < 16
 }
 
 // add appends rec unless a reading of its day is stored already: a stored ok one is kept, a stored missing
