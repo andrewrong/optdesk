@@ -8,6 +8,16 @@ import { GLOSS } from '@/pages/valuation/CompanyView'
 import * as module from '@/pages/valuation/ValuationPage'
 import type { Payload } from '@/types/valuation_page'
 
+// ComposedChart of recharts is replaced by a stub that records its `data` prop and renders nothing.
+const chartData = vi.hoisted(() => [] as unknown[])
+vi.mock('recharts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('recharts')>()),
+  ComposedChart: ({ data }: { data: unknown }) => {
+    chartData.push(data)
+    return null
+  },
+}))
+
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const fixture = (name: string): Payload =>
@@ -195,6 +205,13 @@ describe('company view', () => {
     const band = el.querySelector('[data-chart="price-band"]') as HTMLElement
     expect(band.textContent).toContain('close 95')
     expect(band.textContent).toContain('core 150')
+  })
+
+  it('TestPriceBandHasAxisPoints: the chart gets the two end points of its axis as data', async () => {
+    chartData.length = 0
+    await render(fixture('company'))
+    expect(chartData.length).toBeGreaterThan(0)
+    for (const data of chartData) expect(data).toEqual([{ pos: 0 }, { pos: 1 }])
   })
 
   it('TestHistoryColumnsAndExpand: a row prints its columns and expands to detail and report text', async () => {
