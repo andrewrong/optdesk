@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/macroevent"
@@ -166,9 +168,13 @@ func TestEventsWindow60AndCap(t *testing.T) {
 	if n := len(eventRows(m)); n != 20 {
 		t.Fatalf("rows %d", n)
 	}
-	g, ok := gapWithPrefix(m, "Events after")
-	if !ok || g != "Events after 2026-12-20 not shown: 20 of 21 shown" {
-		t.Errorf("truncation gap %q %v", g, ok)
+	want := fmt.Sprintf(gapEventsNotShown, "2026-12-20", 20, 21)
+	found := false
+	for _, g := range gapTexts(m) {
+		found = found || g == want
+	}
+	if !found {
+		t.Errorf("truncation gap %q not in %v", want, gapTexts(m))
 	}
 }
 
@@ -212,8 +218,8 @@ func TestEventsStalePerKind(t *testing.T) {
 	f.kinds[0].LastRunDay = "2026-10-20" // cpi, 16 days
 	f.kinds[1].LastRunDay = "2026-10-26" // exactly 10 days: not stale
 	m := buildEvents(t, f)
-	g, ok := gapWithPrefix(m, "Dates older than 10 days")
-	if !ok || g != "Dates older than 10 days: CPI (fetched 2026-10-20)" {
+	g, ok := gapWithPrefix(m, gapPrefixStale)
+	if !ok || g != gapPrefixStale+"CPI (fetched 2026-10-20)" {
 		t.Errorf("stale gap %q %v", g, ok)
 	}
 }
@@ -224,8 +230,8 @@ func TestEventsNoDatesStored(t *testing.T) {
 	f.kinds = f.kinds[1:]              // cpi has no row at all
 	f.kinds[0].LastDate = "2026-11-05" // employment situation has none after the day
 	m := buildEvents(t, f)
-	g, ok := gapWithPrefix(m, "No dates stored")
-	if !ok || g != "No dates stored: CPI, Employment situation" {
+	g, ok := gapWithPrefix(m, gapPrefixNone)
+	if !ok || g != gapPrefixNone+"CPI, Employment situation" {
 		t.Errorf("gap %q %v", g, ok)
 	}
 }
@@ -237,8 +243,8 @@ func TestEventsHeldGap(t *testing.T) {
 	f.kinds[1].HeldDay = "2026-11-03"
 	f.kinds[1].LastDate = "2026-11-05" // held but no row after the day: only the no-dates line
 	m := buildEvents(t, f)
-	g, ok := gapWithPrefix(m, "Stored dates kept")
-	if !ok || g != "Stored dates kept, the source's answer was shorter: CPI (2026-11-03)" {
+	g, ok := gapWithPrefix(m, gapPrefixHeld)
+	if !ok || g != gapPrefixHeld+"CPI (2026-11-03)" {
 		t.Errorf("gap %q %v", g, ok)
 	}
 }
@@ -252,10 +258,10 @@ func TestEventsGapsMerged(t *testing.T) {
 	m := buildEvents(t, f)
 	n := 0
 	for _, g := range gapTexts(m) {
-		if strings.HasPrefix(g, "Dates older than 10 days") {
+		if strings.HasPrefix(g, gapPrefixStale) {
 			n++
-			if len(g) > 200 {
-				t.Errorf("line of %d characters", len(g))
+			if utf8.RuneCountInString(g) > 200 {
+				t.Errorf("line of %d characters", utf8.RuneCountInString(g))
 			}
 			if !strings.Contains(g, "PPI (fetched 2026-10-01)") {
 				t.Errorf("line %q", g)
@@ -270,9 +276,14 @@ func TestEventsGapsMerged(t *testing.T) {
 		f.kinds[i].LastRunDay = "2026-10-01"
 	}
 	m = buildEvents(t, f)
-	g, _ := gapWithPrefix(m, "Dates older than 10 days")
-	if len(g) > 200 || !strings.Contains(g, ", and ") || !strings.HasSuffix(g, " more") {
-		t.Errorf("cut line %q (%d)", g, len(g))
+	g, _ := gapWithPrefix(m, gapPrefixStale)
+	cut := strings.LastIndex(g, gapMoreAfterList[:strings.Index(gapMoreAfterList, "%d")])
+	if n := utf8.RuneCountInString(g); n > 200 || cut < 0 || !utf8.ValidString(g) {
+		t.Errorf("cut line %q (%d)", g, n)
+	}
+	var more int
+	if _, err := fmt.Sscanf(g[cut:], gapMoreAfterList, &more); err != nil || more < 1 {
+		t.Errorf("ending %q: %v", g[cut:], err)
 	}
 }
 
@@ -291,8 +302,8 @@ func TestEventsNotEnteredGap(t *testing.T) {
 	}
 	f.events = keep
 	m := buildEvents(t, f)
-	g, ok := gapWithPrefix(m, "Not entered")
-	if !ok || g != "Not entered: FOMC 2026, BoJ 2027" {
+	g, ok := gapWithPrefix(m, gapPrefixNotEntered)
+	if !ok || g != gapPrefixNotEntered+"FOMC 2026, BoJ 2027" {
 		t.Errorf("gap %q %v", g, ok)
 	}
 }
@@ -372,5 +383,58 @@ func TestWindowSourceWords(t *testing.T) {
 				t.Fatalf("text %q", text)
 			}
 		})
+	}
+}
+
+func TestMacroGapTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	f := healthy()
+	f.kinds[0].LastRunDay = "2026-10-20" // cpi stale
+	f.kinds[1].LastDate = "2026-11-05"   // employment situation: no date after the day
+	f.events = append(f.events, macroevent.Event{Kind: "cpi", Source: "fred", Date: "2026-11-12", RunDay: "2026-11-04"})
+	for i := 0; i < 21; i++ {
+		d := contracts.Day(fmt.Sprintf("2026-12-%02d", 1+i))
+		f.events = append(f.events, macroevent.Event{Kind: "h41", Source: "fred", Date: d, RunDay: "2026-11-04"})
+	}
+	c := cfg("U")
+	c.Events = f
+	c.Liquidity = fixedFunc(fullResult())
+	r := fakeReader{points: map[string][]contracts.SeriesPoint{"U": {pt(t, "2026-11-04", "2026-11-04", "index", f64(1))},
+		"CPIAUCNS": monthlySeries(t, "CPIAUCNS", "index_points", "2025-01-01", 21, yoyIndex)}}
+	m := buildWith(t, r, c)
+
+	var texts []string
+	texts = append(texts, gapTexts(m)...)
+	for _, row := range eventRows(m) {
+		if a, ok := row["actual"].(map[string]any); ok && a["reason"] != nil {
+			texts = append(texts, a["text"].(string))
+		}
+	}
+	if latest, ok := indicator(m, 0)["latest"].(map[string]any); ok && latest["reason"] != nil {
+		texts = append(texts, latest["text"].(string))
+	}
+	for _, want := range []string{gapPrefixStale, gapPrefixNone, gapNotYetReleased, gapUnitUnknown} {
+		found := false
+		for _, s := range texts {
+			found = found || strings.Contains(s, want)
+		}
+		if !found {
+			t.Errorf("no text holds %q in %v", want, texts)
+		}
+	}
+	old := []string{"Dates older", "No dates stored", "Stored dates kept", "Not entered", "and 1 more", "not shown", "not published",
+		"not stored", "not readable", "earlier estimate", "not yet", "unit unknown"}
+	for _, s := range texts {
+		if !strings.ContainsFunc(s, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			// the "no data yet" family stays English by the issue; only the texts of items 1 to 5 are checked
+			if !strings.Contains(s, "no data yet") && !strings.Contains(s, "Data day") && !strings.Contains(s, "no stored point") && !strings.Contains(s, "latest stored") {
+				t.Errorf("no Chinese character: %q", s)
+			}
+		}
+		for _, o := range old {
+			if strings.Contains(s, o) {
+				t.Errorf("old English %q in %q", o, s)
+			}
+		}
 	}
 }

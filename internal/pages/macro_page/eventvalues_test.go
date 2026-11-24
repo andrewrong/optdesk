@@ -132,7 +132,7 @@ func TestEventValuesPerKind(t *testing.T) {
 		if row["previous"] != w || figText(t, row["previous_figure"]) != w {
 			t.Errorf("%s: previous %v figure %v, want %s", k, row["previous"], row["previous_figure"], w)
 		}
-		if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != "not yet released" {
+		if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != gapNotYetReleased {
 			t.Errorf("%s: future actual %s %s", k, reason, text)
 		}
 	}
@@ -225,7 +225,7 @@ func TestEventValuesGdpRevision(t *testing.T) {
 		t.Errorf("first estimate: %v %v", first["previous"], first["actual"])
 	}
 	for _, v := range []any{second["previous"], second["previous_figure"]} {
-		if reason, text := cellGap(t, v); reason != "no_data" || text != "earlier estimate not stored (only the latest vintage is kept)" {
+		if reason, text := cellGap(t, v); reason != "no_data" || text != gapEarlierEstimate {
 			t.Errorf("second estimate previous %s %q", reason, text)
 		}
 	}
@@ -245,7 +245,7 @@ func TestEventValuesFomcLag(t *testing.T) {
 	if row["previous"] != "4.00-4.25%" {
 		t.Errorf("previous %v", row["previous"])
 	}
-	if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != "not yet published by FRED" {
+	if reason, text := cellGap(t, row["actual"]); reason != "no_data" || text != gapNotYetPublished {
 		t.Errorf("actual %s %q", reason, text)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -135,12 +136,12 @@ func eventBlock(ctx context.Context, r store.SeriesReader, rd macroevent.Reader,
 		}
 	}
 	stale, none, held := kindGaps(kinds, day)
-	add("stale", "Dates older than 10 days: ", stale)
-	add("no_data", "No dates stored: ", none)
-	add("stale_input", "Stored dates kept, the source's answer was shorter: ", held)
-	add("no_data", "Not entered: ", notEntered(entered, d.Year(), end.Year()))
+	add("stale", gapPrefixStale, stale)
+	add("no_data", gapPrefixNone, none)
+	add("stale_input", gapPrefixHeld, held)
+	add("no_data", gapPrefixNotEntered, notEntered(entered, d.Year(), end.Year()))
 	if len(events) > maxEvents {
-		gaps = append(gaps, gap{Reason: "missing_input", Text: fmt.Sprintf("Events after %s not shown: %d of %d shown",
+		gaps = append(gaps, gap{Reason: "missing_input", Text: fmt.Sprintf(gapEventsNotShown,
 			rows[len(rows)-1].Date, maxEvents, len(events))})
 	}
 	return rows, events, gaps, nil
@@ -208,18 +209,18 @@ func notEntered(entered map[int]map[string]bool, first, last int) []string {
 	return out
 }
 
-// mergedLine joins items after prefix with commas; a list too long for the schema is cut with "and N more".
+// mergedLine joins items after prefix with commas; a list too long for the schema is cut with the "N more" ending of zh_texts.go, counted in characters.
 func mergedLine(prefix string, items []string) string {
 	for n := len(items); n > 0; n-- {
 		line := prefix + strings.Join(items[:n], ", ")
 		if n < len(items) {
-			line += fmt.Sprintf(", and %d more", len(items)-n)
+			line += fmt.Sprintf(gapMoreAfterList, len(items)-n)
 		}
-		if len(line) <= maxGapText {
+		if utf8.RuneCountInString(line) <= maxGapText {
 			return line
 		}
 	}
-	return fmt.Sprintf("%sand %d more", prefix, len(items))
+	return prefix + fmt.Sprintf(gapMoreAfterPrefix, len(items))
 }
 
 // withEvents turns the page to its events form when c.Events is set: the title, the sentence, the rows, and

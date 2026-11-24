@@ -37,3 +37,26 @@ const (
 	noteStlfsi       = "0 是 1993 年末以来的平均水平；高于 0 表示压力高于平均。"
 	zeroLineNFCI     = "高于 0 表示比平均更紧"
 )
+
+// The gap texts of the event calendar: the four prefixes of the kind lines, the endings of a line cut to the length limit,
+// and the line of the events that are not shown (the day, the number shown, the total).
+const (
+	gapPrefixStale      = "日期已超过 10 天："
+	gapPrefixNone       = "没有存放日期："
+	gapPrefixHeld       = "已存的日期保留，来源这次给的更短："
+	gapPrefixNotEntered = "未录入："
+	gapMoreAfterList    = "，另有 %d 项"
+	gapMoreAfterPrefix  = "另有 %d 项"
+	gapEventsNotShown   = "%s 之后的事件没有全部显示：共 %[3]d 项，已显示 %[2]d 项"
+)
+
+// The gap texts of the event value cells and of the indicator unit. The first two take the id and the label.
+const (
+	gapValueNoNumber   = "%s %s 尚未公布（已存档但没有数值）"
+	gapValueNotStored  = "%s %s 没有存档"
+	gapEventDateUnread = "事件日期读不出来"
+	gapEarlierEstimate = "更早的估计值没有存档（只保留最新版本）"
+	gapNotYetReleased  = "尚未发布"
+	gapNotYetPublished = "FRED 尚未发布"
+	gapUnitUnknown     = "单位未知"
+)
