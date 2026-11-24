@@ -14,6 +14,7 @@ import (
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/positions_page"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -218,6 +219,7 @@ func TestFallbackNoteWithinNotesCap(t *testing.T) {
 	ps = append(ps, pos("2026-11-10", "FRAC", "option", "USD", 900, "1.5", "1"))
 	c, _ := noMarks(ps...)
 	c.Statement = []string{"main"}
+	c.Ledgers = func() compute.OptionLedger { return openLegs(nil) }
 	m, b := build(t, withBars(c, &fakeStockIDs{rows: found}, &fakeBars{byID: byID}), "main")
 	validate(t, b)
 	notes := notesOf(t, m)

@@ -314,7 +314,9 @@
       }
     }
   ],
-  "notes": [],
+  "notes": [
+    "Option ledger is behind the capture; open in the ledger, not held: XYZ 100 put 2026-11-20; ledger newest record 2026-11-10T10:00:00+08:00"
+  ],
   "gaps": [
     {
       "reason": "no_data",

@@ -32,6 +32,8 @@ const (
 	textSkippedStart = "Skipped: "
 	textSkippedEnd   = " rows whose quantity cannot be shown are not listed"
 
+	textBehindStart = "Option ledger is behind the capture; open in the ledger, not held: "
+
 	sentenceStocks    = "Stocks "
 	sentenceRows      = " rows, options "
 	sentenceLegs      = " legs."

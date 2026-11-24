@@ -391,3 +391,46 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 	}
 	return stocks, options, skipped
 }
+
+// ledgerBehindNote is the one line naming the open option legs of the ledger that no option row of the capture
+// matches, at most noteLegs and a count of the rest, with the newest ledger record time; "" when there is none.
+// It fits noteMaxRunes by naming fewer legs.
+func ledgerBehindNote(open []compute.LedgerPosition, held []store.Position, newest time.Time) string {
+	have := map[string]bool{}
+	for _, p := range held {
+		if p.SecType == typeOption {
+			have[contractKey(p.Symbol, rightLetter(p.Right), p.Expiry, p.Strike)] = true
+		}
+	}
+	var legs []string
+	seen := map[string]bool{}
+	for _, p := range open {
+		k := contractKey(p.Underlying, p.Right, p.Expiry, p.Strike)
+		if p.Status != "open" || have[k] || seen[k] {
+			continue
+		}
+		seen[k] = true
+		word := "call"
+		if p.Right == "P" {
+			word = "put"
+		}
+		legs = append(legs, p.Underlying+" "+strikeKey(p.Strike)+" "+word+" "+p.Expiry)
+	}
+	if len(legs) == 0 {
+		return ""
+	}
+	n := min(noteLegs, len(legs))
+	for {
+		s := textBehindStart + strings.Join(legs[:n], ", ")
+		if rest := len(legs) - n; rest > 0 {
+			s += " and " + strconv.Itoa(rest) + " more"
+		}
+		if !newest.IsZero() {
+			s += "; ledger newest record " + newest.Format(stampLayout)
+		}
+		if len([]rune(s)) <= noteMaxRunes || n == 1 {
+			return s
+		}
+		n--
+	}
+}
