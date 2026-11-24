@@ -5,8 +5,8 @@ client after the guard is installed, with ib_async's async methods only; every
 send waits for the message pacer first. The objects of ib_async are named `ib`
 and `ib.client` and nothing else of ours is. This file returns statuses and
 raises errors, and the transport turns them into records; its log records are
-`quote_failed` and `dividend_failed` (stdlib logger of this module, one per target
-or key that fails with an unexpected exception: type name and message only).
+`quote_failed`, `dividend_failed` (one per target or key that fails with an unexpected
+exception: type name and message only) and `quote_done` (one INFO line per contract).
 """
 
 from __future__ import annotations
@@ -49,6 +49,7 @@ from optdesk.ibkr.pacing import (
     LineBudget,
     MessagePacer,
 )
+from optdesk.ibkr.quotelog import QuoteTimes, log_quote_done
 from optdesk.ibkr.readonly_probe import prove_read_only
 from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
 from optdesk.ibkr.transport import NotAllowed, OrderRefused
@@ -550,8 +551,7 @@ class IbGateway:
             sent = self._clock.now().timestamp()
             ticker: Any = None
             watch: Callable[..., None] | None = None
-            timed_out = False
-            grace_ended = False
+            timed_out = grace_ended = False
             try:
                 ticker = ib.reqMktData(contract, row_spec.generic_ticks, False, False)
                 job.resubscribe = partial(
@@ -567,13 +567,12 @@ class IbGateway:
 
                 ticker.updateEvent += watch
                 watch()
-                began = self._clock.monotonic()
+                times = QuoteTimes(self._clock.monotonic)
                 try:
                     await with_timeout(
                         self._clock, job.event.wait(), row_spec.timeout_s
                     )
-                    left = row_spec.timeout_s - (self._clock.monotonic() - began)
-                    grace = min(row_spec.grace_s, left)
+                    grace = min(row_spec.grace_s, row_spec.timeout_s - times.release())
                     if grace > 0 and not job.grace.is_set():
                         try:
                             await with_timeout(self._clock, job.grace.wait(), grace)
@@ -590,6 +589,7 @@ class IbGateway:
             missing = missing_fields(
                 row_spec, ticker, got, job.error[0] if job.error else 0, grace_ended
             )
+            log_quote_done(_log, times, row_spec, got, job.error, missing)
             data_type = int(getattr(ticker, "marketDataType", self._data_type))
         answer = partial(
             row,
