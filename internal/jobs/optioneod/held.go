@@ -48,7 +48,7 @@ func WithHeldAliases(ctor NewOptionEodHeldSymbolsFunc, aliases []string) NewOpti
 // heldLookbackDays is how many calendar days before the run day the newest position capture is searched.
 const heldLookbackDays = 7
 
-// NewWithHeld is NewWithWatch that also adds the expiry and strike of every open short call of a watched
+// NewWithHeld is NewWithWatch that also adds the expiry and strike of every held option (long or short, call or put) of a watched
 // underlying, from the newest account.position capture of each alias, to the day's contract list whatever its
 // DTE (Decisions 10 and 12), so the guard verdict is not unknown by construction. A nil reader behaves as
 // NewWithWatch.
@@ -82,7 +82,7 @@ type heldOption struct {
 	right  string // "C" or "P"
 }
 
-// heldOptions lists the open short options of symbol, calls and puts: per alias the positions of the newest day that has any,
+// heldOptions lists every held option of symbol, long or short, calls and puts: per alias the positions of the newest day that has any,
 // searching back from day.
 func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]heldOption, error) {
 	var out []heldOption
@@ -113,7 +113,7 @@ func (j *job) heldOptions(ctx context.Context, symbol string, day time.Time) ([]
 				default:
 					continue
 				}
-				if q, ok := new(big.Rat).SetString(p.Quantity); !ok || q.Sign() >= 0 {
+				if q, ok := new(big.Rat).SetString(p.Quantity); !ok || q.Sign() == 0 {
 					continue
 				}
 				out = append(out, heldOption{expiry: strings.ReplaceAll(p.Expiry, "-", ""), strike: p.Strike, right: right})
