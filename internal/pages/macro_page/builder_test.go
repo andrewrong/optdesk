@@ -130,7 +130,7 @@ const golden = `{"schema":"macro_page","schema_version":1,"run_id":"run-1","buil
 	`"Each indicator is the latest stored period of its series; a series with none stored shows n/a."],"gaps":[{"reason":"no_data",` +
 	`"text":"Ease: no data yet"},{"reason":"no_data","text":"Event calendar: no data yet"}],` +
 	`"stale":{"data_time":"2026-11-04T00:00:00+08:00",` +
-	`"stale_after":"2026-11-08T09:30:00+08:00","text":"Data day 11-04"}}`
+	`"stale_after":"2026-11-08T09:30:00+08:00","text":"Data day 11-04, Name DGS10 (daily series, FRED publishes with a lag)"}}`
 
 func TestBuildGolden(t *testing.T) {
 	t.Parallel()
@@ -161,8 +161,8 @@ func TestIndicatorStatus(t *testing.T) {
 		latestKey    string
 	}{
 		{"good", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", f64(4.5))}, "good", "On time", "unit"},
-		{"good at limit", []contracts.SeriesPoint{pt(t, "2026-11-01", "2026-11-01", "percent", f64(4))}, "good", "On time", "unit"},
-		{"late", []contracts.SeriesPoint{pt(t, "2026-10-31", "2026-10-31", "percent", f64(4))}, "late", "Late", "unit"},
+		{"good at limit", []contracts.SeriesPoint{pt(t, "2026-10-30", "2026-10-30", "percent", f64(4))}, "good", "On time", "unit"},
+		{"late", []contracts.SeriesPoint{pt(t, "2026-10-29", "2026-10-29", "percent", f64(4))}, "late", "Late", "unit"},
 		{"missing", nil, "missing", "n/a", "reason"},
 		{"nil value only", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", nil)}, "missing", "n/a", "reason"},
 		{"other unit", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "index", f64(1))}, "good", "On time", "reason"},
@@ -221,8 +221,9 @@ func TestStaleLabel(t *testing.T) {
 		dt, sa, tx string
 		nTimes     int
 	}{
-		{"one", one, []string{"A"}, "2026-11-04T00:00:00+08:00", "2026-11-08T09:30:00+08:00", "Data day 11-04", 1},
-		{"two", two, []string{"A", "B"}, "2026-11-02T00:00:00+08:00", "2026-11-06T09:30:00+08:00", "Data day 11-02", 2},
+		{"one", one, []string{"A"}, "2026-11-04T00:00:00+08:00", "2026-11-08T09:30:00+08:00", "Data day 11-04, Name A (daily series, FRED publishes with a lag)", 1},
+		{"two", two, []string{"A", "B"}, "2026-11-02T00:00:00+08:00", "2026-11-06T09:30:00+08:00",
+			"Data day 11-02, Name B (daily series, FRED publishes with a lag)", 2},
 		{"none", fakeReader{}, []string{"A"}, "2026-11-05T00:00:00+08:00", "2026-11-09T09:30:00+08:00", "No data day", 0},
 	}
 	for _, tc := range cases {
@@ -347,7 +348,7 @@ func TestWeeklySeriesDoesNotSetStale(t *testing.T) {
 	}
 	m := buildWith(t, r, c)
 	s := m["stale"].(map[string]any)
-	if s["text"] != "Data day 11-04" {
+	if s["text"] != "Data day 11-04, ff (daily series, FRED publishes with a lag)" {
 		t.Fatalf("stale = %v", s)
 	}
 	found := false
@@ -368,7 +369,7 @@ func TestH10SeriesDoNotSetStale(t *testing.T) {
 	r.points["DEXJPUS"] = daily(t, "2026-10-30", 10, 150, -1)
 	m := buildWith(t, r, groupCfg())
 	s := m["stale"].(map[string]any)
-	if s["text"] != "Data day 11-04" {
+	if s["text"] != "Data day 11-04, 10y (daily series, FRED publishes with a lag)" {
 		t.Fatalf("stale = %v", s)
 	}
 	times := fmt.Sprint(m["data_times"])
@@ -379,5 +380,23 @@ func TestH10SeriesDoNotSetStale(t *testing.T) {
 	}
 	if !strings.Contains(times, "10-30") {
 		t.Fatalf("data_times lacks the own day: %v", times)
+	}
+}
+
+func TestStaleTextNamesReason(t *testing.T) {
+	t.Parallel()
+	r := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": {pt(t, "2026-11-03", "2026-11-03", "percent", f64(1))}}}
+	cases := []struct{ name, day, want string }{
+		{"inside limit", "2026-11-05", "Data day 11-03, Name DGS10 (daily series, FRED publishes with a lag)"},
+		{"past limit", "2026-11-10", "Data day 11-03, Name DGS10 is late (daily series, limit 6 days)"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			m := build(t, r, cfg("DGS10"), tc.day)
+			if got := m["stale"].(map[string]any)["text"]; got != tc.want {
+				t.Fatalf("text = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
