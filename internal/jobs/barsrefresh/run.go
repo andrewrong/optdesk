@@ -53,6 +53,7 @@ type runState struct {
 	past    bool             // the day is before the UTC date of the clock: a repair run
 	conIDs  map[string]int64 // con id of a key resolved through the broker in this run
 
+	retries   int       // history retries made in this run: at most histDownAfter
 	histFails int       // keys whose history call ended Retryable in this run (the fallback, fallback.go)
 	histDown  bool      // the IB pull is skipped for the rest of the run
 	pending   []pending // keys waiting for the fallback
@@ -169,9 +170,24 @@ func (r *runState) collect(
 	return bars, append(rows, older...), terr
 }
 
-// historyAttempts is the number of Bars calls one pull makes for a window: a gateway timeout is usually over
-// on the next call. The calls follow each other with no wait; the call's own timeout is the wait.
-const historyAttempts = 3
+// historyAttempts is the number of Bars calls one pull makes for a window: one call and one retry after
+// retryPause. A gateway timeout is usually over after a pause; a run makes at most histDownAfter retries.
+const historyAttempts = 2
+
+// retryPause is the wait before the retry of a Retryable history call.
+const retryPause = 60 * time.Second
+
+// defaultPause waits d on a timer, or returns the error of ctx when it ends first.
+func defaultPause(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 // pull asks the trades bars of c for days days ending at the run day, and drops the bars after it.
 // A run of today sends no End.
@@ -186,8 +202,14 @@ func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]bro
 	var bars []broker.Bar
 	var err error
 	for attempt := 0; attempt < historyAttempts; attempt++ {
-		if attempt > 0 && ctx.Err() != nil {
-			break
+		if attempt > 0 {
+			if r.retries >= histDownAfter {
+				break
+			}
+			r.retries++
+			if r.j.pause(ctx, retryPause) != nil {
+				break
+			}
 		}
 		if bars, err = r.j.h.Bars(ctx, q); err == nil {
 			return r.dropAfterDay(bars, nil)

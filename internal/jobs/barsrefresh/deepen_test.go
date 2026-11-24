@@ -36,7 +36,7 @@ func deepenJob(t *testing.T, h *fakeHistory, st *memBars, names int, tune func(*
 	for i := 0; i < names; i++ {
 		es = append(es, entry("cik:"+string(rune('1'+i)), "N"+string(rune('A'+i)), int64(101+i)))
 	}
-	j, err := New(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, es, fixedClock{})
+	j, err := newJob(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, es, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}

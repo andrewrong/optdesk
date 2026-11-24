@@ -103,7 +103,7 @@ func buildFB(
 ) (*job, *syncBuf) {
 	t.Helper()
 	rd, _ := st.(bar.PriceBarReader)
-	j, err := New(&fakeBroker{listed: true}, h, fakeResolver{}, st, rd, entries, atClock{now})
+	j, err := newJob(&fakeBroker{listed: true}, h, fakeResolver{}, st, rd, entries, atClock{now})
 	if err != nil {
 		t.Fatal(err)
 	}
