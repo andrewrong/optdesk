@@ -221,6 +221,24 @@ describe('company view', () => {
     expect(chartChildren.length).toBeGreaterThan(0)
   })
 
+  it('TestPriceBandLinesCarryNoLabel: four marks give four unlabelled lines, and the names are only in the list', async () => {
+    chartChildren.length = 0
+    const payload = fixture('company')
+    const marks = payload.band!.marks.slice(0, 4)
+    payload.band!.marks = marks
+    const el = await render(payload)
+    const elements = chartChildren.flatMap((c) => Children.toArray(c as ReactNode)) as ReactElement<{
+      x?: number
+      label?: unknown
+    }>[]
+    const lines = elements.filter((e) => e.props.x !== undefined)
+    expect(lines).toHaveLength(4)
+    for (const line of lines) expect(line.props.label).toBeUndefined()
+    const chart = el.querySelector('[data-chart="price-band"] [role="img"]') as HTMLElement
+    for (const m of marks) expect(chart.textContent).not.toContain(m.name)
+    expect(el.querySelectorAll('[data-chart="price-band"] li')).toHaveLength(4)
+  })
+
   it('TestPriceBandWithoutMarksIsMissing: a band with no marks draws no chart and says it is missing', async () => {
     chartChildren.length = 0
     const payload = fixture('company')
