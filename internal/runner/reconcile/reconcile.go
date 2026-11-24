@@ -374,6 +374,12 @@ func (r *reconciler) putWindows(ctx context.Context, p plan, sess daySessions) (
 // crashBrake is the number of crashed or abandoned_stop runs of one key that stops it (Decision 7).
 const crashBrake = 3
 
+// retryBeforeCloseCap is the number of retryable runs of one key that ended before the window close after which
+// no new run starts before the close (a trial value, owner direction 2026-11-24: 6 runs at the 15-minute rhythm
+// is about 90 minutes; IBKR account safety). The key is then ended and upstreamEnded releases its dependents;
+// after the close the late run is unchanged.
+const retryBeforeCloseCap = 6
+
 // isCrash reports whether run ended without a verdict: crashed (a lapsed lease) or abandoned_stop.
 // Such a run does not count toward the two-run cap; three of them stop the key.
 func isCrash(run store.Run) bool {
@@ -418,14 +424,15 @@ func endedBeforeClose(run store.Run, closeAt time.Time) bool {
 // abandoned_stop runs: crashed_repeatedly, written by expireIfClosed at the close) and either no
 // run counts or the latest counted run is RunPartial: the second run is only for a partial. A
 // running run with a live lease is pending: nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
-// the same rule. closeAt is the close of the key's dataset window, zero when it has none.
+// the same rule. Before the close no run starts once retryBeforeCloseCap retryable runs have ended before it.
+// closeAt is the close of the key's dataset window, zero when it has none.
 func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
 	now := r.clk.Now()
 	if !closeAt.IsZero() && now.After(closeAt) {
 		reason = reasonLate
 	}
 	beforeClose := !closeAt.IsZero() && now.Before(closeAt)
-	crashes, counted := 0, 0
+	crashes, counted, retries := 0, 0, 0
 	var latest *store.Run
 	for i, run := range runs {
 		switch {
@@ -439,7 +446,9 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		case isCrash(run):
 			crashes++
 		case noRun(run): // a console_stop or ordered_stop run is no attempt and no crash
-		case run.ReasonCode == reasonEmptyBeforeClose, isRetryable(run) && endedBeforeClose(run, closeAt):
+		case run.ReasonCode == reasonEmptyBeforeClose:
+		case isRetryable(run) && endedBeforeClose(run, closeAt):
+			retries++
 		default:
 			counted++
 			latest = &runs[i]
@@ -447,6 +456,9 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	}
 	if crashed != nil {
 		crashes++
+	}
+	if beforeClose && retries >= retryBeforeCloseCap {
+		return crashed, false, ""
 	}
 	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
 		return crashed, false, ""
