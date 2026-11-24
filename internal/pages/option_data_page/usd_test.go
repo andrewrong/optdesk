@@ -35,7 +35,7 @@ func usdCfg(t *testing.T, ccy string, bid *float64, fx *fakeFx) Config {
 	r := eodRow(t, 1, f64(10), "2026-11-06T10:00:00Z")
 	r.UnderlyingPrice, r.UnderlyingCcy = f64(3200), ccy
 	r.Bid, r.Ask, r.Last = bid, f64(3200), f64(3200)
-	c := cfg(&fakeEod{rows: []contracts.OptionEod{r}}, &fakeQuotes{})
+	c := cfg(&fakeEod{rows: []contracts.OptionEod{r}}, &fakeQuotes{rows: map[int64][]contracts.QuoteSnapshot{1: {{SessionDay: sday(t, "2026-11-06"), Slot: "close"}}}})
 	c.Terms = &fakeTerms{rows: []store.OptionTerms{{InstrumentID: 1, Right: "C", Strike: "3200", ExpirationDate: "2026-12-18"}}}
 	if fx != nil {
 		c.Fx = fx

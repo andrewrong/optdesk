@@ -26,6 +26,8 @@ const (
 	zhSentence = "为某一天运行一个任务，由调度器完成工作 (Run a job for one day; the scheduler does the work.)"
 	// zhNothingProducedFmt: "Request N (job, day): nothing was produced."
 	zhNothingProducedFmt = "请求 %[1]d（%[2]s，%[3]s）：没有产出 (Request %[1]d (%[2]s, %[3]s): nothing was produced.)"
+	// zhAllPresentFmt: "Request N (job, day): every key was already stored; nothing new was needed."
+	zhAllPresentFmt = "请求 %[1]d（%[2]s，%[3]s）：所有键都已存储，无需新增 (Request %[1]d (%[2]s, %[3]s): every key was already stored; nothing new was needed.)"
 	// zhUnavailable: "The job requests cannot be read now."
 	zhUnavailable = "现在无法读取任务请求 (The job requests cannot be read now.)"
 	// zhNoSuch: "No request has this id."

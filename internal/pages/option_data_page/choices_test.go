@@ -30,9 +30,21 @@ func decode(t *testing.T, b []byte) map[string]any {
 	return m
 }
 
+// withoutCaptions drops the caption of every quote series: the fixtures under contracts/ still hold the
+// earlier "Contract <id>" captions, which are compared by the caption tests of builder_test.go.
+func withoutCaptions(m map[string]any) map[string]any {
+	series, _ := m["quote_series"].([]any)
+	for _, s := range series {
+		if sm, ok := s.(map[string]any); ok {
+			delete(sm, "caption")
+		}
+	}
+	return m
+}
+
 func sameJSON(t *testing.T, got []byte, name string) {
 	t.Helper()
-	g, w := decode(t, got), decode(t, fixture(t, name))
+	g, w := withoutCaptions(decode(t, got)), withoutCaptions(decode(t, fixture(t, name)))
 	if !reflect.DeepEqual(g, w) {
 		gb, _ := json.MarshalIndent(g, "", " ")
 		wb, _ := json.MarshalIndent(w, "", " ")

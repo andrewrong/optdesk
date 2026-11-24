@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -234,6 +233,10 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
 	vm.Sentence = fmt.Sprintf("%d contracts on %s.", len(rows), sessionDay)
 
+	terms := make(map[int64]chainRow, len(vm.Chain.Rows))
+	for _, cr := range vm.Chain.Rows {
+		terms[cr.InstrumentID] = cr
+	}
 	var quoteTime time.Time
 	for _, r := range limit(rows, maxSeries) {
 		id := int64(r.InstrumentID)
@@ -241,7 +244,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		if err != nil {
 			return nil, fmt.Errorf("option_data_page: read quotes of %d: %w", id, err)
 		}
-		s := quoteSeries{InstrumentID: id, Caption: "Contract " + strconv.FormatInt(id, 10), Points: []quotePoint{}}
+		s := quoteSeries{InstrumentID: id, Caption: quoteCaption(terms[id]), Points: []quotePoint{}}
 		for _, q := range limit(qs, maxPoints) {
 			s.Points = append(s.Points, quotePoint{
 				SessionDay: q.SessionDay.Format(dayLayout), Slot: q.Slot,
@@ -250,6 +253,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 			if q.ReceivedAt.After(quoteTime) {
 				quoteTime = q.ReceivedAt
 			}
+		}
+		if len(s.Points) == 0 && len(vm.Gaps) < maxGaps {
+			vm.Gaps = append(vm.Gaps, newGap(fmt.Sprintf("%s: no quote snapshot is stored for this contract in the window read (%s to %s)", s.Caption, from, day)))
 		}
 		vm.QuoteSeries = append(vm.QuoteSeries, s)
 	}
@@ -351,4 +357,14 @@ func toRow(r contracts.OptionEod) chainRow {
 		Delta: greekCell(r.Delta, "delta"), Gamma: greekCell(r.Gamma, "gamma"),
 		Theta: greekCell(r.ThetaPerCalendarDay, "theta"), Vega: greekCell(r.VegaPerVolPoint, "vega"),
 	}
+}
+
+// quoteCaption is the caption of a quote tab: expiry, right and strike of the chain row; when the
+// terms are not stored it says so and never shows the bare instrument id.
+func quoteCaption(r chainRow) string {
+	f, isFigure := r.Strike.(figure)
+	if r.Expiry == nil || r.Right == nil || !isFigure {
+		return "Contract terms not stored"
+	}
+	return *r.Expiry + " " + *r.Right + " " + f.Text
 }

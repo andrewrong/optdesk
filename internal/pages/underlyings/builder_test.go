@@ -374,9 +374,9 @@ func TestHeldTextsAtMost200Chars(t *testing.T) {
 func TestHeldAddedRowShowsResolvedText(t *testing.T) {
 	t.Parallel()
 	in := heldInput(
-		underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "active", ConID: 42, Note: underlying.NoteHeld},
-		underlying.Row{Key: "JP:7203", Symbol: "7203", Market: "JP", Status: "active", ConID: 7, Note: underlying.NoteHeld},
-		underlying.Row{Key: "US:BBB", Symbol: "BBB", Market: "US", Status: "pending", Note: underlying.NoteHeld},
+		underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Name: "AAA Corp", Status: "active", ConID: 42, Note: underlying.NoteHeld},
+		underlying.Row{Key: "JP:7203", Symbol: "7203", Market: "JP", Name: "Toyota", Status: "active", ConID: 7, Note: underlying.NoteHeld},
+		underlying.Row{Key: "US:BBB", Symbol: "BBB", Market: "US", Name: "BBB Inc", Status: "pending", Note: underlying.NoteHeld},
 	)
 	out, err := Build(in)
 	if err != nil {
@@ -390,9 +390,9 @@ func TestHeldAddedRowShowsResolvedText(t *testing.T) {
 	for _, r := range p.Rows {
 		notes[r.Key] = r.Note
 	}
-	if notes["US:AAA"] != "Resolved as US stock AAA, con_id 42; check the con_id" ||
-		notes["JP:7203"] != "Resolved as JP stock 7203, con_id 7; check the con_id" ||
-		notes["US:BBB"] != underlying.NoteHeld {
+	if notes["US:AAA"] != "Resolved as US stock AAA, con_id 42" ||
+		notes["JP:7203"] != "Resolved as JP stock 7203, con_id 7" ||
+		notes["US:BBB"] != "Added: held position; waits to be resolved" {
 		t.Fatalf("notes %q", notes)
 	}
 }
@@ -406,5 +406,50 @@ func TestHeldRefusedLongSymbolStaysWithin200(t *testing.T) {
 	got := heldGapTexts(t, in)
 	if len(got) != 1 || len([]rune(got[0])) > 200 {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func rowsOfInput(t *testing.T, rows ...underlying.Row) map[string]rowJSON {
+	t.Helper()
+	out, err := Build(heldInput(rows...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct{ Rows []rowJSON }
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	m := map[string]rowJSON{}
+	for _, r := range p.Rows {
+		m[r.Key] = r
+	}
+	return m
+}
+
+func TestRowWithoutNameIsAGap(t *testing.T) {
+	t.Parallel()
+	m := rowsOfInput(t,
+		underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "active"},
+		underlying.Row{Key: "US:BBB", Symbol: "BBB", Market: "US", Name: "BBB Inc", Status: "active"},
+	)
+	if r := m["US:AAA"]; r.Name != "" || !strings.Contains(r.Note, "No name is stored") {
+		t.Errorf("no name: name %q note %q", r.Name, r.Note)
+	}
+	if r := m["US:BBB"]; r.Name != "BBB Inc" || strings.Contains(r.Note, "No name") {
+		t.Errorf("named: name %q note %q", r.Name, r.Note)
+	}
+}
+
+func TestResolvedNoteDoesNotAskToCheck(t *testing.T) {
+	t.Parallel()
+	m := rowsOfInput(t,
+		underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Name: "AAA Corp", Status: "active", ConID: 42, Note: underlying.NoteHeld},
+		underlying.Row{Key: "US:BBB", Symbol: "BBB", Market: "US", Name: "BBB Inc", Status: "pending", Note: underlying.NoteHeld},
+	)
+	if n := m["US:AAA"].Note; n != "Resolved as US stock AAA, con_id 42" {
+		t.Errorf("resolved note %q", n)
+	}
+	if n := m["US:BBB"].Note; !strings.Contains(n, "waits to be resolved") || strings.Contains(n, "check the con_id") {
+		t.Errorf("pending note %q", n)
 	}
 }
