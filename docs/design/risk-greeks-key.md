@@ -33,20 +33,19 @@ Owner rules this design is written against, each self-checked in `## Adversarial
 2. **The three readers get the same fix.** `risk_page`, `structures_page` and `bookrisk` each have the bug, so each is changed; a pages package may not import another, so each declares its small `StockIDReader` interface as `positions_page` does.
 3. **A held leg is collected whatever its side.** `heldOptions` stops skipping a leg with a positive quantity, so the job also collects the long leg, with the broker quote and Greeks the way it collects the short one. A leg the broker cannot quote stays without a row and the page shows the gap `missing_quote`. Nothing is estimated.
 4. **A stock in JPY is counted in Delta by its share count.** `risk` no longer skips a stock of another currency; the Delta total has no `unsupported_currency` gap for it. A structure in JPY is no longer left out of the input: `GreekIn` gets `Currency` and `RiskIn` gets `UsdJpy`; Delta is added as it is, Vega of a JPY structure is divided by `UsdJpy`. Without a positive `UsdJpy` the Vega of that structure is the gap `unsupported_currency` (the line of its expiry), as `FamilyRisk` does. The rate is the stored `obs.fx_rate` of the day (`LatestFxRate`), never a default.
-5. **Wiring is one issue.** `cmd/ot` gives the three consumers the stock-id reader and `risk_page` the FX reader from the readers the site already opens.
+5. **Each consumer is wired in the entry that adds its field.** The `cmd/ot` file that builds a consumer gives it the stock-id reader (and `risk_page` the FX reader) from the readers the site already opens, in the same entry as the field, so no entry waits for a sibling. Entries 2, 3 and 4 are judged two-module entries (pages or jobs, and ot): the `cmd/ot` files are one small edit each and no other entry touches them.
 
 ## Modules
 
-No change to `docs/design/modules.md`: the rows compute, pages, jobs and ot exist and no depends cell changes (pages already depends on store, compute and contracts; ot imports pages, jobs and store).
+No change to `docs/design/modules.md`: the rows compute, pages, jobs and ot exist; an entry that edits files of two of them is declared a judged two-module entry, as `account-data.md` does, and no depends cell changes (pages already depends on store, compute and contracts; ot imports pages, jobs and store).
 
-| issue | module |
-|---|---|
-| rgk-compute | compute |
-| rgk-risk-page | pages |
-| rgk-structures-page | pages |
-| rgk-bookrisk | jobs |
-| rgk-held-long | jobs |
-| rgk-wiring | ot |
+| issue | module | order |
+|---|---|---|
+| 1 rgk-compute | compute | first |
+| 2 rgk-risk-page | pages and ot (judged two-module) | after 1 |
+| 3 rgk-structures-page | pages and ot (judged two-module) | first |
+| 4 rgk-bookrisk | jobs and ot (judged two-module) | first |
+| 5 rgk-held-long | jobs | first |
 
 ## Interface
 
@@ -73,10 +72,10 @@ Acceptance:
 
 ### 2 rgk-risk-page
 
-Module: pages. Size: M.
-Files: `internal/pages/risk_page/page.go`, `internal/pages/risk_page/load.go`, `internal/pages/risk_page/builder.go`, `internal/pages/risk_page/strings.go`, `internal/pages/risk_page/builder_test.go`, `internal/pages/risk_page/testdata/ok.golden.json`
+Module: pages and ot (judged two-module entry: the `cmd/ot` files are the wiring of the field this entry adds, and no other entry edits them). Size: M.
+Files: `cmd/ot/risk_site.go`, `cmd/ot/risk_site_test.go`, `internal/pages/risk_page/page.go`, `internal/pages/risk_page/load.go`, `internal/pages/risk_page/builder.go`, `internal/pages/risk_page/strings.go`, `internal/pages/risk_page/builder_test.go`, `internal/pages/risk_page/testdata/ok.golden.json`
 Design: docs/design/risk-greeks-key.md#2-rgk-risk-page
-- Order: after 1 rgk-compute.
+- Order: after 1.
 Goal: Decisions 1, 2 and 4 for the risk page. The owner sees the Delta and Vega of every structure whose legs have a stored quote, JPY ones included.
 Acceptance:
 1. `Config` has the fields `StockIDs` (a local interface `StockIDReader` with `StockIDs(ctx, names []string) ([]store.InstrumentName, error)`) and `Fx` (`bar.FxRateReader`); a nil `StockIDs` gives no quotes, as a nil `Eod`.
@@ -85,12 +84,13 @@ Acceptance:
 4. A structure whose Greek is a gap stays out of Delta and Vega and counted in the note, as before; no value is computed from a bid, an ask or a model.
 5. The tests of `builder_test.go` that expected a foreign structure to be left out are changed, and `TestQuotesUseStockInstrumentID` (new) shows a quote stored under the instrument id of the stock is read while one stored under the con_id is not; `ok.golden.json` is regenerated to the new page.
 6. `load.go` and `builder.go` stay under 600 lines.
-7. The result matches docs/design/risk-greeks-key.md#2-rgk-risk-page.
+7. `riskConfig` in `cmd/ot/risk_site.go` sets `StockIDs` and `Fx` from the readers of the site (the stock-id reader and the FX reader the positions and option data pages already open); `TestRiskConfigHasStockIDsAndFx` (new) in `risk_site_test.go` shows both are non-nil in the live profile.
+8. The result matches docs/design/risk-greeks-key.md#2-rgk-risk-page.
 
 ### 3 rgk-structures-page
 
-Module: pages. Size: S.
-Files: `internal/pages/structures_page/page.go`, `internal/pages/structures_page/load.go`, `internal/pages/structures_page/load_test.go`, `internal/pages/structures_page/testdata`
+Module: pages and ot (judged two-module entry: `cmd/ot/site_positions.go` is the wiring of the field this entry adds, and no other entry edits it). Size: S.
+Files: `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `internal/pages/structures_page/page.go`, `internal/pages/structures_page/load.go`, `internal/pages/structures_page/load_test.go`, `internal/pages/structures_page/testdata`
 Design: docs/design/risk-greeks-key.md#3-rgk-structures-page
 - Order: first.
 Goal: Decisions 1 and 2 for the structures page. The owner sees the quotes and Greeks of his structures there.
@@ -98,12 +98,13 @@ Acceptance:
 1. `Config` has the field `StockIDs` (local interface `StockIDReader`, as in risk_page); a nil value gives no quotes.
 2. The read of `option_eod` in `load.go` resolves the underlying symbols by name and passes that id; the `con_id` of the stock row is no longer used as a key, and a symbol with no or two rows has no quotes.
 3. `TestStructuresQuotesUseStockInstrumentID` (new) shows a quote stored under the stock instrument id is read; the other tests and the golden files in `testdata` hold, or change only where a quote now appears.
-4. The result matches docs/design/risk-greeks-key.md#3-rgk-structures-page.
+4. The structures page config in `cmd/ot/site_positions.go` sets `StockIDs` from the stock-id reader of the site; `site_positions_test.go` shows it non-nil in the live profile.
+5. The result matches docs/design/risk-greeks-key.md#3-rgk-structures-page.
 
 ### 4 rgk-bookrisk
 
-Module: jobs. Size: S.
-Files: `internal/jobs/bookrisk/job.go`, `internal/jobs/bookrisk/load.go`, `internal/jobs/bookrisk/load_test.go`
+Module: jobs and ot (judged two-module entry: `cmd/ot/bookrisk.go` builds the job from the job factory and is the wiring of the field this entry adds; no other entry edits it). Size: S.
+Files: `cmd/ot/bookrisk.go`, `cmd/ot/bookrisk_test.go`, `internal/jobs/bookrisk/job.go`, `internal/jobs/bookrisk/load.go`, `internal/jobs/bookrisk/load_test.go`
 Design: docs/design/risk-greeks-key.md#4-rgk-bookrisk
 - Order: first.
 Goal: Decisions 1 and 2 for the job `book_risk`. The stored book risk has the Greeks of the held structures.
@@ -111,7 +112,8 @@ Acceptance:
 1. `Stores` has the field `StockIDs` (local interface `StockIDReader`); a nil value gives no quotes.
 2. `quotes` in `load.go` resolves the underlying symbols by name and passes that id to `OptionEod`; `conIDs` is no longer a key of it.
 3. `TestBookRiskQuotesUseStockInstrumentID` (new) shows a quote stored under the stock instrument id is read; the other tests hold.
-4. The result matches docs/design/risk-greeks-key.md#4-rgk-bookrisk.
+4. `bookrisk.Stores` in `cmd/ot/bookrisk.go` gets `StockIDs` from the stock-id reader that the job factory opens beside its other stores (`f.d`), the same `store/instrument.StockIDs`; `bookrisk_test.go` shows it non-nil.
+5. The result matches docs/design/risk-greeks-key.md#4-rgk-bookrisk.
 
 ### 5 rgk-held-long
 
@@ -125,19 +127,6 @@ Acceptance:
 2. `TestHeldOptionsKeepsLongLeg` (new) shows a long call and a long put of a watched underlying in the list; the existing tests of `held_test.go` and `held_aliases_test.go` that expected a long leg to be left out are changed to the new result.
 3. No quote is estimated: a leg the broker answers without a quote has no row, as before.
 4. The result matches docs/design/risk-greeks-key.md#5-rgk-held-long.
-
-### 6 rgk-wiring
-
-Module: ot. Size: S.
-Files: `cmd/ot/risk_site.go`, `cmd/ot/risk_site_test.go`, `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/bookrisk.go`, `cmd/ot/bookrisk_test.go`
-Design: docs/design/risk-greeks-key.md#6-rgk-wiring
-- Order: after 2 rgk-risk-page, 3 rgk-structures-page and 4 rgk-bookrisk.
-Goal: Decision 5. After deploy the risk page shows the Greeks of the held structures.
-Acceptance:
-1. `riskConfig` sets `StockIDs` and `Fx` from the readers of the site (the stock-id reader and the FX reader the positions and option data pages already open).
-2. The structures page config of `site_positions.go` sets `StockIDs`, and the `bookrisk.Stores` of `bookrisk.go` sets `StockIDs`.
-3. `TestRiskConfigHasStockIDsAndFx` (new) shows the config of the risk page has both readers non-nil in the live profile.
-4. The result matches docs/design/risk-greeks-key.md#6-rgk-wiring.
 
 ## Checked by CI
 
