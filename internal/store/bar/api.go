@@ -40,6 +40,13 @@ type PriceBarUpserter interface {
 	UpsertPriceBars(ctx context.Context, rows []contracts.PriceBar, writtenBy string) (BarWriteCount, error)
 }
 
+// PriceBarReplacer is an optional method of the value OpenBarFunc returns. It writes daily bars by the
+// key (InstrumentID, Basis, SessionDay): a stored row of the same key is replaced whatever its source
+// (unlike PriceBarUpserter, no source wins), and no row is deleted. writtenBy names the run (job and day).
+type PriceBarReplacer interface {
+	ReplacePriceBars(ctx context.Context, rows []contracts.PriceBar, writtenBy string) (BarWriteCount, error)
+}
+
 // PriceBarReader reads price bars.
 type PriceBarReader interface {
 	// PriceBars returns the winner rows of one instrument and basis ("trades" or
