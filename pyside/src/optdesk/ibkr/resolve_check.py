@@ -28,6 +28,12 @@ def _right_of(raw: str) -> str:
     return word if word in ("C", "P") else ""
 
 
+def _date_of(raw: str) -> str:
+    """The date of an expiry as YYYYMMDD text: a time and a zone after it are dropped."""
+    head = (raw or "").strip().split(maxsplit=1)[:1]
+    return head[0].replace("-", "") if head else ""
+
+
 def _same_text(asked: str, got: str) -> bool:
     return asked == got
 
@@ -57,7 +63,7 @@ def answer(
     """
     found = details.contract
     got = {
-        "expiry": found.lastTradeDateOrContractMonth or "",
+        "expiry": _date_of(found.lastTradeDateOrContractMonth),
         "strike": _number_text(found.strike),
         "right": _right_of(found.right),
         "trading_class": found.tradingClass or "",
@@ -66,9 +72,9 @@ def answer(
     differing = [
         f"{name} {_clip(asked)}->{_clip(got[name]) or 'none'}"
         for name, asked, same in (
-            ("expiry", expiry, _same_text),
+            ("expiry", _date_of(expiry), _same_text),
             ("strike", strike, _same_number),
-            ("right", right, _same_text),
+            ("right", _right_of(right), _same_text),
             ("trading_class", trading_class, _same_text),
             ("multiplier", multiplier, _same_number),
         )

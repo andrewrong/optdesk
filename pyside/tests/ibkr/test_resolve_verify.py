@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, ClassVar
 
 import grpc
 import pytest
@@ -201,3 +201,77 @@ class TestResolveEmptyRequestFieldNotCompared:
             multiplier="10",
         )
         assert got.trading_class == "SPYW" and got.multiplier == "10"
+
+
+class TestResolveDateAndRightForms:
+    @pytest.mark.parametrize("asked", ["20261211", "2026-12-11"])
+    @pytest.mark.parametrize(
+        "got", ["20261211", "20261211 15:00:00 Asia/Tokyo", "20261211 15:00 JST"]
+    )
+    def test_expiry_compared_by_date_only(self, asked: str, got: str) -> None:
+        found = _resolve({**ASKED, "expiry": asked}, lastTradeDateOrContractMonth=got)
+        assert found.found
+
+    def test_other_date_with_time_is_refused(self) -> None:
+        with pytest.raises(spec.AmbiguousResolve) as err:
+            _resolve(
+                {**ASKED, "expiry": "20261211"},
+                lastTradeDateOrContractMonth="20261218 15:00:00 Asia/Tokyo",
+            )
+        assert "expiry" in str(err.value)
+
+    @pytest.mark.parametrize(
+        ("asked", "got"), [("CALL", "C"), ("C", "CALL"), ("PUT", "P"), ("p", "PUT")]
+    )
+    def test_right_normalised_on_both_sides(self, asked: str, got: str) -> None:
+        assert _resolve({**ASKED, "right": asked}, right=got).found
+
+    def test_call_against_put_is_refused(self) -> None:
+        with pytest.raises(spec.AmbiguousResolve):
+            _resolve({**ASKED, "right": "CALL"}, right="PUT")
+
+
+class TestResolveJpOptionPasses:
+    def test_found(self) -> None:
+        request = {
+            **ASKED,
+            "symbol": "NK225",
+            "exchange": "OSE.JPN",
+            "currency": "JPY",
+            "expiry": "20261211",
+            "strike": "40000",
+            "multiplier": "1000",
+            "trading_class": "NK225",
+        }
+        got = _resolve(
+            request,
+            exchange="OSE.JPN",
+            lastTradeDateOrContractMonth="20261211",
+            strike=40000.0,
+            multiplier="1000",
+            tradingClass="NK225",
+        )
+        assert got.found and got.exchange == "OSE.JPN" and got.strike == "40000"
+        assert got.multiplier == "1000"
+
+
+class TestResolveGatewayShapedAnswer:
+    REQUEST: ClassVar[dict[str, str]] = {
+        **ASKED,
+        "expiry": "2026-12-11",
+        "strike": "720.00",
+    }
+    SHAPED: ClassVar[dict[str, Any]] = {
+        "lastTradeDateOrContractMonth": "20261211",
+        "multiplier": "100",
+        "right": "C",
+        "strike": 720.0,
+    }
+
+    def test_found(self) -> None:
+        assert _resolve(self.REQUEST, **self.SHAPED).found
+
+    def test_other_strike_refused(self) -> None:
+        with pytest.raises(spec.AmbiguousResolve) as err:
+            _resolve(self.REQUEST, **{**self.SHAPED, "strike": 690.0})
+        assert "strike 720.00->690" in str(err.value)
