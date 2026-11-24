@@ -2,6 +2,7 @@ package market_state_page
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -81,8 +82,8 @@ func TestRotationNoteSaysClick(t *testing.T) {
 	t.Parallel()
 	note, _ := obj(obj(build(t, realConfig(t, nil))["sectors"])["rotation_axes"])["note"].(string)
 	for _, want := range []string{
-		"click a fund's dot to draw its tail",
-		"tail points are 5, 10, 15 and 20 sessions before end_day",
+		"点击某只基金的圆点可绘制其尾迹",
+		"尾迹点为 end_day 之前 5、10、15、20 个交易日",
 	} {
 		if !strings.Contains(note, want) {
 			t.Errorf("note %q lacks %q", note, want)
@@ -173,7 +174,7 @@ func TestSectorsCaptionsWriteGapsInPP(t *testing.T) {
 	if axes["y_caption"] != "21-session gap minus a third of the 63-session gap, pp" {
 		t.Errorf("y_caption = %v", axes["y_caption"])
 	}
-	if c, _ := s["bars_caption"].(string); !strings.Contains(c, "in pp;") || strings.Contains(c, "points") {
+	if c, _ := s["bars_caption"].(string); !strings.Contains(c, "单位为 pp") || strings.Contains(c, "points") {
 		t.Errorf("bars_caption = %v", s["bars_caption"])
 	}
 }
@@ -229,5 +230,42 @@ func TestSectorGapCellNamesFundAndDay(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("no XLB row")
+	}
+}
+
+func TestMarketStateCaptionsAreChinese(t *testing.T) {
+	t.Parallel()
+	m := build(t, fullConfig(t, sampleResult()))
+	texts := map[string]string{
+		"caption":   obj(m["sectors"])["caption"].(string),
+		"bars":      obj(m["sectors"])["bars_caption"].(string),
+		"note":      obj(obj(m["sectors"])["rotation_axes"])["note"].(string),
+		"freshness": m["freshness_text"].(string),
+	}
+	for _, r := range marketRows(m) {
+		row := obj(r)
+		id := row["id"].(string)
+		texts[id+" window"] = row["window"].(string)
+		if p, ok := row["percentile"]; ok {
+			if w, _ := obj(p)["window"].(string); w != "" {
+				texts[id+" percentile window"] = w
+			}
+		}
+	}
+	if len(texts) < 9 {
+		t.Fatalf("only %d texts found", len(texts))
+	}
+	old := []string{"Newest", "Level", "percentile covers", "Fund change minus", "Bars show", "x is the 63-session",
+		"Sector funds and SPY", "not intraday", "none stored", "calendar years before", "all days stored"}
+	han := regexp.MustCompile(`\p{Han}`)
+	for name, s := range texts {
+		if !han.MatchString(s) {
+			t.Errorf("%s holds no Chinese character: %q", name, s)
+		}
+		for _, o := range old {
+			if strings.Contains(s, o) {
+				t.Errorf("%s still holds %q: %q", name, o, s)
+			}
+		}
 	}
 }
