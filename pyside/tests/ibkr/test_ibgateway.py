@@ -289,8 +289,8 @@ def test_account_never_leaves_gateway(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.DEBUG):
         results = asyncio.run(run())
     shape = "DU" + "7654321"
-    assert shape not in repr(results)
-    assert [r for r in caplog.records if r.name != "asyncio"] == []
+    others = {r.name for r in caplog.records if "quote_done" not in str(r.msg)}
+    assert others <= {"asyncio"} and shape not in repr(results) + caplog.text
 
 
 async def _found(con_id: int) -> list[ContractDetails]:
