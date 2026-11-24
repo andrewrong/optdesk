@@ -440,3 +440,23 @@ func TestFamilyPageRepeatedOnlyAliasIsNamedPage(t *testing.T) {
 		t.Fatalf("views = %v", m["views"])
 	}
 }
+
+func TestFamilyAccountRowsUseFamilyScope(t *testing.T) {
+	t.Parallel()
+	r := rig(famResult("105000.00", "43000.00", "40.95",
+		counted("main", "2026-11-10", "100000.00", "42000.00"), counted("wife", "2026-11-10", "5000.00", "1000.00")), "main", "wife")
+	m, b := r.build(t)
+	keys := map[any]bool{}
+	for _, s := range m["scopes"].([]any) {
+		keys[s.(map[string]any)["key"]] = true
+	}
+	ar := accountRows(m)
+	if len(ar) != 2 {
+		t.Fatalf("account rows = %s", b)
+	}
+	for _, row := range ar {
+		if row["scope"] != "household" || !keys[row["scope"]] {
+			t.Fatalf("row scope = %v, scope keys = %v", row["scope"], keys)
+		}
+	}
+}
