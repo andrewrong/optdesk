@@ -17,7 +17,7 @@ var oldEnglishTexts = []string{
 	"Share of net value held", "Net liquidation, cash, stocks and options",
 	"Net value, cash and option obligations", "no data yet", "No data", "No reader", "Unknown account",
 	"Needs position prices", "Input data is missing", "Exchange rate is missing", "Pending: ",
-	"No holding-period source", "The change today needs",
+	"No holding-period source", "rate on or before", "The change today needs",
 }
 
 var hanText = regexp.MustCompile(`\p{Han}`)
@@ -58,7 +58,7 @@ func TestHouseholdTextsAreChinese(t *testing.T) {
 		texts = append(texts, explanationTexts(m)...)
 	}
 	texts = append(texts, household_page.MeaningLines...)
-	texts = append(texts, household_page.PageSentence)
+	texts = append(texts, household_page.PageSentence, household_page.TextNoRate)
 	for _, text := range household_page.GapTexts() {
 		texts = append(texts, text)
 	}

@@ -110,7 +110,8 @@ var englishTexts = map[string]string{
 	"Pending: resolves after the close": pendingText,
 	"Followed by nothing":               followedNone,
 	"Days missed while a group is off cannot be refilled: the daily history of a skipped day is not fetched later.": refillText,
-	"Added: held position; waits to be resolved": noteHeldWaits,
+	"Added: held position; waits to be resolved":                        noteHeldWaits,
+	"Editing is off: start ot serve with --owner-edit to change names.": readOnlyText,
 }
 
 // localize puts the English sentences of a decoded fixture in the Chinese the page writes.

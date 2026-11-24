@@ -59,7 +59,8 @@ func TestUnderlyingsTextsAreChinese(t *testing.T) {
 	t.Parallel()
 	old := []string{
 		"Days missed while a group", "Pending: resolves after the close",
-		"Followed by", "Added: held position", "0 names.",
+		"Followed by", "Added: held position", "0 names.", "Editing is off",
+		"Held names could not be read",
 	}
 	ro := fixtureInput()
 	ro.Form = nil
@@ -68,10 +69,11 @@ func TestUnderlyingsTextsAreChinese(t *testing.T) {
 	confirm.Confirm = &Confirm{Stops: []Stop{{Group: "bars", Symbol: "CCC", Stopped: true}}}
 	withConfirm := string(mustBuild(t, confirm))
 	for name, c := range map[string]struct{ page, want string }{
-		"refill sentence":  {withConfirm, refillText},
-		"pending text":     {readOnly, pendingText},
-		"followed-by text": {readOnly, followedPref},
-		"followed by none": {readOnly, followedNone},
+		"read-only sentence": {readOnly, readOnlyText},
+		"refill sentence":    {withConfirm, refillText},
+		"pending text":       {readOnly, pendingText},
+		"followed-by text":   {readOnly, followedPref},
+		"followed by none":   {readOnly, followedNone},
 	} {
 		if !strings.Contains(c.page, c.want) {
 			t.Errorf("%s: page does not hold %q", name, c.want)
@@ -90,3 +92,12 @@ func TestUnderlyingsTextsAreChinese(t *testing.T) {
 }
 
 var hanRe = regexp.MustCompile(`\p{Han}`)
+
+func TestReadOnlyAndHeldReadTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	for _, s := range []string{readOnlyText, heldReadText} {
+		if !hanRe.MatchString(s) {
+			t.Errorf("%q holds no Chinese character", s)
+		}
+	}
+}
