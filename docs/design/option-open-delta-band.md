@@ -154,7 +154,7 @@ Module: jobs. Size: S. Order: first. Files: `internal/jobs/optionopen/job_plan.t
 
 Acceptance:
 
-1. Every US manifest of the package names the same window: `min_dte = 15` and `max_dte = 45` in the plan, the evening resolve and the gap pass manifests, and one `[[window_dte]]` of 15 to 45 in each of the two US list manifests; `job_plan_jp.toml`, `job_resolve_jp.toml` and `job_list_preopen_jp.toml` keep 14 to 90.
+1. Every US manifest of the package names the same new window: `min_dte = 15` and `max_dte = 45` in the plan, the evening resolve and the gap pass manifests, and one `[[window_dte]]` of 15 to 45 in each of the two US list manifests; `job_plan_jp.toml`, `job_resolve_jp.toml` and `job_list_preopen_jp.toml` keep 14 to 90.
 2. A new test `TestUSWindowIs15To45` in `window_test.go` plans on a day with one chain whose expiries lie 14, 15, 45 and 46 days out and expects the plan items to hold the expiries at 15 and 45 days and none at 14 or 46.
 3. A new test in `window_test.go` expects the list job, the resolve candidates and the gap pass to keep the same set of expiries for the same chain (the window of the lists no longer differs by a day from the plan).
 4. A new test in `list_test.go` expects the summary line of a list run to carry `chain_expiry_max=<date>` and `window_names=<n>` for a fake chain whose latest expiry is known, and for a run whose chains answered no expiry to carry `chain_expiry_max=none`.
@@ -186,7 +186,7 @@ Acceptance:
 3. The postcondition counts the asked items: a new test runs a plan of 400 items where 300 are asked (200 ok) and 100 are `TIME_CUT` and expects no error, and a new test with 300 asked of which 100 ok expects the under-share error naming `time_cut=100`.
 4. A re-run of the key the same morning asks the `TIME_CUT` items again and treats final rows of the earlier run as final: a new test in `pull_resume_test.go` stores 120 final rows and 80 `TIME_CUT` rows and expects 80 asks.
 5. At the end of a run the pull calls `ReplaceReasons` once with dataset `obs.option_open`, subject `night`, code `asked_of_planned` and a detail of the form `asked <N> of <M> planned, <K> cut by time: <reason>` of at most 200 characters; a new test pins the exact text of a cut night (`asked 2050 of 4397 planned, 2347 cut by time: run ended at 10:35 ET at its time bound, ranks above 2074 not asked, 82 a minute`), of a night with nothing cut (`asked 4397 of 4397 planned, 0 cut by time: all asked`) and that a nil `Reasons` writes nothing and does not fail the run.
-6. `job_pull.toml` holds `run_bound = "65m"`, `stop_after = "1035"`, `max_per_key = 240` and `cut_margin = "1m"`, and `NewPull` rejects a `cut_margin` that is not a duration or is not shorter than `run_bound`.
+6. `job_pull.toml` holds the new values `run_bound = "65m"`, `stop_after = "1035"`, `max_per_key = 240` and `cut_margin = "1m"`, and `NewPull` rejects a `cut_margin` that is not a duration or is not shorter than `run_bound`.
 7. The Japan pull (`jp.go`) and its manifest are unchanged and its tests hold.
 
 ### 4 option-band-wire-night
