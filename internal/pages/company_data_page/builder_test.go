@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -218,22 +219,22 @@ func TestRowCopiesSummary(t *testing.T) {
 func TestJPRowSaysLeftOutOnPurpose(t *testing.T) {
 	t.Parallel()
 	jp := underlying.Row{Key: "JP:7203", Symbol: "7203", Market: "JP", Kind: "stock", Issuer: "edinet:E02144", Status: "active"}
-	calc := &fakeCalc{sum: companydataapi.Summary{Missing: []companydataapi.Missing{{Reason: "jp", Text: "Japanese statements are left out on purpose."}}}}
+	calc := &fakeCalc{sum: companydataapi.Summary{Missing: []companydataapi.Missing{{Reason: "jp", Text: "日本公司的财报有意不做。"}}}}
 	in, _ := newInput([]underlying.Row{jp}, calc)
 	c := companies(build(t, in))[0]
 	miss := c["missing"].([]any)[0].(map[string]any)
-	if miss["code"] != "jp" || !strings.Contains(miss["text"].(string), "left out on purpose") {
+	if miss["code"] != "jp" || !strings.Contains(miss["text"].(string), "有意不做") {
 		t.Fatalf("missing = %v", miss)
 	}
 	if c["price_to"] != nil || c["statements"] != false || c["quarters_path"] != "" {
 		t.Fatalf("row = %v", c)
 	}
 	for _, g := range build(t, in)["glossary"].([]any) {
-		if g.(map[string]any)["term"] == "jp" && strings.Contains(g.(map[string]any)["text"].(string), "left out on purpose") {
+		if g.(map[string]any)["term"] == "jp" && strings.Contains(g.(map[string]any)["text"].(string), "有意不做") {
 			return
 		}
 	}
-	t.Fatal("glossary jp entry does not say left out on purpose")
+	t.Fatal("glossary jp entry does not say 有意不做")
 }
 
 func TestMissingListKeepsReasonOrder(t *testing.T) {
@@ -321,7 +322,7 @@ func TestGlossaryCoversEveryTerm(t *testing.T) {
 		"jp", "no_cik", "fundamentals_off", "no_statements", "annual_only", "no_instrument", "no_bars", "no_next_report"}
 	for _, w := range want {
 		txt := terms[w]
-		if txt == "" || strings.Count(txt, ". ") > 0 || !strings.HasSuffix(txt, ".") {
+		if txt == "" || strings.Count(txt, "。") != 1 || !strings.HasSuffix(txt, "。") {
 			t.Errorf("term %q text %q is not one sentence", w, txt)
 		}
 	}
@@ -443,5 +444,73 @@ func TestStockIDsReadOncePerBatchOf500(t *testing.T) {
 	build(t, in)
 	if ids.calls != 3 || len(ids.names[0]) != 500 || len(ids.names[2]) != 1 {
 		t.Fatalf("calls = %d, batches %d", ids.calls, len(ids.names))
+	}
+}
+
+var oldEnglish = []string{"the month in which", "the day of the newest", "how many daily", "whether at least", "the newest fiscal quarter",
+	"how many quarters", "the date of the next", "what is not stored", "The month in which", "The day of the newest", "How many",
+	"Yes when", "The newest fiscal", "The date of the next", "A Japanese company", "A US company", "The statements flag",
+	"No US-GAAP", "The filer reports", "The broker has not", "The company is resolved", "No report date",
+	"could not be read"}
+
+func hasHan(s string) bool {
+	for _, r := range s {
+		if r >= 0x4e00 && r <= 0x9fff {
+			return true
+		}
+	}
+	return false
+}
+
+func TestCompanyDataTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	check := func(what, s string) {
+		t.Helper()
+		if !hasHan(s) {
+			t.Errorf("%s %q holds no Chinese character", what, s)
+		}
+		for _, e := range oldEnglish {
+			if strings.Contains(s, e) {
+				t.Errorf("%s %q holds the old English %q", what, s, e)
+			}
+		}
+	}
+	in, b := newInput([]underlying.Row{aapl, msft}, &fakeCalc{sum: summary()})
+	b.failFor = 1
+	m := build(t, in)
+	for _, c := range m["columns"].([]any) {
+		cm := c.(map[string]any)
+		check("gloss", cm["gloss"].(string))
+		if hasHan(cm["label"].(string)) || hasHan(cm["key"].(string)) {
+			t.Errorf("label or key %v holds Chinese", cm)
+		}
+	}
+	if len(m["columns"].([]any)) != 8 {
+		t.Errorf("columns = %d, want 8", len(m["columns"].([]any)))
+	}
+	for _, g := range m["glossary"].([]any) {
+		gm := g.(map[string]any)
+		check("glossary text", gm["text"].(string))
+		if hasHan(gm["term"].(string)) {
+			t.Errorf("term %q holds Chinese", gm["term"])
+		}
+	}
+	gaps := m["gaps"].([]any)
+	if len(gaps) != 1 {
+		t.Fatalf("gaps = %v", gaps)
+	}
+	check("gap", gaps[0].(map[string]any)["text"].(string))
+	in2, _ := newInput(nil, &fakeCalc{})
+	in2.Underlyings = fakeUnderlyings{err: errors.New("down")}
+	g2 := build(t, in2)["gaps"].([]any)
+	if got := g2[0].(map[string]any)["text"]; got != "读不到公司列表，所以不显示任何行。" {
+		t.Errorf("empty state = %v", got)
+	}
+	if got := readFailedText("US:AAPL"); got != "US:AAPL：读不到已存的数值，所以这家公司没有行。" {
+		t.Errorf("gap = %q", got)
+	}
+	long := readFailedText(strings.Repeat("甲", 300))
+	if n := len([]rune(long)); n != 200 || !utf8.ValidString(long) {
+		t.Errorf("cut gap has %d runes, valid=%v", n, utf8.ValidString(long))
 	}
 }
