@@ -317,7 +317,9 @@ it('renders actual column', async () => {
   expect(col).toBe(heads.indexOf('Previous') + 1)
   const rows = host.querySelectorAll('[data-events] tbody tr')
   expect(rows[0]!.querySelectorAll('td')[col]!.textContent).toBe('3.1%')
-  expect(rows[1]!.querySelectorAll('td')[col]!.textContent).not.toContain('3.1%')
+  const gap = rows[1]!.querySelectorAll('td')[col]!
+  expect(gap.querySelector('[data-missing]')).not.toBeNull()
+  expect(gap.textContent).toBe('—not yet published')
 })
 
 it('renders an event without actual as before', async () => {
