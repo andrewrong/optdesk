@@ -274,6 +274,7 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 	}
 	var res contracts.JobResult
 	planned, ok, unread, partial, outside, noQuote, added := 0, 0, 0, 0, 0, 0, 0
+	unchanged := true
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -287,11 +288,12 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		if mins := p.d.Clock.Now().In(p.loc); mins.Hour()*60+mins.Minute() >= p.stop && p.d.Log != nil {
 			p.d.Log.Warn(fmt.Sprintf("key %s started after stop_after %s", k.SubjectKey, p.m.StopAfter))
 		}
-		rows, terr := p.runKey(ctx, b)
+		rows, prior, terr := p.runKey(ctx, b)
 		res.Returned += len(rows)
 		if terr != nil {
 			return withErr(res, terr)
 		}
+		unchanged = unchanged && prior == countOKPartial(rows)
 		rows, extra := splitAdded(b.items, rows)
 		added += extra
 		outside += outsideBand(rows)
@@ -309,21 +311,27 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 		}
 		res.Usable = ok
 	}
-	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, noQuote, added)
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, noQuote, added, unchanged)
 }
 
 // underShare is the result of a batch that ended under the ok share: Retryable when rows were not asked (the broker
-// answered nothing at the moment) or are partial (a slow broker; the same captureID keeps the run idempotent), else Permanent.
-func underShare(res contracts.JobResult, ok, planned, unread, partial, outside, added int, share float64) contracts.JobResult {
+// answered nothing at the moment) or are partial and differ from the rows stored before the attempt (the same captureID
+// keeps the run idempotent), else Permanent. Partial rows equal to the stored ones (same ok, same partial) are Permanent:
+// asking the same contracts again gets the same answer.
+func underShare(res contracts.JobResult, ok, planned, unread, partial, outside, added int, share float64, unchanged bool) contracts.JobResult {
 	if unread > 0 {
 		return withErr(res, newErr(contracts.Retryable,
 			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d (not asked: spot unread or broker unavailable)",
 			ok, planned, share, ok, partial, unread, outside, added))
 	}
 	if partial > 0 {
-		return withErr(res, newErr(contracts.Retryable,
-			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d (slow broker)",
-			ok, planned, share, ok, partial, unread, outside, added))
+		kind, note := contracts.Retryable, "partial rows are new or changed since the stored ones"
+		if unchanged {
+			kind, note = contracts.Permanent, "the partial rows did not change between attempts"
+		}
+		return withErr(res, newErr(kind,
+			"%d of %d planned items ok, under the share %.2f; ok=%d partial=%d planned=%d unread=%d outside_band=%d added=%d (%s)",
+			ok, planned, share, ok, partial, planned, unread, outside, added, note))
 	}
 	return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f; ok=%d partial=%d unread=%d outside_band=%d added=%d",
 		ok, planned, share, ok, partial, unread, outside, added))
@@ -345,36 +353,36 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 // runKey quotes the items of one batch that have no final stored row; Core writes the rows as they are built. The
 // stored final rows are returned with the new ones, so the postcondition counts the whole batch. On a cancel the rows
 // in hand are returned with the error.
-func (p *pull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, contracts.TypedError) {
+func (p *pull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, storedCounts, contracts.TypedError) {
 	chain := newChainCache(p.d.Contracts)
-	final, ask, err := p.resume(ctx, b.items, chain)
+	final, ask, prior, err := p.resume(ctx, b.items, chain)
 	if err != nil {
-		return nil, asTyped(err, contracts.Retryable)
+		return nil, prior.counts, asTyped(err, contracts.Retryable)
 	}
 	if len(ask) == 0 {
-		return final, nil
+		return final, prior.counts, nil
 	}
 	ts, err := p.targets(ctx, ask, chain)
 	if err != nil {
-		return nil, asTyped(err, contracts.Retryable)
+		return nil, prior.counts, asTyped(err, contracts.Retryable)
 	}
 	done, storedAdded := finalIDs(b.items, final)
 	c := &Core{
 		B: p.d.Broker, Clk: p.d.Clock, Params: DefaultPlanParams(), Slot: p.m.Slot, Chunk: p.m.Chunk, Retry: p.retry,
 		Budget: time.Duration(p.m.BudgetMinutes) * time.Minute, Beat: time.Duration(p.m.HeartbeatSeconds) * time.Second,
-		Log: p.d.Log, Flush: p.d.Writer.InsertOptionOpen,
+		Log: p.d.Log, Flush: keepStoredPartial(prior.partial, p.d.Writer.InsertOptionOpen),
 		Contracts: chain, Instruments: p.d.Instruments, Done: done, StoredAdded: storedAdded,
 	}
 	r := c.Pull(ctx, ts)
 	c.logger().Info(r.Summary.String(), "key", b.subject)
 	rows := append(final, r.Rows...)
 	if r.Err != nil {
-		return nil, asTyped(r.Err, contracts.Retryable)
+		return nil, prior.counts, asTyped(r.Err, contracts.Retryable)
 	}
 	if ctx.Err() != nil {
-		return rows, newErr(contracts.Retryable, "the run was cut: %v", context.Cause(ctx))
+		return rows, prior.counts, newErr(contracts.Retryable, "the run was cut: %v", context.Cause(ctx))
 	}
-	return rows, nil
+	return rows, prior.counts, nil
 }
 
 // targets builds the contracts of the items from the stored option contracts and instruments. An item whose

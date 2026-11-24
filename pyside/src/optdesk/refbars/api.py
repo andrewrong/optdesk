@@ -13,9 +13,7 @@ Rules every producer keeps:
    ordered by `session_day`.
 """
 
-from __future__ import annotations
-
-from typing import Protocol, TypedDict, runtime_checkable
+from typing import NotRequired, Protocol, TypedDict, runtime_checkable
 
 ERROR_CODES: tuple[str, ...] = ("rate_limited", "no_data", "network", "timeout", "source_changed")
 
@@ -33,10 +31,15 @@ class Request(TypedDict):
     pairs: list[PairSpec]
     from_day: str
     to_day: str
+    with_actions: NotRequired[bool]
+    adjusted: NotRequired[bool]
 
 
 class Bar(TypedDict):
-    """One daily bar: the session day and the unadjusted prices and volume as decimal text."""
+    """One daily bar: the session day and the unadjusted prices and volume as decimal text.
+
+    `adj_close` (decimal text) is present only when the request set `adjusted`.
+    """
 
     session_day: str
     open: str
@@ -44,6 +47,14 @@ class Bar(TypedDict):
     low: str
     close: str
     volume: str
+    adj_close: NotRequired[str]
+
+
+class Action(TypedDict):
+    """One dividend or split: the day and the value as decimal text."""
+
+    day: str
+    value: str
 
 
 class PairResult(TypedDict):
@@ -53,6 +64,8 @@ class PairResult(TypedDict):
     currency: str
     error_code: str
     bars: list[Bar]
+    dividends: NotRequired[list[Action]]
+    splits: NotRequired[list[Action]]
 
 
 class Answer(TypedDict):

@@ -2,6 +2,7 @@ package optionopen
 
 import (
 	"context"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -39,13 +40,18 @@ func jpTenPlanned(t *testing.T, opt func(b *fakeBroker) func(int, []broker.Contr
 	return j.Run(context.Background(), "2026-11-11", keys), s
 }
 
-func TestJPPartialUnderShareRetries(t *testing.T) {
-	t.Parallel()
-	res, s := jpTenPlanned(t, func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error) {
+// jpSixPartial answers a bid only (partial) for the strikes below 90 while partial is set, else ok; the strikes in
+// okAlso answer ok even then.
+func jpSixPartial(
+	cutoff string, partial *bool, okAlso map[string]bool, mu *sync.Mutex,
+) func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error) {
+	return func(b *fakeBroker) func(int, []broker.Contract) ([]broker.Quote, error) {
 		return func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 			qs := okQuotes(b.clk, cs)
+			mu.Lock()
+			defer mu.Unlock()
 			for i := range qs {
-				if cs[i].Strike < "90" { // the 6 strikes 95 to 90 answer a bid and no ask or IV: partial
+				if !*partial || cs[i].Strike < cutoff || okAlso[cs[i].Strike] {
 					continue
 				}
 				bid := qs[i].Bid
@@ -53,12 +59,59 @@ func TestJPPartialUnderShareRetries(t *testing.T) {
 			}
 			return qs, nil
 		}
-	})
+	}
+}
+
+func TestJPPartialUnderShareRetries(t *testing.T) {
+	t.Parallel()
+	var mu sync.Mutex
+	partial := true
+	j, keys, s, _ := jpRerun(t, jpSixPartial("90", &partial, nil, &mu))
+	res := j.Run(context.Background(), "2026-11-11", keys)
 	if res.Err == nil || res.Err.Kind() != contracts.Retryable || res.Usable != 4 || res.Returned != 10 {
 		t.Errorf("err %v usable %d returned %d, want Retryable with the 10 rows written", res.Err, res.Usable, res.Returned)
 	}
 	if s.total() != 10 {
 		t.Errorf("written %d rows, want 10", s.total())
+	}
+	before := map[string]contracts.OptionOpen{}
+	for k, r := range s.stored {
+		before[k] = r
+	}
+	res = j.Run(context.Background(), "2026-11-11", keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("second attempt: %v, want Permanent", res.Err)
+	}
+	msg := res.Err.Error()
+	if strings.Contains(msg, "slow broker") || !strings.Contains(msg, "ok=4 partial=6") ||
+		!strings.Contains(msg, "planned") || !strings.Contains(msg, "did not change") {
+		t.Errorf("error text %q", msg)
+	}
+	if len(s.stored) != len(before) {
+		t.Fatalf("stored %d rows, want %d", len(s.stored), len(before))
+	}
+	for k, r := range s.stored {
+		if !reflect.DeepEqual(r, before[k]) {
+			t.Errorf("row %s was rewritten", k)
+		}
+	}
+}
+
+func TestJPPartialChangedStaysRetryable(t *testing.T) {
+	t.Parallel()
+	var mu sync.Mutex
+	partial := true
+	okAlso := map[string]bool{}
+	j, keys, _, _ := jpRerun(t, jpSixPartial("88", &partial, okAlso, &mu))
+	if res := j.Run(context.Background(), "2026-11-11", keys); res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("first attempt: %v, want Retryable", res.Err)
+	}
+	mu.Lock()
+	okAlso["95"] = true // one more row becomes ok
+	mu.Unlock()
+	res := j.Run(context.Background(), "2026-11-11", keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || res.Usable != 3 {
+		t.Errorf("second attempt: err %v usable %d, want Retryable with 3 ok", res.Err, res.Usable)
 	}
 }
 
