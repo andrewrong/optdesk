@@ -110,7 +110,7 @@ export function MacroPage({ payload }: { payload: Payload }) {
     date: { text: event.when_text, value: event.date },
     name: { text: event.name_text, value: event.name_text },
     previous: typeof event.previous === 'string' ? { text: event.previous } : event.previous,
-    ...(event.actual !== undefined && { actual: { text: event.actual.text } }),
+    ...(event.actual !== undefined && { actual: event.actual }),
     ...(event.days_to !== undefined && { days_to: { text: String(event.days_to) } }),
     ...(event.in_window === true && { window: { text: 'in window', badge: true } }),
   }))

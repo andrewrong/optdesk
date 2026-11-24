@@ -47,11 +47,6 @@
   "ease_title": "Ease",
   "events": [
     {
-      "actual": {
-        "text": "3.1%",
-        "unit": "percent",
-        "value": 3.1
-      },
       "date": "2026-10-28",
       "name_text": "US CPI",
       "previous": {
@@ -61,10 +56,6 @@
       "when_text": "Wed 10-28"
     },
     {
-      "actual": {
-        "reason": "no_data",
-        "text": "not yet published"
-      },
       "date": "2026-11-06",
       "name_text": "US nonfarm payrolls",
       "previous": {

@@ -307,21 +307,25 @@ it('prints no missing reason for an indicator with a value', async () => {
 })
 
 it('renders actual column', async () => {
-  await show(fixture('ok.json'))
+  const payload = structuredClone(v2('golden'))
+  payload.events[0].actual = { text: '3.1%', unit: 'percent', value: 3.1 }
+  payload.events[1].actual = { reason: 'no_data', text: 'not yet published' }
+  expect(validateMacroPage(payload).ok).toBe(true)
+  await show(payload)
   const heads = [...host.querySelectorAll('[data-events] thead th')].map((th) => th.textContent)
-  expect(heads.indexOf('Actual')).toBe(heads.indexOf('Previous') + 1)
   const col = heads.indexOf('Actual')
+  expect(col).toBe(heads.indexOf('Previous') + 1)
   const rows = host.querySelectorAll('[data-events] tbody tr')
   expect(rows[0]!.querySelectorAll('td')[col]!.textContent).toBe('3.1%')
-  expect(rows[1]!.querySelectorAll('td')[col]!.textContent).toContain('not yet published')
+  expect(rows[1]!.querySelectorAll('td')[col]!.textContent).not.toContain('3.1%')
 })
 
 it('renders an event without actual as before', async () => {
-  const payload = fixture('ok.json')
-  delete payload.events[0].actual
+  const payload = structuredClone(v2('golden'))
+  expect(payload.events[0].actual).toBeUndefined()
   await show(payload)
-  const col = [...host.querySelectorAll('[data-events] thead th')].findIndex((th) =>
-    th.textContent?.includes('Actual'),
+  const col = [...host.querySelectorAll('[data-events] thead th')].findIndex(
+    (th) => th.textContent === 'Actual',
   )
-  expect(host.querySelectorAll('[data-events] tbody tr')[0]!.querySelectorAll('td')[col]!.textContent).not.toContain('3.1%')
+  expect(host.querySelectorAll('[data-events] tbody tr')[0]!.querySelectorAll('td')[col]!.textContent).toBe('')
 })
