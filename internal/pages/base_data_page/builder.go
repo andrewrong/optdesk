@@ -151,7 +151,7 @@ func viewGapText(failed []string) string {
 			words = append(words, viewWords[g])
 		}
 	}
-	return gapViewHead + strings.Join(words, "; ") + gapViewTail
+	return gapViewHead + strings.Join(words, gapViewSep) + gapViewTail
 }
 
 // calendars is what the builder derives from the coverage reader.

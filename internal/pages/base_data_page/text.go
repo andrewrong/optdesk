@@ -26,20 +26,12 @@ const (
 	reasonCoverage = "coverage_unavailable"
 )
 
-const (
-	gapFactsText    = "All four fact views failed to read, so no row is shown."
-	gapCoverageText = "The coverage of the ledger could not be read, so the ledger rules are not judged."
-	gapReconText    = "The cross-check runs could not be read, so the bars row is judged without them."
-	gapViewHead     = "These base data could not be read and are not judged: "
-	gapViewTail     = "."
-)
-
 // viewWords names a view group in words.
 var viewWords = map[string]string{
-	"bars":    "stock bars",
-	"option":  "option quotes, chains and contracts in use",
-	"other":   "rates, events, calendar and company facts",
-	"account": "account facts from the broker",
+	"bars":    viewWordBars,
+	"option":  viewWordOption,
+	"other":   viewWordOther,
+	"account": viewWordAccount,
 }
 
 // rowLabels are the English labels of the rows.
