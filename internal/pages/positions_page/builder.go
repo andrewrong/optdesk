@@ -147,7 +147,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		return nil, err
 	}
 	behind := ledgerBehindNote(open, snap.positions, ledgerAt.In(c.Zone))
-	page := c.assemble(alias, label, snap, ledgerAt, behind, stocks, options, trades, skipped, bp.Fallbacks, at)
+	page := c.assemble(alias, label, snap, ledgerAt, behind, stocks, options, trades, skipped, bp.Fallbacks, closedNote(bp.Closed, snap.day), at)
 	if kind, note := shared.BarSourceOf(bp.Rows); kind != shared.BarSourceIbkr {
 		page.BarsSource, page.BarsSourceNote = kind, note
 	}
@@ -238,7 +238,7 @@ func (c Config) premiums(ctx context.Context, alias string, sessions []contracts
 }
 
 func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, behind string, stocks []stockRow, options []optionRow,
-	trades tradesTable, skipped int, fb []fallback, at time.Time) pageJSON {
+	trades tradesTable, skipped int, fb []fallback, closed string, at time.Time) pageJSON {
 	v := viewJSON{
 		Key: alias, Label: label, Trades: &trades,
 		Sentence: sentenceStocks + strconv.Itoa(len(stocks)) + sentenceRows + strconv.Itoa(len(options)) + sentenceLegs,
@@ -266,6 +266,9 @@ func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, 
 	}
 	if n := fallbackNote(fb); n != "" {
 		p.Notes = append(p.Notes, n)
+	}
+	if closed != "" {
+		p.Notes = append(p.Notes, closed)
 	}
 	if slices.Contains(c.Statement, alias) {
 		p.Notes = append(p.Notes, textStatementFrom+snap.day+textStatementNote)
