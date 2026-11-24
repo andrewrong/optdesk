@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -353,7 +354,7 @@ func TestGreekGapGivesMissingInput(t *testing.T) {
 		t.Fatalf("delta = %v", d)
 	}
 	v := block(m, "vega")
-	if g, _ := v["gap"].(map[string]any); v["total"] != nil || len(v["rows"].([]any)) != 0 || g == nil || g["text"] != "No option structure is counted in Vega" {
+	if g, _ := v["gap"].(map[string]any); v["total"] != nil || len(v["rows"].([]any)) != 0 || g == nil || g["text"] != "没有期权组合计入 Vega" {
 		t.Fatalf("vega = %v", v)
 	}
 	if len(m["notes"].([]any)) != 1 {
@@ -467,12 +468,12 @@ func TestEmptyVegaBlockNamesItsGap(t *testing.T) {
 				t.Fatalf("vega = %v", v)
 			}
 			g, _ := v["gap"].(map[string]any)
-			if g["reason"] != "no_data" || g["text"] != "No option structure is counted in Vega" {
+			if g["reason"] != "no_data" || g["text"] != "没有期权组合计入 Vega" {
 				t.Fatalf("vega gap = %v", v["gap"])
 			}
 			found := false
 			for _, pg := range m["gaps"].([]any) {
-				if pg.(map[string]any)["text"] == "Vega by expiry: No option structure is counted in Vega" {
+				if pg.(map[string]any)["text"] == "按到期日的 Vega Vega by expiry: 没有期权组合计入 Vega" {
 					found = true
 				}
 			}
@@ -618,5 +619,45 @@ func TestRiskTitleNewNamesAccount(t *testing.T) {
 	gapPage, _ := build(t, c, "main")
 	if gapPage["title"] != want {
 		t.Fatalf("gap page title = %v, want %q", gapPage["title"], want)
+	}
+}
+
+func TestRiskTextsChinese(t *testing.T) {
+	t.Parallel()
+	english := regexp.MustCompile(`[A-Za-z]+(?: [A-Za-z]+){2,}`)
+	ok, _ := build(t, defaultConfig(), "main")
+	if d := block(ok, "delta"); d["title"] != "按标的的 Delta Delta by underlying" {
+		t.Errorf("delta title = %v", d["title"])
+	}
+	if ok["vega_title"] != "按到期日的 Vega Vega by expiry" {
+		t.Errorf("vega_title = %v", ok["vega_title"])
+	}
+	for _, name := range []string{"delta", "vega"} {
+		mean, _ := block(ok, name)["meaning"].(string)
+		if mean == "" || english.MatchString(mean) {
+			t.Errorf("%s meaning = %q", name, mean)
+		}
+	}
+	if mean := block(ok, "delta")["meaning"].(string); !strings.Contains(mean, "1 美元") || !strings.Contains(mean, "股票按股数计") {
+		t.Errorf("delta meaning = %q", mean)
+	}
+	if mean := block(ok, "vega")["meaning"].(string); !strings.Contains(mean, "1 个点") {
+		t.Errorf("vega meaning = %q", mean)
+	}
+
+	noCap, _ := build(t, okConfig(compute.StructureResult{}), "main")
+	if g := block(noCap, "vega")["gap"].(map[string]any); g["text"] != "该账户还没有采集" {
+		t.Errorf("no-capture vega gap = %v", g)
+	}
+	noOpt, _ := build(t, okConfig(compute.StructureResult{}, stk("AAA", 1, "100", "USD")), "main")
+	if g := block(noOpt, "vega")["gap"].(map[string]any); g["text"] != "没有期权组合计入 Vega" {
+		t.Errorf("no-structure vega gap = %v", g)
+	}
+
+	c := defaultConfig()
+	c.Account = fakeAccount{rows: map[string][]store.Position{"2026-11-02": {stk("AAA", 1, "100", "USD")}}}
+	stale, _ := build(t, c, "main")
+	if s, _ := stale["sentence"].(string); !strings.HasPrefix(s, "最新采集太旧") {
+		t.Errorf("stale sentence = %q", stale["sentence"])
 	}
 }

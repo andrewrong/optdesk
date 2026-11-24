@@ -17,13 +17,13 @@
   ],
   "run_status": "partial",
   "title": "账户风险 Account risk",
-  "sentence": "Delta and Vega come from the latest capture; Beta-weighted Delta, the volatility range and the standard metrics are not built: no job stores Beta, the index price or risk metrics.",
-  "vega_title": "Vega by expiry",
+  "sentence": "Delta 和 Vega 来自最新采集；Beta 加权 Delta、波动率区间和标准风险指标尚未建成：没有任务存储 Beta、基准指数价格或风险指标。",
+  "vega_title": "按到期日的 Vega Vega by expiry",
   "delta": {
-    "title": "Delta by underlying",
-    "meaning": "How many dollars the result of the positions changes when each underlying moves one dollar; stocks count by shares.",
+    "title": "按标的的 Delta Delta by underlying",
+    "meaning": "Delta：每个标的价格变动 1 美元，持仓盈亏变多少美元；股票按股数计。",
     "heads": [
-      "Underlying",
+      "标的 Underlying",
       "Delta"
     ],
     "rows": [
@@ -55,9 +55,9 @@
     "gap": null
   },
   "vega": {
-    "meaning": "How many dollars the result of the option structures changes when volatility moves one point.",
+    "meaning": "Vega：波动率变动 1 个点，期权盈亏变多少美元。",
     "heads": [
-      "Expiry",
+      "到期日 Expiry",
       "Vega"
     ],
     "rows": [
@@ -78,24 +78,24 @@
     "gap": null
   },
   "beta_delta": {
-    "title": "Beta-weighted Delta",
-    "meaning": "Delta of each underlying converted to the benchmark index by Beta.",
-    "benchmark_text": "Benchmark index: no price stored",
+    "title": "Beta 加权 Delta Beta-weighted Delta",
+    "meaning": "Beta 加权 Delta：把各标的的 Delta 按 Beta 折算为基准指数的 Delta。",
+    "benchmark_text": "基准指数 Benchmark index：未存储价格",
     "heads": [
-      "Underlying",
+      "标的 Underlying",
       "Beta",
-      "Weighted Delta"
+      "加权 Delta Weighted Delta"
     ],
     "rows": [],
     "total": null,
     "gap": {
       "reason": "not_built",
-      "text": "Beta-weighted Delta is not built: no job stores the Beta of each underlying or the benchmark index price"
+      "text": "Beta 加权 Delta 尚未建成：没有任务存储各标的的 Beta 或基准指数价格"
     }
   },
   "sigma": {
-    "title": "Volatility range",
-    "meaning": "Result range at one and two standard deviations.",
+    "title": "波动率区间 Volatility range",
+    "meaning": "波动率区间：一个和两个标准差下的盈亏范围。",
     "columns": [
       "-2σ",
       "-1σ",
@@ -103,19 +103,19 @@
       "+2σ"
     ],
     "rows": [],
-    "aria_text": "Volatility range: not built",
+    "aria_text": "波动率区间 Volatility range：尚未建成",
     "gap": {
       "reason": "not_built",
-      "text": "The volatility range is not built: how it is defined from the stored IV is not designed yet"
+      "text": "波动率区间尚未建成：如何由已存储的隐含波动率 IV 定义，还没有设计"
     }
   },
   "standard_metrics": {
-    "title": "Standard risk metrics",
+    "title": "标准风险指标 Standard risk metrics",
     "metrics": [
       {
-        "label": "Standard risk metrics",
-        "value_text": "not built",
-        "explanation": "The standard risk metrics are not built: no job stores a risk metrics source",
+        "label": "标准风险指标 Standard risk metrics",
+        "value_text": "尚未建成",
+        "explanation": "标准风险指标尚未建成：没有任务存储风险指标来源",
         "table": null
       }
     ]
@@ -124,20 +124,20 @@
   "gaps": [
     {
       "reason": "not_built",
-      "text": "Beta-weighted Delta: Beta-weighted Delta is not built: no job stores the Beta of each underlying or the benchmark index price"
+      "text": "Beta 加权 Delta Beta-weighted Delta: Beta 加权 Delta 尚未建成：没有任务存储各标的的 Beta 或基准指数价格"
     },
     {
       "reason": "not_built",
-      "text": "Volatility range: The volatility range is not built: how it is defined from the stored IV is not designed yet"
+      "text": "波动率区间 Volatility range: 波动率区间尚未建成：如何由已存储的隐含波动率 IV 定义，还没有设计"
     },
     {
       "reason": "not_built",
-      "text": "Standard risk metrics: The standard risk metrics are not built: no job stores a risk metrics source"
+      "text": "标准风险指标 Standard risk metrics: 标准风险指标尚未建成：没有任务存储风险指标来源"
     }
   ],
   "stale": {
     "data_time": "2026-11-10T09:00:00+08:00",
     "stale_after": "2026-11-14T09:00:00+08:00",
-    "text": "By capture day 2026-11-10"
+    "text": "按采集日 2026-11-10"
   }
 }
