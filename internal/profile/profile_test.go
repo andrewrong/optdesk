@@ -107,3 +107,25 @@ func TestLoadZone(t *testing.T) {
 		})
 	}
 }
+
+func TestLogFieldsOptionOpenRow(t *testing.T) {
+	t.Parallel()
+	p, err := profile.Load(env(t, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	has := map[string]bool{}
+	for _, k := range p.LogFields {
+		has[k] = true
+	}
+	for _, k := range []string{"absent", "market_data_type"} {
+		if !has[k] {
+			t.Errorf("LogFields lacks %s", k)
+		}
+	}
+	for _, k := range []string{"symbol", "strike", "progress"} {
+		if has[k] {
+			t.Errorf("LogFields holds %s, which names an instrument", k)
+		}
+	}
+}
