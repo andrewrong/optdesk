@@ -368,3 +368,43 @@ func TestTestLogHasLevelButNoTime(t *testing.T) {
 		t.Fatalf("log holds a time attribute: %q", out)
 	}
 }
+
+func TestOptionLedgerSchedule(t *testing.T) {
+	t.Parallel()
+	j, _ := build(t, nil, nil)
+	cal, anchor, zone, offset := j.Schedule()
+	if cal != "XNYS" || anchor != "session_close" || zone != "" || offset != 13*time.Hour {
+		t.Fatalf("schedule %q %q %q %v", cal, anchor, zone, offset)
+	}
+}
+
+func TestOptionLedgerLastDayIsSessionDay(t *testing.T) {
+	t.Parallel()
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Saturday 06:00 New York, the slot after the close of Friday 2026-11-20.
+	now := time.Date(2026, 11, 21, 6, 0, 0, 0, ny)
+	src := &fakeSource{rep: report()}
+	r := &fakeReader{aliases: []string{"a"}}
+	w := &fakeWriter{}
+	cfg := OptionLedgerConfig{
+		Logins:      []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}},
+		Accounts:    map[string]string{"ACCT1": "a"},
+		HistoryFrom: "2025-12-01",
+	}
+	j, err := newJob(OptionLedgerStores{Ledger: w, Read: r}, cfg, fixedClock{now}, slog.New(slog.NewTextHandler(&bytes.Buffer{}, testLogOpts)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res, _ := j.fetchAll(context.Background()); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(w.recs) == 0 {
+		t.Fatal("no fetch recorded")
+	}
+	if got := w.recs[len(w.recs)-1].LastDay; got != "2026-11-20" {
+		t.Fatalf("last day %s, want 2026-11-20", got)
+	}
+}

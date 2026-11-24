@@ -235,3 +235,37 @@ func TestUpsertIbkrReplacesYfinanceEqualPrices(t *testing.T) {
 		t.Errorf("source = %q, %v", src, err)
 	}
 }
+
+func TestReplaceKeepsOtherDays(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, admin := openWriter(ctx, t, name), pgxAs(t, name)
+	d1, d2 := pbar(7, "trades", 1, "2026-11-05", "10"), pbar(7, "trades", 1, "2026-11-06", "10")
+	if _, err := st.UpsertPriceBars(ctx, []contracts.PriceBar{sourced(d1, "ibkr", "10"), sourced(d2, "ibkr", "10")}, "r1"); err != nil {
+		t.Fatal(err)
+	}
+	c, err := st.ReplacePriceBars(ctx, []contracts.PriceBar{sourced(d1, "yfinance", "12")}, "r2")
+	if err != nil || c != (bar.BarWriteCount{Written: 1}) {
+		t.Fatalf("replace = %+v, %v", c, err)
+	}
+	if c, err := st.ReplacePriceBars(ctx, []contracts.PriceBar{sourced(d1, "yfinance", "12")}, "r3"); err != nil || c != (bar.BarWriteCount{Unchanged: 1}) {
+		t.Errorf("equal replace = %+v, %v", c, err)
+	}
+	got := map[string]string{}
+	rows, err := admin.Query(ctx, `SELECT session_day::text, close::text || ' ' || source || ' ' || written_by FROM obs.price_bar`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			t.Fatal(err)
+		}
+		got[k] = v
+	}
+	if len(got) != 2 || got["2026-11-05"] != "12 yfinance r2" || got["2026-11-06"] != "10 ibkr r1" {
+		t.Errorf("stored = %v", got)
+	}
+}

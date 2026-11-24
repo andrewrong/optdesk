@@ -8,7 +8,7 @@ import sys
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from optdesk.refbars.api import Bar, Fetcher, PairResult, PairSpec
+from optdesk.refbars.api import Action, Bar, Fetcher, PairResult, PairSpec
 from optdesk.refbars.symbols import map_pair
 
 TIMEOUT_SECONDS = 10
@@ -42,7 +42,9 @@ def _code_of(yf: Any, exc: Exception) -> str:
     return "source_changed"
 
 
-def _bars(frame: Any, zone: datetime.tzinfo, from_day: str, to_day: str) -> list[Bar] | None:
+def _bars(
+    frame: Any, zone: datetime.tzinfo, from_day: str, to_day: str
+) -> list[Bar] | None:
     """Read the bars; None when the column set is not the expected one."""
     if not _EXPECTED_COLUMNS.issubset(set(frame.columns)):
         return None
@@ -71,8 +73,45 @@ def _bars(frame: Any, zone: datetime.tzinfo, from_day: str, to_day: str) -> list
     return bars
 
 
-def make_fetcher(yf: Any) -> Fetcher:
-    """Return a fetcher over the yfinance module (or an object shaped like it); no retry."""
+def _actions(
+    frame: Any, name: str, zone: datetime.tzinfo, from_day: str, to_day: str
+) -> list[Action]:
+    """The non-empty, non-zero rows of one actions column; a day without one is absent."""
+    if name not in set(frame.columns):
+        return []
+    found: list[Action] = []
+    for stamp, value in frame[name].items():
+        if value is None or math.isnan(float(value)) or float(value) == 0.0:
+            continue
+        if stamp.tzinfo is not None:
+            stamp = stamp.astimezone(zone)
+        day = stamp.date().isoformat()
+        if from_day <= day <= to_day:
+            found.append({"day": day, "value": close_text(float(value))})
+    found.sort(key=lambda action: action["day"])
+    return found
+
+
+def _adjusted_closes(frame: Any, zone: datetime.tzinfo) -> dict[str, str]:
+    """Close of the auto-adjusted frame by session day, as yfinance gives it."""
+    closes: dict[str, str] = {}
+    for stamp, value in frame["Close"].items():
+        if value is None or math.isnan(float(value)):
+            continue
+        if stamp.tzinfo is not None:
+            stamp = stamp.astimezone(zone)
+        closes[stamp.date().isoformat()] = close_text(float(value))
+    return closes
+
+
+def make_fetcher(
+    yf: Any, with_actions: bool = False, adjusted: bool = False
+) -> Fetcher:
+    """Return a fetcher over the yfinance module (or an object shaped like it); no retry.
+
+    `with_actions` also returns the dividends and splits of the days; `adjusted` also asks a
+    second, auto-adjusted call and puts its Close in `adj_close`.
+    """
 
     def fetch(pair: PairSpec, from_day: str, to_day: str) -> PairResult:
         result: PairResult = {
@@ -87,17 +126,24 @@ def make_fetcher(yf: Any) -> Fetcher:
             return result
         end = datetime.date.fromisoformat(to_day) + datetime.timedelta(days=1)
         debug = yf.config.debug
-        previous = debug.hide_exceptions
-        debug.hide_exceptions = False
-        try:
-            frame = yf.Ticker(target.yahoo_symbol).history(
+
+        def history(auto_adjust: bool, actions: bool) -> Any:
+            return yf.Ticker(target.yahoo_symbol).history(
                 start=from_day,
                 end=end.isoformat(),
                 interval="1d",
-                auto_adjust=False,
-                actions=False,
+                auto_adjust=auto_adjust,
+                actions=actions,
                 timeout=TIMEOUT_SECONDS,
             )
+
+        previous = debug.hide_exceptions
+        debug.hide_exceptions = False
+        adjusted_frame: Any = None
+        try:
+            frame = history(False, with_actions)
+            if adjusted and frame is not None and not frame.empty:
+                adjusted_frame = history(True, False)
         except Exception as exc:  # noqa: BLE001 - every failure becomes a code
             result["error_code"] = _code_of(yf, exc)
             if result["error_code"] == "source_changed":
@@ -114,7 +160,24 @@ def make_fetcher(yf: Any) -> Fetcher:
         elif not bars:
             result["error_code"] = "no_data"
         else:
+            if adjusted:
+                closes = (
+                    _adjusted_closes(adjusted_frame, target.zone)
+                    if adjusted_frame is not None
+                    and not adjusted_frame.empty
+                    and "Close" in set(adjusted_frame.columns)
+                    else {}
+                )
+                for bar in bars:
+                    bar["adj_close"] = closes.get(bar["session_day"], "")
             result["bars"] = bars
+            if with_actions:
+                result["dividends"] = _actions(
+                    frame, "Dividends", target.zone, from_day, to_day
+                )
+                result["splits"] = _actions(
+                    frame, "Stock Splits", target.zone, from_day, to_day
+                )
         return result
 
     return fetch

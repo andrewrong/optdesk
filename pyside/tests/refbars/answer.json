@@ -5,9 +5,11 @@
       "currency": "USD",
       "error_code": "",
       "bars": [
-        {"session_day": "2026-11-16", "open": "189.5000", "high": "189.5000", "low": "189.5000", "close": "189.5000", "volume": "189.5000"},
-        {"session_day": "2026-11-17", "open": "190.2500", "high": "190.2500", "low": "190.2500", "close": "190.2500", "volume": "190.2500"}
-      ]
+        {"session_day": "2026-11-16", "open": "189.5000", "high": "189.5000", "low": "189.5000", "close": "189.5000", "volume": "189.5000", "adj_close": "94.5000"},
+        {"session_day": "2026-11-17", "open": "190.2500", "high": "190.2500", "low": "190.2500", "close": "190.2500", "volume": "190.2500", "adj_close": "95.2500"}
+      ],
+      "dividends": [{"day": "2026-11-17", "value": "0.2600"}],
+      "splits": [{"day": "2026-11-16", "value": "2.0000"}]
     },
     {"symbol": "7203", "currency": "JPY", "error_code": "rate_limited", "bars": []},
     {"symbol": "ZZZZ", "currency": "USD", "error_code": "no_data", "bars": []}

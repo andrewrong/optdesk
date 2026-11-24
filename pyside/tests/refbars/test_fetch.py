@@ -82,6 +82,7 @@ class _FakeYf:
         self.exceptions = _Errors
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.hide_during_call: list[bool] = []
+        self.adjusted_outcomes: dict[str, Any] = {}
         self.cache: list[str] = []
 
     def set_tz_cache_location(self, path: str) -> None:
@@ -95,6 +96,8 @@ class _FakeYf:
                 yf.calls.append((symbol, kwargs))
                 yf.hide_during_call.append(yf.config.debug.hide_exceptions)
                 outcome = yf.outcomes[symbol]
+                if kwargs.get("auto_adjust") and symbol in yf.adjusted_outcomes:
+                    outcome = yf.adjusted_outcomes[symbol]
                 if isinstance(outcome, Exception):
                     raise outcome
                 return outcome
@@ -129,8 +132,22 @@ def test_auto_adjust_false_and_close_read() -> None:
     ]
     assert result["error_code"] == ""
     assert result["bars"] == [
-        {"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "189.5000", "volume": ""},
-        {"session_day": "2026-11-17", "open": "", "high": "", "low": "", "close": "190.2500", "volume": ""},
+        {
+            "session_day": "2026-11-16",
+            "open": "",
+            "high": "",
+            "low": "",
+            "close": "189.5000",
+            "volume": "",
+        },
+        {
+            "session_day": "2026-11-17",
+            "open": "",
+            "high": "",
+            "low": "",
+            "close": "190.2500",
+            "volume": "",
+        },
     ]
 
 
@@ -141,10 +158,21 @@ def test_decimal_text_has_no_float_artefact() -> None:
 
 
 def test_session_day_is_the_exchange_date() -> None:
-    late = datetime.datetime(2026, 11, 17, 3, tzinfo=datetime.UTC)  # 22:00 on the 16th in New York
+    late = datetime.datetime(
+        2026, 11, 17, 3, tzinfo=datetime.UTC
+    )  # 22:00 on the 16th in New York
     frame = _Frame([(late, 10.0)], COLUMNS)
     result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-17")
-    assert result["bars"] == [{"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "10.0000", "volume": ""}]
+    assert result["bars"] == [
+        {
+            "session_day": "2026-11-16",
+            "open": "",
+            "high": "",
+            "low": "",
+            "close": "10.0000",
+            "volume": "",
+        }
+    ]
 
 
 def test_rate_limit_stops_batch() -> None:
@@ -156,7 +184,14 @@ def test_rate_limit_stops_batch() -> None:
         "to_day": "2026-11-16",
     }
     clock, out = _FakeClock(), io.StringIO()
-    code = run(["--deadline", "100"], io.StringIO(json.dumps(request)), out, io.StringIO(), clock, yf)
+    code = run(
+        ["--deadline", "100"],
+        io.StringIO(json.dumps(request)),
+        out,
+        io.StringIO(),
+        clock,
+        yf,
+    )
     results = json.loads(out.getvalue())["results"]
     assert code == 0
     assert [r["error_code"] for r in results] == ["", "rate_limited", "rate_limited"]
@@ -193,7 +228,10 @@ def test_failures_map_to_codes() -> None:
         }
     )
     fetch = make_fetcher(yf)
-    codes = {s: fetch(_pair(s), "2026-11-16", "2026-11-16")["error_code"] for s in yf.outcomes}
+    codes = {
+        s: fetch(_pair(s), "2026-11-16", "2026-11-16")["error_code"]
+        for s in yf.outcomes
+    }
     assert codes == {
         "NET": "network",
         "SLOW": "timeout",
@@ -223,7 +261,16 @@ def test_hide_exceptions_restored_after_test() -> None:
 def test_nan_close_is_skipped(value: float) -> None:
     frame = _Frame([(_day(16), value), (_day(17), 2.0)], COLUMNS)
     result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-17")
-    assert result["bars"] == [{"session_day": "2026-11-17", "open": "", "high": "", "low": "", "close": "2.0000", "volume": ""}]
+    assert result["bars"] == [
+        {
+            "session_day": "2026-11-17",
+            "open": "",
+            "high": "",
+            "low": "",
+            "close": "2.0000",
+            "volume": "",
+        }
+    ]
 
 
 def test_bar_carries_ohlcv() -> None:
@@ -268,5 +315,96 @@ def test_nan_open_is_empty_text() -> None:
     result = make_fetcher(_FakeYf({"AAPL": frame}))(_pair(), "2026-11-16", "2026-11-16")
     assert result["error_code"] == ""
     assert result["bars"] == [
-        {"session_day": "2026-11-16", "open": "", "high": "", "low": "", "close": "5.0000", "volume": ""}
+        {
+            "session_day": "2026-11-16",
+            "open": "",
+            "high": "",
+            "low": "",
+            "close": "5.0000",
+            "volume": "",
+        }
     ]
+
+
+ACTION_COLUMNS = [*COLUMNS, "Dividends", "Stock Splits"]
+
+
+class TestFetchAdjustedClose:
+    def test_adjusted_asks_a_second_call_with_auto_adjust_on(self) -> None:
+        raw = _Frame([(_day(16), 189.5), (_day(17), 190.25)], COLUMNS)
+        adj = _Frame([(_day(16), 187.1999969482422), (_day(17), 188.0)], COLUMNS)
+        yf = _FakeYf({"AAPL": raw})
+        yf.adjusted_outcomes["AAPL"] = adj
+        result = make_fetcher(yf, adjusted=True)(_pair(), "2026-11-16", "2026-11-17")
+        assert [c[1]["auto_adjust"] for c in yf.calls] == [False, True]
+        assert result["error_code"] == ""
+        assert [(b["close"], b["adj_close"]) for b in result["bars"]] == [
+            ("189.5000", "187.2000"),
+            ("190.2500", "188.0000"),
+        ]
+
+    def test_unset_has_no_adj_close_and_one_raw_call(self) -> None:
+        yf = _FakeYf({"AAPL": _Frame([(_day(16), 1.0)], COLUMNS)})
+        result = make_fetcher(yf)(_pair(), "2026-11-16", "2026-11-16")
+        assert len(yf.calls) == 1
+        assert yf.calls[0][1]["auto_adjust"] is False
+        assert "adj_close" not in result["bars"][0]
+
+    def test_day_the_adjusted_series_lacks_is_empty(self) -> None:
+        raw = _Frame([(_day(16), 5.0), (_day(17), 6.0)], COLUMNS)
+        yf = _FakeYf({"AAPL": raw})
+        yf.adjusted_outcomes["AAPL"] = _Frame([(_day(17), 4.0)], COLUMNS)
+        result = make_fetcher(yf, adjusted=True)(_pair(), "2026-11-16", "2026-11-17")
+        assert [b["adj_close"] for b in result["bars"]] == ["", "4.0000"]
+
+    def test_failure_of_the_adjusted_call_keeps_its_code(self) -> None:
+        yf = _FakeYf({"AAPL": _Frame([(_day(16), 5.0)], COLUMNS)})
+        yf.adjusted_outcomes["AAPL"] = _Errors.YFRateLimitError()
+        result = make_fetcher(yf, adjusted=True)(_pair(), "2026-11-16", "2026-11-16")
+        assert result["error_code"] == "rate_limited"
+        assert yf.calls[1][1]["timeout"] == 10
+
+
+class TestFetchActions:
+    def test_rows_with_a_value_are_returned_and_other_days_are_absent(self) -> None:
+        nan = float("nan")
+        frame = _Frame(
+            [(_day(16), 1.0), (_day(17), 2.0), (_day(18), 3.0)],
+            ACTION_COLUMNS,
+            {"Dividends": [0.0, 0.24, nan], "Stock Splits": [4.0, 0.0, nan]},
+        )
+        yf = _FakeYf({"AAPL": frame})
+        result = make_fetcher(yf, with_actions=True)(
+            _pair(), "2026-11-16", "2026-11-18"
+        )
+        assert yf.calls[0][1]["actions"] is True
+        assert yf.calls[0][1]["auto_adjust"] is False
+        assert result["dividends"] == [{"day": "2026-11-17", "value": "0.2400"}]
+        assert result["splits"] == [{"day": "2026-11-16", "value": "4.0000"}]
+
+    def test_no_action_gives_empty_lists(self) -> None:
+        frame = _Frame(
+            [(_day(16), 1.0)],
+            ACTION_COLUMNS,
+            {"Dividends": [0.0], "Stock Splits": [0.0]},
+        )
+        result = make_fetcher(_FakeYf({"AAPL": frame}), with_actions=True)(
+            _pair(), "2026-11-16", "2026-11-16"
+        )
+        assert result["dividends"] == []
+        assert result["splits"] == []
+
+    def test_unset_has_no_action_keys(self) -> None:
+        result = make_fetcher(_FakeYf({"AAPL": _Frame([(_day(16), 1.0)], COLUMNS)}))(
+            _pair(), "2026-11-16", "2026-11-16"
+        )
+        assert "dividends" not in result
+        assert "splits" not in result
+
+    def test_error_pair_has_no_action_keys(self) -> None:
+        yf = _FakeYf({"AAPL": _Errors.YFRateLimitError()})
+        result = make_fetcher(yf, with_actions=True)(
+            _pair(), "2026-11-16", "2026-11-16"
+        )
+        assert result["error_code"] == "rate_limited"
+        assert "dividends" not in result
