@@ -54,7 +54,7 @@ Acceptance: as the draft `stock-history-store.md`.
 
 ### 3 stock-history-sources
 
-Module: sources. Size: M. Order: after entry 1.
+Module: sources. Size: M. Order: after 1 (stock-history-refbars).
 Contracts: unchanged
 Files: `internal/sources/api.go`, `internal/sources/api_test.go`, `internal/sources/yfinance/source.go`, `internal/sources/yfinance/source_test.go`
 Design: docs/design/stock-history-yfinance.md#Interface
@@ -62,7 +62,7 @@ Acceptance: as the draft `stock-history-sources.md`.
 
 ### 4 stock-history-job
 
-Module: jobs. Size: L. Order: after entries 2 and 3.
+Module: jobs. Size: L. Order: after 2, 3 (stock-history-store, stock-history-sources).
 Contracts: unchanged
 Files: `internal/jobs/barsrefresh/adjusted.go`, `internal/jobs/barsrefresh/deepen.go`, `internal/jobs/barsrefresh/restate.go`, `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/job.toml`, and their tests in the package
 Design: docs/design/stock-history-yfinance.md#Decisions
