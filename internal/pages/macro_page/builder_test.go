@@ -222,7 +222,8 @@ func TestStaleLabel(t *testing.T) {
 		nTimes     int
 	}{
 		{"one", one, []string{"A"}, "2026-11-04T00:00:00+08:00", "2026-11-08T09:30:00+08:00", "Data day 11-04, Name A (daily series, FRED publishes with a lag)", 1},
-		{"two", two, []string{"A", "B"}, "2026-11-02T00:00:00+08:00", "2026-11-06T09:30:00+08:00", "Data day 11-02, Name B (daily series, FRED publishes with a lag)", 2},
+		{"two", two, []string{"A", "B"}, "2026-11-02T00:00:00+08:00", "2026-11-06T09:30:00+08:00",
+			"Data day 11-02, Name B (daily series, FRED publishes with a lag)", 2},
 		{"none", fakeReader{}, []string{"A"}, "2026-11-05T00:00:00+08:00", "2026-11-09T09:30:00+08:00", "No data day", 0},
 	}
 	for _, tc := range cases {

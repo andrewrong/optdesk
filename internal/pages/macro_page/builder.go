@@ -323,6 +323,8 @@ func (r rhythm) limitDays() int {
 		return monthlyFreshnessDays
 	case rhythmWeekly:
 		return weeklyFreshnessDays
+	case rhythmDaily:
+		return dailyFreshnessDays
 	}
 	return dailyFreshnessDays
 }
