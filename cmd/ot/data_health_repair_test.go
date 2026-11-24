@@ -97,7 +97,7 @@ func TestRepairQueuesOldestFirst(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("%v %v", found, err)
 	}
-	wantRequests(t, fp, "fx_refresh", "2026-11-03", "2026-11-04", "2026-11-05")
+	wantRequests(t, fp, "fx_refresh", "2026-11-05")
 	if first != 101 {
 		t.Fatalf("first id %d", first)
 	}
@@ -120,13 +120,46 @@ func TestRepairSkipsOkAndNoValue(t *testing.T) {
 
 func TestRepairWindowJobOnePerDay(t *testing.T) {
 	t.Parallel()
-	for job, ds := range map[string]string{"bars_refresh": "obs.price_bar", "fred_series": "obs.series_point", "fundamentals": "obs.fundamental_fact"} {
+	for job, ds := range map[string]string{"bars_refresh": "obs.price_bar", "fred_series": "obs.series_point"} {
 		fp, _, _, err := repairOver(t, ds, repairMissing(ds, "2026-11-02"), repairMissing(ds, "2026-11-03"), repairMissing(ds, "2026-11-04"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		wantRequests(t, fp, job, "2026-11-02", "2026-11-03", "2026-11-04")
+		wantRequests(t, fp, job, "2026-11-04")
 	}
+	const ds = "obs.fundamental_fact"
+	fp, _, _, err := repairOver(t, ds, repairMissing(ds, "2026-11-02"), repairMissing(ds, "2026-11-03"), repairMissing(ds, "2026-11-04"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRequests(t, fp, "fundamentals", "2026-11-02", "2026-11-03", "2026-11-04")
+}
+
+func TestRepairWindowJobsNewestOnly(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ job, ds string }{{"bars_refresh", "obs.price_bar"}, {"fred_series", "obs.series_point"},
+		{"iv_history", "readings.reading"}, {"fx_refresh", "obs.fx_rate"}}
+	for _, c := range cases {
+		fp, _, _, err := repairOver(t, c.ds, repairMissing(c.ds, "2026-11-02"), repairMissing(c.ds, "2026-11-03"), repairMissing(c.ds, "2026-11-04"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, e := range fp.enqueued {
+			if e.JobID == c.job {
+				got = append(got, e.Day)
+			}
+		}
+		if len(got) != 1 || got[0] != "2026-11-04" {
+			t.Fatalf("%s: requests %v, want 2026-11-04 only", c.job, got)
+		}
+	}
+	const ds = "obs.fundamental_fact"
+	fp, _, _, err := repairOver(t, ds, repairMissing(ds, "2026-11-02"), repairMissing(ds, "2026-11-03"), repairMissing(ds, "2026-11-04"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRequests(t, fp, "fundamentals", "2026-11-02", "2026-11-03", "2026-11-04")
 }
 
 func TestRepairTodayOnlyPastDay(t *testing.T) {
@@ -176,8 +209,9 @@ func TestRepairCountEqualsGapDays(t *testing.T) {
 	job := &repairJobsOf(ds)[0]
 	page := data_health_page.DatasetCells(cells, ds, []contracts.Day{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"})
 	data_health_page.Apply(page, job, &data_health_page.Form{}, postNow, "2026-11-06")
-	if gap := len(data_health_page.GapDays(page)); gap != 3 || len(fp.enqueued) != gap {
-		t.Fatalf("gap_days %d, queued %d", gap, len(fp.enqueued))
+	// bars_refresh is a window job: the newest gap day stands for the three.
+	if gap := len(data_health_page.GapDays(page)); gap != 3 || len(fp.enqueued) != 1 || fp.enqueued[0].Day != "2026-11-05" {
+		t.Fatalf("gap_days %d, queued %v", gap, fp.enqueued)
 	}
 }
 

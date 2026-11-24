@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -99,6 +100,9 @@ func repairGaps(ctx context.Context, cov coverage.Reader, st jobrequest.Poster, 
 		cells, err := repairCells(ctx, cov, &jobs[i], dataset, now, today)
 		if err != nil {
 			return fp.first, true, err
+		}
+		if slices.Contains(windowEndingJobs, jobs[i].ID) {
+			cells = newestGapOnly(cells, &catchUpCounts{})
 		}
 		if _, _, err := repairGapsFor(ctx, cells, &jobs[i], fp, 0); err != nil {
 			return fp.first, true, err

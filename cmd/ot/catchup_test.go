@@ -139,8 +139,8 @@ func TestCatchUpPassStopsAtCap(t *testing.T) {
 		t.Fatalf("first pass enqueued %d, want %d", first, catchUpCap)
 	}
 	r.host.catchUpPass(t.Context())
-	if rest := len(r.post.enqueued) - first; rest != 10 { // gap days outside the window rule and the newest day of the window jobs; no today of a close-slot job
-		t.Fatalf("second pass enqueued %d, want the other 10", rest)
+	if rest := len(r.post.enqueued) - first; rest != 5 { // gap days outside the window rule and the newest day of the window jobs; no today of a close-slot job
+		t.Fatalf("second pass enqueued %d, want the other 5", rest)
 	}
 	second := len(r.post.enqueued)
 	r.host.catchUpPass(t.Context())
@@ -212,8 +212,8 @@ func TestCatchUpPassWindowJobNewestGapOnly(t *testing.T) {
 	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-05"}) || len(r.post.enqueued) != 1 {
 		t.Fatalf("enqueued %v, want the newest gap day only", r.post.enqueued)
 	}
-	r.host.catchUpPass(t.Context()) // 11-05 is blocked for today: the next newest (11-06 is no button before the close slot)
-	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-05", "2026-11-04"}) {
+	r.host.catchUpPass(t.Context()) // 11-05 is taken for today: no older day goes through
+	if got := r.enqueuedOf("bars_refresh"); !slices.Equal(got, []string{"2026-11-05"}) {
 		t.Fatalf("second pass: %v", got)
 	}
 
@@ -222,6 +222,19 @@ func TestCatchUpPassWindowJobNewestGapOnly(t *testing.T) {
 	st.host.catchUpPass(t.Context())
 	if got := st.enqueuedOf("statement_capture"); !slices.Equal(got, []string{"2026-11-02", "2026-11-03", "2026-11-04"}) {
 		t.Fatalf("statement_capture %v", got)
+	}
+}
+
+func TestCatchUpNewestRequestedTodayLetsNoOlderDayThrough(t *testing.T) {
+	t.Parallel()
+	cov := cuCoverage{days: cuDays, gap: map[string]coverage.State{"obs.fx_rate": coverage.StateMissing},
+		only: map[contracts.Day]bool{"2026-11-02": true, "2026-11-03": true, "2026-11-04": true}}
+	r := newCURig(t, cov)
+	r.post.rows = []jobrequest.Row{{ID: 1, State: jobrequest.StateDone, RequestedAt: postNow.Add(-time.Hour),
+		Request: jobrequest.Request{JobID: "fx_refresh", Day: "2026-11-04"}}}
+	r.host.catchUpPass(t.Context())
+	if got := r.enqueuedOf("fx_refresh"); len(got) != 0 {
+		t.Fatalf("fx_refresh enqueued %v, want none", got)
 	}
 }
 
