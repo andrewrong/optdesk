@@ -535,6 +535,10 @@ func rowStatus(q broker.Quote) (int, *string) {
 	}
 	switch q.Status {
 	case broker.StatusOK, broker.StatusPartial:
+		if noQuote(q) {
+			c := codeNoQuote
+			return stNoData, &c
+		}
 		return contentStatus(q), nil
 	case broker.StatusNoData:
 		return stNoData, nil
@@ -548,6 +552,30 @@ func rowStatus(q broker.Quote) (int, *string) {
 		return stError, code("ERROR")
 	}
 	return stError, code("ERROR")
+}
+
+// codeNoQuote is the error code of a status 3 row the broker answered with no bid and no ask.
+const codeNoQuote = "NO_QUOTE"
+
+// noQuote is a live quote with no error whose bid and ask are both the INVALID sentinel (docs/design/option-open-no-quote.md
+// Decision 2): the broker answered and nobody quotes the contract.
+func noQuote(q broker.Quote) bool {
+	return q.MarketDataType == 1 && q.ErrorCode == 0 && q.Bid == nil && q.Ask == nil &&
+		missingInvalid(q, "bid") && missingInvalid(q, "ask")
+}
+
+func missingInvalid(q broker.Quote, field string) bool {
+	for _, m := range q.Missing {
+		if m.Field == field && m.Reason == broker.MissingInvalid {
+			return true
+		}
+	}
+	return false
+}
+
+// isNoQuoteRow is a stored row of status 3 with the code NO_QUOTE.
+func isNoQuoteRow(r contracts.OptionOpen) bool {
+	return r.Status == stNoData && r.ErrorCode != nil && *r.ErrorCode == codeNoQuote
 }
 
 // contentStatus is no_data for a frozen (2), delayed (3) or delayed frozen (4) quote, whatever its fields: it is not

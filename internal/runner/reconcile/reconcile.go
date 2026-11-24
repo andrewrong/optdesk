@@ -374,6 +374,12 @@ func (r *reconciler) putWindows(ctx context.Context, p plan, sess daySessions) (
 // crashBrake is the number of crashed or abandoned_stop runs of one key that stops it (Decision 7).
 const crashBrake = 3
 
+// retryBeforeCloseCap is the number of retryable runs of one key that ended before the window close after which
+// no new run starts before the close (a trial value, owner direction 2026-11-24: 6 runs at the 15-minute rhythm
+// is about 90 minutes; IBKR account safety). The key is then ended and upstreamEnded releases its dependents;
+// after the close the late run is unchanged.
+const retryBeforeCloseCap = 6
+
 // isCrash reports whether run ended without a verdict: crashed (a lapsed lease) or abandoned_stop.
 // Such a run does not count toward the two-run cap; three of them stop the key.
 func isCrash(run store.Run) bool {
@@ -409,6 +415,17 @@ func endedBeforeClose(run store.Run, closeAt time.Time) bool {
 	return !closeAt.IsZero() && !run.FinishedAt.IsZero() && run.FinishedAt.Before(closeAt)
 }
 
+// retriesBeforeClose counts the retryable runs of a key that ended before closeAt.
+func retriesBeforeClose(runs []store.Run, closeAt time.Time) int {
+	n := 0
+	for _, run := range runs {
+		if isRetryable(run) && endedBeforeClose(run, closeAt) {
+			n++
+		}
+	}
+	return n
+}
+
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
 // error with no window). Runs that are empty_before_close, retryable before the close, crashed
@@ -418,7 +435,8 @@ func endedBeforeClose(run store.Run, closeAt time.Time) bool {
 // abandoned_stop runs: crashed_repeatedly, written by expireIfClosed at the close) and either no
 // run counts or the latest counted run is RunPartial: the second run is only for a partial. A
 // running run with a live lease is pending: nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
-// the same rule. closeAt is the close of the key's dataset window, zero when it has none.
+// the same rule. Before the close no run starts once retryBeforeCloseCap retryable runs have ended before it.
+// closeAt is the close of the key's dataset window, zero when it has none.
 func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
 	now := r.clk.Now()
 	if !closeAt.IsZero() && now.After(closeAt) {
@@ -451,7 +469,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
 		return crashed, false, ""
 	}
-	if beforeClose && now.Sub(lastEmptyFinish(runs)) < emptyRetryGap {
+	if beforeClose && (now.Sub(lastEmptyFinish(runs)) < emptyRetryGap || retriesBeforeClose(runs, closeAt) >= retryBeforeCloseCap) {
 		return crashed, false, ""
 	}
 	return crashed, true, reason
