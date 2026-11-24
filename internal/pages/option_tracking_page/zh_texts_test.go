@@ -70,3 +70,13 @@ func TestEveryCodeTextIsChinese(t *testing.T) {
 		}
 	}
 }
+
+func TestNoOpenGapTextIsChinese(t *testing.T) {
+	t.Parallel()
+	c := cfgFor(map[string]trackapi.TrackResult{"main": {}}, "main")
+	c.Account = nil
+	a := buildPage(t, c).Accounts[0]
+	if a.Gap == nil || !hasHan(a.Gap.Text) || a.Gap.Text == "No open short options" {
+		t.Fatalf("gap = %+v", a.Gap)
+	}
+}
