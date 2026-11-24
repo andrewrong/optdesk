@@ -33,6 +33,7 @@ from optdesk.ibkr.transport import (
     OrderRefused,
     build_server,
     check,
+    configure_logging,
     install_guard,
 )
 
@@ -448,11 +449,10 @@ def test_gateway_executions_logs_one_line_without_account(
         await gateway.executions()
         done(ib)
 
+    configure_logging()  # the logging of the process: scrubbed records, quiet ib_async
     with caplog.at_level(logging.DEBUG):
         asyncio.run(run())
-    # the records of this code base; ib_async logs its own wrapper lines, which the
-    # process record factory scrubs and which are not under test here
-    ours = [r for r in caplog.records if r.name.startswith("optdesk")]
+    ours = caplog.records  # every record captured, from any logger
     expected = (
         "executions_read raw=2 dropped_account=1 dropped_commission=0 stored=1 alias="
     )
