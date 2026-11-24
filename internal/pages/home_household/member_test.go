@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -155,7 +156,7 @@ func TestTilesCarryTheCaptureFigures(t *testing.T) {
 	}
 	tl := tilesOf(m)
 	cases := []struct{ tile, figure, caption string }{
-		{"net_worth", "$100,000.00", "USD · Data day 2026-11-10"},
+		{"net_worth", "$100,000.00", "USD · 数据日 2026-11-10"},
 		{"cash", "42.00%", "+$42,000.00"},
 		{"day_change", "+$999.50", "+1.01%"},
 		{"month_to_date", "+$2,000.00", "+2.04%"},
@@ -251,7 +252,7 @@ func TestNegativeCashIsBorrowing(t *testing.T) {
 	v["2026-11-10"] = vals("100000.00", "-500.00")
 	m, _ := build(t, config(v))
 	cash := tilesOf(m)["cash"]
-	if cash["figure"].(map[string]any)["text"] != "Borrowing" || cash["caption"].(map[string]any)["text"] != "−$500.00" {
+	if cash["figure"].(map[string]any)["text"] != "借款" || cash["caption"].(map[string]any)["text"] != "−$500.00" {
 		t.Fatalf("cash: %v", cash)
 	}
 }
@@ -311,8 +312,8 @@ func TestOneCapturedDayNamesTheMissingCaptures(t *testing.T) {
 	t.Parallel()
 	m, _ := build(t, config(map[string][]store.AccountValue{"2026-11-10": vals("100000.00", "42000.00")}))
 	ts := tilesOf(m)
-	const dayText = "Needs a second captured session day; first capture 2026-11-10"
-	const mtdText = "Needs the last session day of the previous month; first capture 2026-11-10"
+	const dayText = "需要第二个有采集的交易日；首次采集 2026-11-10"
+	const mtdText = "需要上月最后一个交易日的采集；首次采集 2026-11-10"
 	dc, mtd := ts["day_change"], ts["month_to_date"]
 	const figure = "Input data is missing: no data yet"
 	if figText(dc, "figure") != figure || figText(dc, "caption") != dayText {
@@ -343,7 +344,7 @@ func TestMissingCaptureSentenceAppearsOnceInATile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n := strings.Count(string(b), "first capture"); n != 1 {
+		if n := strings.Count(string(b), "首次采集"); n != 1 {
 			t.Fatalf("%s: %d times in %s", k, n, b)
 		}
 	}
@@ -356,7 +357,7 @@ func TestPriorDayWithoutMonthStartOnlyMonthToDateSaysSo(t *testing.T) {
 		"2026-11-10": vals("100000.00", "42000.00"),
 	}))
 	ts := tilesOf(m)
-	const mtdText = "Needs the last session day of the previous month; first capture 2026-11-10"
+	const mtdText = "需要上月最后一个交易日的采集；首次采集 2026-11-10"
 	if figText(ts["month_to_date"], "figure") != "Input data is missing: no data yet" || figText(ts["month_to_date"], "caption") != mtdText {
 		t.Fatalf("month_to_date: %v", ts["month_to_date"])
 	}
@@ -376,5 +377,50 @@ func TestPriorDayWithoutNetLiquidationKeepsGenericText(t *testing.T) {
 	const want = "Input data is missing: no data yet"
 	if figText(dc, "figure") != want || figText(dc, "caption") != want {
 		t.Fatalf("day_change: %v", dc)
+	}
+}
+
+// hanTexts collects the string values of the named keys, at any depth.
+func hanTexts(v any, keys map[string]bool, out *[]string) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, e := range x {
+			if s, ok := e.(string); ok && keys[k] {
+				*out = append(*out, s)
+				continue
+			}
+			hanTexts(e, keys, out)
+		}
+	case []any:
+		for _, e := range x {
+			hanTexts(e, keys, out)
+		}
+	}
+}
+
+func TestCardTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	noReader := config(nil)
+	noReader.Account = nil
+	keys := map[string]bool{"text": true, "explain": true, "subtitle": true, "data_times_text": true}
+	for name, c := range map[string]home_household.Config{
+		"no reader":    noReader,
+		"empty reader": config(map[string][]store.AccountValue{}),
+		"full":         config(full()),
+	} {
+		m, _ := build(t, c)
+		var texts []string
+		hanTexts(m["card"], keys, &texts)
+		if len(texts) == 0 {
+			t.Fatalf("%s: no text fields", name)
+		}
+		for _, s := range texts {
+			if strings.Contains(s, "$") || strings.Contains(s, "%") {
+				continue // a figure, not a sentence
+			}
+			if !regexp.MustCompile(`\p{Han}`).MatchString(s) {
+				t.Errorf("%s: text %q holds no Chinese character", name, s)
+			}
+		}
 	}
 }

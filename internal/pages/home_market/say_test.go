@@ -47,7 +47,7 @@ func TestFromReadingEachState(t *testing.T) {
 func TestFromReadingNumbersLine(t *testing.T) {
 	t.Parallel()
 	v := home_market.FromReading(tagged("LAGGING", "-3.12", "-6.40", "2026-11-06"), pageDay)
-	want := "NDX minus SPX: 1 month -3.12 pt, 3 months -6.40 pt; trial thresholds, not a forecast"
+	want := "NDX 减 SPX：近 1 个月 -3.12 点，近 3 个月 -6.40 点；试行阈值，不是预测"
 	if v.Numbers != want {
 		t.Fatalf("numbers = %q", v.Numbers)
 	}

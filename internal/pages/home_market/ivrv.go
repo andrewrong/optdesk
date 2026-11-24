@@ -50,7 +50,7 @@ func ivRvCell(name string, r *contracts.ReadingRecord, d time.Time) any {
 func ivRvStale(name string, day time.Time, hasDay bool) gap {
 	text := name + " " + ivRvStaleText
 	if hasDay {
-		text += ", data day " + day.Format("01-02")
+		text += ivRvStaleDay + day.Format("01-02")
 	}
 	return mkGap("stale_input", text)
 }

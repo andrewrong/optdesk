@@ -151,7 +151,7 @@ func TestMoversNilPathStaysNoData(t *testing.T) {
 		c, _ := holdingsConfig(twoStocks(), &fakeMarks{})
 		mod(&c)
 		m, _ := build(t, c, "main")
-		if g := gapOf(t, m, "movers"); g["reason"] != "no_data" || g["text"] != "The change today needs prices of two trading days: no data yet" {
+		if g := gapOf(t, m, "movers"); g["reason"] != "no_data" || g["text"] != household_page.TextNoMovers {
 			t.Fatalf("%s: movers gap = %v", name, g)
 		}
 	}
@@ -255,7 +255,7 @@ func TestJpyStockWithoutRateStaysYenWithGap(t *testing.T) {
 			t.Fatalf("%s: row %v", name, row)
 		}
 		g := gapOf(t, m, "composition")
-		want := "4063: no USDJPY rate on or before 2026-11-10"
+		want := fmt.Sprintf(household_page.TextNoRate, "4063", "USDJPY", "2026-11-10")
 		if g["reason"] != "unsupported_currency" || g["text"] != want {
 			t.Fatalf("%s: gap %v", name, g)
 		}
@@ -378,7 +378,7 @@ func TestConcentrationWithNoStockHasGap(t *testing.T) {
 	c, _ := holdingsConfig([]store.Position{opt}, &fakeMarks{})
 	m, _ := build(t, c, "main")
 	g := gapOf(t, m, "concentration")
-	if g["reason"] != "no_data" || !strings.Contains(g["text"].(string), "no stock is held") {
+	if g["reason"] != "no_data" || g["text"] != household_page.TextNoStockHeld {
 		t.Fatalf("gap = %v", g)
 	}
 }

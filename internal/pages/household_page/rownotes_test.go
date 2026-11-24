@@ -7,6 +7,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
+	"github.com/andrewrong/optdesk/internal/pages/household_page"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -25,7 +26,7 @@ func TestUnmatchedPutIsNotedOnItsObligationRow(t *testing.T) {
 	if n := rowNote(rows[0]); strings.Contains(n, "snapshot") {
 		t.Fatalf("matched row note = %q", n)
 	}
-	if n := rowNote(rows[1]); !strings.Contains(n, "not in the position snapshot") {
+	if n := rowNote(rows[1]); !strings.Contains(n, household_page.NoteNotInSnapshot) {
 		t.Fatalf("unmatched row note = %q", n)
 	}
 	validate(t, b)
@@ -50,7 +51,7 @@ func TestStressStepsAreInTheNoteNotTheGap(t *testing.T) {
 	if len(rows) != 1 || st["gap"] != nil {
 		t.Fatalf("stress = %v", st)
 	}
-	if n := rowNote(rows[0]); n != "steps at -10%, -20% and -30% need underlying prices: no data yet" {
+	if n := rowNote(rows[0]); n != household_page.NoteStressSteps {
 		t.Fatalf("note = %q", n)
 	}
 	if !hasGapLine(m, "Stress test") || m["run_status"] != "partial" {
@@ -118,7 +119,7 @@ func TestOneLotAgainstTwoStoredRowsIsMatched(t *testing.T) {
 		t.Fatalf("gaps = %v", m["gaps"])
 	}
 	b, _ := json.Marshal(m)
-	if strings.Contains(string(b), "not in the option ledger yet") {
+	if strings.Contains(string(b), "不在期权账本中") {
 		t.Fatalf("page = %s", b)
 	}
 }
@@ -134,7 +135,7 @@ func TestUnreadableQuantityCountsAsOneContract(t *testing.T) {
 	}
 	// an unreadable stored row counts 1, so it covers only one of two lots of 1
 	_, rows = buildLots(t, lots{"-1", "-1"}, storedPut("-x"))
-	if len(rows) != 2 || strings.Contains(rowNote(rows[0]), "snapshot") || !strings.Contains(rowNote(rows[1]), "not in the position snapshot") {
+	if len(rows) != 2 || strings.Contains(rowNote(rows[0]), "snapshot") || !strings.Contains(rowNote(rows[1]), household_page.NoteNotInSnapshot) {
 		t.Fatalf("rows = %v", rows)
 	}
 }

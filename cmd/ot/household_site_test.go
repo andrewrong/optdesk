@@ -306,7 +306,7 @@ func TestHouseholdJpyHoldingIsUsdWithStoredRate(t *testing.T) {
 func TestHouseholdJpyHoldingWithoutFxStaysYenWithGap(t *testing.T) {
 	t.Parallel()
 	body := jpyHouseholdBody(t, false)
-	if !strings.Contains(body, `"currency":"JPY"`) || !strings.Contains(body, "no USDJPY rate on or before 2026-11-05") {
+	if !strings.Contains(body, `"currency":"JPY"`) || !strings.Contains(body, "USDJPY 在 2026-11-05 当天或之前没有汇率") {
 		t.Fatalf("yen or gap missing: %s", body)
 	}
 }

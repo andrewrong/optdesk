@@ -16,8 +16,8 @@
   "run_status": "partial",
   "card": {
     "title": "Options overview",
-    "say": "Premium from closed sold options totals +$1,234.50.",
-    "subtitle": "From the trade ledger",
+    "say": "已平仓卖出期权的权利金合计 +$1,234.50。",
+    "subtitle": "来自交易账本",
     "stale": {
       "data_time": "2026-11-04T00:00:00+08:00",
       "text": "Ledger as of 11-04",
@@ -32,7 +32,7 @@
           "text": "3",
           "unit": "structures"
         },
-        "caption": "Ledger as of 11-04, account main; lots opened this month"
+        "caption": "Ledger as of 11-04, account main; 本月新开手数"
       },
       "premium_month_usd": {
         "label": "Closed premium",
@@ -53,7 +53,7 @@
           "text": "$1,234.50",
           "unit": "usd"
         },
-        "caption": "Ledger as of 11-04, account main; remaining part of each lot"
+        "caption": "Ledger as of 11-04, account main; 每手的剩余部分"
       },
       "max_loss_usd": {
         "label": "Max loss",
@@ -73,12 +73,12 @@
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "No sold records closed this month"
+          "text": "本月没有平仓的卖出记录"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "Monthly closed P/L is not given on this page"
+          "text": "本页不给出按月的平仓盈亏"
         }
       },
       {
@@ -87,12 +87,12 @@
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "No sold records closed this month"
+          "text": "本月没有平仓的卖出记录"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "Monthly closed P/L is not given on this page"
+          "text": "本页不给出按月的平仓盈亏"
         }
       },
       {
@@ -101,12 +101,12 @@
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "No sold records closed this month"
+          "text": "本月没有平仓的卖出记录"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "Monthly closed P/L is not given on this page"
+          "text": "本页不给出按月的平仓盈亏"
         }
       },
       {
@@ -115,12 +115,12 @@
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "No sold records closed this month"
+          "text": "本月没有平仓的卖出记录"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "Monthly closed P/L is not given on this page"
+          "text": "本页不给出按月的平仓盈亏"
         }
       },
       {
@@ -129,12 +129,12 @@
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "No sold records closed this month"
+          "text": "本月没有平仓的卖出记录"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "Monthly closed P/L is not given on this page"
+          "text": "本页不给出按月的平仓盈亏"
         }
       },
       {
@@ -143,12 +143,12 @@
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "No sold records closed this month"
+          "text": "本月没有平仓的卖出记录"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "Monthly closed P/L is not given on this page"
+          "text": "本页不给出按月的平仓盈亏"
         }
       }
     ],
@@ -164,7 +164,7 @@
       {
         "kind": "gap",
         "reason": "no_data",
-        "text": "Settled premium by closing month: no data yet"
+        "text": "按平仓月份的已结算权利金：暂无数据"
       }
     ]
   }

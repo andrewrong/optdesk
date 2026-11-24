@@ -104,7 +104,7 @@ func twoDays() map[string]dayData {
 	}
 }
 
-const noMoversText = "The change today needs prices of two trading days: no data yet"
+const noMoversText = household_page.TextNoMovers
 
 func amountOf(t *testing.T, row any) float64 {
 	t.Helper()

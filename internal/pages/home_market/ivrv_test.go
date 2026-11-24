@@ -57,7 +57,7 @@ func TestIvRvCellNamesDayWhenNotPageDay(t *testing.T) {
 func TestIvRvCellStaleBeyondFiveDays(t *testing.T) {
 	t.Parallel()
 	wantGap(t, ivRvCell("SPX", ivrvReading("ok", "0.032000", "2026-11-07", nil), pageDay), "stale_input",
-		"SPX Implied minus realised: data is stale, data day 11-07")
+		"SPX "+ivRvStaleText+ivRvStaleDay+"11-07")
 	wantFigure(t, ivRvCell("SPX", ivrvReading("ok", "0.032000", "2026-11-08", nil), pageDay), "3.2", "+3.2 (11-08)")
 }
 
@@ -65,20 +65,20 @@ func TestIvRvCellStoredCode3IsStale(t *testing.T) {
 	t.Parallel()
 	three := 3
 	wantGap(t, ivRvCell("SPX", ivrvReading("missing_input", "", "2026-11-05", &three), pageDay), "stale_input",
-		"SPX Implied minus realised: data is stale, data day 11-05")
+		"SPX "+ivRvStaleText+ivRvStaleDay+"11-05")
 	wantGap(t, ivRvCell("SPX", ivrvReading("missing_input", "", "", &three), pageDay), "stale_input",
-		"SPX Implied minus realised: data is stale")
+		"SPX "+ivRvStaleText)
 }
 
 func TestIvRvCellNoRowIsNoData(t *testing.T) {
 	t.Parallel()
-	wantGap(t, ivRvCell("NDX", nil, pageDay), "no_data", "NDX Implied minus realised: no data, not stored yet")
+	wantGap(t, ivRvCell("NDX", nil, pageDay), "no_data", "NDX "+ivRvNoRow)
 }
 
 func TestIvRvCellMissingIsMissingInput(t *testing.T) {
 	t.Parallel()
 	one := 1
-	want := "RUT Implied minus realised: no data, inputs incomplete"
+	want := "RUT " + ivRvMissing
 	wantGap(t, ivRvCell("RUT", ivrvReading("missing_input", "", "2026-11-13", &one), pageDay), "missing_input", want)
 	wantGap(t, ivRvCell("RUT", ivrvReading("ok", "0.032000", "", nil), pageDay), "missing_input", want)
 	wantGap(t, ivRvCell("RUT", ivrvReading("ok", "0.032000", "garbage", nil), pageDay), "missing_input", want)
