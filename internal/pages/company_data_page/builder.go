@@ -17,6 +17,14 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
+// StockIDReader reads the instruments of type stock whose name is in names.
+type StockIDReader interface {
+	StockIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
+}
+
+// stockIDBatch is the most names one StockIDs call is given.
+const stockIDBatch = 500
+
 // Input is what Build reads: the clock as a value, the day and the readers.
 type Input struct {
 	Now         time.Time
@@ -26,6 +34,8 @@ type Input struct {
 	Facts       companydataapi.PeriodFactReader
 	Earnings    store.EarningsDateReader
 	Calc        companydataapi.Calculator
+	// StockIDs resolves the symbol of a row to its instrument id; nil gives no bars and HasInstrument false.
+	StockIDs StockIDReader
 }
 
 // Missing is one reason a company lacks something, with the sentence Summarize gave.
@@ -88,12 +98,20 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 		vm.Gaps = append(vm.Gaps, Gap{"gap", gapUnderlyings, textUnderlyings})
 		return json.Marshal(vm)
 	}
-	var read []contracts.PriceBar
+	var stocks []underlying.Row
 	for _, u := range rows {
-		if u.Kind != underlying.KindStock || u.Status == underlying.StatusRetired {
+		if u.Kind == underlying.KindStock && u.Status != underlying.StatusRetired {
+			stocks = append(stocks, u)
+		}
+	}
+	ids, idsErr := stockIDsOf(ctx, in.StockIDs, stocks)
+	var read []contracts.PriceBar
+	for _, u := range stocks {
+		if idsErr != nil {
+			vm.Gaps = append(vm.Gaps, Gap{"gap", gapRead, readFailedText(u.Key)})
 			continue
 		}
-		c, bars, err := companyRow(ctx, in, u)
+		c, bars, err := companyRow(ctx, in, u, ids[u.Symbol])
 		if err != nil {
 			vm.Gaps = append(vm.Gaps, Gap{"gap", gapRead, readFailedText(u.Key)})
 			continue
@@ -105,6 +123,40 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 		vm.BarsSource, vm.BarsSourceNote = kind, note
 	}
 	return json.Marshal(vm)
+}
+
+// stockIDsOf asks StockIDs once per batch of 500 distinct symbols and returns the id of each symbol that came
+// back exactly once; a symbol that is absent or came back twice is not in the map. A nil reader gives an empty map.
+func stockIDsOf(ctx context.Context, r StockIDReader, stocks []underlying.Row) (map[string]int64, error) {
+	out := map[string]int64{}
+	if r == nil {
+		return out, nil
+	}
+	var names []string
+	seen := map[string]bool{}
+	for _, u := range stocks {
+		if u.Symbol != "" && !seen[u.Symbol] {
+			seen[u.Symbol] = true
+			names = append(names, u.Symbol)
+		}
+	}
+	count := map[string]int{}
+	for i := 0; i < len(names); i += stockIDBatch {
+		got, err := r.StockIDs(ctx, names[i:min(i+stockIDBatch, len(names))])
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range got {
+			count[g.Name]++
+			out[g.Name] = g.InstrumentID
+		}
+	}
+	for n, c := range count {
+		if c != 1 || out[n] == 0 {
+			delete(out, n)
+		}
+	}
+	return out, nil
 }
 
 func readFailedText(key string) string {
