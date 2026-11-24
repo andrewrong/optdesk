@@ -771,7 +771,7 @@ func TestSkippedKeyStillRunsAdjustedByItsOwnGate(t *testing.T) {
 	cases := []struct {
 		name     string
 		received string
-		want     int
+		want     int // adjusted requests, and deepen pieces (a trades query with an End)
 	}{
 		{"adjusted due", "2026-11-02", 1},
 		{"adjusted fresh", "2026-11-08", 0},
@@ -787,8 +787,18 @@ func TestSkippedKeyStillRunsAdjustedByItsOwnGate(t *testing.T) {
 			if got := len(adjustedQueries(h)); got != c.want {
 				t.Fatalf("adjusted requests %d, want %d", got, c.want)
 			}
-			if trades := len(h.queries) - len(adjustedQueries(h)); trades != 0 {
-				t.Fatalf("daily requests %d, want 0", trades)
+			var daily, deepen int
+			for _, q := range h.queries {
+				switch {
+				case q.Kind != broker.BarTrades:
+				case q.End == "":
+					daily++
+				default:
+					deepen++
+				}
+			}
+			if daily != 0 || deepen != c.want {
+				t.Fatalf("daily requests %d, deepen pieces %d, want 0 and %d", daily, deepen, c.want)
 			}
 		})
 	}
