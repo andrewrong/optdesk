@@ -60,18 +60,19 @@ func TestValuationGapTextsAreChinese(t *testing.T) {
 		name  string
 		build func(context.Context, Input) ([]byte, error)
 		in    Input
-		want  string // gap reason or problem field
+		want  string // gap reason, or problem field
+		text  string // the exact text of it
 	}{
-		{"table close", BuildTable, withClose(tableIn), "close_unavailable"},
-		{"table tables", BuildTable, noTables(tableIn), "tables_missing"},
-		{"table store", BuildTable, noStore(tableIn), "store_unavailable"},
-		{"company close", BuildCompany, withClose(companyIn), "close_unavailable"},
-		{"company tables", BuildCompany, noTables(companyIn), "tables_missing"},
-		{"company store", BuildCompany, noStore(companyIn), "store_unavailable"},
-		{"company unknown", BuildCompany, unknown, ""},
-		{"form tables", BuildForm, noTables(formIn), "tables_missing"},
-		{"form store", BuildForm, noStore(formIn), "store_unavailable"},
-		{"form market", BuildForm, needMarket, "r_market"},
+		{"table close", BuildTable, withClose(tableIn), "close_unavailable", "有些公司读不到收盘价，这些公司的价格区间缺失。"},
+		{"table tables", BuildTable, noTables(tableIn), "tables_missing", "没有存放 R 版本或保证金表，所以不显示价格线。"},
+		{"table store", BuildTable, noStore(tableIn), "store_unavailable", "这里读不到估值存档。"},
+		{"company close", BuildCompany, withClose(companyIn), "close_unavailable", "读不到收盘价。"},
+		{"company tables", BuildCompany, noTables(companyIn), "tables_missing", "没有存放 R 版本或保证金表，所以不显示价格线。"},
+		{"company store", BuildCompany, noStore(companyIn), "store_unavailable", "这里读不到估值存档。"},
+		{"company unknown", BuildCompany, unknown, "store_unavailable", "没有这个键对应的公司。"},
+		{"form tables", BuildForm, noTables(formIn), "tables_missing", "没有存放 R 版本或保证金表，所以不显示价格线。"},
+		{"form store", BuildForm, noStore(formIn), "store_unavailable", "这里读不到估值存档。"},
+		{"form market", BuildForm, needMarket, "r_market", "请选择这家公司的 R 市场。"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -82,14 +83,27 @@ func TestValuationGapTextsAreChinese(t *testing.T) {
 			}
 			m := validate(t, b)
 			var texts []string
+			found := false
 			for _, g := range m["gaps"].([]any) {
 				texts = append(texts, obj(g)["text"].(string))
+				if obj(g)["reason"] == c.want {
+					found = true
+					if obj(g)["text"] != c.text {
+						t.Errorf("gap %q text = %q, want %q", c.want, obj(g)["text"], c.text)
+					}
+				}
 			}
 			for _, p := range m["problems"].([]any) {
 				texts = append(texts, obj(p)["text"].(string))
+				if obj(p)["field"] == c.want {
+					found = true
+					if obj(p)["text"] != c.text {
+						t.Errorf("problem %q text = %q, want %q", c.want, obj(p)["text"], c.text)
+					}
+				}
 			}
-			if len(texts) == 0 {
-				t.Fatalf("no gap or problem text in %v", m)
+			if !found {
+				t.Fatalf("no gap or problem %q in %v", c.want, m)
 			}
 			for _, s := range texts {
 				if !hasHan(s) {
