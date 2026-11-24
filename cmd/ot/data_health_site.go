@@ -167,6 +167,11 @@ var dataHealthNoLedger = map[string]string{
 // (Decision 5).
 var dataHealthPresentOnly = []string{"earnings_refresh", "dividend_capture"}
 
+// dataHealthAnyDayJobs are the jobs the page and the catch-up pass treat as any-day although jobTable has them
+// today-only: the run of iv_history reads the history bars up to the asked day, so a past day gives the same
+// result, and the console host runs a today-only job for any day.
+var dataHealthAnyDayJobs = []string{"iv_history"}
+
 // dueAtOfSlot turns a manifest slot "HHMM" into "HH:MM"; anything else gives "".
 func dueAtOfSlot(slot string) string {
 	if len(slot) != 4 {
@@ -201,8 +206,12 @@ func dataHealthJobs() []data_health_page.Job {
 				zone = ts.zone
 			}
 		}
+		kind := r.Kind
+		if slices.Contains(dataHealthAnyDayJobs, r.ID) {
+			kind = data_health_page.KindAnyDay
+		}
 		out = append(out, data_health_page.Job{
-			ID: r.ID, Kind: r.Kind, Zone: zone, WhyText: r.Text,
+			ID: r.ID, Kind: kind, Zone: zone, WhyText: r.Text,
 			Datasets: slices.Clone(m.datasets), Calendar: m.calendar,
 			PresentOnly: slices.Contains(dataHealthPresentOnly, r.ID), DueAt: dueAt,
 		})
