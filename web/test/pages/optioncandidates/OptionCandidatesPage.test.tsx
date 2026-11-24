@@ -39,6 +39,11 @@ const firstColumn = (scope: Element) =>
   [...scope.querySelectorAll('tbody tr')].map((tr) => tr.querySelector('td')!.textContent!.trim())
 
 describe('OptionCandidatesPage', () => {
+  it('the computed time is shown as a date and a minute with its label', async () => {
+    const page = await show({ ...ok, computed_at: '2026-11-24T13:34:52+08:00' })
+    expect(page.querySelector('[data-computed-at]')!.textContent).toBe('Computed at 2026-11-24 13:34')
+  })
+
   it('shows the main table in payload order with the header texts and one tab per group', async () => {
     const page = await show(ok)
     const main = page.querySelector('[data-group=short_put] [data-table=main]')!

@@ -2,6 +2,7 @@
 // group present, the notes at the foot. Every visible string is a payload field; this file counts, sorts, compares
 // and words nothing. The table sort buttons are those of the shared data-table; there is no filter control.
 import { TriangleAlert } from 'lucide-react'
+import { shownTime } from '@/lib/shown-time'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -104,7 +105,7 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
                 {labels.run_status} {labels.run_status_text}
               </Badge>
             ) : null}
-            {payload.computed_at ? <Badge variant="secondary" data-computed-at>{payload.computed_at}</Badge> : null}
+            {payload.computed_at ? <Badge variant="secondary" data-computed-at>Computed at {shownTime(payload.computed_at)}</Badge> : null}
             {payload.rule_version ? (
               <Badge variant="outline" data-rule-version>
                 {labels?.rule_version} {payload.rule_version}
