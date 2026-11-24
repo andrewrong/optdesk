@@ -61,7 +61,7 @@
     },
     "events": [],
     "notes": [
-      "Event dates follow the release calendar, no release time."
+      "事件日期按发布日历排列，不含发布时间。"
     ],
     "gaps": [
       {
@@ -69,6 +69,6 @@
         "text": "Event calendar: not connected yet"
       }
     ],
-    "data_times_text": "Ease data day 11-05. Event dates follow the release calendar, no release time."
+    "data_times_text": "Ease data day 11-05. 事件日期按发布日历排列，不含发布时间。"
   }
 }

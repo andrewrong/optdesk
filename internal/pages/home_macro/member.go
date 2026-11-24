@@ -51,7 +51,6 @@ const (
 	whenDateOnly     = "date only"
 	eventWindow      = 60 // days after the day that the event reader is asked for
 	maxEvents        = 8
-	noteDates        = "Event dates follow the release calendar, no release time."
 )
 
 var (
