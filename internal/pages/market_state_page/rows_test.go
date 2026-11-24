@@ -45,8 +45,8 @@ func TestRowsCarryWindowAndDay(t *testing.T) {
 		}
 	}
 	for _, i := range []int{0, 1, 3} {
-		if w := obj(rows[i])["window"].(string); !strings.Contains(w, "Level") {
-			t.Errorf("%s: window %q does not say level", ids[i], w)
+		if w := obj(rows[i])["window"].(string); !strings.Contains(w, "水平") {
+			t.Errorf("%s: window %q does not say 水平", ids[i], w)
 		}
 	}
 }

@@ -4,16 +4,11 @@ import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tan
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { shownTime } from '@/lib/shown-time'
 import type { Payload } from '@/types/valuation_page'
 
 type HistoryRow = NonNullable<Payload['history']>[number]
 type Detail = HistoryRow['detail']
-
-// An RFC 3339 `YYYY-MM-DDTHH:mm:ss…` string shown as `YYYY-MM-DD HH:mm`, cut from the text as given
-// (no Date, no zone arithmetic). Any other string comes back unchanged.
-export function shownTime(value: string): string {
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value) ? `${value.slice(0, 10)} ${value.slice(11, 16)}` : value
-}
 
 export function DetailView({ detail }: { detail: Detail }) {
   const facts: [string, string][] = [

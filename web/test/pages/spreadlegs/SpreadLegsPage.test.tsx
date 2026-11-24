@@ -32,7 +32,7 @@ describe('SpreadLegsPage', () => {
     const { host, done } = await show()
     const c = card(host, 'AAA')
     expect(c.querySelectorAll('tbody tr').length).toBe(2)
-    expect(c.querySelectorAll('[data-break-even-value]').length).toBe(1)
+    expect(c.querySelector('[data-figure="break_even"] dd')?.textContent).toBe('93.70')
     expect(c.querySelector('h3 a')?.getAttribute('href')).toBe('/options/structures/put_spread-aaa-2026-12-18')
     expect(c.querySelector('[data-kind-gloss]')?.textContent).toBe('卖出价格较高的认沽、买入价格较低的认沽')
     expect(c.querySelector('[data-figure="net_credit"]')?.textContent).toContain('+260.00 美元')
@@ -42,8 +42,7 @@ describe('SpreadLegsPage', () => {
 
   it('shows the iron condor with two break-evens in the order sent', async () => {
     const { host, done } = await show()
-    const values = [...card(host, 'BBB').querySelectorAll('[data-break-even-value]')].map((e) => e.textContent)
-    expect(values).toEqual(['86.9', '113.1'])
+    expect(card(host, 'BBB').querySelector('[data-figure="break_even"] dd')?.textContent).toBe('86.90 和 113.10')
     expect(card(host, 'BBB').querySelectorAll('tbody tr').length).toBe(4)
     await done()
   })

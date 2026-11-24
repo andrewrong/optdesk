@@ -19,3 +19,24 @@ const (
 	volGapStale    = "隐含减已实现：数据已过期"
 	volGapNoReader = "隐含减已实现：未接入读取器"
 )
+
+// Chinese explanation texts of the indicator rows, the sector table and the freshness line.
+const (
+	windowSp500Vs200d = "水平：FRED 最新收盘价对比最近 200 个收盘价的均值"
+	windowDrawdown    = "60 个交易日水平：最新收盘价对比最近 60 个收盘价中的最高值"
+	windowVix         = "VIX 最新收盘价；分位覆盖最近 3 个日历年"
+	windowVixTerm     = "水平：当日 VIX 除以 VIX3M；1.00 表示两者相等"
+	windowHySpread    = "FRED 最新收盘值；分位覆盖已存储的全部日期"
+
+	pctWindowVix = "当日之前的 3 个日历年，不含当日；严格低于当日数值的天数占比"
+	pctWindowHy  = "已存储的全部日期，自第一个存储日起；FRED 约提供 3 年数据"
+
+	sectorCaption = "基金涨跌幅减 SPY 涨跌幅，窗口为截至所示终止日的 21 个与 63 个交易日；排名只计两个收盘价都有的基金；为试验窗口，不是预测。"
+	barsCaption   = "柱表示各基金相对 SPY 的 63 日差距，顺序同表格，单位为 pp；没有数值的基金没有柱。"
+	// rotationNote names both windows and the tail offsets.
+	rotationNote = "x 为相对 SPY 的 63 日差距，y 为 21 日差距减 63 日差距的三分之一；尾迹点为 end_day 之前 5、10、15、20 个交易日；表示位置，不是预测；点击某只基金的圆点可绘制其尾迹"
+
+	freshnessHead = "行业基金与 SPY：日收盘价，于纽约证券交易所（NYSE）收盘后 10 分钟存储，最近收盘日 "
+	freshnessNone = "尚未存储"
+	freshnessTail = "；非盘中数据。标普 500、VIX、VIX3M 与高收益利差各行：FRED 日度序列，于纽约时间 07:30 存储，每行标明各自的数据日。"
+)

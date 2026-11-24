@@ -16,7 +16,7 @@
     }
   ],
   "run_status": "partial",
-  "title": "Household risk",
+  "title": "账户风险 Account risk",
   "sentence": "Delta and Vega come from the latest capture; Beta-weighted Delta, the volatility range and the standard metrics are not built: no job stores Beta, the index price or risk metrics.",
   "vega_title": "Vega by expiry",
   "delta": {

@@ -30,13 +30,13 @@ const (
 )
 
 var gapTexts = map[string]string{
-	"missing_quote":        "No quote",
-	"stale_input":          "Stale quote",
-	"unsupported_currency": "Non-USD contract, not converted",
-	"no_rule":              "No such figure for this structure",
-	"no_data":              "No data",
-	"missing_input":        "Missing input",
-	"no_reader":            "Reader not connected",
+	"missing_quote":        gapTextMissingQuote,
+	"stale_input":          gapTextStaleQuote,
+	"unsupported_currency": gapTextForeign,
+	"no_rule":              gapTextNoRuleFigure,
+	"no_data":              gapTextNoDataReason,
+	"missing_input":        gapTextMissingIn,
+	"no_reader":            gapTextNoReader,
 }
 
 func mkGap(reason string) gap {
@@ -167,7 +167,7 @@ func (c cells) listMaxLossCell(s compute.Structure) any { return c.maxLossWith(s
 func (c cells) maxLossWith(s compute.Structure, money func(compute.FigureValue) any) any {
 	m := money(s.Figures.MaxLoss)
 	if g, ok := m.(gap); ok && s.Kind == "naked_call" && g.Reason == reasonNoRule {
-		return gap{Reason: reasonNoRule, Text: "No limit"}
+		return gap{Reason: reasonNoRule, Text: gapTextNoLimit}
 	}
 	return m
 }

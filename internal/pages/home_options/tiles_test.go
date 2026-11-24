@@ -255,7 +255,7 @@ func TestCardGapLeavesOnlyWithBothFields(t *testing.T) {
 	noTiles, noStructures := both, both
 	noTiles.Tiles = nil
 	noStructures.Structures = nil
-	const gapText = "Max loss needs the combined structure, the ledger does not give it"
+	const gapText = "最大亏损需要组合结构，账本没有给出"
 	if strings.Contains(gapTexts(card(t, both)), gapText) {
 		t.Fatal("the card gap stays with both fields set")
 	}

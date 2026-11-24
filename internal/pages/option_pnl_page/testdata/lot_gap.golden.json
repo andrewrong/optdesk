@@ -10,8 +10,8 @@
   "stale": null,
   "title": "P\u0026L split",
   "notes": [
-    "model: European Black-Scholes, 365-day year, no dividends; an ex-dividend drop lands in the solved IV; the early-exercise premium is not modelled",
-    "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
+    "模型：欧式 Black-Scholes，一年按 365 天，不含股息；除息造成的下跌会落在求解出的 IV 里；不模拟提前行权的溢价",
+    "报价日按账本的算法：卖价大于 0，买价不小于 0，并且有标的价格"
   ],
   "gaps": [],
   "as_of": "2026-11-17",
@@ -23,7 +23,7 @@
           "id": "book-main-USD",
           "currency": "USD",
           "counts": "USD book, 2 lots counted (1 open, 1 assigned)",
-          "left_out": "2 of 4 lots left out of the sums: 1 with no stored quote (EEE, ledger not stored); 1 with no stored close (DDD, ledger $12.00)",
+          "left_out": "共 4 个仓位，其中 2 个未计入合计：1 个没有存档报价的仓位（EEE，账本 not stored）；1 个没有存档收盘价的仓位（DDD，账本 $12.00）",
           "headline": {
             "id": "b0-main-head",
             "label": "Rent minus move cost",
@@ -215,7 +215,7 @@
             {
               "id": "a0l0-circ",
               "label": "Open-lot check",
-              "text": "The open-lot check is circular: our stored mid is on both sides, so it checks fills, commissions and the charge, not the market value",
+              "text": "未结束仓位的核对是循环的：两边用的都是我们存档的 mid，所以它核对的是成交、佣金和费用，不是市值",
               "hint": null,
               "tone": "muted"
             }
@@ -358,7 +358,7 @@
           "days_line": {
             "id": "a0l2-days",
             "label": "Days",
-            "text": "not computed",
+            "text": "未计算",
             "hint": null,
             "tone": "none"
           },
@@ -380,7 +380,7 @@
           "days_line": {
             "id": "a0l3-days",
             "label": "Days",
-            "text": "not computed",
+            "text": "未计算",
             "hint": null,
             "tone": "none"
           },
@@ -395,7 +395,7 @@
           }
         }
       ],
-      "sample_note": "2 ended lots, 1 split lots: fewer than 20 split lots: no conclusion about what pays",
+      "sample_note": "2 个已结束的仓位，1 个已拆分的仓位：拆分的仓位不足 20 个：没有结论，不能据此判断这种做法是否赚钱",
       "gap": null,
       "ledger": {
         "title": "Ledger",
@@ -414,7 +414,7 @@
                     "id": "book-lg-a0m-0-0",
                     "currency": "USD",
                     "counts": "USD, 1 split lot of 2 ended",
-                    "left_out": "1 of 2 lots left out of the sums: 1 with no stored close (DDD, ledger $12.00)",
+                    "left_out": "共 2 个仓位，其中 1 个未计入合计：1 个没有存档收盘价的仓位（DDD，账本 $12.00）",
                     "headline": {
                       "id": "lga0m0-0-head",
                       "label": "Rent minus move cost",
@@ -646,7 +646,7 @@
                     "id": "book-lg-a0c-1-0",
                     "currency": "USD",
                     "counts": "USD, 0 split lots of 1 ended",
-                    "left_out": "1 of 1 lots left out of the sums: 1 with no stored close (DDD, ledger $12.00)",
+                    "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档收盘价的仓位（DDD，账本 $12.00）",
                     "headline": {
                       "id": "lga0c1-0-head",
                       "label": "Rent minus move cost",

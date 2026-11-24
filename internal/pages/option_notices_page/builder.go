@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -78,7 +79,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 	if err != nil {
 		return nil, err
 	}
-	var oldest contracts.Day
+	var stale []staleAccount
 	for _, alias := range order(c) {
 		main := alias == c.Main
 		cp, ok, err := findCapture(ctx, c.Account, alias, day)
@@ -102,11 +103,11 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 			return nil, fmt.Errorf("option_notices_page: bad capture day %q: %w", cp.Day, err)
 		}
 		vm.DataTimes = append(vm.DataTimes, sourceTime{Source: sourceID(alias), DataTime: at})
-		if block.Status == "stale" && (oldest == "" || cp.Day < oldest) {
-			oldest = cp.Day
+		if block.Status == "stale" {
+			stale = append(stale, staleAccount{alias: alias, day: cp.Day})
 		}
 	}
-	if err := finish(&vm, c.Zone, oldest); err != nil {
+	if err := finish(&vm, c.Zone, stale); err != nil {
 		return nil, err
 	}
 	return json.Marshal(vm)
@@ -131,14 +132,29 @@ func checkConfig(c Config, day contracts.Day) error {
 	return nil
 }
 
-// finish writes the stale label of the oldest stale data day and the run status.
-func finish(vm *viewModel, zone *time.Location, oldest contracts.Day) error {
-	if oldest != "" {
+// staleAccount is an account whose snapshot is older than the allowed day.
+type staleAccount struct {
+	alias string
+	day   contracts.Day
+}
+
+// finish writes the stale label (naming each stale account and its day; its data time is the oldest
+// day) and the run status.
+func finish(vm *viewModel, zone *time.Location, stale []staleAccount) error {
+	if len(stale) > 0 {
+		oldest := stale[0].day
+		parts := make([]string, 0, len(stale))
+		for _, s := range stale {
+			if s.day < oldest {
+				oldest = s.day
+			}
+			parts = append(parts, s.alias+staleMid+string(s.day))
+		}
 		at, err := midnight(oldest, zone)
 		if err != nil {
 			return fmt.Errorf("option_notices_page: bad day %q: %w", oldest, err)
 		}
-		vm.Stale = &staleLabel{DataTime: at, IsStale: true, Text: staleHead + string(oldest) + staleTail}
+		vm.Stale = &staleLabel{DataTime: at, IsStale: true, Text: staleHead + strings.Join(parts, "; ") + staleTail}
 	}
 	for _, b := range vm.Accounts {
 		if b.Status == "no_capture" {

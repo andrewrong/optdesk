@@ -2,6 +2,9 @@ package household_page
 
 // The Chinese words of the family page.
 const (
+	// linkRisk is the header link to /risk, the risk page of the main account.
+	linkRisk = "账户风险 Account risk"
+
 	familyTitle    = "家庭合计"
 	familySentence = "全家净值和现金是各账户最近一次采集的美元合计；没有计入的账户在表里留一行并写明原因，股票和期权请到单个账户页查看。"
 	familyNetName  = "全家净值（计入 %d / %d 个账户）"

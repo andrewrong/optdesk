@@ -19,7 +19,8 @@ const (
 	noteNoCapture = "No position snapshot of this account in the last 7 days"
 	noteNoGuard   = "No guard record"
 	noContract    = "—"
-	staleHead     = "Position snapshot is from "
+	staleHead     = "Position snapshot of account "
+	staleMid      = " is from "
 	staleTail     = ", not the current day"
 	cushionHead   = "Cushion "
 )

@@ -210,7 +210,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	rows := cfg.Rows
 	if len(rows) > maxRows {
 		rows = rows[:maxRows]
-		doc.Card.Notes = append(doc.Card.Notes, fmt.Sprintf("Showing the first %d of %d companies.", maxRows, len(cfg.Rows)))
+		doc.Card.Notes = append(doc.Card.Notes, fmt.Sprintf(noteFirstRows, maxRows, len(cfg.Rows)))
 	}
 	newest := time.Time{}
 	priced := 0
@@ -236,7 +236,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_reader", "price line and volatility: " + noReaderText})
 	}
 	doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_data", "sharp moves: no sharpmove readings"})
-	doc.Card.SharpNote = "Sharp moves: no readings yet."
+	doc.Card.SharpNote = sharpNoteText
 	if len(doc.Card.Rows) > 0 && priced < len(doc.Card.Rows) {
 		doc.RunStatus = "partial"
 	}

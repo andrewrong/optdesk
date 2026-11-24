@@ -112,7 +112,7 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 		Stale:  staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "Ledger and closing prices as of " + string(day)},
 	}
 	if c.Ledger == nil || c.Sessions == nil {
-		vm.RunStatus, vm.Sentence, vm.Note = "failed", "Cannot read the position structures", ptr(noReaderNote)
+		vm.RunStatus, vm.Sentence, vm.Note = "failed", cannotReadText, ptr(noReaderNote)
 		return json.Marshal(vm)
 	}
 	in, closes, ids, err := c.loadIDs(ctx, alias, day)

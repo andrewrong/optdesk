@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"os"
@@ -224,8 +225,9 @@ func TestMacroPageDemoGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	const path = "testdata/macro_page_demo.golden.json"
+	got := maskExplanation(out.Bytes())
 	if *update {
-		if err := os.WriteFile(path, out.Bytes(), 0o644); err != nil {
+		if err := os.WriteFile(path, got, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -233,8 +235,46 @@ func TestMacroPageDemoGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(out.Bytes(), want) {
+	if !bytes.Equal(got, maskExplanation(want)) {
 		t.Fatalf("output differs from %s:\n%s", path, out.String())
+	}
+}
+
+func maskExplanation(raw []byte) []byte {
+	var page map[string]any
+	_ = json.Unmarshal(raw, &page) // a page that is not an object fails below
+	blank := func(v any, k string) {
+		m, _ := v.(map[string]any)
+		if _, ok := m[k].(string); ok {
+			m[k] = ""
+		}
+	}
+	blank(page, "sentence")
+	blank(page["lead"], "note")
+	liq := page["liquidity"].(map[string]any)
+	for _, tap := range liq["taps"].([]any) {
+		blank(tap, "note")
+	}
+	for _, l := range liq["lines"].([]any) {
+		if m, _ := l.(map[string]any); m["key"] == "conditions" {
+			blank(m["sentence"], "text")
+		}
+	}
+	out, _ := json.Marshal(page)
+	return out
+}
+
+func TestMacroPageDemoGoldenIgnoresExplanationText(t *testing.T) {
+	t.Parallel()
+	base := `{"at":"a","sentence":"x","lead":{"note":"n","rows":[1.5]},"liquidity":{"taps":[{"note":"t"}],"lines":[{"key":"conditions","sentence":{"text":"c"}}]}}`
+	r := strings.NewReplacer(`"x"`, `"其他"`, `"n"`, `""`, `"t"`, `""`, `"c"`, `"中"`)
+	if !bytes.Equal(maskExplanation([]byte(base)), maskExplanation([]byte(r.Replace(base)))) {
+		t.Fatal("explanation text must not matter")
+	}
+	for _, d := range [][2]string{{`"a"`, `"b"`}, {`1.5`, `1.6`}, {`"sentence"`, `"sentence2"`}} {
+		if bytes.Equal(maskExplanation([]byte(base)), maskExplanation([]byte(strings.Replace(base, d[0], d[1], 1)))) {
+			t.Fatalf("difference %v not seen", d)
+		}
 	}
 }
 

@@ -84,9 +84,37 @@ func TestFillsFromRows(t *testing.T) {
 	// the dropped row is named in gaps, so the page is partial
 	found := false
 	for _, g := range list(t, m["gaps"]) {
-		found = found || obj(t, g)["text"] == "Some fills cannot be shown"
+		found = found || obj(t, g)["text"] == "部分成交记录无法显示"
 	}
 	if !found || m["run_status"] != "partial" {
 		t.Fatalf("gaps = %v, status = %v", m["gaps"], m["run_status"])
+	}
+}
+
+func TestLegsAndFillsNotesNameTheCaps(t *testing.T) {
+	t.Parallel()
+	fx := readFixture(t, "detail_spread")
+	s := &fx.Result.Structures[0]
+	for len(s.Legs) <= 8 {
+		s.Legs = append(s.Legs, s.Legs[0])
+	}
+	for len(fx.Positions[0].Fills) <= 50 {
+		fx.Positions[0].Fills = append(fx.Positions[0].Fills, fx.Positions[0].Fills[0])
+	}
+	m := fx.build(t, spreadID, true)
+	if n := len(list(t, m["legs"])); n != 8 {
+		t.Errorf("legs shown = %d", n)
+	}
+	if n := len(list(t, m["fills"])); n != 50 {
+		t.Errorf("fills shown = %d", n)
+	}
+	got := map[string]bool{}
+	for _, g := range list(t, m["gaps"]) {
+		got[obj(t, g)["text"].(string)] = true
+	}
+	for _, want := range []string{"只显示前 8 条腿", "只显示前 50 条成交记录"} {
+		if !got[want] {
+			t.Errorf("gaps = %v, missing %q", got, want)
+		}
 	}
 }

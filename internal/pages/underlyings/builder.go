@@ -220,7 +220,7 @@ func buildRow(r underlying.Row, in Input, zone *time.Location) rowJSON {
 	groups := Follows(r.Status, r.Options, r.Fundamentals, r.Issuer != "", held)
 	name := r.Name
 	if name == "" {
-		name = r.Symbol
+		name = zhNoName
 	}
 	var conID *int64
 	if r.ConID != 0 {
