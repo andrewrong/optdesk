@@ -21,12 +21,13 @@ func allOutside(res contracts.JobResult, outside int) contracts.JobResult {
 }
 
 // postcondition ends a run: planned is the not-deferred plan items, of which the outside-band rows are taken apart.
-// All of them outside is NoValue; else at least share of the rest must be ok.
-func postcondition(res contracts.JobResult, share float64, planned, ok, unread, partial, outside, added int) contracts.JobResult {
+// All of them outside is NoValue; else at least share of the rest, less the rows the broker answered with no quote, must be ok.
+func postcondition(res contracts.JobResult, share float64, planned, ok, unread, partial, outside, noQuote, added int) contracts.JobResult {
 	planned -= outside
 	if planned == 0 && outside > 0 {
 		return allOutside(res, outside)
 	}
+	planned -= noQuote
 	if float64(ok) < share*float64(planned) {
 		return underShare(res, ok, planned, unread, partial, outside, added, share)
 	}

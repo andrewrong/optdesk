@@ -16,9 +16,11 @@ func slotReader(d PullDeps) openquote.OptionOpenSlotReader {
 	return r
 }
 
-// isFinal is a final status of a stored row (Decision 8): ok and not_listed are never asked again for their day and
-// slot; every other status, no_subscription among them, is asked again.
-func isFinal(status int) bool { return status == stOK || status == stNotListed }
+// isFinal is a final stored row (Decision 8): ok, not_listed and no_data with the code NO_QUOTE are never asked again
+// for their day and slot; every other status, no_subscription and no_data with no code among them, is asked again.
+func isFinal(r contracts.OptionOpen) bool {
+	return r.Status == stOK || r.Status == stNotListed || isNoQuoteRow(r)
+}
 
 // resume reads the rows stored for the batch for the session day of its items and the slot of the manifest and splits
 // the items into the final rows in hand (in the order of the items) and the items still to ask. The final rows of
@@ -59,7 +61,7 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, cha
 	}
 	have := make(map[int]contracts.OptionOpen, len(stored))
 	for _, r := range stored {
-		if r.Slot == p.m.Slot && isFinal(r.Status) {
+		if r.Slot == p.m.Slot && isFinal(r) {
 			have[r.InstrumentID] = r
 		}
 	}

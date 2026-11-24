@@ -21,8 +21,12 @@ import (
 const (
 	openStatusOK        = 1
 	openStatusPartial   = 2
+	openStatusNoData    = 3
 	openStatusNotListed = 4
 	openStatusDeferred  = 7
+
+	// noQuoteCode is the error code of a status 3 row the broker answered with no bid and no ask (optionopen).
+	noQuoteCode = "NO_QUOTE"
 
 	markEodFallback    = "eod_fallback"
 	markOIPriorSession = "oi_prior_session"
@@ -80,6 +84,7 @@ type sourceRun struct {
 	nEod    int
 	nNone   int
 	noTerm  int
+	noQuote int
 	puts    []string // "SYMBOL=n": usable puts at or below need_high times the buy price, per underlying on the open
 	lines   []string // Skipped lines of the underlyings that fell back
 }
@@ -124,7 +129,7 @@ func (s *sourceRun) finish() []string {
 		return nil
 	}
 	s.j.logger().Info("option_candidates source", "component", "jobs", "job", s.j.m.ID, "open", s.nOpen,
-		"eod_fallback", s.nEod, "none", s.nNone, "open_rows_without_terms", s.noTerm,
+		"eod_fallback", s.nEod, "none", s.nNone, "open_rows_without_terms", s.noTerm, "no_quote", s.noQuote,
 		"puts_at_need_high", strings.Join(s.puts, ","))
 	return s.lines
 }
@@ -270,6 +275,10 @@ func (s *sourceRun) fromOpen(
 			res.spot = optText(r.UnderlyingPrice)
 		}
 		if r.Status == openStatusDeferred || r.Status == openStatusNotListed {
+			continue
+		}
+		if r.Status == openStatusNoData && r.ErrorCode != nil && *r.ErrorCode == noQuoteCode {
+			s.noQuote++
 			continue
 		}
 		byID[r.InstrumentID] = r
