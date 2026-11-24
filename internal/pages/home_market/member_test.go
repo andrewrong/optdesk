@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -393,7 +394,7 @@ func TestIndexNoDiffReadingGivesThreeNoDataGaps(t *testing.T) {
 	b := build(t, config(nil), fullSeries())
 	n := 0
 	for _, g := range decodeGaps(t, b) {
-		if g.Reason == "no_data" && strings.Contains(g.Text, "Implied minus realised") {
+		if g.Reason == "no_data" && strings.Contains(g.Text, ivRvNoRow) {
 			n++
 		}
 		if g.Reason == "not_built" {
@@ -597,6 +598,53 @@ func TestIndexIvCardMatchesSchema(t *testing.T) {
 	for i, want := range []string{"FRED VIXCLS 11-06", "FRED VXNCLS 11-06", "FRED RVXCLS 11-06"} {
 		if got := cell(tbl.Rows[i], "index_iv")["source"]; got != want {
 			t.Errorf("row %d source = %v, want %s", i, got, want)
+		}
+	}
+}
+
+func TestCardTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	han := regexp.MustCompile(`\p{Han}`)
+	for name, series := range map[string]fakeSeries{"no series": {}, "full series": fullSeries()} {
+		b := build(t, config(nil), series)
+		var v struct {
+			Card struct {
+				Subtitle     string `json:"subtitle"`
+				Say          string `json:"say"`
+				VolNote      string `json:"vol_indices_note"`
+				DataTimesTxt string `json:"data_times_text"`
+				Stale        struct {
+					Text string `json:"text"`
+				} `json:"stale"`
+				Chart struct {
+					AriaText  string   `json:"aria_text"`
+					EndLabels []string `json:"end_labels"`
+				} `json:"chart"`
+				Gaps []gap `json:"gaps"`
+			} `json:"card"`
+		}
+		if err := json.Unmarshal(b, &v); err != nil {
+			t.Fatal(err)
+		}
+		c := v.Card
+		texts := []string{c.Subtitle, c.Say, c.VolNote, c.DataTimesTxt, c.Stale.Text, c.Chart.AriaText}
+		if name == "no series" {
+			texts = append(texts, c.Chart.EndLabels...)
+		}
+		for _, g := range c.Gaps {
+			for _, k := range []string{ivNoRow, ivMissing, ivRvNoRow, ivRvMissing, ivRvStaleText, techNoData, techStale, techMissing, chartNoData} {
+				if strings.Contains(g.Text, k) {
+					texts = append(texts, g.Text)
+				}
+			}
+		}
+		for _, s := range texts {
+			if !han.MatchString(s) {
+				t.Errorf("%s: text %q holds no Chinese character", name, s)
+			}
+		}
+		if len(texts) < 6 {
+			t.Errorf("%s: only %d texts checked", name, len(texts))
 		}
 	}
 }

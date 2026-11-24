@@ -209,14 +209,14 @@ func TestSeriesPremiumByCloseMonth(t *testing.T) {
 			if pr["kind"] != "value" || pr["text"] != tx {
 				t.Fatalf("premium of %v = %v", m["month"], pr)
 			}
-		} else if pr["kind"] != "gap" || pr["reason"] != "no_data" || pr["text"] != "No sold records closed this month" {
+		} else if pr["kind"] != "gap" || pr["reason"] != "no_data" || pr["text"] != "本月没有平仓的卖出记录" {
 			t.Fatalf("premium of %v = %v", m["month"], pr)
 		}
 		if cl := m["closed"].(map[string]any); cl["kind"] != "gap" || cl["reason"] != "no_data" {
 			t.Fatalf("closed of %v = %v", m["month"], cl)
 		}
 	}
-	if strings.Contains(string(mustJSON(t, c["gaps"])), "Settled premium by closing month: no data yet") {
+	if strings.Contains(string(mustJSON(t, c["gaps"])), "按平仓月份的已结算权利金：暂无数据") {
 		t.Fatalf("gaps = %v", c["gaps"])
 	}
 }
@@ -230,7 +230,7 @@ func TestSeriesWithoutFigureKeepsGap(t *testing.T) {
 			t.Fatalf("premium = %v", g)
 		}
 	}
-	if !strings.Contains(string(mustJSON(t, c["gaps"])), "Settled premium by closing month: no data yet") {
+	if !strings.Contains(string(mustJSON(t, c["gaps"])), "按平仓月份的已结算权利金：暂无数据") {
 		t.Fatalf("gaps = %v", c["gaps"])
 	}
 }
@@ -327,14 +327,14 @@ func TestNilReaderIsNoDataEverywhere(t *testing.T) {
 	t.Parallel()
 	c := cfg(nil, results{})
 	c.Ledger = nil
-	allGaps(t, card(t, c), "Option ledger: not connected yet")
+	allGaps(t, card(t, c), "期权账本：尚未接入")
 }
 
 func TestEmptyLedgerIsNoDataEverywhere(t *testing.T) {
 	t.Parallel()
 	c := card(t, cfg(ledger{aliases: map[string]int{}}, results{}))
-	allGaps(t, c, "Ledger: no records yet")
-	if c["say"] != "Option ledger: no records yet." {
+	allGaps(t, c, "账本：暂无记录")
+	if c["say"] != "期权账本：暂无记录。" {
 		t.Fatalf("say = %v", c["say"])
 	}
 }
@@ -496,6 +496,41 @@ func TestHomeCardNotesAreChinese(t *testing.T) {
 		for _, o := range old {
 			if strings.Contains(s, o) {
 				t.Errorf("old English %q in %q", o, s)
+			}
+		}
+	}
+}
+
+func TestCardTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	han := regexp.MustCompile(`\p{Han}`)
+	noReader := cfg(nil, results{})
+	noReader.Ledger = nil
+	cases := map[string]home_options.Config{
+		"no reader":    noReader,
+		"empty reader": cfg(ledger{aliases: map[string]int{}}, results{}),
+	}
+	for name, c := range cases {
+		m := card(t, c)
+		texts := []string{}
+		for _, k := range []string{"say", "subtitle"} {
+			s, _ := m[k].(string)
+			texts = append(texts, s)
+		}
+		for _, g := range m["gaps"].([]any) {
+			s, _ := g.(map[string]any)["text"].(string)
+			texts = append(texts, s)
+		}
+		for _, k := range []string{"sold_count_month", "premium_month_usd", "open_premium_usd", "max_loss_usd"} {
+			s, _ := tileFigure(m, k)["text"].(string)
+			texts = append(texts, s)
+		}
+		if len(texts) < 8 {
+			t.Fatalf("%s: only %d texts", name, len(texts))
+		}
+		for _, s := range texts {
+			if !han.MatchString(s) {
+				t.Errorf("%s: text %q holds no Chinese character", name, s)
 			}
 		}
 	}

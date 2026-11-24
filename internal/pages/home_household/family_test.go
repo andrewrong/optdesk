@@ -114,7 +114,7 @@ func TestFamilyCardSumsNetAndCash(t *testing.T) {
 	m, _ := build(t, c)
 	tl := tilesOf(m)
 	cases := []struct{ tile, figure, caption string }{
-		{"net_worth", "$250,000.00", "USD · Data day 2026-11-10"},
+		{"net_worth", "$250,000.00", "USD · 数据日 2026-11-10"},
 		{"cash", "40.00%", "+$100,000.00"},
 		{"day_change", "+$1,500.00", "+0.60%"},
 		{"month_to_date", "+$5,000.00", "+2.04%"},
@@ -237,7 +237,7 @@ func TestFamilyCardCashShare(t *testing.T) {
 	res.Cash, res.CashShare = fv("-5000.00"), gapv("missing_input")
 	c, _, _ = book(res, twoCaptured())
 	m, _ = build(t, c)
-	if f := figureOf(m, "cash"); f["text"] != "Borrowing" {
+	if f := figureOf(m, "cash"); f["text"] != "借款" {
 		t.Errorf("negative cash figure = %v", f)
 	}
 }

@@ -511,36 +511,14 @@ func percentFigure(v string) signed {
 	return signed{Value: json.Number(v), Text: sign(v) + strings.TrimPrefix(v, "-") + "%", Tone: tone(v), Unit: "percent"}
 }
 
-// The words of the member, written once.
+// The English words of the member: the card title and the four labels.
 const (
-	cardTitle      = "Household"
-	textSubtitle   = "Main account · Data day "
-	textDataDay    = "Data day "
-	textStaleLabel = "Account data day "
-	textNoReader   = "No reader: no data yet"
-	textNoData     = "This account has no capture yet"
-	textNoCapture  = "No capture"
-	textStale      = "The latest capture is over 3 trading days old"
-	textBorrowing  = "Borrowing"
+	cardTitle = "Household"
 
 	labelNetWorth    = "Net value"
 	labelCash        = "Cash"
 	labelDayChange   = "Previous trading day"
 	labelMonthToDate = "Month to date"
-
-	explainNetWorth = "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
-	explainCash     = "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, " +
-		"the small one the amount; negative cash is margin borrowing."
-	explainDayChange = "Net liquidation of the latest capture minus the previous captured trading day, USD; " +
-		"includes deposits and withdrawals, not pure return. The percentage is this change divided " +
-		"by the previous day."
-	explainMonthToDate = "Net liquidation of the latest capture minus the last trading day of the previous month, " +
-		"USD; includes deposits and withdrawals, not time-weighted return."
-)
-
-const (
-	textNeedsPrior      = "Needs a second captured session day; first capture "
-	textNeedsMonthStart = "Needs the last session day of the previous month; first capture "
 )
 
 var gapTexts = map[string]string{

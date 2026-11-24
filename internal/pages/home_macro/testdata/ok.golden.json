@@ -14,7 +14,7 @@
   "run_status": "partial",
   "card": {
     "title": "Macro",
-    "say": "Ease neutral, vs last week −0.2.",
+    "say": "Ease neutral，较上周 −0.2。",
     "stale": {
       "data_time": "2026-11-05T00:00:00+08:00",
       "stale_after": "2026-11-09T09:30:00+08:00",
@@ -57,7 +57,7 @@
         "100"
       ],
       "reading_text": "Now 56, neutral; fixed scale 0 to 100.",
-      "aria_text": "Ease 56, neutral, vs last week −0.2; fixed scale 0 to 100, neutral band 33.5 to 66.5."
+      "aria_text": "Ease 56, neutral, 较上周 −0.2; fixed scale 0 to 100, neutral band 33.5 to 66.5."
     },
     "events": [],
     "notes": [
@@ -66,7 +66,7 @@
     "gaps": [
       {
         "reason": "not_built",
-        "text": "Event calendar: not connected yet"
+        "text": "事件日历：尚未接入"
       }
     ],
     "data_times_text": "Ease data day 11-05. 事件日期按发布日历排列，不含发布时间。"

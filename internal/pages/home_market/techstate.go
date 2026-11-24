@@ -11,10 +11,6 @@ const (
 	figTech     = "market.tech_state"
 	techKind    = "market"
 	techSubject = "NDX_SPX"
-
-	techNoData  = "Tech state: no data, not stored yet"
-	techStale   = "Tech state: data is stale"
-	techMissing = "Tech state: no data, inputs incomplete"
 )
 
 // techNotes reads the newest market.tech_state reading within readingDays of d. With a state it puts the sentence
