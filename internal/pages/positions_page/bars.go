@@ -19,6 +19,7 @@ const (
 	barBasis        = "trades"
 	barLookbackDays = 14  // calendar days of bars read up to the capture day
 	stockIDBatch    = 500 // names of one StockIDs call
+	noteLegs        = 5   // ledger legs named by the behind note
 	noteSymbols     = 8   // symbols named by the fallback note
 	noteMaxRunes    = 200 // schema limit of one note
 )

@@ -465,6 +465,7 @@ func TestFractionalStockQuantityIsListed(t *testing.T) {
 		pos("2026-11-10", "AAA", "stock", "USD", 1, "0.5", "10"),
 		pos("2026-11-10", "BBB", "stock", "USD", 2, "10.250", "10"),
 	)
+	c.Ledgers = func() compute.OptionLedger { return openLegs(nil) }
 	m, _ := build(t, marksOf(c, midMark(1, "11"), midMark(2, "11")), "main")
 	for i, w := range []struct {
 		value float64
@@ -632,6 +633,7 @@ func TestStatementNoteNamesTheDataDay(t *testing.T) {
 	acc := account()
 	delete(acc.positions, "main|2026-11-10")
 	c := config(acc)
+	c.Ledgers = func() compute.OptionLedger { return openLegs(nil) }
 	c.Statement = []string{"main"}
 	m, _ := build(t, c, "main")
 	n := notesOf(t, m)
@@ -713,5 +715,71 @@ func TestBarsSourceMixed(t *testing.T) {
 	validate(t, b)
 	if _, has := ok["bars_source_note"]; has || ok["bars_source"] != nil {
 		t.Fatalf("all-ibkr page carries a source: %v", ok["bars_source"])
+	}
+}
+
+type openLegs []compute.LedgerPosition
+
+func (o openLegs) Replay(compute.LedgerInput, compute.LedgerParams) compute.LedgerResult {
+	return compute.LedgerResult{Positions: o}
+}
+
+func withLedger(legs ...compute.LedgerPosition) positions_page.Config {
+	c := config(account())
+	c.Ledgers = func() compute.OptionLedger { return openLegs(legs) }
+	return c
+}
+
+func TestLedgerOnlyLegIsNoted(t *testing.T) {
+	t.Parallel()
+	c := withLedger(
+		compute.LedgerPosition{Underlying: "XYZ", Status: "open", Right: "P", Expiry: "2026-11-20", Strike: "100.0000", PremiumIncome: "258"},
+		compute.LedgerPosition{Underlying: "PDD", Status: "open", Right: "P", Expiry: "2027-06-17", Strike: "60.0000", PremiumIncome: "1"},
+		compute.LedgerPosition{Underlying: "PDD", Status: "closed", Right: "P", Expiry: "2027-06-17", Strike: "70", PremiumIncome: "1"},
+	)
+	m, b := build(t, c, "main")
+	n := notesOf(t, m)
+	if len(n) != 1 {
+		t.Fatalf("notes = %v", n)
+	}
+	s, _ := n[0].(string)
+	for _, w := range []string{"PDD 60 put 2027-06-17", "behind", "2026-11-10T"} {
+		if !strings.Contains(s, w) {
+			t.Fatalf("note %q lacks %q", s, w)
+		}
+	}
+	if strings.Contains(s, "XYZ") || strings.Contains(s, "70") || len([]rune(s)) > 200 {
+		t.Fatalf("note = %q", s)
+	}
+	validate(t, b)
+}
+
+func TestLedgerOnlyLegsAreCappedAtFive(t *testing.T) {
+	t.Parallel()
+	var legs []compute.LedgerPosition
+	for _, k := range []string{"1", "2", "3", "4", "5", "6", "7"} {
+		legs = append(legs, compute.LedgerPosition{Underlying: "PDD", Status: "open", Right: "C", Expiry: "2027-06-17", Strike: k})
+	}
+	m, _ := build(t, withLedger(legs...), "main")
+	s, _ := notesOf(t, m)[0].(string)
+	named := strings.Count(s, "PDD ")
+	if named < 1 || named > 5 || !strings.Contains(s, fmt.Sprintf("and %d more", 7-named)) || len([]rune(s)) > 200 {
+		t.Fatalf("note = %q", s)
+	}
+}
+
+func TestMatchedLedgerLegGivesNoNote(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]positions_page.Config{
+		"matched": config(account()),
+		"none":    withLedger(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			m, _ := build(t, c, "main")
+			if n := notesOf(t, m); len(n) != 0 {
+				t.Fatalf("notes = %v", n)
+			}
+		})
 	}
 }

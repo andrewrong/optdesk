@@ -127,7 +127,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
-	prem, ledgerAt, err := c.premiums(ctx, alias, sessions, day)
+	prem, open, ledgerAt, err := c.premiums(ctx, alias, sessions, day)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,8 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
-	page := c.assemble(alias, label, snap, ledgerAt, stocks, options, trades, skipped, bp.Fallbacks, at)
+	behind := ledgerBehindNote(open, snap.positions, ledgerAt.In(c.Zone))
+	page := c.assemble(alias, label, snap, ledgerAt, behind, stocks, options, trades, skipped, bp.Fallbacks, at)
 	if kind, note := shared.BarSourceOf(bp.Rows); kind != shared.BarSourceIbkr {
 		page.BarsSource, page.BarsSourceNote = kind, note
 	}
@@ -213,17 +214,17 @@ func (c Config) capture(ctx context.Context, alias string, sessions []contracts.
 
 // premiums replays the ledger of alias and returns the remaining premium of each open contract and the
 // newest record time.
-func (c Config) premiums(ctx context.Context, alias string, sessions []contracts.Day, day contracts.Day) (map[string]string, time.Time, error) {
+func (c Config) premiums(ctx context.Context, alias string, sessions []contracts.Day, day contracts.Day) (map[string]string, []compute.LedgerPosition, time.Time, error) {
 	var newest time.Time
 	rows, err := c.Ledger.FlexTradeRows(ctx, alias)
 	if err != nil {
-		return nil, newest, fmt.Errorf("positions_page: read ledger: %w", err)
+		return nil, nil, newest, fmt.Errorf("positions_page: read ledger: %w", err)
 	}
 	trades := make([]compute.LedgerTrade, 0, len(rows))
 	for _, r := range rows {
 		attrs := map[string]string{}
 		if err := json.Unmarshal([]byte(r.Attributes), &attrs); err != nil {
-			return nil, newest, fmt.Errorf("positions_page: ledger row %s: %w", r.TransactionID, err)
+			return nil, nil, newest, fmt.Errorf("positions_page: ledger row %s: %w", r.TransactionID, err)
 		}
 		trades = append(trades, compute.LedgerTrade{TransactionID: r.TransactionID, Revision: r.Revision, Attributes: attrs})
 		if r.RecordedAt.After(newest) {
@@ -232,10 +233,10 @@ func (c Config) premiums(ctx context.Context, alias string, sessions []contracts
 	}
 	res := c.Ledgers().Replay(compute.LedgerInput{Alias: alias, Trades: trades, SessionDays: sessions, AsOf: day},
 		compute.LedgerParams{MarkMaxAgeSessions: markMaxAgeSessions})
-	return premiums(res.Positions), newest, nil
+	return premiums(res.Positions), res.Positions, newest, nil
 }
 
-func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, stocks []stockRow, options []optionRow,
+func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, behind string, stocks []stockRow, options []optionRow,
 	trades tradesTable, skipped int, fb []fallback, at time.Time) pageJSON {
 	v := viewJSON{
 		Key: alias, Label: label, Trades: &trades,
@@ -258,6 +259,9 @@ func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, 
 	p.Gaps = []gapJSON{gapOf("no_data", missingDay(stocks)+": "+textDayProfit)}
 	if skipped > 0 {
 		p.Notes = append(p.Notes, textSkippedStart+strconv.Itoa(skipped)+textSkippedEnd)
+	}
+	if behind != "" {
+		p.Notes = append(p.Notes, behind)
 	}
 	if n := fallbackNote(fb); n != "" {
 		p.Notes = append(p.Notes, n)
