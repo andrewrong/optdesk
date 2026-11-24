@@ -23,7 +23,7 @@ const (
 // and no dataset, never an error.
 func Build(ctx context.Context, in Input) ([]byte, error) {
 	vm := viewModel{Schema: pageName, SchemaVersion: versionOfDoc, RunID: runID, BuiltAt: in.Now.Format(timeLayout),
-		FailuresNote: zhFailuresNote, FailuresNone: zhFailuresNone, Datasets: []Dataset{}, Glossary: glossary(), OverwriteNote: overwriteNote, Gaps: []Gap{}}
+		FailuresNote: zhFailuresNote, FailuresNone: zhFailuresNone, Datasets: []Dataset{}, Glossary: glossary(), OverwriteNote: zhOverwriteNote, Gaps: []Gap{}}
 	if in.Form != nil {
 		vm.Form = &formVM{PostPath: in.Form.PostPath, Expires: in.Form.Expires, MAC: in.Form.MAC}
 	}
@@ -31,7 +31,7 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 	vm.Gateways = gatewayRows(in.Gateways)
 	datasets, failuresOK, err := datasetRows(ctx, in)
 	if err != nil {
-		vm.Gaps = append(vm.Gaps, Gap{Kind: "gap", Reason: gapReason, Text: gapText})
+		vm.Gaps = append(vm.Gaps, Gap{Kind: "gap", Reason: gapReason, Text: zhCoverageGapText})
 	} else {
 		vm.Datasets = datasets
 		if !failuresOK {

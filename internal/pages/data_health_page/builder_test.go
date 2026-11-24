@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -223,10 +224,40 @@ func TestGlossaryCoversEnums(t *testing.T) {
 	}
 }
 
+func hasHan(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestGlossaryIsChinese(t *testing.T) {
+	t.Parallel()
+	d := build(t, input(&fakeReader{sessions: weekdays("XNYS")}, nil, nil))
+	terms := []string{"ok", "no_value", "expired", "missing", "not_run", "none", "button", "not refetchable",
+		"ledger", "session day"}
+	if len(d.Glossary) != len(terms) {
+		t.Fatalf("%d rows", len(d.Glossary))
+	}
+	for i, g := range d.Glossary {
+		if g.Term != terms[i] {
+			t.Errorf("row %d term %q, want %q", i, g.Term, terms[i])
+		}
+		if !hasHan(g.Text) {
+			t.Errorf("row %q has no Chinese: %q", g.Term, g.Text)
+		}
+	}
+	if !hasHan(d.Overwrite) {
+		t.Errorf("overwrite note has no Chinese: %q", d.Overwrite)
+	}
+}
+
 func TestOverwriteNote(t *testing.T) {
 	t.Parallel()
 	d := build(t, input(&fakeReader{sessions: weekdays("XNYS")}, nil, nil))
-	if d.Overwrite != "a repair overwrites by key and keeps no earlier value" {
+	if d.Overwrite != zhOverwriteNote {
 		t.Fatalf("%q", d.Overwrite)
 	}
 }
