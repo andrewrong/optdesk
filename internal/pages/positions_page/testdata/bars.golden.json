@@ -386,5 +386,19 @@
       "reason": "no_data",
       "text": "Stocks, Options: Day result needs the previous trading day price: no data yet"
     }
+  ],
+  "accounts": [
+    {
+      "key": "main",
+      "label": "Account (main)",
+      "href": "/positions?account=main",
+      "current": true
+    },
+    {
+      "key": "wife",
+      "label": "Account (wife)",
+      "href": "/positions?account=wife",
+      "current": false
+    }
   ]
 }
