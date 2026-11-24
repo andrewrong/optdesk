@@ -427,7 +427,7 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price f
 			// left out; the rest of the chain is still stored. Any other error ends the key.
 			var te contracts.TypedError
 			if errors.As(err, &te) && te.Kind() == contracts.Permanent {
-				slog.Warn("optioneod: contract skipped, instrument refused", "osi", osi, "err", err.Error())
+				r.j.log().Warn("optioneod: contract skipped, instrument refused", "osi", osi, "err", err.Error())
 				tl.skip(osi, err.Error())
 				continue
 			}

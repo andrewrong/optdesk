@@ -1,7 +1,9 @@
 package optioneod
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -15,6 +17,8 @@ func TestChunkSkipsRefusedContract(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, "2026-11-06 11:00")
 	r.res.refuse = map[string]error{"951": newErr(contracts.Permanent, "osi names instrument 7")}
+	var buf bytes.Buffer
+	r.job.logger = slog.New(slog.NewTextHandler(&buf, nil))
 	rs := &runState{j: r.job, start: r.clk.Now()}
 	u, _ := r.job.underlyingOf("TEST")
 	mk := func(strike string, id int64) broker.Contract {
@@ -32,6 +36,10 @@ func TestChunkSkipsRefusedContract(t *testing.T) {
 	}
 	if len(tl.skipped) != 1 || tl.skipped[0].osi != "TEST  261106C00096000" || !strings.Contains(tl.skipped[0].text, "instrument 7") {
 		t.Fatalf("skipped %+v", tl.skipped)
+	}
+	logged := buf.String()
+	if strings.Count(logged, "level=WARN") != 1 || !strings.Contains(logged, "TEST  261106C00096000") || !strings.Contains(logged, "instrument 7") {
+		t.Fatalf("log %q", logged)
 	}
 }
 
