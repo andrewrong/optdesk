@@ -69,7 +69,7 @@ Module: sources. Size: M. Order: after 1 (stock-history-iface).
 Contracts: unchanged
 Files: `internal/sources/yfinance/source.go`, `internal/sources/yfinance/source_test.go`
 Design: docs/design/stock-history-yfinance.md#Decisions
-Acceptance: as the draft `stock-history-sources.md`. The parsing of dividends, splits and adj_close is tested with an inline JSON answer in source_test.go (as TestDailyBarsOhlcv does), not with the golden answer.json of entry 2; TestAnswerMatchesGolden stays green on either golden, since json.Unmarshal ignores unknown keys.
+Acceptance: as the draft `stock-history-sources.md`. The parsing of dividends, splits and adj_close is tested with an inline JSON answer in source_test.go (as TestDailyBarsOhlcv does), not with the golden answer.json of entry 2; TestAnswerMatchesGolden compares only Day, Open, High, Low, Close and Volume of each bar (not AdjClose, not the whole struct), so it passes on the golden before and after entry 2 adds adj_close.
 
 ### 5 stock-history-job
 
