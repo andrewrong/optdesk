@@ -43,7 +43,7 @@ All entries: `Plan: P2`, `Contracts: unchanged`. Size S each.
 ### 1 cspot-1-jobs
 
 Module: jobs. Order: none.
-Files: `internal/jobs/optioncandidates/source.go`, `internal/jobs/optioncandidates/spot.go`, `internal/jobs/optioncandidates/spot_test.go`, `internal/jobs/optioncandidates/types.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/source_test.go`, `internal/jobs/optioncandidates/job_test.go`
+Files: `internal/jobs/optioncandidates/source.go`, `internal/jobs/optioncandidates/spot.go`, `internal/jobs/optioncandidates/spot_test.go`, `internal/jobs/optioncandidates/types.go`, `internal/jobs/optioncandidates/job_test.go`
 Acceptance: 1. `CandidateStores.Quotes` (new, `store.QuoteSnapshotReader`) is optional; nil keeps today's spot and writes no new mark. 2. `spot.go` (new) has one function that gives the Decision 2 price and its session day. 3. `chain` sets the spot from it and the marks of Decisions 2 and 4 in the order of Decision 4. 4. `TestSpotFromQuote` and `TestCandidatesSpotMarks` (new) show the cases of the draft: newest capture of the newest session, a row after the clock, no rows; open chain, eod fallback with a quote of the previous session, no quote; `Quotes` nil stores the rows it stored before.
 
 ### 2 cspot-2-ot
