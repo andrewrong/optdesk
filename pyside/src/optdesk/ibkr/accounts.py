@@ -13,7 +13,7 @@ expect, and it never logs.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -277,7 +277,12 @@ def _one_account(ib: Any) -> str:
 
 
 async def read_executions(
-    ib: Any, pacer: MessagePacer, clock: Clock, *, generation: int
+    ib: Any,
+    pacer: MessagePacer,
+    clock: Clock,
+    *,
+    generation: int,
+    on_counts: Callable[[int, int, int, int], None] | None = None,
 ) -> ExecutionRows:
     """Read the executions of the day of the one account of ib, complete rows only.
 
@@ -285,7 +290,9 @@ async def read_executions(
     commission reports still missing, both within DEADLINE_S of clock. A fill
     whose report is not in by then is counted in pending and not answered.
     Raises MultipleAccounts unless the login reports exactly one account, and
-    TimeoutError when the end marker does not come in time.
+    TimeoutError when the end marker does not come in time. When the end marker
+    has come and the wait is over, on_counts(raw, dropped_account,
+    dropped_commission, stored) is called once; a call that raises calls it never.
     """
     account = _one_account(ib)
     client = ib.client
@@ -307,6 +314,13 @@ async def read_executions(
         await clock.sleep(COMMISSION_POLL_S)
     complete = [f for f in mine.values() if _has_commission(f)]
     rows = sorted(map(execution_row, complete), key=lambda r: (r.time, r.exec_id))
+    if on_counts is not None:
+        on_counts(
+            len(fills),
+            len(fills) - len(mine),
+            len(mine) - len(complete),
+            len(rows),
+        )
     return ExecutionRows(
         generation=generation,
         executions=tuple(rows),
