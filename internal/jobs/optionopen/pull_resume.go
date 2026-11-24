@@ -25,6 +25,34 @@ func isFinal(r contracts.OptionOpen) bool {
 // storedCounts is how many ok and partial rows the store held for a batch (or a run) at a moment.
 type storedCounts struct{ ok, partial int }
 
+// storedRows is what resume read of the store before an attempt: the counts of ok and partial rows and the instruments
+// whose stored row is partial.
+type storedRows struct {
+	counts  storedCounts
+	partial map[int]bool
+}
+
+// flushFunc writes rows of the store.
+type flushFunc = func(context.Context, []contracts.OptionOpen) error
+
+// keepStoredPartial is a Flush that does not write an answer that is partial again for an instrument whose stored row
+// is partial: the stored row stays as written, so an attempt that ends Permanent for an unchanged result rewrites none.
+func keepStoredPartial(stored map[int]bool, write flushFunc) flushFunc {
+	return func(ctx context.Context, rows []contracts.OptionOpen) error {
+		keep := make([]contracts.OptionOpen, 0, len(rows))
+		for _, r := range rows {
+			if r.Status == stPartial && stored[r.InstrumentID] {
+				continue
+			}
+			keep = append(keep, r)
+		}
+		if len(keep) == 0 {
+			return nil
+		}
+		return write(ctx, keep)
+	}
+}
+
 func (c *storedCounts) add(o storedCounts) { c.ok += o.ok; c.partial += o.partial }
 
 // countOKPartial counts the ok and partial rows among rows.
@@ -45,7 +73,7 @@ func countOKPartial(rows []contracts.OptionOpen) (c storedCounts) {
 // added contracts (the stock's stored contracts that are not items of the plan: only a live band that kept them wrote a
 // row for them) follow the rows of the items, so an added contract is final or asked again like a planned one.
 func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, chain ContractLister) (
-	final []contracts.OptionOpen, ask []contracts.OptionOpenItem, prior storedCounts, err error) {
+	final []contracts.OptionOpen, ask []contracts.OptionOpenItem, prior storedRows, err error) {
 	if len(items) == 0 {
 		return nil, nil, prior, nil
 	}
@@ -79,15 +107,17 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, cha
 	}
 	have := make(map[int]contracts.OptionOpen, len(stored))
 	for _, r := range stored {
-		if r.Slot == p.m.Slot {
-			switch r.Status {
-			case stOK:
-				prior.ok++
-			case stPartial:
-				prior.partial++
-			}
+		if r.Slot != p.m.Slot {
+			continue
 		}
-		if r.Slot == p.m.Slot && isFinal(r) {
+		prior.counts.add(countOKPartial([]contracts.OptionOpen{r}))
+		if r.Status == stPartial {
+			if prior.partial == nil {
+				prior.partial = map[int]bool{}
+			}
+			prior.partial[r.InstrumentID] = true
+		}
+		if isFinal(r) {
 			have[r.InstrumentID] = r
 		}
 	}

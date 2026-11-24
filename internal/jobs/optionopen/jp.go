@@ -287,7 +287,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 	}
 	var res contracts.JobResult
 	planned, ok, unread, partial, outside, noQuote, added := 0, 0, 0, 0, 0, 0, 0
-	var before, after storedCounts
+	unchanged := true
 	for _, k := range keys {
 		b, found := byKey[k.SubjectKey]
 		if !found {
@@ -305,8 +305,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		if terr != nil {
 			return withErr(res, terr)
 		}
-		before.add(prior)
-		after.add(countOKPartial(rows))
+		unchanged = unchanged && prior == countOKPartial(rows)
 		res.Returned += len(rows)
 		rows, extra := splitAdded(b.items, rows)
 		added += extra
@@ -325,7 +324,7 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 		}
 		res.Usable = ok
 	}
-	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, noQuote, added, before == after)
+	return postcondition(res, p.m.MinOKShare, planned, ok, unread, partial, outside, noQuote, added, unchanged)
 }
 
 // runKey is pull.runKey with the JP parameters of the core.
@@ -333,14 +332,14 @@ func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, s
 	chain := newChainCache(p.d.Contracts)
 	final, ask, prior, err := p.resume(ctx, b.items, chain)
 	if err != nil {
-		return nil, prior, asTyped(err, contracts.Retryable)
+		return nil, prior.counts, asTyped(err, contracts.Retryable)
 	}
 	if len(ask) == 0 {
-		return final, prior, nil
+		return final, prior.counts, nil
 	}
 	ts, err := p.targets(ctx, ask, chain)
 	if err != nil {
-		return nil, prior, asTyped(err, contracts.Retryable)
+		return nil, prior.counts, asTyped(err, contracts.Retryable)
 	}
 	for i := range ts {
 		if p.rules.isIndex(ts[i].Symbol) {
@@ -355,10 +354,10 @@ func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, s
 	}
 	r := c.Pull(ctx, ts)
 	c.logger().Info(r.Summary.String(), "key", b.subject)
-	if err := p.d.Writer.InsertOptionOpen(ctx, r.Rows); err != nil {
-		return nil, prior, asTyped(err, contracts.Retryable)
+	if err := keepStoredPartial(prior.partial, p.d.Writer.InsertOptionOpen)(ctx, r.Rows); err != nil {
+		return nil, prior.counts, asTyped(err, contracts.Retryable)
 	}
-	return append(final, r.Rows...), prior, nil
+	return append(final, r.Rows...), prior.counts, nil
 }
 
 // newPullFrom is the body of NewPull for a manifest given.
