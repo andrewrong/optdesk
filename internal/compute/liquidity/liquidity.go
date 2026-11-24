@@ -15,9 +15,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-// TrialParams are the trial constants of the figures.
+// TrialParams are the trial constants of the figures. DailyMaxAgeDays is a trial value:
+// a weekend, one FRED publication day and one holiday (same as the macro page rule),
+// to be tuned on observed rows.
 func TrialParams() liquidityapi.Params {
-	return liquidityapi.Params{DailyMaxAgeDays: 4, WeeklyMaxAgeDays: 14, PercentileMinDays: 250}
+	return liquidityapi.Params{DailyMaxAgeDays: 6, WeeklyMaxAgeDays: 14, PercentileMinDays: 250}
 }
 
 func gap(r compute.Reason) liquidityapi.Num { return liquidityapi.Num{Reason: r} }
