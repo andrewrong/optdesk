@@ -1,4 +1,18 @@
 {
+  "accounts": [
+    {
+      "current": true,
+      "href": "/positions",
+      "key": "main",
+      "label": "Main account"
+    },
+    {
+      "current": false,
+      "href": "/positions?account=wife",
+      "key": "wife",
+      "label": "Second account"
+    }
+  ],
   "build_id": "build-demo-0001",
   "data_times": [
     {

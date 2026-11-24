@@ -541,6 +541,20 @@ export type Title3 = string;
 
 export interface PositionsPage {
   /**
+   * Links to the positions page of each account, the one shown marked current. Absent when the owner has one account.
+   *
+   * @minItems 2
+   * @maxItems 8
+   */
+  accounts?:
+    | [AccountLink, AccountLink]
+    | [AccountLink, AccountLink, AccountLink]
+    | [AccountLink, AccountLink, AccountLink, AccountLink]
+    | [AccountLink, AccountLink, AccountLink, AccountLink, AccountLink]
+    | [AccountLink, AccountLink, AccountLink, AccountLink, AccountLink, AccountLink]
+    | [AccountLink, AccountLink, AccountLink, AccountLink, AccountLink, AccountLink, AccountLink]
+    | [AccountLink, AccountLink, AccountLink, AccountLink, AccountLink, AccountLink, AccountLink, AccountLink];
+  /**
    * Where the daily bars behind this page came from: ibkr, yfinance (fallback while IB history fails) or mixed. Absent when the page shows no bar-based figure or all bars are ibkr.
    */
   bars_source?: "ibkr" | "yfinance" | "mixed";
@@ -561,6 +575,18 @@ export interface PositionsPage {
   stale: StaleLabel;
   title: Title;
   views: Views;
+}
+/**
+ * One link to the positions page of an account.
+ */
+export interface AccountLink {
+  /**
+   * True for the account this page shows.
+   */
+  current: boolean;
+  href: string;
+  key: string;
+  label: string;
 }
 /**
  * The data time of one source behind the card.
