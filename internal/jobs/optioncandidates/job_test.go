@@ -695,7 +695,7 @@ func TestCandidatesQuotesReadErrorFallsBackToChain(t *testing.T) {
 		t.Fatal(res.Err)
 	}
 	r := e.rowOf(t, 21)
-	if r.Spot == nil || *r.Spot != "99" || spotMarksOf(t, r.Marks) != "eod_fallback chain_day:2026-11-06 spot_chain" {
+	if r.Spot == nil || *r.Spot != "99" || spotMarksOf(t, r.Marks) != "chain_day:2026-11-06 spot_chain" {
 		t.Fatalf("spot %v marks %s", r.Spot, r.Marks)
 	}
 }
