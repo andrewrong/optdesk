@@ -12,6 +12,9 @@ import { LevelBadge } from './LevelBadge'
 // show as the neutral Alert because the Badge beside the text already carries their colour.
 const ALERT_VARIANT = { pass: 'success', warn: 'default', fail: 'destructive', unknown: 'default' } as const
 
+// The link reads in words; its href is still the payload's repair_path.
+const REPAIR_LINK_TEXT = '到采集记录页处理'
+
 export function BaseDataView({ payload }: { payload: Payload }) {
   const { top } = payload
   const { counts } = top
@@ -47,7 +50,7 @@ export function BaseDataView({ payload }: { payload: Payload }) {
           <DatasetTable groups={payload.groups} />
           {payload.derived_note !== '' ? <p className="text-sm text-muted-foreground">{payload.derived_note}</p> : null}
           <a href={payload.repair_path} className="text-sm underline underline-offset-4">
-            {payload.repair_path}
+            {REPAIR_LINK_TEXT}
           </a>
         </CardContent>
       </Card>

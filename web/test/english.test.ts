@@ -15,6 +15,7 @@ const allowedCJK = [
   '\u672c\u5468\u6ca1\u6709\u9700\u8981\u51b3\u5b9a\u7684\u7ed3\u6784\u3002', // no structure to decide this week
   '\u6ca1\u6709\u5176\u4ed6\u7ed3\u6784\u3002', // no other structures
   '\u65e0\u8d22\u62a5\u65e5\u671f\uff08\u6307\u6570\u6216\u672a\u767b\u8bb0\u53d1\u884c\u4eba\uff09', // no earnings date (index or issuer not registered)
+  '\u5230\u91c7\u96c6\u8bb0\u5f55\u9875\u5904\u7406', // go to the collection log page to handle it (repair link of the base data page)
 ]
 
 // ideographs, CJK punctuation and full-width forms
