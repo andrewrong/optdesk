@@ -18,11 +18,10 @@ import (
 )
 
 const (
-	secTypeStock    = "stock"
-	currencyJPY     = "JPY"
-	pairUsdJpy      = "USDJPY"
-	textNoStockHeld = "Nothing to rank by share: no stock is held"
-	maxNamed        = 5 // symbols a gap text names before it ends "and <M> more"
+	secTypeStock = "stock"
+	currencyJPY  = "JPY"
+	pairUsdJpy   = "USDJPY"
+	maxNamed     = 5 // symbols a gap text names before it ends "and <M> more"
 )
 
 // holdingBlocks are the three blocks built from the held stocks of the capture and their marks.

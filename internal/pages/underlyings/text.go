@@ -8,18 +8,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
-// Every visible string of the page is written here, in English.
+// Every visible string of the page is written here, in English except the explanations and empty states, which are in zh_texts.go.
 
 const (
 	titleText     = "Underlyings"
-	readOnlyText  = "Editing is off: start ot serve with --owner-edit to change names."
-	refillText    = "Days missed while a group is off cannot be refilled: the daily history of a skipped day is not fetched later."
-	followedNone  = "Followed by nothing"
-	followedPref  = "Followed by: "
-	pendingText   = "Pending: resolves after the close"
-	staleText     = "Pending: the resolve job has not settled this name; check ot scheduler"
 	unresolvedPre = "Unresolved"
-	noNamesText   = "0 names."
 )
 
 // statusText is the text of a status; reason is the reason of an unresolved name and stale is a pending name older
@@ -127,8 +120,7 @@ func historyText(h underlying.Row, older []underlying.Row) string {
 }
 
 const (
-	heldReadText = "Held names could not be read from the positions; held names may be missing here"
-	heldTextMax  = 200
+	heldTextMax = 200
 )
 
 // clipRunes cuts s to at most n runes; a negative n gives "".
@@ -169,7 +161,7 @@ func rowNote(r underlying.Row) string {
 		if r.ConID > 0 {
 			note = fmt.Sprintf("Resolved as %s stock %s, con_id %d", r.Market, r.Symbol, r.ConID)
 		} else {
-			note = "Added: held position; waits to be resolved"
+			note = noteHeldWaits
 		}
 	}
 	if r.Name == "" {
