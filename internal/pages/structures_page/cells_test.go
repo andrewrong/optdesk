@@ -39,7 +39,7 @@ func TestMoneyCellsAreNumbersOrGaps(t *testing.T) {
 		t.Fatalf("unknown reason = %v", got)
 	}
 	naked := compute.Structure{Kind: "naked_call", Figures: compute.StructureFigures{MaxLoss: compute.FigureValue{Gap: "no_rule"}}}
-	if g := c.maxLossCell(naked).(gap); g.Text != "No limit" || g.Reason != "no_rule" {
+	if g := c.maxLossCell(naked).(gap); g.Text != "无上限" || g.Reason != "no_rule" {
 		t.Fatalf("naked call max loss = %v", g)
 	}
 }
@@ -65,7 +65,7 @@ func TestListMoneyTextTwoDecimals(t *testing.T) {
 		t.Fatalf("gap = %v", got)
 	}
 	naked := compute.Structure{Kind: "naked_call", Figures: compute.StructureFigures{MaxLoss: compute.FigureValue{Gap: "no_rule"}}}
-	if g := c.listMaxLossCell(naked).(gap); g.Text != "No limit" || g.Reason != "no_rule" {
+	if g := c.listMaxLossCell(naked).(gap); g.Text != "无上限" || g.Reason != "no_rule" {
 		t.Fatalf("naked call list max loss = %v", g)
 	}
 }

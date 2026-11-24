@@ -212,7 +212,7 @@ func buildAccount(c Config, alias string, idx int, g gathered, day contracts.Day
 		a.Lots = append(a.Lots, card)
 	}
 	a.Books = bookCards(alias, cards, books)
-	counts := strconv.Itoa(ended) + " ended lots, " + strconv.Itoa(split) + " split lots: "
+	counts := strconv.Itoa(ended) + endedLotsZh + strconv.Itoa(split) + splitLotsZh
 	a.SampleNote = counts + sampleFew
 	if split >= ledgerMinLots {
 		a.SampleNote = counts + sampleEnuf

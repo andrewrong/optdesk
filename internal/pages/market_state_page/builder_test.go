@@ -245,7 +245,7 @@ func TestPageHasNoStateWord(t *testing.T) {
 func TestFreshnessTextNamesEndDay(t *testing.T) {
 	t.Parallel()
 	text := build(t, fullConfig(t, sampleResult()))["freshness_text"].(string)
-	for _, want := range []string{"2026-11-13", "daily closes", "not intraday", "daily FRED series", "its own day"} {
+	for _, want := range []string{"2026-11-13", "日收盘价", "非盘中", "FRED 日度序列", "各自的数据日"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("freshness_text lacks %q: %s", want, text)
 		}
@@ -380,5 +380,26 @@ func TestBarsSourceMixed(t *testing.T) {
 	ok := build(t, fullConfig(t, sampleResult()))
 	if _, has := ok["bars_source_note"]; has || ok["bars_source"] != nil {
 		t.Fatalf("all-ibkr page carries a source: %v", ok["bars_source"])
+	}
+}
+
+func TestFreshnessPartsInOrder(t *testing.T) {
+	t.Parallel()
+	text := build(t, fullConfig(t, sampleResult()))["freshness_text"].(string)
+	h := strings.Index(text, freshnessHead)
+	d := strings.Index(text, "2026-11-13")
+	tl := strings.Index(text, freshnessTail)
+	if h != 0 || d <= h || tl <= d {
+		t.Errorf("order head/day/tail broken: %q", text)
+	}
+}
+
+func TestFreshnessNoneStoredReadsInChinese(t *testing.T) {
+	t.Parallel()
+	noEnd := sampleResult()
+	noEnd.EndDay = ""
+	text := build(t, fullConfig(t, noEnd))["freshness_text"].(string)
+	if !strings.HasPrefix(text, freshnessHead+"尚未存储") || !strings.HasSuffix(text, freshnessTail) {
+		t.Errorf("freshness_text = %q", text)
 	}
 }

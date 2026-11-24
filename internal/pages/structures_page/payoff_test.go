@@ -50,9 +50,9 @@ func TestPayoffPointsFromCompute(t *testing.T) {
 func TestBreakEvenCaption(t *testing.T) {
 	t.Parallel()
 	for kind, want := range map[string]string{
-		"short_put": "Loses below this expiry price", "put_spread": "Loses below this expiry price", "covered_call": "Loses below this expiry price",
-		"naked_call": "Loses above this expiry price", "call_spread": "Loses above this expiry price",
-		"long_put": "Profits below this expiry price", "long_call": "Profits above this expiry price",
+		"short_put": "到期价低于此价时亏损", "put_spread": "到期价低于此价时亏损", "covered_call": "到期价低于此价时亏损",
+		"naked_call": "到期价高于此价时亏损", "call_spread": "到期价高于此价时亏损",
+		"long_put": "到期价低于此价时盈利", "long_call": "到期价高于此价时盈利",
 	} {
 		fx := readFixture(t, "detail_spread")
 		fx.Result.Structures[0].Kind = kind
@@ -64,7 +64,7 @@ func TestBreakEvenCaption(t *testing.T) {
 	fx := readFixture(t, "detail_spread")
 	fx.Result.Structures[0].Figures.BreakEven.Value, fx.Result.Structures[0].Figures.BreakEven.Gap = "", "no_rule"
 	tl := obj(t, fx.build(t, spreadID, true)["tiles"])
-	if c := obj(t, tl["break_even"])["caption"]; c != "No single breakeven price" {
+	if c := obj(t, tl["break_even"])["caption"]; c != "没有单一盈亏平衡价" {
 		t.Errorf("gap caption = %v", c)
 	}
 }

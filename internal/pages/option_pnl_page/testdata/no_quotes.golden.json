@@ -10,8 +10,8 @@
   "stale": null,
   "title": "P\u0026L split",
   "notes": [
-    "model: European Black-Scholes, 365-day year, no dividends; an ex-dividend drop lands in the solved IV; the early-exercise premium is not modelled",
-    "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
+    "模型：欧式 Black-Scholes，一年按 365 天，不含股息；除息造成的下跌会落在求解出的 IV 里；不模拟提前行权的溢价",
+    "报价日按账本的算法：卖价大于 0，买价不小于 0，并且有标的价格"
   ],
   "gaps": [],
   "as_of": "2026-11-17",
@@ -23,7 +23,7 @@
           "id": "book-main-USD",
           "currency": "USD",
           "counts": "USD book, 0 lots counted",
-          "left_out": "1 of 1 lots left out of the sums: 1 with no stored quotes (ledger $50.00; 多为 2026-11-07 前已结束的仓位，当时还没有报价存档)",
+          "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档报价的仓位（账本 $50.00；多为 2026-11-07 前已结束的仓位，当时还没有报价存档）",
           "headline": {
             "id": "b0-main-head",
             "label": "Rent minus move cost",
@@ -143,7 +143,7 @@
           "days_line": {
             "id": "a0l0-days",
             "label": "Days",
-            "text": "no stored quote days",
+            "text": "没有存档报价日",
             "hint": null,
             "tone": "muted"
           },
@@ -156,7 +156,7 @@
           "gap": null
         }
       ],
-      "sample_note": "1 ended lots, 0 split lots: fewer than 20 split lots: no conclusion about what pays",
+      "sample_note": "1 个已结束的仓位，0 个已拆分的仓位：拆分的仓位不足 20 个：没有结论，不能据此判断这种做法是否赚钱",
       "gap": null,
       "ledger": {
         "title": "Ledger",
@@ -175,7 +175,7 @@
                     "id": "book-lg-a0m-0-0",
                     "currency": "USD",
                     "counts": "USD, 0 split lots of 1 ended",
-                    "left_out": "1 of 1 lots left out of the sums: 1 with no stored quotes (ledger $50.00; 多为 2026-11-07 前已结束的仓位，当时还没有报价存档)",
+                    "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档报价的仓位（账本 $50.00；多为 2026-11-07 前已结束的仓位，当时还没有报价存档）",
                     "headline": {
                       "id": "lga0m0-0-head",
                       "label": "Rent minus move cost",
@@ -217,7 +217,7 @@
                     "id": "book-lg-a0c-0-0",
                     "currency": "USD",
                     "counts": "USD, 0 split lots of 1 ended",
-                    "left_out": "1 of 1 lots left out of the sums: 1 with no stored quotes (ledger $50.00; 多为 2026-11-07 前已结束的仓位，当时还没有报价存档)",
+                    "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档报价的仓位（账本 $50.00；多为 2026-11-07 前已结束的仓位，当时还没有报价存档）",
                     "headline": {
                       "id": "lga0c0-0-head",
                       "label": "Rent minus move cost",

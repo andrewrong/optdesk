@@ -359,3 +359,19 @@ func TestBuildRefusesMoreRowsThanTheSchemaHolds(t *testing.T) {
 		t.Fatal("1001 underlyings built, a flag could be cut silently")
 	}
 }
+
+func TestBuildGapTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	c := baseConfig()
+	c.Owner = nil
+	noReader := build(t, c)["gap"].(map[string]any)
+	if noReader["reason"] != "no_reader" || noReader["text"] != "此处无法读取所有者设置。" {
+		t.Errorf("no_reader gap = %v", noReader)
+	}
+	c = baseConfig()
+	c.Form = nil
+	off := build(t, c)["gap"].(map[string]any)
+	if off["reason"] != "not_built" || off["text"] != "编辑已关闭：请用 --owner-edit 启动 ot serve 后再修改设置。" {
+		t.Errorf("not_built gap = %v", off)
+	}
+}

@@ -268,8 +268,8 @@ func TestLedgerLeftOutPerGroup(t *testing.T) {
 	r.replay.positions = append(r.replay.positions, gapLot)
 	g := r.ledger(t).view("by_month").Groups[0]
 	b := g.Books[0]
-	if b.LeftOut == nil || !strings.Contains(*b.LeftOut, "1 with no stored close (AAA, ledger $12.00)") ||
-		!strings.Contains(*b.LeftOut, "1 with no stored quotes (ledger $50.00;") {
+	if b.LeftOut == nil || !strings.Contains(*b.LeftOut, "1 个没有存档收盘价的仓位（AAA，账本 $12.00）") ||
+		!strings.Contains(*b.LeftOut, "1 个没有存档报价的仓位（账本 $50.00；") {
 		t.Fatalf("left_out = %v", b.LeftOut)
 	}
 	all, _ := b.line("Ledger P&L, every ended lot counted")
@@ -440,7 +440,7 @@ func TestCardsStayThirtyDays(t *testing.T) {
 	r.replay.positions = append(r.replay.positions, call, long)
 	vm := r.build(t)
 	a := vm.Accounts[0]
-	if len(a.Lots) != 1 || !strings.HasPrefix(a.SampleNote, "2 ended lots, 2 split lots") || len(a.Books) != 1 ||
+	if len(a.Lots) != 1 || !strings.HasPrefix(a.SampleNote, "2 个已结束的仓位，2 个已拆分的仓位") || len(a.Books) != 1 ||
 		!strings.HasPrefix(a.Books[0].Counts, "USD book, 1 lot counted") {
 		t.Fatalf("lots = %d, note = %q, books = %+v", len(a.Lots), a.SampleNote, a.Books)
 	}

@@ -203,8 +203,19 @@ describe('company view', () => {
   it('draws the marks of the band as given', async () => {
     const el = await render(fixture('company'))
     const band = el.querySelector('[data-chart="price-band"]') as HTMLElement
-    expect(band.textContent).toContain('close 95')
-    expect(band.textContent).toContain('core 150')
+    expect(band.textContent).toContain('Close 95')
+    expect(band.textContent).toContain('Core 150')
+    expect(band.textContent).not.toMatch(/\w_\w/)
+    expect(band.innerHTML).not.toMatch(/aria-label="[^"]*\w_\w/)
+  })
+
+  it('a mark whose name is not in the table prints its stored name', async () => {
+    const payload = fixture('company')
+    payload.band!.marks.push({ name: 'new_mark', value: '77', pos: '0.3' })
+    const el = await render(payload)
+    const legend = [...el.querySelectorAll('[data-chart="price-band"] li')].map((li) => li.textContent)
+    expect(legend).toContain('new_mark 77')
+    expect(legend).toContain('Close 95')
   })
 
   it('TestPriceBandMarksAreSeriesData: the legend lists every mark and the only data points are the marks', async () => {
@@ -213,12 +224,40 @@ describe('company view', () => {
     const el = await render(payload)
     const marks = payload.band!.marks
     const legend = [...el.querySelectorAll('[data-chart="price-band"] li')].map((li) => li.textContent)
-    expect(legend).toEqual(marks.map((m) => `${m.name} ${m.value}`))
+    expect(legend).toEqual([
+      'Heavy 63',
+      'Buy high 72',
+      'Fair low 81',
+      'c 90',
+      'Fair high 99',
+      'Trim 112.5',
+      'Clear 120',
+      'Core 150',
+      'Close 95',
+    ])
     const elements = chartChildren.flatMap((c) => Children.toArray(c as ReactNode)) as ReactElement<{ data?: unknown }>[]
     const series = elements.filter((e) => Array.isArray(e.props.data))
     expect(series).toHaveLength(1)
     expect(series[0]!.props.data).toEqual(marks.map((m) => ({ pos: Number(m.pos) })))
     expect(chartChildren.length).toBeGreaterThan(0)
+  })
+
+  it('TestPriceBandLinesCarryNoLabel: four marks give four unlabelled lines, and the names are only in the list', async () => {
+    chartChildren.length = 0
+    const payload = fixture('company')
+    const marks = payload.band!.marks.slice(0, 4)
+    payload.band!.marks = marks
+    const el = await render(payload)
+    const elements = chartChildren.flatMap((c) => Children.toArray(c as ReactNode)) as ReactElement<{
+      x?: number
+      label?: unknown
+    }>[]
+    const lines = elements.filter((e) => e.props.x !== undefined)
+    expect(lines).toHaveLength(4)
+    for (const line of lines) expect(line.props.label).toBeUndefined()
+    const chart = el.querySelector('[data-chart="price-band"] [role="img"]') as HTMLElement
+    for (const m of marks) expect(chart.textContent).not.toContain(m.name)
+    expect(el.querySelectorAll('[data-chart="price-band"] li')).toHaveLength(4)
   })
 
   it('TestPriceBandWithoutMarksIsMissing: a band with no marks draws no chart and says it is missing', async () => {

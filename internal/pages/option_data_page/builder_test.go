@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 var fixedAt = time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)
@@ -239,7 +241,7 @@ func TestBuildGolden(t *testing.T) {
 	if err := json.Unmarshal(raw, &want); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, want) {
+	if !reflect.DeepEqual(withoutCaptions(got), withoutCaptions(want)) {
 		g, _ := json.MarshalIndent(got, "", " ")
 		w, _ := json.MarshalIndent(want, "", " ")
 		t.Fatalf("page differs\n got: %s\nwant: %s", g, w)
@@ -270,7 +272,7 @@ func TestBuildOffSessionGolden(t *testing.T) {
 	if err := json.Unmarshal(raw, &want); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, want) {
+	if !reflect.DeepEqual(withoutCaptions(got), withoutCaptions(want)) {
 		g, _ := json.MarshalIndent(got, "", " ")
 		w, _ := json.MarshalIndent(want, "", " ")
 		t.Fatalf("page differs\n got: %s\nwant: %s", g, w)
@@ -473,4 +475,49 @@ func TestBuildGaps(t *testing.T) {
 			t.Fatal("bad scope accepted")
 		}
 	})
+}
+
+func captionsOf(m map[string]any) []string {
+	var out []string
+	for _, s := range m["quote_series"].([]any) {
+		out = append(out, s.(map[string]any)["caption"].(string))
+	}
+	return out
+}
+
+func TestQuoteCaptionIsTheContract(t *testing.T) {
+	t.Parallel()
+	e := &fakeEod{rows: []contracts.OptionEod{
+		eodRow(t, 19257, f64(10), "2026-11-06T21:00:00Z"),
+		eodRow(t, 19258, f64(5), "2026-11-06T21:00:00Z"),
+	}}
+	c := cfg(e, &fakeQuotes{})
+	c.Terms = &fakeTerms{rows: []store.OptionTerms{{InstrumentID: 19257, Right: "C", Strike: "150", ExpirationDate: "2026-12-18"}}}
+	caps := captionsOf(buildMap(t, c))
+	if len(caps) != 2 || caps[0] != "2026-12-18 call 150.00" || caps[1] != "Contract terms not stored" {
+		t.Fatalf("captions = %q", caps)
+	}
+	for _, s := range caps {
+		if strings.Contains(s, "1925") {
+			t.Errorf("caption shows the instrument id: %q", s)
+		}
+	}
+}
+
+func TestEmptyQuoteSeriesHasAGap(t *testing.T) {
+	t.Parallel()
+	e := &fakeEod{rows: []contracts.OptionEod{
+		eodRow(t, 1, f64(10), "2026-11-06T21:00:00Z"),
+		eodRow(t, 2, f64(5), "2026-11-06T21:00:00Z"),
+	}}
+	q := &fakeQuotes{rows: map[int64][]contracts.QuoteSnapshot{2: {{SessionDay: sday(t, "2026-11-06"), Slot: "close"}}}}
+	m := buildMap(t, cfg(e, q))
+	gaps := m["gaps"].([]any)
+	if len(gaps) != 1 || !strings.Contains(gaps[0].(map[string]any)["text"].(string), "no quote snapshot is stored") {
+		t.Fatalf("gaps = %v", gaps)
+	}
+	q.rows[1] = q.rows[2]
+	if gaps := buildMap(t, cfg(e, q))["gaps"].([]any); len(gaps) != 0 {
+		t.Fatalf("gaps = %v", gaps)
+	}
 }

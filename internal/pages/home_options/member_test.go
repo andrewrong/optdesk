@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -243,14 +244,14 @@ func TestSeriesCardTextStatesRule(t *testing.T) {
 	}
 	s := c["premium_series_caption"].(string)
 	for _, w := range []string{
-		"by closing month", "expiry, exercise, assignment and buy-back", "fees are not deducted",
-		"year and month of the closing day", "no time zone conversion", "by account alias, never merged",
+		"按平仓月份", "到期、行权、被指派和买回平仓", "不扣手续费",
+		"取平仓日的年月", "不做时区换算", "按账户别名分列，不合并",
 	} {
 		if !strings.Contains(s, w) {
 			t.Fatalf("caption lacks %q: %s", w, s)
 		}
 	}
-	if !strings.Contains(string(mustJSON(t, c["notes"])), "monthly closed P/L is not given on this page") {
+	if !strings.Contains(string(mustJSON(t, c["notes"])), "不给出按月的平仓盈亏") {
 		t.Fatalf("notes = %v", c["notes"])
 	}
 }
@@ -381,15 +382,15 @@ func TestSeriesNamesAreShortAndCaptionHoldsExplanation(t *testing.T) {
 		}
 		caption := c["premium_series_caption"].(string)
 		for _, w := range []string{
-			"by closing month", "expiry, exercise, assignment and buy-back", "fees are not deducted",
-			"year and month of the closing day", "no time zone conversion", "by account alias, never merged",
+			"按平仓月份", "到期、行权、被指派和买回平仓", "不扣手续费",
+			"取平仓日的年月", "不做时区换算", "按账户别名分列，不合并",
 		} {
 			if !strings.Contains(caption, w) {
 				t.Errorf("%s: caption lacks %q: %s", name, w, caption)
 			}
 		}
 		notes := c["notes"].([]any)
-		if len(notes) != 3 || notes[2] != "Closed P/L has no data yet: monthly closed P/L is not given on this page." {
+		if len(notes) != 3 || notes[2] != "平仓盈亏暂无数据：本页不给出按月的平仓盈亏。" {
 			t.Errorf("%s: notes = %v", name, notes)
 		}
 	}
@@ -460,5 +461,42 @@ func TestClosedPremiumCaptionNamesTheAccounts(t *testing.T) {
 	got := capOf(map[string]int{"a": 1})
 	if got != "Ledger as of 11-04, account a; all closed sold positions; realised −$15.25; kept share 32.4%" || strings.Contains(got, "Result page") {
 		t.Fatalf("one alias: caption = %q", got)
+	}
+}
+
+// Every note, the caption and each gap reason of the options card is Chinese, never the old English.
+func TestHomeCardNotesAreChinese(t *testing.T) {
+	t.Parallel()
+	hkd := sold("5.0000", "", "")
+	hkd.Currency = "HKD"
+	c := card(t, okCfg(hkd))
+	texts := []string{c["premium_series_caption"].(string)}
+	for _, n := range c["notes"].([]any) {
+		texts = append(texts, n.(string))
+	}
+	reasons := map[string]bool{}
+	for _, g := range c["gaps"].([]any) {
+		m := g.(map[string]any)
+		reasons[m["reason"].(string)] = true
+		if m["reason"] == "unsupported_currency" {
+			texts = append(texts, m["text"].(string))
+		}
+	}
+	maxLoss := c["tiles"].(map[string]any)["max_loss_usd"].(map[string]any)["figure"].(map[string]any)
+	texts = append(texts, maxLoss["text"].(string))
+	if len(c["notes"].([]any)) != 3 || !reasons["unsupported_currency"] {
+		t.Fatalf("card lacks the notes or the currency gap: %v", c)
+	}
+	old := []string{"Premium counts", "Premium and realised", "Closed P/L has no data", "USD, by closing month",
+		"Max loss needs", "non-USD positions"}
+	for _, s := range texts {
+		if !regexp.MustCompile(`\p{Han}`).MatchString(s) {
+			t.Errorf("no Chinese character: %q", s)
+		}
+		for _, o := range old {
+			if strings.Contains(s, o) {
+				t.Errorf("old English %q in %q", o, s)
+			}
+		}
 	}
 }
