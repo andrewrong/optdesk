@@ -183,6 +183,14 @@ func dataHealthZoneCarried(zone string, r jobRow) bool {
 	return zone == r.Zone || (r.Zone == "" && zone == dataHealthTimeSlots[r.ID].zone)
 }
 
+// pageKindOf is the kind the page gives the job of a jobTable row.
+func pageKindOf(r jobRow) string {
+	if slices.Contains(dataHealthAnyDayJobs, r.ID) {
+		return data_health_page.KindAnyDay
+	}
+	return r.Kind
+}
+
 func TestEveryJobHasRowOrReason(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
@@ -191,10 +199,7 @@ func TestEveryJobHasRowOrReason(t *testing.T) {
 	}
 	for _, r := range jobTable {
 		j := dataHealthJobOf(t, jobs, r.ID)
-		wantKind := r.Kind
-		if slices.Contains(dataHealthAnyDayJobs, r.ID) {
-			wantKind = data_health_page.KindAnyDay
-		}
+		wantKind := pageKindOf(r)
 		reason, noLedger := dataHealthNoLedger[r.ID]
 		switch {
 		case len(j.Datasets) == 0 && !noLedger:
