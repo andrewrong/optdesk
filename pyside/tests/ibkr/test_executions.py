@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -424,6 +424,24 @@ def test_read_counts_late_report_is_stored() -> None:
     assert seen == [(1, 0, 0, 1)]
 
 
+@pytest.fixture
+def production_logging() -> Iterator[None]:
+    """configure_logging() for one test; the factory and the levels come back after."""
+    root, library = logging.getLogger(), logging.getLogger("ib_async")
+    factory = logging.getLogRecordFactory()
+    handlers = list(root.handlers)
+    levels = (root.level, library.level, library.propagate, list(library.handlers))
+    configure_logging()
+    yield
+    logging.setLogRecordFactory(factory)
+    root.handlers[:] = handlers
+    root.setLevel(levels[0])
+    library.setLevel(levels[1])
+    library.propagate = levels[2]
+    library.handlers[:] = levels[3]
+
+
+@pytest.mark.usefixtures("production_logging")
 def test_gateway_executions_logs_one_line_without_account(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -449,7 +467,6 @@ def test_gateway_executions_logs_one_line_without_account(
         await gateway.executions()
         done(ib)
 
-    configure_logging()  # the logging of the process: scrubbed records, quiet ib_async
     with caplog.at_level(logging.DEBUG):
         asyncio.run(run())
     ours = caplog.records  # every record captured, from any logger
