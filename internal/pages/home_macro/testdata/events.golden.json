@@ -14,7 +14,7 @@
   "run_status": "partial",
   "card": {
     "title": "Macro",
-    "say": "Ease neutral, vs last week −0.2.",
+    "say": "Ease neutral，较上周 −0.2。",
     "stale": {
       "data_time": "2026-11-05T00:00:00+08:00",
       "stale_after": "2026-11-09T09:30:00+08:00",
@@ -57,34 +57,34 @@
         "100"
       ],
       "reading_text": "Now 56, neutral; fixed scale 0 to 100.",
-      "aria_text": "Ease 56, neutral, vs last week −0.2; fixed scale 0 to 100, neutral band 33.5 to 66.5."
+      "aria_text": "Ease 56, neutral, 较上周 −0.2; fixed scale 0 to 100, neutral band 33.5 to 66.5."
     },
     "events": [
       {
         "date": "2026-11-12",
-        "when_text": "date only",
+        "when_text": "仅日期",
         "name_text": "CPI",
         "previous": {
           "reason": "not_built",
-          "text": "previous value: not built"
+          "text": "前值：尚未建成"
         }
       },
       {
         "date": "2026-12-09",
-        "when_text": "date only",
+        "when_text": "仅日期",
         "name_text": "FOMC decision",
         "previous": {
           "reason": "not_built",
-          "text": "previous value: not built"
+          "text": "前值：尚未建成"
         }
       },
       {
         "date": "2026-12-19",
-        "when_text": "date only",
+        "when_text": "仅日期",
         "name_text": "BoJ decision",
         "previous": {
           "reason": "not_built",
-          "text": "previous value: not built"
+          "text": "前值：尚未建成"
         }
       }
     ],

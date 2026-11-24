@@ -85,7 +85,7 @@ func TestHomeRouteNoReaderMembersAreGaps(t *testing.T) {
 	if !strings.HasPrefix(string(p.Overview.Gaps), "[") {
 		t.Fatalf("overview.gaps is not a JSON array: %q", p.Overview.Gaps)
 	}
-	if p.GapLine == "" || p.GapLine == "No gaps today" {
+	if p.GapLine == "" || p.GapLine == "今天没有缺口" {
 		t.Fatalf("gap_line %q: five members without a reader are gaps", p.GapLine)
 	}
 }
@@ -387,8 +387,8 @@ func TestHomeMacroSayIsReserves(t *testing.T) {
 		t.Fatal(err)
 	}
 	level, _ := strconv.ParseFloat(want.Reserves.Value, 64)
-	if got := p.Macro.Card.Say; !strings.HasPrefix(got, fmt.Sprintf("Reserves $%.1ftn, 4 weeks ", level/1e12)) ||
-		!strings.HasSuffix(got, "("+string(want.Reserves.Day)+").") {
+	if got := p.Macro.Card.Say; !strings.HasPrefix(got, fmt.Sprintf("Reserves $%.1ftn，4 周 ", level/1e12)) ||
+		!strings.HasSuffix(got, "（"+string(want.Reserves.Day)+"）。") {
 		t.Fatalf("say %q, want the reserves fact of %+v", got, want.Reserves)
 	}
 }
@@ -518,7 +518,7 @@ func TestHomeMacroCardNoStoredEventsSaysSo(t *testing.T) {
 	p := homeMacroCardOf(t, fakeHomeEvents{})
 	found := false
 	for _, g := range p.Macro.Card.Gaps {
-		found = found || g.Text == "No macro events stored for the next 60 days"
+		found = found || g.Text == "未来 60 天没有存下的宏观事件"
 	}
 	if len(p.Macro.Card.Events) != 0 || !found {
 		t.Fatalf("card = %+v", p.Macro.Card)
@@ -530,7 +530,7 @@ func TestHomeMacroCardWithoutReaderKeepsGap(t *testing.T) {
 	p := homeMacroCardOf(t, nil)
 	found := false
 	for _, g := range p.Macro.Card.Gaps {
-		found = found || g.Text == "Event calendar: not connected yet"
+		found = found || g.Text == "事件日历：尚未接入"
 	}
 	if !found {
 		t.Fatalf("card = %+v", p.Macro.Card)

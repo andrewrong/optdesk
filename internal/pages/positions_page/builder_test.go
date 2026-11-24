@@ -232,16 +232,15 @@ func validate(t *testing.T, b []byte) {
 	}
 }
 
-func TestGolden(t *testing.T) {
-	t.Parallel()
-	_, b := build(t, config(account()), "main")
-	validate(t, b)
+// checkGolden compares b, indented, with testdata/name; UPDATE_GOLDEN=1 rewrites the file first.
+func checkGolden(t *testing.T, b []byte, name string) {
+	t.Helper()
 	var out bytes.Buffer
 	if err := json.Indent(&out, b, "", "  "); err != nil {
 		t.Fatal(err)
 	}
 	out.WriteByte('\n')
-	golden := filepath.Join("testdata", "ok.golden.json")
+	golden := filepath.Join("testdata", name)
 	if os.Getenv("UPDATE_GOLDEN") == "1" {
 		if err := os.WriteFile(golden, out.Bytes(), 0o600); err != nil {
 			t.Fatal(err)
@@ -254,6 +253,13 @@ func TestGolden(t *testing.T) {
 	if !bytes.Equal(want, out.Bytes()) {
 		t.Fatalf("output differs from %s:\n%s", golden, out.Bytes())
 	}
+}
+
+func TestGolden(t *testing.T) {
+	t.Parallel()
+	_, b := build(t, config(account()), "main")
+	validate(t, b)
+	checkGolden(t, b, "ok.golden.json")
 }
 
 func TestRowsCarryTheAccountLabelAndTheFigures(t *testing.T) {
@@ -545,24 +551,7 @@ func TestGoldenJPYFractional(t *testing.T) {
 	)
 	_, b := build(t, marksOf(c, midMark(1, "12450"), midMark(2, "11"), midMark(3, "9")), "main")
 	validate(t, b)
-	var out bytes.Buffer
-	if err := json.Indent(&out, b, "", "  "); err != nil {
-		t.Fatal(err)
-	}
-	out.WriteByte('\n')
-	golden := filepath.Join("testdata", "jpy_fractional.golden.json")
-	if os.Getenv("UPDATE_GOLDEN") == "1" {
-		if err := os.WriteFile(golden, out.Bytes(), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	want, err := os.ReadFile(golden)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(want, out.Bytes()) {
-		t.Fatalf("output differs from %s:\n%s", golden, out.Bytes())
-	}
+	checkGolden(t, b, "jpy_fractional.golden.json")
 }
 
 func TestDayResultCellIsShortAndTheSentenceIsInPageGaps(t *testing.T) {
@@ -781,5 +770,26 @@ func TestMatchedLedgerLegGivesNoNote(t *testing.T) {
 				t.Fatalf("notes = %v", n)
 			}
 		})
+	}
+}
+
+func TestAccountLinksListEveryAlias(t *testing.T) {
+	t.Parallel()
+	c := config(account())
+	c.Aliases = []string{"main", "wife", "daughter"}
+	for _, shown := range []string{"wife", "nobody"} {
+		page, b := build(t, c, shown)
+		validate(t, b)
+		for i, k := range c.Aliases {
+			for f, want := range map[string]any{"key": k, "label": "Account (" + k + ")", "href": "/positions?account=" + k, "current": k == shown} {
+				if got := at0(t, page, "accounts", i, f); got != want {
+					t.Errorf("page of %s: accounts[%d].%s = %v, want %v", shown, i, f, got, want)
+				}
+			}
+		}
+	}
+	c.Aliases = []string{"main"}
+	if page, _ := build(t, c, "main"); page["accounts"] != nil {
+		t.Fatal("one alias carries accounts")
 	}
 }

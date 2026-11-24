@@ -3,6 +3,8 @@ package home_page_test
 import (
 	"bytes"
 	"encoding/json"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -109,7 +111,7 @@ func TestOverviewLines(t *testing.T) {
 			if len(o.Overview.Gaps) != 0 {
 				t.Errorf("gaps = %v, want none", o.Overview.Gaps)
 			}
-			if o.GapLine != "No gaps today" {
+			if o.GapLine != home_page.GapLineNone {
 				t.Errorf("gap_line = %q", o.GapLine)
 			}
 		})
@@ -135,7 +137,7 @@ func TestOverviewGaps(t *testing.T) {
 	if len(o.Overview.Gaps) != 0 {
 		t.Fatalf("gaps = %v, want none", o.Overview.Gaps)
 	}
-	if o.GapLine != "2 gaps, shown in their cards" {
+	if o.GapLine != home_page.GapLineMany(2) {
 		t.Errorf("gap_line = %q", o.GapLine)
 	}
 }
@@ -147,7 +149,7 @@ func TestOverviewManyGaps(t *testing.T) {
 	if len(o.Overview.Gaps) != 0 {
 		t.Fatalf("gaps = %v, want none", o.Overview.Gaps)
 	}
-	if o.GapLine != "22 gaps, shown in their cards" {
+	if o.GapLine != home_page.GapLineMany(22) {
 		t.Errorf("gap_line = %q", o.GapLine)
 	}
 }
@@ -167,7 +169,7 @@ func TestOverviewHomeGap(t *testing.T) {
 	if string(raw.Overview.Gaps) != "[]" {
 		t.Errorf("overview.gaps = %s, want []", raw.Overview.Gaps)
 	}
-	if raw.GapLine != "No gaps today" {
+	if raw.GapLine != home_page.GapLineNone {
 		t.Errorf("gap_line = %q", raw.GapLine)
 	}
 }
@@ -258,8 +260,8 @@ func TestOverviewHoursNoticeGaps(t *testing.T) {
 	o, b := composeOverview(t, in)
 	validateV3(t, b)
 	want := []string{
-		"XNYS 2026-11-27 ours 0930-1300, IBKR closed",
-		"XTKS 2026-12-30 ours 0900-1500, IBKR 0900-1130",
+		home_page.CalendarGap("XNYS", "2026-11-27", "0930-1300", "closed"),
+		home_page.CalendarGap("XTKS", "2026-12-30", "0900-1500", "0900-1130"),
 	}
 	if len(o.Overview.Gaps) != 2 {
 		t.Fatalf("gaps = %v, want 2", o.Overview.Gaps)
@@ -269,7 +271,7 @@ func TestOverviewHoursNoticeGaps(t *testing.T) {
 			t.Errorf("gap %d = %+v, want calendar %q", i, g, w)
 		}
 	}
-	if o.GapLine != "No gaps today" {
+	if o.GapLine != home_page.GapLineNone {
 		t.Errorf("gap_line = %q, want unchanged count of the cards", o.GapLine)
 	}
 }
@@ -313,5 +315,49 @@ func TestOverviewCopiesReservesSay(t *testing.T) {
 	got := o.Overview.Items[0]
 	if got.Text != say || strings.Contains(got.Text, "Ease") {
 		t.Errorf("macro line = %q, want %q", got.Text, say)
+	}
+}
+
+// withGaps returns the card document with exactly n gaps in its card.
+func withGaps(t *testing.T, doc []byte, n int) []byte {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(doc, &m); err != nil {
+		t.Fatal(err)
+	}
+	gaps := []any{}
+	for i := 0; i < n; i++ {
+		gaps = append(gaps, map[string]any{"kind": "gap", "reason": "no_data", "text": "missing"})
+	}
+	m["card"].(map[string]any)["gaps"] = gaps
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func TestHomeCardTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	old := []string{"No gaps today", "1 gap, shown in its card", "gaps, shown in their cards"}
+	for _, n := range []int{0, 1, 3} {
+		in := inputFrom(t, "overview_ok")
+		in.Household = withGaps(t, in.Household, 0)
+		in.Companies = withGaps(t, in.Companies, 0)
+		in.Market = withGaps(t, in.Market, 0)
+		in.Options = withGaps(t, in.Options, 0)
+		in.Macro = withGaps(t, in.Macro, n)
+		o, _ := composeOverview(t, in)
+		if !regexp.MustCompile(`\p{Han}`).MatchString(o.GapLine) {
+			t.Errorf("%d gaps: gap_line %q holds no Chinese character", n, o.GapLine)
+		}
+		for _, s := range old {
+			if strings.Contains(o.GapLine, s) {
+				t.Errorf("%d gaps: gap_line %q holds %q", n, o.GapLine, s)
+			}
+		}
+		if n > 0 && !strings.Contains(o.GapLine, strconv.Itoa(n)) {
+			t.Errorf("%d gaps: gap_line %q lacks the count", n, o.GapLine)
+		}
 	}
 }

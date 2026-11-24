@@ -58,8 +58,8 @@ func TestHomeFillsHoursNotices(t *testing.T) {
 	t.Parallel()
 	got := homeOverviewGaps(t, siteReaders{hours: fakeHoursReader{}})
 	want := []string{
-		"calendar: XNYS 2026-11-27 ours 0930-1300, IBKR closed",
-		"calendar: XTKS 2026-12-30 ours 0900-1500, IBKR 0900-1130",
+		"calendar: XNYS 2026-11-27 本站 0930-1300，IBKR closed",
+		"calendar: XTKS 2026-12-30 本站 0900-1500，IBKR 0900-1130",
 	}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("gaps %v, want %v", got, want)

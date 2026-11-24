@@ -31,6 +31,6 @@ restart_sensitive = false
 store_k = 1.75
 store_drop = 0.25
 calls = "held"
-min_dte = 20
+min_dte = 15
 max_dte = 45
 min_puts = 6

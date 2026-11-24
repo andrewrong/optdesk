@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -64,6 +65,14 @@ type viewJSON struct {
 	Trades   *tradesTable `json:"trades"`
 }
 
+// accountLink is one link of the row that leads to the positions page of an account.
+type accountLink struct {
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Href    string `json:"href"`
+	Current bool   `json:"current"`
+}
+
 type pageJSON struct {
 	Schema        string       `json:"schema"`
 	SchemaVersion int          `json:"schema_version"`
@@ -78,6 +87,8 @@ type pageJSON struct {
 	Views         []viewJSON   `json:"views"`
 	Notes         []string     `json:"notes"`
 	Gaps          []gapJSON    `json:"gaps"`
+	// Accounts is left out when there is one alias or none.
+	Accounts []accountLink `json:"accounts,omitempty"`
 	// BarsSource and BarsSourceNote are left out when every bar is ibkr.
 	BarsSource     string `json:"bars_source,omitempty"`
 	BarsSourceNote string `json:"bars_source_note,omitempty"`
@@ -102,7 +113,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if alias == "" && len(c.Aliases) > 0 {
 		alias = c.Aliases[0]
 	}
-	label := labelAccount + alias + labelClose
+	label := accountLabel(alias)
 	if !slices.Contains(c.Aliases, alias) {
 		return marshal(c.gapPage(alias, label, at, "no_data", textUnknown))
 	}
@@ -295,11 +306,27 @@ func (c Config) base(alias string, at time.Time) pageJSON {
 		scope = "unknown"
 	}
 	return pageJSON{
-		Schema: "positions_page", SchemaVersion: 4, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
+		Accounts: c.accountLinks(alias),
+		Schema:   "positions_page", SchemaVersion: 4, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
 		GeneratedAt: at.Format(stampLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{},
 		Title: pageTitle, Views: []viewJSON{},
 		Stale: staleLabel{DataTime: at.Format(stampLayout), StaleAfter: at.Format(stampLayout), Text: textStaleData + "none"},
 	}
+}
+
+// accountLinks is one link per alias in the order of Aliases, nil when fewer than two.
+func (c Config) accountLinks(current string) []accountLink {
+	if len(c.Aliases) < 2 {
+		return nil
+	}
+	links := make([]accountLink, 0, len(c.Aliases))
+	for _, a := range c.Aliases {
+		links = append(links, accountLink{
+			Key: a, Label: accountLabel(a),
+			Href: "/positions?account=" + url.QueryEscape(a), Current: a == current,
+		})
+	}
+	return links
 }
 
 // gapPage is the page of an alias that has nothing to show: one view whose tables and trades are the one gap.
@@ -334,3 +361,6 @@ func missingDay(stocks []stockRow) string {
 	}
 	return titleOptions
 }
+
+// accountLabel is the label of the account alias, in the view and in the link to its page.
+func accountLabel(alias string) string { return labelAccount + alias + labelClose }

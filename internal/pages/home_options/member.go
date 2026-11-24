@@ -37,23 +37,9 @@ const (
 	usd         = "USD"
 	sideSold    = "sold"
 
-	title         = "Options overview"
-	subtitle      = "From the trade ledger"
-	sayNone       = "Option ledger: no records yet."
-	sayNoSold     = "Ledger: no closed sold records yet."
-	sayPremium    = "Premium from closed sold options totals "
-	textNoRows    = "Ledger: no records yet"
-	textNoReader  = "Option ledger: not connected yet"
-	textNoSold    = "Ledger: no closed sold records"
-	textNoDay     = "No ledger day"
-	textNotCents  = "Ledger amounts are not whole cents, not rounded on this page"
-	textMonthly   = "Settled premium by closing month: no data yet"
-	textNoClosed  = "No sold records closed this month"
-	textClosedMon = "Monthly closed P/L is not given on this page"
-	textSoldCount = "Sold groups this month: the ledger summary gives no count"
-	textOpen      = "Open premium: the ledger summary gives no open premium figure"
-	seriesText    = "Settled premium"
-	closedText    = "Closed P/L"
+	title      = "Options overview"
+	seriesText = "Settled premium"
+	closedText = "Closed P/L"
 )
 
 var monthLabels = [12]string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
@@ -319,7 +305,7 @@ func assemble(c Config, at, d, recorded time.Time, positions []compute.LedgerPos
 	f := money(sold.Premium)
 	k.Tiles.PremiumMon.Figure = f
 	if fig, ok := f.(figure); ok {
-		k.Say = sayPremium + fig.Text + "."
+		k.Say = sayPremium + fig.Text + sayPremiumEnd
 	}
 	return s
 }

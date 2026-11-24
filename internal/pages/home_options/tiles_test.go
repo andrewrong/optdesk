@@ -84,10 +84,10 @@ func TestFiguresFromTheFakeTiles(t *testing.T) {
 
 func checkCaptions(t *testing.T, c map[string]any) {
 	t.Helper()
-	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; lots opened this month" {
+	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; 本月新开手数" {
 		t.Fatalf("sold caption = %v", got)
 	}
-	if got := tileOf(c, "open_premium_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; remaining part of each lot" {
+	if got := tileOf(c, "open_premium_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; 每手的剩余部分" {
 		t.Fatalf("open caption = %v", got)
 	}
 	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined" {
@@ -146,7 +146,7 @@ func TestUnnumberedStructureCaption(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{MaxLossUsd: usd("300.00", "300"), OpenPremium: usd("5.00", "5"), Unnumbered: 2, OpenCount: 3}
 	c := card(t, figCfg(&p, compute.StructureResult{}, out))
-	if got := tileOf(c, "max_loss_usd")["caption"].(string); !strings.HasSuffix(got, "At least: 2 structures have no loss number") {
+	if got := tileOf(c, "max_loss_usd")["caption"].(string); !strings.HasSuffix(got, "至少：2 个结构没有亏损数字") {
 		t.Fatalf("caption = %q", got)
 	}
 	if f := tileFigure(c, "max_loss_usd"); f["kind"] != "value" {
@@ -161,7 +161,7 @@ func TestOnlyNonUsdIsUnsupportedNotZero(t *testing.T) {
 	c := card(t, figCfg(&p, compute.StructureResult{}, out))
 	for _, k := range []string{"open_premium_usd", "max_loss_usd"} {
 		g := tileFigure(c, k)
-		if g["kind"] != "gap" || g["reason"] != "unsupported_currency" || g["text"] != "Only non-USD structures are open (2), not converted" {
+		if g["kind"] != "gap" || g["reason"] != "unsupported_currency" || g["text"] != "只有非美元结构未平仓（2 个），不换算" {
 			t.Fatalf("%s = %v", k, g)
 		}
 	}
@@ -178,7 +178,7 @@ func TestNoOpenStructureIsZeroWithItsCaption(t *testing.T) {
 			t.Fatalf("%s = %v", k, f)
 		}
 		got := tileOf(c, k)["caption"].(string)
-		if !strings.Contains(got, "no open structures in the ledger") || !strings.HasPrefix(got, "Ledger as of 11-04, account main") {
+		if !strings.Contains(got, "账本里没有未平仓的结构") || !strings.HasPrefix(got, "Ledger as of 11-04, account main") {
 			t.Fatalf("%s caption = %q", k, got)
 		}
 	}
@@ -189,7 +189,7 @@ func TestNetPaidIsTheNoDataGap(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{OpenPremiumGap: "no_data", MaxLossUsd: usd("1.00", "1"), OpenCount: 1}
 	g := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "open_premium_usd")
-	if g["kind"] != "gap" || g["reason"] != "no_data" || g["text"] != "Net paid, not shown" {
+	if g["kind"] != "gap" || g["reason"] != "no_data" || g["text"] != "净支付，不显示" {
 		t.Fatalf("gap = %v", g)
 	}
 }
@@ -326,7 +326,7 @@ func TestGoldenFigures(t *testing.T) {
 	if !bytes.Equal(pretty.Bytes(), want) {
 		t.Fatalf("golden differs:\n%s", pretty.Bytes())
 	}
-	if strings.Contains(pretty.String(), "the ledger summary gives no") {
+	if strings.Contains(pretty.String(), "账本汇总没有给出") {
 		t.Fatal("a tile still carries the old gap text")
 	}
 }
@@ -361,7 +361,7 @@ func TestCaptionNamesOneAlias(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{SoldCount: 1, OpenPremium: usd("1.00", "1"), MaxLossUsd: usd("2.00", "2"), OpenCount: 1}
 	c := card(t, withFigures(cfg(ledger{aliases: map[string]int{"a": 1}}, results{}, pos()), &p, compute.StructureResult{}, out))
-	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, account a; lots opened this month" {
+	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, account a; 本月新开手数" {
 		t.Fatalf("sold caption = %v", got)
 	}
 	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, account a" {

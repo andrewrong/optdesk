@@ -27,12 +27,12 @@
   "run_status": "ok",
   "card": {
     "title": "Market",
-    "say": "VIX closed at 18.20, 11-06",
-    "subtitle": "Index trend, implied volatility and the Cboe Volatility Index",
+    "say": "VIX 收于 18.20，数据日 11-06",
+    "subtitle": "指数走势、隐含波动率和 Cboe 波动率指数",
     "stale": {
       "data_time": "2026-11-06T00:00:00+08:00",
       "is_stale": false,
-      "text": "Data day 11-06"
+      "text": "数据日 11-06"
     },
     "chart": {
       "points": [
@@ -66,7 +66,7 @@
         "11-02",
         "11-06"
       ],
-      "aria_text": "S\u0026P 500 close trend, 5 trading days, from 11-02 to 11-06"
+      "aria_text": "S\u0026P 500 收盘走势，5 个交易日，从 11-02 到 11-06"
     },
     "index_table": {
       "columns": [
@@ -204,7 +204,7 @@
         "source_text": "RVXCLS"
       }
     ],
-    "vol_indices_note": "Index levels are in points as published by Cboe, not merged into the table.",
+    "vol_indices_note": "指数点位按 Cboe 公布的点数显示，不并入表格。",
     "notes": [
       "The chart draws only the stored S\u0026P 500 closes; the 200-day average and range are not built yet."
     ],
@@ -212,9 +212,9 @@
       {
         "kind": "gap",
         "reason": "no_data",
-        "text": "Tech state: no data, not stored yet"
+        "text": "科技状态：无数据，尚未存入"
       }
     ],
-    "data_times_text": "Data time 11-06"
+    "data_times_text": "数据时间 11-06"
   }
 }

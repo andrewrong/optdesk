@@ -11,3 +11,30 @@ const (
 	noteClosed      = "权利金和已实现盈亏只计已平仓的卖出持仓，所有账户合并。"
 	noteClosedEmpty = "平仓盈亏暂无数据：本页不给出按月的平仓盈亏。"
 )
+
+// The Chinese sentences of the card: the subtitle, the say, the gap reasons and the tile captions.
+const (
+	subtitle      = "来自交易账本"
+	sayNone       = "期权账本：暂无记录。"
+	sayNoSold     = "账本：暂无已平仓的卖出记录。"
+	sayPremium    = "已平仓卖出期权的权利金合计 "
+	sayPremiumEnd = "。"
+	textNoRows    = "账本：暂无记录"
+	textNoReader  = "期权账本：尚未接入"
+	textNoSold    = "账本：暂无已平仓的卖出记录"
+	textNoDay     = "无账本日"
+	textNotCents  = "账本金额不是整分，本页不做四舍五入"
+	textMonthly   = "按平仓月份的已结算权利金：暂无数据"
+	textNoClosed  = "本月没有平仓的卖出记录"
+	textClosedMon = "本页不给出按月的平仓盈亏"
+	textSoldCount = "本月卖出组数：账本汇总没有给出个数"
+	textOpen      = "未平仓权利金：账本汇总没有给出未平仓权利金"
+
+	textLots         = "本月新开手数"
+	textRemaining    = "每手的剩余部分"
+	textNoOpen       = "账本里没有未平仓的结构"
+	textNetPaid      = "净支付，不显示"
+	textNoFigure     = "账本没有给出数字"
+	textAtLeast      = "至少：%d 个结构没有亏损数字"
+	textOnlyOtherCcy = "只有非美元结构未平仓（%d 个），不换算"
+)

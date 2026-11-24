@@ -16,11 +16,7 @@ const (
 )
 
 // The English line of the numbers: the stored gap tags are put in as they are.
-const (
-	numbersHead = "NDX minus SPX: 1 month "
-	numbersMid  = " pt, 3 months "
-	numbersTail = " pt; trial thresholds, not a forecast"
-)
+const ()
 
 var sentences = map[string]string{
 	"LEADING":      sayLeading,

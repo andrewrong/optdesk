@@ -245,7 +245,7 @@ func underlyingsGaps(t *testing.T, acct positionsOf) []string {
 	}
 	var texts []string
 	for _, g := range p.Gaps {
-		if strings.HasPrefix(g.Text, "Editing is off") {
+		if strings.HasPrefix(g.Text, "编辑已关闭") {
 			continue // the read-only notice, not a held gap
 		}
 		texts = append(texts, g.Text)
@@ -282,7 +282,7 @@ func TestUnderlyingsPageRefusedReason(t *testing.T) {
 func TestUnderlyingsPageHeldReadFailure(t *testing.T) {
 	t.Parallel()
 	got := underlyingsGaps(t, positionsOf{err: errors.New("positions down")})
-	if len(got) != 1 || !strings.Contains(got[0], "could not be read") {
+	if len(got) != 1 || !strings.Contains(got[0], "无法从持仓读取") {
 		t.Fatalf("gaps = %q", got)
 	}
 }

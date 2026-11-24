@@ -78,20 +78,22 @@ type listGroup struct {
 func (g listGroup) key() string { return string(g.expiry) + "|" + g.class }
 
 type listRun struct {
-	j       *listJob
-	day     contracts.Day
-	t       time.Time
-	start   time.Time
-	stopAt  time.Time
-	names   []*listName
-	stop    string
-	abort   contracts.TypedError
-	touts   int
-	written int
-	groups  int
-	zone    bool
-	noSpot  bool
-	relist  map[string]bool // zone mode: "id|expiry|class" listed again in this run
+	j           *listJob
+	day         contracts.Day
+	t           time.Time
+	start       time.Time
+	stopAt      time.Time
+	names       []*listName
+	stop        string
+	abort       contracts.TypedError
+	touts       int
+	written     int
+	groups      int
+	chainMax    string // latest expiry any chain of the run showed
+	windowNames int    // names whose chain holds an expiry in the window
+	zone        bool
+	noSpot      bool
+	relist      map[string]bool // zone mode: "id|expiry|class" listed again in this run
 }
 
 // Run lists the stocks of the rules of the job. The one key of the job is the only key it runs.
@@ -432,6 +434,11 @@ func (r *listRun) chosen(ctx context.Context, n *listName, chains []broker.Chain
 	answered := false
 	for _, ch := range chains {
 		answered = answered || len(ch.Expirations) > 0
+		for _, e := range ch.Expirations {
+			if t, err := time.Parse("20060102", e); err == nil && t.Format(time.DateOnly) > r.chainMax {
+				r.chainMax = t.Format(time.DateOnly)
+			}
+		}
 		if ch.TradingClass != class {
 			continue
 		}
@@ -465,6 +472,7 @@ func (r *listRun) chosen(ctx context.Context, n *listName, chains []broker.Chain
 	if len(n.expected) == 0 {
 		return r.end(ctx, n, reasonNoExpiry)
 	}
+	r.windowNames++
 	if terr := r.recount(ctx, n); terr != nil {
 		return terr
 	}

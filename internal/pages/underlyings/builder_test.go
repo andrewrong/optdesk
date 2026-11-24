@@ -104,6 +104,38 @@ func validate(t *testing.T, out []byte) {
 }
 
 // checkFixture builds in and compares it with the named fixture, decoded, and validates it.
+// englishTexts are the English sentences the shared fixtures of contracts/ still hold, with the text the page writes
+// now: the page is compared with the fixture once the sentences are put in Chinese.
+var englishTexts = map[string]string{
+	"Pending: resolves after the close": pendingText,
+	"Followed by nothing":               followedNone,
+	"Days missed while a group is off cannot be refilled: the daily history of a skipped day is not fetched later.": refillText,
+	"Added: held position; waits to be resolved":                        noteHeldWaits,
+	"Editing is off: start ot serve with --owner-edit to change names.": readOnlyText,
+}
+
+// localize puts the English sentences of a decoded fixture in the Chinese the page writes.
+func localize(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, e := range x {
+			x[k] = localize(e)
+		}
+	case []any:
+		for i, e := range x {
+			x[i] = localize(e)
+		}
+	case string:
+		if z, ok := englishTexts[x]; ok {
+			return z
+		}
+		if rest, ok := strings.CutPrefix(x, "Followed by: "); ok {
+			return followedPref + rest
+		}
+	}
+	return v
+}
+
 func checkFixture(t *testing.T, in Input, name string) {
 	t.Helper()
 	out, err := Build(in)
@@ -114,7 +146,7 @@ func checkFixture(t *testing.T, in Input, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, w := decode(t, out), decode(t, want); !reflect.DeepEqual(got, w) {
+	if got, w := decode(t, out), localize(decode(t, want)); !reflect.DeepEqual(got, w) {
 		t.Fatalf("output differs from %s:\n got %s\nwant %s", name, out, want)
 	}
 	validate(t, out)
@@ -231,7 +263,7 @@ func TestBuildStaleAndNoConfirmStops(t *testing.T) {
 	in.Confirm = &Confirm{Stops: []Stop{{Group: "bars", Symbol: "CCC"}}}
 	m := decode(t, mustBuild(t, in))
 	row := m["rows"].([]any)[0].(map[string]any)
-	if row["key"] != "JP:DDD" || row["status_text"] != "Pending: the resolve job has not settled this name; check ot scheduler" {
+	if row["key"] != "JP:DDD" || row["status_text"] != staleText {
 		t.Fatalf("row = %v", row)
 	}
 	stops := m["confirm"].(map[string]any)["stops"].([]any)
@@ -348,7 +380,7 @@ func TestHeldReadFailureIsAGap(t *testing.T) {
 	t.Parallel()
 	in := heldInput()
 	in.HeldError = true
-	want := []string{"Held names could not be read from the positions; held names may be missing here"}
+	want := []string{heldReadText}
 	if got := heldGapTexts(t, in); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -392,7 +424,7 @@ func TestHeldAddedRowShowsResolvedText(t *testing.T) {
 	}
 	if notes["US:AAA"] != "Resolved as US stock AAA, con_id 42" ||
 		notes["JP:7203"] != "Resolved as JP stock 7203, con_id 7" ||
-		notes["US:BBB"] != "Added: held position; waits to be resolved" {
+		notes["US:BBB"] != noteHeldWaits {
 		t.Fatalf("notes %q", notes)
 	}
 }
@@ -449,7 +481,7 @@ func TestResolvedNoteDoesNotAskToCheck(t *testing.T) {
 	if n := m["US:AAA"].Note; n != "Resolved as US stock AAA, con_id 42" {
 		t.Errorf("resolved note %q", n)
 	}
-	if n := m["US:BBB"].Note; !strings.Contains(n, "waits to be resolved") || strings.Contains(n, "check the con_id") {
+	if n := m["US:BBB"].Note; !strings.Contains(n, "等待解析") || strings.Contains(n, "check the con_id") {
 		t.Errorf("pending note %q", n)
 	}
 }

@@ -437,3 +437,29 @@ func TestBuildHeldFamilyRateNoSecondRead(t *testing.T) {
 		t.Fatalf("calls = %v", calls)
 	}
 }
+
+func TestBuildHeldGapTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	c := heldConfig()
+	c.Underlying, c.Earnings = nil, nil
+	m, _ := buildHeld(t, c)
+	core := heldConfig()
+	core.Held = nil
+	m2, _ := buildHeld(t, core)
+	var texts []string
+	for _, page := range []map[string]any{m, m2} {
+		for _, g := range page["gaps"].([]any) {
+			if s, ok := g.(map[string]any)["text"].(string); ok {
+				texts = append(texts, s)
+			}
+		}
+	}
+	if len(texts) == 0 {
+		t.Fatal("no gap text collected")
+	}
+	for _, s := range texts {
+		if !hanText.MatchString(s) || strings.Contains(s, "No reader") || strings.Contains(s, "every next earnings date") {
+			t.Errorf("gap text %q is not Chinese", s)
+		}
+	}
+}

@@ -24,7 +24,7 @@
     "stale": {
       "data_time": "2026-11-10T09:00:00+08:00",
       "stale_after": "2026-11-14T09:00:00+08:00",
-      "text": "Account data day 2026-11-10"
+      "text": "账户数据日 2026-11-10"
     },
     "tiles": {
       "net_worth": {
@@ -35,9 +35,9 @@
           "unit": "USD"
         },
         "caption": {
-          "text": "USD · Data day 2026-11-10"
+          "text": "USD · 数据日 2026-11-10"
         },
-        "explain": "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
+        "explain": "主账户的净清算值（券商 NetLiquidation，美元），取自最近一次采集。"
       },
       "day_change": {
         "label": "Previous trading day",
@@ -53,7 +53,7 @@
           "tone": "up",
           "unit": "percent"
         },
-        "explain": "Net liquidation of the latest capture minus the previous captured trading day, USD; includes deposits and withdrawals, not pure return. The percentage is this change divided by the previous day."
+        "explain": "最近一次采集的净清算值减去上一个有采集的交易日，美元；含出入金，不是纯收益。百分比是这一变化除以前一日。"
       },
       "month_to_date": {
         "label": "Month to date",
@@ -69,7 +69,7 @@
           "tone": "up",
           "unit": "percent"
         },
-        "explain": "Net liquidation of the latest capture minus the last trading day of the previous month, USD; includes deposits and withdrawals, not time-weighted return."
+        "explain": "最近一次采集的净清算值减去上月最后一个交易日，美元；含出入金，不是时间加权收益。"
       },
       "cash": {
         "label": "Cash",
@@ -84,7 +84,7 @@
           "tone": "up",
           "unit": "usd_signed"
         },
-        "explain": "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, the small one the amount; negative cash is margin borrowing."
+        "explain": "主账户的现金（TotalCashValue，美元）。大数字是占净值的比例，小数字是金额；现金为负表示融资借款。"
       }
     },
     "notes": [
@@ -92,6 +92,6 @@
       "现金分放在各账户，只担保本账户的卖出看跌；合计现金不是可共用的保证金"
     ],
     "gaps": [],
-    "data_times_text": "Data day 2026-11-10"
+    "data_times_text": "数据日 2026-11-10"
   }
 }

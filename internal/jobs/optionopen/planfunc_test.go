@@ -276,7 +276,7 @@ func TestCeilingsDeferPerClassKeepingClass(t *testing.T) {
 func TestExpiryWindowUSAndJP(t *testing.T) {
 	t.Parallel()
 	var cs []Contract
-	for _, d := range []int{13, 14, 19, 20, 45, 46, 90, 91} {
+	for _, d := range []int{13, 14, 15, 45, 46, 90, 91} {
 		cs = append(cs, chain(d, "P", 100, 101)...)
 	}
 	n := NameInput{UnderlyingID: 1, Symbol: "AAA", Spot: 100.5, Candidates: cs}
@@ -288,11 +288,11 @@ func TestExpiryWindowUSAndJP(t *testing.T) {
 		return m
 	}
 	us := dtes(DefaultPlanParams())
-	if len(us) != 2 || !us[20] || !us[45] {
+	if len(us) != 2 || !us[15] || !us[45] {
 		t.Errorf("US %v", us)
 	}
 	jp := dtes(JPPlanParams())
-	if len(jp) != 6 || !jp[14] || !jp[90] || jp[13] || jp[91] {
+	if len(jp) != 5 || !jp[14] || !jp[90] || jp[13] || jp[91] {
 		t.Errorf("JP %v", jp)
 	}
 }

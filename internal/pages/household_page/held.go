@@ -23,8 +23,6 @@ const (
 	heldScope       = "held-family"
 	earningsDays    = 120 // days of stored earnings rows read up to the page day
 	heldSourceTime  = "account"
-	heldTextNoRead  = "No reader: no data yet"
-	heldTextNoEarn  = "No underlying or earnings reader: every next earnings date is a gap"
 	heldValueNoMark = "gap: no mark"
 	heldValueGap    = "gap: no value"
 	heldShareGap    = "gap"
