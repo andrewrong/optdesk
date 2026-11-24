@@ -14,7 +14,6 @@ import (
 
 const (
 	leadTitle = "What a put seller reads first"
-	leadNote  = "display only; no rule reads this"
 
 	// defaultWindowDays is the window the page uses when Window answers with no days; cmd/ot gives the registry default.
 	defaultWindowDays = 45

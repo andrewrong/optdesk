@@ -26,3 +26,14 @@ const (
 // The hint of the event columns: previous and actual are the last published figure and the release, the figure kinds
 // (y/y 同比, m/m 环比, NFP 非农月增, FOMC 目标区间), the latest vintage and the missing consensus.
 const hintEventValues = "前值/公布值：CPI、PCE、PPI为同比，零售为环比，非农为月增（千人），联储为目标区间；均为FRED最新版本；共识预期没有免费可靠来源，不显示。"
+
+// The lead note, the two page sentences of the liquidity block, the notes of two of its taps and the zero line of the NFCI
+// sentence. The zero line follows an English clause of the sentence, so it carries no full stop of its own.
+const (
+	leadNote         = "仅供查看，没有任何规则读取这里的内容。"
+	sentenceLiq      = "资金与信用背景，来自已存的序列；事件：暂无数据。"
+	sentenceLiqEv    = "资金与信用背景，来自已存的序列。"
+	noteNetLiquidity = "这是从业者自拟的指标，没有证据表明它领先价格。"
+	noteStlfsi       = "0 是 1993 年末以来的平均水平；高于 0 表示压力高于平均。"
+	zeroLineNFCI     = "高于 0 表示比平均更紧"
+)

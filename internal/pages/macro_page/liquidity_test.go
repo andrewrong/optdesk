@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -116,7 +117,7 @@ func TestLiquidityLinesFromResult(t *testing.T) {
 		"SOFR was 3.92% on Nov 12, 2.0 bp above IORB 3.90% on Nov 12; its 99th percentile was 3.98% on Nov 12.",
 		"High-yield spread is 3.12% on Nov 12, at the 41st percentile of our stored history since 2023-11-14 (780 days); " +
 			"investment grade 0.89% on Nov 12; Baa minus 10-year 1.62% on Nov 12.",
-		"Chicago Fed NFCI is -0.46 for the week to Nov 6; above 0 means tighter than average.",
+		"Chicago Fed NFCI is -0.46 for the week to Nov 6; " + zeroLineNFCI + ".",
 	}
 	keys := []string{"reserves", "money_market", "credit", "conditions"}
 	for i, w := range want {
@@ -128,7 +129,7 @@ func TestLiquidityLinesFromResult(t *testing.T) {
 	if m["liquidity_title"] != "Funding and credit background" {
 		t.Errorf("title %v", m["liquidity_title"])
 	}
-	if got := liqTap(m, "stlfsi")["note"]; !strings.Contains(got.(string), "above 0 = above-average stress") {
+	if got := liqTap(m, "stlfsi")["note"]; got != noteStlfsi {
 		t.Errorf("stlfsi note %v", got)
 	}
 	for _, k := range []string{"reserves_over_assets", "discount_window"} {
@@ -160,7 +161,7 @@ func TestLiquidityNetLine(t *testing.T) {
 	if r["text"] != "$5.82tn on Wednesday Nov 5, RRP of Nov 3" || r["data_day"] != "2026-11-05" {
 		t.Errorf("row %v", r)
 	}
-	if tp["note"] != "Practitioner construct, no evidence it leads prices." {
+	if tp["note"] != noteNetLiquidity {
 		t.Errorf("note %v", tp["note"])
 	}
 	for _, x := range liqBlock(m)["taps"].([]any) {
@@ -361,7 +362,7 @@ func TestLiquidityFuncMakesV2(t *testing.T) {
 	if m["schema_version"] != float64(2) || m["liquidity_title"] != "Funding and credit background" || m["liquidity"] == nil {
 		t.Errorf("v2 fields missing: %v", m["schema_version"])
 	}
-	if m["sentence"] != "Funding and credit background from stored series; events: no data yet." {
+	if m["sentence"] != sentenceLiq {
 		t.Errorf("sentence %v", m["sentence"])
 	}
 	if NewPage(c).Meta.Schema != "page.macro_page.v2" {
@@ -390,7 +391,51 @@ func TestLiquidityNoScoreWords(t *testing.T) {
 			t.Errorf("the page says %q", w)
 		}
 	}
-	if n := strings.Count(b, "tighter"); n != 1 {
-		t.Errorf("tighter appears %d times, want the one zero-line clause", n)
+	if n := strings.Count(b, zeroLineNFCI); n != 1 {
+		t.Errorf("the zero-line clause appears %d times, want 1", n)
+	}
+}
+
+func TestLiquidityNotesAreChinese(t *testing.T) {
+	t.Parallel()
+	c := liqConfig(fullResult())
+	c.Window = windowOf45(true)
+	m := liqBuild(t, c)
+	old := []string{
+		"display only; no rule reads this",
+		"Funding and credit background from stored series",
+		"Practitioner construct, no evidence it leads prices.",
+		"Zero is the average since late 1993; above 0 = above-average stress.",
+		"above 0 means tighter than average",
+	}
+	texts := map[string]any{
+		"lead note":        m["lead"].(map[string]any)["note"],
+		"sentence":         m["sentence"],
+		"net liquidity":    liqTap(m, "net_liquidity")["note"],
+		"stlfsi":           liqTap(m, "stlfsi")["note"],
+		"zero line (NFCI)": liqLine(m, 3)["sentence"],
+	}
+	for name, v := range texts {
+		s, _ := v.(string)
+		han := false
+		for _, r := range s {
+			if unicode.Is(unicode.Han, r) {
+				han = true
+			}
+		}
+		if !han {
+			t.Errorf("%s holds no Chinese character: %q", name, s)
+		}
+		for _, o := range old {
+			if strings.Contains(s, o) {
+				t.Errorf("%s holds the old English %q", name, o)
+			}
+		}
+	}
+	// With events the sentence drops the events clause; it is Chinese as well.
+	for _, s := range []string{sentenceLiq, sentenceLiqEv} {
+		if !strings.ContainsFunc(s, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Errorf("sentence %q holds no Chinese character", s)
+		}
 	}
 }
