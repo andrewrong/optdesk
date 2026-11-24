@@ -30,7 +30,8 @@ func TestNoInstrumentReadsNoBars(t *testing.T) {
 	row := aapl
 	row.ConID = 0
 	calc := &fakeCalc{}
-	in, b := newInput([]underlying.Row{row}, calc)
+	in, b, ids := newInputIDs([]underlying.Row{row}, calc)
+	ids.rows = nil
 	b.failFor = 0 // would fail if read with id 0
 	companies(build(t, in))
 	if calc.got[0].HasInstrument || len(calc.got[0].BarDays) != 0 {

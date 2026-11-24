@@ -29,10 +29,10 @@ func TestDailyPullReplacesDifferingDay(t *testing.T) {
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "10.000001"))} // inside the restatement tolerance
 	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-09", "10.0000", 1)}}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if len(h.queries) != 1 || len(st.rows) != 1 || st.rows[0].Close != "10.000001" || st.by[0] != "bars_refresh:2026-11-09" {
+	if len(h.queries) != 1 || len(st.rows) != 1 || st.rows[0].Close != "10.000001" || st.by[0] != "bars_refresh:2026-11-10" {
 		t.Fatalf("queries %+v rows %+v by %v", h.queries, st.rows, st.by)
 	}
 }
@@ -157,7 +157,7 @@ func TestRestatementRepullsOlderStoredDays(t *testing.T) {
 	h := splitHistory(twoPieces)
 	st := &memBars{rows: splitStored()}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
 	var pieces []broker.BarQuery
@@ -186,10 +186,10 @@ func TestRestatementWritesOnceAfterAllPulls(t *testing.T) {
 	h := splitHistory(twoPieces)
 	st := &memBars{rows: splitStored()}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if len(st.calls) != 1 || len(st.calls[0]) != 4 || st.by[0] != "bars_refresh:2026-11-09" {
+	if len(st.calls) != 1 || len(st.calls[0]) != 4 || st.by[0] != "bars_refresh:2026-11-10" {
 		t.Fatalf("calls %+v by %v", st.calls, st.by)
 	}
 }
@@ -204,7 +204,7 @@ func TestRestatementPullFailureWritesNothing(t *testing.T) {
 	})
 	st := &memBars{rows: splitStored()}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	res := j.Run(context.Background(), runDay, keysOf("cik:1"))
+	res := j.Run(context.Background(), nextDay, keysOf("cik:1"))
 	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
 		t.Fatalf("err %v", res.Err)
 	}
@@ -218,7 +218,7 @@ func TestRestatementStopsAtEmptyPiece(t *testing.T) {
 	h := splitHistory(func(broker.BarQuery) ([]broker.Bar, error) { return nil, nil })
 	st := &memBars{rows: splitStored()}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
 	if len(h.queries) != 3 || len(st.calls) != 1 || len(st.calls[0]) != 2 {
@@ -233,7 +233,7 @@ func TestRestatementNoDataEndsWithoutError(t *testing.T) {
 	})
 	st := &memBars{rows: splitStored()}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
 	var pieces []broker.BarQuery
@@ -279,7 +279,7 @@ func TestDailyPullReplacesDifferingVolume(t *testing.T) {
 	h := &fakeHistory{answer: fixed(b)}
 	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-09", "10.0000", 1)}}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+	if res := j.Run(context.Background(), nextDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}
 	if st.rows[0].Volume == nil || *st.rows[0].Volume != "999" {
