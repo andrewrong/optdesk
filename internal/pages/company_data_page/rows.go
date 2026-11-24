@@ -26,7 +26,8 @@ const (
 	statusListed   = "listed"
 )
 
-// companyRow reads what is stored for one company; id is the instrument id StockIDs gave for its symbol, 0 when none and returns its row and the bar rows it read. An error is
+// companyRow reads what is stored for one company and returns its row and the bar rows it read. id is the
+// instrument id StockIDs gave for its symbol, 0 when none. An error is
 // the failure of a read.
 func companyRow(ctx context.Context, in Input, u underlying.Row, id int64) (Company, []contracts.PriceBar, error) {
 	today, err := time.Parse(dayLayout, string(in.Today))
