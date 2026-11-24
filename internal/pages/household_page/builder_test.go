@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -191,7 +192,7 @@ func TestUnknownAliasIsGapPage(t *testing.T) {
 		t.Fatalf("not a gap page: %s", b)
 	}
 	for _, blk := range []string{"overview", "cash_after", "stress", "trend", "month_change", "movers"} {
-		if g := gapOf(t, m, blk); g["text"] != "Unknown account" {
+		if g := gapOf(t, m, blk); g["text"] != household_page.TextUnknown {
 			t.Fatalf("%s gap = %v", blk, g)
 		}
 	}
@@ -264,7 +265,7 @@ func TestMarkBlocksAreMissingQuoteGaps(t *testing.T) {
 			t.Fatalf("%s gap = %v", blk, g)
 		}
 	}
-	if g := gapOf(t, m, "movers"); g["text"] != "The change today needs prices of two trading days: no data yet" {
+	if g := gapOf(t, m, "movers"); g["text"] != household_page.TextNoMovers {
 		t.Fatalf("movers gap = %v", g)
 	}
 	if g := m["stress"].(map[string]any)["gap"]; g != nil {
@@ -439,11 +440,11 @@ func ledgerBlocks(t *testing.T, m map[string]any, wantNote bool) {
 	for _, blk := range []string{"income", "cash_after"} {
 		rows := m[blk].(map[string]any)["rows"].([]any)
 		note, _ := rows[0].(map[string]any)["note"].(string)
-		if wantNote != (strings.Contains(note, "7974") && strings.Contains(note, "not in the option ledger yet")) {
+		if wantNote != (strings.Contains(note, "7974") && strings.Contains(note, "不在期权账本中")) {
 			t.Fatalf("%s row note = %q, wantNote %v", blk, note, wantNote)
 		}
 	}
-	if wantNote && !hasGapLine(m, "option ledger") {
+	if wantNote && !hasGapLine(m, "期权账本") {
 		t.Fatalf("page gaps = %v", m["gaps"])
 	}
 }
@@ -513,12 +514,12 @@ func TestManyMissingShortPutsNameFiveAndFit(t *testing.T) {
 	m, b := build(t, c, "main")
 	for _, blk := range []string{"income", "cash_after"} {
 		note := rowNote(m[blk].(map[string]any)["rows"].([]any)[0])
-		if n := strings.Count(note, "7974"); n > 5 || n == 0 || len([]rune(note)) > 200 || !strings.HasPrefix(note, "7 short put(s)") {
+		if n := strings.Count(note, "7974"); n > 5 || n == 0 || len([]rune(note)) > 200 || !strings.HasPrefix(note, "有 7 张") {
 			t.Fatalf("%s note (%d) = %q", blk, len([]rune(note)), note)
 		}
 	}
 	text := m["gaps"].([]any)[len(m["gaps"].([]any))-1].(map[string]any)["text"].(string)
-	if n := strings.Count(text, "7974"); n > 5 || n == 0 || len([]rune(text)) > 200 || !strings.HasPrefix(text, "7 short put(s)") {
+	if n := strings.Count(text, "7974"); n > 5 || n == 0 || len([]rune(text)) > 200 || !strings.HasPrefix(text, "已存持仓里有 7 张") {
 		t.Fatalf("gap text (%d) = %q", len([]rune(text)), text)
 	}
 	validate(t, b)
@@ -531,7 +532,7 @@ func TestMissingMonthStartNamesTheDate(t *testing.T) {
 	var got blockapi.HouseholdInput
 	m, b := build(t, config(acc, &got), "main")
 	text := gapOf(t, m, "month_change")["text"].(string)
-	if !strings.Contains(text, "2026-11-01") || text == "Input data is missing: no data yet" {
+	if !strings.Contains(text, "2026-11-01") || text == household_page.TextMissingInput {
 		t.Fatalf("month_change gap = %q", text)
 	}
 	validate(t, b)
@@ -556,11 +557,11 @@ func TestOnlyUnmatchedStoredPutsAreCountedAndNamed(t *testing.T) {
 	m, _ := build(t, c, "main")
 	var text string
 	for _, g := range m["gaps"].([]any) {
-		if x := g.(map[string]any)["text"].(string); strings.Contains(x, "option ledger") {
+		if x := g.(map[string]any)["text"].(string); strings.Contains(x, "期权账本") {
 			text = x
 		}
 	}
-	if !strings.HasPrefix(text, "1 short put(s)") || !strings.Contains(text, "P7000") || strings.Contains(text, "P7250") {
+	if !strings.HasPrefix(text, "已存持仓里有 1 张") || !strings.Contains(text, "P7000") || strings.Contains(text, "P7250") {
 		t.Fatalf("gap text = %q", text)
 	}
 }
@@ -642,7 +643,7 @@ func TestTrendRowsUseGroupedMoney(t *testing.T) {
 	}
 }
 
-const statementNote = "From the broker statement of 2026-11-10; this account has no live gateway."
+const statementNote = household_page.TextStatementFrom + "2026-11-10" + household_page.TextStatementNote
 
 func notesOf(m map[string]any) []any {
 	n, _ := m["notes"].([]any)
@@ -668,7 +669,7 @@ func TestStatementNoteNamesTheDataDay(t *testing.T) {
 	c.Statement = []string{"main"}
 	m, _ := build(t, c, "main")
 	n := notesOf(m)
-	if len(n) != 1 || n[0] != "From the broker statement of 2026-11-09; this account has no live gateway." {
+	if len(n) != 1 || n[0] != household_page.TextStatementFrom+"2026-11-09"+household_page.TextStatementNote {
 		t.Fatalf("notes = %v", n)
 	}
 }
@@ -748,7 +749,7 @@ func TestLedgerPutNotInSnapshotIsFlagged(t *testing.T) {
 	c.Ledgers = nvda
 	m, b := build(t, c, "main")
 	rows := m["obligations"].(map[string]any)["rows"].([]any)
-	if len(rows) != 1 || rowNote(rows[0]) != "premium JPY 10.00; not in the position snapshot" && rowNote(rows[0]) != "not in the position snapshot" {
+	if len(rows) != 1 || rowNote(rows[0]) != household_page.NoteNotInSnapshot {
 		t.Fatalf("obligations rows = %v, want the row kept with its note", rows)
 	}
 	for _, blk := range []string{"obligations", "income", "cash_after"} {
@@ -756,7 +757,7 @@ func TestLedgerPutNotInSnapshotIsFlagged(t *testing.T) {
 			t.Fatalf("%s has a block gap: %v", blk, g)
 		}
 	}
-	if !hasGapLine(m, "NVDA") || !hasGapLine(m, "position snapshot") || m["run_status"] != "partial" {
+	if !hasGapLine(m, "NVDA") || !hasGapLine(m, household_page.NoteNotInSnapshot) || m["run_status"] != "partial" {
 		t.Fatalf("gaps = %v, status %v", m["gaps"], m["run_status"])
 	}
 	validate(t, b)
@@ -785,11 +786,80 @@ func TestBothDirectionsShareOneGapText(t *testing.T) {
 	if !strings.Contains(text, "AAA") || len([]rune(text)) > 170 {
 		t.Fatalf("gap text = %q", text)
 	}
-	if n := rowNote(m["obligations"].(map[string]any)["rows"].([]any)[0]); !strings.Contains(n, "not in the position snapshot") {
+	if n := rowNote(m["obligations"].(map[string]any)["rows"].([]any)[0]); !strings.Contains(n, household_page.NoteNotInSnapshot) {
 		t.Fatalf("obligation note = %q", n)
 	}
 	if n := rowNote(m["income"].(map[string]any)["rows"].([]any)[0]); !strings.Contains(n, "7974") {
 		t.Fatalf("income note = %q", n)
 	}
 	validate(t, b)
+}
+
+// oldEnglishTexts are English sentences the account page wrote before the owner rule: none is written now.
+var oldEnglishTexts = []string{
+	"Net liquidation of the account", "Market value of held stocks", "Which positions drove",
+	"Net liquidation on recent trading days", "Cash after all short puts", "Premium collected",
+	"Net liquidation from the last trading day", "Cash minus the cash needed", "Cash to pay if each",
+	"Share of net value held", "Net liquidation, cash, stocks and options",
+	"Net value, cash and option obligations", "no data yet", "No data", "No reader", "Unknown account",
+	"Needs position prices", "Input data is missing", "Exchange rate is missing", "Pending: ",
+	"No holding-period source", "The change today needs",
+}
+
+var hanText = regexp.MustCompile(`\p{Han}`)
+
+// explanationTexts collects the sentence, every meaning line and every gap text of a page.
+func explanationTexts(m map[string]any) []string {
+	var out []string
+	if s, ok := m["sentence"].(string); ok {
+		out = append(out, s)
+	}
+	var walk func(v any)
+	walk = func(v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			for k, e := range x {
+				if s, ok := e.(string); ok && (k == "meaning" || k == "gap" || k == "text" && x["reason"] != nil) {
+					out = append(out, s)
+				}
+				walk(e)
+			}
+		case []any:
+			for _, e := range x {
+				walk(e)
+			}
+		}
+	}
+	walk(m)
+	return out
+}
+
+func TestHouseholdTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	noReader, _ := build(t, household_page.Config{RunID: "run1", BuildID: "b1", Zone: zone, Aliases: []string{"main"}}, "main")
+	var got blockapi.HouseholdInput
+	noPrices, _ := build(t, config(account(), &got), "main")
+	var texts []string
+	for _, m := range []map[string]any{noReader, noPrices} {
+		texts = append(texts, explanationTexts(m)...)
+	}
+	texts = append(texts, household_page.MeaningLines...)
+	texts = append(texts, household_page.PageSentence)
+	for reason, text := range household_page.GapTexts() {
+		_ = reason
+		texts = append(texts, text)
+	}
+	if len(texts) < 20 {
+		t.Fatalf("only %d texts collected: %v", len(texts), texts)
+	}
+	for _, text := range texts {
+		if !hanText.MatchString(text) {
+			t.Errorf("text %q holds no Chinese character", text)
+		}
+		for _, o := range oldEnglishTexts {
+			if strings.Contains(text, o) {
+				t.Errorf("text %q holds the old English sentence %q", text, o)
+			}
+		}
+	}
 }

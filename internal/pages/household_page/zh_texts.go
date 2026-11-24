@@ -111,3 +111,64 @@ const (
 	riskLineShort      = "指派后现金：有 %d 个账户现金不够"
 	riskLineHidden     = "家庭风险表只列前 60 行，另有 %d 行没有列出"
 )
+
+// The Chinese words of the account page: the sentence, the meaning line of each block and the texts of its gaps,
+// warnings and empty states. A term of the block stays English; a verb keeps its type and order.
+const (
+	pageSentence = "净值、现金和期权义务取自最近一次采集；持仓市值需要价格，没有价格的持仓显示暂无数据。"
+
+	meaningOverview      = "账户的净值（Net liquidation），取自最近一次采集。"
+	meaningComposition   = "持有股票按采集日价格计的市值，及其占净值的比例。"
+	meaningMovers        = "今天哪些持仓带动了变化；需要持仓价格。"
+	meaningTrend         = "最近几个交易日的净值，每个交易日一个点。"
+	meaningStress        = "全部卖出看跌被指派后的现金，以及标的下跌各档的情形。"
+	meaningIncome        = "本月卖出看跌收到的权利金。"
+	meaningMonthChange   = "净值从上月最后一个交易日到最近一次采集的变化。"
+	meaningCashAfter     = "现金减去全部卖出看跌被指派所需的现金。"
+	meaningObligations   = "每张未平仓卖出看跌被指派时要付的现金。"
+	meaningConcentration = "单一标的占净值的比例，按采集日价格计。"
+	meaningAllocation    = "持有股票按采集日价格计的市值。"
+	meaningAccounts      = "本账户的净值、现金、股票和期权。"
+
+	textStatementFrom   = "取自券商对账单，日期 "
+	textStatementNote   = "；该账户没有实时网关。"
+	textNoMovers        = "今天的变化需要两个交易日的价格：暂无数据"
+	textNotBuilt        = "没有持有期来源：暂无数据"
+	textMoversStaleLast = "最新价格日 %s 比本页日期早了 5 天以上"
+	textMoversStalePrev = "较早价格日 %s 比最新价格日早了 5 天以上"
+	textMoversNoRate    = "%s 当天或之前没有 USDJPY 汇率：净值变化需要它"
+	textMissingQuote    = "需要持仓价格：暂无数据"
+	textMonthSteps      = "交易结果需要持仓价格，所以各步骤暂无数据；只列出月初和月末"
+	// textNoRate stays English for now: a cmd/ot test asserts it; translating it needs a cmd/ot issue first.
+	textNoRate     = "%s: no %s rate on or before %s"
+	textRateDay    = " 日元金额按 %s 的 USDJPY 汇率折算。"
+	textNoReader   = "没有读取器：暂无数据"
+	textUnknown    = "未知账户"
+	textNoCapture  = "该账户还没有采集"
+	textStale      = "最近一次采集已超过 3 个交易日"
+	textStaleLabel = "账户数据日 "
+
+	textNoMonthStart  = "%s 之前最后一个交易日没有净值采集：缺少月初"
+	textNotInLedger   = "已存持仓里有 %d 张卖出看跌还不在期权账本中（没有 Flex 记录）：%s"
+	textNotInSnapshot = "期权账本里有 %d 张卖出看跌不在持仓快照中：%s"
+	textLedgerBoth    = "已存持仓里有 %d 张卖出看跌还不在期权账本中：%s；期权账本里有 %d 张不在持仓快照中：%s"
+
+	noteNotInSnapshot = "不在持仓快照中"
+	noteNotInLedger   = "有 %d 张卖出看跌还不在期权账本中：%s"
+	noteStressSteps   = "-10%、-20%、-30% 的档位需要标的价格：暂无数据"
+
+	labelAccount = "账户（"
+	labelClose   = "）"
+	labelDay     = "最近 "
+	labelDays    = " 个交易日"
+
+	heldTextNoRead = "没有读取器：暂无数据"
+	heldTextNoEarn = "没有标的或财报读取器：每个下次财报日都缺"
+
+	textNoStockHeld = "没有持有股票，无法按比例排序"
+
+	textNoDataYet           = "暂无数据"
+	textMissingInput        = "输入数据缺失：暂无数据"
+	textUnsupportedCurrency = "缺少汇率或币种暂不支持：暂无数据"
+	textNoData              = "没有数据：暂无数据"
+)
