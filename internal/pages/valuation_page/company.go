@@ -3,6 +3,7 @@ package valuation_page
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/store/valuation"
@@ -173,7 +174,7 @@ func detailDoc(r valuation.Review) detailJSON {
 			P: r.Reasons["p"], Moat: r.Reasons["moat"], Understand: r.Reasons["understand"],
 			Management: r.Reasons["management"], Financial: r.Reasons["financial"],
 		},
-		ReportText: r.ReportText, EnteredAt: r.EnteredAt.UTC().Format(time.RFC3339),
+		ReportText: reportTextOf(r.ReportText), EnteredAt: r.EnteredAt.UTC().Format(time.RFC3339),
 	}
 	if d.Source == "" {
 		d.Source = "owner"
@@ -233,4 +234,16 @@ func history(in Input) []historyJSON {
 		out = append(out, h)
 	}
 	return out
+}
+
+// reportTextOf hides a stored report_text that is only a local file path
+// (one line, no space, ends in .md or .txt, holds a "/"); the row is untouched.
+func reportTextOf(s string) string {
+	if strings.ContainsAny(s, " \n\r") || !strings.Contains(s, "/") {
+		return s
+	}
+	if strings.HasSuffix(s, ".md") || strings.HasSuffix(s, ".txt") {
+		return ""
+	}
+	return s
 }
