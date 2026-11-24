@@ -114,13 +114,13 @@ func TestMonthlyLateAfter45Days(t *testing.T) {
 		})
 	}
 	r := groupSeries(t)
-	r.points["DGS10"] = daily(t, "2026-11-01", 10, 4, 0.1)
+	r.points["DGS10"] = daily(t, "2026-10-30", 10, 4, 0.1)
 	if got := indicator(buildWith(t, r, groupCfg()), 0)["status"]; got != "good" {
-		t.Fatalf("daily at 4 days %v", got)
+		t.Fatalf("daily at 6 days %v", got)
 	}
-	r.points["DGS10"] = daily(t, "2026-10-31", 10, 4, 0.1)
+	r.points["DGS10"] = daily(t, "2026-10-29", 10, 4, 0.1)
 	if got := indicator(buildWith(t, r, groupCfg()), 0)["status"]; got != "late" {
-		t.Fatalf("daily at 5 days %v", got)
+		t.Fatalf("daily at 7 days %v", got)
 	}
 }
 
@@ -270,5 +270,48 @@ func TestH10LateAfter10Days(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestRhythmLimitsPerSeries(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, id, obs, status, label string
+	}{
+		{"weekly 6 days", "DEXJPUS", "2026-11-14", "good", "On time"},
+		{"monthly 40 days", "IRLTLT01JPM156N", "2026-10-11", "good", "On time"},
+		{"daily 7 days", "DGS10", "2026-11-13", "late", "Late"},
+		{"daily 5 days", "DGS10", "2026-11-15", "good", "On time"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := fakeReader{points: map[string][]contracts.SeriesPoint{tc.id: {pt(t, tc.obs, tc.obs, "percent", f64(1))}}}
+			ind := indicator(build(t, r, cfg(tc.id), "2026-11-20"), 0)
+			if ind["status"] != tc.status || ind["label"] != tc.label {
+				t.Fatalf("status/label = %v/%v, want %s/%s", ind["status"], ind["label"], tc.status, tc.label)
+			}
+		})
+	}
+}
+
+func TestGroupedDailyBannerAgreesWithRow(t *testing.T) {
+	t.Parallel()
+	r := fakeReader{points: map[string][]contracts.SeriesPoint{
+		"DGS10": {pt(t, "2026-10-31", "2026-10-31", "percent", f64(4))}, // 5 days old, grouped
+	}}
+	m := buildWith(t, r, groupCfg())
+	var late bool
+	for _, x := range m["indicators"].([]any) {
+		if row := x.(map[string]any); row["data_day"] == "2026-10-31" && row["status"] == "late" {
+			late = true
+		}
+	}
+	text := m["stale"].(map[string]any)["text"].(string)
+	if late && !strings.Contains(text, "is late") {
+		t.Fatalf("row is Late but banner says %q", text)
+	}
+	if late {
+		t.Fatal("grouped daily row 5 days old is Late, want On time under the 6-day limit")
 	}
 }

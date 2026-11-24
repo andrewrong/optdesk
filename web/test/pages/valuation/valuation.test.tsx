@@ -229,6 +229,20 @@ describe('company view', () => {
     expect(history.textContent).toContain('Invented report text.')
     expect(history.textContent).toContain('invented risk')
   })
+
+  it('TestDetailTimesShownAsDateAndMinute: entered_at prints as date and minute, not the raw RFC 3339 string', async () => {
+    const payload = fixture('company')
+    const row0 = (payload.history as NonNullable<Payload['history']>)[0]!
+    row0.detail.entered_at = '2026-11-19T06:15:16Z'
+    const el = await render(payload)
+    const row = el.querySelector(`tr[data-review="${row0.review_id}"]`) as HTMLElement
+    await act(async () => {
+      ;(row.querySelector('button') as HTMLButtonElement).click()
+    })
+    const text = (row.closest('table') as HTMLElement).textContent
+    expect(text).toContain('2026-11-19 06:15')
+    expect(text).not.toContain('T06:15:16Z')
+  })
 })
 
 describe('form view', () => {

@@ -19,6 +19,7 @@ import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
 import { AccountsSection, MoversSection, ScopeHeading, WhoseBadge } from './AccountsMovers'
 import { AllocationSection, Block, IncomeMonths, MoneySection } from './MoneySections'
+import { wrapText } from './wrapText'
 import type { MoneyBlock, Scope } from './householdTypes'
 import { incomeToSpec, monthChangeToSpec, trendToSpec } from './householdToSpec'
 export { validate as validateHouseholdPage } from '@/types/household_page'
@@ -61,7 +62,16 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
                   <TableHeader>
                     <TableRow>
                       {block.heads.map((head, i) => (
-                        <TableHead key={i} className={i > 0 ? 'text-right' : undefined}>
+                        <TableHead
+                          key={i}
+                          className={
+                            i === 1
+                              ? `hidden sm:table-cell ${wrapText} text-right`
+                              : i > 0
+                                ? `${wrapText} text-right`
+                                : wrapText
+                          }
+                        >
                           {head}
                         </TableHead>
                       ))}
@@ -71,7 +81,7 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
                 <TableBody>
                   {rows.map((row) => (
                     <TableRow key={`${row.scope}-${row.name}`}>
-                      <TableCell>
+                      <TableCell className={wrapText}>
                         {row.name}
                         {row.accounts?.map((tag) => (
                           <span key={tag.label} className="ml-2 inline-flex items-center gap-1">
@@ -83,17 +93,19 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
                           </span>
                         ))}
                       </TableCell>
-                      <TableCell className="text-right">{row.share?.text ?? ''}</TableCell>
+                      <TableCell className="hidden text-right sm:table-cell">
+                        {row.share?.text ?? ''}
+                      </TableCell>
                       <TableCell className="text-right">{row.amount.text}</TableCell>
                     </TableRow>
                   ))}
                   {scope.key === 'household'
                     ? block.totals.map((cell, i) => (
                         <TableRow key={`total-${i}`}>
-                          <TableCell className="font-medium">
+                          <TableCell className={`font-medium ${wrapText}`}>
                             {block.total_labels?.[i] ?? block.title}
                           </TableCell>
-                          <TableCell />
+                          <TableCell className="hidden sm:table-cell" />
                           <TableCell className="text-right">{cell.text}</TableCell>
                         </TableRow>
                       ))
@@ -124,7 +136,7 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
   const incomeCurrencies = income.totals.map((cell) => cell.currency)
   return (
     <div className="min-w-0 space-y-6" data-page="household">
-      <header>
+      <header className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold">{payload.title}</h1>
           {payload.risk_link != null && (
@@ -145,7 +157,7 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
           )}
         </div>
         {payload.views != null && (
-          <nav className="mt-2 flex flex-wrap gap-2" data-household-views>
+          <nav className="mt-2 min-w-0 flex flex-wrap gap-2" data-household-views>
             {payload.views.map((view) =>
               view.current ? (
                 <Badge key={view.key} data-view={view.key} aria-current="page">
@@ -161,9 +173,9 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
             )}
           </nav>
         )}
-        <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
+        <p className="mt-2 break-words text-muted-foreground">{payload.sentence}</p>
         {payload.lead_notes?.map((note, i) => (
-          <p key={i} className="mt-1 text-sm text-muted-foreground" data-lead-note>
+          <p key={i} className="mt-1 break-words text-sm text-muted-foreground" data-lead-note>
             {note}
           </p>
         ))}
