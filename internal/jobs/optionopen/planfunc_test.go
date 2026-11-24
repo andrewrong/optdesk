@@ -139,7 +139,7 @@ func TestHeldOutsideBandAndCeilingsAlwaysIncluded(t *testing.T) {
 	t.Parallel()
 	held := chain(120, "C", 300)
 	p := wide()
-	p.CeilAroundSpot, p.CeilPuts, p.CeilCalls = 0, 0, 0
+	p.CeilTotal = 1 // the held item alone fills the ceiling
 	n := NameInput{UnderlyingID: 1, Symbol: "AAA", Spot: 100, Held: held,
 		Candidates: append(chain(30, "P", rng(90, 101, 1)...), held...)}
 	got := BuildPlan(testDay, p, []NameInput{n})
@@ -148,7 +148,7 @@ func TestHeldOutsideBandAndCeilingsAlwaysIncluded(t *testing.T) {
 	}
 	for _, it := range got.Items[1:] {
 		if it.Class == ClassHeld || !it.Deferred {
-			t.Errorf("non-held not deferred under zero ceilings: %+v", it)
+			t.Errorf("non-held not deferred under a full ceiling: %+v", it)
 		}
 	}
 	if len(got.Names) != 1 {
@@ -171,7 +171,8 @@ func TestStoredBandNearerOfKAndDrop(t *testing.T) {
 
 func TestHalfDollarGridPerStockCap60(t *testing.T) {
 	t.Parallel()
-	p := DefaultPlanParams() // cap 60 per stock
+	p := DefaultPlanParams()
+	p.CeilPerStock = 60 // the cap of a name is set explicitly: the US default has none
 	n := NameInput{UnderlyingID: 1, Symbol: "AAA", Spot: 100.2, PriorCloseSigma: 1.0,
 		Candidates: chain(30, "P", rng(70, 101, 0.5)...)}
 	got := BuildPlan(testDay, p, []NameInput{n})

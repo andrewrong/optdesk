@@ -2,7 +2,6 @@ package optionopen
 
 import (
 	"context"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -167,12 +166,12 @@ func conIDs(insts []store.Instrument) map[int64]int64 {
 	return out
 }
 
-// bandItems is the plan function over the chain at the live spot, with the plan's own ceilings: the cap of the stock
-// is the plan's. Held contracts of the stored plan are always items.
+// bandItems is the plan function over the chain at the live spot, with no ceiling: neither the total nor the cap of a
+// stock applies to the live band. Held contracts of the stored plan are always items.
 func (c *Core) bandItems(day time.Time, spot float64, ts []Target, chain []Contract) []Item {
 	n := c.nameInput(spot, ts)
 	n.Candidates = chain
-	return c.plan()(day, c.Params, []NameInput{n}).Items
+	return c.plan()(day, uncapped(c.Params), []NameInput{n}).Items
 }
 
 // nameInput is the stock of the live band: the held contracts and the position flag come from the stored plan.
@@ -195,9 +194,9 @@ func (c *Core) nameInput(spot float64, ts []Target) NameInput {
 	return n
 }
 
-// uncapped is the parameter set of the band over the plan items: they are already capped by the plan.
+// uncapped is the parameter set of the live band: no class ceiling, no cap of a stock and no total (0 is none).
 func uncapped(p PlanParams) PlanParams {
-	p.CeilAroundSpot, p.CeilPuts, p.CeilCalls, p.CeilPerStock = math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32
+	p.CeilAroundSpot, p.CeilPuts, p.CeilCalls, p.CeilPerStock, p.CeilTotal = 0, 0, 0, 0, 0
 	return p
 }
 

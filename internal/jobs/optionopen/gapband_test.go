@@ -92,34 +92,23 @@ func TestGapAddedRowIsInsideAndDroppedPlanItemIsOutside(t *testing.T) {
 	}
 }
 
-func TestGapAsksOfOneStockNeverExceedTheCap(t *testing.T) {
+func TestGapAsksNinetyStoredPutsOfOneStockWithoutACap(t *testing.T) {
 	t.Parallel()
-	s := gapStore(3, 40, 99, 89, 99) // three expiries of 60 puts
-	for i := range s.items {
-		s.items[i].Sigma = 0.8 // a wide band: 25 puts of each expiry, 75 in all, over the cap of 60
+	s := gapStore(3, 50, 79, 70, 79) // three expiries of 30 puts: 90 stored puts
+	for i := range s.refs[1] {
+		r := &s.refs[1][i]
+		k, _ := strconv.Atoi(r.Strike)
+		r.Strike = strconv.Itoa(2*k - 60) // a two dollar grid, 40 to 98: no cap per expiry of a one dollar grid
 	}
-	b := newFake(90)
+	for i := range s.items {
+		s.items[i].Sigma = 3 // a band over every stored put
+	}
+	b := newFake(100)
 	if res := runAll(t, newPull(t, s, b)); res.Err != nil {
 		t.Fatal(res.Err)
 	}
-	if n := len(askedIDs(b)); n > DefaultPlanParams().CeilPerStock || n < 50 {
-		t.Errorf("asked %d contracts of the stock, want at most %d and a full cap", n, DefaultPlanParams().CeilPerStock)
-	}
-	inPlan := map[int]bool{}
-	for _, it := range s.items {
-		inPlan[it.InstrumentID] = true
-	}
-	over := 0
-	for _, r := range s.stored {
-		if !inPlan[r.InstrumentID] && r.Status == stDeferred {
-			over++
-			if r.OutsideBand {
-				t.Errorf("added contract %d over the cap is outside the band", r.InstrumentID)
-			}
-		}
-	}
-	if over == 0 {
-		t.Error("no added contract over the cap was written deferred")
+	if n := len(askedIDs(b)); n != 90 {
+		t.Errorf("asked %d contracts of the stock, want the 90 stored puts (no cap of 60)", n)
 	}
 }
 

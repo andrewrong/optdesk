@@ -32,7 +32,10 @@ max_per_expiry = 25
 far_otm = 0.03
 five_dollar_names = ["SPY", "QQQ", "IWM"]
 deep_puts_drop = 0.15
-ceil_around_spot = 350
-ceil_puts = 1400
-ceil_calls = 1200
-ceil_per_stock = 60
+# A ceiling of 0 means none: the plan is cut by ceil_total alone, in the order of its rank
+# (docs/design/option-open-delta-band.md, Decision 1).
+ceil_around_spot = 0
+ceil_puts = 0
+ceil_calls = 0
+ceil_per_stock = 0
+ceil_total = 2050

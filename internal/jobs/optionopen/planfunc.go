@@ -89,6 +89,7 @@ type PlanParams struct {
 	CeilPuts        int
 	CeilCalls       int
 	CeilPerStock    int
+	CeilTotal       int // one ceiling over the whole plan in rank order, held items counted; 0 means none
 }
 
 // DefaultPlanParams are the US values of the owner decision 2026-11-10.
@@ -100,7 +101,8 @@ func DefaultPlanParams() PlanParams {
 		MinPuts: 6, MaxPerExpiry: 25, FarOTM: 0.03,
 		FiveDollarNames: []string{"SPY", "QQQ", "IWM"},
 		DeepPutsDrop:    0.15,
-		CeilAroundSpot:  350, CeilPuts: 1400, CeilCalls: 1200, CeilPerStock: 60,
+		// A ceiling of 0 means none: the US plan is cut by the total only, in the order of its rank.
+		CeilTotal: 2050,
 	}
 }
 
@@ -108,6 +110,7 @@ func DefaultPlanParams() PlanParams {
 func JPPlanParams() PlanParams {
 	p := DefaultPlanParams()
 	p.MinDTE, p.MaxDTE = 14, 90
+	p.CeilAroundSpot, p.CeilPuts, p.CeilCalls, p.CeilPerStock, p.CeilTotal = 350, 1400, 1200, 60, 0
 	return p
 }
 
@@ -214,42 +217,35 @@ func BuildPlan(day time.Time, p PlanParams, names []NameInput) Plan {
 		start = int(dayNumber(day) % int64(len(ns)))
 	}
 	var deferred []Item
+	var kept []*entry // the entries under the class ceilings, in the order of the rank
 	for _, c := range []struct {
 		class Class
 		ceil  int
 	}{{ClassAroundSpot, p.CeilAroundSpot}, {ClassPuts, p.CeilPuts}, {ClassCalls, p.CeilCalls}} {
-		queues := make([][]*entry, len(ns))
-		for i, es := range perName {
-			for _, e := range es {
-				if e.item.Class == c.class && !e.item.Deferred {
-					queues[i] = append(queues[i], e)
-				} else if e.item.Class == c.class {
-					deferred = append(deferred, e.item)
-				}
-			}
-			sort.SliceStable(queues[i], func(a, b int) bool { return lessEntry(queues[i][a], queues[i][b]) })
+		seq := roundRobin(c.class, perName, start, &deferred)
+		var over map[*entry]bool
+		if c.ceil > 0 {
+			over = deferTail(seq, c.ceil)
 		}
-		var seq []*entry
-		for left := true; left; {
-			left = false
-			for k := range ns {
-				i := (start + k) % len(ns)
-				if len(queues[i]) == 0 {
-					continue
-				}
-				left = true
-				seq = append(seq, queues[i][0])
-				queues[i] = queues[i][1:]
-			}
-		}
-		over := deferTail(seq, c.ceil)
 		for _, e := range seq {
 			if over[e] {
 				e.item.Deferred = true
 				deferred = append(deferred, e.item)
 			} else {
-				out.Items = append(out.Items, e.item)
+				kept = append(kept, e)
 			}
+		}
+	}
+	var over map[*entry]bool
+	if p.CeilTotal > 0 {
+		over = deferTail(kept, p.CeilTotal-len(held))
+	}
+	for _, e := range kept {
+		if over[e] {
+			e.item.Deferred = true
+			deferred = append(deferred, e.item)
+		} else {
+			out.Items = append(out.Items, e.item)
 		}
 	}
 	out.Items = append(out.Items, deferred...)
@@ -259,15 +255,55 @@ func BuildPlan(day time.Time, p PlanParams, names []NameInput) Plan {
 	return out
 }
 
-// deferTail picks the entries over the ceiling: from the end of the order,
-// the unprotected first; the protected minimum puts only when nothing else is
-// left to defer, so they go last.
+// roundRobin is the order of one class: the names take turns, each name's next entry nearest the spot first, the
+// first name rotating by start. An entry of the class already deferred is appended to deferred.
+func roundRobin(class Class, perName [][]*entry, start int, deferred *[]Item) []*entry {
+	queues := make([][]*entry, len(perName))
+	for i, es := range perName {
+		for _, e := range es {
+			if e.item.Class == class && !e.item.Deferred {
+				queues[i] = append(queues[i], e)
+			} else if e.item.Class == class {
+				*deferred = append(*deferred, e.item)
+			}
+		}
+		sort.SliceStable(queues[i], func(a, b int) bool { return lessEntry(queues[i][a], queues[i][b]) })
+	}
+	var seq []*entry
+	for left := true; left; {
+		left = false
+		for k := range perName {
+			i := (start + k) % len(perName)
+			if len(queues[i]) == 0 {
+				continue
+			}
+			left = true
+			seq = append(seq, queues[i][0])
+			queues[i] = queues[i][1:]
+		}
+	}
+	return seq
+}
+
+// deferTail picks the entries over the ceiling, from the end of the order: first
+// the unprotected puts and calls; then the protected minimum puts, so they go
+// last of the puts; around_spot items only when nothing else is left to defer.
+// The caller treats a ceiling of 0 as none.
 func deferTail(seq []*entry, ceil int) map[*entry]bool {
 	over := map[*entry]bool{}
 	need := len(seq) - ceil
-	for _, protected := range []bool{false, true} {
+	tier := func(e *entry) int {
+		switch {
+		case e.item.Class == ClassAroundSpot:
+			return 2
+		case e.protect:
+			return 1
+		}
+		return 0
+	}
+	for t := 0; t <= 2; t++ {
 		for i := len(seq) - 1; i >= 0 && len(over) < need; i-- {
-			if seq[i].protect == protected {
+			if tier(seq[i]) == t {
 				over[seq[i]] = true
 			}
 		}
