@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
@@ -302,5 +303,84 @@ func TestBarFallbackUsesPickedBar(t *testing.T) {
 	validate(t, b)
 	if got := cellText(t, m, 0, "price"); got != "$110.00" {
 		t.Fatalf("price = %q, want the newest bar with a positive close", got)
+	}
+}
+
+// closedSessions says whether calendar XTKS has a session on the capture day; any other calendar is open.
+type closedSessions struct {
+	fakeSessions
+	rows []contracts.SessionDay
+	err  error
+}
+
+func (f closedSessions) SessionDays(ctx context.Context, cal string, from, to contracts.Day) ([]contracts.SessionDay, error) {
+	if cal != "XTKS" {
+		return f.fakeSessions.SessionDays(ctx, cal, from, to)
+	}
+	return f.rows, f.err
+}
+
+func tokyoDay(isSession bool) []contracts.SessionDay {
+	return []contracts.SessionDay{{CalendarID: "XTKS", SessionDay: types.SerializableDate{Time: time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)}, IsSession: isSession}}
+}
+
+// jpStock is a held TSEJ stock marked 14.9 over its last bar close of 4840.
+func jpStock(sessions closedSessions) positions_page.Config {
+	p := pos("2026-11-10", "TKY1", "stock", "JPY", 1, "500", "4000")
+	p.Exchange = "TSEJ"
+	c, _ := noMarks(p)
+	c.Sessions = sessions
+	ids := &fakeStockIDs{rows: []store.InstrumentName{idOf(11, "TKY1")}}
+	bars := &fakeBars{byID: map[int64][]contracts.PriceBar{11: {bar(11, "2026-11-06", "4830", "JPY"), bar(11, "2026-11-09", "4840", "JPY")}}}
+	return withBars(marksOf(c, midMark(1, "4854.9")), ids, bars)
+}
+
+func TestClosedMarketGivesNoDayResult(t *testing.T) {
+	t.Parallel()
+	m, b := build(t, jpStock(closedSessions{rows: tokyoDay(false)}), "main")
+	validate(t, b)
+	if got := cellText(t, m, 0, "day"); got != "n/a" {
+		t.Fatalf("day = %q, want the gap", got)
+	}
+	if r := at0(t, m, "views", 0, "stocks", "rows", 0, "day", "reason"); r != "no_data" {
+		t.Fatalf("reason = %v", r)
+	}
+	if got := cellText(t, m, 0, "price"); got != "¥4,854.90" {
+		t.Fatalf("price = %q, unchanged", got)
+	}
+	var note string
+	for _, n := range notesOf(t, m) {
+		if s := n.(string); strings.Contains(s, "closed") {
+			note = s
+		}
+	}
+	if !strings.Contains(note, "TKY1") || !strings.Contains(note, "2026-11-10") || len([]rune(note)) > 200 {
+		t.Fatalf("note = %q", note)
+	}
+}
+
+func TestOpenMarketKeepsDayResult(t *testing.T) {
+	t.Parallel()
+	for name, s := range map[string]closedSessions{"session": {rows: tokyoDay(true)}, "no row": {}} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			m, _ := build(t, jpStock(s), "main")
+			if got := cellText(t, m, 0, "day"); got != "+¥7,450.00" {
+				t.Fatalf("day = %q, want 500 x (4854.9 - 4840)", got)
+			}
+			for _, n := range notesOf(t, m) {
+				if strings.Contains(n.(string), "closed") {
+					t.Fatalf("note %q", n)
+				}
+			}
+		})
+	}
+}
+
+func TestClosedMarketReaderErrorIsAnError(t *testing.T) {
+	t.Parallel()
+	c := jpStock(closedSessions{err: errors.New("boom")})
+	if _, err := positions_page.NewPage(c, "main").Build(context.Background(), nil, day, at); err == nil {
+		t.Fatal("want the reader error")
 	}
 }

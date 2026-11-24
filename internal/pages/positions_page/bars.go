@@ -38,6 +38,7 @@ type fallback struct{ Symbol, Day string }
 type barFigures struct {
 	Price, Prev map[int64]string
 	Fallbacks   []fallback
+	Closed      []string             // symbols whose exchange had no session on the capture day
 	Rows        []contracts.PriceBar // every bar row read, for shared.BarSourceOf
 }
 
@@ -73,9 +74,20 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 	}
 	out.Price = price
 	from := contracts.Day(capD.AddDate(0, 0, -barLookbackDays).Format(dayLayout))
+	var shut []store.Position
+	open := map[string]bool{} // calendar -> has a session on capDay (true when unknown)
 	for _, p := range ps {
 		if p.SecType != typeStock || len(ids[p.Symbol]) != 1 {
 			continue
+		}
+		cal := calendarOf(p.Exchange)
+		if _, ok := open[cal]; !ok {
+			if open[cal], err = c.hasSession(ctx, cal, capDay); err != nil {
+				return out, err
+			}
+		}
+		if !open[cal] {
+			shut = append(shut, p)
 		}
 		bars, err := c.Bars.PriceBars(ctx, ids[p.Symbol][0], barBasis, from, contracts.Day(capDay))
 		if err != nil {
@@ -99,7 +111,53 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 			out.Prev[p.ConID] = prev
 		}
 	}
+	for _, p := range shut {
+		delete(out.Prev, p.ConID) // a mark of a shut day is the mark of the day before: no day result
+		if !slices.Contains(out.Closed, p.Symbol) {
+			out.Closed = append(out.Closed, p.Symbol)
+		}
+	}
 	return out, nil
+}
+
+// calendarOf is the session calendar that decides whether the exchange traded.
+func calendarOf(exchange string) string {
+	if exchange == "TSEJ" {
+		return "XTKS"
+	}
+	return calendarID
+}
+
+// hasSession is false only when the reader returns a row for capDay of cal that is no session. No row is open.
+func (c Config) hasSession(ctx context.Context, cal, capDay string) (bool, error) {
+	rows, err := c.Sessions.SessionDays(ctx, cal, contracts.Day(capDay), contracts.Day(capDay))
+	if err != nil {
+		return true, fmt.Errorf("positions_page: read session days of %s: %w", cal, err)
+	}
+	for _, r := range rows {
+		if r.SessionDay.Format(dayLayout) == capDay {
+			return r.IsSession, nil
+		}
+	}
+	return true, nil
+}
+
+// closedNote is the one line that names the stocks with no day result because their market was shut on
+// capDay, at most noteSymbols and a count of the rest; "" when there is none.
+func closedNote(syms []string, capDay string) string {
+	if len(syms) == 0 {
+		return ""
+	}
+	for n := min(noteSymbols, len(syms)); ; n-- {
+		s := textClosedStart + strings.Join(syms[:n], ", ")
+		if rest := len(syms) - n; rest > 0 {
+			s += " and " + strconv.Itoa(rest) + " more"
+		}
+		s += textClosedMid + capDay
+		if len([]rune(s)) <= noteMaxRunes || n == 1 {
+			return s
+		}
+	}
 }
 
 // stockNames are the distinct stock symbols of ps, at most stockIDBatch.

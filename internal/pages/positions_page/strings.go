@@ -43,6 +43,8 @@ const (
 	textBarStart      = "Last price of "
 	textBarMid        = " is the last stored close (last trading price of the day) of "
 	textBarEnd        = "; a day still open may change"
+	textClosedStart   = "No day result for "
+	textClosedMid     = ": the market was closed on "
 	textNoHeld        = "No positions"
 
 	actionSellOpen  = "Sell to open"
