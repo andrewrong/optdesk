@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
+	"github.com/andrewrong/optdesk/internal/pages/job_console"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
 )
 
@@ -277,14 +279,16 @@ func TestDatasetsResolveToFirstJob(t *testing.T) {
 func TestDueAtFromSlot(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
-	for id, want := range map[string]string{"option_eod": "14:00", "option_eod_index": "15:45", "option_eod_jp": "15:15", "fx_refresh": ""} {
+	for id, want := range map[string]string{"option_eod": "14:00", "option_eod_index": "15:45", "option_eod_jp": "15:15", "fx_refresh": "",
+		"option_open_resolve": "17:00", "option_open_resolve_jp": "16:30", "option_open_resolve_gap": "08:00"} {
 		if got := dataHealthJobOf(t, jobs, id).DueAt; got != want {
 			t.Errorf("%s DueAt %q, want %q", id, got, want)
 		}
 	}
 	for _, j := range jobs {
 		timed := []string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events",
-			"bars_refresh", "iv_history", "account_capture", "position_marks"}
+			"bars_refresh", "iv_history", "account_capture", "position_marks",
+			"option_open_resolve", "option_open_resolve_jp", "option_open_resolve_gap"}
 		if j.DueAt != "" && !slices.Contains(timed, j.ID) {
 			t.Errorf("%s carries DueAt %q", j.ID, j.DueAt)
 		}
@@ -324,6 +328,36 @@ func TestDataHealthTimeSlots(t *testing.T) {
 	}
 	if strings.Contains(body, `"repair":"button"`) {
 		t.Fatalf("button before the slot: %s", body)
+	}
+}
+
+func TestListedOnlyResolveCellIsDueBeforeSlot(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=postgres://pages\n")
+	cov := fakeCoverage{cells: []coverage.Cell{{Day: "2026-11-13", Dataset: "master.option_contract", Keys: 1, Missing: 1}}}
+	rd := siteReaders{ext: map[string]any{siteDataHealthKey: coverage.Reader(cov)}, edit: &ownerEdit{}}
+	get := func(now time.Time) string {
+		h := siteHandler(a, fakeClock{now}, "", rd, echoHandler, http.NotFoundHandler())
+		rec := settingsGet(t, h, http.MethodGet, "/"+siteDataHealthRoute)
+		validateDataHealth(t, rec.Body.Bytes())
+		return rec.Body.String()
+	}
+	early := get(time.Date(2026, 11, 13, 11, 0, 0, 0, time.UTC))
+	if !strings.Contains(early, `"due_text":"due`) {
+		t.Fatalf("no due text before the slot: %s", early)
+	}
+	if regexp.MustCompile(`"why_text":"[^"]`).MatchString(early) || !strings.Contains(early, `"repair":"none"`) {
+		t.Fatalf("why_text or repair other than none before the slot: %s", early)
+	}
+	if strings.Contains(early, `"repair":"button"`) || strings.Contains(early, job_console.ZhWhyHeavyAndCap) {
+		t.Fatalf("reason or button before the slot: %s", early)
+	}
+	late := get(time.Date(2026, 11, 13, 23, 0, 0, 0, time.UTC))
+	if !strings.Contains(late, `"repair":"not_refetchable"`) {
+		t.Fatalf("late repair: %s", late)
+	}
+	if !strings.Contains(late, job_console.ZhWhyHeavyAndCap) {
+		t.Fatalf("no always-cut reason after the slot: %s", late)
 	}
 }
 
@@ -380,6 +414,10 @@ func TestDataHealthOptionEodSlots(t *testing.T) {
 		"option_eod":       {"14:00", "America/New_York"},
 		"option_eod_index": {"15:45", "America/New_York"},
 		"option_eod_jp":    {"15:15", "Asia/Tokyo"},
+
+		"option_open_resolve":     {"17:00", "America/New_York"},
+		"option_open_resolve_jp":  {"16:30", "Asia/Tokyo"},
+		"option_open_resolve_gap": {"08:00", "America/New_York"},
 	} {
 		j := dataHealthJobOf(t, jobs, id)
 		if j.DueAt != want.dueAt || j.Zone != want.zone {
