@@ -360,3 +360,24 @@ func TestWeeklySeriesDoesNotSetStale(t *testing.T) {
 		t.Fatalf("data_times = %v", m["data_times"])
 	}
 }
+
+func TestH10SeriesDoNotSetStale(t *testing.T) {
+	t.Parallel()
+	r := groupSeries(t)
+	r.points["DTWEXBGS"] = daily(t, "2026-10-30", 10, 120, 0.5)
+	r.points["DEXJPUS"] = daily(t, "2026-10-30", 10, 150, -1)
+	m := buildWith(t, r, groupCfg())
+	s := m["stale"].(map[string]any)
+	if s["text"] != "Data day 11-04" {
+		t.Fatalf("stale = %v", s)
+	}
+	times := fmt.Sprint(m["data_times"])
+	for _, id := range []string{"DTWEXBGS", "DEXJPUS"} {
+		if !strings.Contains(times, id) {
+			t.Fatalf("data_times lacks %s: %v", id, times)
+		}
+	}
+	if !strings.Contains(times, "10-30") {
+		t.Fatalf("data_times lacks the own day: %v", times)
+	}
+}
