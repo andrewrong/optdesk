@@ -133,6 +133,7 @@ class ProbedGateway(ListingGateway):
 
     def __init__(self, *args: Any, name: str = "", **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self._alias = name
         self.farms = Farms(name, self._clock)
 
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:

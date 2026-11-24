@@ -23,13 +23,9 @@ from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.accounts import drop_resubscribe, read_account, read_executions
-from optdesk.ibkr.api import (
-    DividendKey,
-    DividendReading,
-    HistoryBar,
-    HistoryRequest,
-)
+from optdesk.ibkr.api import DividendKey, DividendReading, HistoryBar, HistoryRequest
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
+from optdesk.ibkr.execlog import log_executions_read
 from optdesk.ibkr.farm_probe import history_wait
 from optdesk.ibkr.history import HistoryReader, WireRequest
 from optdesk.ibkr.missing import _number, _open_interest, missing_fields
@@ -189,6 +185,7 @@ class IbGateway:
             )
         )
         self._id_in_use = False
+        self._alias = ""  # the configured name, set by ProbedGateway
         self._pacer = MessagePacer(self._clock)
         self._lines = LineBudget(lines)
         self._snapshots = LineBudget(snapshots)
@@ -457,8 +454,11 @@ class IbGateway:
         """Read the executions of the day, complete rows only; calls are serialized."""
         async with self._account_lock:
             ib, generation = self._session()
+            note = partial(log_executions_read, _log, self._alias)
             return await self._until_lost(
-                read_executions(ib, self._pacer, self._clock, generation=generation)
+                read_executions(
+                    ib, self._pacer, self._clock, generation=generation, on_counts=note
+                )
             )
 
     # --- quotes -----------------------------------------------------------
