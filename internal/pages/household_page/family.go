@@ -169,7 +169,7 @@ func (c Config) assembleFamily(aliases []string, res blockapi.FamilyResult, caps
 	detail := accountFigure{Gap: familyCellDetail}
 	for i, a := range aliases {
 		r, found := rows[a]
-		row := accountRow{Name: familyAccountLabel(a), Scope: a, Whose: whoseOf(i), Stock: detail, Options: detail}
+		row := accountRow{Name: familyAccountLabel(a), Scope: familyAliasKey, Whose: whoseOf(i), Stock: detail, Options: detail}
 		reason := r.Reason
 		if reason == "" {
 			reason = reasons[a]
