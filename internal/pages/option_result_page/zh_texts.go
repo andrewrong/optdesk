@@ -3,7 +3,6 @@ package option_result_page
 // Chinese texts of the page (docs/design/option-pages-r7.md#10).
 const (
 	nothingText = "没有已平仓的期权头寸"
-	noReader    = "没有读取器，无法显示"
 	// leadMid sits between the heading and the alias of a lead; leadEnd ends it.
 	leadMid        = "，账户 "
 	leadEnd        = "：已平仓的期权，各币种分别列出，不相加"
@@ -14,6 +13,10 @@ const (
 	assignPremium  = "被行权权利金 "
 	assignShares   = "，股数 "
 	assignEnd      = "；成本仍为行权价，不扣除权利金"
+	colon          = "："
+	sameBooks      = "一致 "
+	differBooks    = "，不同 "
+	noBrokerBooks  = "没有券商数字 "
 	noneText       = "无"
 	unpairedHead   = "未配对的平仓（不计入任何数字）"
 	reviewHead     = "待核对的撤销或更正（不计入任何数字）"

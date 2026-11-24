@@ -238,7 +238,7 @@ func TestNoReaderIsGap(t *testing.T) {
 		c := base
 		mut(&c)
 		m := buildMap(t, c, "main")
-		if m["run_status"] != "partial" || m["nothing"] != "没有读取器，无法显示" || len(m["sections"].([]any)) != 0 {
+		if m["run_status"] != "partial" || m["nothing"] != "No reader: cannot show" || len(m["sections"].([]any)) != 0 {
 			t.Errorf("%s: page = %v", name, m)
 		}
 	}

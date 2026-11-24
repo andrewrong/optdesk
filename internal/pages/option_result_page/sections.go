@@ -80,8 +80,8 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 	}
 	r := s.Reliability
 	out.BooksLines = []string{
-		"一致 " + itoa(r.Equal) + tradeUnit + "，不同 " + itoa(r.Differ) + tradeUnit,
-		"没有券商数字 " + itoa(r.NoBroker) + tradeUnit,
+		sameBooks + itoa(r.Equal) + tradeUnit + differBooks + itoa(r.Differ) + tradeUnit,
+		noBrokerBooks + itoa(r.NoBroker) + tradeUnit,
 	}
 	return out, nil
 }

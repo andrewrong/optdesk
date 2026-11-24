@@ -19,13 +19,13 @@ const maxIDs = 30
 // idList is "<head>: id, id" or "<head>: none" for no id.
 func idList(head string, ids []string) string {
 	if len(ids) == 0 {
-		return head + "：" + noneText
+		return head + colon + noneText
 	}
 	more := ""
 	if len(ids) > maxIDs {
 		ids, more = ids[:maxIDs], " …"
 	}
-	return head + "：" + strings.Join(ids, ", ") + more
+	return head + colon + strings.Join(ids, ", ") + more
 }
 
 // reliabilityOf is the reliability blocks of the page: one of three count lines for each section, then one account-wide
