@@ -21,12 +21,12 @@ func windowDays(stored []contracts.PriceBar, day time.Time, daily, backfill int)
 		if d.After(newest) {
 			newest = d
 		}
-		if r.Source == sourceYfinance && (oldestYf.IsZero() || d.Before(oldestYf)) {
+		if r.Source == sourceYfinance && (oldestYf.IsZero() || d.Before(oldestYf)) { // the rows of a yfinance recovery
 			oldestYf = d
 		}
 	}
 	n := calendarDays(newest, day) // the days after the newest bar, through day
-	if !oldestYf.IsZero() {
+	if hasSource(stored, sourceYfinance) {
 		n = calendarDays(oldestYf, day) + 1 // the yfinance day itself is asked again
 	}
 	if n > backfill {
