@@ -42,7 +42,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
         label: 'Held options',
         links: [
           { label: 'Structures', path: '/options/structures' },
-          { label: '价差腿', path: '/options/spread-legs' },
+          { label: 'Spread legs', path: '/options/spread-legs' },
           { label: 'Result', path: '/options/result' },
           { label: 'Notices', path: '/options/notices' },
           { label: 'Tracking', path: '/options/tracking' },

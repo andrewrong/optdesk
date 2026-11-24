@@ -10,10 +10,10 @@ export type { Payload as SpreadLegsPagePayload } from '@/types/spread_legs_page'
 type Structure = Payload['groups'][number]['structures'][number]
 
 const LEG_COLUMNS: Column[] = [
-  { id: 'side', label: '方向 Side' },
-  { id: 'quantity', label: '数量 Qty', align: 'right' },
-  { id: 'strike', label: '行权价 Strike', align: 'right' },
-  { id: 'open_price', label: '开仓价 Open', align: 'right' },
+  { id: 'side', label: 'Side' },
+  { id: 'quantity', label: 'Qty', align: 'right' },
+  { id: 'strike', label: 'Strike', align: 'right' },
+  { id: 'open_price', label: 'Open', align: 'right' },
 ]
 
 // A gap shows its text as it is; a value shows its text. Never a number of our own.
@@ -31,7 +31,7 @@ function Figure({ name, label, cell }: { name: string; label: string; cell: Stru
 function BreakEven({ cell }: { cell: Structure['break_even'] }) {
   return (
     <div data-figure="break_even" data-kind={cell.kind}>
-      <dt className="text-xs text-muted-foreground">盈亏平衡 Break-even</dt>
+      <dt className="text-xs text-muted-foreground">Break-even</dt>
       <dd>
         {cell.kind === 'gap' ? (
           <span className="text-muted-foreground" data-gap={cell.reason}>
@@ -85,9 +85,9 @@ function StructureCard({ s }: { s: Structure }) {
         <DataTable columns={LEG_COLUMNS} rows={rows} />
       </div>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Figure name="net_credit" label="净收入 Net credit" cell={s.net_credit} />
-        <Figure name="max_loss" label="最大亏损 Max loss" cell={s.max_loss} />
-        <Figure name="max_gain" label="最大盈利 Max gain" cell={s.max_gain} />
+        <Figure name="net_credit" label="Net credit" cell={s.net_credit} />
+        <Figure name="max_loss" label="Max loss" cell={s.max_loss} />
+        <Figure name="max_gain" label="Max gain" cell={s.max_gain} />
         <BreakEven cell={s.break_even} />
       </dl>
     </section>
