@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -345,10 +346,16 @@ func TestListedOnlyResolveCellIsDueBeforeSlot(t *testing.T) {
 	if !strings.Contains(early, `"due_text":"due`) {
 		t.Fatalf("no due text before the slot: %s", early)
 	}
+	if regexp.MustCompile(`"why_text":"[^"]`).MatchString(early) || !strings.Contains(early, `"repair":"none"`) {
+		t.Fatalf("why_text or repair other than none before the slot: %s", early)
+	}
 	if strings.Contains(early, `"repair":"button"`) || strings.Contains(early, job_console.ZhWhyHeavyAndCap) {
 		t.Fatalf("reason or button before the slot: %s", early)
 	}
 	late := get(time.Date(2026, 11, 13, 23, 0, 0, 0, time.UTC))
+	if !strings.Contains(late, `"repair":"not_refetchable"`) {
+		t.Fatalf("late repair: %s", late)
+	}
 	if !strings.Contains(late, job_console.ZhWhyHeavyAndCap) {
 		t.Fatalf("no always-cut reason after the slot: %s", late)
 	}
