@@ -131,7 +131,7 @@ var dataHealthManifests = map[string]dataHealthManifest{
 	"position_marks":          {calUS, []string{"account.position_mark"}, "1640"},
 	"earnings_refresh":        {calUS, []string{"obs.earnings_date"}, ""},
 	"dividend_capture":        {calUS, []string{"obs.dividend_expectation"}, ""},
-	"option_eod":              {calUS, []string{"obs.option_eod"}, "1545"},
+	"option_eod":              {calUS, []string{"obs.option_eod"}, "1400"},
 	"option_eod_jp":           {calJP, []string{"obs.option_eod_jp"}, "1515"},
 	"option_eod_index":        {calUS, []string{"obs.option_eod_index"}, "1545"},
 	"quote_snapshot":          {calUS, []string{"obs.quote_snapshot"}, ""},
