@@ -19,13 +19,13 @@ const maxIDs = 30
 // idList is "<head>: id, id" or "<head>: none" for no id.
 func idList(head string, ids []string) string {
 	if len(ids) == 0 {
-		return head + ": none"
+		return head + "：" + noneText
 	}
 	more := ""
 	if len(ids) > maxIDs {
 		ids, more = ids[:maxIDs], " …"
 	}
-	return head + ": " + strings.Join(ids, ", ") + more
+	return head + "：" + strings.Join(ids, ", ") + more
 }
 
 // reliabilityOf is the reliability blocks of the page: one of three count lines for each section, then one account-wide
@@ -35,9 +35,9 @@ func reliabilityOf(secs []section, rels []compute.ResultReliability) []reliabili
 	out := []reliability{}
 	for i, r := range rels {
 		out = append(out, reliability{Key: secs[i].Key, Heading: secs[i].Heading + " reconciliation", Lines: []string{
-			"Same as broker realized: " + strconv.Itoa(r.Equal) + " trade(s)",
-			"Differs from broker realized: " + strconv.Itoa(r.Differ) + " trade(s)",
-			"No broker figure: " + strconv.Itoa(r.NoBroker) + " trade(s)",
+			sameLine + strconv.Itoa(r.Equal) + tradeUnit,
+			differLine + strconv.Itoa(r.Differ) + tradeUnit,
+			noBrokerLine + strconv.Itoa(r.NoBroker) + tradeUnit,
 		}})
 	}
 	if len(rels) == 0 {
@@ -45,7 +45,7 @@ func reliabilityOf(secs []section, rels []compute.ResultReliability) []reliabili
 	}
 	return append(out, reliability{Key: "account_ids", Heading: "Reconciliation, whole account", Lines: []string{
 		reconcileGloss,
-		idList("Unpaired closes (not in any figure)", rels[0].Unresolved),
-		idList("Cancels or corrections to review (not in any figure)", rels[0].Review),
+		idList(unpairedHead, rels[0].Unresolved),
+		idList(reviewHead, rels[0].Review),
 	}})
 }

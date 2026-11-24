@@ -55,7 +55,7 @@ func monthSeries(months []compute.ResultMonth, cur string) (m, r series, err err
 		mp = append(mp, point{Label: x.Month, Value: v, Text: moneyText(x.Realized, cur), Muted: !x.Over})
 		rp = append(rp, point{Label: x.Month, Value: run, Text: moneyText(x.Running, cur), Muted: !x.Over})
 	}
-	return mkSeries("Monthly realized", "No closed months", mp), mkSeries("Cumulative realized", "No cumulative result", rp), nil
+	return mkSeries("Monthly realized", emptyMonths, mp), mkSeries("Cumulative realized", emptyRunning, rp), nil
 }
 
 // endingSeries is one point per ending, value its realized result; endingLines are the same as lines.
@@ -67,9 +67,9 @@ func endingSeries(ends []compute.ResultEnding, cur string) (series, []string, er
 		if err != nil {
 			return series{}, nil, err
 		}
-		text := strconv.Itoa(e.Count) + " trade(s), realized " + moneyText(e.Realized, cur)
+		text := strconv.Itoa(e.Count) + tradeUnit + endingRealized + moneyText(e.Realized, cur)
 		pts = append(pts, point{Label: e.Status, Value: v, Text: text})
 		lines = append(lines, e.Status+": "+text)
 	}
-	return mkSeries("Endings", "No ended positions", pts), lines, nil
+	return mkSeries("Endings", emptyEndings, pts), lines, nil
 }

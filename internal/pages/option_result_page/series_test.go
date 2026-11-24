@@ -71,11 +71,11 @@ func TestEndingsTextIsMoney(t *testing.T) {
 	c, _ := testConfig(t, "result_ok.json")
 	s := sectionsOf(buildMap(t, c, "main"))[0]
 	p := points(seriesOf(s, "endings"))
-	if p[2]["text"] != "1 trade(s), realized −$50.50" || p[0]["text"] != "2 trade(s), realized $60.00" {
+	if p[2]["text"] != "1 笔，realized −$50.50" || p[0]["text"] != "2 笔，realized $60.00" {
 		t.Errorf("endings points = %v", p)
 	}
 	lines := strs(s["endings_lines"])
-	if len(lines) != 3 || lines[2] != "assigned: 1 trade(s), realized −$50.50" {
+	if len(lines) != 3 || lines[2] != "assigned: 1 笔，realized −$50.50" {
 		t.Errorf("lines = %v", lines)
 	}
 }
