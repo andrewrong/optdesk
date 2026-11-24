@@ -52,6 +52,17 @@ it('validates fixtures and registers the macro page', () => {
   }
 })
 
+it('TestMacroEventDateShown', async () => {
+  const payload = fixture('ok.json')
+  await show(payload)
+  const rows = host.querySelectorAll('[data-events] tbody tr')
+  expect(rows).toHaveLength(payload.events.length)
+  payload.events.forEach((event: { date: string; when_text: string }, i: number) => {
+    expect(rows[i]!.textContent).toContain(event.date)
+    expect(rows[i]!.textContent).toContain(event.when_text)
+  })
+})
+
 it('renders the Python gauge and every event and indicator with its label', async () => {
   const payload = fixture('ok.json')
   await show(payload)
