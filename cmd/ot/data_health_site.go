@@ -197,6 +197,12 @@ var dataHealthTimeSlots = map[string]dataHealthTimeSlot{
 	"option_open_resolve":     {"1700", "America/New_York"}, // session_close + 60m of XNYS
 	"option_open_resolve_jp":  {"1630", "Asia/Tokyo"},       // session_close + 60m of XTKS (close 15:30)
 	"option_open_resolve_gap": {"0800", "America/New_York"}, // session_open - 90m
+
+	"option_open":         {"0935", "America/New_York"}, // XNYS session_open + 5m
+	"option_open_jp":      {"0905", "Asia/Tokyo"},       // XTKS session_open + 5m
+	"option_open_plan":    {"0845", "America/New_York"}, // XNYS session_open - 45m
+	"option_open_plan_jp": {"0815", "Asia/Tokyo"},       // XTKS session_open - 45m
+	"option_ledger":       {"0500", "America/New_York"}, // XNYS session_close + 780m, the next calendar day
 }
 
 // dataHealthJobs builds the jobs of the page from jobTable, one per row in its order, and the manifests.
