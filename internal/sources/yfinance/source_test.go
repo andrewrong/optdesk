@@ -252,8 +252,14 @@ func TestAnswerMatchesGolden(t *testing.T) {
 	wantBars := []sources.RefBar{
 		{Pair: aapl, Day: "2026-11-16", Close: "189.5000", Open: "189.5000", High: "189.5000", Low: "189.5000", Volume: "189.5000"},
 		{Pair: aapl, Day: "2026-11-17", Close: "190.2500", Open: "190.2500", High: "190.2500", Low: "190.2500", Volume: "190.2500"}}
-	if len(res.Bars) != 2 || res.Bars[0] != wantBars[0] || res.Bars[1] != wantBars[1] {
+	if len(res.Bars) != 2 {
 		t.Fatalf("bars = %+v", res.Bars)
+	}
+	for i, b := range res.Bars {
+		w := wantBars[i]
+		if b.Day != w.Day || b.Open != w.Open || b.High != w.High || b.Low != w.Low || b.Close != w.Close || b.Volume != w.Volume {
+			t.Fatalf("bar %d = %+v", i, b)
+		}
 	}
 	if len(res.Unanswered) != 2 || res.Unanswered[0] != (sources.BarUnanswered{Pair: req.Pairs[1], Code: "rate_limited"}) ||
 		res.Unanswered[1] != (sources.BarUnanswered{Pair: req.Pairs[2], Code: "no_data"}) {
@@ -307,5 +313,66 @@ func TestOldCommandAnswerHasEmptyOhlc(t *testing.T) {
 	want := sources.RefBar{Pair: sources.BarPair{Symbol: "S0", Currency: "USD"}, Day: "2026-11-17", Close: "1.2300"}
 	if len(res.Bars) != 1 || res.Bars[0] != want || len(res.Unanswered) != 0 {
 		t.Fatalf("result = %+v, want bar %+v", res, want)
+	}
+}
+
+func TestDailyBarsActions(t *testing.T) {
+	t.Parallel()
+	f := &fakeRun{reply: func(_ int, _ wireRequest) ([]byte, int, error) {
+		return []byte(`{"results":[{"symbol":"S0","currency":"USD","bars":[],` +
+			`"dividends":[{"day":"2026-11-12","value":"0.2500"}],` +
+			`"splits":[{"day":"2026-11-13","value":"4.0000"}]}]}`), 0, nil
+	}}
+	req := request(1)
+	req.Actions = true
+	res, err := newTest(f, clockwork.NewFakeClock()).DailyBars(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.calls[0].req.WithActions || f.calls[0].req.Adjusted {
+		t.Fatalf("wire request = %+v", f.calls[0].req)
+	}
+	pair := sources.BarPair{Symbol: "S0", Currency: "USD"}
+	want := []sources.RefAction{
+		{Pair: pair, Day: "2026-11-12", Kind: "dividend", Value: "0.2500"},
+		{Pair: pair, Day: "2026-11-13", Kind: "split", Value: "4.0000"},
+	}
+	if len(res.Actions) != 2 || res.Actions[0] != want[0] || res.Actions[1] != want[1] {
+		t.Fatalf("actions = %+v, want %+v", res.Actions, want)
+	}
+}
+
+func TestDailyBarsAdjClose(t *testing.T) {
+	t.Parallel()
+	f := &fakeRun{reply: func(_ int, _ wireRequest) ([]byte, int, error) {
+		return []byte(`{"results":[{"symbol":"S0","currency":"USD","bars":[` +
+			`{"session_day":"2026-11-17","close":"10.5000","adj_close":"10.2000"}]}]}`), 0, nil
+	}}
+	req := request(1)
+	req.Adjusted = true
+	res, err := newTest(f, clockwork.NewFakeClock()).DailyBars(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.calls[0].req.Adjusted || f.calls[0].req.WithActions {
+		t.Fatalf("wire request = %+v", f.calls[0].req)
+	}
+	want := sources.RefBar{Pair: sources.BarPair{Symbol: "S0", Currency: "USD"}, Day: "2026-11-17", Close: "10.5000", AdjClose: "10.2000"}
+	if len(res.Bars) != 1 || res.Bars[0] != want || len(res.Actions) != 0 {
+		t.Fatalf("result = %+v, want bar %+v", res, want)
+	}
+}
+
+func TestPlainRequestSendsNoNewFields(t *testing.T) {
+	t.Parallel()
+	var sent []byte
+	run := func(_ context.Context, _ []string, stdin []byte) ([]byte, int, error) {
+		sent = stdin
+		return []byte(`{"results":[]}`), 0, nil
+	}
+	src := newSource(sources.BarConfig{Command: []string{"cmd"}}, run, time.Until)
+	_, _ = src.DailyBars(context.Background(), request(1))
+	if string(sent) != `{"pairs":[{"symbol":"S0","currency":"USD"}],"from_day":"2026-11-11","to_day":"2026-11-17"}` {
+		t.Fatalf("wire request = %s", sent)
 	}
 }

@@ -62,6 +62,9 @@ type wireRequest struct {
 	Pairs   []wirePair    `json:"pairs"`
 	FromDay contracts.Day `json:"from_day"`
 	ToDay   contracts.Day `json:"to_day"`
+	// WithActions and Adjusted are left out of the JSON when false, so a plain request is the one sent before.
+	WithActions bool `json:"with_actions,omitempty"`
+	Adjusted    bool `json:"adjusted,omitempty"`
 }
 
 type wireBar struct {
@@ -71,13 +74,21 @@ type wireBar struct {
 	High       string        `json:"high"`
 	Low        string        `json:"low"`
 	Volume     string        `json:"volume"`
+	AdjClose   string        `json:"adj_close,omitempty"`
+}
+
+type wireAction struct {
+	Day   contracts.Day `json:"day"`
+	Value string        `json:"value"`
 }
 
 type wireResult struct {
-	Symbol    string    `json:"symbol"`
-	Currency  string    `json:"currency"`
-	ErrorCode string    `json:"error_code"`
-	Bars      []wireBar `json:"bars"`
+	Symbol    string       `json:"symbol"`
+	Currency  string       `json:"currency"`
+	ErrorCode string       `json:"error_code"`
+	Bars      []wireBar    `json:"bars"`
+	Dividends []wireAction `json:"dividends,omitempty"`
+	Splits    []wireAction `json:"splits,omitempty"`
 }
 
 type wireAnswer struct {
@@ -107,8 +118,9 @@ func (s *source) DailyBars(ctx context.Context, req sources.BarRequest) (sources
 				if bounded && left < bound {
 					bound = left
 				}
-				bars, unanswered, ok := s.askBatch(ctx, req, batch, bound)
+				bars, actions, unanswered, ok := s.askBatch(ctx, req, batch, bound)
 				res.Bars = append(res.Bars, bars...)
+				res.Actions = append(res.Actions, actions...)
 				res.Unanswered = append(res.Unanswered, unanswered...)
 				answered = answered || ok
 				for _, u := range unanswered {
@@ -139,15 +151,15 @@ func (s *source) timeLeft(ctx context.Context) (time.Duration, bool) {
 
 // askBatch runs the command once; ok is true when it gave a readable answer.
 func (s *source) askBatch(ctx context.Context, req sources.BarRequest, batch []sources.BarPair,
-	bound time.Duration) (bars []sources.RefBar, unanswered []sources.BarUnanswered, ok bool) {
-	failAll := func(code string) ([]sources.RefBar, []sources.BarUnanswered, bool) {
+	bound time.Duration) (bars []sources.RefBar, actions []sources.RefAction, unanswered []sources.BarUnanswered, ok bool) {
+	failAll := func(code string) ([]sources.RefBar, []sources.RefAction, []sources.BarUnanswered, bool) {
 		out := make([]sources.BarUnanswered, 0, len(batch))
 		for _, p := range batch {
 			out = append(out, sources.BarUnanswered{Pair: p, Code: code})
 		}
-		return nil, out, false
+		return nil, nil, out, false
 	}
-	wr := wireRequest{FromDay: req.From, ToDay: req.To, Pairs: make([]wirePair, 0, len(batch))}
+	wr := wireRequest{FromDay: req.From, ToDay: req.To, WithActions: req.Actions, Adjusted: req.Adjusted, Pairs: make([]wirePair, 0, len(batch))}
 	for _, p := range batch {
 		wr.Pairs = append(wr.Pairs, wirePair{Symbol: p.Symbol, Currency: p.Currency})
 	}
@@ -186,9 +198,15 @@ func (s *source) askBatch(ctx context.Context, req sources.BarRequest, batch []s
 		default:
 			for _, b := range r.Bars {
 				bars = append(bars, sources.RefBar{Pair: p, Day: b.SessionDay, Close: b.Close,
-					Open: b.Open, High: b.High, Low: b.Low, Volume: b.Volume})
+					Open: b.Open, High: b.High, Low: b.Low, Volume: b.Volume, AdjClose: b.AdjClose})
+			}
+			for _, a := range r.Dividends {
+				actions = append(actions, sources.RefAction{Pair: p, Day: a.Day, Kind: "dividend", Value: a.Value})
+			}
+			for _, a := range r.Splits {
+				actions = append(actions, sources.RefAction{Pair: p, Day: a.Day, Kind: "split", Value: a.Value})
 			}
 		}
 	}
-	return bars, unanswered, true
+	return bars, actions, unanswered, true
 }
