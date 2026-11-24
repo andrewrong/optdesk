@@ -37,3 +37,20 @@ const (
 	// zhSlowNote: "slow, a notice only".
 	zhSlowNote = "偏慢，仅提示 (slow, a notice only)"
 )
+
+// The glossary beside the legend of the grid (docs/design/data-health.md, Decision 12): each term stays English
+// and its Chinese meaning follows it.
+const (
+	zhGlossOK         = "ok：运行器把这个键记为已保存；它不是数据行的数量。"
+	zhGlossNoValue    = "no_value：源站回答说这个键没有数据。"
+	zhGlossExpired    = "expired：运行失败、只完成一部分或中途崩溃后，运行器在窗口结束时关闭了这个键：这是真正的缺口，不是源站的回答。"
+	zhGlossMissing    = "missing：运行器预期有这个键，但它不在。"
+	zhGlossNotRun     = "not_run：运行器没有记录那一天的计划。"
+	zhGlossNone       = "none：这个格子不提供补取。"
+	zhGlossButton     = "button：这个格子可以用它的任务运行一次来补取；按钮上写明会启动哪些运行。"
+	zhGlossNotRefetch = "not refetchable：没有按钮；格子下面的文字在源站只给出当前数据时写 lost（已丢失），其他情况写格子打印的其他原因文字。"
+	zhGlossLedger     = "ledger：运行器的记录，按交易日列出它预期的键和已保存的键。"
+	zhGlossSessionDay = "session day：该数据集的交易所日历开市的一天。"
+	zhOverwriteNote   = "补取按键覆盖，不保留之前的值（a repair overwrites by key and keeps no earlier value）。"
+	zhCoverageGapText = "无法读取运行器的覆盖记录（ledger），所以不显示任何数据集。"
+)
