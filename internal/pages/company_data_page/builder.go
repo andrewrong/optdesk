@@ -160,11 +160,11 @@ func stockIDsOf(ctx context.Context, r StockIDReader, stocks []underlying.Row) (
 }
 
 func readFailedText(key string) string {
-	t := key + ": the stored values could not be read, so the company has no row."
+	t := []rune(key + textReadFailed)
 	if len(t) > 200 {
 		t = t[:200]
 	}
-	return t
+	return string(t)
 }
 
 func columnsVM() []column { return columns }
