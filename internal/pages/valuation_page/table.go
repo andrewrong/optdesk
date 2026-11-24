@@ -109,13 +109,13 @@ func tableRow(ctx context.Context, p *pageJSON, in Input, e namedEntry) (rowJSON
 	res, err := Resolve(ctx, e.Entry, in.State, in.Closes, in.Calc, in.Day)
 	switch {
 	case errors.Is(err, ErrNoTables):
-		p.addGap("tables_missing", "The R version or the margin table is not stored; no price line is shown.")
+		p.addGap("tables_missing", tablesMissingText)
 		return row, 0
 	case err != nil:
 		return row, 0 // a stored review the calculator refuses shows its V and P and no line
 	}
 	if res.CloseErr != nil {
-		p.addGap("close_unavailable", "A close price could not be read; the zone is missing for some names.")
+		p.addGap("close_unavailable", closeUnavailableTableText)
 	}
 	l := res.Lines
 	c := in.Calc

@@ -9,8 +9,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/valuation"
 )
 
-const noCompanyText = "No company with this key."
-
 type adjustmentJSON struct {
 	Percent string `json:"percent"`
 	Reason  string `json:"reason"`
@@ -125,13 +123,13 @@ func fillLines(ctx context.Context, p *pageJSON, in Input, e valuation.Entry) {
 	res, err := Resolve(ctx, e, in.State, in.Closes, in.Calc, in.Day)
 	switch {
 	case errors.Is(err, ErrNoTables):
-		p.addGap("tables_missing", "The R version or the margin table is not stored; no price line is shown.")
+		p.addGap("tables_missing", tablesMissingText)
 		return
 	case err != nil || res == nil:
 		return
 	}
 	if res.CloseErr != nil {
-		p.addGap("close_unavailable", "The close price could not be read.")
+		p.addGap("close_unavailable", closeUnavailableText)
 	}
 	p.Lines = linesDoc(in.Calc, res.Lines)
 	p.Band = bandDoc(in.Calc, res.Band)
