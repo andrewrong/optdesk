@@ -39,6 +39,11 @@ const firstColumn = (scope: Element) =>
   [...scope.querySelectorAll('tbody tr')].map((tr) => tr.querySelector('td')!.textContent!.trim())
 
 describe('OptionCandidatesPage', () => {
+  it('the computed-time badge is absent when computed_at is null', async () => {
+    const page = await show({ ...ok, computed_at: null } as never)
+    expect(page.querySelector('[data-computed-at]')).toBeNull()
+  })
+
   it('the computed time is shown as a date and a minute with its label', async () => {
     const page = await show({ ...ok, computed_at: '2026-11-24T13:34:52+08:00' })
     expect(page.querySelector('[data-computed-at]')!.textContent).toBe('Computed at 2026-11-24 13:34')

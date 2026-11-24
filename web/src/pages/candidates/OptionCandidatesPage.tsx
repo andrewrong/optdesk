@@ -1,5 +1,6 @@
 // The option candidates page (Decisions 4 to 11 of docs/design/option-candidates-page.md): a header card, one tab per
-// group present, the notes at the foot. Every visible string is a payload field; this file counts, sorts, compares
+// group present, the notes at the foot. Every visible string is a payload field, except the English label
+// "Computed at" of the computed-time badge; this file counts, sorts, compares
 // and words nothing. The table sort buttons are those of the shared data-table; there is no filter control.
 import { TriangleAlert } from 'lucide-react'
 import { shownTime } from '@/lib/shown-time'
