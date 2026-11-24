@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/companies_page"
 	"github.com/andrewrong/optdesk/internal/pages/home_companies"
 	"github.com/andrewrong/optdesk/internal/pages/home_household"
 	"github.com/andrewrong/optdesk/internal/pages/home_macro"
@@ -20,6 +21,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // Design: docs/design/pages-real-data.md#17 ot-home-route.
@@ -76,29 +78,54 @@ func homeInstrumentID(ctx context.Context, ids *symbolIDs, symbol string) (int64
 	return id, nil
 }
 
-// homeRows are the Companies rows: the held subjects (every subject in the demo profile), each with its instrument.
+// homeRows are the Companies rows: every subject in the demo profile, else one per stored underlying with status
+// active, paused or retired whose symbol is held, whatever its issuer (it may be empty), each with its instrument.
 func homeRows(ctx context.Context, a *app, rd siteReaders, now time.Time) ([]home_companies.Row, error) {
 	rows := []home_companies.Row{}
-	subjects, err := companiesSubjects(ctx, a, rd)
-	if err != nil {
-		return nil, err
-	}
-	held := map[string]bool{}
-	if a.profile.Name != "demo" {
-		if held, err = heldSymbols(ctx, rd, now); err != nil {
-			return nil, err
-		}
-	}
 	ids := homeResolver(a, rd)
-	for _, s := range subjects {
-		if a.profile.Name != "demo" && !held[s.Symbol] {
-			continue
-		}
+	add := func(s companies_page.Subject) error {
 		id, err := homeInstrumentID(ctx, ids, s.Symbol)
+		if err != nil {
+			return err
+		}
+		rows = append(rows, home_companies.Row{Issuer: s.Issuer, Market: s.Market, Symbol: s.Symbol, HandPrice: s.HandPrice, InstrumentID: id})
+		return nil
+	}
+	if a.profile.Name == "demo" {
+		subjects, err := companiesSubjects(ctx, a, rd)
 		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, home_companies.Row{Issuer: s.Issuer, Market: s.Market, Symbol: s.Symbol, HandPrice: s.HandPrice, InstrumentID: id})
+		for _, s := range subjects {
+			if err := add(s); err != nil {
+				return nil, err
+			}
+		}
+		return rows, nil
+	}
+	if rd.underlying == nil {
+		return rows, nil
+	}
+	stored, err := rd.underlying.Current(ctx)
+	if err != nil {
+		return nil, err
+	}
+	held, err := heldSymbols(ctx, rd, now)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range stored {
+		switch r.Status {
+		case underlying.StatusActive, underlying.StatusPaused, underlying.StatusRetired:
+		default:
+			continue
+		}
+		if !held[r.Symbol] {
+			continue
+		}
+		if err := add(companies_page.Subject{Issuer: r.Issuer, Market: r.Market, Symbol: r.Symbol, HandPrice: r.BuyPrice}); err != nil {
+			return nil, err
+		}
 	}
 	return rows, nil
 }

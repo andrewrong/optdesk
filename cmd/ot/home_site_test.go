@@ -635,3 +635,22 @@ func TestHomeOverviewMarketLineLinksToMarketState(t *testing.T) {
 		}
 	}
 }
+
+func TestHomeCompaniesRowsIncludeHeldFundWithoutIssuer(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{
+		underlying: &fakeListReader{rows: []underlying.Row{
+			{Key: "US:SGOV", Symbol: "SGOV", Market: "US", Kind: "etf", Status: underlying.StatusActive, BuyPrice: "100.5"},
+			{Key: "US:VGT", Symbol: "VGT", Market: "US", Kind: "etf", Status: underlying.StatusActive},
+		}},
+		account: holdsSymbol{symbol: "SGOV"}, aliases: []string{"main"},
+	}
+	rows, err := homeRows(t.Context(), a, rd, time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Symbol != "SGOV" || rows[0].Issuer != "" || rows[0].Market != "US" || rows[0].HandPrice != "100.5" {
+		t.Fatalf("want one SGOV row with empty issuer, got %+v", rows)
+	}
+}
