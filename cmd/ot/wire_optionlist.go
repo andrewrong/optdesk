@@ -132,7 +132,7 @@ func listJobOf(a *app, jc *jobCtx, stores openquote.Stores, reason string, k lis
 		ls = absentListStore{}
 		reason = firstReason(reason, reasonListAbsent)
 	}
-	f := *jc.f
+	f := jc.f.optionsOn()
 	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		return k.newJob(optionopen.ListDeps{
 			Stored:       openStored(jc, stores, f.fixedEntries(entries)),
