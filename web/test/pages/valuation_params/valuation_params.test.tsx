@@ -129,6 +129,16 @@ describe('forms', () => {
       expect(rv.querySelector(`[name="${name}"]`)).not.toBeNull()
     expect(rv.querySelector('select[name="ai_switch"], input[name="ai_switch"]')).not.toBeNull()
   })
+
+  it('the two table forms carry the Chinese hints', async () => {
+    const el = await render(base())
+    expect(el.querySelector('form[data-form="r_table"]')?.textContent).toContain(
+      '\u6bcf\u884c\u4e00\u6863\uff1a\u6536\u76ca\u7387\u4e0a\u9650\u3001US\u3001JP\u3001HKCN',
+    )
+    expect(el.querySelector('form[data-form="margin_table"]')?.textContent).toContain(
+      '\u6bcf\u884c\u4e00\u6863\uff1aP \u8d77\u70b9\u3001M\u3001W\u3001H\u3001S',
+    )
+  })
 })
 
 describe('TestNoLogicInWeb', () => {
