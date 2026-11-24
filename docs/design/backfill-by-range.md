@@ -64,14 +64,14 @@ Every test calls `t.Parallel()`, writes files only under a temporary directory, 
 Module: jobs. Size: M.
 Files: `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/window.go`, `internal/jobs/barsrefresh/window_test.go`, `internal/jobs/barsrefresh/run_test.go`, `internal/jobs/barsrefresh/repair_test.go`, `internal/jobs/barsrefresh/fallback_test.go`
 Design: docs/design/backfill-by-range.md#1-bfr-bars-window
-Order: first.
+- Order: first.
 Goal: Decisions 1 and 2 for `bars_refresh`.
 Acceptance:
 1. `window.go` (new) declares `windowDays(stored []contracts.PriceBar, day time.Time, daily, backfill int) int` (new): with no stored bar it returns `backfill`; with a stored bar it returns the calendar days from the day after the newest stored bar (or from the oldest stored bar whose source is yfinance, when any is) through `day`, at least `daily` and at most `backfill`: `TestWindowDays` (new, table: no bar, newest bar yesterday, newest bar eight days back, a yfinance bar nine days back with newer ibkr bars, a gap longer than `backfill`).
 2. `runKey` in `run.go` no longer sets `days = r.j.m.BackfillDays` for `r.past` or for `hasSource(stored, sourceYfinance)`; it takes `windowDays(stored, ...)` for a key that has a stored bar in the backfill window, and keeps `days = r.j.m.BackfillDays` (with `claimFirstPull`) for a key with none: `TestRunPastDayAsksOnlyTheGap` (new: a stored bar three days before the repaired day gives one query with `End` set to the day and `DurationDays` 4, not 400), `TestRunYfinanceRowsAskFromTheOldest` (new: yfinance bars nine days back give one query of 10 days, not 400), `TestRunNoStoredBarKeepsBackfill` (new: no bar gives one query of 400).
 3. The tests of `run_test.go`, `repair_test.go` and `fallback_test.go` that expected `DurationDays != 400` for a repair of a key with stored bars (`repair_test.go` around the past-day query, `fallback_test.go` around the recovery query) are changed to the sized length; no test is deleted.
 4. A restated day still pulls `BackfillDays` once: the `collect` branch `again && days != r.j.m.BackfillDays` is unchanged.
-5. `wc -l internal/jobs/barsrefresh/run.go internal/jobs/barsrefresh/window.go` shows both under 600 lines, and `git diff --name-only BASE` lists only the Files.
+5. `run.go` and `window.go` both stay under 600 lines, and `git diff --name-only BASE` lists only the Files.
 6. The result matches docs/design/backfill-by-range.md#1-bfr-bars-window.
 
 ### 2 bfr-bars-retry
@@ -79,7 +79,7 @@ Acceptance:
 Module: jobs. Size: S.
 Files: `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/job.go`, `internal/jobs/barsrefresh/run_test.go`, `internal/jobs/barsrefresh/fallback_test.go`
 Design: docs/design/backfill-by-range.md#2-bfr-bars-retry
-Order: after 1.
+- Order: after 1 (bfr-bars-window, same file `run.go`).
 Goal: Decision 7 in `bars_refresh`.
 Acceptance:
 1. `historyAttempts` in `run.go` is 2, its comment says one call and one retry after `retryPause`, and `retryPause` is declared as 60 seconds: `TestPullRetriesOnceAfterPause` (new: a Retryable first answer, then success, gives two queries and one recorded pause of 60 s; two Retryable answers give two queries, one pause and a Retryable error).
@@ -94,7 +94,7 @@ Acceptance:
 Module: jobs. Size: M.
 Files: `internal/jobs/ivhistory/run.go`, `internal/jobs/ivhistory/run_test.go`
 Design: docs/design/backfill-by-range.md#3-bfr-iv-window
-Order: first.
+- Order: first.
 Goal: Decisions 1 and 3 for `iv_history`.
 Acceptance:
 1. `runKey` in `run.go` sets `End` of the `BarQuery` to the day when the day is before the UTC date of the clock, and leaves it empty for today: `TestRunPastDaySetsEnd` (new).
@@ -109,7 +109,7 @@ Acceptance:
 Module: jobs. Size: S.
 Files: `internal/jobs/fxrefresh/run.go`, `internal/jobs/fxrefresh/run_test.go`
 Design: docs/design/backfill-by-range.md#4-bfr-fx-window
-Order: first.
+- Order: first.
 Goal: Decision 1 for `fx_refresh`.
 Acceptance:
 1. `runPair` reads `LatestFxRate(ctx, pair, day)` through the reader the job holds (the comment "kept for the signature only" is removed) and asks `DurationDays` of at least `duration_days` and at most `fill_lookback_days` that reaches from the day after the newest stored rate through the day; a pair with no stored rate asks `duration_days`: `TestRunAsksOnlyTheGap` (new: newest rate eight days back asks 8 days; none asks 5), `TestRunGapLongerThanLookbackIsCapped` (new: a rate 30 days back asks 14).
@@ -122,7 +122,7 @@ Acceptance:
 Module: jobs. Size: M.
 Files: `internal/jobs/fredseries/run.go`, `internal/jobs/fredseries/gap.go`, `internal/jobs/fredseries/gap_test.go`, `internal/jobs/fredseries/run_test.go`
 Design: docs/design/backfill-by-range.md#5-bfr-fred-window
-Order: first.
+- Order: first.
 Goal: Decision 4.
 Acceptance:
 1. `gap.go` (new) declares `gapFrom(ctx, r store.SeriesReader, ids []string, groupFrom, day contracts.Day) (contracts.Day, error)` (new): the day after the oldest of the newest stored valued points of the ids, not before `groupFrom` and not after `day`; an id with no valued point gives `groupFrom`: `TestGapFrom` (new, table).
@@ -136,7 +136,7 @@ Acceptance:
 Module: ot. Size: M.
 Files: `cmd/ot/catchup.go`, `cmd/ot/catchup_test.go`, `cmd/ot/data_health_repair.go`, `cmd/ot/data_health_repair_test.go`
 Design: docs/design/backfill-by-range.md#6-bfr-queue-newest
-Order: after 1, 3, 4 and 5.
+- Order: after 1 (bfr-bars-window), 3 (bfr-iv-window), 4 (bfr-fx-window) and 5 (bfr-fred-window): the queue holds one day only once every job fills the older ones.
 Goal: Decisions 5 and 8.
 Acceptance:
 1. `windowEndingJobs` in `catchup.go` is exactly `bars_refresh`, `fx_refresh`, `fred_series`, `iv_history`, and its comment names the four.
@@ -151,7 +151,7 @@ Acceptance:
 Module: pyside. Size: M.
 Files: `pyside/src/optdesk/ibkr/history.py`, `pyside/tests/ibkr/test_history.py`
 Design: docs/design/backfill-by-range.md#7-bfr-ib-budget
-Order: first.
+- Order: first.
 Goal: Decisions 6 and 7 in the reader.
 Acceptance:
 1. `history.py` declares `BUDGET_REQUESTS = 50` and `BUDGET_WINDOW_S = 600.0`; `HistoryReader.bars` raises `HistoryPaced` (from `optdesk.ibkr.api`) before taking a slot and before any send when 50 sends started within the last 600 s of the injected clock; a send older than 600 s no longer counts: `test_budget_refuses_the_51st` (new), `test_budget_window_slides` (new, fake clock), `test_refused_request_takes_no_slot` (new: the next accepted request starts 11 s after the last real send, not after the refused one).
