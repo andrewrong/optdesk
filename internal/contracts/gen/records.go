@@ -2528,8 +2528,12 @@ type OptionOpen struct {
 	// row of the refresh button.
 	Slot string `json:"slot" yaml:"slot" mapstructure:"slot"`
 
-	// Final status: 1 ok, 2 partial, 3 no_data, 4 not_listed, 5 no_subscription, 6
-	// deadline, 7 deferred, 8 error, 9 disconnected.
+	// Final status: 1 ok, 2 partial, 3 no_data (the broker answered with nothing
+	// usable), 4 not_listed, 5 no_subscription, 6 deadline, 7 deferred, 8 error, 9
+	// disconnected. Status 3 with error_code NO_QUOTE is a contract the broker
+	// answered with no bid and no ask (IB's no-quote sentinel, live data, no error):
+	// stored, counted as answered, never asked again; status 3 with a null error_code
+	// means nothing usable arrived.
 	Status int `json:"status" yaml:"status" mapstructure:"status"`
 
 	// Theta per calendar day. Null when absent; the writer turns -1 into null.
