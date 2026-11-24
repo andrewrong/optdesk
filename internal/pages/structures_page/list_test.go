@@ -467,7 +467,11 @@ func exRig(right, qty string, reader dividend.Reader) *rig {
 		Legs: []compute.StructureLeg{{Right: right, Quantity: qty, Expiry: "2026-12-18"}}}}}
 	r := newRig(res)
 	r.cfg.Dividends = reader
-	r.cfg.Account = stubAccount{byDay: map[string][]store.Position{"2026-11-09": {{SecType: "stock", Symbol: "AAPL", ConID: 77}}}}
+	r.cfg.StockIDs = stubStockIDs{rows: []store.InstrumentName{{InstrumentID: 77, Name: "AAPL"}}}
+	r.cfg.Ledgers = func() compute.OptionLedger {
+		open := compute.LedgerPosition{PositionID: "main:T1:1", Underlying: "AAPL", Status: "open"}
+		return stubReplay{got: &r.replay, res: compute.LedgerResult{Positions: []compute.LedgerPosition{open}}}
+	}
 	return r
 }
 

@@ -109,6 +109,7 @@ func (fx fixture) config(quotes bool) structures_page.Config {
 	}
 	if quotes {
 		c.Eod, c.Terms = stubEod{}, stubTerms{}
+		c.StockIDs = stubIDs{}
 	}
 	return c
 }
@@ -303,3 +304,10 @@ func TestDetailKindGloss(t *testing.T) {
 }
 
 func readFixtureless(res compute.StructureResult) fixture { return fixture{Result: res} }
+
+// stubIDs knows MSFT as the stock instrument 88.
+type stubIDs struct{}
+
+func (stubIDs) StockIDs(context.Context, []string) ([]store.InstrumentName, error) {
+	return []store.InstrumentName{{InstrumentID: 88, Name: "MSFT"}}, nil
+}

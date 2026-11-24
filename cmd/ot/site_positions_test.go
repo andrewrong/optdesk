@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/structures_page"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -323,19 +324,22 @@ func TestOpenedReadersReachPositionsPages(t *testing.T) {
 	}
 }
 
-func TestStructuresConfigHasCatalogAndNames(t *testing.T) {
+func TestStructuresConfigHasStockIDs(t *testing.T) {
 	t.Parallel()
 	a, rec := positionsApp(t)
 	rd := positionsReaders()
-	rd.catalog, rd.names = &fakeCatalog{}, &fakeNames{}
+	rd.ext = map[string]any{siteMarketStateIDsKey: market_state_page.StockIDReader(fakeStockReader{})}
 	h := siteHandler(a, positionsClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
 	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute)
-	if c := rec.last(t); c.cfg.Catalog == nil || c.cfg.Names == nil {
-		t.Errorf("stored readers: catalog %v, names %v", c.cfg.Catalog, c.cfg.Names)
+	if c := rec.last(t); c.cfg.StockIDs == nil {
+		t.Error("stock id reader is nil")
 	}
 	positionsGet(t, h, http.MethodGet, "/"+siteStructuresRoute+"?account=nobody")
-	if c := rec.last(t); c.cfg.Catalog != nil || c.cfg.Names != nil {
-		t.Errorf("gap case: catalog %v, names %v", c.cfg.Catalog, c.cfg.Names)
+	if c := rec.last(t); c.cfg.StockIDs != nil {
+		t.Errorf("gap case: stock ids %v", c.cfg.StockIDs)
+	}
+	if got := structuresStockIDs(siteReaders{}); got != nil {
+		t.Errorf("no reader: %v", got)
 	}
 }
 

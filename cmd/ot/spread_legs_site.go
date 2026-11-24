@@ -32,7 +32,7 @@ func init() {
 func spreadLegsConfig(a *app, rd siteReaders) structures_page.Config {
 	return structures_page.Config{RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Ledger: rd.ledger, Account: rd.account, Eod: rd.eod, Sessions: rd.sessions, Terms: rd.terms,
-		Ledgers: rd.ledgers, Structures: rd.structures, Catalog: rd.catalog, Names: rd.names,
+		Ledgers: rd.ledgers, Structures: rd.structures, StockIDs: structuresStockIDs(rd),
 		Bars: rd.bars, Dividends: rd.dividends, Spreads: spreadlegs.New}
 }
 
