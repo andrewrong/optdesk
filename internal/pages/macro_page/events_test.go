@@ -413,7 +413,7 @@ func TestMacroGapTextsAreChinese(t *testing.T) {
 	if latest, ok := indicator(m, 0)["latest"].(map[string]any); ok && latest["reason"] != nil {
 		texts = append(texts, latest["text"].(string))
 	}
-	for _, want := range []string{gapPrefixStale, gapPrefixNone, gapNotYetReleased, gapUnitUnknown} {
+	for _, want := range []string{gapPrefixStale, gapPrefixNone, gapNotYetReleased, gapUnitUnknown, fmt.Sprintf(gapEventsNotShown, "2026-12-19", 20, 22)} {
 		found := false
 		for _, s := range texts {
 			found = found || strings.Contains(s, want)
@@ -440,5 +440,13 @@ func TestMacroGapTextsAreChinese(t *testing.T) {
 				t.Errorf("old English %q in %q", o, s)
 			}
 		}
+	}
+}
+
+func TestMergedLineListsNoNameWhenNothingFits(t *testing.T) {
+	t.Parallel()
+	got := mergedLine(gapPrefixStale, []string{strings.Repeat("x", 250), "y"})
+	if want := gapPrefixStale + fmt.Sprintf(gapMoreAfterPrefix, 2); got != want {
+		t.Errorf("line %q, want %q", got, want)
 	}
 }

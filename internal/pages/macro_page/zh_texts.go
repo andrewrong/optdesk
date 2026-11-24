@@ -45,8 +45,8 @@ const (
 	gapPrefixNone       = "没有存放日期："
 	gapPrefixHeld       = "已存的日期保留，来源这次给的更短："
 	gapPrefixNotEntered = "未录入："
-	gapMoreAfterList    = "，另有 %d 项"
 	gapMoreAfterPrefix  = "另有 %d 项"
+	gapMoreAfterList    = "，" + gapMoreAfterPrefix
 	gapEventsNotShown   = "%s 之后的事件没有全部显示：共 %[3]d 项，已显示 %[2]d 项"
 )
 

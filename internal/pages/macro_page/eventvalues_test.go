@@ -316,3 +316,26 @@ func TestPastEventsNotLead(t *testing.T) {
 		}
 	}
 }
+
+func TestNoPointTexts(t *testing.T) {
+	t.Parallel()
+	o := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	s := &series{id: "S", pts: map[string]*float64{"2026-09-01": nil}}
+	if g := noPoint("S", "lbl", s, o); g.Reason != "no_data" || g.Text != fmt.Sprintf(gapValueNoNumber, "S", "lbl") {
+		t.Errorf("stored without value: %+v", g)
+	}
+	if g := noPoint("S", "lbl", &series{id: "S", pts: map[string]*float64{}}, o); g.Reason != "no_data" || g.Text != fmt.Sprintf(gapValueNotStored, "S", "lbl") {
+		t.Errorf("not stored: %+v", g)
+	}
+}
+
+func TestEventValuesUnreadableDate(t *testing.T) {
+	t.Parallel()
+	cells, err := eventValues(context.Background(), fakeReader{}, nil, []macroevent.Event{evAt("cpi", "not-a-date")}, time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(cells) != 1 {
+		t.Fatalf("cells %v err %v", cells, err)
+	}
+	if g, ok := cells[0].Previous.(gap); !ok || g.Reason != "no_data" || g.Text != gapEventDateUnread {
+		t.Errorf("previous %+v", cells[0].Previous)
+	}
+}
