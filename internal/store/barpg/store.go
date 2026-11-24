@@ -45,7 +45,7 @@ const upsertFxRateSQL = `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, 
 // received_at, written_by. A stored row is replaced only when its prices, volume (numeric equality), currency, source or
 // status differs; received_at, the key and adjust_epoch are never set. A yfinance row never replaces a stored ibkr
 // row (it counts as unchanged); an ibkr row replaces a yfinance row, equal prices or not.
-const upsertPriceBarSQL = `INSERT INTO obs.price_bar (instrument_id, session_day, basis, open, high, low, close, volume, ` +
+const priceBarWriteSQL = `INSERT INTO obs.price_bar (instrument_id, session_day, basis, open, high, low, close, volume, ` +
 	`currency, source, received_at, status, updated_at, written_by) ` +
 	`VALUES ($1, $2::date, $3, $4::numeric, $5::numeric, $6::numeric, $7::numeric, $8::numeric, $9, $10, $11, 'ok', now(), $12) ` +
 	`ON CONFLICT (instrument_id, basis, session_day) DO UPDATE SET open = EXCLUDED.open, high = EXCLUDED.high, ` +
@@ -54,8 +54,15 @@ const upsertPriceBarSQL = `INSERT INTO obs.price_bar (instrument_id, session_day
 	`WHERE (obs.price_bar.open, obs.price_bar.high, obs.price_bar.low, obs.price_bar.close, obs.price_bar.volume, ` +
 	`obs.price_bar.currency, obs.price_bar.source, obs.price_bar.status) ` +
 	`IS DISTINCT FROM (EXCLUDED.open, EXCLUDED.high, EXCLUDED.low, EXCLUDED.close, EXCLUDED.volume, EXCLUDED.currency, ` +
-	`EXCLUDED.source, EXCLUDED.status) ` +
-	`AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr') RETURNING instrument_id`
+	`EXCLUDED.source, EXCLUDED.status)`
+
+const (
+	upsertPriceBarSQL = priceBarWriteSQL +
+		` AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr') RETURNING instrument_id`
+	// replacePriceBarSQL has the arguments of upsertPriceBarSQL and no source rule: a differing row replaces the
+	// stored one of the key whatever the source of either.
+	replacePriceBarSQL = priceBarWriteSQL + ` RETURNING instrument_id`
+)
 
 // execer runs one statement inside a transaction and reports the rows it added.
 type execer interface {
@@ -144,10 +151,22 @@ var _ bar.PriceBarUpserter = (*Store)(nil)
 // is ignored. Written is the rows inserted or replaced, Unchanged the rows given minus those. An empty input makes no
 // database call.
 func (s *Store) UpsertPriceBars(ctx context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
-	n, err := insertAll(ctx, s.db, upsertPriceBarSQL, rows, func(r contracts.PriceBar) []any {
+	return s.writePriceBars(ctx, upsertPriceBarSQL, rows, writtenBy, "upsert price bars")
+}
+
+var _ bar.PriceBarReplacer = (*Store)(nil)
+
+// ReplacePriceBars is UpsertPriceBars without the source rule: a differing row replaces the stored row of the same
+// key whatever the source of either, an equal row counts as unchanged, and no row is deleted.
+func (s *Store) ReplacePriceBars(ctx context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
+	return s.writePriceBars(ctx, replacePriceBarSQL, rows, writtenBy, "replace price bars")
+}
+
+func (s *Store) writePriceBars(ctx context.Context, sql string, rows []contracts.PriceBar, writtenBy, what string) (bar.BarWriteCount, error) {
+	n, err := insertAll(ctx, s.db, sql, rows, func(r contracts.PriceBar) []any {
 		return []any{int64(r.InstrumentID), r.SessionDay.Format(time.DateOnly), string(r.Basis), r.Open, r.High, r.Low,
 			r.Close, r.Volume, r.Currency, string(r.Source), r.ReceivedAt, writtenBy}
-	}, "upsert price bars")
+	}, what)
 	if err != nil {
 		return bar.BarWriteCount{}, err
 	}
