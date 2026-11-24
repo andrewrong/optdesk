@@ -363,3 +363,78 @@ func TestLongSeriesLookback(t *testing.T) {
 		t.Fatalf("second run = %+v, changed %v, rows %d", res, w.changed, len(w.rows))
 	}
 }
+
+// readerWriter is a fakeWriter that also reads points.
+type readerWriter struct {
+	fakeWriter
+	readerFake
+}
+
+type fixedClock struct{ t time.Time }
+
+func (c fixedClock) Now() time.Time { return c.t }
+
+func sizedRun(t *testing.T, day string, now time.Time, w interface {
+	InsertSeriesPoints(context.Context, []contracts.SeriesPoint) error
+}) *fakeSource {
+	t.Helper()
+	src := &fakeSource{}
+	j, err := New(src, w, fixedClock{now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.Run(context.Background(), contracts.Day(day), keysOf("WALCL", "CPIAUCNS"))
+	return src
+}
+
+func storedTwoDaysBack() map[string][]contracts.SeriesPoint {
+	return map[string][]contracts.SeriesPoint{"WALCL": {pt("WALCL", "2026-11-08", true)}, "CPIAUCNS": {pt("CPIAUCNS", "2026-11-08", true)}}
+}
+
+func TestRunPastDayFetchesFromTheGap(t *testing.T) {
+	t.Parallel()
+	w := &readerWriter{readerFake: readerFake{byID: storedTwoDaysBack()}}
+	src := sizedRun(t, "2026-11-10", time.Date(2026, 11, 20, 3, 0, 0, 0, time.UTC), w)
+	if len(src.plans) != 2 {
+		t.Fatalf("plans = %d", len(src.plans))
+	}
+	for _, p := range src.plans {
+		if p.From != "2026-11-09" || p.To != "2026-11-10" {
+			t.Fatalf("ids %v window %s..%s", p.SeriesIDs, p.From, p.To)
+		}
+	}
+}
+
+func TestRunTodayKeepsLookback(t *testing.T) {
+	t.Parallel()
+	w := &readerWriter{readerFake: readerFake{byID: storedTwoDaysBack()}}
+	src := sizedRun(t, "2026-11-10", time.Date(2026, 11, 10, 3, 0, 0, 0, time.UTC), w)
+	want := map[string]contracts.Day{"WALCL": "2026-10-27", "CPIAUCNS": "2025-08-07"}
+	for _, p := range src.plans {
+		if p.From != want[p.SeriesIDs[0]] {
+			t.Fatalf("ids %v From = %s", p.SeriesIDs, p.From)
+		}
+	}
+	// a writer without the reader keeps the lookback for a past day too
+	src = sizedRun(t, "2026-11-10", time.Date(2026, 11, 20, 3, 0, 0, 0, time.UTC), &fakeWriter{})
+	for _, p := range src.plans {
+		if p.From != want[p.SeriesIDs[0]] {
+			t.Fatalf("no reader: ids %v From = %s", p.SeriesIDs, p.From)
+		}
+	}
+}
+
+func TestRunReaderErrorKeepsLookback(t *testing.T) {
+	t.Parallel()
+	w := &readerWriter{readerFake: readerFake{err: errors.New("db down")}}
+	src := sizedRun(t, "2026-11-10", time.Date(2026, 11, 20, 3, 0, 0, 0, time.UTC), w)
+	want := map[string]contracts.Day{"WALCL": "2026-10-27", "CPIAUCNS": "2025-08-07"}
+	if len(src.plans) != 2 {
+		t.Fatalf("plans = %d", len(src.plans))
+	}
+	for _, p := range src.plans {
+		if p.From != want[p.SeriesIDs[0]] {
+			t.Fatalf("ids %v From = %s", p.SeriesIDs, p.From)
+		}
+	}
+}
