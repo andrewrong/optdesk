@@ -4,14 +4,13 @@ package option_pnl_page
 const (
 	pageTitle = "P&L split"
 
-	modelNote = "model: European Black-Scholes, 365-day year, no dividends; an ex-dividend drop lands in the solved IV; " +
-		"the early-exercise premium is not modelled"
-	quoteDayNote = "quote day as the ledger counts it: ask above 0, bid at or above 0 and an underlying price"
-	callsTail    = " call lots skipped: this page shows short puts only"
+	modelNote    = modelNoteZh
+	quoteDayNote = quoteDayNoteZh
+	callsTail    = callsTailZh
 	longsTail    = " long put lots skipped: " + longPutSkippedZh
 
-	sampleFew  = "fewer than 20 split lots: no conclusion about what pays"
-	sampleEnuf = "20 or more split lots"
+	sampleFew  = sampleFewZh
+	sampleEnuf = sampleEnufZh
 
 	defaultName = "main"
 
@@ -32,10 +31,10 @@ const (
 )
 
 var codeTexts = map[string]string{
-	codeNoReader:     "No ledger reader",
-	codeNoFlexRows:   "No Flex record for this account",
-	codeNoSessions:   "No session reader, the page cannot tell the trading day",
-	codeNoQuoteReder: "No stored quote reader, the page cannot split profit",
+	codeNoReader:     gapNoReaderZh,
+	codeNoFlexRows:   gapNoFlexRowsZh,
+	codeNoSessions:   gapNoSessionsZh,
+	codeNoQuoteReder: gapNoQuoteReaderZh,
 }
 
 var codeReasons = map[string]string{
@@ -55,26 +54,26 @@ const (
 	noQuotesBadge  = "no quotes"
 	ledgerMissing  = "not stored"
 	markedAtMid    = "marked at the stored mid of "
-	circularNote   = "The open-lot check is circular: our stored mid is on both sides, so it checks fills, commissions and the charge, not the market value"
-	leftOutHead    = " lots left out of the sums: "
-	noBookLine     = "no lot of this currency could be split"
-	brokerDiffers  = "differs (not explained)"
+	circularNote   = circularNoteZh
+	leftOutHead    = leftOutHeadZh
+	noBookLine     = noBookLineZh
+	brokerDiffers  = brokerDiffersZh
 	brokerSame     = "same"
 	badgeTwoDay    = "2-day step"
 	badgeWide      = "wide quote"
 	badgeLate      = "late entry"
 	badgeRoll      = "looks like a roll"
 	badgeUnsplit   = "not split: "
-	noQuoteDays    = "no stored quote days"
-	notComputed    = "not computed"
+	noQuoteDays    = noQuoteDaysZh
+	notComputed    = notComputedZh
 	assignmentText = cardHintAssignmentZh
 )
 
 var classTexts = map[string]string{
-	classNoMark:   "with no stored quote",
-	classNoClose:  "with no stored close",
-	classNoLedger: "with no stored ledger P&L",
-	classRefused:  "with input refused",
+	classNoMark:   classNoMarkZh,
+	classNoClose:  classNoCloseZh,
+	classNoLedger: classNoLedgerZh,
+	classRefused:  classRefusedZh,
 }
 
 var classReasons = map[string]string{

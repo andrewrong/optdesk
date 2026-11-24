@@ -284,25 +284,25 @@ func leftOut(outs []outcome, b optionattrapi.Book, cur string) *string {
 		var names []string
 		for _, o := range outs {
 			if o.isGap() && o.class == class && o.lot.pos.Currency == cur {
-				names = append(names, o.lot.pos.Underlying+", ledger "+ledgerText(ledgerPnL(o.lot.pos), cur))
+				names = append(names, o.lot.pos.Underlying+ledgerSepZh+ledgerText(ledgerPnL(o.lot.pos), cur))
 			}
 		}
 		if len(names) > 0 {
 			gapLots += len(names)
-			parts = append(parts, strconv.Itoa(len(names))+" "+classTexts[class]+" ("+strings.Join(names, "; ")+")")
+			parts = append(parts, strconv.Itoa(len(names))+countUnitZh+classTexts[class]+lotsOpenZh+strings.Join(names, semiZh)+closeZh)
 		}
 	}
 	if b.NoQuoteLots > 0 {
-		parts = append(parts, strconv.Itoa(b.NoQuoteLots)+" with no stored quotes (ledger "+ledgerText(b.NoQuoteLedgerPnL, cur)+"; "+leftOutNoQuotesZh+")")
+		parts = append(parts, strconv.Itoa(b.NoQuoteLots)+noQuoteLotsZh+ledgerText(b.NoQuoteLedgerPnL, cur)+semiZh+leftOutNoQuotesZh+closeZh)
 	}
 	if b.UnreconciledLots > 0 {
-		parts = append(parts, strconv.Itoa(b.UnreconciledLots)+" not reconciled (ledger "+ledgerText(b.UnreconciledLedgerPnL, cur)+")")
+		parts = append(parts, strconv.Itoa(b.UnreconciledLots)+unreconLotsZh+ledgerText(b.UnreconciledLedgerPnL, cur)+closeZh)
 	}
 	if len(parts) == 0 {
 		return nil
 	}
 	n := gapLots + b.NoQuoteLots + b.UnreconciledLots
-	s := fit(strconv.Itoa(n) + " of " + strconv.Itoa(b.Lots+n) + leftOutHead + strings.Join(parts, "; "))
+	s := fit(leftOutOfZh + strconv.Itoa(b.Lots+n) + leftOutLotsZh + strconv.Itoa(n) + leftOutHead + strings.Join(parts, semiZh))
 	return &s
 }
 

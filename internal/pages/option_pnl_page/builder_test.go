@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -148,7 +149,7 @@ func TestSampleBookIdentity(t *testing.T) {
 	if len(want) != 0 {
 		t.Fatalf("lines missing: %v; book = %+v", want, b)
 	}
-	wantLeft := "1 of 4 lots left out of the sums: 1 with no stored close (DDD, ledger $12.00)"
+	wantLeft := "共 4 个仓位，其中 1 个未计入合计：1 个没有存档收盘价的仓位（DDD，账本 $12.00）"
 	if b.Headline.Text != "$226.00" || b.LeftOut == nil || !strings.HasPrefix(*b.LeftOut, wantLeft) {
 		t.Fatalf("headline = %q, left_out = %v", b.Headline.Text, b.LeftOut)
 	}
@@ -220,7 +221,7 @@ func TestNoQuotesCardNoZeroLines(t *testing.T) {
 		}
 	}
 	if texts["Ledger says"] != "$50.00" || texts["Commissions"] != "−$1.30" || texts["Reason"] != noQuotesZh ||
-		len(card.Lines) != 3 || card.DaysLine.Text != "no stored quote days" {
+		len(card.Lines) != 3 || card.DaysLine.Text != noQuoteDaysZh {
 		t.Fatalf("card = %+v", card)
 	}
 }
@@ -273,7 +274,7 @@ func TestLotErrorIsCardBookSaysSo(t *testing.T) {
 		t.Fatalf("EEE = %+v", lots[3])
 	}
 	b := vm.Accounts[0].Books[0]
-	if b.LeftOut == nil || !strings.HasPrefix(*b.LeftOut, "2 of 4 lots left out of the sums: ") {
+	if b.LeftOut == nil || !strings.HasPrefix(*b.LeftOut, "共 4 个仓位，其中 2 个未计入合计：") {
 		t.Fatalf("left_out = %v", b.LeftOut)
 	}
 	if len(r.book.calls[0]) != 2 {
@@ -294,8 +295,8 @@ func TestLeftOutNamesEveryClass(t *testing.T) {
 	r.cfg.Booker = &fixedBooker{books: []optionattrapi.Book{{Currency: "USD", Lots: 3, NoQuoteLots: 2, NoQuoteLedgerPnL: "5",
 		UnreconciledLots: 1, UnreconciledLedgerPnL: "7", Total: "1", LedgerPnL: "1", Difference: "0"}}}
 	got := *r.build(t).Accounts[0].Books[0].LeftOut
-	for _, w := range []string{"1 with no stored close (DDD, ledger $12.00)", "2 with no stored quotes (ledger $5.00; " + leftOutNoQuotesZh + ")",
-		"1 not reconciled (ledger $7.00)", "4 of 7 lots left out"} {
+	for _, w := range []string{"1 个没有存档收盘价的仓位（DDD，账本 $12.00）", "2 个没有存档报价的仓位（账本 $5.00；" + leftOutNoQuotesZh + "）",
+		"1 个未对上的仓位（账本 $7.00）", "共 7 个仓位，其中 4 个未计入合计："} {
 		if !strings.Contains(got, w) {
 			t.Errorf("left_out %q lacks %q", got, w)
 		}
@@ -323,7 +324,7 @@ func TestCallLotsSkippedAndCounted(t *testing.T) {
 	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-17", "1.20", "1.30", "95")}
 	r.attr.results["90.00"] = res("1", "1", "1", "1", "1", "", "-1", "0", "100")
 	vm := r.build(t)
-	if len(vm.Accounts[0].Lots) != 1 || !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 call lots skipped") {
+	if len(vm.Accounts[0].Lots) != 1 || !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 个看涨期权仓位已跳过") {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
 }
@@ -345,8 +346,8 @@ func TestLotsOlderThan30DaysNotShown(t *testing.T) {
 
 func TestFewerThan20EndedLots(t *testing.T) {
 	t.Parallel()
-	const few = ": fewer than 20 split lots: no conclusion about what pays"
-	for n, want := range map[int]string{19: "19 ended lots, 0 split lots" + few, 20: "20 ended lots, 0 split lots" + few} {
+	const few = sampleFewZh
+	for n, want := range map[int]string{19: "19 个已结束的仓位，0 个已拆分的仓位：" + few, 20: "20 个已结束的仓位，0 个已拆分的仓位：" + few} {
 		r := newRig()
 		for i := 0; i < n; i++ {
 			r.replay.positions = append(r.replay.positions, lotPos("p"+itoa(i), "BBB", itoa(1000+i), "38.00", "closed"))
@@ -389,7 +390,7 @@ func TestNilDaysReaderIsGap(t *testing.T) {
 	r.cfg.Days = nil
 	vm := r.build(t)
 	a := vm.Accounts[0]
-	if a.Gap == nil || !strings.Contains(a.Gap.Text, "No stored quote reader") || vm.RunStatus != "partial" || len(vm.Gaps) != 1 {
+	if a.Gap == nil || !strings.Contains(a.Gap.Text, "没有存档报价读取器") || vm.RunStatus != "partial" || len(vm.Gaps) != 1 {
 		t.Fatalf("account gap = %+v, page gaps = %+v", a.Gap, vm.Gaps)
 	}
 }
@@ -446,7 +447,7 @@ func TestNoQuotesTextsAreChinese(t *testing.T) {
 			t.Errorf("card with quotes shows the no-quotes text")
 		}
 	}
-	if got := *acc.Books[0].LeftOut; !strings.Contains(got, "2 with no stored quotes (ledger $5.00; "+leftOutNoQuotesZh+")") {
+	if got := *acc.Books[0].LeftOut; !strings.Contains(got, "2 个没有存档报价的仓位（账本 $5.00；"+leftOutNoQuotesZh+"）") {
 		t.Errorf("left_out = %q", got)
 	}
 	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 long put lots skipped: "+longPutSkippedZh) {
@@ -470,7 +471,7 @@ func TestSampleNoteCountsEndedAndSplit(t *testing.T) {
 	r.oldLot("p1", false)
 	r.oldLot("p2", true)
 	r.attr.results["38.00"] = res("20", "-8", "4", "2", "-2", "", "-2", "0", "14")
-	if got := r.build(t).Accounts[0].SampleNote; !strings.HasPrefix(got, "2 ended lots, 1 split lots: ") {
+	if got := r.build(t).Accounts[0].SampleNote; !strings.HasPrefix(got, "2 个已结束的仓位，1 个已拆分的仓位：") {
 		t.Fatalf("sample_note = %q", got)
 	}
 }
@@ -482,8 +483,67 @@ func TestSampleThresholdCountsSplit(t *testing.T) {
 		r.oldLot("p"+itoa(i), i >= 5)
 	}
 	r.attr.results["38.00"] = res("20", "-8", "4", "2", "-2", "", "-2", "0", "14")
-	want := "25 ended lots, 5 split lots: fewer than 20 split lots: no conclusion about what pays"
+	want := "25 个已结束的仓位，5 个已拆分的仓位：" + sampleFewZh
 	if got := r.build(t).Accounts[0].SampleNote; got != want {
 		t.Fatalf("sample_note = %q, want %q", got, want)
+	}
+}
+
+// TestPnlSentencesAreChinese builds a page with a gap code and lots with no stored quote, and shows that
+// every sentence of the page holds a Chinese character and none is one of the old English sentences.
+func TestPnlSentencesAreChinese(t *testing.T) {
+	t.Parallel()
+	r := sampleRig()
+	call := lotPos("p9", "AAA", "909", "100.00", "open")
+	call.Right = "C"
+	r.replay.positions = append(r.replay.positions, call)
+	r.cfg.Booker = &fixedBooker{books: []optionattrapi.Book{{Currency: "USD", Lots: 3, NoQuoteLots: 2, NoQuoteLedgerPnL: "5",
+		UnreconciledLots: 1, UnreconciledLedgerPnL: "7", Total: "1", LedgerPnL: "1", Difference: "0"}}}
+	vm := r.build(t)
+	acc := vm.Accounts[0]
+	texts := append([]string{}, vm.Notes...)
+	texts = append(texts, acc.SampleNote, *acc.Books[0].LeftOut)
+	for _, c := range acc.Lots {
+		for _, l := range c.Recon {
+			if strings.HasSuffix(l.ID, "-circ") {
+				texts = append(texts, l.Text)
+			}
+		}
+	}
+
+	gapped := sampleRig()
+	gapped.cfg.Days = nil
+	gvm := gapped.build(t)
+	if gvm.Accounts[0].Gap == nil {
+		t.Fatal("a page with no days reader has no account gap")
+	}
+	texts = append(texts, gvm.Accounts[0].Gap.Text)
+	for _, g := range gvm.Gaps {
+		texts = append(texts, g.Text)
+	}
+	for _, code := range []string{codeNoReader, codeNoFlexRows, codeNoSessions, codeNoQuoteReder} {
+		texts = append(texts, codeGap(code).Text)
+	}
+	for _, class := range classOrder {
+		texts = append(texts, classTexts[class])
+	}
+	texts = append(texts, noBookLine, noQuoteDays, notComputed, brokerDiffers, circularNote)
+	if l := brokerLine("x", "1", "2", "USD", "closed"); l != nil {
+		texts = append(texts, l.Text)
+	}
+
+	old := []string{"model:", "quote day as", "call lots skipped", "ended lots", "split lots", "fewer than 20", "No ledger reader",
+		"No Flex record", "No session reader", "No stored quote reader", "open-lot check is circular", "lots left out",
+		"with no stored", "not reconciled", "no lot of this currency", "no stored quote days", "not computed", "differs (not explained)"}
+	han := regexp.MustCompile(`\p{Han}`)
+	for _, s := range texts {
+		if !han.MatchString(s) {
+			t.Errorf("text %q holds no Chinese character", s)
+		}
+		for _, o := range old {
+			if strings.Contains(s, o) {
+				t.Errorf("text %q holds the old sentence %q", s, o)
+			}
+		}
 	}
 }

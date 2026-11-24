@@ -43,3 +43,45 @@ const (
 	cardHintDifferenceZh = "账本数字减去合计，再减去行权内在价值"
 	cardHintAssignmentZh = "合计加行权内在价值等于账本"
 )
+
+// Page notes, sample line, gap sentences and short card lines. Design: docs/design/options-pnl-ledger.md#Decisions (7).
+// Option terms (Black-Scholes, IV, mid, Flex, gamma) and numbers stay as they are.
+const (
+	modelNoteZh = "模型：欧式 Black-Scholes，一年按 365 天，不含股息；除息造成的下跌会落在求解出的 IV 里；" +
+		"不模拟提前行权的溢价"
+	quoteDayNoteZh = "报价日按账本的算法：卖价大于 0，买价不小于 0，并且有标的价格"
+	callsTailZh    = " 个看涨期权仓位已跳过：本页只显示卖出的看跌期权"
+
+	sampleFewZh  = "拆分的仓位不足 20 个：没有结论，不能据此判断这种做法是否赚钱"
+	sampleEnufZh = "拆分的仓位有 20 个或更多"
+
+	gapNoReaderZh      = "没有账本读取器"
+	gapNoFlexRowsZh    = "该账户没有 Flex 记录"
+	gapNoSessionsZh    = "没有交易日读取器，页面无法判断交易日"
+	gapNoQuoteReaderZh = "没有存档报价读取器，页面无法拆分盈亏"
+
+	circularNoteZh  = "未结束仓位的核对是循环的：两边用的都是我们存档的 mid，所以它核对的是成交、佣金和费用，不是市值"
+	noBookLineZh    = "这个币种没有可以拆分的仓位"
+	noQuoteDaysZh   = "没有存档报价日"
+	notComputedZh   = "未计算"
+	brokerDiffersZh = "不一致（原因未解释）"
+
+	classNoMarkZh   = "没有存档报价"
+	classNoCloseZh  = "没有存档收盘价"
+	classNoLedgerZh = "没有存档账本盈亏"
+	classRefusedZh  = "输入被拒绝"
+
+	leftOutHeadZh = " 个未计入合计："
+	endedLotsZh   = " 个已结束的仓位，"
+	splitLotsZh   = " 个已拆分的仓位："
+	leftOutOfZh   = "共 "
+	leftOutLotsZh = " 个仓位，其中 "
+
+	ledgerSepZh   = "，账本 "
+	countUnitZh   = " 个"
+	lotsOpenZh    = "的仓位（"
+	semiZh        = "；"
+	closeZh       = "）"
+	noQuoteLotsZh = " 个没有存档报价的仓位（账本 "
+	unreconLotsZh = " 个未对上的仓位（账本 "
+)
