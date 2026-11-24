@@ -32,6 +32,7 @@ const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]
     [
       ['Candidates', '/options/candidates'],
       ['Structures', '/options/structures'],
+      ['Spread legs', '/options/spread-legs'],
       ['Result', '/options/result'],
       ['Notices', '/options/notices'],
       ['Tracking', '/options/tracking'],
@@ -79,7 +80,7 @@ describe('TestTopNavGroupMenus', () => {
     if (name === 'Options') {
       const texts = [...menu.querySelectorAll('a, [data-slot="dropdown-menu-label"]')].map((e) => e.textContent)
       expect(texts).toEqual([
-        'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
+        'Candidates', 'Held options', 'Structures', 'Spread legs', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
       ])
     }
   })
@@ -154,7 +155,7 @@ describe('TopNav', () => {
       'Home',
       'Market', 'Macro', 'Market state',
       'Portfolio', 'Household', 'Positions', 'Held companies', 'Risk',
-      'Options', 'Candidates', 'Held options', 'Structures', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
+      'Options', 'Candidates', 'Held options', 'Structures', 'Spread legs', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
       'Companies', 'Watch list', 'Price lines', 'Valuation', 'Import valuations', 'Data',
       'System', 'Settings', 'Job console', 'Base data', 'Data health', 'Option data',
     ])
