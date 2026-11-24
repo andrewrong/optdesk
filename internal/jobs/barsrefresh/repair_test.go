@@ -261,7 +261,7 @@ func TestRunWithoutUpserterIsRetryable(t *testing.T) {
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "10.0"))}
 	st := &memBars{}
 	b := &fakeBroker{listed: true}
-	j, err := New(b, h, fakeResolver{}, insertOnly{st}, st, []jobs.WatchEntry{entry("cik:1", "AAA", 0)}, fixedClock{})
+	j, err := newJob(b, h, fakeResolver{}, insertOnly{st}, st, []jobs.WatchEntry{entry("cik:1", "AAA", 0)}, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}

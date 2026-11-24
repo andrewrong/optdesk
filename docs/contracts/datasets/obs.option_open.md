@@ -19,7 +19,7 @@ obs.option_open r1: one planned option contract pulled at the open of a session 
 | received_at | string (date-time) | no | Instant the answer was received, UTC. |
 | event_ts | string (date-time) | yes | Instant of the quote at the venue, UTC; null when unknown. |
 | connection_generation | integer | no | Generation of the broker connection the row was pulled on. |
-| status | integer | no | Final status: 1 ok, 2 partial, 3 no_data, 4 not_listed, 5 no_subscription, 6 deadline, 7 deferred, 8 error, 9 disconnected. |
+| status | integer | no | Final status: 1 ok, 2 partial, 3 no_data (the broker answered with nothing usable), 4 not_listed, 5 no_subscription, 6 deadline, 7 deferred, 8 error, 9 disconnected. Status 3 with error_code NO_QUOTE is a contract the broker answered with no bid and no ask (IB's no-quote sentinel, live data, no error): stored, counted as answered, never asked again; status 3 with a null error_code means nothing usable arrived. |
 | error_code | string | yes | Error code of the broker or the pull; null when none. |
 | skew | boolean | no | True when the spot of the stock moved 1 percent or more within the group of the row. |
 | outside_band | boolean | no | True when the band at the open spot leaves the contract out; the row is not asked and has status 7. |

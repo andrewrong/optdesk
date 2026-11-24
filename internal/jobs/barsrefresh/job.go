@@ -1,6 +1,7 @@
 package barsrefresh
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -70,6 +71,7 @@ type job struct {
 	src   sources.BarSource // the yfinance fallback; nil means none (WithFallback)
 	cal   clock.Calendar    // the session calendar the fallback filters by
 	log   *slog.Logger
+	pause func(ctx context.Context, d time.Duration) error // waits before a history retry; tests replace it
 
 	mu      sync.Mutex
 	started map[contracts.Day]map[string]bool // keys that began a first pull, per day
@@ -89,7 +91,7 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	j := &job{m: m, b: b, h: h, res: res, w: w, r: r, clk: clk, byKey: map[string]target{}, log: slog.Default(),
+	j := &job{m: m, b: b, h: h, res: res, w: w, r: r, clk: clk, byKey: map[string]target{}, log: slog.Default(), pause: defaultPause,
 		started: map[contracts.Day]map[string]bool{}, conIDs: map[string]int64{}}
 	add := func(key string, t target) error {
 		if key == "" || key == indexPrefix {

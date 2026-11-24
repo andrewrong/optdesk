@@ -32,7 +32,7 @@ func adjustedHistory(adj func() ([]broker.Bar, error)) *fakeHistory {
 // runAdjusted runs one key with the weekly step on (the shared build turns it off).
 func runAdjusted(t *testing.T, h *fakeHistory, st *memBars) contracts.JobResult {
 	t.Helper()
-	j, err := New(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, []jobs.WatchEntry{entry("cik:1", "AAA", 101)}, fixedClock{})
+	j, err := newJob(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, []jobs.WatchEntry{entry("cik:1", "AAA", 101)}, fixedClock{})
 	if err != nil {
 		t.Fatal(err)
 	}

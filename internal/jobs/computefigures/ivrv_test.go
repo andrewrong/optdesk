@@ -232,3 +232,42 @@ func addIvRv20Inputs(f *fx) {
 		f.addRv20(p[0], dayD, "0.100000", string(dayD))
 	}
 }
+
+func TestIvRv20JoinsByDataDay(t *testing.T) {
+	t.Parallel()
+	f := world()
+	prev := shiftDay(dayD, -1)
+	f.addPoint("VIXCLS", prev, 21)
+	f.addRv20("SPX", dayD, "0.160000", string(prev))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
+	r := ivRvReading(t, f, "SPX")
+	if r.State != "ok" || r.Value == nil || *r.Value != "0.050000" || tagOf(r, "data_day") != string(prev) {
+		t.Fatalf("reading %+v, want ok 0.050000 of %s", r, prev)
+	}
+}
+
+func TestIvRv20LaterReadingWins(t *testing.T) {
+	t.Parallel()
+	f := world()
+	prev := shiftDay(dayD, -1)
+	f.addPoint("VIXCLS", prev, 21)
+	f.addRv20("SPX", prev, "0.150000", string(prev))
+	f.addRv20("SPX", dayD, "0.160000", string(prev))
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
+	r := ivRvReading(t, f, "SPX")
+	if r.State != "ok" || r.Value == nil || *r.Value != "0.050000" {
+		t.Fatalf("reading %+v, want ok 0.050000 (the reading stored for %s)", r, dayD)
+	}
+}
+
+func TestIvRv20UntaggedSkipped(t *testing.T) {
+	t.Parallel()
+	f := world()
+	f.addPoint("VIXCLS", dayD, 20)
+	f.addRv20("SPX", dayD, "0.160000", "")
+	wantNoRunErr(t, runIvRvKey(t, f, "SPX"))
+	r := ivRvReading(t, f, "SPX")
+	if r.State != "missing_input" || r.Value != nil || r.ReasonCode == nil || *r.ReasonCode != 1 {
+		t.Fatalf("reading %+v, want missing_input code 1", r)
+	}
+}

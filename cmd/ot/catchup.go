@@ -24,9 +24,9 @@ const (
 	catchUpRecent = 1000
 )
 
-// windowEndingJobs are the jobs whose one run fetches a window ending at the day, so one request for the newest gap
-// day also fetches the older ones (Decision 3).
-var windowEndingJobs = []string{"bars_refresh", "fx_refresh", "fred_series"}
+// windowEndingJobs are the four jobs whose one run fetches a window ending at the day (bars_refresh, fx_refresh,
+// fred_series and iv_history), so one request for the newest gap day also fetches the older ones (Decisions 5 and 8).
+var windowEndingJobs = []string{"bars_refresh", "fx_refresh", "fred_series", "iv_history"}
 
 // catchUpCounts is what one pass did.
 type catchUpCounts struct{ requested, skippedToday, skippedWindow int }
@@ -103,10 +103,11 @@ func (h *consoleHost) catchUp(ctx context.Context) (n catchUpCounts, err error) 
 				if err != nil {
 					return n, err
 				}
-				cells = dropTaken(cells, jobs[i].ID, taken, &n)
+				// newest first: a newest day already requested today lets no older day through.
 				if slices.Contains(windowEndingJobs, jobs[i].ID) {
 					cells = newestGapOnly(cells, &n)
 				}
+				cells = dropTaken(cells, jobs[i].ID, taken, &n)
 				q, _, err := repairGapsFor(ctx, cells, &jobs[i], st, left)
 				n.requested += q
 				if err != nil {
