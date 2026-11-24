@@ -10,19 +10,21 @@ IBKR is the live trading platform and its history farm shares a budget of 50 req
 - The restatement path (`collect` in `run.go`): when a stored trades day differs from the pulled one by more than restate_tolerance, the whole backfill (400 days, so 2 Y) is pulled and `olderThanWindow` pulls every older piece (deepen_piece_days) down to the oldest stored day. So trades are re-pulled to full stored depth, not only 400 days; adjusted_last is not (only the weekly step, 2 Y).
 - DB: 75 instruments; adjusted_last 482 to 523 rows each (oldest 2024-11-11 to 2024-11-29), trades 481 to 1519 rows (oldest 2020-11-17); every row has source ibkr, adjust_epoch 1. The columns open, high, low, close and volume are nullable.
 - Readers: `computefigures` HV (`hv.go`, trades only, 70 calendar days back), `cmd/ot` strategy replay (`strategy_replay_market.go`, trades and adjusted_last closes of the entry and settle days of each lot), company page inputs and PE/PB (`companies_inputs.go`, `companies_pepb.go`, trades), option EOD index (`wire_optioneodindex.go`, trades), valuation site (`valuation_site.go`). Only the replay reads adjusted_last, and only its close.
-- yfinance in the repo: `pyside/src/optdesk/refbars` (one-shot command, `python -m optdesk.refbars`, JSON in and out) and the Go adapter `internal/sources/yfinance` (`sources.BarSource`). Limits the code shows: at most 10 pairs per command run, 1 second between pairs (`GAP_SECONDS`), 10 seconds per pair (`TIMEOUT_SECONDS`), a `rate_limited` pair stops the later batches, error codes rate_limited / no_data / network / timeout / source_changed. Symbols: USD keeps the symbol (a dot becomes a dash), JPY appends `.T` (4063 is 4063.T), any other currency has no route (no_data). The call is `Ticker.history(start, end, interval="1d", auto_adjust=False, actions=False)`; it already keeps Close raw and drops "Adj Close" and the Dividends and Stock Splits columns. No depth limit is in our code (the start day is the caller's); Yahoo's depth and rate are not probed here and are named as a risk below.
+- yfinance in the repo: `pyside/src/optdesk/refbars` (one-shot command, `python -m optdesk.refbars`, JSON in and out) and the Go adapter `internal/sources/yfinance` (`sources.BarSource`). Limits the code shows: at most 10 pairs per command run, 1 second between pairs (`GAP_SECONDS`), 10 seconds per pair (`TIMEOUT_SECONDS`), a `rate_limited` pair stops the later batches, error codes rate_limited / no_data / network / timeout / source_changed. Symbols: USD keeps the symbol (a dot becomes a dash), JPY appends `.T` (4063 is 4063.T), any other currency has no route (no_data). Route rule of this design: a key has a yfinance route when it is a stock or ETF (not an `[[index]]` table of `job.toml`) in USD or JPY; the indexes SPX, NDX, RUT and N225 have no route and stay on IB, because the Yahoo symbols of those names are not those indexes. The call is `Ticker.history(start, end, interval="1d", auto_adjust=False, actions=False)`; it already keeps Close raw and drops "Adj Close" and the Dividends and Stock Splits columns. No depth limit is in our code (the start day is the caller's); Yahoo's depth and rate are not probed here and are named as a risk below.
 - Store rule today (`internal/store/barpg/store.go`): a yfinance row never replaces a stored ibkr row; an ibkr row replaces a yfinance row. The source check already allows ibkr and yfinance.
 
 ## Decisions
 
-1. Source split (owner 2026-11-24). IBKR is for option data and live prices only: barsrefresh asks IB for no daily bar of a stock or ETF, not the recent window, not backfill, not deepening pieces, not restatement re-pulls, not adjusted_last. yfinance gives all of it: the daily close, the older days, raw and adjusted, dividends and splits. Today's live price stays on its existing IB path, which is not barsrefresh. A key yfinance cannot serve (an index, a USD FX rate, a VIX-type volatility index and similar) keeps its IBKR daily path as today (Decision 5).
-2. The event test is one cheap yfinance call. For a name the job asks yfinance for the days from its last history pull (the day of the newest stored yfinance row of the key, received_at) through today with actions: the answer carries the Dividends and Stock Splits rows of those days. A dividend or split dated after the last pull is an event; none is no event. No event: the new days are written (raw close; no adjusted request) and nothing else is asked. The test also brings the new daily bars, so a stock's daily close comes from it. It costs a yfinance request, never an IB one; it is made at most once per name per run day.
+1. Source split (owner 2026-11-24). IBKR is for option data and live prices only: barsrefresh asks IB for no daily bar of a stock or ETF, not the recent window, not backfill, not deepening pieces, not restatement re-pulls, not adjusted_last. yfinance gives all of it: the daily close, the older days, raw and adjusted, dividends and splits. Today's live price stays on its existing IB path, which is not barsrefresh. A key with no route (an `[[index]]` key such as SPX, NDX, RUT, N225, or a stock in a currency other than USD or JPY) keeps its whole IB path as today (Decision 5).
+2. The event test is a cheap yfinance call (a second one for the adjusted close of new days). For a name the job asks yfinance for the days from its last history pull (the session day of the newest stored yfinance row of the key, not its received_at) through today with actions: the answer carries the Dividends and Stock Splits rows of those days. A dividend or split dated after the last pull is an event; none is no event. No event: the new days are written, raw (auto_adjust off) and adjusted close (a second call with auto_adjust on, Close only, same days), and nothing else is asked. The test also brings the new daily bars, so a stock's daily close comes from it. It costs a yfinance request, never an IB one; it is made at most once per name per run day.
 3. On an event, or for a name with no yfinance row, the job asks the full history twice in one pull: raw (auto_adjust off: Open, High, Low, Close, Volume as yfinance gives them) and adjusted (auto_adjust on, Close only is stored; Open, High, Low stay empty). yfinance's own adjusted numbers are stored; no factor is computed or applied in our code, and no adjusted row is derived from raw rows. Adjustment is standard practice: vendors back-adjust the whole series on each dividend or split, so one full re-pull on an event that replaces the stored adjusted series is the same thing. The full history starts at the first day yfinance has (listing); `deepen_days` and `backfill_days` no longer bound it.
 4. Which source wins per day. yfinance rows are the stock series, trades and adjusted_last. The first full pull of a name, and every event pull, writes through a new store call `ReplacePriceBars` (store interface, optional method like `PriceBarUpserter`): the yfinance row replaces the stored row of any source, for every day of the pull, so the existing ibkr rows of a stock are replaced by yfinance rows and one series per name has one adjustment. A normal write of new days keeps the store rule (a yfinance row never replaces an ibkr row). No stored row is deleted; a replaced row keeps its key and the writer name says which job and day wrote it.
-5. Hole and limit named: a dividend not in yfinance's actions gives no trigger. A key yfinance cannot serve (an index, a USD FX rate, a VIX-type volatility index, a currency other than USD or JPY and similar; a key with no yfinance route) keeps its IBKR daily path as today: its IB daily path and its stored rows do not change, and it has no adjusted series from this job; it is named in Left out. Yahoo can refuse (rate_limited): the key stays as it is and is asked the next run, never filled from another model. Every key with an event and no answer is logged by name.
-6. A stock with a yfinance route has no `daily_days` or `backfill_days` IB window, no deepening, no restatement re-pull and no adjusted_last step. The keys `adjusted_cadence_days`, `deepen_*`, `daily_days` and `backfill_days` of `job.toml` stay and apply only to the keys of Decision 5. No wire entry: the job already gets its yfinance source from `WithFallback` in `cmd/ot/wire_barsfallback.go` and the new source methods come through the same `sources.BarSource` value.
+5. Hole and limit named: a dividend not in yfinance's actions gives no trigger. A key with no route (an `[[index]]` key, or a stock in a currency other than USD or JPY; FX rates are not keys of barsrefresh, `fxrefresh` owns them) keeps everything `runKey` in `run.go` runs today: the conid lookup, the IB daily window with its backfill and restatement re-pull, the deepening pieces and the weekly IB adjusted_last step; its stored rows do not change; it is named in Left out. Yahoo can refuse (rate_limited): the key stays as it is and is asked the next run, never filled from another model. Every key with an event and no answer is logged by name.
+6. A stock with a yfinance route has no `daily_days` or `backfill_days` IB window, no deepening, no restatement re-pull and no adjusted_last step. The keys `adjusted_cadence_days`, `deepen_*`, `daily_days` and `backfill_days` of `job.toml` stay and apply only to the keys of Decision 5, whose weekly IB adjusted_last step stays as today. No wire entry: the job already gets its yfinance source from `WithFallback` in `cmd/ot/wire_barsfallback.go` and the new source methods come through the same `sources.BarSource` value.
 
 ## Interface
+
+Landed first by the entry `stock-history-iface` (interface); the module entries use it.
 
 - `pyside/src/optdesk/refbars/api.py`: Request gains `with_actions` and `adjusted` (bool); Bar gains `adj_close` (decimal text, empty when not asked); PairResult gains `dividends` and `splits` (lists of `{day, value}` as decimal text). Declarations only.
 - `internal/sources/api.go`: `BarRequest` gains `Actions bool` and `Adjusted bool`; `RefBar` gains `AdjClose string`; `BarResult` gains `Actions []RefAction` with `RefAction{Pair, Day, Kind ("dividend" or "split"), Value}`. Fields are added, none changes.
@@ -30,39 +32,47 @@ IBKR is the live trading platform and its history farm shares a budget of 50 req
 
 ## Owner-visible result
 
-After the first full pull the adjusted_last series of a stock reaches back to its listing (a 10-year name has 10 years, not 400 or 730 days), the rows of a name carry one adjustment, and the replay and company pages read the same tables as before. IB history requests from barsrefresh for stocks drop to 0 (only keys with no yfinance route still ask IB); the daily window, the weekly 75, the first backfills, the deepening pieces and the restatement re-pulls are gone for stocks. A split or dividend shows in the data the same day yfinance lists it.
+After the first full pull the adjusted_last series of a stock reaches back to its listing (a 10-year name has 10 years, not 400 or 730 days), the rows of a name carry one adjustment, and the replay and company pages read the same tables as before. IB history requests from barsrefresh for stocks drop to 0 (only the index keys, and a stock in a currency other than USD or JPY, still ask IB); the daily window, the weekly 75, the first backfills, the deepening pieces and the restatement re-pulls are gone for stocks. A split or dividend shows in the data the same day yfinance lists it.
 
 ## Issues
 
-Build order: entries 1 and 2 first (each interface and its own implementation in one module), entry 3 after 1 (it reads the JSON of entry 1), entry 4 after 2 and 3 (it uses the interfaces of entries 2 and 3 through fakes; no entry waits on an unmerged wire entry).
+Build order: entry 1 (interface) lands first; entries 2 to 5 each depend on it only (entry 5 also on 3 and 4 through fakes of their interfaces, which entry 1 holds).
 
-### 1 stock-history-refbars
+### 1 stock-history-iface (interface)
 
-Module: pyside. Size: M. Order: first.
+Modules: pyside, sources, store (interface files only). Size: S. Order: first.
 Contracts: unchanged
-Files: `pyside/src/optdesk/refbars/api.py`, `pyside/src/optdesk/refbars/fetch.py`, `pyside/src/optdesk/refbars/cli.py`, `pyside/tests/contracts/test_refbars_api.py`, `pyside/tests/refbars/test_fetch.py`
+Files: `pyside/src/optdesk/refbars/api.py`, `pyside/tests/contracts/test_refbars_api.py`, `internal/sources/api.go`, `internal/sources/api_test.go`, `internal/store/bar/api.go`, `internal/store/bar/api_test.go`
 Design: docs/design/stock-history-yfinance.md#Interface
+Acceptance: as the draft `stock-history-iface.md`; declarations only, no behaviour.
+
+### 2 stock-history-refbars
+
+Module: pyside. Size: M. Order: after 1 (stock-history-iface).
+Contracts: unchanged
+Files: `pyside/src/optdesk/refbars/fetch.py`, `pyside/src/optdesk/refbars/cli.py`, `pyside/tests/refbars/test_fetch.py`, `pyside/tests/refbars/test_cli.py`
+Design: docs/design/stock-history-yfinance.md#Decisions
 Acceptance: as the draft `stock-history-refbars.md`.
 
-### 2 stock-history-store
+### 3 stock-history-store
 
-Module: store. Size: S. Order: first.
+Module: store. Size: S. Order: after 1 (stock-history-iface).
 Contracts: unchanged
-Files: `internal/store/bar/api.go`, `internal/store/bar/api_test.go`, `internal/store/barpg/store.go`, `internal/store/barpg/upsert_pg_test.go`
-Design: docs/design/stock-history-yfinance.md#Interface
+Files: `internal/store/barpg/store.go`, `internal/store/barpg/store_test.go`, `internal/store/barpg/upsert_pg_test.go`
+Design: docs/design/stock-history-yfinance.md#Decisions
 Acceptance: as the draft `stock-history-store.md`.
 
-### 3 stock-history-sources
+### 4 stock-history-sources
 
-Module: sources. Size: M. Order: after 1 (stock-history-refbars).
+Module: sources. Size: M. Order: after 1 (stock-history-iface).
 Contracts: unchanged
-Files: `internal/sources/api.go`, `internal/sources/api_test.go`, `internal/sources/yfinance/source.go`, `internal/sources/yfinance/source_test.go`
-Design: docs/design/stock-history-yfinance.md#Interface
+Files: `internal/sources/yfinance/source.go`, `internal/sources/yfinance/source_test.go`
+Design: docs/design/stock-history-yfinance.md#Decisions
 Acceptance: as the draft `stock-history-sources.md`.
 
-### 4 stock-history-job
+### 5 stock-history-job
 
-Module: jobs. Size: L. Order: after 2, 3 (stock-history-store, stock-history-sources).
+Module: jobs. Size: L. Order: after 1 (stock-history-iface).
 Contracts: unchanged
 Files: `internal/jobs/barsrefresh/adjusted.go`, `internal/jobs/barsrefresh/deepen.go`, `internal/jobs/barsrefresh/restate.go`, `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/job.toml`, and their tests in the package
 Design: docs/design/stock-history-yfinance.md#Decisions
@@ -73,7 +83,7 @@ Acceptance: as the draft `stock-history-job.md`.
 - A yfinance probe of its depth and rate limit: not made here; the issue of entry 3 states what the adapter does on rate_limited, and the owner sees the first full pull in the log.
 - A second source for dividends and splits (IB tick 456 is a forward projection and is not used).
 - Intraday bars and option history.
-- Keys with no yfinance route (indexes, USD FX rates, VIX-type volatility indexes, a currency other than USD or JPY): left as they are today on the IB daily path; no change, no adjusted series.
+- Keys with no yfinance route (the `[[index]]` keys, a stock in a currency other than USD or JPY): left as they are today, the whole IB path including the weekly adjusted_last step; no change.
 - A dividend-adjusted row older than the first yfinance day: not made.
 - The classification of the 47 names without a stored dividend row: no longer needed; the trigger is yfinance's own actions.
 
