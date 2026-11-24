@@ -200,11 +200,25 @@ describe('company view', () => {
     for (const price of ['56', '59 - 64', '72 - 88', '100', '120', '150']) expect(lines.textContent).toContain(price)
   })
 
+  const LABELS: Record<string, string> = {
+    heavy: 'Heavy',
+    buy_low: 'Buy low',
+    buy_high: 'Buy high',
+    fair_low: 'Fair low',
+    fair_high: 'Fair high',
+    trim: 'Trim',
+    clear: 'Clear',
+    close: 'Close',
+    core: 'Core',
+  }
+
   it('draws the marks of the band as given', async () => {
     const el = await render(fixture('company'))
     const band = el.querySelector('[data-chart="price-band"]') as HTMLElement
-    expect(band.textContent).toContain('close 95')
-    expect(band.textContent).toContain('core 150')
+    expect(band.textContent).toContain('Close 95')
+    expect(band.textContent).toContain('Core 150')
+    expect(band.textContent).not.toMatch(/\w_\w/)
+    expect(band.innerHTML).not.toMatch(/aria-label="[^"]*\w_\w/)
   })
 
   it('TestPriceBandMarksAreSeriesData: the legend lists every mark and the only data points are the marks', async () => {
@@ -213,7 +227,7 @@ describe('company view', () => {
     const el = await render(payload)
     const marks = payload.band!.marks
     const legend = [...el.querySelectorAll('[data-chart="price-band"] li')].map((li) => li.textContent)
-    expect(legend).toEqual(marks.map((m) => `${m.name} ${m.value}`))
+    expect(legend).toEqual(marks.map((m) => `${LABELS[m.name] ?? m.name} ${m.value}`))
     const elements = chartChildren.flatMap((c) => Children.toArray(c as ReactNode)) as ReactElement<{ data?: unknown }>[]
     const series = elements.filter((e) => Array.isArray(e.props.data))
     expect(series).toHaveLength(1)
