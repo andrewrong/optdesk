@@ -47,7 +47,7 @@ const (
 // Page notes, sample line, gap sentences and short card lines. Design: docs/design/options-pnl-ledger.md#Decisions (7).
 // Option terms (Black-Scholes, IV, mid, Flex, gamma) and numbers stay as they are.
 const (
-	modelNoteZh = "模型：欧式 Black-Scholes，一年按 365 天，不含股息；除息造成的下跌会落在求解出的 IV 里；不模拟提前行权的溢价"
+	modelNoteZh    = "模型：欧式 Black-Scholes，一年按 365 天，不含股息；除息造成的下跌会落在求解出的 IV 里；不模拟提前行权的溢价"
 	quoteDayNoteZh = "报价日按账本的算法：卖价大于 0，买价不小于 0，并且有标的价格"
 	callsTailZh    = " 个看涨期权仓位已跳过：本页只显示卖出的看跌期权"
 
