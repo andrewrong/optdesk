@@ -260,53 +260,62 @@ async def send_n(
         task.result()
 
 
-def test_budget_refuses_the_51st() -> None:
-    async def run() -> int:
-        clock, gateway, reader = setup()
-        await send_n(clock, gateway, reader, 50)
-        with pytest.raises(HistoryPaced):
-            await reader.bars(request(con_id=99), gateway.fetch)
-        return len(gateway.sent)
-
-    assert asyncio.run(run()) == 50
-
-
-def test_budget_window_slides() -> None:
+def test_budget_51st_waits_for_the_oldest_to_age_out() -> None:
     async def run() -> list[float]:
         clock, gateway, reader = setup()
         await send_n(clock, gateway, reader, 50)
-        await clock.advance(600.0 - clock.monotonic() - 1)
-        with pytest.raises(HistoryPaced):
-            await reader.bars(request(con_id=99), gateway.fetch)
-        await clock.advance(1)  # the send at 0 is now 600 s old
         task = await_later(reader, gateway, request(con_id=99))
+        await asyncio.sleep(0)
+        await clock.advance(600.0 - clock.monotonic() - 1)
+        assert len(gateway.sent) == 50
         await drain(clock, task)
         task.result()
         return [t for t, _ in gateway.sent]
 
     times = asyncio.run(run())
     assert len(times) == 51
-    assert times[-1] == 600.0
+    assert times[-1] >= 600.0
 
 
-def test_refused_request_takes_no_slot() -> None:
-    async def run() -> list[float]:
+def test_budget_waiters_keep_order_and_spacing() -> None:
+    async def run() -> list[tuple[float, int]]:
         clock, gateway, reader = setup()
-        await send_n(clock, gateway, reader, 49)  # sends at 0 .. 528
-        await clock.advance(599.0 - clock.monotonic())
-        await reader.bars(request(con_id=60), gateway.fetch)  # the 50th, at 599
-        await clock.advance(0.5)
-        with pytest.raises(HistoryPaced):
-            await reader.bars(request(con_id=99), gateway.fetch)
-        await clock.advance(0.5)  # 600: the send at 0 left the window
+        await send_n(clock, gateway, reader, 50)
+        tasks = [
+            await_later(reader, gateway, request(con_id=100 + i)) for i in range(3)
+        ]
+        for task in tasks:
+            await drain(clock, task)
+            task.result()
+        return [(t, 0) for t, _ in gateway.sent[50:]]
+
+    times = [t for t, _ in asyncio.run(run())]
+    assert len(times) == 3
+    assert times == sorted(times)
+    assert times[0] >= 600.0
+    assert times[1] - times[0] >= 11.0
+    assert times[2] - times[1] >= 11.0
+
+
+def test_cancelled_budget_wait_gives_the_slot_back() -> None:
+    async def run() -> tuple[float, float, int]:
+        clock, gateway, reader = setup()
+        await send_n(clock, gateway, reader, 50)
+        cancelled = await_later(reader, gateway, request(con_id=98))
+        await asyncio.sleep(0)
+        cancelled.cancel()
+        await asyncio.sleep(0)
+        assert cancelled.cancelled()
+        assert len(gateway.sent) == 50
+        # the slot the cancelled one held: the oldest send (0) plus 600
         task = await_later(reader, gateway, request(con_id=99))
         await drain(clock, task)
         task.result()
-        return [t for t, _ in gateway.sent]
+        return gateway.sent[-1][0], clock.monotonic(), len(gateway.sent)
 
-    times = asyncio.run(run())
-    assert times[-2] == 599.0
-    assert times[-1] == 610.0
+    sent_at, _, count = asyncio.run(run())
+    assert count == 51
+    assert 600.0 <= sent_at < 611.0
 
 
 def test_error_send_counts() -> None:
@@ -321,8 +330,12 @@ def test_error_send_counts() -> None:
             with pytest.raises(spec.BrokerError):
                 task.result()
         await send_n(clock, gateway, reader, 47, first=10)
-        with pytest.raises(HistoryPaced):
-            await reader.bars(request(con_id=99), gateway.fetch)
+        late = await_later(reader, gateway, request(con_id=99))
+        await asyncio.sleep(0)
+        await clock.advance(1)
+        assert not late.done()  # the 51st waits for the failed send at 0 to age out
+        await drain(clock, late)
+        late.result()
         return len(gateway.sent)
 
-    assert asyncio.run(run()) == 47
+    assert asyncio.run(run()) == 48

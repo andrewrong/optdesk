@@ -7,6 +7,7 @@ injected Clock. Nothing here logs.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -86,8 +87,9 @@ class HistoryReader:
 
     Starts are one at a time, in the order callers arrive, at least 11 seconds
     apart, and no identical request starts within 15 seconds. At most 50 sends
-    start within any 600 seconds; a request that would be the 51st is refused with
-    HistoryPaced before it takes a slot. A send that fails still counts. A pacing
+    start within any 600 seconds; a request that would be the 51st waits until the
+    oldest send of the window is 600 seconds old. A request cancelled while it
+    waits sends nothing and gives its slot back. A send that fails still counts. A pacing
     violation (code 162 with that text) is raised as HistoryPaced, never retried
     here; any other answer, 162 with other text included, is raised as it came.
     """
@@ -100,16 +102,42 @@ class HistoryReader:
 
     async def _take_slot(self, request: HistoryRequest) -> None:
         now = self._clock.monotonic()
-        start = max(now, self._next_start)
+        self._starts = [t for t in self._starts if now - t < BUDGET_WINDOW_S]
+        previous_next = self._next_start
+        start = max(now, previous_next)
         sent = self._last.get(request)
         if sent is not None:
             start = max(start, sent + IDENTICAL_S)
+        if len(self._starts) >= BUDGET_REQUESTS:
+            start = max(start, self._starts[-BUDGET_REQUESTS] + BUDGET_WINDOW_S)
         self._next_start = start + MIN_GAP_S
         self._last = {r: t for r, t in self._last.items() if start - t < IDENTICAL_S}
         self._last[request] = start
         self._starts.append(start)
         if start > now:
-            await self._clock.sleep(start - now)
+            try:
+                await self._clock.sleep(start - now)
+            except asyncio.CancelledError:
+                self._give_back(request, start, sent, previous_next)
+                raise
+
+    def _give_back(
+        self,
+        request: HistoryRequest,
+        start: float,
+        sent: float | None,
+        previous_next: float,
+    ) -> None:
+        """Undo the slot of a request cancelled before it was sent."""
+        if start in self._starts:
+            self._starts.remove(start)
+        if self._last.get(request) == start:
+            if sent is None:
+                del self._last[request]
+            else:
+                self._last[request] = sent
+        if self._next_start == start + MIN_GAP_S:  # nobody reserved a later slot
+            self._next_start = previous_next
 
     async def bars(
         self,
@@ -118,16 +146,10 @@ class HistoryReader:
     ) -> Sequence[HistoryBar]:
         """Wait for a slot, then fetch once.
 
-        ValueError for a request with no words; HistoryPaced when the budget is
-        spent or the broker answers with a pacing violation.
+        ValueError for a request with no words; HistoryPaced when the broker
+        answers with a pacing violation. A full budget waits, it does not refuse.
         """
         words = wire_request(request)
-        now = self._clock.monotonic()
-        self._starts = [t for t in self._starts if now - t < BUDGET_WINDOW_S]
-        if len(self._starts) >= BUDGET_REQUESTS:
-            raise HistoryPaced(
-                f"{BUDGET_REQUESTS} history requests started within {BUDGET_WINDOW_S:.0f} s"
-            )
         await self._take_slot(request)
         try:
             return await fetch(words)
