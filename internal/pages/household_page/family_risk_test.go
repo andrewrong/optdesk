@@ -101,6 +101,25 @@ func TestFamilyRiskBlocks(t *testing.T) {
 		}
 	}
 
+	checkObligations(t, m)
+	checkCashAfter(t, m)
+	checkStress(t, m)
+	checkConcentration(t, m)
+	if !has(strs(m["lead_notes"]), "有 1 个账户现金不够") {
+		t.Errorf("lead_notes = %v", m["lead_notes"])
+	}
+	if has(strs(m["lead_notes"]), "不含") {
+		t.Errorf("no account is left out: %v", m["lead_notes"])
+	}
+	for _, g := range m["gaps"].([]any) {
+		if txt := g.(map[string]any)["text"].(string); strings.Contains(txt, "Obligations") && g.(map[string]any)["reason"] == "not_built" {
+			t.Errorf("not_built gap for a built block: %v", g)
+		}
+	}
+}
+
+func checkObligations(t *testing.T, m map[string]any) {
+	t.Helper()
 	ob := blockRows(m, "obligations")
 	if len(ob) != 2 || ob[0]["name"] != "AAA 卖出看跌" || rowText(ob[0]) != "$10,000.00" || ob[1]["name"] != "BBB 卖出看跌" || rowText(ob[1]) != "$5,000.00" {
 		t.Fatalf("obligations rows = %v", ob)
@@ -112,6 +131,10 @@ func TestFamilyRiskBlocks(t *testing.T) {
 		t.Errorf("obligations totals = %v", tt)
 	}
 
+}
+
+func checkCashAfter(t *testing.T, m map[string]any) {
+	t.Helper()
 	ca := blockRows(m, "cash_after")
 	if len(ca) != 2 || ca[0]["scope"] != "main" || rowText(ca[0]) != "$32,000.00" || ca[1]["scope"] != "wife" || rowText(ca[1]) != "−$4,000.00" {
 		t.Fatalf("cash_after rows = %v", ca)
@@ -126,6 +149,10 @@ func TestFamilyRiskBlocks(t *testing.T) {
 		t.Errorf("cash_after totals = %v", tt)
 	}
 
+}
+
+func checkStress(t *testing.T, m map[string]any) {
+	t.Helper()
 	st := blockRows(m, "stress")
 	if len(st) != 3 || rowText(st[0]) != "$15,000.00" || rowText(st[1]) != "$43,000.00" || rowText(st[2]) != "$28,000.00" || st[0]["share"] == nil {
 		t.Fatalf("stress rows = %v", st)
@@ -134,6 +161,10 @@ func TestFamilyRiskBlocks(t *testing.T) {
 		t.Errorf("stress meaning = %v", block(m, "stress")["meaning"])
 	}
 
+}
+
+func checkConcentration(t *testing.T, m map[string]any) {
+	t.Helper()
 	co := blockRows(m, "concentration")
 	if len(co) != 2 || co[0]["name"] != "AAA" || rowText(co[0]) != "$15,000.00" || co[0]["scope"] != "household" ||
 		co[0]["note"] != "股票 $5,000.00 + 指派 $10,000.00" || co[0]["share"] == nil || co[1]["name"] != "BBB" || rowText(co[1]) != "$5,000.00" {
@@ -141,17 +172,6 @@ func TestFamilyRiskBlocks(t *testing.T) {
 	}
 	if !strings.Contains(block(m, "concentration")["meaning"].(string), "现金结算") {
 		t.Errorf("concentration meaning lacks the index note")
-	}
-	if !has(strs(m["lead_notes"]), "有 1 个账户现金不够") {
-		t.Errorf("lead_notes = %v", m["lead_notes"])
-	}
-	if has(strs(m["lead_notes"]), "不含") {
-		t.Errorf("no account is left out: %v", m["lead_notes"])
-	}
-	for _, g := range m["gaps"].([]any) {
-		if txt := g.(map[string]any)["text"].(string); strings.Contains(txt, "Obligations") && g.(map[string]any)["reason"] == "not_built" {
-			t.Errorf("not_built gap for a built block: %v", g)
-		}
 	}
 }
 
