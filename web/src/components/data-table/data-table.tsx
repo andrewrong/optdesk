@@ -217,7 +217,7 @@ export function DataTable({
                         <SortIcon aria-hidden className={cn(!sorted && 'opacity-40')} />
                       </Button>
                     ) : (
-                      <span className="px-2.5 text-[0.8rem] font-medium">{label}</span>
+                      <span className="px-2.5 text-[0.8rem] font-medium normal-case">{label}</span>
                     )
                     return hint ? (
                       <TooltipProvider>
