@@ -16,7 +16,7 @@ import (
 
 // Run pulls the trades bars of keys in a window that ends at day and upserts every pulled bar by key
 // with writtenBy "bars_refresh:<day>". A day before the UTC date of the clock is a repair: the query
-// carries End = day and asks backfill_days, and neither the weekly adjusted_last step nor the deepening
+// carries End = day and asks the gap of the key, and neither the weekly adjusted_last step nor the deepening
 // step runs. One key's failure does not stop the others; the result carries the first failure, a
 // Retryable one before a Permanent one.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
@@ -118,9 +118,8 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 			return 0, 0, nil // past the cap: no request, no error
 		}
 		days = r.j.m.BackfillDays
-	}
-	if r.past || hasSource(stored, sourceYfinance) {
-		days = r.j.m.BackfillDays // a repair, or the recovery that replaces the yfinance rows
+	} else {
+		days = windowDays(stored, r.dayTime, r.j.m.DailyDays, r.j.m.BackfillDays) // only the gap, or from the oldest yfinance row
 	}
 	bars, rows, terr := r.collect(ctx, id, c, stored, days)
 	if terr != nil {
