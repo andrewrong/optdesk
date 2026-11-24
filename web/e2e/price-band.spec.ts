@@ -51,6 +51,6 @@ test('the price band draws its fair zone, its mark lines and both axis labels at
   const band = page.locator('[data-chart="price-band"]')
   await expect(band.locator('.recharts-reference-area')).toHaveCount(1)
   await expect(band.locator('.recharts-reference-line')).toHaveCount(payload.band.marks.length)
-  const ticks = band.locator('.recharts-xAxis .recharts-cartesian-axis-tick-value')
+  const ticks = band.locator('.recharts-cartesian-axis-tick-value')
   await expect(ticks).toHaveText([payload.band.min, payload.band.max])
 })

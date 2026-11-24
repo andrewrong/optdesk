@@ -28,6 +28,7 @@ export function PriceBand({ band }: { band: Band }) {
               dataKey="pos"
               domain={[0, 1]}
               ticks={[0, 1]}
+              interval={0}
               tickFormatter={(t: number) => (t === 0 ? band.min : band.max)}
               tickLine={false}
             />
