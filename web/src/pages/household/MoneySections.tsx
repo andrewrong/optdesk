@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/household_page'
+import { wrapText } from './wrapText'
 import type { Cell, Gap, MoneyBlock, Shown } from './householdTypes'
 
 const figure = (cell: Cell) => ({
@@ -103,16 +104,19 @@ const totalRows = (
   ]
 }
 
+const NARROW_THIRD = 'min-w-0 max-sm:[&_:is(th,td):nth-child(3)]:hidden'
+const NARROW_ALLOCATION = 'min-w-0 max-sm:[&_:is(th,td):nth-child(n+3)]:hidden'
+
 function MoneyTable({ block }: { block: MoneyBlock }) {
   if (block.rows.length === 0) return null
   const hasShare = block.rows.some((row) => row.share)
   // Column heads and the due column exist only where Python sent `columns` (the obligations block).
   const heads = block.columns
   const columns: Column[] = [
-    { id: 'name', label: heads?.[0] ?? block.heads?.[0] ?? '' },
+    { id: 'name', label: heads?.[0] ?? block.heads?.[0] ?? '', wrap: true },
     ...(heads
       ? [
-          { id: 'due', label: heads[1] },
+          { id: 'due', label: heads[1], wrap: true },
           { id: 'open_price', label: heads[2], align: 'right' as const },
         ]
       : []),
@@ -131,7 +135,13 @@ function MoneyTable({ block }: { block: MoneyBlock }) {
     share: share(row.share),
   }))
   const blank = [...(heads ? ['due', 'open_price'] : []), 'share']
-  return <DataTable columns={columns} rows={[...rows, ...totalRows(block, blank)]} />
+  // Below sm the obligations table drops its open price column and the others their share column (the third
+  // column of both), so the name and the amount keep the width; the payload still holds every value.
+  return (
+    <div className={NARROW_THIRD} data-narrow-table>
+      <DataTable columns={columns} rows={[...rows, ...totalRows(block, blank)]} />
+    </div>
+  )
 }
 
 // Monthly income: a month with items opens to them (Python's item text, the account tag, the amount) and to Python's own
@@ -158,9 +168,9 @@ export function IncomeMonths({ block }: { block: MoneyBlock }) {
                     <TableBody>
                       {row.items.map((item, i) => (
                         <TableRow key={`${item.part}-${i}`}>
-                          <TableCell>{item.part}</TableCell>
-                          <TableCell>{item.item}</TableCell>
-                          <TableCell>
+                          <TableCell className={wrapText}>{item.part}</TableCell>
+                          <TableCell className={wrapText}>{item.item}</TableCell>
+                          <TableCell className={wrapText}>
                             <Badge variant="secondary">{item.account.label}</Badge>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
@@ -214,7 +224,7 @@ export function MoneySection({ name, block }: { name: string; block: MoneyBlock 
 
 export function AllocationSection({ block }: { block: Payload['allocation'] }) {
   const columns: Column[] = [
-    { id: 'name', label: block.heads?.[0] ?? '' },
+    { id: 'name', label: block.heads?.[0] ?? '', wrap: true },
     { id: 'amount', label: block.heads?.[1] ?? '', align: 'right' },
     { id: 'share', label: block.heads?.[2] ?? '', align: 'right' },
     { id: 'target', label: block.heads?.[3] ?? '', align: 'right' },
@@ -230,10 +240,12 @@ export function AllocationSection({ block }: { block: Payload['allocation'] }) {
   return (
     <Block name="allocation" title={block.title} meaning={block.meaning} gap={block.gap}>
       {block.rows.length > 0 ? (
-        <DataTable
-          columns={columns}
-          rows={[...rows, ...totalRows(block, ['share', 'target', 'difference'])]}
-        />
+        <div className={NARROW_ALLOCATION} data-narrow-table>
+          <DataTable
+            columns={columns}
+            rows={[...rows, ...totalRows(block, ['share', 'target', 'difference'])]}
+          />
+        </div>
       ) : null}
     </Block>
   )

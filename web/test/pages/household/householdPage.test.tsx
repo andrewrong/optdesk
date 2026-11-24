@@ -460,3 +460,39 @@ it('draws no header link when risk_link and positions_link are absent', async ()
   expect(header.querySelector('a[href="/positions"]')).toBeNull()
   expect(header.querySelector('svg.lucide-chevron-right')).toBeNull()
 })
+
+it('wraps the label cells, keeps number cells on one line and hides the share column below sm (#3710)', async () => {
+  const payload = {
+    ...fixture('ok.json'),
+    views: [{ key: 'family', label: 'Family', href: '/household', current: true }],
+  }
+  await show(<HouseholdPage payload={payload} />)
+  const accounts = host.querySelector('[data-block=accounts] table')!
+  const cells = accounts.querySelectorAll('tbody tr:first-child td')
+  expect(cells[0]!.classList.contains('whitespace-normal')).toBe(true)
+  expect(cells[0]!.classList.contains('break-words')).toBe(true)
+  expect(cells[1]!.classList.contains('whitespace-nowrap')).toBe(true)
+  expect(cells[2]!.classList.contains('whitespace-nowrap')).toBe(true)
+  const concentration = host.querySelector('[data-block=concentration] table')!
+  const share = concentration.querySelectorAll('thead th')[1]!
+  expect(share.classList.contains('hidden')).toBe(true)
+  expect(share.classList.contains('sm:table-cell')).toBe(true)
+  const shareCell = concentration.querySelector('tbody tr:first-child td:nth-child(2)')!
+  expect(shareCell.classList.contains('hidden')).toBe(true)
+  expect(shareCell.classList.contains('sm:table-cell')).toBe(true)
+  const head = host.querySelector('header')!
+  expect(head.querySelector('nav')!.classList.contains('min-w-0')).toBe(true)
+  expect(head.querySelector('p')!.classList.contains('break-words')).toBe(true)
+})
+
+it('hides the secondary columns of the money tables below sm and keeps name and amount (#3710)', async () => {
+  await show(<HouseholdPage payload={fixture('ok.json')} />)
+  const narrow = (name: string) =>
+    host.querySelector(`[data-block=${name}] [data-narrow-table]`)!.className
+  expect(narrow('composition')).toContain('max-sm:[&_:is(th,td):nth-child(3)]:hidden')
+  expect(narrow('obligations')).toContain('max-sm:[&_:is(th,td):nth-child(3)]:hidden')
+  expect(narrow('allocation')).toContain('max-sm:[&_:is(th,td):nth-child(n+3)]:hidden')
+  // the payload text stays in the DOM: only the CSS hides it
+  const share = fixture('ok.json').composition.rows[0].share?.text
+  if (share) expect(host.querySelector('[data-block=composition]')!.textContent).toContain(share)
+})

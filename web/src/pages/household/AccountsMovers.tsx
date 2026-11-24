@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Block } from './MoneySections'
+import { wrapText } from './wrapText'
 import type { Accounts, MoverLine, Movers, Scope, Tag } from './householdTypes'
 
 // A scope heading: the label and the icon are Python's words and Lucide's; nothing is counted here.
@@ -28,6 +29,12 @@ export function ScopeHeading({ scope }: { scope: Scope }) {
 export function WhoseBadge({ tag }: { tag: Pick<Tag, 'whose'> }) {
   return <Badge variant="secondary">{tag.whose}</Badge>
 }
+
+// Below sm the account table keeps account, net value and cash; stock, option and data day columns show from sm.
+const accountHead = (i: number) =>
+  i < 3
+    ? `${wrapText}${i > 0 ? ' text-right' : ''}`
+    : `hidden sm:table-cell ${wrapText}${i < 5 ? ' text-right' : ''}`
 
 // The account table (issues #1588, #1680): the rows sit under their scope; a figure is the payload's cell text, a
 // missing one the payload's own gap words.
@@ -46,7 +53,7 @@ export function AccountsSection({ block, scopes }: { block: Accounts; scopes: Sc
               <TableHeader>
                 <TableRow>
                   {block.columns.map((head, i) => (
-                    <TableHead key={head} className={i > 0 && i < 5 ? 'text-right' : undefined}>
+                    <TableHead key={head} className={accountHead(i)}>
                       {head}
                     </TableHead>
                   ))}
@@ -55,14 +62,16 @@ export function AccountsSection({ block, scopes }: { block: Accounts; scopes: Sc
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.name}>
-                    <TableCell>
+                    <TableCell className={wrapText}>
                       {row.name} <WhoseBadge tag={row} />
                     </TableCell>
                     <TableCell className="text-right">{shown(row.net_liquidation)}</TableCell>
                     <TableCell className="text-right">{shown(row.cash)}</TableCell>
-                    <TableCell className="text-right">{shown(row.stock)}</TableCell>
-                    <TableCell className="text-right">{shown(row.options)}</TableCell>
-                    <TableCell>{row.data_day ?? ''}</TableCell>
+                    <TableCell className="hidden text-right sm:table-cell">{shown(row.stock)}</TableCell>
+                    <TableCell className="hidden text-right sm:table-cell">{shown(row.options)}</TableCell>
+                    <TableCell className={`hidden sm:table-cell ${wrapText}`}>
+                      {row.data_day ?? ''}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -90,7 +99,7 @@ function MoverTable({ title, heads, rows }: { title: string; heads: string[]; ro
         <TableHeader>
           <TableRow>
             {heads.map((head, i) => (
-              <TableHead key={head} className={i > 0 ? 'text-right' : undefined}>
+              <TableHead key={head} className={i > 0 ? `${wrapText} text-right` : wrapText}>
                 {head}
               </TableHead>
             ))}
@@ -99,7 +108,7 @@ function MoverTable({ title, heads, rows }: { title: string; heads: string[]; ro
         <TableBody>
           {rows.map((row) => (
             <TableRow key={`${row.scope}-${row.account.label}-${row.name}`}>
-              <TableCell>
+              <TableCell className={wrapText}>
                 {row.name} <WhoseBadge tag={row.account} />
                 <span className="ml-1 text-xs text-muted-foreground">{row.account.label}</span>
               </TableCell>
@@ -147,13 +156,13 @@ export function MoversSection({ block, scopes }: { block: Movers; scopes: Scope[
                 <TableBody>
                   {other.map((row) => (
                     <TableRow key={row.name}>
-                      <TableCell>{row.name}</TableCell>
+                      <TableCell className={wrapText}>{row.name}</TableCell>
                       <TableCell className="text-right">{row.amount.text}</TableCell>
                     </TableRow>
                   ))}
                   {total.map((cell, i) => (
                     <TableRow key={`total-${i}`}>
-                      <TableCell className="font-medium">{block.title}</TableCell>
+                      <TableCell className={`font-medium ${wrapText}`}>{block.title}</TableCell>
                       <TableCell className="text-right">{cell.text}</TableCell>
                     </TableRow>
                   ))}
