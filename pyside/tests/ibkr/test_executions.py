@@ -426,19 +426,22 @@ def test_read_counts_late_report_is_stored() -> None:
 
 @pytest.fixture
 def production_logging() -> Iterator[None]:
-    """configure_logging() for one test; the factory and the levels come back after."""
+    """configure_logging() for one test; the factory and the levels come back after.
+
+    The root handlers are left alone: configure_logging adds none when pytest has
+    already put its capture handlers there.
+    """
     root, library = logging.getLogger(), logging.getLogger("ib_async")
     factory = logging.getLogRecordFactory()
-    handlers = list(root.handlers)
-    levels = (root.level, library.level, library.propagate, list(library.handlers))
+    root_level, library_level = root.level, library.level
+    library_propagate, library_handlers = library.propagate, list(library.handlers)
     configure_logging()
     yield
     logging.setLogRecordFactory(factory)
-    root.handlers[:] = handlers
-    root.setLevel(levels[0])
-    library.setLevel(levels[1])
-    library.propagate = levels[2]
-    library.handlers[:] = levels[3]
+    root.setLevel(root_level)
+    library.setLevel(library_level)
+    library.propagate = library_propagate
+    library.handlers[:] = library_handlers
 
 
 @pytest.mark.usefixtures("production_logging")
