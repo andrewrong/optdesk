@@ -393,7 +393,7 @@ func TestListManifestHasItsOwnParser(t *testing.T) {
 	m, err := parseList(listManifest)
 	require.NoError(t, err)
 	require.Equal(t, 45, m.BudgetMinutes)
-	require.Equal(t, []windowTableDTE{{MinDTE: 21, MaxDTE: 45}}, m.Windows)
+	require.Equal(t, []windowTableDTE{{MinDTE: 15, MaxDTE: 45}}, m.Windows)
 	require.Equal(t, 0.5, m.MinRatio)
 	require.Equal(t, 60000, m.MaxNew)
 	require.Equal(t, []int{7, 30}, []int{m.stopH, m.stopM})
@@ -592,4 +592,28 @@ func TestPostconditionScopedToOwnNames(t *testing.T) {
 	j, err := newListPreopen(listManifest, rules, g.deps())
 	require.NoError(t, err)
 	require.False(t, g.present(j.(*listJob)), "the rows of the other names of the day are not read")
+}
+
+func TestListSummaryCarriesChainExpiryMaxAndWindowNames(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA", "BBB")
+	g.offs["AAA"] = []int{22, 60}
+	g.offs["BBB"] = []int{16, 29}
+	j := g.job(nil)
+	g.run(j)
+	line := g.logs[len(g.logs)-1]
+	require.Contains(t, line, "chain_expiry_max="+string(g.exp(60)))
+	require.Contains(t, line, "window_names=2")
+}
+
+func TestListSummaryChainExpiryMaxNoneWhenNoExpiry(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA")
+	g.lst.chains = func(string) ([]broker.Chain, error) {
+		return []broker.Chain{{Exchange: "SMART", TradingClass: "AAA", Multiplier: "100"}}, nil
+	}
+	g.run(g.job(nil))
+	line := g.logs[len(g.logs)-1]
+	require.Contains(t, line, "chain_expiry_max=none")
+	require.Contains(t, line, "window_names=0")
 }

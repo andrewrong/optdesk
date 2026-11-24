@@ -97,7 +97,7 @@ func DefaultPlanParams() PlanParams {
 	return PlanParams{
 		PutK: 1.4, CallK: 1.4, StoreK: 1.75, StoreDrop: 0.25,
 		Calls:  CallsHeld,
-		MinDTE: 20, MaxDTE: 45,
+		MinDTE: 15, MaxDTE: 45,
 		MinPuts: 6, MaxPerExpiry: 25, FarOTM: 0.03,
 		FiveDollarNames: []string{"SPY", "QQQ", "IWM"},
 		DeepPutsDrop:    0.15,
