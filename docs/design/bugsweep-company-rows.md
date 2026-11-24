@@ -39,9 +39,9 @@ No change to `docs/design/modules.md`, `arch.toml` or `.go-arch-lint.yml`: no ne
 | issue | module | order |
 |---|---|---|
 | pages-company-data-ids | pages | first |
-| ot-company-data-ids | ot | after pages-company-data-ids |
-| pages-home-no-issuer | pages | any |
-| ot-home-held-rows | ot | after pages-home-no-issuer |
+| ot-company-data-ids | ot | after 1 |
+| pages-home-no-issuer | pages | first |
+| ot-home-held-rows | ot | after 3 |
 
 ## Interface
 
@@ -67,7 +67,7 @@ Checked by CI: `ci-go` runs `go test ./internal/pages/company_data_page/...`.
 
 ### ot-company-data-ids
 
-Module: ot. Files: `cmd/ot/company_data_site.go`, `cmd/ot/company_data_site_test.go`. Order: after pages-company-data-ids.
+Module: ot. Files: `cmd/ot/company_data_site.go`, `cmd/ot/company_data_site_test.go`. Order: after 1.
 
 Result for the owner: after deploy, /company-data shows non-zero bar counts for the held and watched stocks.
 
@@ -80,7 +80,7 @@ Checked by CI: `ci-go` runs `go test ./cmd/ot/...`.
 
 ### pages-home-no-issuer
 
-Module: pages. Files: `internal/pages/home_companies/member.go`, `internal/pages/home_companies/earnings.go`, `internal/pages/home_companies/member_test.go`. Order: first (any).
+Module: pages. Files: `internal/pages/home_companies/member.go`, `internal/pages/home_companies/earnings.go`, `internal/pages/home_companies/member_test.go`. Order: first.
 
 Result for the owner: a held fund or a name without a CIK shows "earnings date: no issuer" in the home card instead of an earnings read of an empty key.
 
@@ -94,7 +94,7 @@ Checked by CI: `ci-go` runs `go test ./internal/pages/home_companies/...`.
 
 ### ot-home-held-rows
 
-Module: ot. Files: `cmd/ot/home_site.go`, `cmd/ot/home_site_test.go`. Order: after pages-home-no-issuer.
+Module: ot. Files: `cmd/ot/home_site.go`, `cmd/ot/home_site_test.go`. Order: after 3.
 
 Result for the owner: the home "持仓公司" count equals the held companies page (19, not 14); SGOV, JEPQ, VGT, GOOGL and IBKR are rows.
 
