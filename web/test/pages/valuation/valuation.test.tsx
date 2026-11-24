@@ -190,12 +190,20 @@ describe('company view', () => {
       expect(lines.textContent).toContain(g)
   })
 
+  it('TestNoCloseZoneText: a no_close zone note reads the Chinese sentence', async () => {
+    const payload = fixture('hkcn')
+    if (payload.lines) payload.lines.zone_note = 'no_close'
+    const el = await render(payload)
+    const lines = el.querySelector('[data-lines]') as HTMLElement
+    expect(lines.textContent).toContain('\u6ca1\u6709\u5b58\u6536\u76d8\u4ef7\uff0c\u6240\u4ee5\u6ca1\u6709\u4ef7\u683c\u533a\u95f4\u3002')
+  })
+
   it('TestHKCNNoZoneText: an empty zone prints the zone note and the prices', async () => {
     const payload = fixture('hkcn')
     if (payload.lines) payload.lines.zone_note = 'no_zone_market'
     const el = await render(payload)
     const lines = el.querySelector('[data-lines]') as HTMLElement
-    expect(lines.textContent).toContain('This market has no price source, so there is no zone.')
+    expect(lines.textContent).toContain('\u8fd9\u4e2a\u5e02\u573a\u6ca1\u6709\u4ef7\u683c\u6765\u6e90\uff0c\u6240\u4ee5\u6ca1\u6709\u4ef7\u683c\u533a\u95f4\u3002')
     expect(lines.querySelector('[data-zone]')).toBeNull()
     for (const price of ['56', '59 - 64', '72 - 88', '100', '120', '150']) expect(lines.textContent).toContain(price)
   })

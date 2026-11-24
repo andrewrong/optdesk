@@ -30,7 +30,7 @@ export function validateOptionDataPage(input: unknown): Result {
     ok: false,
     gap: {
       reason: 'invalid_payload',
-      text: 'The payload does not match its schema. Do not act on this card.',
+      text: '数据格式与约定不符，请不要据此操作。',
     },
     errors: [],
   }
