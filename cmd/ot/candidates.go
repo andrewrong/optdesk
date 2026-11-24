@@ -74,6 +74,7 @@ func (f jobFactory) optionCandidates() (contracts.Job, error) {
 		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
 		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases, Candidates: f.candidates,
 		SessionDays: f.compute.SessionDays, Open: f.candOpen,
+		Quotes:   f.snap,
 		Strategy: f.shadow.strategy, Results: f.shadow.results,
 	}
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
