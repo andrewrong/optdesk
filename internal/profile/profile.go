@@ -9,6 +9,7 @@ import (
 var logFields = []string{
 	"time", "level", "msg", "component", "job", "dataset", "run_id", "attempt",
 	"status", "rows", "duration_ms", "err", "profile", "version",
+	"absent", "market_data_type",
 }
 
 // Load implements LoadFunc. OT_HOME unset selects the demo profile and no real value
