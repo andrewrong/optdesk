@@ -6,6 +6,19 @@ import type { Payload } from '@/types/valuation_page'
 
 type Band = NonNullable<Payload['band']>
 
+// Page labels for the stored mark names; a name not in the table prints as stored. Chart logic reads the stored names.
+const MARK_LABEL: Record<string, string> = {
+  heavy: 'Heavy',
+  buy_low: 'Buy low',
+  buy_high: 'Buy high',
+  fair_low: 'Fair low',
+  fair_high: 'Fair high',
+  trim: 'Trim',
+  clear: 'Clear',
+  close: 'Close',
+  core: 'Core',
+}
+
 const CONFIG: ChartConfig = {}
 
 // recharts 3 draws a ReferenceLine or ReferenceArea only when the chart has a graphical series. The series is a
@@ -58,7 +71,7 @@ export function PriceBand({ band }: { band: Band }) {
       <ul className="flex flex-wrap gap-x-4 text-sm text-muted-foreground">
         {band.marks.map((m) => (
           <li key={m.name}>
-            {m.name} {m.value}
+            {MARK_LABEL[m.name] ?? m.name} {m.value}
           </li>
         ))}
       </ul>
