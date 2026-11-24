@@ -12,6 +12,7 @@
     "underlyings": ["rows", "history"],
     "job_console": ["jobs", "requests"],
     "flex_import": ["files", "recent"],
-    "held_family_page": ["rows"]
+    "held_family_page": ["rows"],
+    "spread_legs_page": ["groups"]
   }
 }

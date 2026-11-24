@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/macroevent"
 )
 
@@ -15,6 +16,8 @@ import (
 const (
 	// eventWindowDays is the window of the page: the page day through the page day plus this many days.
 	eventWindowDays = 60
+	// eventPastDays is how many days before the page day the table still lists events (macro-event-values Decision 10).
+	eventPastDays = 7
 	// maxEvents is the maxItems of the events array in the schema.
 	maxEvents = 20
 	// staleFetchDays: a FRED kind whose newest run day is more than this many days old is stale.
@@ -65,13 +68,17 @@ type eventRow struct {
 	Date     string `json:"date"`
 	WhenText string `json:"when_text"`
 	NameText string `json:"name_text"`
-	Previous gap    `json:"previous"`
+	// Previous is the text of the previous figure, "-" for a kind with no figure, or a gap.
+	Previous any `json:"previous"`
+	// Written only with a Liquidity function (page.macro_page.v2): the figures of the previous and the actual.
+	PreviousFigure any `json:"previous_figure,omitempty"`
+	Actual         any `json:"actual,omitempty"`
 	// Written only with a Window function.
 	DaysTo   *int  `json:"days_to,omitempty"`
 	InWindow *bool `json:"in_window,omitempty"`
 }
 
-func newEventRow(e macroevent.Event) eventRow {
+func newEventRow(e macroevent.Event, cells eventCells, figures bool) eventRow {
 	c, ok := conventionOf[e.Kind]
 	if !ok {
 		c = eventConvention{name: e.Kind, when: "date only"}
@@ -83,20 +90,20 @@ func newEventRow(e macroevent.Event) eventRow {
 	if e.Source == "file" && e.RunDay != "" {
 		when += ", read " + string(e.RunDay)
 	}
-	return eventRow{
-		Date:     string(e.Date),
-		WhenText: when,
-		NameText: c.name,
-		Previous: gap{Reason: "not_built", Text: "previous value: not built"},
+	row := eventRow{Date: string(e.Date), WhenText: when, NameText: c.name, Previous: cells.Previous}
+	if figures {
+		row.PreviousFigure, row.Actual = cells.PreviousFigure, cells.Actual
 	}
+	return row
 }
 
 // eventBlock reads the stored events of the window and the gaps that say what is missing from them. An error of
 // the reader is an error, never a gap.
-func eventBlock(ctx context.Context, rd macroevent.Reader, d time.Time) ([]eventRow, []macroevent.Event, []gap, error) {
+func eventBlock(ctx context.Context, r store.SeriesReader, rd macroevent.Reader, d time.Time, figures bool) ([]eventRow, []macroevent.Event, []gap, error) {
 	day := contracts.Day(d.Format(dayLayout))
 	end := d.AddDate(0, 0, eventWindowDays)
-	events, err := rd.Between(ctx, day, contracts.Day(end.Format(dayLayout)))
+	from := contracts.Day(d.AddDate(0, 0, -eventPastDays).Format(dayLayout))
+	events, err := rd.Between(ctx, from, contracts.Day(end.Format(dayLayout)))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("macro_page: read events: %w", err)
 	}
@@ -109,12 +116,17 @@ func eventBlock(ctx context.Context, rd macroevent.Reader, d time.Time) ([]event
 		return nil, nil, nil, err
 	}
 
+	shown := events
+	if len(shown) > maxEvents {
+		shown = shown[:maxEvents]
+	}
+	cells, err := eventValues(ctx, r, rd, shown, d)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	rows := make([]eventRow, 0, maxEvents)
-	for i, e := range events {
-		if i == maxEvents {
-			break
-		}
-		rows = append(rows, newEventRow(e))
+	for i, e := range shown {
+		rows = append(rows, newEventRow(e, cells[i], figures))
 	}
 	var gaps []gap
 	add := func(reason, prefix string, items []string) {
@@ -213,11 +225,11 @@ func mergedLine(prefix string, items []string) string {
 // withEvents turns the page to its events form when c.Events is set: the title, the sentence, the rows, and
 // the old "Event calendar: no data yet" gap (the last of vm.Gaps) dropped. It returns the event gaps, which the
 // caller appends after the ease gap is settled. With no reader it changes nothing.
-func withEvents(ctx context.Context, c Config, d time.Time, vm *viewModel) ([]gap, error) {
+func withEvents(ctx context.Context, r store.SeriesReader, c Config, d time.Time, vm *viewModel) ([]gap, error) {
 	if c.Events == nil {
 		return nil, nil
 	}
-	rows, events, gaps, err := eventBlock(ctx, c.Events, d)
+	rows, events, gaps, err := eventBlock(ctx, r, c.Events, d, c.Liquidity != nil)
 	if err != nil {
 		return nil, err
 	}

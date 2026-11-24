@@ -183,6 +183,14 @@ func dataHealthZoneCarried(zone string, r jobRow) bool {
 	return zone == r.Zone || (r.Zone == "" && zone == dataHealthTimeSlots[r.ID].zone)
 }
 
+// pageKindOf is the kind the page gives the job of a jobTable row.
+func pageKindOf(r jobRow) string {
+	if slices.Contains(dataHealthAnyDayJobs, r.ID) {
+		return data_health_page.KindAnyDay
+	}
+	return r.Kind
+}
+
 func TestEveryJobHasRowOrReason(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
@@ -191,6 +199,7 @@ func TestEveryJobHasRowOrReason(t *testing.T) {
 	}
 	for _, r := range jobTable {
 		j := dataHealthJobOf(t, jobs, r.ID)
+		wantKind := pageKindOf(r)
 		reason, noLedger := dataHealthNoLedger[r.ID]
 		switch {
 		case len(j.Datasets) == 0 && !noLedger:
@@ -198,7 +207,7 @@ func TestEveryJobHasRowOrReason(t *testing.T) {
 		case noLedger && (reason == "" || len(j.Datasets) > 0):
 			t.Errorf("%s: reason %q, datasets %v", r.ID, reason, j.Datasets)
 		}
-		if j.Kind != r.Kind || !dataHealthZoneCarried(j.Zone, r) || j.WhyText != r.Text {
+		if j.Kind != wantKind || !dataHealthZoneCarried(j.Zone, r) || j.WhyText != r.Text {
 			t.Errorf("%s: row not carried: %+v", r.ID, j)
 		}
 	}
@@ -376,5 +385,27 @@ func TestDataHealthOptionEodSlots(t *testing.T) {
 		if j.DueAt != want.dueAt || j.Zone != want.zone {
 			t.Errorf("%s DueAt %q zone %q, want %q in %q", id, j.DueAt, j.Zone, want.dueAt, want.zone)
 		}
+	}
+}
+
+func TestDataHealthJobsIvHistoryAnyDay(t *testing.T) {
+	t.Parallel()
+	var job *data_health_page.Job
+	for _, j := range dataHealthJobs() {
+		if j.ID == "iv_history" {
+			job = &j
+		}
+	}
+	if job == nil {
+		t.Fatal("no iv_history job")
+	}
+	if job.Kind != data_health_page.KindAnyDay || job.PresentOnly {
+		t.Fatalf("kind %q presentOnly %v", job.Kind, job.PresentOnly)
+	}
+	cells := []data_health_page.Cell{{Day: "2026-11-02", State: "missing"}}
+	form := &data_health_page.Form{PostPath: "/x", Expires: "1", MAC: "m"}
+	data_health_page.Apply(cells, job, form, time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC), "2026-11-06")
+	if cells[0].Repair != data_health_page.RepairButton {
+		t.Fatalf("repair %q, want button", cells[0].Repair)
 	}
 }

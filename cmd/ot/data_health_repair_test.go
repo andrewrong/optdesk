@@ -285,7 +285,11 @@ func TestRepairReachesEveryJobOfDataset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantRequests(t, fp, "compute_figures", "2026-11-04")
+	// iv_history is any-day on the page, so its past day is queued too.
+	if len(fp.enqueued) != 2 || fp.enqueued[0].JobID != "compute_figures" || fp.enqueued[1].JobID != "iv_history" ||
+		fp.enqueued[0].Day != "2026-11-04" || fp.enqueued[1].Day != "2026-11-04" {
+		t.Fatalf("enqueued %v, want compute_figures and iv_history for 2026-11-04", fp.enqueued)
+	}
 }
 
 func TestRepairGapsForStopsAtCap(t *testing.T) {

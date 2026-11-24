@@ -324,6 +324,14 @@ func TestHouseholdPageConfigGetsStatementAliases(t *testing.T) {
 	}
 }
 
+func TestHouseholdConfigHasFamilyRisk(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	if householdConfig(a, siteReaders{}).FamilyRisk == nil {
+		t.Fatal("householdConfig has no FamilyRisk")
+	}
+}
+
 func TestHouseholdConfigHasFamilyTrend(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")

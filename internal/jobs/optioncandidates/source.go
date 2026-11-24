@@ -47,12 +47,20 @@ type chainResult struct {
 	fallback bool            // the eod path of a run that holds an open reader
 	oiPrior  map[string]bool // instrument ids whose open interest came from an earlier eod session
 	unusable bool            // a job without eod fallback found no usable open chain; quotes are what the open held
+	earlier  bool            // the chain is from an earlier session than the run day
+	spotMark string          // "spot_quote:<day>" or "spot_chain"; empty when the job holds no quote reader
 }
 
 // addMarks appends the marks the source owes to the row.
 func (r chainResult) addMarks(c *compute.Candidate) {
 	if r.fallback {
 		c.Marks = append(c.Marks, markEodFallback)
+	}
+	if r.earlier {
+		c.Marks = append(c.Marks, markChainDayPrefix+string(r.chainDay))
+	}
+	if r.spotMark != "" {
+		c.Marks = append(c.Marks, r.spotMark)
 	}
 	if c.Right == "P" && r.oiPrior[c.InstrumentID] {
 		c.Marks = append(c.Marks, markOIPriorSession)
@@ -121,8 +129,47 @@ func (s *sourceRun) finish() []string {
 	return s.lines
 }
 
-// chain is the one function that gives the chain of an underlying, for puts only or for both rights.
+// chain is the one function that gives the chain of an underlying, for puts only or for both rights. With a quote
+// reader its spot is the newer of the newest stored stock quote (spot_quote mark) and the price of today's open
+// rows (spot_open mark) or, with neither, the chain price (spot_chain). Without a reader the open price of today
+// is the spot when there is one.
 func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.WatchEntry, calls bool) (chainResult, error) {
+	res, err := s.chainOf(ctx, ul, entry, calls)
+	if err != nil {
+		return res, err
+	}
+	if res.unusable {
+		return res, nil
+	}
+	openPrice, openAt, openFound := openSpot(s.open[int(ul.id)], s.day)
+	openMark := markSpotOpenPrefix + string(s.day)
+	if s.j.st.Quotes == nil {
+		// no quote reader: the open price of today when there is one, else the chain price with no new mark
+		if openFound {
+			res.spot, res.spotMark = openPrice, openMark
+		}
+		return res, nil
+	}
+	res.earlier = res.chainDay < s.day
+	price, d, quoteAt, found, qerr := spotFromQuote(ctx, s.j.st.Quotes, ul.id, s.day, s.j.clk.Now().UTC())
+	if qerr != nil {
+		s.j.logger().Warn("quote_snapshot read failed, the spot is the chain price",
+			"component", "jobs", "status", "degraded", "job", s.j.m.ID, "err", qerr)
+	}
+	quoteFound := qerr == nil && found
+	switch {
+	case openFound && (!quoteFound || openAt.After(quoteAt)):
+		res.spot, res.spotMark = openPrice, openMark
+	case quoteFound:
+		res.spot, res.spotMark = price, markSpotQuotePrefix+string(d)
+	default:
+		res.spotMark = markSpotChain
+	}
+	return res, nil
+}
+
+// chainOf reads the chain of an underlying from the open or the eod rows.
+func (s *sourceRun) chainOf(ctx context.Context, ul underlyingRef, entry jobs.WatchEntry, calls bool) (chainResult, error) {
 	if rows := s.open[int(ul.id)]; len(rows) > 0 {
 		res, usable, err := s.fromOpen(ctx, ul, entry, calls, rows)
 		if err != nil {

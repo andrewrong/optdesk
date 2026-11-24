@@ -546,3 +546,27 @@ func TestTierNotesNoEnglish(t *testing.T) {
 		}
 	}
 }
+
+func TestCompanyCardSpotNote(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct{ marks, want string }{
+		"quote of the rows day": {`["spot_quote:2026-11-09"]`, "存档 11-09"},
+		"quote of earlier day":  {`["eod_fallback","chain_day:2026-11-06","spot_quote:2026-11-06"]`, "11-06 报价"},
+		"chain price":           {`["eod_fallback","chain_day:2026-11-06","spot_chain"]`, "期权链价 11-06"},
+		"chain price open":      {`["spot_chain"]`, "期权链价 11-09"},
+		"no spot mark":          {`[]`, "存档 11-09"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+			rows[0].Marks = tc.marks
+			res := resultOf(fitsVerdict(keyOf(rows, 0)))
+			res.Companies = []optiontierapi.CompanyCount{{Company: "7", Fits: 1}}
+			cv := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: res})).Companies[0]
+			if cv.SpotNote == nil || *cv.SpotNote != tc.want {
+				t.Errorf("note = %v, want %q", cv.SpotNote, tc.want)
+			}
+		})
+	}
+}

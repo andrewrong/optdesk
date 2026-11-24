@@ -114,7 +114,7 @@ func rateRow(key, label, id string, obs []obsPoint, hint string) leadRow {
 // nextEventRow is the nearest stored event of the big kinds, with the days to it and the window words.
 func nextEventRow(events []macroevent.Event, d time.Time, days int, stored bool) leadRow {
 	const label = "Next big event"
-	hint := hintNextEvent + hintWindow
+	hint := hintNextEvent + hintWindow + hintEventValues
 	var best *macroevent.Event
 	var bestDay time.Time
 	for i, e := range events {
