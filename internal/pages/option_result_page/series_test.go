@@ -1,6 +1,7 @@
 package option_result_page_test
 
 import (
+	"github.com/andrewrong/optdesk/internal/compute"
 	"strings"
 	"testing"
 )
@@ -71,11 +72,26 @@ func TestEndingsTextIsMoney(t *testing.T) {
 	c, _ := testConfig(t, "result_ok.json")
 	s := sectionsOf(buildMap(t, c, "main"))[0]
 	p := points(seriesOf(s, "endings"))
-	if p[2]["text"] != "1 trade(s), realized −$50.50" || p[0]["text"] != "2 trade(s), realized $60.00" {
+	if p[2]["text"] != "1 笔，realized −$50.50" || p[0]["text"] != "2 笔，realized $60.00" {
 		t.Errorf("endings points = %v", p)
 	}
 	lines := strs(s["endings_lines"])
-	if len(lines) != 3 || lines[2] != "assigned: 1 trade(s), realized −$50.50" {
+	if len(lines) != 3 || lines[2] != "assigned: 1 笔，realized −$50.50" {
 		t.Errorf("lines = %v", lines)
+	}
+}
+
+func TestEmptySeriesTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	c, _ := testConfig(t, "result_ok.json")
+	f := loadFixture(t, "result_ok.json")
+	f.Summary.Sections[0].Months = nil
+	f.Summary.Sections[0].Endings = nil
+	c.Results = func() compute.OptionResults { return fakeResults{sum: f.Summary, in: &compute.ResultInput{}} }
+	s := sectionsOf(buildMap(t, c, "main"))[0]
+	for key, want := range map[string]string{"months": "没有已平仓的月份", "running": "没有累计结果", "endings": "没有已结束的头寸"} {
+		if got := s[key].(map[string]any)["empty"]; got != want {
+			t.Errorf("%s empty = %v, want %q", key, got, want)
+		}
 	}
 }

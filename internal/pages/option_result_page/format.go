@@ -13,12 +13,11 @@ import (
 
 // Texts of the page. Option terms stay English, other text is Chinese.
 const (
-	pageTitle   = "Option result"
-	nothingText = "No closed option positions"
-	noReader    = "No reader: cannot show"
-	gapText     = "—"
-	dayLayout   = "2006-01-02"
-	timeLayout  = "2006-01-02T15:04:05-07:00"
+	pageTitle  = "Option result"
+	noReader   = "No reader: cannot show" // stays English: cmd/ot pins it (issue #3781, left out d)
+	gapText    = "—"
+	dayLayout  = "2006-01-02"
+	timeLayout = "2006-01-02T15:04:05-07:00"
 )
 
 var (

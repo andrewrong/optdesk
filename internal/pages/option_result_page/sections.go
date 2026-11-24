@@ -45,9 +45,9 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 	}
 	out := section{
 		Key: s.Side + "_" + strings.ToLower(s.Currency), Heading: heading,
-		Lead:  heading + ", account " + alias + ": closed options, each currency listed on its own, not added together",
+		Lead:  heading + leadMid + alias + leadEnd,
 		Scope: alias, FigureNotes: []string{}, EndingsTitle: "Endings",
-		BooksTitle: "Reconciliation with the broker", BooksNote: "Broker figures are taken from Flex fifoPnlRealized, compared only, not in any figure",
+		BooksTitle: "Reconciliation with the broker", BooksNote: booksNote,
 	}
 	kept := gapText
 	if s.KeptShare != "" {
@@ -57,10 +57,10 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 		}
 		kept = p
 	} else {
-		out.FigureNotes = append(out.FigureNotes, "Retained ratio has no value: no sell-to-open premium to divide by")
+		out.FigureNotes = append(out.FigureNotes, noKeptNote)
 	}
 	if s.Realized == "" || s.Premium == "" {
-		out.FigureNotes = append(out.FigureNotes, "Realized or premium has no value")
+		out.FigureNotes = append(out.FigureNotes, noRealizedNote)
 	}
 	out.Figures = []pair{
 		{"Realized", orGap(moneyText(s.Realized, s.Currency))}, {"Premium", orGap(moneyText(s.Premium, s.Currency))}, {"Retained ratio", kept},
@@ -75,13 +75,13 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 	}
 	if count(ends, "assigned") != "0" {
 		prem := orGap(moneyText(s.AssignedPremium, s.Currency))
-		t := "Assigned premium " + prem + ", shares " + orGap(s.AssignedShares) + "; cost is still the strike, premium not deducted"
+		t := assignPremium + prem + assignShares + orGap(s.AssignedShares) + assignEnd
 		out.Assignment = &t
 	}
 	r := s.Reliability
 	out.BooksLines = []string{
-		"Same " + itoa(r.Equal) + " trade(s), differ " + itoa(r.Differ) + " trade(s)",
-		"No broker figure " + itoa(r.NoBroker) + " trade(s)",
+		sameBooks + itoa(r.Equal) + tradeUnit + differBooks + itoa(r.Differ) + tradeUnit,
+		noBrokerBooks + itoa(r.NoBroker) + tradeUnit,
 	}
 	return out, nil
 }

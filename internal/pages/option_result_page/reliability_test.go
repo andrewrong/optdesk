@@ -21,7 +21,7 @@ func TestReliabilityLines(t *testing.T) {
 	if !strings.Contains(lines[0], "3") || !strings.Contains(lines[1], "1") {
 		t.Errorf("lines = %v", lines)
 	}
-	if l := strs(rel[1].(map[string]any)["lines"]); !strings.Contains(l[2], "1 trade(s)") {
+	if l := strs(rel[1].(map[string]any)["lines"]); !strings.Contains(l[2], "1 笔") {
 		t.Errorf("no broker line = %q", l[2])
 	}
 }
@@ -49,7 +49,7 @@ func TestIdListsOnceForThreeSections(t *testing.T) {
 		}
 	}
 	acc := strs(rel[3].(map[string]any)["lines"])
-	if !strings.Contains(acc[1], "T9") || !strings.Contains(acc[2], "T7, T8") || !strings.Contains(acc[2], "not in any figure") {
+	if !strings.Contains(acc[1], "T9") || !strings.Contains(acc[2], "T7, T8") || !strings.Contains(acc[2], "不计入任何数字") {
 		t.Errorf("account block = %v", acc)
 	}
 	if !strings.Contains(acc[0], "Same") && !strings.Contains(acc[0], "一致") {

@@ -1,6 +1,7 @@
 package option_result_page_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -166,9 +167,48 @@ func TestSectionLeadNamesTheAccount(t *testing.T) {
 		t.Fatal("no sections")
 	}
 	for _, s := range secs {
-		want := s["heading"].(string) + ", account mine: closed options, each currency listed on its own, not added together"
+		want := s["heading"].(string) + "，账户 mine：已平仓的期权，各币种分别列出，不相加"
 		if got := s["lead"].(string); got != want {
 			t.Errorf("lead = %q, want %q", got, want)
+		}
+	}
+}
+
+var hanPattern = regexp.MustCompile(`\p{Han}`)
+
+func TestResultSentencesAreChinese(t *testing.T) {
+	t.Parallel()
+	c, _ := testConfig(t, "result_ok.json")
+	f := loadFixture(t, "result_ok.json")
+	f.Summary.Sections[0].KeptShare = ""
+	c.Results = func() compute.OptionResults { return fakeResults{sum: f.Summary, in: &compute.ResultInput{}} }
+	m := buildMap(t, c, "main")
+	s := sectionsOf(m)[0]
+	if s["assignment"] == nil {
+		t.Fatal("no assignment")
+	}
+	texts := []string{s["lead"].(string), s["books_note"].(string), s["assignment"].(string)}
+	texts = append(texts, strs(s["figure_notes"])...)
+	texts = append(texts, strs(s["books_lines"])...)
+	if len(strs(s["figure_notes"])) == 0 {
+		t.Fatal("no figure note")
+	}
+	rel := m["reliability"].([]any)
+	texts = append(texts, strs(rel[0].(map[string]any)["lines"])...)
+	acc := strs(rel[len(rel)-1].(map[string]any)["lines"])
+	texts = append(texts, acc[1], acc[2])
+	old := []string{
+		"closed options, each", "Broker figures are taken", "has no value:", "Assigned premium", "trade(s)",
+		"Unpaired closes", "Cancels or corrections", "Same as broker", "No broker figure",
+	}
+	for _, x := range texts {
+		if !hanPattern.MatchString(x) {
+			t.Errorf("%q holds no Chinese character", x)
+		}
+		for _, o := range old {
+			if strings.Contains(x, o) {
+				t.Errorf("%q holds old sentence %q", x, o)
+			}
 		}
 	}
 }

@@ -216,7 +216,7 @@ func TestNothingWhenNoClosed(t *testing.T) {
 	t.Parallel()
 	c, _ := testConfig(t, "result_empty.json")
 	m := buildMap(t, c, "main")
-	if m["nothing"] != "No closed option positions" || len(m["sections"].([]any)) != 0 || len(m["reliability"].([]any)) != 0 || m["run_status"] != "ok" {
+	if m["nothing"] != "没有已平仓的期权头寸" || len(m["sections"].([]any)) != 0 || len(m["reliability"].([]any)) != 0 || m["run_status"] != "ok" {
 		t.Errorf("page = %v", m)
 	}
 	c, _ = testConfig(t, "result_ok.json")
