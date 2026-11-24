@@ -2,7 +2,7 @@
 // default a series is only today's point (the last of its payload rotation) large with the fund's symbol beside it;
 // the fund the user clicked also gets its earlier points (faded toward the old end), the line through them and an
 // arrowhead on the last segment; one fund at a time. A Gap rotation is not drawn. The four quadrants are
-// named by fixed words at the plot's corners by id; the producer's quadrant sentences are not shown.
+// named at the plot's corners by the fixed quadrant name, and listed in full under the map by id; the producer's quadrant sentences are not shown.
 import { useState } from 'react'
 import {
   CartesianGrid,
@@ -251,7 +251,7 @@ export function RotationMap({ block }: { block: Sectors }) {
                 ifOverflow="extendDomain"
                 fill="none"
                 stroke="none"
-                label={{ value: QUADRANT[q.id].word, position: QUADRANT[q.id].position, fontSize: 12, fill: 'var(--muted-foreground)' }}
+                label={{ value: QUADRANT[q.id].word.split(' — ')[0], position: QUADRANT[q.id].position, fontSize: 12, fill: 'var(--muted-foreground)' }}
               />
             ))}
             <ReferenceLine x={0} stroke="var(--foreground)" />
@@ -283,6 +283,11 @@ export function RotationMap({ block }: { block: Sectors }) {
           </ScatterChart>
         </ChartContainer>
       </div>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground" data-quadrant-notes>
+        {axes.quadrants.map((q) => (
+          <li key={q.id}>{QUADRANT[q.id].word}</li>
+        ))}
+      </ul>
     </section>
   )
 }
