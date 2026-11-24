@@ -219,7 +219,7 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 			{Reason: "no_data", Text: "Event calendar: no data yet"},
 		},
 	}
-	eventGaps, err := withEvents(ctx, c, d, &vm)
+	eventGaps, err := withEvents(ctx, r, c, d, &vm)
 	if err != nil {
 		return nil, err
 	}
