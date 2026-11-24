@@ -24,6 +24,11 @@ const (
 	listSeparator = ";"
 
 	markEodFallback = "eod_fallback"
+
+	markSpotQuotePrefix = "spot_quote:"
+	markSpotChain       = "spot_chain"
+	markChainDayPrefix  = "chain_day:"
+
 	countsLineOpen  = "Open chain: "
 	countsLineClose = " names, last close: "
 	countsLineTail  = " names. "
