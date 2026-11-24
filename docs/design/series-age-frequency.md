@@ -10,7 +10,7 @@ Source: bug sweep 2026-11-24 entry 6 (rates row `series_age` 50 percent failed; 
 
 - /base-data 的"利率"一行："序列过期"只在序列比下面的天数更旧时才算：日频 4 天、周频 14 天、月频 100 天、季频 220 天。月度和季度数据本来就晚一两个月才发布，不再每月被算成过期。
 - /macro 的"指标"卡：月频序列（日本 10 年国债）超过 100 天才标"Late"，周频序列超过 14 天才标"Late"（原来 45 和 10）。日频仍是 6 天（一个周末加一个节假日），不变。
-- 两页的说明文字写出这几个天数。
+- /base-data 的说明文字写出这几个天数；/macro 的说明文字不变。
 
 ## Today
 
@@ -24,7 +24,7 @@ Source: bug sweep 2026-11-24 entry 6 (rates row `series_age` 50 percent failed; 
 1. Limits in days from the page day: daily 4, weekly 14, monthly 100, quarterly 220. Reason: a monthly figure is dated the first day of its month and published up to about 35 days after the month ends, a quarterly one up to about 130 days after the quarter starts plus the revision lag; both are trial and are tuned on observed rows.
 2. A new migration (the next number after the newest file of `migrations`) replaces the view with the body of 0058, changing only the limits of the `series_age` block. A series with no frequency is still not counted.
 3. The macro page uses the same weekly and monthly numbers (14 and 100). Its daily limit stays 6, because the macro card judges one published day, not a count of series. The macro page has no quarterly series in its card, so no quarterly constant is added.
-4. Both pages state the numbers in Chinese next to the rule or the label.
+4. /base-data states the numbers in Chinese next to the rule; the Chinese texts of /macro do not change.
 
 ## Supersedes
 
