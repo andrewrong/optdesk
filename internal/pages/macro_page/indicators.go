@@ -15,9 +15,9 @@ import (
 
 const (
 	// monthlyFreshnessDays is the freshness limit of a monthly series.
-	monthlyFreshnessDays = 45
+	monthlyFreshnessDays = 100
 	// weeklyFreshnessDays is the freshness limit of a weekly series: published on the Wednesday after the week's Friday.
-	weeklyFreshnessDays = 10
+	weeklyFreshnessDays = 14
 	// changeBack is the number of observations a daily change looks back.
 	changeBack = 5
 	// groupLookbackDays is how far before the page day a grouped series is read: a monthly series needs two points.
