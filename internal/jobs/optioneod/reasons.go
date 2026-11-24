@@ -16,6 +16,7 @@ import (
 const (
 	codeFieldMissing   = "field_missing"
 	codeFieldsComplete = "fields_complete"
+	codeNoConID        = "no_con_id"
 	scopeQuotes        = "quotes"
 	scopeFields        = "fields"
 	causeUnreported    = "unreported"
@@ -47,7 +48,14 @@ type tally struct {
 	usable  int                       // row status 1
 	fields  map[string]map[string]int // column name -> cause -> count
 	noQuote map[string]int            // cause -> count of quotes of row status 2 or 5
+	skipped []skippedContract         // contracts left out because the instrument store refused them
 }
+
+// skippedContract is a contract left out of the chain: its osi and the text of the refusal.
+type skippedContract struct{ osi, text string }
+
+// skip records a contract the instrument store refused.
+func (t *tally) skip(osi, text string) { t.skipped = append(t.skipped, skippedContract{osi, text}) }
 
 // add counts q, whose stored row has status rowStatus. A field cause is the entry of q.Missing, else unreported;
 // the status of the quote is read only to name why a quote without content has none.
@@ -155,6 +163,11 @@ func (t *tally) reasons(day contracts.Day, dataset, subject string, at time.Time
 	}
 	if t.usable > 0 && len(t.fields) == 0 {
 		row(scopeFields, codeFieldsComplete, fmt.Sprintf("no missing field in %d usable quotes", t.usable))
+	}
+	if t.total > 0 {
+		for _, s := range t.skipped {
+			row("contract:"+s.osi, codeNoConID, fmt.Sprintf("%s: instrument not bound: %s", s.osi, s.text))
+		}
 	}
 	return rows
 }

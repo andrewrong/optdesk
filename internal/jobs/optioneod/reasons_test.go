@@ -243,3 +243,26 @@ func TestRunWriterErrorDoesNotFailRun(t *testing.T) {
 		t.Fatalf("without writer %+v", res)
 	}
 }
+
+func TestTallyReasonsSkippedContract(t *testing.T) {
+	t.Parallel()
+	at := time.Date(2026, 11, 24, 21, 0, 0, 0, time.UTC)
+	var tl tally
+	tl.add(fullQuote(), statusOK)
+	tl.skip("COST  261204C00720000", "refused")
+	var got []runview.Reason
+	for _, r := range tl.reasons("2026-11-24", "obs.option_eod", "COST", at) {
+		if r.Code == codeNoConID {
+			got = append(got, r)
+		}
+	}
+	if len(got) != 1 || got[0].Scope != "contract:COST  261204C00720000" ||
+		got[0].Detail != "COST  261204C00720000: instrument not bound: refused" {
+		t.Fatalf("rows %+v", got)
+	}
+	var none tally
+	none.skip("COST  261204C00720000", "refused")
+	if rows := none.reasons("2026-11-24", "obs.option_eod", "COST", at); len(rows) != 0 {
+		t.Fatalf("rows %+v", rows)
+	}
+}
