@@ -113,6 +113,17 @@ describe('option data page', () => {
     }
   })
 
+  it('an invalid payload reads the Chinese sentence under the invalid_payload reason', () => {
+    const input = fixture('choices')
+    input.underlyings[0].href = 123
+    const bad = validateOptionDataPage(input)
+    expect(bad.ok).toBe(false)
+    if (!bad.ok) {
+      expect(bad.gap.reason).toBe('invalid_payload')
+      expect(bad.gap.text).toBe('\u6570\u636e\u683c\u5f0f\u4e0e\u7ea6\u5b9a\u4e0d\u7b26\uff0c\u8bf7\u4e0d\u8981\u636e\u6b64\u64cd\u4f5c\u3002')
+    }
+  })
+
   it('choices shows three links of the fixture, the current one marked', async () => {
     const payload = fixture('choices')
     await show(payload)
