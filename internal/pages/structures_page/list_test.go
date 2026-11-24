@@ -156,6 +156,9 @@ func TestNoReaderIsGap(t *testing.T) {
 	r := newRig(readResult(t, "list_ok"))
 	r.cfg.Ledger = nil
 	m := decode(t, r.build(t, "main"))
+	if m["sentence"] != "无法读取持仓结构" {
+		t.Fatalf("sentence = %v", m["sentence"])
+	}
 	if m["run_status"] != "failed" || !strings.Contains(m["note"].(string), "no_reader") || len(groupRows(t, m, 0))+len(groupRows(t, m, 1)) != 0 {
 		t.Fatalf("page = %v", m)
 	}
