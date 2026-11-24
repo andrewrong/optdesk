@@ -38,6 +38,7 @@ ceil_around_spot = 200
 ceil_puts = 250
 ceil_calls = 150
 ceil_per_stock = 60
+ceil_total = 0
 # Names quoted as underlying only: no option contract is planned, resolved or held for them (option-trader's
 # no_option_names, the owner's JP exclusion). The seed list of the JP names found without options is the owner's to fill.
 no_option = []

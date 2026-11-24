@@ -41,6 +41,7 @@ type paramsTable struct {
 	CeilPuts       *int     `toml:"ceil_puts"`
 	CeilCalls      *int     `toml:"ceil_calls"`
 	CeilPerStock   *int     `toml:"ceil_per_stock"`
+	CeilTotal      *int     `toml:"ceil_total"`
 }
 
 // manifest is the common shape of job_plan.toml, job_resolve.toml and job_gap.toml.
@@ -132,6 +133,7 @@ func (t paramsTable) build() (PlanParams, error) {
 	setI(&p.CeilPuts, t.CeilPuts)
 	setI(&p.CeilCalls, t.CeilCalls)
 	setI(&p.CeilPerStock, t.CeilPerStock)
+	setI(&p.CeilTotal, t.CeilTotal)
 	if t.FiveDollar != nil {
 		p.FiveDollarNames = t.FiveDollar
 	}
