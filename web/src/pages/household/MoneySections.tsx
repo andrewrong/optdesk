@@ -158,9 +158,9 @@ export function IncomeMonths({ block }: { block: MoneyBlock }) {
                     <TableBody>
                       {row.items.map((item, i) => (
                         <TableRow key={`${item.part}-${i}`}>
-                          <TableCell>{item.part}</TableCell>
-                          <TableCell>{item.item}</TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-normal break-words">{item.part}</TableCell>
+                          <TableCell className="whitespace-normal break-words">{item.item}</TableCell>
+                          <TableCell className="whitespace-normal break-words">
                             <Badge variant="secondary">{item.account.label}</Badge>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
