@@ -48,19 +48,19 @@ type greeksBlock struct {
 // breakEvenCaption says which side of the break-even loses (or earns), by the kind of the structure.
 func breakEvenCaption(s compute.Structure) string {
 	if s.Figures.BreakEven.Gap != "" {
-		return "No single breakeven price"
+		return captionNoBreakEven
 	}
 	switch s.Kind {
 	case "short_put", "put_spread", "covered_call":
-		return "Loses below this expiry price"
+		return captionLosesBelow
 	case "naked_call", "call_spread":
-		return "Loses above this expiry price"
+		return captionLosesAbove
 	case "long_put":
-		return "Profits below this expiry price"
+		return captionProfitsBelow
 	case "long_call":
-		return "Profits above this expiry price"
+		return captionProfitsAbove
 	}
-	return "Shown leg by leg, no single breakeven price"
+	return captionLegByLeg
 }
 
 // spot is the underlying close of the newest quote of the underlying that has one, copied.

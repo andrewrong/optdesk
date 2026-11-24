@@ -1,6 +1,7 @@
 package structures_page
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -52,7 +53,7 @@ func (b *builder) legs() []any {
 	out := []any{}
 	for i, l := range b.s.Legs {
 		if i == maxLegs {
-			b.addGap(gap{Reason: reasonNoData, Text: "Showing only the first 8 legs"})
+			b.addGap(gap{Reason: reasonNoData, Text: capNoteHead + strconv.Itoa(maxLegs) + legsNoteTail})
 			break
 		}
 		out = append(out, b.note(b.legRow(l)))
@@ -108,7 +109,7 @@ func (b *builder) fills() []fill {
 	for _, l := range b.s.Legs {
 		for _, f := range b.pos[l.PositionID].Fills {
 			if len(out) == maxFills {
-				b.addGap(gap{Reason: reasonNoData, Text: "Showing only the first 50 fills"})
+				b.addGap(gap{Reason: reasonNoData, Text: capNoteHead + strconv.Itoa(maxFills) + fillsNoteTail})
 				return out
 			}
 			row, ok := b.fillRow(l, f)
@@ -120,7 +121,7 @@ func (b *builder) fills() []fill {
 		}
 	}
 	if bad {
-		b.addGap(gap{Reason: reasonMissing, Text: "Some fills cannot be shown"})
+		b.addGap(gap{Reason: reasonMissing, Text: fillsCannotBeShownText})
 	}
 	return out
 }
