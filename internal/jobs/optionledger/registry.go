@@ -12,9 +12,12 @@ var errRowKey = errors.New("optionledger: section row without its key attributes
 // sectionSpec is one row of the registry of docs/design/account-flex-fx.md Decision 5: the row element name
 // of a section and its key attributes in order, required ones and then optional ones.
 type sectionSpec struct {
-	Element  string
-	Required []string
-	Optional []string
+	Element string
+	// Container is the element that holds the rows in the report (ChangeInNAV is its own container). A
+	// container present with no rows is a section present with none, not an absent one.
+	Container string
+	Required  []string
+	Optional  []string
 	// ByLot marks a section whose rows carry the attribute levelOfDetail (read by that name) and are told
 	// apart at level LOT by the optional attributes alone: such a row with all of them empty is ambiguous
 	// and refused.
@@ -24,16 +27,17 @@ type sectionSpec struct {
 // registry lists the expected sections in the order their status rows are written. A later section is one
 // more row here and no schema change.
 var registry = []sectionSpec{
-	{Element: "CashTransaction", Required: []string{"transactionID"}},
+	{Element: "CashTransaction", Container: "CashTransactions", Required: []string{"transactionID"}},
 	{
-		Element:  "OpenPosition",
-		Required: []string{"reportDate", "levelOfDetail", "conid"},
-		Optional: []string{"openDateTime", "originatingTransactionID"},
-		ByLot:    true,
+		Element:   "OpenPosition",
+		Container: "OpenPositions",
+		Required:  []string{"reportDate", "levelOfDetail", "conid"},
+		Optional:  []string{"openDateTime", "originatingTransactionID"},
+		ByLot:     true,
 	},
-	{Element: "ChangeInNAV", Required: []string{"fromDate", "toDate"}},
-	{Element: "EquitySummaryByReportDateInBase", Required: []string{"reportDate"}},
-	{Element: "ConversionRate", Required: []string{"reportDate", "fromCurrency", "toCurrency"}},
+	{Element: "ChangeInNAV", Container: "ChangeInNAV", Required: []string{"fromDate", "toDate"}},
+	{Element: "EquitySummaryByReportDateInBase", Container: "EquitySummaryInBase", Required: []string{"reportDate"}},
+	{Element: "ConversionRate", Container: "ConversionRates", Required: []string{"reportDate", "fromCurrency", "toCurrency"}},
 }
 
 // sectionByElement returns the registry row of a row element name.

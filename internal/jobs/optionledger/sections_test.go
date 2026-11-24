@@ -104,6 +104,7 @@ func TestAbsentSectionWritesStatusAndDegraded(t *testing.T) {
 	t.Parallel()
 	rep := fixtureReport(t)
 	delete(rep.Statements[0].Sections, "CashTransaction")
+	delete(rep.Statements[0].Sections, "CashTransactions")
 	sec := &fakeSections{}
 	j, _, logs := buildS(t, mainLogin(rep), sec)
 	if res := j.Run(context.Background(), "2026-11-10", nil); res.Err != nil {
@@ -118,13 +119,41 @@ func TestAbsentSectionWritesStatusAndDegraded(t *testing.T) {
 			t.Fatalf("count %d", s.RowCount)
 		}
 	}
-	want := "login=main section=CashTransaction"
+	want := "login=main alias=a section=CashTransaction"
 	if !strings.Contains(logs.String(), "degraded") || !strings.Contains(logs.String(), want) || strings.Count(logs.String(), "degraded") != 1 {
 		t.Fatalf("log %q", logs.String())
 	}
 	wantID := "main:q1:2025-12-01:2026-11-09:2026-11-10T17:00:00Z"
 	if sec.fetchID != wantID || sec.statuses[0].FetchID != wantID || sec.rows[0].FetchID != wantID {
 		t.Fatalf("fetch id %q", sec.fetchID)
+	}
+}
+
+func TestEmptyContainerIsPresentNotDegraded(t *testing.T) {
+	t.Parallel()
+	rep := fixtureReport(t)
+	delete(rep.Statements[0].Sections, "CashTransaction")
+	rep.Statements[0].Sections["CashTransactions"] = []map[string]string{{"accountId": "ACCT1"}}
+	sec := &fakeSections{}
+	j, _, logs := buildS(t, mainLogin(rep), sec)
+	if res := j.Run(context.Background(), "2026-11-10", nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if st := stateOf(sec.statuses); st["CashTransaction"] != "present" {
+		t.Fatalf("statuses %v", st)
+	}
+	for _, s := range sec.statuses {
+		if s.Section == "CashTransaction" && (s.RowCount != 0 || s.RowsRefused != 0) {
+			t.Fatalf("status %+v", s)
+		}
+	}
+	for _, r := range sec.rows {
+		if r.Section == "CashTransaction" || r.Section == "CashTransactions" {
+			t.Fatalf("stored row %+v", r)
+		}
+	}
+	if strings.Contains(logs.String(), "degraded") {
+		t.Fatalf("log %q", logs.String())
 	}
 }
 

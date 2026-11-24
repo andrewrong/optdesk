@@ -76,7 +76,8 @@ func buildSectionRows(
 
 // recordSections writes the section rows and one status row per expected section for every mapped statement
 // of the report, with one call of RecordSections. A statement of an unmapped account writes nothing. An
-// absent section also gives one degraded log record naming the login and the section.
+// absent section (neither its rows nor its container in the statement) gives one degraded log record naming
+// the login, the alias and the section; a container present with no rows is a present section of no rows.
 func (r *run) recordSections(ctx context.Context, l FlexRun, req sources.FlexRequest, rep sources.FlexReport) error {
 	ref := fetchRef(l.Name, req, rep.FetchedAt)
 	at := r.j.clk.Now()
@@ -94,9 +95,9 @@ func (r *run) recordSections(ctx context.Context, l FlexRun, req sources.FlexReq
 				return err
 			}
 			state := statePresent
-			if len(srcRows) == 0 {
+			if _, container := st.Sections[spec.Container]; len(srcRows) == 0 && !container {
 				state = stateAbsent
-				r.j.log.Warn("optionledger: degraded", "login", l.Name, "section", spec.Element)
+				r.j.log.Warn("optionledger: degraded", "login", l.Name, "alias", alias, "section", spec.Element)
 			}
 			rows = append(rows, built...)
 			statuses = append(statuses, flexsection.Status{
