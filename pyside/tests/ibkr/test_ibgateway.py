@@ -76,6 +76,7 @@ class FakeIb:
         self.autofill = False
         self.refuse = False
         self.fail: Exception | None = None
+        self.fail_for: dict[int, Exception] = {}
         self.tickers: dict[int, Ticker] = {}
         self.dividends: Dividends | None = None
         self.mkt_contracts: list[Contract] = []
@@ -124,6 +125,8 @@ class FakeIb:
         self.subscribed.append(contract.conId)
         if self.fail is not None:
             raise self.fail
+        if contract.conId in self.fail_for:
+            raise self.fail_for[contract.conId]
         if self.refuse:
             raise OrderRefused("refused as the guard would")
         if self.autofill:

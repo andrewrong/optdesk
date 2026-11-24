@@ -277,7 +277,7 @@ func TestDatasetsResolveToFirstJob(t *testing.T) {
 func TestDueAtFromSlot(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
-	for id, want := range map[string]string{"option_eod": "15:45", "option_eod_index": "15:45", "option_eod_jp": "15:15", "fx_refresh": ""} {
+	for id, want := range map[string]string{"option_eod": "14:00", "option_eod_index": "15:45", "option_eod_jp": "15:15", "fx_refresh": ""} {
 		if got := dataHealthJobOf(t, jobs, id).DueAt; got != want {
 			t.Errorf("%s DueAt %q, want %q", id, got, want)
 		}
@@ -296,7 +296,7 @@ func TestDueAtFromSlot(t *testing.T) {
 
 func TestDataHealthTimeSlots(t *testing.T) {
 	t.Parallel()
-	want := map[string]string{"fred_series": "07:30", "fundamentals": "08:00", "macro_events": "06:00", "option_eod": "15:45"}
+	want := map[string]string{"fred_series": "07:30", "fundamentals": "08:00", "macro_events": "06:00", "option_eod": "14:00"}
 	got := map[string]data_health_page.Job{}
 	for _, j := range dataHealthJobs() {
 		got[j.ID] = j
@@ -377,7 +377,7 @@ func TestDataHealthOptionEodSlots(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
 	for id, want := range map[string]struct{ dueAt, zone string }{
-		"option_eod":       {"15:45", "America/New_York"},
+		"option_eod":       {"14:00", "America/New_York"},
 		"option_eod_index": {"15:45", "America/New_York"},
 		"option_eod_jp":    {"15:15", "Asia/Tokyo"},
 	} {
