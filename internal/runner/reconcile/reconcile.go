@@ -415,6 +415,17 @@ func endedBeforeClose(run store.Run, closeAt time.Time) bool {
 	return !closeAt.IsZero() && !run.FinishedAt.IsZero() && run.FinishedAt.Before(closeAt)
 }
 
+// retriesBeforeClose counts the retryable runs of a key that ended before closeAt.
+func retriesBeforeClose(runs []store.Run, closeAt time.Time) int {
+	n := 0
+	for _, run := range runs {
+		if isRetryable(run) && endedBeforeClose(run, closeAt) {
+			n++
+		}
+	}
+	return n
+}
+
 // nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
 // when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
 // error with no window). Runs that are empty_before_close, retryable before the close, crashed
@@ -432,7 +443,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		reason = reasonLate
 	}
 	beforeClose := !closeAt.IsZero() && now.Before(closeAt)
-	crashes, counted, retries := 0, 0, 0
+	crashes, counted := 0, 0
 	var latest *store.Run
 	for i, run := range runs {
 		switch {
@@ -446,9 +457,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		case isCrash(run):
 			crashes++
 		case noRun(run): // a console_stop or ordered_stop run is no attempt and no crash
-		case run.ReasonCode == reasonEmptyBeforeClose:
-		case isRetryable(run) && endedBeforeClose(run, closeAt):
-			retries++
+		case run.ReasonCode == reasonEmptyBeforeClose, isRetryable(run) && endedBeforeClose(run, closeAt):
 		default:
 			counted++
 			latest = &runs[i]
@@ -457,13 +466,10 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	if crashed != nil {
 		crashes++
 	}
-	if beforeClose && retries >= retryBeforeCloseCap {
-		return crashed, false, ""
-	}
 	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
 		return crashed, false, ""
 	}
-	if beforeClose && now.Sub(lastEmptyFinish(runs)) < emptyRetryGap {
+	if beforeClose && (now.Sub(lastEmptyFinish(runs)) < emptyRetryGap || retriesBeforeClose(runs, closeAt) >= retryBeforeCloseCap) {
 		return crashed, false, ""
 	}
 	return crashed, true, reason
