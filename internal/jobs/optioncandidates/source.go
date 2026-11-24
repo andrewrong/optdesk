@@ -136,10 +136,10 @@ func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.Watc
 	if err != nil {
 		return res, err
 	}
-	res.earlier = res.chainDay < s.day
 	if s.j.st.Quotes == nil || res.unusable {
-		return res, nil
+		return res, nil // no quote reader: the rows are the rows of today, with no new mark
 	}
+	res.earlier = res.chainDay < s.day
 	price, d, found, qerr := spotFromQuote(ctx, s.j.st.Quotes, ul.id, s.day, s.j.clk.Now().UTC())
 	if qerr != nil {
 		s.j.logger().Warn("quote_snapshot read failed, the spot is the chain price",
