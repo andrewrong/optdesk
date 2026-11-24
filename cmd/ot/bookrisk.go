@@ -98,15 +98,34 @@ func (a *app) bookRiskJob(ctx context.Context, cfg runOnceConfig, f jobFactory, 
 		extra.addCloser(m)
 		marks = m
 	}
+	stockIDs, err := openBookRiskStockIDs(ctx, cfg, f.d, extra)
+	if err != nil {
+		return nil, err
+	}
 	stresser := stress.New(bsm.New())
 	j, err := bd.newJob(bookrisk.Stores{
 		Aliases: bookAliasList(book), Account: acct, Ledger: led, SessionDays: f.compute.SessionDays,
 		Ledgers: f.d.newOptionLedger, Structures: f.d.newOptionStructures,
-		OptionEod: f.compute.OptionEod, Terms: f.compute.Terms, Marks: marks, Series: f.compute.Series,
+		OptionEod: f.compute.OptionEod, StockIDs: stockIDs, Terms: f.compute.Terms, Marks: marks, Series: f.compute.Series,
 		Results: res, Stresser: stresser, Fitter: fit.New(stresser),
 	}, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build book_risk job failed: %w", err)
 	}
 	return j, nil
+}
+
+// openBookRiskStockIDs opens the stock id reader (store/instrument.StockIDs) with the pages line; without the
+// opener or the line it is nil and the book has no option quotes. What it opens goes to extra.
+func openBookRiskStockIDs(ctx context.Context, cfg runOnceConfig, d deps, extra *closerSet) (bookrisk.StockIDReader, error) {
+	gd, ok := d.ext[extReportGlobal].(reportGlobalDeps)
+	if !ok || gd.openStockIDs == nil || cfg.pagesDSN == "" {
+		return nil, nil
+	}
+	ids, err := gd.openStockIDs(ctx, cfg.pagesDSN)
+	if err != nil {
+		return nil, fmt.Errorf("open stock id reader with %s failed", store.DSNEnvPages)
+	}
+	extra.addCloser(ids)
+	return ids, nil
 }

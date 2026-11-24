@@ -241,3 +241,22 @@ func TestBookRiskNewRateIsTheNewestSeriesPoint(t *testing.T) {
 		t.Fatalf("rate = %q", l.book.Rate)
 	}
 }
+
+func TestBookRiskQuotesUseStockInstrumentID(t *testing.T) {
+	t.Parallel()
+	w := newWorld()
+	w.addPut("mine", "AAA", "USD")
+	w.capture["mine"] = append(w.capture["mine"], store.Position{Symbol: "AAA", SecType: "STOCK", Currency: "USD", ConID: 5, Quantity: "100"})
+	w.stockIDs = map[string]int64{"AAA": 77}
+	w.eod[77] = []contracts.OptionEod{{InstrumentID: 9, SessionDay: date("2026-11-06"), Bid: f64(1), Ask: f64(2), UnderlyingPrice: f64(55)}}
+	w.terms = []store.OptionTerms{{InstrumentID: 9, Right: "put", Strike: "50", ExpirationDate: "2026-12-18"}}
+	j := w.newJob(t)
+	qs, _, err := j.quotes(context.Background(), w.positions["mine"], "2026-11-06")
+	if err != nil || len(qs) != 1 || qs[0].Underlying != "AAA" {
+		t.Fatalf("quotes = %+v, %v", qs, err)
+	}
+	j.st.StockIDs = nil
+	if qs, _, err := j.quotes(context.Background(), w.positions["mine"], "2026-11-06"); err != nil || len(qs) != 0 {
+		t.Fatalf("nil StockIDs: quotes = %+v, %v", qs, err)
+	}
+}
