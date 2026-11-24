@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/household_page'
+import { wrapText } from './AccountsMovers'
 import type { Cell, Gap, MoneyBlock, Shown } from './householdTypes'
 
 const figure = (cell: Cell) => ({
@@ -158,9 +159,9 @@ export function IncomeMonths({ block }: { block: MoneyBlock }) {
                     <TableBody>
                       {row.items.map((item, i) => (
                         <TableRow key={`${item.part}-${i}`}>
-                          <TableCell className="whitespace-normal break-words">{item.part}</TableCell>
-                          <TableCell className="whitespace-normal break-words">{item.item}</TableCell>
-                          <TableCell className="whitespace-normal break-words">
+                          <TableCell className={wrapText}>{item.part}</TableCell>
+                          <TableCell className={wrapText}>{item.item}</TableCell>
+                          <TableCell className={wrapText}>
                             <Badge variant="secondary">{item.account.label}</Badge>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">

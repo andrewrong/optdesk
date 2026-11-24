@@ -17,7 +17,7 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/household_page'
 import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
-import { AccountsSection, MoversSection, ScopeHeading, WhoseBadge } from './AccountsMovers'
+import { AccountsSection, MoversSection, ScopeHeading, WhoseBadge, wrapText } from './AccountsMovers'
 import { AllocationSection, Block, IncomeMonths, MoneySection } from './MoneySections'
 import type { MoneyBlock, Scope } from './householdTypes'
 import { incomeToSpec, monthChangeToSpec, trendToSpec } from './householdToSpec'
@@ -63,7 +63,13 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
                       {block.heads.map((head, i) => (
                         <TableHead
                           key={i}
-                          className={i === 1 ? 'hidden text-right sm:table-cell' : i > 0 ? 'text-right' : W}
+                          className={
+                            i === 1
+                              ? `hidden sm:table-cell ${wrapText} text-right`
+                              : i > 0
+                                ? `${wrapText} text-right`
+                                : wrapText
+                          }
                         >
                           {head}
                         </TableHead>
@@ -74,7 +80,7 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
                 <TableBody>
                   {rows.map((row) => (
                     <TableRow key={`${row.scope}-${row.name}`}>
-                      <TableCell className={W}>
+                      <TableCell className={wrapText}>
                         {row.name}
                         {row.accounts?.map((tag) => (
                           <span key={tag.label} className="ml-2 inline-flex items-center gap-1">
@@ -95,7 +101,7 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
                   {scope.key === 'household'
                     ? block.totals.map((cell, i) => (
                         <TableRow key={`total-${i}`}>
-                          <TableCell className={`font-medium ${W}`}>
+                          <TableCell className={`font-medium ${wrapText}`}>
                             {block.total_labels?.[i] ?? block.title}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell" />
@@ -114,8 +120,6 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
 }
 
 // One grid cell of the page: a wide cell spans both columns from lg, a half cell shares the row with its pair.
-const W = 'whitespace-normal break-words'
-
 function Cell({ name, wide, children }: { name: string; wide?: boolean; children: React.ReactNode }) {
   return (
     <div className={wide ? 'min-w-0 lg:col-span-2' : 'min-w-0'} data-cell={name}>
