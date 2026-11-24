@@ -588,7 +588,8 @@ func spotMarksOf(t *testing.T, text string) string {
 	}
 	var keep []string
 	for _, m := range marks {
-		if m == markEodFallback || m == markSpotChain || strings.HasPrefix(m, markChainDayPrefix) || strings.HasPrefix(m, markSpotQuotePrefix) || strings.HasPrefix(m, markSpotOpenPrefix) {
+		if m == markEodFallback || m == markSpotChain || strings.HasPrefix(m, markChainDayPrefix) ||
+			strings.HasPrefix(m, markSpotQuotePrefix) || strings.HasPrefix(m, markSpotOpenPrefix) {
 			keep = append(keep, m)
 		}
 	}
