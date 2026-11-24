@@ -28,6 +28,15 @@ def _right_of(raw: str) -> str:
     return word if word in ("C", "P") else ""
 
 
+def _same_text(asked: str, got: str) -> bool:
+    return asked == got
+
+
+def _clip(text: str) -> str:
+    """A value cut to 24 characters, so the text of a many-field refusal stays under the scrub limit."""
+    return text[:24]
+
+
 def _same_number(asked: str, got: str) -> bool:
     a, b = _decimal(asked), _decimal(got)
     return asked == got if a is None or b is None else a == b
@@ -55,19 +64,19 @@ def answer(
         "multiplier": found.multiplier or "",
     }
     differing = [
-        f"{name} requested {asked} returned {got[name] or 'none'}"
+        f"{name} {_clip(asked)}->{_clip(got[name]) or 'none'}"
         for name, asked, same in (
-            ("expiry", expiry, lambda a, g: a == g),
+            ("expiry", expiry, _same_text),
             ("strike", strike, _same_number),
-            ("right", right, lambda a, g: a == g),
-            ("trading_class", trading_class, lambda a, g: a == g),
+            ("right", right, _same_text),
+            ("trading_class", trading_class, _same_text),
             ("multiplier", multiplier, _same_number),
         )
         if asked and not same(asked, got[name])
     ]
     if differing:
         raise spec.AmbiguousResolve(
-            "resolve differs from the request: " + "; ".join(differing)
+            "resolve differs (requested->returned): " + "; ".join(differing)
         )
     return ResolveResult(
         True,

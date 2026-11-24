@@ -55,14 +55,14 @@ class TestResolveMismatchRefused:
     @pytest.mark.parametrize(
         ("ib", "field"),
         [
-            ({"strike": 105.0}, "strike requested 100 returned 105"),
-            ({"right": "P"}, "right requested C returned P"),
+            ({"strike": 105.0}, "strike 100->105"),
+            ({"right": "P"}, "right C->P"),
             (
                 {"lastTradeDateOrContractMonth": "20261127"},
-                "expiry requested 20261120 returned 20261127",
+                "expiry 20261120->20261127",
             ),
-            ({"tradingClass": "SPYW"}, "trading_class requested SPY returned SPYW"),
-            ({"multiplier": "10"}, "multiplier requested 100 returned 10"),
+            ({"tradingClass": "SPYW"}, "trading_class SPY->SPYW"),
+            ({"multiplier": "10"}, "multiplier 100->10"),
         ],
     )
     def test_refused_with_field_named(self, ib: dict[str, Any], field: str) -> None:
@@ -72,9 +72,7 @@ class TestResolveMismatchRefused:
 
     def test_grpc_failed_precondition_without_contract(self) -> None:
         async def run() -> grpc.RpcError:
-            gateway = FakeGateway(
-                resolved=spec.AmbiguousResolve("strike requested 100 returned 105")
-            )
+            gateway = FakeGateway(resolved=spec.AmbiguousResolve("strike 100->105"))
             async with serving(gateway) as channel:
                 request = pb.ResolveContractRequest(
                     contract=pb.ContractSpec(
@@ -91,7 +89,38 @@ class TestResolveMismatchRefused:
 
         err: Any = asyncio.run(run())
         assert err.code() == grpc.StatusCode.FAILED_PRECONDITION
-        assert "strike requested 100 returned 105" in err.details()
+        assert "strike 100->105" in err.details()
+
+    def test_grpc_text_names_every_field_when_all_differ(self) -> None:
+        with pytest.raises(spec.AmbiguousResolve) as raised:
+            _resolve(
+                ASKED,
+                strike=105.0,
+                right="P",
+                lastTradeDateOrContractMonth="20261127",
+                tradingClass="SPYW",
+                multiplier="10",
+            )
+
+        async def run() -> Any:
+            async with serving(FakeGateway(resolved=raised.value)) as channel:
+                req = pb.ResolveContractRequest(
+                    contract=pb.ContractSpec(
+                        sec_type=pb.SEC_TYPE_OPTION,
+                        symbol="SPY",
+                        expiry="20261120",
+                        strike="100",
+                        right=pb.RIGHT_CALL,
+                    )
+                )
+                with pytest.raises(grpc.aio.AioRpcError) as err:
+                    await pb.ContractsServiceStub(channel).ResolveContract(req)
+                return err.value
+
+        err = asyncio.run(run())
+        assert err.code() == grpc.StatusCode.FAILED_PRECONDITION
+        for name in ("expiry", "strike", "right", "trading_class", "multiplier"):
+            assert name in err.details()
 
     def test_not_cached(self) -> None:
         async def run() -> int:
