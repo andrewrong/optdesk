@@ -10,7 +10,7 @@ import pytest
 from kit.fakeclock import FakeClock
 
 from optdesk.ibkr import spec
-from optdesk.ibkr.api import HistoryBar, HistoryKey, HistoryRequest
+from optdesk.ibkr.api import HistoryBar, HistoryKey, HistoryPaced, HistoryRequest
 from optdesk.ibkr.history import HistoryReader, WireRequest
 
 KEY = HistoryKey("SPY", "STK", "SMART", "USD", 756733)
@@ -64,10 +64,10 @@ def test_starts_are_one_at_a_time_11_seconds_apart() -> None:
     assert asyncio.run(run()) == [0.0, 11.0, 22.0]
 
 
-def test_no_cap_after_55_requests() -> None:
+def test_no_cap_on_spacing_alone_within_budget() -> None:
     async def run() -> list[float]:
         clock, gateway, reader = setup()
-        for i in range(70):
+        for i in range(50):
             task = await_later(reader, gateway, request(con_id=i + 1))
             await drain(clock, task)
             assert task.done()
@@ -75,8 +75,8 @@ def test_no_cap_after_55_requests() -> None:
         return [t for t, _ in gateway.sent]
 
     times = asyncio.run(run())
-    assert len(times) == 70
-    assert times[69] == 11.0 * 69
+    assert len(times) == 50
+    assert times[49] == 11.0 * 49
 
 
 class PacingGateway:
@@ -97,19 +97,21 @@ class PacingGateway:
         return [HistoryBar("2026-01-02", "1", "2", "0.5", "1.5", None)]
 
 
-def test_pacing_answer_162_is_retried_after_60_seconds() -> None:
-    async def run() -> tuple[list[float], int]:
+def test_pacing_answer_raises_without_retry() -> None:
+    async def run() -> tuple[list[float], float]:
         clock = FakeClock()
         gateway = PacingGateway(clock, [162])
         task = asyncio.ensure_future(
             HistoryReader(clock).bars(request(), gateway.fetch)
         )
         await drain(clock, task)
-        return gateway.sent, len(task.result())
+        with pytest.raises(HistoryPaced):
+            task.result()
+        return gateway.sent, clock.monotonic()
 
-    sent, n = asyncio.run(run())
-    assert sent == [0.0, 60.0]
-    assert n == 1
+    sent, now = asyncio.run(run())
+    assert sent == [0.0]
+    assert now < 60.0
 
 
 def test_162_without_pacing_text_is_raised_at_once() -> None:
@@ -136,14 +138,15 @@ def test_pacing_violation_text_is_case_insensitive() -> None:
             HistoryReader(clock).bars(request(), gateway.fetch)
         )
         await drain(clock, task)
-        task.result()
+        with pytest.raises(HistoryPaced):
+            task.result()
         return gateway.sent
 
-    assert asyncio.run(run()) == [0.0, 60.0]
+    assert asyncio.run(run()) == [0.0]
 
 
-@pytest.mark.parametrize("codes", [[162, 162], [200]])
-def test_second_162_and_other_codes_are_raised(codes: list[int]) -> None:
+@pytest.mark.parametrize("codes", [[200]])
+def test_other_codes_are_raised(codes: list[int]) -> None:
     async def run() -> list[float]:
         clock = FakeClock()
         gateway = PacingGateway(clock, codes)
@@ -242,3 +245,84 @@ def test_malformed_end_day_is_a_value_error() -> None:
 
     with pytest.raises(ValueError, match="end_day"):
         asyncio.run(run())
+
+
+async def send_n(
+    clock: FakeClock,
+    gateway: FakeGateway,
+    reader: HistoryReader,
+    n: int,
+    first: int = 1,
+) -> None:
+    for i in range(n):
+        task = await_later(reader, gateway, request(con_id=first + i))
+        await drain(clock, task)
+        task.result()
+
+
+def test_budget_refuses_the_51st() -> None:
+    async def run() -> int:
+        clock, gateway, reader = setup()
+        await send_n(clock, gateway, reader, 50)
+        with pytest.raises(HistoryPaced):
+            await reader.bars(request(con_id=99), gateway.fetch)
+        return len(gateway.sent)
+
+    assert asyncio.run(run()) == 50
+
+
+def test_budget_window_slides() -> None:
+    async def run() -> list[float]:
+        clock, gateway, reader = setup()
+        await send_n(clock, gateway, reader, 50)
+        await clock.advance(600.0 - clock.monotonic() - 1)
+        with pytest.raises(HistoryPaced):
+            await reader.bars(request(con_id=99), gateway.fetch)
+        await clock.advance(1)  # the send at 0 is now 600 s old
+        task = await_later(reader, gateway, request(con_id=99))
+        await drain(clock, task)
+        task.result()
+        return [t for t, _ in gateway.sent]
+
+    times = asyncio.run(run())
+    assert len(times) == 51
+    assert times[-1] == 600.0
+
+
+def test_refused_request_takes_no_slot() -> None:
+    async def run() -> list[float]:
+        clock, gateway, reader = setup()
+        await send_n(clock, gateway, reader, 49)  # sends at 0 .. 528
+        await clock.advance(599.0 - clock.monotonic())
+        await reader.bars(request(con_id=60), gateway.fetch)  # the 50th, at 599
+        await clock.advance(0.5)
+        with pytest.raises(HistoryPaced):
+            await reader.bars(request(con_id=99), gateway.fetch)
+        await clock.advance(0.5)  # 600: the send at 0 left the window
+        task = await_later(reader, gateway, request(con_id=99))
+        await drain(clock, task)
+        task.result()
+        return [t for t, _ in gateway.sent]
+
+    times = asyncio.run(run())
+    assert times[-2] == 599.0
+    assert times[-1] == 610.0
+
+
+def test_error_send_counts() -> None:
+    async def run() -> int:
+        clock, gateway, reader = setup()
+        failing = PacingGateway(clock, [200] * 3)
+        for i in range(3):
+            task = asyncio.ensure_future(
+                reader.bars(request(con_id=i + 1), failing.fetch)
+            )
+            await drain(clock, task)
+            with pytest.raises(spec.BrokerError):
+                task.result()
+        await send_n(clock, gateway, reader, 47, first=10)
+        with pytest.raises(HistoryPaced):
+            await reader.bars(request(con_id=99), gateway.fetch)
+        return len(gateway.sent)
+
+    assert asyncio.run(run()) == 47
