@@ -48,6 +48,7 @@ func (c Config) familyTrend(ctx context.Context, res blockapi.FamilyResult, caps
 			}
 		}
 	}
+	in.Window = sinceFirstRecord(sessions, in.Accounts)
 	out := c.FamilyTrend().FamilyTrend(in)
 	if out.Gap != "" || len(out.Family) == 0 {
 		return noData()
@@ -88,4 +89,22 @@ func familyTrendWindow(out blockapi.FamilyTrendResult) string {
 		s += familyTrendYen
 	}
 	return s
+}
+
+// sinceFirstRecord cuts the window to the days from the first day on which any counted account has a
+// record, so the days before every record are not counted as left out. With no record it is returned whole.
+func sinceFirstRecord(window []contracts.Day, accounts []blockapi.FamilyTrendAccountIn) []contracts.Day {
+	first := contracts.Day("")
+	for _, a := range accounts {
+		for _, d := range a.Days {
+			if first == "" || d.Day < first {
+				first = d.Day
+			}
+		}
+	}
+	if first == "" {
+		return window
+	}
+	i, _ := slices.BinarySearch(window, first)
+	return window[i:]
 }

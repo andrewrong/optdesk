@@ -605,3 +605,18 @@ func TestQuotesUseStockInstrumentID(t *testing.T) {
 		})
 	}
 }
+
+func TestRiskTitleNewNamesAccount(t *testing.T) {
+	t.Parallel()
+	const want = "账户风险 Account risk"
+	ok, _ := build(t, defaultConfig(), "main")
+	if ok["title"] != want {
+		t.Fatalf("ok page title = %v, want %q", ok["title"], want)
+	}
+	c := defaultConfig()
+	c.Account = nil
+	gapPage, _ := build(t, c, "main")
+	if gapPage["title"] != want {
+		t.Fatalf("gap page title = %v, want %q", gapPage["title"], want)
+	}
+}
