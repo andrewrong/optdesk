@@ -62,6 +62,7 @@ type memFx struct {
 	calls     int
 	upserts   int
 	writtenBy []string
+	latestErr error
 	counts    []bar.FxWriteCount
 }
 
@@ -141,8 +142,21 @@ func (m *memFx) FxRates(_ context.Context, p string, from, to contracts.Day) ([]
 	return out, nil
 }
 
-func (m *memFx) LatestFxRate(context.Context, string, contracts.Day) (contracts.FxRate, bool, error) {
-	return contracts.FxRate{}, false, nil
+func (m *memFx) LatestFxRate(_ context.Context, p string, asOf contracts.Day) (contracts.FxRate, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.latestErr != nil {
+		return contracts.FxRate{}, false, m.latestErr
+	}
+	var best contracts.FxRate
+	found := false
+	for _, r := range m.rows {
+		d := r.RateDay.Format(dayLayout)
+		if r.Pair == p && d <= string(asOf) && (!found || d > best.RateDay.Format(dayLayout)) {
+			best, found = r, true
+		}
+	}
+	return best, found, nil
 }
 
 func stored(day, rate string) contracts.FxRate {
@@ -429,5 +443,51 @@ func TestNoDefaultRate(t *testing.T) {
 			}
 			return true
 		})
+	}
+}
+
+func askedDays(t *testing.T, st *memFx) int {
+	t.Helper()
+	h := &fakeHistory{}
+	j := buildJob(t, &fakeBroker{listed: true}, h, st)
+	if res := j.Run(context.Background(), runDay, usdjpy); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 {
+		t.Fatalf("queries %+v", h.queries)
+	}
+	return h.queries[0].DurationDays
+}
+
+func TestRunAsksOnlyTheGap(t *testing.T) {
+	t.Parallel()
+	if n := askedDays(t, &memFx{rows: []contracts.FxRate{stored("2026-11-01", "150.1")}}); n != 8 {
+		t.Fatalf("newest rate eight days back asked %d days", n)
+	}
+	if n := askedDays(t, &memFx{}); n != 5 {
+		t.Fatalf("no rate asked %d days", n)
+	}
+	if n := askedDays(t, &memFx{rows: []contracts.FxRate{stored("2026-11-08", "150.1")}}); n != 5 {
+		t.Fatalf("newest rate yesterday asked %d days", n)
+	}
+}
+
+func TestRunGapLongerThanLookbackIsCapped(t *testing.T) {
+	t.Parallel()
+	if n := askedDays(t, &memFx{rows: []contracts.FxRate{stored("2026-10-10", "150.1")}}); n != 14 {
+		t.Fatalf("asked %d days", n)
+	}
+}
+
+func TestRunReaderErrorIsRetryable(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{}
+	j := buildJob(t, &fakeBroker{listed: true}, h, &memFx{latestErr: errors.New("db down")})
+	res := j.Run(context.Background(), runDay, usdjpy)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("result %+v", res)
+	}
+	if len(h.queries) != 0 {
+		t.Fatalf("queries %+v", h.queries)
 	}
 }
