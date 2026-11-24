@@ -2,7 +2,7 @@
 version = 1
 id = "option_eod"
 zone = "America/New_York"
-slot = "close-15m"
+slot = "close-120m"
 max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
@@ -36,11 +36,12 @@ calendar_id = "XNYS"
 price_increment = "0.01"
 lot_size = "1"
 
-# Slot: 15 minutes before the calendar close (15:45 New York, 12:45 on a half day), inside the session. The run takes 8 minutes
-# (budget_minutes) and ends about 7 minutes before the close; run_bound is that budget plus 6, so start plus bound stays in the session.
+# Slot: 120 minutes before the calendar close (14:00 New York, 11:00 on a half day), inside the session. budget_minutes and
+# run_bound count for one key (one underlying), not for the whole run. A run of many names takes about 75 minutes and ends
+# about two hours after its start, inside the session.
 [schedule]
 calendar = "XNYS"
 anchor = "session_close"
-offset = "-15m"
+offset = "-120m"
 run_bound = "14m"
 restart_sensitive = true

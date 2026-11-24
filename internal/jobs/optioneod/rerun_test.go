@@ -49,7 +49,7 @@ func TestSlotMatchesSchedule(t *testing.T) {
 		wantOrd    string
 		wantHalfAt string
 	}{
-		"us":    {manifestBytes, anchorClose, "close-15m", "1545", "1245"},
+		"us":    {manifestBytes, anchorClose, "close-120m", "1400", "1100"},
 		"index": {manifestIndexBytes, anchorClose, "close-15m", "1545", "1245"},
 		"jp":    {manifestJPBytes, anchorClose, "close-15m", "1515", "1515"},
 	} {
