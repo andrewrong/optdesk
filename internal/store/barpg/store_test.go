@@ -390,3 +390,28 @@ func TestUpsertBarWrapsErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestReplaceYfinanceOverIbkr(t *testing.T) {
+	t.Parallel()
+	sql := replacePriceBarSQL
+	for _, w := range []string{"ON CONFLICT (instrument_id, basis, session_day) DO UPDATE", "IS DISTINCT FROM", "RETURNING instrument_id"} {
+		if !strings.Contains(sql, w) {
+			t.Errorf("replace statement lacks %q: %s", w, sql)
+		}
+	}
+	if strings.Contains(sql, "'ibkr'") || strings.Contains(sql, "DELETE") {
+		t.Errorf("replace statement has a source rule or deletes: %s", sql)
+	}
+	const want = "AND (EXCLUDED.source = 'ibkr' OR obs.price_bar.source <> 'ibkr') RETURNING instrument_id"
+	if !strings.HasSuffix(upsertPriceBarSQL, want) {
+		t.Errorf("upsert statement lost its source rule: %s", upsertPriceBarSQL)
+	}
+	f := &fakeDB{affected: []int64{1, 0}}
+	c, err := (&Store{db: f}).ReplacePriceBars(context.Background(), bars(2), "run")
+	if err != nil || c != (bar.BarWriteCount{Written: 1, Unchanged: 1}) {
+		t.Errorf("count = %+v, %v", c, err)
+	}
+	if len(f.calls) != 2 || f.calls[0].sql != replacePriceBarSQL {
+		t.Errorf("calls = %+v", f.calls)
+	}
+}
