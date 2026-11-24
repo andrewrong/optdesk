@@ -13,8 +13,14 @@ const CONFIG: ChartConfig = {}
 const NO_DOT = () => <g />
 
 export function PriceBand({ band }: { band: Band }) {
-  // A band without marks draws no chart; the page states why a line or zone is missing from `lines.zone_note`.
-  if (band.marks.length === 0) return null
+  // A band without marks draws no chart and is stated as missing, with the reason the payload gives: it holds no marks.
+  if (band.marks.length === 0) {
+    return (
+      <p data-chart="price-band" data-missing className="text-sm text-muted-foreground">
+        The price band is missing: the payload holds no marks for it.
+      </p>
+    )
+  }
   const points = band.marks.map((m) => ({ pos: Number(m.pos) }))
   const fairLow = band.marks.find((m) => m.name === 'fair_low')
   const fairHigh = band.marks.find((m) => m.name === 'fair_high')

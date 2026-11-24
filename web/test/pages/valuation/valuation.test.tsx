@@ -221,6 +221,18 @@ describe('company view', () => {
     expect(chartChildren.length).toBeGreaterThan(0)
   })
 
+  it('TestPriceBandWithoutMarksIsMissing: a band with no marks draws no chart and says it is missing', async () => {
+    chartChildren.length = 0
+    const payload = fixture('company')
+    payload.band!.marks = []
+    const el = await render(payload)
+    const band = el.querySelector('[data-chart="price-band"]') as HTMLElement
+    expect(band.hasAttribute('data-missing')).toBe(true)
+    expect(band.textContent).toContain('The price band is missing: the payload holds no marks for it.')
+    expect(chartChildren).toHaveLength(0)
+    expect(band.querySelector('li')).toBeNull()
+  })
+
   it('TestHistoryColumnsAndExpand: a row prints its columns and expands to detail and report text', async () => {
     const payload = fixture('company')
     const el = await render(payload)
