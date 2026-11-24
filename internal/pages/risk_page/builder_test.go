@@ -278,7 +278,7 @@ func TestUnknownAliasIsNoData(t *testing.T) {
 	}
 }
 
-func TestForeignStockGivesGapNotZero(t *testing.T) {
+func TestForeignStockCountedInDelta(t *testing.T) {
 	t.Parallel()
 	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
 		structure("AAA", "USD", "2026-12-18", "-30.5", "12.25"),
@@ -286,11 +286,10 @@ func TestForeignStockGivesGapNotZero(t *testing.T) {
 	}}, stk("AAA", 1, "100", "USD"), stk("JJJ", 3, "10", "JPY"))
 	m, _ := build(t, c, "main")
 	d := block(m, "delta")
-	if d["total"] != nil || d["gap"].(map[string]any)["reason"] != "unsupported_currency" ||
-		d["gap"].(map[string]any)["text"] != "非美元的股票未计入 Delta" {
+	if d["gap"] != nil || d["total"].(map[string]any)["value"] != 79.5 {
 		t.Fatalf("delta = %v", d)
 	}
-	if len(d["rows"].([]any)) != 1 {
+	if len(d["rows"].([]any)) != 2 {
 		t.Fatalf("rows = %v", d["rows"])
 	}
 	if v := block(m, "vega"); v["total"].(map[string]any)["value"] != 12.25 {
