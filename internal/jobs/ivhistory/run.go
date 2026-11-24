@@ -112,7 +112,7 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 	var newestOk time.Time
 	for _, s := range stored {
 		have[s.Day.Format(dayLayout)] = s
-		if isOk(s) && s.Day.Time.After(newestOk) {
+		if isOk(s) && s.Day.After(newestOk) {
 			newestOk = s.Day.Time
 		}
 	}
