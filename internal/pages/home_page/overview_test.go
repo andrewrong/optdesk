@@ -111,7 +111,7 @@ func TestOverviewLines(t *testing.T) {
 			if len(o.Overview.Gaps) != 0 {
 				t.Errorf("gaps = %v, want none", o.Overview.Gaps)
 			}
-			if o.GapLine != "今天没有缺口" {
+			if o.GapLine != home_page.GapLineNone {
 				t.Errorf("gap_line = %q", o.GapLine)
 			}
 		})
@@ -137,7 +137,7 @@ func TestOverviewGaps(t *testing.T) {
 	if len(o.Overview.Gaps) != 0 {
 		t.Fatalf("gaps = %v, want none", o.Overview.Gaps)
 	}
-	if o.GapLine != "2 个缺口，在各自的卡片里显示" {
+	if o.GapLine != home_page.GapLineMany(2) {
 		t.Errorf("gap_line = %q", o.GapLine)
 	}
 }
@@ -149,7 +149,7 @@ func TestOverviewManyGaps(t *testing.T) {
 	if len(o.Overview.Gaps) != 0 {
 		t.Fatalf("gaps = %v, want none", o.Overview.Gaps)
 	}
-	if o.GapLine != "22 个缺口，在各自的卡片里显示" {
+	if o.GapLine != home_page.GapLineMany(22) {
 		t.Errorf("gap_line = %q", o.GapLine)
 	}
 }
@@ -169,7 +169,7 @@ func TestOverviewHomeGap(t *testing.T) {
 	if string(raw.Overview.Gaps) != "[]" {
 		t.Errorf("overview.gaps = %s, want []", raw.Overview.Gaps)
 	}
-	if raw.GapLine != "今天没有缺口" {
+	if raw.GapLine != home_page.GapLineNone {
 		t.Errorf("gap_line = %q", raw.GapLine)
 	}
 }
@@ -260,8 +260,8 @@ func TestOverviewHoursNoticeGaps(t *testing.T) {
 	o, b := composeOverview(t, in)
 	validateV3(t, b)
 	want := []string{
-		"XNYS 2026-11-27 本站 0930-1300，IBKR closed",
-		"XTKS 2026-12-30 本站 0900-1500，IBKR 0900-1130",
+		home_page.CalendarGap("XNYS", "2026-11-27", "0930-1300", "closed"),
+		home_page.CalendarGap("XTKS", "2026-12-30", "0900-1500", "0900-1130"),
 	}
 	if len(o.Overview.Gaps) != 2 {
 		t.Fatalf("gaps = %v, want 2", o.Overview.Gaps)
@@ -271,7 +271,7 @@ func TestOverviewHoursNoticeGaps(t *testing.T) {
 			t.Errorf("gap %d = %+v, want calendar %q", i, g, w)
 		}
 	}
-	if o.GapLine != "今天没有缺口" {
+	if o.GapLine != home_page.GapLineNone {
 		t.Errorf("gap_line = %q, want unchanged count of the cards", o.GapLine)
 	}
 }
