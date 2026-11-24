@@ -218,6 +218,10 @@ func Build(in Input) ([]byte, error) {
 func buildRow(r underlying.Row, in Input, zone *time.Location) rowJSON {
 	held := in.Held[r.Symbol]
 	groups := Follows(r.Status, r.Options, r.Fundamentals, r.Issuer != "", held)
+	name := r.Name
+	if name == "" {
+		name = zhNoName
+	}
 	var conID *int64
 	if r.ConID != 0 {
 		c := r.ConID
@@ -225,7 +229,7 @@ func buildRow(r underlying.Row, in Input, zone *time.Location) rowJSON {
 	}
 	stale := r.Status == underlying.StatusPending && in.Now.Sub(r.SetAt) > settleLimit
 	return rowJSON{
-		Key: r.Key, Symbol: r.Symbol, Market: r.Market, Kind: r.Kind, Name: r.Name,
+		Key: r.Key, Symbol: r.Symbol, Market: r.Market, Kind: r.Kind, Name: name,
 		Status: r.Status, StatusText: statusText(r.Status, r.Reason, stale), Reason: r.Reason,
 		Issuer: r.Issuer, ConID: conID, Options: r.Options, Fundamentals: r.Fundamentals, Held: held,
 		BuyPrice: r.BuyPrice, SalePrice: r.SalePrice, ReportDateOverride: r.ReportDateOverride, Note: rowNote(r),

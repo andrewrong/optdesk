@@ -432,7 +432,7 @@ func TestRowWithoutNameIsAGap(t *testing.T) {
 		underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "active"},
 		underlying.Row{Key: "US:BBB", Symbol: "BBB", Market: "US", Name: "BBB Inc", Status: "active"},
 	)
-	if r := m["US:AAA"]; r.Name != "" || !strings.Contains(r.Note, "No name is stored") {
+	if r := m["US:AAA"]; r.Name != zhNoName || !strings.Contains(r.Note, "No name is stored") {
 		t.Errorf("no name: name %q note %q", r.Name, r.Note)
 	}
 	if r := m["US:BBB"]; r.Name != "BBB Inc" || strings.Contains(r.Note, "No name") {
@@ -452,4 +452,16 @@ func TestResolvedNoteDoesNotAskToCheck(t *testing.T) {
 	if n := m["US:BBB"].Note; !strings.Contains(n, "waits to be resolved") || strings.Contains(n, "check the con_id") {
 		t.Errorf("pending note %q", n)
 	}
+}
+
+func TestRowWithoutNameValidatesAgainstSchema(t *testing.T) {
+	t.Parallel()
+	in := fixtureInput()
+	in.Rows = append([]underlying.Row(nil), in.Rows...)
+	in.Rows[0].Name = ""
+	out, err := Build(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate(t, out)
 }
