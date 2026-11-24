@@ -26,7 +26,7 @@
     {
       "kind": "gap",
       "reason": "facts_unavailable",
-      "text": "All four fact views failed to read, so no row is shown."
+      "text": "四组基础数据都读不到，所以不显示任何行。"
     }
   ]
 }

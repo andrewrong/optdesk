@@ -239,8 +239,8 @@ func TestBuildOneViewFailsOthersStay(t *testing.T) {
 		t.Fatalf("gaps = %v", r)
 	}
 	text := m["gaps"].([]any)[0].(map[string]any)["text"].(string)
-	if !strings.Contains(text, "option quotes") {
-		t.Fatalf("gap does not name the group in words: %s", text)
+	if want := "这些基础数据读不到，没有判定：在用的期权报价、期权链和合约。"; text != want {
+		t.Fatalf("gap text = %s", text)
 	}
 	if len(rowIDs(m)) != len(basecheckapi.Rows) {
 		t.Fatalf("rows = %v", rowIDs(m))
@@ -470,4 +470,50 @@ func TestHistoryLostCheckNotJudged(t *testing.T) {
 		}
 	}
 	t.Fatalf("no history_lost check: %v", got["checks"])
+}
+
+// TestBaseDataGapTextsAreChinese: every gap text holds a Chinese character and none is an old English sentence.
+func TestBaseDataGapTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	old := []string{
+		"All four fact views failed to read", "The coverage of the ledger could not be read",
+		"The cross-check runs could not be read", "These base data could not be read", "stock bars",
+	}
+	all := defaultInput(fakeEval{})
+	all.Facts = fakeFacts{err: errors.New("all four views failed")}
+	one := defaultInput(fakeEval{})
+	one.Facts = fakeFacts{res: basefact.Result{Facts: []basefact.Fact{}, Failed: []string{basefact.GroupBars, basefact.GroupAccount}}}
+	cov := defaultInput(fakeEval{})
+	cov.Cov = fakeCov{sessionErr: errors.New("down")}
+	recon := reconInput(nil, basecheckapi.Pass, nil)
+	recon.Recon = fakeRecon{err: errors.New("down")}
+	for name, in := range map[string]Input{"all": all, "one": one, "coverage": cov, "recon": recon} {
+		m, _ := build(t, in)
+		gaps := m["gaps"].([]any)
+		if len(gaps) == 0 {
+			t.Fatalf("%s: no gap", name)
+		}
+		for _, g := range gaps {
+			text := g.(map[string]any)["text"].(string)
+			chinese := false
+			for _, r := range text {
+				if r >= 0x4e00 && r <= 0x9fff {
+					chinese = true
+				}
+			}
+			if !chinese {
+				t.Errorf("%s: no Chinese character in %q", name, text)
+			}
+			for _, o := range old {
+				if strings.Contains(text, o) {
+					t.Errorf("%s: old sentence %q in %q", name, o, text)
+				}
+			}
+		}
+		if name == "one" {
+			if want := "这些基础数据读不到，没有判定：股票日线；券商账户数据。"; gaps[0].(map[string]any)["text"] != want {
+				t.Errorf("one: %v", gaps[0])
+			}
+		}
+	}
 }

@@ -11,8 +11,6 @@ import (
 // requiredFields are the four values a review that is not a draft needs (Decision 1).
 var requiredFields = []string{"type", "version_date", "v", "p"}
 
-const chooseMarketText = "Choose the R market of this company."
-
 // BuildForm returns the JSON of page.valuation_page.v1, view form: the profile the entry will use, the preview of
 // the typed V and P as `lines` (one Calculator.Lines call through Resolve), the four required fields and the
 // problems of the typed record. Problems are listed and nothing is refused. The profile is the stored one, else
@@ -105,7 +103,7 @@ func preview(ctx context.Context, p *pageJSON, in Input, prof valuation.Profile)
 	res, err := Resolve(ctx, e, in.State, in.Closes, in.Calc, in.Day)
 	switch {
 	case errors.Is(err, ErrNoTables):
-		p.addGap("tables_missing", "The R version or the margin table is not stored; no price line is shown.")
+		p.addGap("tables_missing", tablesMissingText)
 		return
 	case err != nil || res == nil:
 		return

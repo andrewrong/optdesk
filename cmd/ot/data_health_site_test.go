@@ -280,7 +280,8 @@ func TestDueAtFromSlot(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
 	for id, want := range map[string]string{"option_eod": "14:00", "option_eod_index": "15:45", "option_eod_jp": "15:15", "fx_refresh": "",
-		"option_open_resolve": "17:00", "option_open_resolve_jp": "16:30", "option_open_resolve_gap": "08:00"} {
+		"option_open_resolve": "17:00", "option_open_resolve_jp": "16:30", "option_open_resolve_gap": "08:00",
+		"option_open": "09:35", "option_open_jp": "09:05", "option_open_plan": "08:45", "option_open_plan_jp": "08:15", "option_ledger": "05:00"} {
 		if got := dataHealthJobOf(t, jobs, id).DueAt; got != want {
 			t.Errorf("%s DueAt %q, want %q", id, got, want)
 		}
@@ -288,7 +289,8 @@ func TestDueAtFromSlot(t *testing.T) {
 	for _, j := range jobs {
 		timed := []string{"option_eod", "option_eod_index", "option_eod_jp", "fred_series", "fundamentals", "macro_events",
 			"bars_refresh", "iv_history", "account_capture", "position_marks",
-			"option_open_resolve", "option_open_resolve_jp", "option_open_resolve_gap"}
+			"option_open_resolve", "option_open_resolve_jp", "option_open_resolve_gap",
+			"option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp", "option_ledger"}
 		if j.DueAt != "" && !slices.Contains(timed, j.ID) {
 			t.Errorf("%s carries DueAt %q", j.ID, j.DueAt)
 		}
@@ -418,10 +420,27 @@ func TestDataHealthOptionEodSlots(t *testing.T) {
 		"option_open_resolve":     {"17:00", "America/New_York"},
 		"option_open_resolve_jp":  {"16:30", "Asia/Tokyo"},
 		"option_open_resolve_gap": {"08:00", "America/New_York"},
+
+		"option_open":         {"09:35", "America/New_York"},
+		"option_open_jp":      {"09:05", "Asia/Tokyo"},
+		"option_open_plan":    {"08:45", "America/New_York"},
+		"option_open_plan_jp": {"08:15", "Asia/Tokyo"},
+		"option_ledger":       {"05:00", "America/New_York"},
 	} {
 		j := dataHealthJobOf(t, jobs, id)
 		if j.DueAt != want.dueAt || j.Zone != want.zone {
 			t.Errorf("%s DueAt %q zone %q, want %q in %q", id, j.DueAt, j.Zone, want.dueAt, want.zone)
+		}
+	}
+}
+
+func TestDataHealthOpenSlots(t *testing.T) {
+	t.Parallel()
+	jobs := dataHealthJobs()
+	for _, id := range []string{"option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp", "option_ledger"} {
+		j := dataHealthJobOf(t, jobs, id)
+		if j.DueAt == "" || j.Zone == "" {
+			t.Errorf("%s: DueAt %q zone %q, want both set", id, j.DueAt, j.Zone)
 		}
 	}
 }
