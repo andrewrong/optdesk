@@ -29,12 +29,7 @@ const (
 	highYieldID           = "BAMLH0A0HYM2"
 
 	// With Liquidity set the sentence is the text of Decision 4 of the design.
-	sentenceLiq   = "Funding and credit background from stored series; events: no data yet."
-	sentenceLiqEv = "Funding and credit background from stored series."
-
-	noteNetLiquidity = "Practitioner construct, no evidence it leads prices."
-	noteStlfsi       = "Zero is the average since late 1993; above 0 = above-average stress."
-	zeroLineNFCI     = "above 0 means tighter than average"
+	// The sentences and notes are Chinese and live in zh_texts.go.
 )
 
 var liquidityIDs = []string{
