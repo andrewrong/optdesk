@@ -57,23 +57,22 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	}
 	res := c.Structures().Evaluate(l.in, compute.StructureParams{MarkMaxAgeSessions: markMaxAgeSessions,
 		CaptureTarget: captureTarget, ExitDTE: exitDTE, CommissionDays: commissionDays})
-	in, foreign, skipped, noQuote := riskInput(l, res)
+	in, skipped, noQuote, err := riskInput(ctx, c, l, res)
+	if err != nil {
+		return nil, err
+	}
 	risk := c.Holdings().Risk(in)
-	p := assemble(c, alias, at, risk, foreign, len(res.Other) > 0)
+	p := assemble(c, alias, at, risk, len(res.Other) > 0)
 	if skipped > 0 {
 		p.Notes = append(p.Notes, textNoExpiry)
 	}
 	if noQuote > 0 {
 		p.Notes = append(p.Notes, fmt.Sprintf(textNoQuoteStructures, noQuote))
 	}
-	captured := l.at
-	if captured.IsZero() {
-		captured, err = time.ParseInLocation(dayLayout, string(l.in.HeldDay), c.Zone)
-		if err != nil {
-			return nil, fmt.Errorf("risk_page: bad capture day %q: %w", l.in.HeldDay, err)
-		}
+	captured, err := capturedAt(c, l)
+	if err != nil {
+		return nil, err
 	}
-	captured = captured.In(c.Zone)
 	p.DataTimes = []sourceTime{{Source: "account_capture", DataTime: captured.Format(timeLayout)}}
 	if !l.ledger.IsZero() {
 		p.DataTimes = append(p.DataTimes, sourceTime{Source: "option_ledger", DataTime: l.ledger.In(c.Zone).Format(timeLayout)})
@@ -85,8 +84,21 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	return json.Marshal(p)
 }
 
+// capturedAt is when the capture was taken, in the owner's zone; the start of its day when the time is unknown.
+func capturedAt(c Config, l loaded) (time.Time, error) {
+	captured := l.at
+	if captured.IsZero() {
+		var err error
+		captured, err = time.ParseInLocation(dayLayout, string(l.in.HeldDay), c.Zone)
+		if err != nil {
+			return captured, fmt.Errorf("risk_page: bad capture day %q: %w", l.in.HeldDay, err)
+		}
+	}
+	return captured.In(c.Zone), nil
+}
+
 // assemble writes the page from the figures; the three blocks without a source are the gap not_built.
-func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, foreign, other bool) pageJSON {
+func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, other bool) pageJSON {
 	p := base(c, alias, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence, p.VegaTitle = pageTitle, pageSentence, vegaTitle
@@ -95,9 +107,6 @@ func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, fo
 	p.BetaDelta = betaGap(gapJSON{Reason: "not_built", Text: textNotBuiltBeta})
 	p.Sigma = sigmaGap(gapJSON{Reason: "not_built", Text: textNotBuiltSigma})
 	p.StandardMetrics = metricsGap(gapJSON{Reason: "not_built", Text: textNotBuiltMetrics})
-	if foreign {
-		p.Gaps = append(p.Gaps, gapJSON{Reason: "unsupported_currency", Text: textForeign})
-	}
 	if other {
 		p.Notes = append(p.Notes, textOtherKinds)
 	}
@@ -114,20 +123,25 @@ func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, fo
 }
 
 // riskInput is the input of Risk: the stocks of the capture and the net greeks of each recognised structure,
-// filed under its nearest expiry. A structure not in USD is left out and foreign is true; one with no leg
-// expiry is left out and counted in skipped; one whose Delta or Vega is a gap or has no value is left out
-// and counted in noQuote.
-func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, foreign bool, skipped, noQuote int) {
+// filed under its nearest expiry, each with its own currency (a JPY Vega is divided by the stored USDJPY of the
+// day, which is empty when none is stored). One with no leg expiry is left out and counted in skipped; one whose
+// Delta or Vega is a gap or has no value is left out and counted in noQuote.
+func riskInput(ctx context.Context, c Config, l loaded, res compute.StructureResult) (in blockapi.RiskIn, skipped, noQuote int, err error) {
 	in.Currency = currency
+	if c.Fx != nil {
+		rate, found, err := c.Fx.LatestFxRate(ctx, "USDJPY", l.in.AsOf)
+		if err != nil {
+			return in, 0, 0, fmt.Errorf("risk_page: read USDJPY: %w", err)
+		}
+		if found {
+			in.UsdJpy = rate.Rate
+		}
+	}
 	for _, s := range l.stocks {
 		in.Stocks = append(in.Stocks, blockapi.HoldingIn{Underlying: s.symbol, SecType: "STK", Currency: s.currency,
 			Quantity: s.quantity, Multiplier: "1"})
 	}
 	for _, s := range res.Structures {
-		if s.Currency != currency {
-			foreign = true
-			continue
-		}
 		expiry := ""
 		for _, leg := range s.Legs {
 			if leg.Expiry != "" && (expiry == "" || leg.Expiry < expiry) {
@@ -143,9 +157,9 @@ func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, forei
 			continue
 		}
 		in.Greeks = append(in.Greeks, blockapi.GreekIn{Underlying: s.Underlying, Expiry: contracts.Day(expiry),
-			Delta: s.Greeks.Delta.Value, Vega: s.Greeks.Vega.Value})
+			Delta: s.Greeks.Delta.Value, Vega: s.Greeks.Vega.Value, Currency: s.Currency})
 	}
-	return in, foreign, skipped, noQuote
+	return in, skipped, noQuote, nil
 }
 
 func deltaBlock(r blockapi.RiskResult) deltaJSON {
@@ -196,7 +210,7 @@ func riskGap(total compute.FigureValue) *gapJSON {
 func gapText(reason string) string {
 	switch reason {
 	case "unsupported_currency":
-		return textForeignStock
+		return textNoRate
 	case "no_data":
 		return textNoCapture
 	}

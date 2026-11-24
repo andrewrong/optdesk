@@ -7,6 +7,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/pages/risk_page"
 )
 
@@ -25,12 +26,20 @@ func init() {
 // riskConfig is the config of household_risk from the readers of the site; a reader that is nil gives the
 // gap page no_reader.
 func riskConfig(a *app, rd siteReaders) risk_page.Config {
-	return risk_page.Config{
+	c := risk_page.Config{
 		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Holdings: pagefig.NewHoldings,
 		Structures: rd.structures, Eod: rd.eod, Terms: rd.terms, Bars: rd.bars,
 	}
+	// A nil reader stays a nil interface: the page then has no quotes and no rate.
+	if ids, ok := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey); ok && ids != nil {
+		c.StockIDs = ids
+	}
+	if rd.fx != nil {
+		c.Fx = rd.fx
+	}
+	return c
 }
 
 // buildRisk builds household_risk per request for the day of dayFlag or today and the account of the query

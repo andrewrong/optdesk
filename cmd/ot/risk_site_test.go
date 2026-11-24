@@ -10,7 +10,9 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 // riskAccount holds one USD stock for alias "main" in the capture of 2026-11-05 and notes the aliases asked for.
@@ -108,5 +110,25 @@ func TestRiskConfigHasBars(t *testing.T) {
 	}
 	if got := riskConfig(a, siteReaders{}).Bars; got != nil {
 		t.Errorf("gap case: bars %v", got)
+	}
+}
+
+type riskStockIDs struct {
+	market_state_page.StockIDReader
+}
+
+type riskFx struct{ bar.FxRateReader }
+
+func TestRiskConfigHasStockIDsAndFx(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{fx: riskFx{}, ext: map[string]any{siteMarketStateIDsKey: riskStockIDs{}}}
+	cfg := riskConfig(a, rd)
+	if cfg.StockIDs == nil || cfg.Fx == nil {
+		t.Fatalf("StockIDs %v Fx %v, want both set from the site readers", cfg.StockIDs, cfg.Fx)
+	}
+	bare := riskConfig(a, siteReaders{})
+	if bare.StockIDs != nil || bare.Fx != nil {
+		t.Fatalf("a site with neither reader gave StockIDs %v Fx %v", bare.StockIDs, bare.Fx)
 	}
 }

@@ -38,7 +38,7 @@ const (
 	textUnknown    = "Unknown account"
 	textDeltaGap   = "Some Delta cannot be computed"
 	textVegaGap    = "Some Vega cannot be computed"
-	textForeign    = "Non-USD option structures are not counted"
+	textNoRate     = "No USDJPY rate is stored: the Vega of JPY option structures cannot be converted to USD"
 	textOtherKinds = "Unrecognised option structures are not counted in risk"
 	textStale      = "The latest capture is too old: no data yet"
 	textNoExpiry   = "Option structures without an expiry are not counted in risk"

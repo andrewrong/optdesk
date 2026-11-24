@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -66,11 +67,10 @@ func (c Config) load(ctx context.Context, alias string, day contracts.Day) (load
 	res := c.Ledgers().Replay(compute.LedgerInput{Alias: alias, Trades: trades, SessionDays: l.in.SessionDays, AsOf: day},
 		compute.LedgerParams{MarkMaxAgeSessions: markMaxAgeSessions})
 	l.in.Positions, l.in.Cycles = res.Positions, res.Cycles
-	conIDs := map[string]int64{}
-	if err := c.capture(ctx, alias, &l, conIDs); err != nil {
+	if err := c.capture(ctx, alias, &l); err != nil {
 		return l, err
 	}
-	l.in.Quotes, err = c.quotes(ctx, l.in.Positions, conIDs, day)
+	l.in.Quotes, err = c.quotes(ctx, l.in.Positions, day)
 	return l, err
 }
 
@@ -94,8 +94,8 @@ func (c Config) sessionDays(ctx context.Context, day contracts.Day) ([]contracts
 }
 
 // capture reads the newest capture among the last session days: its option rows are the held list, its stock
-// rows are the stocks and give the instrument id of each underlying.
-func (c Config) capture(ctx context.Context, alias string, l *loaded, conIDs map[string]int64) error {
+// rows are the stocks.
+func (c Config) capture(ctx context.Context, alias string, l *loaded) error {
 	days := l.in.SessionDays
 	for i := len(days) - 1; i >= 0 && i >= len(days)-captureMaxProbe; i-- {
 		rows, err := c.Account.Positions(ctx, alias, string(days[i]))
@@ -113,7 +113,6 @@ func (c Config) capture(ctx context.Context, alias string, l *loaded, conIDs map
 				l.in.Held = append(l.in.Held, compute.HeldOption{Underlying: p.Symbol, Right: rightLetter(p.Right),
 					Strike: p.Strike, Expiry: p.Expiry, Quantity: p.Quantity})
 			case "STOCK":
-				conIDs[p.Symbol] = p.ConID
 				l.stocks = append(l.stocks, stock{symbol: p.Symbol, currency: p.Currency, quantity: p.Quantity})
 			}
 		}
@@ -129,11 +128,19 @@ func rightLetter(r string) string {
 	return strings.ToUpper(r[:1])
 }
 
+// canQuote is true when every reader the quotes need is set.
+func (c Config) canQuote() bool { return c.Eod != nil && c.Terms != nil && c.StockIDs != nil }
+
 // quotes reads the newest option_eod row of each contract of the held underlyings and matches it to its
-// terms. A held underlying with no stock row in the capture has no quotes.
-func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs map[string]int64, day contracts.Day) ([]compute.StructureQuote, error) {
-	if c.Eod == nil || c.Terms == nil {
+// terms. The underlying id is the stock instrument id read by name; a symbol with no row or with two rows has
+// no quotes, and so has every symbol when StockIDs is nil.
+func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, day contracts.Day) ([]compute.StructureQuote, error) {
+	if !c.canQuote() {
 		return nil, nil
+	}
+	stockID, err := c.stockIDs(ctx, ps)
+	if err != nil {
+		return nil, err
 	}
 	d, err := time.Parse(dayLayout, string(day))
 	if err != nil {
@@ -147,15 +154,15 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 	ids0 := map[string]int64{}
 	eodRows := map[string][]contracts.OptionEod{}
 	for _, p := range ps {
-		if p.Status != "open" || seen[p.Underlying] || conIDs[p.Underlying] == 0 {
+		if p.Status != "open" || seen[p.Underlying] || stockID[p.Underlying] == 0 {
 			continue
 		}
 		seen[p.Underlying] = true
-		rows, err := c.Eod.OptionEod(ctx, conIDs[p.Underlying], from, day)
+		rows, err := c.Eod.OptionEod(ctx, stockID[p.Underlying], from, day)
 		if err != nil {
 			return nil, fmt.Errorf("risk_page: read option_eod: %w", err)
 		}
-		ids0[p.Underlying], eodRows[p.Underlying] = conIDs[p.Underlying], rows
+		ids0[p.Underlying], eodRows[p.Underlying] = stockID[p.Underlying], rows
 		for _, r := range rows {
 			old, ok := newest[r.InstrumentID]
 			if !ok {
@@ -167,15 +174,9 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 			}
 		}
 	}
-	closes := map[string]string{}
-	for sym, id := range ids0 {
-		src, err := shared.SourceOf(ctx, c.Bars, id, eodRows[sym], day)
-		if err != nil {
-			return nil, fmt.Errorf("risk_page: read price bars of %s: %w", sym, err)
-		}
-		if cl, ok := shared.Pick(src, day); ok {
-			closes[sym] = cl.Price
-		}
+	closes, err := c.closes(ctx, ids0, eodRows, day)
+	if err != nil {
+		return nil, err
 	}
 	var out []compute.StructureQuote
 	for lo := 0; lo < len(ids); lo += termsBatch {
@@ -192,6 +193,51 @@ func (c Config) quotes(ctx context.Context, ps []compute.LedgerPosition, conIDs 
 			q := quoteOf(under[int(t.InstrumentID)], t, newest[int(t.InstrumentID)])
 			q.UnderlyingClose = closes[q.Underlying]
 			out = append(out, q)
+		}
+	}
+	return out, nil
+}
+
+// closes is the close of each underlying symbol on day: the stored bar of its instrument id, else the print.
+func (c Config) closes(ctx context.Context, ids map[string]int64, eodRows map[string][]contracts.OptionEod, day contracts.Day) (map[string]string, error) {
+	closes := map[string]string{}
+	for sym, id := range ids {
+		src, err := shared.SourceOf(ctx, c.Bars, id, eodRows[sym], day)
+		if err != nil {
+			return nil, fmt.Errorf("risk_page: read price bars of %s: %w", sym, err)
+		}
+		if cl, ok := shared.Pick(src, day); ok {
+			closes[sym] = cl.Price
+		}
+	}
+	return closes, nil
+}
+
+// stockIDs is the instrument id of each symbol with an open position, by name; a name with no row or with two
+// rows is absent.
+func (c Config) stockIDs(ctx context.Context, ps []compute.LedgerPosition) (map[string]int64, error) {
+	var names []string
+	for _, p := range ps {
+		if p.Status == "open" && !slices.Contains(names, p.Underlying) {
+			names = append(names, p.Underlying)
+		}
+	}
+	out := map[string]int64{}
+	if len(names) == 0 {
+		return out, nil
+	}
+	rows, err := c.StockIDs.StockIDs(ctx, names)
+	if err != nil {
+		return nil, fmt.Errorf("risk_page: read stock ids: %w", err)
+	}
+	count := map[string]int{}
+	for _, r := range rows {
+		count[r.Name]++
+		out[r.Name] = r.InstrumentID
+	}
+	for n, k := range count {
+		if k != 1 || out[n] == 0 {
+			delete(out, n)
 		}
 	}
 	return out, nil
