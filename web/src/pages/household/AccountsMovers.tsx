@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Block } from './MoneySections'
+import { wrapText } from './wrapText'
 import type { Accounts, MoverLine, Movers, Scope, Tag } from './householdTypes'
 
 // A scope heading: the label and the icon are Python's words and Lucide's; nothing is counted here.
@@ -28,9 +29,6 @@ export function ScopeHeading({ scope }: { scope: Scope }) {
 export function WhoseBadge({ tag }: { tag: Pick<Tag, 'whose'> }) {
   return <Badge variant="secondary">{tag.whose}</Badge>
 }
-
-// A label, tag, sentence or head wraps inside its cell instead of widening the table; number cells stay nowrap.
-export const wrapText = 'whitespace-normal break-words'
 
 // Below sm the account table keeps account, net value and cash; stock, option and data day columns show from sm.
 const accountHead = (i: number) =>

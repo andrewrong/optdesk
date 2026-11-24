@@ -484,3 +484,15 @@ it('wraps the label cells, keeps number cells on one line and hides the share co
   expect(head.querySelector('nav')!.classList.contains('min-w-0')).toBe(true)
   expect(head.querySelector('p')!.classList.contains('break-words')).toBe(true)
 })
+
+it('hides the secondary columns of the money tables below sm and keeps name and amount (#3710)', async () => {
+  await show(<HouseholdPage payload={fixture('ok.json')} />)
+  const narrow = (name: string) =>
+    host.querySelector(`[data-block=${name}] [data-narrow-table]`)!.className
+  expect(narrow('composition')).toContain('max-sm:[&_:is(th,td):nth-child(3)]:hidden')
+  expect(narrow('obligations')).toContain('max-sm:[&_:is(th,td):nth-child(3)]:hidden')
+  expect(narrow('allocation')).toContain('max-sm:[&_:is(th,td):nth-child(n+3)]:hidden')
+  // the payload text stays in the DOM: only the CSS hides it
+  const share = fixture('ok.json').composition.rows[0].share?.text
+  if (share) expect(host.querySelector('[data-block=composition]')!.textContent).toContain(share)
+})
