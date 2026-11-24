@@ -194,7 +194,7 @@ func groupRow(key string, ind Indicator, obs []obsPoint, d time.Time) indicatorR
 	if c := changeOf(obs, sp); c != "" {
 		out.ChangeText = &c
 	}
-	limit := freshnessLimitDays
+	limit := dailyFreshnessDays
 	if sp.monthly {
 		limit = monthlyFreshnessDays
 	} else if sp.weekly {
