@@ -118,7 +118,7 @@ func newJob(s OptionLedgerStores, cfg OptionLedgerConfig, clk clock.Clock, log *
 // ID is the job id of the manifest.
 func (j *job) ID() string { return j.m.ID }
 
-// Schedule is the slot of the manifest: session_close plus 60 minutes.
+// Schedule is the slot of the manifest: session_close plus 13 hours (06:00 New York the next morning).
 func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration) {
 	return j.m.Schedule.Calendar, j.m.Schedule.Anchor, "", j.offset
 }

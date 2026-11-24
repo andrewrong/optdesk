@@ -6,10 +6,10 @@ history_from = "2025-12-01"
 # Age in session days after which a mark is no longer used by the figures (read by the ledger reader, not by this job).
 mark_max_age_sessions = 5
 
-# Flex statements are produced after the close.
+# The Flex statements of a session are read the next morning: 13 hours after the close is 06:00 New York, so the last day asked is the session day just closed.
 [schedule]
 calendar = "XNYS"
 anchor = "session_close"
-offset = "60m"
+offset = "780m"
 run_bound = "30m"
 restart_sensitive = false
