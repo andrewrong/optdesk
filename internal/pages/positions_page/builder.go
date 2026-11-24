@@ -361,3 +361,6 @@ func missingDay(stocks []stockRow) string {
 	}
 	return titleOptions
 }
+
+// accountLabel is the label of the account alias, in the view and in the link to its page.
+func accountLabel(alias string) string { return labelAccount + alias + labelClose }
