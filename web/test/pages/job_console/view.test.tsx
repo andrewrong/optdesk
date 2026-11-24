@@ -192,4 +192,25 @@ describe('job console view', () => {
     vi.advanceTimersByTime(60000)
     expect(reload).not.toHaveBeenCalled()
   })
+
+  it('wraps the long note and reason cells and keeps the id cell nowrap', async () => {
+    const long = 'a very long sentence that must wrap inside its column '.repeat(10)
+    const g = golden()
+    const p: Payload = {
+      ...g,
+      jobs: g.jobs.map((j, n) => (n === 0 ? { ...j, note: long } : j)),
+      requests: [{ ...g.requests[0]!, keys: [{ ...g.requests[0]!.keys[0]!, reason: long }] }] as Payload['requests'],
+    }
+    const el = await render(p)
+    const row = el.querySelector(`tr[data-job="${g.jobs[0]!.id}"]`) as HTMLElement
+    const cells = [...row.querySelectorAll('td')] as HTMLElement[]
+    expect(cells[0]!.className).not.toContain('whitespace-normal')
+    expect(cells[2]!.textContent).toBe(long)
+    expect(cells[2]!.className).toContain('whitespace-normal')
+    expect(cells[2]!.className).toContain('break-words')
+    const reason = el.querySelector('[data-reason]') as HTMLElement
+    expect(reason.textContent).toBe(long)
+    expect(reason.className).toContain('whitespace-normal')
+    expect(reason.className).toContain('break-words')
+  })
 })

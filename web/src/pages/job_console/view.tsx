@@ -71,7 +71,7 @@ function JobRow({ job, form }: { job: Job; form: Form | null }) {
           <RunForm job={job} form={form} />
         ) : null}
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">{job.note}</TableCell>
+      <TableCell className="whitespace-normal break-words text-sm text-muted-foreground">{job.note}</TableCell>
     </TableRow>
   )
 }
@@ -116,7 +116,7 @@ function KeysTable({ keys }: { keys: Key[] }) {
               <Badge variant="outline">{k.outcome}</Badge> <span data-outcome-text>{k.outcome_text}</span>
             </TableCell>
             <TableCell data-present>{k.present}</TableCell>
-            <TableCell data-reason>{k.reason}</TableCell>
+            <TableCell data-reason className="whitespace-normal break-words">{k.reason}</TableCell>
           </TableRow>
         ))}
       </TableBody>
