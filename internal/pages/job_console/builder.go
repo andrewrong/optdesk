@@ -293,10 +293,17 @@ func sentenceFor(reqs []requestJSON, sel *jobrequest.Row) string {
 	if focus.State != string(jobrequest.StateDone) {
 		return sentenceText
 	}
+	present := 0
 	for _, k := range focus.Keys {
 		if k.Outcome == outProduced {
 			return sentenceText
 		}
+		if k.Outcome == outAlreadyPresent {
+			present++
+		}
+	}
+	if present > 0 && present == len(focus.Keys) {
+		return fmt.Sprintf(zhAllPresentFmt, focus.ID, focus.Job, focus.Day)
 	}
 	return fmt.Sprintf(zhNothingProducedFmt, focus.ID, focus.Job, focus.Day)
 }

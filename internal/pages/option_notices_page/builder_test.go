@@ -479,3 +479,24 @@ func TestOffListCaptureIsStale(t *testing.T) {
 		t.Errorf("status = %s stale = %+v", p.Accounts[0].Status, p.Stale)
 	}
 }
+
+func TestStaleLabelNamesTheAccount(t *testing.T) {
+	t.Parallel()
+	a := fakeAccount{positions: map[string][]store.Position{
+		"main/2026-11-09":  {stock("ACME")},
+		"other/2026-11-06": {stock("BETA")},
+	}}
+	p := buildPage(t, testConfig(a, &fakeRule{}))
+	if p.Stale == nil {
+		t.Fatal("no stale label")
+	}
+	if !strings.Contains(p.Stale.Text, "other is from 2026-11-06") || strings.Contains(p.Stale.Text, "main") {
+		t.Errorf("text = %q", p.Stale.Text)
+	}
+	a.positions["main/2026-11-09"] = nil
+	a.positions["main/2026-11-05"] = []store.Position{stock("ACME")}
+	p = buildPage(t, testConfig(a, &fakeRule{}))
+	if p.Stale == nil || !strings.Contains(p.Stale.Text, "main is from 2026-11-05") || !strings.Contains(p.Stale.Text, "other is from 2026-11-06") {
+		t.Errorf("stale = %+v", p.Stale)
+	}
+}

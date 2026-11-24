@@ -161,10 +161,25 @@ func heldRefusedText(sym, reason string) string {
 	return heldText(sym+": held, not added to the list: ", reason)
 }
 
-// rowNote is the note column: the resolved text for a held-added row with a con_id, else the stored note.
+// rowNote is the note column. A held-added row with a con_id says how it was resolved, one without waits to be
+// resolved; any other row shows its stored note. A row with no stored name adds that no name is stored for it.
 func rowNote(r underlying.Row) string {
-	if r.Note == underlying.NoteHeld && r.ConID > 0 {
-		return fmt.Sprintf("Resolved as %s stock %s, con_id %d; check the con_id", r.Market, r.Symbol, r.ConID)
+	note := r.Note
+	if r.Note == underlying.NoteHeld {
+		if r.ConID > 0 {
+			note = fmt.Sprintf("Resolved as %s stock %s, con_id %d", r.Market, r.Symbol, r.ConID)
+		} else {
+			note = "Added: held position; waits to be resolved"
+		}
 	}
-	return r.Note
+	if r.Name == "" {
+		if note != "" {
+			note += "; "
+		}
+		note += noNameNote
+	}
+	return note
 }
+
+// noNameNote is added to the note of a row that has no stored name.
+const noNameNote = "No name is stored for it"
