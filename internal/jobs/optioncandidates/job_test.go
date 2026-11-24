@@ -588,7 +588,8 @@ func spotMarksOf(t *testing.T, text string) string {
 	}
 	var keep []string
 	for _, m := range marks {
-		if m == markEodFallback || m == markSpotChain || strings.HasPrefix(m, markChainDayPrefix) || strings.HasPrefix(m, markSpotQuotePrefix) {
+		if m == markEodFallback || m == markSpotChain || strings.HasPrefix(m, markChainDayPrefix) ||
+			strings.HasPrefix(m, markSpotQuotePrefix) || strings.HasPrefix(m, markSpotOpenPrefix) {
 			keep = append(keep, m)
 		}
 	}
@@ -698,4 +699,48 @@ func TestCandidatesQuotesReadErrorFallsBackToChain(t *testing.T) {
 	if r.Spot == nil || *r.Spot != "99" || spotMarksOf(t, r.Marks) != "chain_day:2026-11-06 spot_chain" {
 		t.Fatalf("spot %v marks %s", r.Spot, r.Marks)
 	}
+}
+
+func TestCandidatesSpotOpenNewerThanQuote(t *testing.T) {
+	t.Parallel()
+	// the fake clock is 2026-11-09T21:30Z; the open row is received at 14:35Z
+	run := func(t *testing.T, openDay string, quote contracts.QuoteSnapshot) store.Candidate {
+		t.Helper()
+		e := newSrcEnv()
+		e.underlying(7, "ABC")
+		e.put(7, 11, "90")
+		o := openRowOf(7, 11, 1, 2.0, 2.1)
+		o.UnderlyingPrice = f64(103)
+		o.SessionDay = day(openDay)
+		o.ReceivedAt = time.Date(2026, 11, 9, 14, 35, 0, 0, time.UTC)
+		e.open = []contracts.OptionOpen{o}
+		st := e.stores(true)
+		st.Quotes = quotesByID{7: {quote}}
+		j, err := New(st, e, []jobs.WatchEntry{entryFor("ABC", "cik:1", "91.5")}, fixedClock{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+			t.Fatal(res.Err)
+		}
+		return e.rowOf(t, 11)
+	}
+	check := func(t *testing.T, r store.Candidate, spot, marks string) {
+		t.Helper()
+		if r.Spot == nil || *r.Spot != spot || spotMarksOf(t, r.Marks) != marks {
+			t.Fatalf("spot %v marks %s, want %q %s", r.Spot, r.Marks, spot, marks)
+		}
+	}
+	t.Run("open newer than the quote", func(t *testing.T) {
+		t.Parallel()
+		check(t, run(t, "2026-11-09", snap("2026-11-06", "2026-11-06T20:30:00Z", f64(98.5), 1)), "103", "spot_open:2026-11-09")
+	})
+	t.Run("quote newer than the open", func(t *testing.T) {
+		t.Parallel()
+		check(t, run(t, "2026-11-09", snap("2026-11-09", "2026-11-09T15:00:00Z", f64(101.5), 1)), "101.5", "spot_quote:2026-11-09")
+	})
+	t.Run("open rows of another day", func(t *testing.T) {
+		t.Parallel()
+		check(t, run(t, "2026-11-06", snap("2026-11-06", "2026-11-06T20:30:00Z", f64(98.5), 1)), "98.5", "spot_quote:2026-11-06")
+	})
 }

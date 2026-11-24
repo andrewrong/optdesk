@@ -130,24 +130,39 @@ func (s *sourceRun) finish() []string {
 }
 
 // chain is the one function that gives the chain of an underlying, for puts only or for both rights. With a quote
-// reader its spot is the newest stored stock quote (spot_quote mark) or, with none, the chain price (spot_chain).
+// reader its spot is the newer of the newest stored stock quote (spot_quote mark) and the price of today's open
+// rows (spot_open mark) or, with neither, the chain price (spot_chain). Without a reader the open price of today
+// is the spot when there is one.
 func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.WatchEntry, calls bool) (chainResult, error) {
 	res, err := s.chainOf(ctx, ul, entry, calls)
 	if err != nil {
 		return res, err
 	}
-	if s.j.st.Quotes == nil || res.unusable {
-		return res, nil // no quote reader: the rows are the rows of today, with no new mark
+	if res.unusable {
+		return res, nil
+	}
+	openPrice, openAt, openFound := openSpot(s.open[int(ul.id)], s.day)
+	openMark := markSpotOpenPrefix + string(s.day)
+	if s.j.st.Quotes == nil {
+		// no quote reader: the open price of today when there is one, else the chain price with no new mark
+		if openFound {
+			res.spot, res.spotMark = openPrice, openMark
+		}
+		return res, nil
 	}
 	res.earlier = res.chainDay < s.day
-	price, d, found, qerr := spotFromQuote(ctx, s.j.st.Quotes, ul.id, s.day, s.j.clk.Now().UTC())
+	price, d, quoteAt, found, qerr := spotFromQuote(ctx, s.j.st.Quotes, ul.id, s.day, s.j.clk.Now().UTC())
 	if qerr != nil {
 		s.j.logger().Warn("quote_snapshot read failed, the spot is the chain price",
 			"component", "jobs", "status", "degraded", "job", s.j.m.ID, "err", qerr)
 	}
-	if qerr == nil && found {
+	quoteFound := qerr == nil && found
+	switch {
+	case openFound && (!quoteFound || openAt.After(quoteAt)):
+		res.spot, res.spotMark = openPrice, openMark
+	case quoteFound:
 		res.spot, res.spotMark = price, markSpotQuotePrefix+string(d)
-	} else {
+	default:
 		res.spotMark = markSpotChain
 	}
 	return res, nil

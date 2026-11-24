@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
 // fakeQuotes is a store.QuoteSnapshotReader over fixed rows; it keeps the arguments of the last read.
@@ -37,7 +38,7 @@ func TestSpotFromQuote(t *testing.T) {
 		snap("2026-11-06", "2026-11-06T21:00:00Z", nil, 1),
 	}
 	q := &fakeQuotes{rows: rows}
-	price, d, ok, err := spotFromQuote(context.Background(), q, 7, "2026-11-09", now)
+	price, d, _, ok, err := spotFromQuote(context.Background(), q, 7, "2026-11-09", now)
 	if err != nil || !ok || price != "96.25" || d != "2026-11-06" {
 		t.Fatalf("got %q %s %v %v", price, d, ok, err)
 	}
@@ -49,17 +50,103 @@ func TestSpotFromQuote(t *testing.T) {
 	q.rows = append(rows,
 		snap("2026-11-09", "2026-11-09T14:00:01Z", f64(99), 1),
 		snap("2026-11-09", "2026-11-09T13:00:00Z", f64(98), 4))
-	price, d, ok, _ = spotFromQuote(context.Background(), q, 7, "2026-11-09", now)
+	price, d, _, ok, _ = spotFromQuote(context.Background(), q, 7, "2026-11-09", now)
 	if !ok || price != "96.25" || d != "2026-11-06" {
 		t.Fatalf("after the clock: %q %s %v", price, d, ok)
 	}
 
 	q.rows = nil
-	if _, _, ok, err := spotFromQuote(context.Background(), q, 7, "2026-11-09", now); ok || err != nil {
+	if _, _, _, ok, err := spotFromQuote(context.Background(), q, 7, "2026-11-09", now); ok || err != nil {
 		t.Fatalf("no rows: %v %v", ok, err)
 	}
 	q.err = errors.New("down")
-	if _, _, ok, err := spotFromQuote(context.Background(), q, 7, "2026-11-09", now); ok || err == nil {
+	if _, _, _, ok, err := spotFromQuote(context.Background(), q, 7, "2026-11-09", now); ok || err == nil {
 		t.Fatalf("error: %v %v", ok, err)
+	}
+}
+
+func openAt(d, at string, price *float64) contracts.OptionOpen {
+	t, _ := time.Parse(time.RFC3339, at)
+	return contracts.OptionOpen{SessionDay: day(d), ReceivedAt: t, UnderlyingPrice: price}
+}
+
+func TestOpenSpot(t *testing.T) {
+	t.Parallel()
+	rows := []contracts.OptionOpen{
+		openAt("2026-11-09", "2026-11-09T14:31:00Z", f64(101)),
+		openAt("2026-11-09", "2026-11-09T14:35:00Z", f64(102.5)),
+		openAt("2026-11-09", "2026-11-09T14:40:00Z", nil),
+		openAt("2026-11-06", "2026-11-06T20:59:00Z", f64(90)),
+	}
+	price, at, ok := openSpot(rows, "2026-11-09")
+	if !ok || price != "102.5" || !at.Equal(time.Date(2026, 11, 9, 14, 35, 0, 0, time.UTC)) {
+		t.Fatalf("got %q %v %v", price, at, ok)
+	}
+	if _, _, ok := openSpot(rows[3:], "2026-11-09"); ok {
+		t.Fatal("row of the day before taken")
+	}
+	if _, _, ok := openSpot(rows[2:3], "2026-11-09"); ok {
+		t.Fatal("row without price taken")
+	}
+	if _, _, ok := openSpot(nil, "2026-11-09"); ok {
+		t.Fatal("no rows gave a price")
+	}
+}
+
+// openRowToday is an open row of the run day for underlying 7 with the underlying price 103.
+func openRowToday(id, status int) contracts.OptionOpen {
+	o := openRowOf(7, id, status, 2.0, 2.1)
+	o.UnderlyingPrice = f64(103)
+	o.SessionDay = day("2026-11-09")
+	o.ReceivedAt = time.Date(2026, 11, 9, 14, 35, 0, 0, time.UTC)
+	return o
+}
+
+func TestCandidatesSpotOpenWithoutQuotes(t *testing.T) {
+	t.Parallel()
+	e := newSrcEnv()
+	e.underlying(7, "ABC")
+	e.put(7, 11, "90")
+	e.open = []contracts.OptionOpen{openRowToday(11, 1)}
+	j, err := New(e.stores(true), e, []jobs.WatchEntry{entryFor("ABC", "cik:1", "91.5")}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	r := e.rowOf(t, 11)
+	if r.Spot == nil || *r.Spot != "103" || spotMarksOf(t, r.Marks) != "spot_open:2026-11-09" {
+		t.Fatalf("spot %v marks %s", r.Spot, r.Marks)
+	}
+}
+
+// TestCandidatesSpotOpenOnEodFallback: the open row of the day is deferred, so the chain is the eod chain of the
+// session before, and the spot is still the open price, with the mark after eod_fallback and chain_day.
+func TestCandidatesSpotOpenOnEodFallback(t *testing.T) {
+	t.Parallel()
+	for _, withQuotes := range []bool{false, true} {
+		e := newSrcEnv()
+		e.underlying(7, "ABC")
+		e.put(7, 11, "90")
+		e.open = []contracts.OptionOpen{openRowToday(11, openStatusDeferred)}
+		e.eod = []contracts.OptionEod{eodRowOf(7, 11, "2026-11-06", 1.7, 1.8, 40)}
+		st := e.stores(true)
+		want := "eod_fallback spot_open:2026-11-09"
+		if withQuotes {
+			st.Quotes = quotesByID{7: {snap("2026-11-06", "2026-11-06T20:30:00Z", f64(98.5), 1)}}
+			want = "eod_fallback chain_day:2026-11-06 spot_open:2026-11-09"
+		}
+		j, err := New(st, e, []jobs.WatchEntry{entryFor("ABC", "cik:1", "91.5")}, fixedClock{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res := j.Run(context.Background(), runDay, nil); res.Err != nil {
+			t.Fatal(res.Err)
+		}
+		r := e.rowOf(t, 11)
+		if r.Spot == nil || *r.Spot != "103" || spotMarksOf(t, r.Marks) != want {
+			t.Errorf("quotes %v: spot %v marks %s, want %s", withQuotes, r.Spot, r.Marks, want)
+		}
 	}
 }
