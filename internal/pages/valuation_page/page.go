@@ -181,7 +181,7 @@ func newPage(in Input, view string) (*pageJSON, error) {
 		p.Form = &formJSON{PostPath: postPath, Expires: in.Form.Expires, MAC: in.Form.MAC}
 	}
 	if !in.StateOK {
-		p.addGap("store_unavailable", "The valuation store is not readable here.")
+		p.addGap("store_unavailable", storeUnavailableText)
 	}
 	return p, nil
 }
