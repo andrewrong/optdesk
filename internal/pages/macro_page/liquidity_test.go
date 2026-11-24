@@ -439,3 +439,17 @@ func TestLiquidityNotesAreChinese(t *testing.T) {
 		}
 	}
 }
+
+func TestLiquiditySentenceWithEventsIsChinese(t *testing.T) {
+	t.Parallel()
+	c := liqConfig(fullResult())
+	c.Events = &fakeEvents{}
+	m := liqBuild(t, c)
+	got, _ := m["sentence"].(string)
+	if got != sentenceLiqEv || got == sentenceLiq {
+		t.Errorf("sentence with events = %q, want the events-present sentence", got)
+	}
+	if !strings.ContainsFunc(got, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+		t.Errorf("sentence %q holds no Chinese character", got)
+	}
+}
