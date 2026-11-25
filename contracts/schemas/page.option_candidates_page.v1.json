@@ -1401,6 +1401,34 @@
           "items": {
             "$ref": "#/$defs/TierRow"
           }
+        },
+        "companies": {
+          "description": "Optional: one entry per company of the tier, in the order of its first row, with its row count and row ids.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "company",
+              "count",
+              "row_ids"
+            ],
+            "properties": {
+              "company": {
+                "$ref": "#/$defs/Text"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "row_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     },

@@ -506,6 +506,14 @@ export interface Tier {
   explain: Text1;
   collapsed: boolean;
   rows: TierRow[];
+  /**
+   * Optional: one entry per company of the tier, in the order of its first row, with its row count and row ids.
+   */
+  companies?: {
+    company: Text1;
+    count: number;
+    row_ids: string[];
+  }[];
 }
 /**
  * line is the one-line text of a grey row.
