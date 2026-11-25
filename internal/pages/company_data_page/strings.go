@@ -22,14 +22,14 @@ type column struct {
 }
 
 var columns = []column{
-	{"fiscal_year_end", "Fiscal year end", glossFiscalYearEnd},
-	{"price_to", "Price up to", glossPriceTo},
-	{"bar_count", "Daily bars", glossBarCount},
-	{"statements", "Statements", glossStatements},
-	{"latest_quarter", "Latest quarter", glossLatestQuarter},
-	{"eps_quarters", "EPS quarters", glossEPSQuarters},
-	{"next_report", "Next report", glossNextReport},
-	{"missing", "Missing", glossMissing},
+	{"fiscal_year_end", labelFiscalYearEnd, glossFiscalYearEnd},
+	{"price_to", labelPriceTo, glossPriceTo},
+	{"bar_count", labelBarCount, glossBarCount},
+	{"statements", labelStatements, glossStatements},
+	{"latest_quarter", labelLatestQuarter, glossLatestQuarter},
+	{"eps_quarters", labelEPSQuarters, glossEPSQuarters},
+	{"next_report", labelNextReport, glossNextReport},
+	{"missing", labelMissing, glossMissing},
 }
 
 type glossaryRow struct {
@@ -38,13 +38,13 @@ type glossaryRow struct {
 }
 
 var glossary = []glossaryRow{
-	{"Fiscal year end", textFiscalYearEnd},
-	{"Price up to", textPriceTo},
-	{"Daily bars", textDailyBars},
-	{"Statements", textStatements},
-	{"Latest quarter", textLatestQuarter},
-	{"EPS quarters", textEPSQuarters},
-	{"Next report", textNextReport},
+	{labelFiscalYearEnd, textFiscalYearEnd},
+	{labelPriceTo, textPriceTo},
+	{labelBarCount, textDailyBars},
+	{labelStatements, textStatements},
+	{labelLatestQuarter, textLatestQuarter},
+	{labelEPSQuarters, textEPSQuarters},
+	{labelNextReport, textNextReport},
 	{string(companydataapi.ReasonJP), textReasonJP},
 	{string(companydataapi.ReasonNoCIK), textReasonNoCIK},
 	{string(companydataapi.ReasonFundamentalsOff), textReasonFundOff},
