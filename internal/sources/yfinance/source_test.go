@@ -125,8 +125,7 @@ func TestAllBatchesFailingIsAnError(t *testing.T) {
 	t.Parallel()
 	f := &fakeRun{reply: func(int, wireRequest) ([]byte, int, error) { return []byte("not json"), 0, nil }}
 	_, err := newTest(f, clockwork.NewFakeClock()).DailyBars(context.Background(), request(3))
-	var te contracts.TypedError
-	if !errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); !ok {
 		t.Fatalf("err = %v", err)
 	}
 	f = &fakeRun{reply: func(int, wireRequest) ([]byte, int, error) { return nil, -1, context.DeadlineExceeded }}

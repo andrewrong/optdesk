@@ -77,7 +77,7 @@ func TestParseByHeaderName(t *testing.T) {
 	// Same rows, columns in another order with an extra column: found by name.
 	var b strings.Builder
 	b.WriteString("currency,timeOfTheDay,estimate,fiscalDateEnding,reportDate,name,symbol\n")
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		b.WriteString("USD,pre-market,1.50,2026-09-30,2026-12-01,Name,S" + string(rune('A'+i%26)) + "\n")
 	}
 	got, err = newTestSource(t, &fakeDoer{status: 200, body: b.String()}).Fetch(context.Background())
@@ -101,8 +101,7 @@ func TestNoticeBodyIsError(t *testing.T) {
 	if err == nil || codeOf(t, err) != "rate_limited" {
 		t.Fatalf("err %v", err)
 	}
-	var te contracts.TypedError
-	if !errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); !ok {
 		t.Fatalf("not typed: %v", err)
 	}
 	// A body that is neither csv nor a notice.
@@ -115,7 +114,7 @@ func TestNoticeBodyIsError(t *testing.T) {
 func TestShortCalendarIsError(t *testing.T) {
 	t.Parallel()
 	body := "symbol,name,reportDate,fiscalDateEnding,estimate,currency\n"
-	for i := 0; i < 499; i++ {
+	for range 499 {
 		body += "AAA,N,2026-11-10,2026-09-30,1,USD\n"
 	}
 	_, err := newTestSource(t, &fakeDoer{status: 200, body: body}).Fetch(context.Background())

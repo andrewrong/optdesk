@@ -140,7 +140,7 @@ func (c *client) Fetch(ctx context.Context, req sources.FlexRequest) (sources.Fl
 	pq.Set("t", c.token)
 	pq.Set("q", sr.ReferenceCode)
 	pq.Set("v", apiVersion)
-	for i := 0; i < maxPolls; i++ {
+	for range maxPolls {
 		body, err := c.get(ctx, getStatement, pq)
 		if err != nil {
 			return sources.FlexReport{}, err

@@ -2,6 +2,7 @@ package sec
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -71,7 +72,7 @@ func TestPacingFiveAPerSecond(t *testing.T) {
 	t.Parallel()
 	clk := clockwork.NewFakeClock()
 	p := newPacer(clk)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if d := p.reserve(); d != time.Duration(i)*200*time.Millisecond {
 			t.Fatalf("request %d waits %v", i, d)
 		}
@@ -101,7 +102,7 @@ func TestErrorHidesUserAgent(t *testing.T) {
 		srv, _, _ := server(t, status)
 		src, _ := New(sources.SECConfig{BaseURL: srv.URL, UserAgent: secret, Clock: clockwork.NewFakeClock()})
 		_, err := src.Fetch(context.Background(), sources.FactPlan{Subjects: []string{"cik:0000320193"}})
-		te, ok := err.(contracts.TypedError)
+		te, ok := errors.AsType[contracts.TypedError](err)
 		if !ok {
 			t.Fatalf("status %d: %v is not typed", status, err)
 		}

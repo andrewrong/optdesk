@@ -29,8 +29,7 @@ func Exec(ctx context.Context, argv []string, stdin []byte) ([]byte, int, error)
 	if err == nil {
 		return out.Bytes(), 0, nil
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		return out.Bytes(), exit.ExitCode(), nil
 	}
 	return nil, -1, err
