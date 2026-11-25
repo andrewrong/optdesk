@@ -2,11 +2,15 @@ package optioncandidates
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -182,5 +186,85 @@ func TestTrimSessionDaysKeepsRunDay(t *testing.T) {
 	want := []contracts.Day{"2026-11-06", "2026-11-09"}
 	if len(got) != len(want) || got[0] != want[0] || got[len(got)-1] != "2026-11-09" {
 		t.Fatalf("trimmed %v", got)
+	}
+}
+
+type keepRow struct {
+	Status     string `json:"status"`
+	ObservedOn string `json:"observed_on"`
+	ReportDate string `json:"report_date"`
+}
+
+type keepCase struct {
+	Override  string    `json:"override"`
+	Rows      []keepRow `json:"rows"`
+	WantState string    `json:"want_state"`
+	WantNext  string    `json:"want_next"`
+}
+
+// runKeepCase reads one case of testdata/earnings_keep.json through earnings() and returns the rule input and
+// the chain-side result.
+func runKeepCase(t *testing.T, name string) (keepCase, *compute.EarningsInfo, chainEarnings) {
+	t.Helper()
+	b, err := os.ReadFile("testdata/earnings_keep.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fx struct {
+		ChainDay string              `json:"chain_day"`
+		Issuer   string              `json:"issuer"`
+		Cases    map[string]keepCase `json:"cases"`
+	}
+	if err := json.Unmarshal(b, &fx); err != nil {
+		t.Fatal(err)
+	}
+	c, ok := fx.Cases[name]
+	if !ok {
+		t.Fatalf("no case %q", name)
+	}
+	var rows []contracts.EarningsDate
+	for _, r := range c.Rows {
+		row := contracts.EarningsDate{Issuer: fx.Issuer, Status: gen.EarningsDateStatus(r.Status), ObservedOn: day(r.ObservedOn)}
+		if r.ReportDate != "" {
+			row.ReportDate = dayPtr(r.ReportDate)
+		}
+		rows = append(rows, row)
+	}
+	f := newFakes()
+	f.earnings = map[string][]contracts.EarningsDate{fx.Issuer: rows}
+	e := usEntry()
+	e.Issuer = fx.Issuer
+	e.ReportDateOverride = c.Override
+	j := &job{st: f.stores()}
+	info, ce, err := j.earnings(context.Background(), e, contracts.Day(fx.ChainDay))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c, info, ce
+}
+
+func TestKeepLastKnownDate(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"keep_last_known", "keep_after_error"} {
+		c, info, ce := runKeepCase(t, name)
+		if string(info.Next) != c.WantNext || info.State != c.WantState || string(ce.next) != c.WantNext {
+			t.Fatalf("%s: info %+v chain %+v", name, info, ce)
+		}
+	}
+}
+
+func TestKeepIgnoresPastDate(t *testing.T) {
+	t.Parallel()
+	c, info, ce := runKeepCase(t, "past_date_ignored")
+	if info.Next != "" || info.State != c.WantState || ce.next != "" {
+		t.Fatalf("info %+v chain %+v", info, ce)
+	}
+}
+
+func TestOverrideWins(t *testing.T) {
+	t.Parallel()
+	c, info, ce := runKeepCase(t, "override")
+	if string(info.Override) != c.WantNext || string(ce.next) != c.WantNext {
+		t.Fatalf("info %+v chain %+v", info, ce)
 	}
 }
