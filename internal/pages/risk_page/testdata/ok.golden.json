@@ -65,14 +65,14 @@
         "expiry_text": "2026-12-18",
         "vega": {
           "value": 15.75,
-          "text": "15.75 USD/vol point",
+          "text": "15.75 美元/每波动率 1 点 USD/vol point",
           "unit": "usd_per_vol_point"
         }
       }
     ],
     "total": {
       "value": 15.75,
-      "text": "15.75 USD/vol point",
+      "text": "15.75 美元/每波动率 1 点 USD/vol point",
       "unit": "usd_per_vol_point"
     },
     "gap": null
