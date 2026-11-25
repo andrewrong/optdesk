@@ -31,7 +31,7 @@
         "name": "AAA",
         "delta": {
           "value": 69.50,
-          "text": "+69.50 USD per $1 move",
+          "text": "+69.50 美元/每 $1",
           "unit": "usd_signed",
           "currency": "USD"
         }
@@ -40,7 +40,7 @@
         "name": "BBB",
         "delta": {
           "value": 40.00,
-          "text": "+40.00 USD per $1 move",
+          "text": "+40.00 美元/每 $1",
           "unit": "usd_signed",
           "currency": "USD"
         }
@@ -48,7 +48,7 @@
     ],
     "total": {
       "value": 109.50,
-      "text": "+109.50 USD per $1 move",
+      "text": "+109.50 美元/每 $1",
       "unit": "usd_signed",
       "currency": "USD"
     },

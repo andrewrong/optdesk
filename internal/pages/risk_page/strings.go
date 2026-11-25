@@ -6,6 +6,5 @@ const (
 	headVega  = "Vega"
 	headBeta  = "Beta"
 
-	unitDelta = " USD per $1 move"
-	unitVega  = " USD/vol point"
+	unitVega = " USD/vol point"
 )
