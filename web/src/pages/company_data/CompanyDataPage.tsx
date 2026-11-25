@@ -15,10 +15,10 @@ export function CompanyDataPage({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl font-semibold">Company data</h1>
+            <h1 className="text-xl font-semibold">公司数据</h1>
           </CardTitle>
           <a href={payload.data_health_path} className="text-sm underline underline-offset-4">
-            Data health
+            数据健康
           </a>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -35,7 +35,7 @@ export function CompanyDataPage({ payload }: { payload: Payload }) {
       {payload.glossary.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Legend</CardTitle>
+            <CardTitle>图例</CardTitle>
           </CardHeader>
           <CardContent>
             <dl data-legend className="space-y-2 text-sm">

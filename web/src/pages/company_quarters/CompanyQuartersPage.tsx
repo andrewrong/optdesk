@@ -13,7 +13,7 @@ export function CompanyQuartersPage({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl font-semibold">Company quarters</h1>
+            <h1 className="text-xl font-semibold">公司季度</h1>
           </CardTitle>
           {company !== null ? (
             <p data-company={company.key} className="text-sm text-muted-foreground">
