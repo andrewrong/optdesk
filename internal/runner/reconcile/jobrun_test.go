@@ -7,8 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
@@ -185,5 +188,127 @@ func TestNoLedgerRecordsNothing(t *testing.T) {
 	}
 	if !presentOf(t, led, keyA) {
 		t.Fatal("the key was not run without a ledger")
+	}
+}
+
+// lateLedger takes the fake clock past the slot of the dependent when the first row (the upstream's)
+// closes, so the dependent is not due when the pass starts and runs only when the end of its upstream
+// triggers it.
+type lateLedger struct {
+	*fakeRunLedger
+	clk  *clockwork.FakeClock
+	once sync.Once
+}
+
+func (l *lateLedger) Close(ctx context.Context, id, outcome string, at time.Time) error {
+	err := l.fakeRunLedger.Close(ctx, id, outcome, at)
+	l.once.Do(func() { l.clk.Advance(6 * time.Hour) })
+	return err
+}
+
+// unlockSignal closes done when the first lock taken for job id is released: a dependent releases it
+// after its row is closed.
+type unlockSignal struct {
+	runner.JobLocks
+	id   string
+	done chan struct{}
+	once sync.Once
+}
+
+func (u *unlockSignal) TryLock(id string) (func(), bool) {
+	unlock, ok := u.JobLocks.TryLock(id)
+	if !ok || id != u.id {
+		return unlock, ok
+	}
+	return func() {
+		unlock()
+		u.once.Do(func() { close(u.done) })
+	}, ok
+}
+
+// triggeredDep builds a reconciler whose dependent "dep" (key keyC) is run only by the end of "up".
+func triggeredDep(led *fakeLedger, rl *fakeRunLedger, d depJob) (*reconciler, <-chan struct{}) {
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	rec := detRec(led, clk, upJob(keyA), d)
+	WithJobRunLedger(rec, &lateLedger{fakeRunLedger: rl, clk: clk})
+	sig := &unlockSignal{JobLocks: rec.locks, id: "dep", done: make(chan struct{})}
+	rec.locks = sig
+	return rec, sig.done
+}
+
+func TestDependentRunWritesRow(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		results map[contracts.ExpectedKey]contracts.JobResult
+		outcome string
+	}{
+		{"ok", nil, "ok"},
+		{"failed", map[contracts.ExpectedKey]contracts.JobResult{keyC: {Err: kindErr{kind: contracts.Permanent}}}, "failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			led := newLedger()
+			rl := &fakeRunLedger{}
+			d := dep(5*time.Hour, keyC)
+			d.results = tc.results
+			rec, done := triggeredDep(led, rl, d)
+
+			if err := rec.ReconcileDetached(context.Background(), detDay, newSpawnLog(true).spawn); err != nil {
+				t.Fatal(err)
+			}
+			<-done
+			var depCalls []ledgerCall
+			in := false
+			for _, c := range rl.calls {
+				if c.op == "start" {
+					in = c.run.JobID == "dep"
+				}
+				if in {
+					depCalls = append(depCalls, c)
+				}
+			}
+			if len(depCalls) != 3 {
+				t.Fatalf("dependent calls = %+v, want start, progress, close", depCalls)
+			}
+			if s := depCalls[0].run; s.Source != "scheduler" || s.KeysTotal != 1 {
+				t.Fatalf("started row = %+v", s)
+			}
+			if depCalls[1].op != "progress" || depCalls[1].done != 1 || depCalls[1].total != 1 {
+				t.Fatalf("progress = %+v", depCalls[1])
+			}
+			if depCalls[2].op != "close" || depCalls[2].outcome != tc.outcome {
+				t.Fatalf("close = %+v, want outcome %s", depCalls[2], tc.outcome)
+			}
+		})
+	}
+}
+
+// A dependent that already ran for the day is not run again when its upstream ends, and opens no row.
+func TestSkippedDependentWritesNoRow(t *testing.T) {
+	t.Parallel()
+	led := newLedger()
+	rl := &fakeRunLedger{}
+	d := dep(5*time.Hour, keyC)
+	rec, done := triggeredDep(led, rl, d)
+	if err := led.MarkPresent(context.Background(), detDay, keyC, store.StatusPresent); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := rec.ReconcileDetached(context.Background(), detDay, newSpawnLog(true).spawn); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	var started []string
+	for _, c := range rl.calls {
+		if c.op == "start" {
+			started = append(started, c.run.JobID)
+		}
+	}
+	if len(started) != 1 || started[0] != "up" {
+		t.Fatalf("rows started for %v, want only the upstream", started)
+	}
+	if len(d.calls) != 0 {
+		t.Fatalf("dependent ran for %v", d.calls)
 	}
 }

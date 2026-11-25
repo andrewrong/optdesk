@@ -199,3 +199,56 @@ describe('MarketRows price_chart', () => {
     await done()
   })
 })
+
+describe('TestMarketRowsNasdaq', () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  const ids = ['sp500_vs_200d', 'sp500_drawdown', 'nasdaq_drawdown', 'vix', 'vix_term', 'hy_spread']
+
+  it('renders the Nasdaq-100 card right after the S&P 500 drawdown card, showing the payload text as given', async () => {
+    const base = ok.market.rows[0]!
+    const rows = ids.map((id) => ({ ...base, id, range: undefined, hint: undefined }) as unknown as TestRow)
+    rows[2] = {
+      ...base,
+      id: 'nasdaq_drawdown',
+      figure: { kind: 'value', text: '-7.31%' },
+      range: {
+        state: 'caution',
+        state_text: 'Caution (trial)',
+        cuts: [
+          { level: 'caution', text: 'Caution from -8.20%', basis: 'percentile', source: 'own history' },
+          { level: 'alarm', text: 'Alarm from -17.45%', basis: 'percentile', source: 'own history' },
+        ],
+        notice: 'A notice only; nothing is blocked.',
+      },
+      hint: '纳斯达克 100 距近 60 个交易日最高点的回撤。',
+    } as unknown as TestRow
+    const block = { ...ok.market, rows } as unknown as Payload['market']
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<MarketRows block={block} />)
+    })
+
+    const found = [...host.querySelectorAll('[data-market-row]')].map((el) => el.getAttribute('data-market-row'))
+    expect(found).toEqual(ids)
+    const card = host.querySelector('[data-market-row="sp500_drawdown"]')!.nextElementSibling!
+    expect(card.getAttribute('data-market-row')).toBe('nasdaq_drawdown')
+
+    const text = card.textContent ?? ''
+    expect(text).toContain('-7.31%')
+    expect(card.querySelector('[data-range-state]')!.textContent).toBe('Caution (trial)')
+    expect(card.querySelector('[data-range-state]')!.getAttribute('data-range-state')).toBe('caution')
+    expect(text).toContain('Caution from -8.20%')
+    expect(text).toContain('Alarm from -17.45%')
+    expect(text).toContain('A notice only; nothing is blocked.')
+    expect(card.querySelector('[data-hint-mark]')).not.toBeNull()
+    await act(async () => {
+      ;(card.querySelector('[data-hint-mark]') as HTMLElement).click()
+    })
+    expect(document.body.textContent).toContain('纳斯达克 100 距近 60 个交易日最高点的回撤。')
+
+    await act(async () => root.unmount())
+    host.remove()
+  })
+})
