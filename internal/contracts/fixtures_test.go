@@ -29,7 +29,7 @@ var fixtureSchema = map[string]string{
 	"market-weather":         "page.market_weather.v1.json",
 	"option-page":            "page.option_page.v1.json",
 	"options-summary":        "page.options_summary.v2.json",
-	"positions-page":         "page.positions_page.v3.json",
+	"positions-page":         "page.positions_page.v4.json",
 	"structures-list":        "page.structures_list.v1.json",
 	"tracking":               "page.tracking.v1.json",
 	"strategy-replay-page":   "page.strategy_replay_page.v1.json",

@@ -19,7 +19,7 @@
   "run_id": "run-demo-0001",
   "run_status": "partial",
   "schema": "positions_page",
-  "schema_version": 3,
+  "schema_version": 4,
   "scope": "positions-page",
   "stale": {
     "data_time": "2026-10-28T09:28:00+08:00",
