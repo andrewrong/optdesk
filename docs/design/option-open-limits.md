@@ -31,20 +31,20 @@ The owner's words as relayed on 2026-11-25: "IBKR limits only: 100 market-data l
 
 ### Decision 2 (fault 1): a strike is asked at an expiry only if that expiry lists it
 
-The candidates of an expiry come from the strikes that expiry holds, not from the union of the chain. `refs` (the stored contracts of the name, read by `ListOptions` in `keyRun.run`) give, for each expiry, the strikes already known listed there. The strikes of an expiry to ask are:
+The candidates of an expiry come from the strikes that expiry holds, not from the union of the chain. `refs` (the stored contracts of the name, read by `ListOptions` in `keyRun.run`) give, for each expiry, the strikes already known listed there. The strikes of an expiry to ask are, in this order of preference:
 
-1. the strikes stored listed at that expiry (nothing new to ask, they are cached; they define its grid);
-2. the strikes of the chain union that lie on the grid of that expiry: the multiples of its step, the step being the smallest gap between two stored strikes of that expiry inside the band; an expiry with no stored strike takes the step of the nearest stored expiry of the same kind (a third-Friday monthly takes the monthly step, any other expiry takes the weekly step); with no stored expiry at all, every strike of the union is asked, as today, and its answers write the marks of Decision 3.
+1. a stored listing of that expiry: when the expiry has a stored listing (the contracts the list job `option_list_preopen` stored from its per-expiry listing, in `master.option_contract`, with its record in the list store), only the strikes that listing holds are asked, those of them the cache does not hold yet; a strike the listing does not hold is not asked;
+2. only when no listing is stored for that expiry, a grid as the fallback: the strikes of the chain union that are multiples of the step of the expiry, the step being the smallest gap between two stored strikes of that expiry inside the band; an expiry with no stored strike takes the step of the nearest stored expiry of the same kind (a third-Friday monthly takes the monthly step, any other expiry the weekly step); with no stored expiry at all, every strike of the union is asked, as today, and its answers write the marks of Decision 3.
 
-The held contracts are still asked at their own expiry whatever the grid. Effect: the 3,116 pairs of 2026-11-25 that no weekly lists are not asked; the strikes of a new weekly are asked once, and a wrong grid costs a mark, not a daily repeat.
+The held contracts are still asked at their own expiry whatever the grid. The grid is a guess and the listing is the fact, so the listing wins whenever one exists. Effect: the 3,116 pairs of 2026-11-25 that no weekly lists are not asked; the strikes of a new weekly are asked once, and a wrong grid costs a mark, not a daily repeat.
 
 ### Decision 3 (fault 2): the not-listed marks live until retry_at
 
-Triggers (b) and (c) of `option-open-pull.md` Decision 5 are dropped. A mark ends at (a) `retry_at` (7 days, plus or minus 2) or (d) the stored close moved 5 percent or more since `checked_at`. A strike listed at another expiry says nothing about this expiry, and the chain union is the very list that produced the candidates. Effect: a pair answered "no security definition" is not asked again for about a week.
+Triggers (b) and (c) of `option-open-pull.md` Decision 5 are dropped. A mark ends at (a) `retry_at` (7 days, plus or minus 2), (d) the stored close moved 5 percent or more since `checked_at`, or the exact contract is stored listed (then it is cached and never asked). These are option-trader's three early re-ask triggers; a timeout or an ambiguous answer stores nothing (unchanged). A fourth, "a strike newly in the chain since `checked_at`", needs the chain of that day, which is not stored; it is in `## Left out`. A strike listed at another expiry says nothing about this expiry, and the chain union is the very list that produced the candidates. Effect: a pair answered "no security definition" is not asked again for about a week.
 
 ### Decision 4 (fault 5): the resolve asks in parallel, up to IBKR's pacing
 
-The resolve jobs ask the candidates of a name with `parallel` workers (manifest key, 16 to start; the number is a manifest value the owner can change after the advice of option-trader), each one fully specified `ResolveContract`; the broker client holds at most `ResolveInFlight` in flight (50 in the wiring, was 1, so the manifest value is the bound and the pacer is the ceiling) and the pyside details lane may rise to `DETAILS_MAX` 40 (was 5), under the 40 starts a second of the pacer. A timeout still counts toward `stopAfterTimeouts` (2 consecutive): the run stops asking and lists the rest as unsent. Marks, stores and counters are written by one goroutine, never by a worker.
+The resolve jobs ask the candidates of a name with `parallel` workers (manifest key, 5; a manifest value the owner can change), each one fully specified `ResolveContract`; the broker client holds at most `ResolveInFlight` in flight (5 in the wiring, was 1, equal to the lane) and the pyside details lane stays at `DETAILS_MAX` 5 (start 2, 20 s timeout, 30 s pause). Evidence, not our guess: option-trader ran this exact setup (ADR 0003 line 55, #757, #1619, #793, #803; p90 538 ms), and a class-wide or strike-less details request overloaded the gateway twice and a timed-out details request cannot be cancelled. So the lane is the safety bound of the contract-details calls and the Go side must not throttle below it: `parallel` is 5 and `ResolveInFlight` 5. A timeout still counts toward `stopAfterTimeouts` (2 consecutive): the run stops asking and lists the rest as unsent. Marks, stores and counters are written by one goroutine, never by a worker.
 
 ### Decision 5 (fault 4): no plan cut, and a deferral always has its reason
 
@@ -58,10 +58,10 @@ The resolve jobs ask the candidates of a name with `parallel` workers (manifest 
 | `list_max_new` 60000 | four list manifests | removed |
 | `OT_OPEN_RESOLVE_MAX_NEW` | cmd/ot/wire_optionopen.go | removed |
 | `ceil_total` 2050 | job_plan.toml | 0 |
-| `ResolveInFlight` 1 | wire_optionopen.go (US resolve and gap) | 50 (manifest `parallel` is the real bound); the list jobs keep 1 (they ask one at a time) |
+| `ResolveInFlight` 1 | wire_optionopen.go (US resolve and gap) | 5 (the lane); the list jobs keep 1 (they ask one at a time) |
 | `chunk` 30 | job_pull.toml, job_pull_jp.toml | 60 |
 | `DEFAULT_SNAPSHOTS` 50, `OT_IBKR_SNAPSHOTS` 50 | pacing.py, server.py | 70 |
-| `DETAILS_MAX` 5 | pacing.py | 40 |
+| `DETAILS_MAX` 5, start 2 | pacing.py | kept: option-trader's evidence-based gateway safety (Decision 4) |
 | cancel counted as a start | `MessagePacer` | not counted |
 | `budget_minutes` gap 40 | job_gap.toml | kept: ends before the plan at 08:45 ET |
 | `list_budget_minutes` 45 / 25 | list manifests | kept: the list ends before the gap |
@@ -83,7 +83,7 @@ None changed. No proto, no `internal/broker/api.go`, no `api.py`: the per-expiry
 
 ## Capacity
 
-Resolve (from the audit, 2026-11-25): about 3,100 not-listed asks of the gap pass fall away by Decision 2, and the not-listed asks that remain are not repeated for a week by Decision 3. The real asks (884 on 2026-11-25) with 16 workers and the 40 starts a second of the pacer take under two minutes if an answer takes 2 seconds (884 / 16 x 2 s = 110 s); today they take about 6 asks a second in one lane. Pull: 3,118 items at 60 in flight and a hold of 3 s a line is about 52 seconds of line time; the real figure is measured on the first night (estimate, not measured). Lines: 70 of 100, so 30 stay for the account's own use.
+Resolve (from the audit, 2026-11-25): about 3,100 not-listed asks of the gap pass fall away by Decision 2, and the not-listed asks that remain are not repeated for a week by Decision 3. Option-trader's expectation after the first fill is low hundreds of resolves a day. With 5 in flight and its p90 of 538 ms, 884 asks take about 884 / 5 x 0.54 s = 95 s (estimate); today they run one after the other at about 6 a second observed. Pull: 3,118 items at 60 in flight and a hold of 3 s a line is about 52 seconds of line time; the real figure is measured on the first night (estimate, not measured). Lines: 70 of 100, so 30 stay for the account's own use.
 
 ## Failure paths
 
@@ -98,12 +98,12 @@ Resolve (from the audit, 2026-11-25): about 3,100 not-listed asks of the gap pas
 Module: jobs. Size: L. Order: first. Files: `internal/jobs/optionopen/band.go`, `internal/jobs/optionopen/listed.go`, `internal/jobs/optionopen/manifest.go`, `internal/jobs/optionopen/job_resolve.toml`, `internal/jobs/optionopen/job_gap.toml`, `internal/jobs/optionopen/job_resolve_jp.toml`, `internal/jobs/optionopen/expiry_grid.go` (new), `internal/jobs/optionopen/expiry_grid_test.go` (new), `internal/jobs/optionopen/listed_test.go`, `internal/jobs/optionopen/fakes_test.go`.
 
 Acceptance:
-1. A chain whose union holds 30, 31, 32 and 35 with a monthly that lists all four and a weekly stored at 30 and 35 and 40 asks the weekly for strikes on its step only: a new test `TestWeeklyIsAskedOnlyOnItsGrid` in `expiry_grid_test.go` expects no request for 31 or 32 at the weekly and the four at the monthly.
+1. An expiry with a stored listing is asked only the strikes of that listing the cache lacks: a new test `TestExpiryWithAStoredListingIsAskedOnlyItsStrikes` in `expiry_grid_test.go` expects, for a union of 30, 31, 32 and 35 and a weekly listing of 30, 35 and 40, no request for 31 or 32 at the weekly; and a weekly with no stored listing is asked on its grid step only (new test `TestWeeklyWithNoListingIsAskedOnItsGrid`), the monthly all four.
 2. A held contract is asked at its own expiry whatever the grid, and an expiry with no stored strike and no stored expiry of its kind asks the whole union: two new tests in `expiry_grid_test.go` pin both.
 3. A mark is not removed because the same strike is stored at another expiry or because the chain union lists it: `TestStrikeListedAtAnotherExpiryEndsItsMark` and `TestStrikeNewlyInTheChainEndsItsMark` are replaced by `TestMarkSurvivesTheSameStrikeAtAnotherExpiry` (new) and `TestMarkSurvivesTheChainListingTheStrike` (new), and `TestMorningChainListingAMarkedStrikeEndsItsMarkInTheGapPassOnly` is removed; `endMarks` has neither trigger and `otherExpiry` and `chainLists` no longer exist.
 4. A mark past `retry_at`, and every mark of a name whose close moved 5 percent, still end: `TestMarkedContractIsNotAskedBeforeItsRetryAt` and `TestSpotMoveOfFivePercentAsksAgain` pass unchanged.
 5. A run with a day of 10,000 candidates asks all of them: `take` has no cap when `max_new` is 0, `TestMaxNewOf1500ResolvesAllThirteenHundredInOneRun`, `TestCapOf300StopsAtThreeHundredAndSaysSo` and `TestTheNearestStrikesAreResolvedFirstWhenTheCapBites` are replaced by one new test `TestNoCapAsksEveryCandidate`, and `job_resolve.toml`, `job_gap.toml` and `job_resolve_jp.toml` carry `max_new = 0`; the gap keeps `budget_minutes = 40`, the evening resolve has `budget_minutes = 300`.
-6. The candidates of a name are asked by `parallel` workers: a new test `TestResolveAsksInParallelAndWritesInOrder` with 16 workers and a fake broker that holds each call expects up to 16 requests in flight, every answer stored once, the counters of the summary line equal to a one-worker run, and two consecutive timeouts still stop the run with the rest counted `unsent`.
+6. The candidates of a name are asked by `parallel` workers: a new test `TestResolveAsksInParallelAndWritesInOrder` with 5 workers and a fake broker that holds each call expects up to 5 requests in flight, every answer stored once, the counters of the summary line equal to a one-worker run, and two consecutive timeouts still stop the run with the rest counted `unsent`.
 7. The summary line of a resolve run names the number of candidates dropped by the grid (`grid_skipped=` in a new assertion of `TestResolveSlotValues`'s sibling `TestResolveSummaryCarriesGridSkipped` (new)), so a pair not asked is counted, not silent.
 8. A contract stored on an earlier day is never asked again: a new test `TestStoredContractOfAnEarlierDayIsNotAsked` expects no request for a key held by the stored refs, whatever the day of the run.
 9. Docs: docs/design/option-open-limits.md#1-option-limits-expiry-strikes.
@@ -125,7 +125,7 @@ Acceptance:
 Module: ot. Size: S. Order: first. Files: `cmd/ot/wire_optionopen.go`, `cmd/ot/wire_optionopen_test.go`, `docs/contracts/ot/jobs/option_open_resolve.md`, `docs/contracts/ot/jobs/option_open_resolve_gap.md`.
 
 Acceptance:
-1. The US resolve and the gap pass dial the broker with `ResolveInFlight: 50`; the JP resolve and the list jobs keep 1.
+1. The US resolve and the gap pass dial the broker with `ResolveInFlight: 5`; the JP resolve and the list jobs keep 1.
 2. `OT_OPEN_RESOLVE_MAX_NEW` is not read: `openResolveMaxNew` and `envOpenResolveMaxNew` no longer exist, and a new test `TestResolveJobsAreBuiltWithNoMaxNew` in `wire_optionopen_test.go` expects the job built with the manifest value 0 even when the variable is set.
 3. The two job documents name no cap and say that `max_new` is 0.
 4. Docs: docs/design/option-open-limits.md#3-option-limits-wiring.
@@ -137,7 +137,7 @@ Module: pyside. Size: M. Order: first. Files: `pyside/src/optdesk/ibkr/pacing.py
 Acceptance:
 1. A cancel takes no slot: `test_pacer_counts_cancels` is replaced by a new test `test_a_cancel_takes_no_start_slot` that sends 40 starts and 40 cancels in one second and expects all cancels sent at once and the 41st start waiting; the docstring of `MessagePacer` says a cancel is not a start, and a cancel in a finally still never waits (`test_cancel_in_finally_does_not_block` passes).
 2. Quotes in flight are 70: `DEFAULT_SNAPSHOTS` is 70, the default of `OT_IBKR_SNAPSHOTS` in `server.py` is 70, and `test_snapshot_cap_is_fifty` is replaced by a new `test_snapshot_cap_is_seventy`.
-3. The details lane rises to `DETAILS_MAX` 40: `test_lane_never_rises_above_max` passes with the new value and `test_lane_starts_at_two` is unchanged.
+3. The details lane is unchanged: `DETAILS_MAX` stays 5 and `test_lane_never_rises_above_max` and `test_lane_starts_at_two` pass unchanged.
 4. A gateway error 100 is logged with the starts and the cancels of the last second (a new test `test_error_100_logs_the_last_second` pins the line), and nothing else changes in the handling of errors.
 5. `AmbiguousResolve` and `resolve` are unchanged.
 6. Docs: docs/design/option-open-limits.md#4-option-limits-pyside-pacing.
@@ -151,6 +151,7 @@ Acceptance:
 ## Left out
 
 - A per-expiry resolve (one strike-less `reqContractDetails` per name and expiry): rejected, open requests overload the gateway (option-trader #776, ADR 0003: a details request with strike or right left open burst 148 open requests). Every resolve stays fully specified; the saving comes from knowing the listed strikes per expiry first (Decision 2). The proto `ContractsService.ListContracts` that already exists is not used by the resolve jobs.
+- A fourth early end of a mark, "a strike newly in the chain since `checked_at`": the chain of the mark's day is not stored, so it cannot be tested; a new strike of an expiry is asked anyway as a candidate of Decision 2.
 - Item 8 of the audit: `runDependent` writes no `ops.job_run` row; it is a separate registered draft.
 - The overlap of the list job and the resolve (the same band asked twice, by two jobs): one band for both is a decision for the owner, not cut here.
 - F4 (the cap counter resets on restart; the gap run at 16:00 ET) falls away with the cap; the 16:00 run itself is not touched.
@@ -165,5 +166,5 @@ Self-attack by the author on six questions, no agent spawned.
 - Biggest unnamed risk: cancels not counted. If IBKR in fact counts every message, 40 starts and up to 40 cancels a second is 80 and three violations end the session. The owner decided "starts only"; adopted as written, with the 40 margin kept and the error 100 log of issue 4 so the first violation shows its numbers. Not adopted: a cancel counter that slows starts, since the owner said no.
 - Simpler way: ask only the strikes stored at that expiry (no grid guess). Not adopted: new real contracts (884 on 2026-11-25) would never be found. Another simpler way, one band for the list job and the resolve, is in `## Left out` for the owner.
 - Lock-in: `parallel` and `ResolveInFlight` are values, not a shape; the per-expiry call stays possible later because no interface was closed.
-- Claim most likely false: the grid step of a weekly derived from stored strikes (Decision 2). It rests on the one NVDA example of the audit (12-24 stored 38 calls and 38 puts, 32 and 31 not listed) and on "weeklies are coarser"; it is not checked on the other 52 names. A wrong guess costs one pass of marks.
+- Claim most likely false: the grid fallback of Decision 2 (used only when no listing is stored). It rests on the one NVDA example of the audit (12-24 stored 38 calls and 38 puts, 32 and 31 not listed) and on "weeklies are coarser"; it is not checked on the other 52 names. A wrong guess costs one pass of marks.
 - Likeliest slip: issue 1 is size L in two files `listed.go` (629 lines) and `band.go`; a new file `expiry_grid.go` carries the grid so that `listed.go` does not grow past 800 lines; if it still does, the pull request reports it.
