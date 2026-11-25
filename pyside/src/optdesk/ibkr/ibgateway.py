@@ -51,7 +51,6 @@ from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
 from optdesk.ibkr.transport import NotAllowed, OrderRefused
 
 _log = logging.getLogger(__name__)
-
 _DIVIDEND_LOG_MAX = 120  # characters of an exception text kept in dividend_failed
 _QUOTE_LOG_MAX = 200  # the same for quote_failed
 
@@ -266,6 +265,8 @@ class IbGateway:
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:
         if code == _CLIENT_ID_IN_USE and not self._connected:
             self._id_in_use = True
+        if code == 100:  # max message rate: log the load of the last second
+            _log.warning("error_100 starts=%d cancels=%d", *self._pacer.last_second())
         con_id = getattr(contract, "conId", 0)
         if not con_id and code in spec.SESSION_CODES:
             self._session_code(code, text)
