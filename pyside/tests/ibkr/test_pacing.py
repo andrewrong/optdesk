@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+from functools import partial
 
 import pytest
 from kit.fakeclock import FakeClock
+from test_ibgateway import opened
 
 from optdesk.ibkr.pacing import (
     DEFAULT_LINES,
@@ -48,23 +51,46 @@ def test_pacer_forty_starts_then_waits() -> None:
     assert asyncio.run(run()) == (0, 1, 0)
 
 
-def test_pacer_counts_cancels() -> None:
-    async def run() -> tuple[list[str], list[str]]:
+def test_a_cancel_takes_no_start_slot() -> None:
+    async def run() -> tuple[int, int, int]:
         clock = FakeClock()
         pacer = MessagePacer(clock)
-        for _ in range(39):
+        sent: list[int] = []
+        for n in range(40):
+            pacer.cancel(partial(sent.append, n))
             await pacer.start()
-        sent: list[str] = []
-        pacer.cancel(lambda: sent.append("c1"))
-        pacer.cancel(lambda: sent.append("c2"))
         await _spin()
-        first = list(sent)
-        await clock.advance(1)
-        return first, sent
+        done: list[int] = []
 
-    first, after = asyncio.run(run())
-    assert first == ["c1"]
-    assert after == ["c1", "c2"]
+        async def forty_first() -> None:
+            await pacer.start()
+            done.append(1)
+
+        task = asyncio.ensure_future(forty_first())
+        await _spin()
+        before = len(done)
+        await clock.advance(1)
+        await task
+        return len(sent), before, len(done)
+
+    assert asyncio.run(run()) == (40, 0, 1)
+
+
+def test_error_100_logs_the_last_second(caplog: pytest.LogCaptureFixture) -> None:
+    async def run() -> None:
+        clock = FakeClock()
+        gateway, fake = await opened(clock, lines=3)
+        pacer = gateway._pacer
+        for _ in range(3):
+            await pacer.start()
+            pacer.cancel(lambda: None)
+        await _spin()
+        fake.errorEvent.emit(-1, 100, "Max rate of messages per second exceeded", None)
+
+    with caplog.at_level(logging.WARNING, logger="optdesk.ibkr.ibgateway"):
+        asyncio.run(run())
+    lines = [r.getMessage() for r in caplog.records if "error_100" in r.getMessage()]
+    assert lines == ["error_100 starts=4 cancels=3"]
 
 
 def test_cancel_in_finally_does_not_block() -> None:
@@ -144,7 +170,7 @@ def test_budget_shrinks_on_101_not_below_one() -> None:
     assert asyncio.run(run()) == [70, 70, 2, 1]
 
 
-def test_snapshot_cap_is_fifty() -> None:
+def test_snapshot_cap_is_seventy() -> None:
     async def run() -> tuple[int, int]:
         budget = LineBudget(DEFAULT_SNAPSHOTS)
         release = asyncio.Event()
@@ -156,14 +182,14 @@ def test_snapshot_cap_is_fifty() -> None:
                 running += 1
                 await release.wait()
 
-        tasks = [asyncio.ensure_future(hold()) for _ in range(60)]
+        tasks = [asyncio.ensure_future(hold()) for _ in range(80)]
         await _spin()
         at_cap = running
         release.set()
         await asyncio.gather(*tasks)
         return at_cap, running
 
-    assert asyncio.run(run()) == (50, 60)
+    assert asyncio.run(run()) == (70, 80)
 
 
 async def _answer(clock: FakeClock, lane: DetailsLane, seconds: float) -> None:
