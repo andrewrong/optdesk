@@ -318,7 +318,8 @@ func TestGlossaryCoversEveryTerm(t *testing.T) {
 		gm := g.(map[string]any)
 		terms[gm["term"].(string)] = gm["text"].(string)
 	}
-	want := []string{"财年结束月 Fiscal year end", "价格更新至 Price up to", "日线根数 Daily bars", "财报数据 Statements", "最新季度 Latest quarter", "EPS 季度数 EPS quarters", "下次财报 Next report",
+	want := []string{"财年结束月 Fiscal year end", "价格更新至 Price up to", "日线根数 Daily bars", "财报数据 Statements", "最新季度 Latest quarter", "EPS 季度数 EPS quarters",
+		"下次财报 Next report",
 		"jp", "no_cik", "fundamentals_off", "no_statements", "annual_only", "no_instrument", "no_bars", "no_next_report"}
 	for _, w := range want {
 		txt := terms[w]
