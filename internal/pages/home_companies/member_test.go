@@ -266,15 +266,15 @@ func TestIVPSourceOrder(t *testing.T) {
 			"value", 50, "50.00% · IBKR series", "market.ivp_ibkr"},
 		{"both missing names own reason", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 2, 100)},
 			[]contracts.ReadingRecord{rec("market.ivp_ibkr", "DEMOA", "2026-11-10", "", "missing_input")},
-			"gap", 0, "IV percentile: short history, 100/252 own IV30 sessions", ""},
+			"gap", 0, "IV percentile: 历史不足，自有 IV30 交易日 100/252", ""},
 		{"stale input", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 3, 0)}, nil,
-			"gap", 0, "IV percentile: stale input, own IV30 is out of date", ""},
+			"gap", 0, "IV percentile: 输入过期，自有 IV30 已过时", ""},
 		{"no input", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 1, 0)}, nil,
-			"gap", 0, "IV percentile: no input, no IV30 reading for the day", ""},
+			"gap", 0, "IV percentile: 无输入，当日没有 IV30 读数", ""},
 		{"bad input", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 5, 0)}, nil,
-			"gap", 0, "IV percentile: bad input, own IV30 history is unusable", ""},
+			"gap", 0, "IV percentile: 输入有误，自有 IV30 历史不可用", ""},
 		{"no own row", nil, nil,
-			"gap", 0, "IV percentile: no own IV30 history is stored", ""},
+			"gap", 0, "IV percentile: 没有已存的自有 IV30 历史", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -323,7 +323,7 @@ func TestBandNotOkFewerThan5YearsNamesTheNeed(t *testing.T) {
 	price, _, _ := gapTexts(t, fakeView{rows: map[key][]contracts.ReadingRecord{
 		{"valuation.buy_band", "DEMOB"}: {notOkRow("valuation.buy_band", "DEMOB", "2026-11-10", "fewer_than_5_years")},
 	}})
-	want := "valuation band: needs 5 years of fundamentals, fewer stored; shown once 5 years are loaded"
+	want := "valuation band: 需要 5 年基本面数据，已存数据不足；载入 5 年后显示"
 	if price != want {
 		t.Errorf("price text = %q, want %q", price, want)
 	}
@@ -334,7 +334,7 @@ func TestBandNotOkOtherReasonReadsUnderscoresAsSpaces(t *testing.T) {
 	price, _, _ := gapTexts(t, fakeView{rows: map[key][]contracts.ReadingRecord{
 		{"valuation.buy_band", "DEMOB"}: {notOkRow("valuation.buy_band", "DEMOB", "2026-11-10", "no_price_input")},
 	}})
-	if want := "valuation band: missing input (no price input)"; price != want {
+	if want := "valuation band: 缺少输入（no price input）"; price != want {
 		t.Errorf("price text = %q, want %q", price, want)
 	}
 }
@@ -342,14 +342,14 @@ func TestBandNotOkOtherReasonReadsUnderscoresAsSpaces(t *testing.T) {
 func TestNoBandRowSaysNotComputedYet(t *testing.T) {
 	t.Parallel()
 	price, hv, iv := gapTexts(t, fakeView{})
-	want := "valuation band: not computed yet, comes with the next figures run"
+	want := "valuation band: 尚未计算，随下一次数据运行给出"
 	if price != want {
 		t.Errorf("price text = %q, want %q", price, want)
 	}
-	if want := "HV30: not computed yet, comes with the next figures run"; hv != want {
+	if want := "HV30: 尚未计算，随下一次数据运行给出"; hv != want {
 		t.Errorf("hv30 text = %q, want %q", hv, want)
 	}
-	if want := "IV30: not computed yet, comes with the next figures run"; iv != want {
+	if want := "IV30: 尚未计算，随下一次数据运行给出"; iv != want {
 		t.Errorf("iv30 text = %q, want %q", iv, want)
 	}
 }
@@ -359,7 +359,7 @@ func TestHVNotOkRowWithReasonNamesIt(t *testing.T) {
 	_, hv, _ := gapTexts(t, fakeView{rows: map[key][]contracts.ReadingRecord{
 		{"market.hv30_own", "DEMOB"}: {notOkRow("market.hv30_own", "DEMOB", "2026-11-10", "short_history")},
 	}})
-	if want := "HV30: missing input (short history)"; hv != want {
+	if want := "HV30: 缺少输入（short history）"; hv != want {
 		t.Errorf("hv30 text = %q, want %q", hv, want)
 	}
 }
@@ -463,8 +463,8 @@ func TestChangeNoReader(t *testing.T) {
 	t.Parallel()
 	row := changeRow(t, nil, fakeFiguresFunc(compute.FigureValue{}, compute.FigureValue{}), 7)
 	for k, want := range map[string]string{
-		"day_change":      "day change: reader not set",
-		"five_day_change": "5-day change: reader not set",
+		"day_change":      "day change: 未设置读取器",
+		"five_day_change": "5-day change: 未设置读取器",
 	} {
 		g := row[k].(map[string]any)
 		if g["reason"] != "no_reader" || g["text"] != want {
@@ -553,13 +553,13 @@ func TestEarningsCell(t *testing.T) {
 		{"past", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-03")}},
 			map[string]any{"kind": "value", "date": "2026-11-03", "text": "已公布 11-03"}},
 		{"no row", fakeEarnings{},
-			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: none listed"}},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: 暂无列出的日期"}},
 		{"not listed", fakeEarnings{rows: []contracts.EarningsDate{earnRow("none", "")}},
-			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: none listed"}},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: 暂无列出的日期"}},
 		{"listed without date", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "")}},
-			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: none listed"}},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: 暂无列出的日期"}},
 		{"nil reader", nil,
-			map[string]any{"kind": "gap", "reason": "no_reader", "text": "earnings date: reader not set"}},
+			map[string]any{"kind": "gap", "reason": "no_reader", "text": "earnings date: 未设置读取器"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -614,10 +614,66 @@ func TestEarningsCellNoIssuerReadsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)["earnings"].(map[string]any)
-	if got["kind"] != "gap" || got["reason"] != "no_data" || got["text"] != "earnings date: no issuer" {
+	if got["kind"] != "gap" || got["reason"] != "no_data" || got["text"] != "earnings date: 无发行人" {
 		t.Errorf("cell = %v, want the no-issuer gap", got)
 	}
 	if n := calls.Load(); n != 0 {
 		t.Errorf("EarningsDates called %d times, want 0", n)
+	}
+}
+
+func TestCompaniesCardGapsAreChinese(t *testing.T) {
+	t.Parallel()
+	rows := []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB"}}
+	bad := okView()
+	for _, n := range []string{"valuation.buy_band", "market.hv30_own", "market.iv30_own"} {
+		bad.rows[key{n, "DEMOB"}] = []contracts.ReadingRecord{rec(n, "DEMOB", "2026-11-10", "abc", "ok")}
+	}
+	cases := []struct {
+		name string
+		cfg  home_companies.Config
+	}{
+		{"no reader", home_companies.Config{Rows: rows}},
+		{"reading absent", home_companies.Config{Rows: rows, Read: fakeView{}}},
+		{"reading not a number", home_companies.Config{Rows: rows, Read: bad}},
+		{"missing band", home_companies.Config{Rows: rows, Read: fakeView{rows: map[key][]contracts.ReadingRecord{
+			{"valuation.buy_band", "DEMOB"}: {notOkRow("valuation.buy_band", "DEMOB", "2026-11-10", "fewer_than_5_years")},
+		}}}},
+	}
+	old := []string{"reader not set", "not computed yet", "missing input", "no stored reading", "is not a number",
+		"has no currency", "no sharpmove", "needs 5 years", "no issuer", "none listed", "short history,",
+		"stale input,", "bad input,", "no own IV30", "with a price line"}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			m, _ := build(t, config(tc.cfg))
+			card := m["card"].(map[string]any)
+			texts := []string{card["say"].(string)}
+			for _, g := range card["gaps"].([]any) {
+				texts = append(texts, g.(map[string]any)["text"].(string))
+			}
+			row := card["rows"].([]any)[0].(map[string]any)
+			vol := row["volatility"].(map[string]any)
+			for _, c := range []any{row["price"], row["earnings"], row["day_change"], vol["hv30"], vol["iv30"], vol["ivp"]} {
+				if g, ok := c.(map[string]any); ok && g["kind"] == "gap" {
+					texts = append(texts, g["text"].(string))
+				}
+			}
+			gaps := 0
+			for _, text := range texts {
+				for _, o := range old {
+					if strings.Contains(text, o) {
+						t.Errorf("text %q holds the old sentence %q", text, o)
+					}
+				}
+				if !strings.ContainsFunc(text, func(r rune) bool { return r >= 0x4e00 && r <= 0x9fff }) {
+					t.Errorf("text %q holds no Chinese character", text)
+				}
+				gaps++
+			}
+			if gaps < 3 {
+				t.Errorf("checked %d texts, want gaps of the card and the row", gaps)
+			}
+		})
 	}
 }

@@ -15,7 +15,7 @@
   "run_status": "ok",
   "card": {
     "title": "Held companies",
-    "say": "Held companies: 1 · 1 with a price line.",
+    "say": "持有公司：1 家 · 其中 1 家有价格线。",
     "subtitle": "Price line and volatility",
     "stale": {
       "data_time": "2026-11-10T00:00:00+08:00",
@@ -57,17 +57,17 @@
         "earnings": {
           "kind": "gap",
           "reason": "no_reader",
-          "text": "earnings date: reader not set"
+          "text": "earnings date: 未设置读取器"
         },
         "day_change": {
           "kind": "gap",
           "reason": "no_reader",
-          "text": "day change: reader not set"
+          "text": "day change: 未设置读取器"
         },
         "five_day_change": {
           "kind": "gap",
           "reason": "no_reader",
-          "text": "5-day change: reader not set"
+          "text": "5-day change: 未设置读取器"
         },
         "day_sharp": {
           "kind": "none"
@@ -110,7 +110,7 @@
       {
         "kind": "gap",
         "reason": "no_data",
-        "text": "sharp moves: no sharpmove readings"
+        "text": "sharp moves: 暂无急剧波动读数"
       }
     ],
     "data_times_text": "Data day 11-10"
