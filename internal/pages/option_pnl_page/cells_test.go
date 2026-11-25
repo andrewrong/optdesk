@@ -51,7 +51,7 @@ func TestEveryJargonLabelHasHint(t *testing.T) {
 	f := figures{Time: "1", MoveCost: "1", Direction: "1", IVRemark: "1", Unsplit: "0", Entry: "1", Exit: "1", Commission: "-1",
 		Total: "1", AssignedIntrinsic: "1", LedgerPnL: "1", Difference: "0"}
 	for _, l := range splitLines("p", f, "USD", true) {
-		if l.Label != "Commissions" && l.Hint == nil {
+		if l.Label != lblCommZh && l.Hint == nil {
 			t.Errorf("line %s has no hint", l.Label)
 		}
 	}
@@ -76,7 +76,7 @@ func TestLateEntryHintOnLotAndBook(t *testing.T) {
 	books := bookCards("a", outs, []optionattrapi.Book{{Currency: "USD", Lots: 5, Entry: "1", Total: "1"}})
 	var entry *line
 	for i, l := range books[0].Lines {
-		if l.Label == "Entry vs mid" {
+		if l.Label == lblEntryZh {
 			entry = &books[0].Lines[i]
 		}
 	}
@@ -89,7 +89,7 @@ func TestLateEntryHintOnLotAndBook(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, l := range card.Lines {
-			if l.Label == "Entry vs mid" {
+			if l.Label == lblEntryZh {
 				return l
 			}
 		}
@@ -118,7 +118,7 @@ func TestBookLateEntryHintCountsBookLots(t *testing.T) {
 	outs := []outcome{mk(true, false), mk(false, false), mk(false, true)}
 	books := bookCards("a", outs, []optionattrapi.Book{{Currency: "USD", Lots: 2, Entry: "1", Total: "1"}})
 	for _, l := range books[0].Lines {
-		if l.Label == "Entry vs mid" && (l.Hint == nil || !strings.Contains(*l.Hint, "2 个仓位中有 1 个")) {
+		if l.Label == lblEntryZh && (l.Hint == nil || !strings.Contains(*l.Hint, "2 个仓位中有 1 个")) {
 			t.Fatalf("hint = %v, want M = book lots 2", l.Hint)
 		}
 	}

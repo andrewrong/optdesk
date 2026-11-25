@@ -85,3 +85,28 @@ const (
 	noQuoteLotsZh = " 个没有存档报价的仓位（账本 "
 	unreconLotsZh = " 个未对上的仓位（账本 "
 )
+
+// Labels of the card and ledger lines: Chinese first, English beside; option terms stay in brackets.
+const (
+	lblLedgerZh     = "账本数字 Ledger says"
+	lblOursZh       = "本页与账本之差 Ours vs ledger"
+	lblOpenCheckZh  = "未结仓位核对 Open-lot check"
+	lblAssignZh     = "行权 Assignment"
+	lblBrokerZh     = "账本已实现对券商 Ledger realised vs broker"
+	lblTimeZh       = "时间价值 Time (theta)"
+	lblMoveZh       = "波动成本 Move cost (gamma)"
+	lblDirZh        = "方向 Direction (delta)"
+	lblIVRemarkZh   = "隐含波动率重估 IV re-marking (vega)"
+	lblUnsplitZh    = "未拆分 Not split"
+	lblEntryZh      = "开仓对中间价 Entry vs mid"
+	lblExitZh       = "平仓对中间价 Exit vs mid"
+	lblCommZh       = "佣金 Commissions"
+	lblTotalZh      = "期权盈亏合计 Total options P&L"
+	lblAssignIntrZh = "行权内在价值 Assignment intrinsic"
+	lblRentZh       = "租金减波动成本 Rent minus move cost"
+	lblSampleZh     = "样本 Sample"
+	lblAllZh        = "账本盈亏（所有已结束仓位） Ledger P&L, every ended lot counted"
+	lblDaysZh       = "天数 Days"
+	lblIVZh         = "隐含波动率 IV"
+	lblReasonZh     = "原因 Reason"
+)

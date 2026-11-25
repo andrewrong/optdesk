@@ -145,22 +145,22 @@ func figuresOfResult(r optionattrapi.Result) figures {
 // An empty Exit or Total gives no line; the ledger line is added by the caller.
 func splitLines(prefix string, f figures, cur string, assigned bool) []line {
 	out := []line{
-		mkLine(prefix+"-time", "Time (theta)", money(f.Time, cur), "time").tone(toneOf(f.Time)),
-		mkLine(prefix+"-move", "Move cost (gamma)", money(f.MoveCost, cur), "move_cost").tone(toneOf(f.MoveCost)),
-		mkLine(prefix+"-dir", "Direction (delta)", money(f.Direction, cur), "direction").tone(toneOf(f.Direction)),
-		mkLine(prefix+"-iv", "IV re-marking (vega)", money(f.IVRemark, cur), "iv_remark").tone(toneOf(f.IVRemark)),
-		mkLine(prefix+"-unsplit", "Not split", money(f.Unsplit, cur), "unsplit"),
-		mkLine(prefix+"-entry", "Entry vs mid", money(f.Entry, cur), "entry").tone(toneOf(f.Entry)),
+		mkLine(prefix+"-time", lblTimeZh, money(f.Time, cur), "time").tone(toneOf(f.Time)),
+		mkLine(prefix+"-move", lblMoveZh, money(f.MoveCost, cur), "move_cost").tone(toneOf(f.MoveCost)),
+		mkLine(prefix+"-dir", lblDirZh, money(f.Direction, cur), "direction").tone(toneOf(f.Direction)),
+		mkLine(prefix+"-iv", lblIVRemarkZh, money(f.IVRemark, cur), "iv_remark").tone(toneOf(f.IVRemark)),
+		mkLine(prefix+"-unsplit", lblUnsplitZh, money(f.Unsplit, cur), "unsplit"),
+		mkLine(prefix+"-entry", lblEntryZh, money(f.Entry, cur), "entry").tone(toneOf(f.Entry)),
 	}
 	if f.Exit != "" {
-		out = append(out, mkLine(prefix+"-exit", "Exit vs mid", money(f.Exit, cur), "exit").tone(toneOf(f.Exit)))
+		out = append(out, mkLine(prefix+"-exit", lblExitZh, money(f.Exit, cur), "exit").tone(toneOf(f.Exit)))
 	}
-	out = append(out, mkLine(prefix+"-comm", "Commissions", money(f.Commission, cur), "").tone(toneOf(f.Commission)))
+	out = append(out, mkLine(prefix+"-comm", lblCommZh, money(f.Commission, cur), "").tone(toneOf(f.Commission)))
 	if f.Total != "" {
-		out = append(out, mkLine(prefix+"-total", "Total options P&L", money(f.Total, cur), "total").tone(toneOf(f.Total)))
+		out = append(out, mkLine(prefix+"-total", lblTotalZh, money(f.Total, cur), "total").tone(toneOf(f.Total)))
 	}
 	if assigned {
-		out = append(out, mkLine(prefix+"-assigned", "Assignment intrinsic", money(f.AssignedIntrinsic, cur), "assigned"))
+		out = append(out, mkLine(prefix+"-assigned", lblAssignIntrZh, money(f.AssignedIntrinsic, cur), "assigned"))
 	}
 	return out
 }
@@ -175,7 +175,7 @@ func ledgerLine(prefix string, f figures, cur string, assigned, book bool) line 
 	case assigned && f.Total != "":
 		text = "total " + money(f.Total, cur) + " + assignment intrinsic " + money(f.AssignedIntrinsic, cur) + " = " + text
 	}
-	l := mkLine(prefix+"-ledger", "Ledger says", text, "ledger")
+	l := mkLine(prefix+"-ledger", lblLedgerZh, text, "ledger")
 	if assigned && !book {
 		h := assignmentText
 		l.Hint = &h

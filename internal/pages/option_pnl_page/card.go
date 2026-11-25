@@ -23,7 +23,7 @@ func lotCard(c Config, prefix, alias string, o outcome, isRoll bool) (lotView, e
 		if p.Commissions != "" {
 			card.Summary += ", commission " + money(p.Commissions, cur)
 		}
-		card.DaysLine = mkLine(prefix+"-days", "Days", notComputed, "")
+		card.DaysLine = mkLine(prefix+"-days", lblDaysZh, notComputed, "")
 		card.Gap = &gap{Kind: "gap", Reason: classReasons[o.class], Text: fit(o.reason)}
 		card.Summary = fit(card.Summary)
 		return card, nil
@@ -35,15 +35,15 @@ func lotCard(c Config, prefix, alias string, o outcome, isRoll bool) (lotView, e
 	switch {
 	case res.NoQuotes:
 		card.Lines = []line{
-			mkLine(prefix+"-ledger", "Ledger says", money(res.LedgerPnL, cur), "ledger"),
-			mkLine(prefix+"-comm", "Commissions", money(res.Commission, cur), ""),
-			mkLine(prefix+"-reason", "Reason", noQuotesZh, ""),
+			mkLine(prefix+"-ledger", lblLedgerZh, money(res.LedgerPnL, cur), "ledger"),
+			mkLine(prefix+"-comm", lblCommZh, money(res.Commission, cur), ""),
+			mkLine(prefix+"-reason", lblReasonZh, noQuotesZh, ""),
 		}
 		return card, nil
 	case res.Difference == "":
 		f := figuresOfResult(res)
 		card.Lines = append(splitLines(prefix, f, cur, assigned), ledgerLine(prefix, f, cur, assigned, false))
-		card.Recon = []line{mkLine(prefix+"-diff", "Ours vs ledger", reasonText(res), "difference").tone("muted")}
+		card.Recon = []line{mkLine(prefix+"-diff", lblOursZh, reasonText(res), "difference").tone("muted")}
 	default:
 		books := c.Booker.Combine([]optionattrapi.Result{res})
 		if len(books) == 0 {
@@ -51,13 +51,13 @@ func lotCard(c Config, prefix, alias string, o outcome, isRoll bool) (lotView, e
 		}
 		f := figuresOfBook(books[0])
 		card.Lines = append(splitLines(prefix, f, cur, assigned), ledgerLine(prefix, f, cur, assigned, false))
-		card.Recon = []line{mkLine(prefix+"-diff", "Ours vs ledger", "difference "+money(f.Difference, cur), "difference")}
+		card.Recon = []line{mkLine(prefix+"-diff", lblOursZh, "difference "+money(f.Difference, cur), "difference")}
 	}
 	if res.LateEntry {
 		withEntryHint(card.Lines, prefix+"-entry", lateEntryLotZh)
 	}
 	if p.Status == statusOpen {
-		card.Recon = append(card.Recon, mkLine(prefix+"-circ", "Open-lot check", circularNote, "").tone("muted"))
+		card.Recon = append(card.Recon, mkLine(prefix+"-circ", lblOpenCheckZh, circularNote, "").tone("muted"))
 	}
 	if r := brokerLine(prefix, p.RealizedPnL, p.BrokerRealized, cur, p.Status); r != nil {
 		card.Recon = append(card.Recon, *r)
@@ -66,7 +66,7 @@ func lotCard(c Config, prefix, alias string, o outcome, isRoll bool) (lotView, e
 		card.IVLine = iv
 	}
 	if assigned {
-		l := mkLine(prefix+"-end", "Assignment", "shares bought at "+p.Strike+"; the close that day was "+o.lot.endClose+
+		l := mkLine(prefix+"-end", lblAssignZh, "shares bought at "+p.Strike+"; the close that day was "+o.lot.endClose+
 			", so intrinsic value "+money(res.AssignedIntrinsic, cur)+" moved to the shares", "assigned")
 		card.EndLine = &l
 	}
@@ -114,7 +114,7 @@ func brokerLine(prefix, ledger, broker, cur, status string) *line {
 	if status == statusOpen {
 		return nil
 	}
-	l := mkLine(prefix+"-broker", "Ledger realised vs broker", "broker realised not stored", "").tone("muted")
+	l := mkLine(prefix+"-broker", lblBrokerZh, "broker realised not stored", "").tone("muted")
 	if broker != "" {
 		l.Text = "Ledger " + money(ledger, cur) + ", broker " + money(broker, cur)
 		if ledger != broker {
@@ -136,7 +136,7 @@ func ivLine(prefix string, r optionattrapi.Result) *line {
 	}
 	text := "IV from mid " + percent(first.IVFrom) + " to " + percent(to) + " (ours, solved from the stored mid)   stored IBKR IV " +
 		percent(last.RefIVTo) + " (comparison only)"
-	l := mkLine(prefix+"-ivline", "IV", text, "").tone("muted")
+	l := mkLine(prefix+"-ivline", lblIVZh, text, "").tone("muted")
 	return &l
 }
 
@@ -150,7 +150,7 @@ func plural(n int, one, many string) string {
 // daysLine counts the quote days and names the gap days and the days with no rate, from the steps.
 func daysLine(prefix string, r optionattrapi.Result) line {
 	if r.NoQuotes {
-		return mkLine(prefix+"-days", "Days", noQuoteDays, "").tone("muted")
+		return mkLine(prefix+"-days", lblDaysZh, noQuoteDays, "").tone("muted")
 	}
 	seen := map[string]bool{}
 	multi := 0
@@ -182,7 +182,7 @@ func daysLine(prefix string, r optionattrapi.Result) line {
 		}
 		text += "; no rate stored for " + strings.Join(days, ", ")
 	}
-	return mkLine(prefix+"-days", "Days", fit(text), "").tone("muted")
+	return mkLine(prefix+"-days", lblDaysZh, fit(text), "").tone("muted")
 }
 
 // badgesOf are the badges of a result, from its fields only.
@@ -240,12 +240,12 @@ func bookCards(alias string, outs []outcome, books []optionattrapi.Book) []bookV
 		v.Counts = cur + " book, " + plural(b.Lots, "lot", "lots") + " counted" + statusCounts(outs, cur)
 		v.LeftOut = leftOut(outs, b, cur)
 		if b.Lots == 0 && b.Total == "" {
-			v.Headline = mkLine(prefix+"-head", "Total options P&L", noBookLine, "").tone("muted")
+			v.Headline = mkLine(prefix+"-head", lblTotalZh, noBookLine, "").tone("muted")
 			out = append(out, v)
 			continue
 		}
 		f := figuresOfBook(b)
-		v.Headline = mkLine(prefix+"-head", "Rent minus move cost", money(f.RentMinusCost, cur), "rent").tone(toneOf(f.RentMinusCost))
+		v.Headline = mkLine(prefix+"-head", lblRentZh, money(f.RentMinusCost, cur), "rent").tone(toneOf(f.RentMinusCost))
 		v.Lines = append(splitLines(prefix, f, cur, true), ledgerLine(prefix, f, cur, true, true))
 		withEntryHint(v.Lines, prefix+"-entry", lateEntryHint(curOutcomes(outs, cur), b.Lots))
 		out = append(out, v)

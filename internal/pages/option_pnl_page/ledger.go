@@ -237,13 +237,13 @@ func ledgerBook(tok string, gi, ci int, cur string, outs []outcome, b optionattr
 		}
 		return l.tone(base)
 	}
-	v.Headline = tone(mkLine(prefix+"-head", "Rent minus move cost", money(f.RentMinusCost, cur)+split, ""), toneOf(f.RentMinusCost))
+	v.Headline = tone(mkLine(prefix+"-head", lblRentZh, money(f.RentMinusCost, cur)+split, ""), toneOf(f.RentMinusCost))
 	lines := []line{}
 	if few {
 		text := noConclusionZh + " (" + plural(b.Lots, "split lot", "split lots") + ", fewer than " + strconv.Itoa(ledgerMinLots) + ")"
-		lines = append(lines, mkLine(prefix+"-sample", "Sample", text, "").tone("muted"))
+		lines = append(lines, mkLine(prefix+"-sample", lblSampleZh, text, "").tone("muted"))
 	}
-	lines = append(lines, mkLine(prefix+"-all", "Ledger P&L, every ended lot counted", money(b.LedgerAllPnL, cur)+lotsTail(b.AllLots), ""))
+	lines = append(lines, mkLine(prefix+"-all", lblAllZh, money(b.LedgerAllPnL, cur)+lotsTail(b.AllLots), ""))
 	if b.Lots > 0 {
 		for _, l := range splitLines(prefix, f, cur, true) {
 			l.Text += split

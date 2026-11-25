@@ -26,7 +26,7 @@
           "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档报价的仓位（账本 $50.00；多为 2026-11-07 前已结束的仓位，当时还没有报价存档）",
           "headline": {
             "id": "b0-main-head",
-            "label": "Rent minus move cost",
+            "label": "租金减波动成本 Rent minus move cost",
             "text": "$0.00",
             "hint": "卖保险赚到的钱：时间价值减去波动带来的成本，可与你的预期对比",
             "tone": "none"
@@ -34,77 +34,77 @@
           "lines": [
             {
               "id": "b0-main-time",
-              "label": "Time (theta)",
+              "label": "时间价值 Time (theta)",
               "text": "$0.00",
               "hint": "随着日子过去，期权价值下降；卖方把这部分留在手里",
               "tone": "none"
             },
             {
               "id": "b0-main-move",
-              "label": "Move cost (gamma)",
+              "label": "波动成本 Move cost (gamma)",
               "text": "$0.00",
               "hint": "凸性：股价波动越大，卖出的看跌期权对你越不利",
               "tone": "none"
             },
             {
               "id": "b0-main-dir",
-              "label": "Direction (delta)",
+              "label": "方向 Direction (delta)",
               "text": "$0.00",
               "hint": "赌股价不跌；这是你的估值判断，不是波动率优势",
               "tone": "none"
             },
             {
               "id": "b0-main-iv",
-              "label": "IV re-marking (vega)",
+              "label": "隐含波动率重估 IV re-marking (vega)",
               "text": "$0.00",
               "hint": "隐含波动率（市场对未来波动的定价）变动带来的盈亏；它会回归",
               "tone": "none"
             },
             {
               "id": "b0-main-unsplit",
-              "label": "Not split",
+              "label": "未拆分 Not split",
               "text": "$0.00",
               "hint": "无法求解隐含波动率的步骤；原因写在仓位上",
               "tone": "none"
             },
             {
               "id": "b0-main-entry",
-              "label": "Entry vs mid",
+              "label": "开仓对中间价 Entry vs mid",
               "text": "$0.00",
               "hint": "成交价与存档的买卖中间价之差 · 0 个仓位中有 0 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）",
               "tone": "none"
             },
             {
               "id": "b0-main-exit",
-              "label": "Exit vs mid",
+              "label": "平仓对中间价 Exit vs mid",
               "text": "$0.00",
               "hint": "买回成交价与存档的买卖中间价之差",
               "tone": "none"
             },
             {
               "id": "b0-main-comm",
-              "label": "Commissions",
+              "label": "佣金 Commissions",
               "text": "$0.00",
               "hint": null,
               "tone": "none"
             },
             {
               "id": "b0-main-total",
-              "label": "Total options P\u0026L",
+              "label": "期权盈亏合计 Total options P\u0026L",
               "text": "$0.00",
               "hint": "期权这一侧的盈亏；下面的行权内在价值不包含在内",
               "tone": "none"
             },
             {
               "id": "b0-main-assigned",
-              "label": "Assignment intrinsic",
+              "label": "行权内在价值 Assignment intrinsic",
               "text": "$0.00",
               "hint": "看跌期权被行权时转移到股票上的价值",
               "tone": "none"
             },
             {
               "id": "b0-main-ledger",
-              "label": "Ledger says",
+              "label": "账本数字 Ledger says",
               "text": "$0.00 = total + assignment intrinsic + difference ($0.00)",
               "hint": "账本给出的该仓位的数字",
               "tone": "none"
@@ -120,21 +120,21 @@
           "lines": [
             {
               "id": "a0l0-ledger",
-              "label": "Ledger says",
+              "label": "账本数字 Ledger says",
               "text": "$50.00",
               "hint": "账本给出的该仓位的数字",
               "tone": "none"
             },
             {
               "id": "a0l0-comm",
-              "label": "Commissions",
+              "label": "佣金 Commissions",
               "text": "−$1.30",
               "hint": null,
               "tone": "none"
             },
             {
               "id": "a0l0-reason",
-              "label": "Reason",
+              "label": "原因 Reason",
               "text": "该合约在仓位持有期间没有存档报价（报价从 2026-11-07 起才开始存档），所以无法拆分，只显示账本数字。",
               "hint": null,
               "tone": "none"
@@ -142,7 +142,7 @@
           ],
           "days_line": {
             "id": "a0l0-days",
-            "label": "Days",
+            "label": "天数 Days",
             "text": "没有存档报价日",
             "hint": null,
             "tone": "muted"
@@ -178,7 +178,7 @@
                     "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档报价的仓位（账本 $50.00；多为 2026-11-07 前已结束的仓位，当时还没有报价存档）",
                     "headline": {
                       "id": "lga0m0-0-head",
-                      "label": "Rent minus move cost",
+                      "label": "租金减波动成本 Rent minus move cost",
                       "text": "$0.00 · 0 lots",
                       "hint": "卖保险赚到的钱：时间价值减去波动带来的成本，可与你的预期对比",
                       "tone": "muted"
@@ -186,14 +186,14 @@
                     "lines": [
                       {
                         "id": "lga0m0-0-sample",
-                        "label": "Sample",
+                        "label": "样本 Sample",
                         "text": "没有结论：样本太小，不能据此判断这种做法是否赚钱 (0 split lots, fewer than 20)",
                         "hint": null,
                         "tone": "muted"
                       },
                       {
                         "id": "lga0m0-0-all",
-                        "label": "Ledger P\u0026L, every ended lot counted",
+                        "label": "账本盈亏（所有已结束仓位） Ledger P\u0026L, every ended lot counted",
                         "text": "not stored · 0 lots",
                         "hint": "已拆分的仓位加上没有存档报价的仓位，按账本数字合计；不受 20 个仓位规则限制",
                         "tone": "none"
@@ -220,7 +220,7 @@
                     "left_out": "共 1 个仓位，其中 1 个未计入合计：1 个没有存档报价的仓位（账本 $50.00；多为 2026-11-07 前已结束的仓位，当时还没有报价存档）",
                     "headline": {
                       "id": "lga0c0-0-head",
-                      "label": "Rent minus move cost",
+                      "label": "租金减波动成本 Rent minus move cost",
                       "text": "$0.00 · 0 lots",
                       "hint": "卖保险赚到的钱：时间价值减去波动带来的成本，可与你的预期对比",
                       "tone": "muted"
@@ -228,14 +228,14 @@
                     "lines": [
                       {
                         "id": "lga0c0-0-sample",
-                        "label": "Sample",
+                        "label": "样本 Sample",
                         "text": "没有结论：样本太小，不能据此判断这种做法是否赚钱 (0 split lots, fewer than 20)",
                         "hint": null,
                         "tone": "muted"
                       },
                       {
                         "id": "lga0c0-0-all",
-                        "label": "Ledger P\u0026L, every ended lot counted",
+                        "label": "账本盈亏（所有已结束仓位） Ledger P\u0026L, every ended lot counted",
                         "text": "not stored · 0 lots",
                         "hint": "已拆分的仓位加上没有存档报价的仓位，按账本数字合计；不受 20 个仓位规则限制",
                         "tone": "none"

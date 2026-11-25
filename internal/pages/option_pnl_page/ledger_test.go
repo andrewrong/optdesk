@@ -98,7 +98,7 @@ func TestLedgerByMonthGroups(t *testing.T) {
 	if c := m.Groups[0].Books[0].Counts; c != "USD, 2 split lots of 2 ended" {
 		t.Errorf("counts = %q", c)
 	}
-	if tm, _ := m.Groups[0].Books[0].line("Time (theta)"); tm.Text != "$40.00 · 2 lots" {
+	if tm, _ := m.Groups[0].Books[0].line(lblTimeZh); tm.Text != "$40.00 · 2 lots" {
 		t.Errorf("time = %q", tm.Text)
 	}
 }
@@ -152,8 +152,8 @@ func TestLedgerSumsFromBooker(t *testing.T) {
 		RentMinusCost: "1.5", LedgerPnL: "7", Difference: "0", AssignedIntrinsic: "0", Time: "1", MoveCost: "1", Direction: "1",
 		IVRemark: "1", Unsplit: "0", Entry: "1", Exit: "1", Commission: "-1"}}}
 	b := r.ledger(t).view("by_month").Groups[0].Books[0]
-	all, _ := b.line("Ledger P&L, every ended lot counted")
-	tot, _ := b.line("Total options P&L")
+	all, _ := b.line(lblAllZh)
+	tot, _ := b.line(lblTotalZh)
 	if all.Text != "$537.80 · 6 lots" || tot.Text != "$999.99 · 3 lots" || b.Headline.Text != "$1.50 · 3 lots" {
 		t.Fatalf("all = %q, total = %q, headline = %q", all.Text, tot.Text, b.Headline.Text)
 	}
@@ -167,13 +167,13 @@ func TestLedgerNoConclusionUnder20(t *testing.T) {
 			r.closed("p"+itoa(i), "AAA", "38.00", "2026-11-13")
 		}
 		b := r.ledger(t).view("by_month").Groups[0].Books[0]
-		s, has := b.line("Sample")
+		s, has := b.line(lblSampleZh)
 		if has != few {
 			t.Fatalf("n = %d: Sample line present = %v", n, has)
 		}
 		muted := b.Headline.Tone == "muted"
 		for _, l := range b.Lines {
-			if l.Label == "Ledger P&L, every ended lot counted" {
+			if l.Label == lblAllZh {
 				if l.Tone == "muted" {
 					t.Errorf("n = %d: ledger-all line is muted", n)
 				}
@@ -203,13 +203,13 @@ func TestLedgerSampleBesideFigure(t *testing.T) {
 		t.Errorf("headline = %q", b.Headline.Text)
 	}
 	for _, l := range b.Lines {
-		if l.Label != "Sample" && !strings.HasSuffix(l.Text, " · 3 lots") {
+		if l.Label != lblSampleZh && !strings.HasSuffix(l.Text, " · 3 lots") {
 			t.Errorf("line %q = %q", l.Label, l.Text)
 		}
 	}
 	one := ledgerRig()
 	one.closed("p1", "AAA", "38.00", "2026-11-13")
-	if tm, _ := one.ledger(t).view("by_month").Groups[0].Books[0].line("Time (theta)"); !strings.HasSuffix(tm.Text, " · 1 lot") {
+	if tm, _ := one.ledger(t).view("by_month").Groups[0].Books[0].line(lblTimeZh); !strings.HasSuffix(tm.Text, " · 1 lot") {
 		t.Errorf("time = %q", tm.Text)
 	}
 }
@@ -220,10 +220,10 @@ func TestLedgerTextsFromZhConsts(t *testing.T) {
 	r.closed("p1", "AAA", "38.00", "2026-10-13")
 	l := r.ledger(t)
 	b := l.view("by_month").Groups[1].Books[0]
-	if tm, _ := b.line("Time (theta)"); tm.Hint == nil || *tm.Hint != ledgerHintTimeZh {
+	if tm, _ := b.line(lblTimeZh); tm.Hint == nil || *tm.Hint != ledgerHintTimeZh {
 		t.Errorf("time hint = %v", tm.Hint)
 	}
-	if s, _ := b.line("Sample"); !strings.HasPrefix(s.Text, noConclusionZh) {
+	if s, _ := b.line(lblSampleZh); !strings.HasPrefix(s.Text, noConclusionZh) {
 		t.Errorf("sample = %q", s.Text)
 	}
 	if g := l.view("by_month").Groups[0]; g.Summary != noEndedMonthZh {
@@ -272,7 +272,7 @@ func TestLedgerLeftOutPerGroup(t *testing.T) {
 		!strings.Contains(*b.LeftOut, "1 个没有存档报价的仓位（账本 $50.00；") {
 		t.Fatalf("left_out = %v", b.LeftOut)
 	}
-	all, _ := b.line("Ledger P&L, every ended lot counted")
+	all, _ := b.line(lblAllZh)
 	if all.Text != "$64.00 · 2 lots" {
 		t.Errorf("ledger-all = %q: the gap lot must be in no sum", all.Text)
 	}
@@ -496,10 +496,10 @@ func TestLedgerValidatesSchema(t *testing.T) {
 	}
 	validate(t, "ledger", onDisk)
 	b := r.ledger(t).view("by_month").Groups[0].Books[0]
-	if tot, _ := b.line("Total options P&L"); tot.Text != "$335.80 · 5 lots" {
+	if tot, _ := b.line(lblTotalZh); tot.Text != "$335.80 · 5 lots" {
 		t.Errorf("total = %q", tot.Text)
 	}
-	if all, _ := b.line("Ledger P&L, every ended lot counted"); all.Text != "$537.80 · 6 lots" {
+	if all, _ := b.line(lblAllZh); all.Text != "$537.80 · 6 lots" {
 		t.Errorf("ledger-all = %q", all.Text)
 	}
 }
@@ -547,7 +547,7 @@ func TestLedgerFoldedGroupSumsMonths(t *testing.T) {
 		t.Fatalf("book = %+v", b)
 	}
 	g := r.ledger(t).view("by_month").Groups
-	line, _ := g[len(g)-1].Books[0].line("Ledger P&L, every ended lot counted")
+	line, _ := g[len(g)-1].Books[0].line(lblAllZh)
 	if line.Text != "$60.00 · 3 lots" {
 		t.Errorf("ledger-all = %q", line.Text)
 	}
@@ -567,7 +567,7 @@ func TestLedgerGroupLateEntryCount(t *testing.T) {
 	x.LateEntry = true
 	r.attr.results["late"] = x
 	g := r.ledger(t).view("by_month").Groups[0]
-	entry, ok := g.Books[0].line("Entry vs mid")
+	entry, ok := g.Books[0].line(lblEntryZh)
 	if !ok || entry.Hint == nil || *entry.Hint != ledgerHintEntryZh+" · 4 个仓位中有 2 个在第一条存档报价之前成交（报价从 2026-11-07 起存档）" {
 		t.Fatalf("entry = %+v", entry)
 	}
