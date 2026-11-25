@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -37,8 +38,8 @@ func (f *fakeReference) Dividends(s grpc.BidiStreamingServer[pb.ContractKey, pb.
 		keys = append(keys, k)
 	}
 	// Answer in reverse order: the client matches by key, not by position.
-	for i := len(keys) - 1; i >= 0; i-- {
-		if a := f.answer(keys[i]); a != nil {
+	for _, k := range slices.Backward(keys) {
+		if a := f.answer(k); a != nil {
 			if err := s.Send(a); err != nil {
 				return err
 			}

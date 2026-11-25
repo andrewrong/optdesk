@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -82,11 +83,11 @@ func TestSnapshotOrder(t *testing.T) {
 	t.Parallel()
 	f := &fake{snapshot: func(r *pb.SnapshotRequest, s grpc.ServerStreamingServer[pb.SnapshotResponse]) error {
 		cs := r.GetContracts()
-		for i := len(cs) - 1; i >= 0; i-- {
-			if cs[i].GetConId() == 3 {
+		for _, c := range slices.Backward(cs) {
+			if c.GetConId() == 3 {
 				continue // no answer for contract 3
 			}
-			q := &pb.Quote{Contract: cs[i], Status: pb.QuoteStatus_QUOTE_STATUS_OK, Generation: cs[i].GetConId()}
+			q := &pb.Quote{Contract: c, Status: pb.QuoteStatus_QUOTE_STATUS_OK, Generation: c.GetConId()}
 			if err := s.Send(&pb.SnapshotResponse{Quote: q}); err != nil {
 				return err
 			}
