@@ -209,7 +209,7 @@
         "rows": {
           "type": "array",
           "minItems": 5,
-          "maxItems": 5,
+          "maxItems": 6,
           "items": {
             "$ref": "#/$defs/MarketRow"
           }
@@ -234,6 +234,7 @@
           "enum": [
             "sp500_vs_200d",
             "sp500_drawdown",
+            "nasdaq_drawdown",
             "vix",
             "vix_term",
             "hy_spread"

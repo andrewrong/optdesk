@@ -14,7 +14,7 @@ Pre-open gap pass: `session_open` minus 90 minutes. The job states its own windo
 - `OT_PG_DSN_MASTER`: the instrument store; `OT_PG_DSN_BAR`: the bar store (not for `option_open`).
 - `$OT_HOME/watch.toml`: the watch list.
 - The broker socket `$OT_HOME/run/ibkr.sock` (a profile value can name `ibkr-main.sock`).
-- `OT_OPEN_RESOLVE_MAX_NEW` (process environment): as for `option_open_resolve`. The family dials its own client with one resolve in flight.
+- No cap is read from the environment: `max_new` is 0 (no cap). The family dials its own client with 5 resolves in flight.
 
 ## Left out
 

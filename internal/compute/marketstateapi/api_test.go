@@ -21,18 +21,20 @@ func TestMarketStateFuncContract(t *testing.T) {
 		}
 		line := marketstateapi.Line{Points: []marketstateapi.Point{{Day: in.Day, Value: "1"}}, Total: 9}
 		return marketstateapi.Result{
-			EndDay: in.Day, Drawdown: n, Funds: []marketstateapi.Fund{fund}, Industry: []marketstateapi.Fund{fund},
-			History: marketstateapi.History{Sp500Vs200d: line, Drawdown: line, VIX: line, VIXTerm: line, HighYield: line},
+			EndDay: in.Day, Drawdown: n, NasdaqDrawdown: n, Funds: []marketstateapi.Fund{fund}, Industry: []marketstateapi.Fund{fund},
+			History: marketstateapi.History{Sp500Vs200d: line, Drawdown: line, NasdaqDrawdown: line, VIX: line, VIXTerm: line, HighYield: line},
 		}
 	}
 	in := marketstateapi.Input{
 		Day: "2026-11-13", SP500: compute.Series{{Day: "2026-11-13", Value: 1}},
+		NDX:    compute.Series{{Day: "2026-11-13", Value: 2}},
 		Params: marketstateapi.Params{HighSessions: 60},
 	}
 	r := f(in)
 	h := r.History
 	if r.EndDay != in.Day || r.Drawdown.Aux != in.Day || r.Funds[0].Rank21.Of != 10 || r.Funds[0].Rank63.Reason != "missing_input" ||
 		r.Industry[0].Rotation[0].Y != "2.00" || h.Sp500Vs200d.Total != 9 || h.Drawdown.Points[0].Value != "1" ||
+		r.NasdaqDrawdown.Aux != in.Day || h.NasdaqDrawdown.Points[0].Value != "1" || len(in.NDX) != 1 ||
 		len(h.VIX.Points) != 1 || len(h.VIXTerm.Points) != 1 || len(h.HighYield.Points) != 1 {
 		t.Fatalf("result %+v", r)
 	}

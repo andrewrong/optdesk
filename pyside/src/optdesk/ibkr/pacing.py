@@ -15,7 +15,7 @@ from optdesk.ibkr.timing import Clock, with_timeout
 
 DEFAULT_STARTS_PER_SECOND = 40
 DEFAULT_LINES = 70
-DEFAULT_SNAPSHOTS = 50
+DEFAULT_SNAPSHOTS = 70
 DETAILS_MIN = 1
 DETAILS_START = 2
 DETAILS_MAX = 5
@@ -32,10 +32,12 @@ _LINE_LIMIT_CODE = 101
 
 
 class MessagePacer:
-    """Sliding window of message starts; a cancel counts as a start.
+    """Sliding window of message starts; a cancel is not a start.
 
-    A cancel is queued and sent by a drain task, so a cancel inside a finally
-    block never waits and the rate still holds.
+    A cancel takes no start slot and never waits: it is sent on the next turn
+    of the loop, whatever the window holds, so a cancel in a finally block
+    never makes its caller wait. Cancels are only counted, for the log of a
+    gateway error 100 (see `last_second`).
     """
 
     def __init__(
@@ -44,30 +46,37 @@ class MessagePacer:
         self._clock = clock
         self._limit = starts_per_second
         self._starts: deque[float] = deque()
-        self._cancels: deque[Callable[[], None]] = deque()
-        self._drain: asyncio.Future[None] | None = None
+        self._sent_cancels: deque[float] = deque()
 
     async def start(self) -> None:
         """Return once a start slot is free and take it."""
         while True:
             now = self._clock.monotonic()
-            while self._starts and now - self._starts[0] >= _WINDOW_S:
-                self._starts.popleft()
+            self._expire(self._starts, now)
             if len(self._starts) < self._limit:
                 self._starts.append(now)
                 return
             await self._clock.sleep(self._starts[0] + _WINDOW_S - now)
 
     def cancel(self, send: Callable[[], None]) -> None:
-        """Queue a cancel; send runs when the window allows. Never waits."""
-        self._cancels.append(send)
-        if self._drain is None or self._drain.done():
-            self._drain = asyncio.ensure_future(self._drain_cancels())
+        """Send a cancel on the next turn of the loop. Never waits."""
+        asyncio.get_running_loop().call_soon(self._send_cancel, send)
 
-    async def _drain_cancels(self) -> None:
-        while self._cancels:
-            await self.start()
-            self._cancels.popleft()()
+    def last_second(self) -> tuple[int, int]:
+        """The starts and the cancels sent in the last second."""
+        now = self._clock.monotonic()
+        self._expire(self._starts, now)
+        self._expire(self._sent_cancels, now)
+        return len(self._starts), len(self._sent_cancels)
+
+    @staticmethod
+    def _expire(stamps: deque[float], now: float) -> None:
+        while stamps and now - stamps[0] >= _WINDOW_S:
+            stamps.popleft()
+
+    def _send_cancel(self, send: Callable[[], None]) -> None:
+        self._sent_cancels.append(self._clock.monotonic())
+        send()
 
 
 class LineBudget:

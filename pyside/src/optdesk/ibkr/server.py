@@ -80,7 +80,7 @@ def load_config(env: Mapping[str, str]) -> Config:
         gateways=gateways,
         default=default,
         lines=positive_int(env, "OT_IBKR_LINES", 70),
-        snapshots=positive_int(env, "OT_IBKR_SNAPSHOTS", 50),
+        snapshots=positive_int(env, "OT_IBKR_SNAPSHOTS", 70),
         health_port=positive_int(env, "OT_IBKR_HEALTH_PORT", None) if health else None,
         named_sockets=bool(file),
     )

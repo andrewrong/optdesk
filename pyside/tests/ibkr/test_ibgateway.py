@@ -133,8 +133,7 @@ class FakeIb:
             fill(ticker)
         return ticker
 
-    def cancelMktData(self, contract: Contract) -> bool:
-        self._stamp()
+    def cancelMktData(self, contract: Contract) -> bool:  # a cancel is no start
         self.cancelled.append(contract.conId)
         self.cancel_contracts.append(contract)
         return True
@@ -594,11 +593,11 @@ def test_quotes_error_codes_set_status() -> None:
     assert asyncio.run(run()) == {41: ("no_subscription", 354), 42: ("error", 162)}
 
 
-def test_quotes_cap_fifty_in_flight() -> None:
+def test_quotes_cap_seventy_in_flight() -> None:
     async def run() -> tuple[int, int]:
         clock = FakeClock()
         gateway, fake = await opened(clock)
-        rows, task = await collect(gateway, "snapshot", list(range(1, 61)))
+        rows, task = await collect(gateway, "snapshot", list(range(1, 81)))
         await spin(50)
         await clock.advance(1)
         in_flight = len(fake.subscribed)
@@ -611,7 +610,7 @@ def test_quotes_cap_fifty_in_flight() -> None:
         await task
         return in_flight, len(rows)
 
-    assert asyncio.run(run()) == (50, 60)
+    assert asyncio.run(run()) == (70, 80)
 
 
 def test_stop_checked_after_pacer_wait() -> None:
@@ -647,7 +646,7 @@ def test_every_send_goes_through_pacer() -> None:
         return fake.sends
 
     sends = asyncio.run(run())
-    assert len(sends) == 201
+    assert len(sends) == 101
     assert all(sends[i + 40] - sends[i] >= 1.0 for i in range(len(sends) - 40))
 
 

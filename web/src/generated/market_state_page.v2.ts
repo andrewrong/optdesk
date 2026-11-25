@@ -108,15 +108,17 @@ export interface MarketBlock {
   title: Text1;
   /**
    * @minItems 5
-   * @maxItems 5
+   * @maxItems 6
    */
-  rows: [MarketRow, MarketRow, MarketRow, MarketRow, MarketRow];
+  rows:
+    | [MarketRow, MarketRow, MarketRow, MarketRow, MarketRow]
+    | [MarketRow, MarketRow, MarketRow, MarketRow, MarketRow, MarketRow];
 }
 /**
  * One market row. Level and percentile only: no verdict word.
  */
 export interface MarketRow {
-  id: "sp500_vs_200d" | "sp500_drawdown" | "vix" | "vix_term" | "hy_spread";
+  id: "sp500_vs_200d" | "sp500_drawdown" | "nasdaq_drawdown" | "vix" | "vix_term" | "hy_spread";
   label: Text1;
   figure: FigureOrGap;
   /**

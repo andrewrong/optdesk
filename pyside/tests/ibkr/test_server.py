@@ -100,7 +100,7 @@ def test_load_config_without_file_is_unchanged() -> None:
     (spec,) = config.gateways
     assert spec.name == "default" == config.default
     assert spec.host == "127.0.0.1" and spec.port == 4002
-    assert spec.client_id == 33 and config.lines == 70 and config.snapshots == 50
+    assert spec.client_id == 33 and config.lines == 70 and config.snapshots == 70
     assert spec.market_data_type == 2 and spec.required
     assert config.health_port is None and not config.named_sockets
 
@@ -341,7 +341,7 @@ def make_config(
         gateways=specs,
         default=default or specs[0].name,
         lines=70,
-        snapshots=50,
+        snapshots=70,
         health_port=health_port,
     )
 
