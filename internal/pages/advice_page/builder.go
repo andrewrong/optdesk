@@ -15,9 +15,6 @@ const (
 	dayLayout       = "2006-01-02"
 	timeLayout      = "2006-01-02T15:04:05-07:00"
 	sessionLookback = 14 // calendar days of session days to read
-	pageTitle       = "Advice review"
-	textNotBuilt    = "no record of earlier advice is stored yet"
-	textSentence    = "Advice in the %s report, against the value after the next close"
 )
 
 type gapJSON struct {
