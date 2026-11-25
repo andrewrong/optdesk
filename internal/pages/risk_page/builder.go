@@ -164,18 +164,36 @@ func riskInput(ctx context.Context, c Config, l loaded, res compute.StructureRes
 
 func deltaBlock(r blockapi.RiskResult) deltaJSON {
 	b := deltaJSON{Title: titleDelta, Meaning: meaningDelta, Heads: []string{headName, headDelta}, Rows: []deltaRow{}}
+	var gap *gapJSON
 	for _, ln := range r.Delta {
-		cell, ok := deltaCell(ln.Value)
+		cell, ok := deltaCell(ln.Value, ln.Currency)
 		if !ok {
+			if gap == nil {
+				gap = riskGap(ln.Value)
+			}
 			continue
 		}
 		b.Rows = append(b.Rows, deltaRow{Name: ln.Key, Delta: cell})
 	}
-	if cell, ok := deltaCell(r.DeltaTotal); ok {
-		b.Total = &cell
-	} else {
-		b.Gap = riskGap(r.DeltaTotal)
+	var texts []string
+	for _, t := range r.DeltaTotals {
+		cell, ok := deltaCell(t.Value, t.Currency)
+		if !ok {
+			if gap == nil {
+				gap = riskGap(t.Value)
+			}
+			continue
+		}
+		texts = append(texts, cell.Text)
+		if b.Total == nil {
+			c := cell
+			b.Total = &c
+		}
 	}
+	if b.Total != nil {
+		b.Total.Text = strings.Join(texts, textTotalSeparator)
+	}
+	b.Gap = gap
 	return b
 }
 
@@ -217,9 +235,9 @@ func gapText(reason string) string {
 	return textDeltaGap
 }
 
-// deltaCell is a delta in dollars as a money cell, rounded half up to cents; ok is false for a gap or an
+// deltaCell is a delta of the given currency ("" is USD) as a money cell, rounded half up to cents; ok is false for a gap or an
 // unreadable number.
-func deltaCell(v compute.FigureValue) (moneyCell, bool) {
+func deltaCell(v compute.FigureValue, cur string) (moneyCell, bool) {
 	if v.Gap != "" {
 		return moneyCell{}, false
 	}
@@ -231,7 +249,14 @@ func deltaCell(v compute.FigureValue) (moneyCell, bool) {
 	if !strings.HasPrefix(cents, "-") && strings.Trim(cents, "0.") != "" {
 		text = "+" + cents
 	}
-	return moneyCell{Value: json.Number(cents), Text: text + unitDelta, Unit: "usd_signed", Currency: currency}, true
+	if cur == "" {
+		cur = currency
+	}
+	unit := unitDeltaUSD
+	if cur == "JPY" {
+		unit = unitDeltaJPY
+	}
+	return moneyCell{Value: json.Number(cents), Text: text + " " + unit, Unit: "usd_signed", Currency: cur}, true
 }
 
 func vegaCell(v compute.FigureValue) (vegaFigure, bool) {

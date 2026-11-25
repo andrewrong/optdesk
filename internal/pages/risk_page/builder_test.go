@@ -195,7 +195,7 @@ func TestDeltaByUnderlyingVegaByExpiry(t *testing.T) {
 		t.Fatalf("status/scope = %v/%v", m["run_status"], m["scope"])
 	}
 	// AAA: 100 shares - 30.5 = 69.5; BBB: 50 - 10.004 = 39.996 -> 40.00 (cents, half up); total 109.496 -> 109.50
-	want := map[string]string{"AAA": "+69.50 USD per $1 move", "BBB": "+40.00 USD per $1 move"}
+	want := map[string]string{"AAA": "+69.50 美元/每 $1", "BBB": "+40.00 美元/每 $1"}
 	rows := block(m, "delta")["rows"].([]any)
 	if len(rows) != 2 {
 		t.Fatalf("delta rows = %v", rows)
@@ -288,7 +288,7 @@ func TestForeignStockCountedInDelta(t *testing.T) {
 	}}, stk("AAA", 1, "100", "USD"), stk("JJJ", 3, "10", "JPY"))
 	m, _ := build(t, c, "main")
 	d := block(m, "delta")
-	if d["gap"] != nil || d["total"].(map[string]any)["value"] != 78.5 {
+	if d["gap"] != nil || d["total"].(map[string]any)["text"] != "+69.50 美元/每 $1；+9.00 日元/每 ¥1" {
 		t.Fatalf("delta = %v", d)
 	}
 	if len(d["rows"].([]any)) != 2 {
@@ -303,8 +303,29 @@ func TestForeignStockCountedInDelta(t *testing.T) {
 	if v := block(m, "vega"); v["gap"] != nil || len(v["rows"].([]any)) != 1 || v["total"] == nil {
 		t.Fatalf("with a rate the JPY structure counts in vega: %v", v)
 	}
-	if d := block(m, "delta"); d["total"].(map[string]any)["value"] != 78.5 {
+	if d := block(m, "delta"); d["total"].(map[string]any)["value"] != 69.5 {
 		t.Fatalf("delta = %v", d)
+	}
+}
+
+func TestDeltaTotalPerCurrency(t *testing.T) {
+	t.Parallel()
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("AAA", "USD", "2026-12-18", "-30.5", "12.25"),
+		structure("JJJ", "JPY", "2026-12-18", "-1", "1"),
+	}}, stk("AAA", 1, "100", "USD"), stk("JJJ", 3, "10", "JPY"))
+	m, _ := build(t, c, "main")
+	d := block(m, "delta")
+	for _, r := range d["rows"].([]any) {
+		row := r.(map[string]any)
+		cell := row["delta"].(map[string]any)
+		if row["name"] == "JJJ" && (cell["text"] != "+9.00 日元/每 ¥1" || cell["currency"] != "JPY") {
+			t.Errorf("JPY row = %v", cell)
+		}
+	}
+	tot := d["total"].(map[string]any)
+	if tot["text"] != "+69.50 美元/每 $1；+9.00 日元/每 ¥1" || tot["currency"] != "USD" || tot["value"] != 69.5 {
+		t.Errorf("total = %v", tot)
 	}
 }
 
@@ -659,5 +680,33 @@ func TestRiskTextsChinese(t *testing.T) {
 	stale, _ := build(t, c, "main")
 	if s, _ := stale["sentence"].(string); !strings.HasPrefix(s, "最新采集太旧") {
 		t.Errorf("stale sentence = %q", stale["sentence"])
+	}
+}
+
+func TestDeltaGapLineKeepsOtherCurrencyTotal(t *testing.T) {
+	t.Parallel()
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("EEE", "EUR", "2026-12-18", "-1", "1"),
+		structure("JJJ", "JPY", "2026-12-18", "-1", "1"),
+	}}, stk("EEE", 1, "100", "EUR"), stk("JJJ", 3, "10", "JPY"))
+	m, _ := build(t, c, "main")
+	d := block(m, "delta")
+	if d["gap"] == nil || d["gap"].(map[string]any)["reason"] == "" {
+		t.Fatalf("a gap line must set the block gap: %v", d)
+	}
+	tot, ok := d["total"].(map[string]any)
+	if !ok || tot["currency"] != "JPY" || tot["text"] != "+9.00 日元/每 ¥1" {
+		t.Fatalf("the JPY total must stay, without the gap USD total in its text: %v", d)
+	}
+}
+
+func TestDeltaAllTotalsGapHasNoTotal(t *testing.T) {
+	t.Parallel()
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("EEE", "EUR", "2026-12-18", "-1", "1")}}, stk("EEE", 1, "100", "EUR"))
+	m, _ := build(t, c, "main")
+	d := block(m, "delta")
+	if d["total"] != nil || d["gap"] == nil {
+		t.Fatalf("with no numeric total there is a gap and no total: %v", d)
 	}
 }
