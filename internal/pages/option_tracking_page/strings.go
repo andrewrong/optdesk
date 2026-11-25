@@ -3,22 +3,22 @@ package option_tracking_page
 // Texts of the page. Option terms stay English, other text is Chinese. A gap text is the plain
 // sentence of its tracking code; the code word is not shown.
 const (
-	pageTitle   = "My short option tracking"
+	pageTitle   = pageTitleZh + " (My short option tracking)"
 	flexNote    = flexNoteZh
 	markNote    = markNoteZh
-	noOpenText  = "No open short options"
+	noOpenText  = noOpenZh + " (No open short options)"
 	leftOutTail = leftOutTailZh
 	staleText   = staleTextZh
 	defaultName = "main"
 
-	labelAccount = "Account ("
+	labelAccount = accountZh + " (Account: "
 	labelClose   = ")"
 
 	dash       = "—"
-	notApply   = "Not applicable"
-	inLife     = "In term"
-	earlyBadge = "Early"
-	basisHead  = "Basis "
+	notApply   = notApplyZh + " (Not applicable)"
+	inLife     = inLifeZh + " (In term)"
+	earlyBadge = earlyZh + " (Early)"
+	basisHead  = basisZh + " (Basis) "
 	reasonSep  = " · "
 	termSep    = " "
 	noteSep    = ":"
@@ -42,7 +42,7 @@ const (
 	reasonInput     = "missing_input"
 	reasonData      = "no_data"
 	reasonNoReader  = "no_reader"
-	guardUnknownTxt = "Unconfirmed"
+	guardUnknownTxt = unconfirmedZh + " (Unconfirmed)"
 
 	badgeClose = "close"      // badge of a close from a bar
 	badgePrint = "last print" // badge of a close from an option_eod print
@@ -91,7 +91,9 @@ var gatherCodes = map[string]string{
 
 var badgeMoneyness = map[string]string{"itm": "in the money", "otm": "out of the money", "atm": "at the money"}
 
-var badgeGuard = map[string]string{"ok": "ok", "block": "Blocked", "blocked": "Blocked", "unknown": guardUnknownTxt, "n/a": notApply}
+const blockedTxt = blockedZh + " (Blocked)"
+
+var badgeGuard = map[string]string{"ok": "ok", "block": blockedTxt, "blocked": blockedTxt, "unknown": guardUnknownTxt, "n/a": notApply}
 
 var guardTone = map[string]string{"ok": "up", "block": "down", "blocked": "down"}
 

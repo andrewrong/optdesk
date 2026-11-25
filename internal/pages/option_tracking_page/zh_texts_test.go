@@ -1,6 +1,7 @@
 package option_tracking_page
 
 import (
+	"strings"
 	"testing"
 	"unicode"
 
@@ -29,8 +30,13 @@ func TestTrackingTextsAreChinese(t *testing.T) {
 	res.LongLegsLeftOut = 2
 	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main"))
 
-	if hasHan(vm.Title) {
-		t.Errorf("title = %q has Chinese", vm.Title)
+	for _, s := range []string{vm.Title, noOpenText, notApply, inLife, earlyBadge, basisHead, guardUnknownTxt, blockedTxt} {
+		if !hasHan(s) || !strings.Contains(s, "(") {
+			t.Errorf("text %q lacks a Chinese word or the English beside it", s)
+		}
+	}
+	if want := labelAccount + "main" + labelClose + titleSep + noOpenText; !hasHan(want) || !hasHan(labelAccount) {
+		t.Errorf("account title %q", want)
 	}
 	for _, n := range append([]string{vm.MarkNote}, vm.Notes...) {
 		if !hasHan(n) {
