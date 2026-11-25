@@ -126,7 +126,7 @@ func TestMoversDaysNotPageDay(t *testing.T) {
 	validate(t, b)
 	mv := moversOf(m)
 	cols := mv["columns"].([]any)
-	if cols[1] != "Previous (11-10)" || cols[2] != "Last (11-12)" || cols[0] != "Name" || cols[3] != "Moved (USD)" {
+	if cols[1] != "前收 Previous (11-10)" || cols[2] != "最新 Last (11-12)" || cols[0] != "名称 Name" || cols[3] != "涨跌（美元） Moved (USD)" {
 		t.Fatalf("columns = %v", cols)
 	}
 	if mv["gap"] != nil || amountOf(t, mv["stocks"].([]any)[0]) != 1000 {
@@ -328,7 +328,7 @@ func TestMoversRowsHaveAliasScope(t *testing.T) {
 	m, _ := buildOn(t, c, "2026-11-10")
 	mv := moversOf(m)
 	rows := mv["rows"].([]any)
-	if len(rows) != 2 || rows[0].(map[string]any)["name"] != "Change in net liquidation" || rows[1].(map[string]any)["name"] != "Other" {
+	if len(rows) != 2 || rows[0].(map[string]any)["name"] != "净值变动 Change in net liquidation" || rows[1].(map[string]any)["name"] != "其他 Other" {
 		t.Fatalf("rows = %v", rows)
 	}
 	for _, r := range rows {

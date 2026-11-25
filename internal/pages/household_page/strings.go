@@ -1,45 +1,11 @@
 package household_page
 
-// The words of the page, written once.
-const (
-	pageTitle = "Household"
-
-	// The words of the two header links, to /risk and /positions; the page draws them as given.
-	linkPositions = "Positions"
-
-	titleOverview      = "Overview"
-	titleComposition   = "Holdings composition"
-	titleMovers        = "What moved today"
-	titleTrend         = "Net value trend"
-	titleStress        = "Stress test"
-	titleIncome        = "Monthly income"
-	titleMonthChange   = "Monthly change"
-	titleCashAfter     = "Cash after assignment"
-	titleObligations   = "Option obligations"
-	titleConcentration = "Concentration"
-	titleAllocation    = "Asset allocation"
-	titleAccounts      = "Account"
-
-	nameMoversTotal = "Change in net liquidation"
-	nameMoversOther = "Other"
-	headName        = "Name"
-	headPrevious    = "Previous (%s)"
-	headLast        = "Last (%s)"
-	headMoved       = "Moved (USD)"
-	nameStock       = "Stock"
-
-	nameMonthStart = "Month start"
-	nameMonthEnd   = "Month end"
-	whoseMain      = "Me"
-	whoseOther     = "Other account"
-)
-
 var (
-	headsComposition   = []string{"Position", "Amount", "Share"}
-	headsConcentration = []string{"Company", "Share of household net value", "Market value"}
+	headsComposition   = []string{headPosition, headAmount, headShare}
+	headsConcentration = []string{headCompany, headHouseholdShare, headMarketValue}
 )
 
-var accountColumns = []string{"Account", "Net liquidation", "Cash", "Stocks", "Options", "Data day"}
+var accountColumns = []string{headAccount, headNet, headCash, headStocks, headOptions, headDataDay}
 
 // gapTexts are the words of each gap reason a line of pagefig can carry.
 var gapTexts = map[string]string{
