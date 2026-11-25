@@ -7,6 +7,7 @@ import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const allowedCJK = [
+  '\u5de6\u53f3\u6ed1\u52a8\u53ef\u770b\u5168\u90e8\u5217', // swipe sideways to see every column (ScrollHint)
   '\u6536\u76d8', // close
   '\u76d8\u4e2d\u8bd5\u7b97', // intraday estimate
   '\u76d8\u4e2d', // intraday

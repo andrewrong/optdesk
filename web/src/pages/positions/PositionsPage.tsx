@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BarsSourceNote } from '@/components/BarsSourceNote'
+import { ScrollHint } from '@/components/ScrollHint'
 import { DataTable } from '@/components/data-table/data-table'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
@@ -19,6 +20,9 @@ type View = Payload['views'][number]
 
 type Table = View['stocks'] | View['options'] | NonNullable<View['trades']>
 
+// The columns that hold words wrap in their cell; the figure columns keep their no-wrap.
+const WRAP = new Set(['name', 'role', 'code', 'account', 'action', 'instrument'])
+
 function PositionTable({ table, name }: { table: Table; name: string }) {
   return (
     <Card className="min-w-0" data-table={name}>
@@ -31,7 +35,13 @@ function PositionTable({ table, name }: { table: Table; name: string }) {
             <AlertDescription>{table.gap.text}</AlertDescription>
           </Alert>
         ) : (
-          <DataTable columns={table.columns} rows={table.rows.map((row) => ({ ...row }))} />
+          <>
+            <ScrollHint />
+            <DataTable
+              columns={table.columns.map((c) => (WRAP.has(c.id) ? { ...c, wrap: true } : c))}
+              rows={table.rows.map((row) => ({ ...row }))}
+            />
+          </>
         )}
       </CardContent>
     </Card>

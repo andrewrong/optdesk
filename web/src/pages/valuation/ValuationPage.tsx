@@ -3,6 +3,7 @@
 import { TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScrollHint } from '@/components/ScrollHint'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/valuation_page'
 import { CompanyView } from './CompanyView'
@@ -30,6 +31,7 @@ function Body({ payload }: { payload: Payload }) {
             <CardTitle>Companies{payload.unvalued_count > 0 ? `, not entered: ${payload.unvalued_count}` : ''}</CardTitle>
           </CardHeader>
           <CardContent>
+            <ScrollHint />
             <ValuationTable rows={payload.rows ?? []} />
           </CardContent>
         </Card>
