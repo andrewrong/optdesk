@@ -41,7 +41,7 @@
           "unit": "usd_signed",
           "tone": "up"
         },
-        "caption": "Ledger as of 11-04, account main; all closed sold positions; realised −$15.25; kept share −1.2%"
+        "caption": "Ledger as of 11-04, 账户 main; 所有已平仓的卖出持仓; 已实现 −$15.25; 留存比例 −1.2%"
       },
       "open_premium_usd": {
         "label": "Open premium",

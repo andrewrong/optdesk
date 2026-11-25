@@ -369,9 +369,9 @@ func newestDay(positions []compute.LedgerPosition, d time.Time) string {
 // empty is left out. It opens with the day and the accounts replayed; with several accounts it ends
 // by saying that the Result page shows one.
 func caption(sec compute.ResultSection, asOf string, aliases []string) string {
-	parts := []string{asOf + ", " + scopeWords(aliases) + "; all closed sold positions"}
+	parts := []string{asOf + ", " + scopeWords(aliases) + "; " + captionAll}
 	if r, ok := money(sec.Realized).(figure); ok {
-		parts = append(parts, "realised "+r.Text)
+		parts = append(parts, captionReal+r.Text)
 	}
 	if k, err := decimal.NewFromString(sec.KeptShare); err == nil {
 		pct := k.Mul(decimal.NewFromInt(100)).Round(1) // half away from zero
@@ -379,10 +379,10 @@ func caption(sec compute.ResultSection, asOf string, aliases []string) string {
 		if pct.IsNegative() {
 			text = minus + text
 		}
-		parts = append(parts, "kept share "+text)
+		parts = append(parts, captionKept+text)
 	}
 	if len(aliases) > 1 {
-		parts = append(parts, "the Result page shows one account")
+		parts = append(parts, captionOneAc)
 	}
 	return strings.Join(parts, "; ")
 }
