@@ -1,11 +1,11 @@
 package main
 
 import (
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
 
-	"errors"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/profile"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"

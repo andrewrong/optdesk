@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/andrewrong/optdesk/internal/pages/household_page"
 	"io"
 	"net/http"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/household_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"

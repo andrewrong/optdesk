@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/jonboulle/clockwork"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -13,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/jonboulle/clockwork"
 )
 
 type marksJob struct{ fakeJob }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/jonboulle/clockwork"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -35,6 +34,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/andrewrong/optdesk/internal/symbol/table"
+	"github.com/jonboulle/clockwork"
 )
 
 const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
