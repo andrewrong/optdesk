@@ -60,6 +60,8 @@ describe('PriceLinesPage', () => {
       expect(text).toContain(row.price)
       if (row.note) expect(text).toContain(row.note)
     }
+    expect([...host.querySelectorAll('th')].map((th) => th.textContent).filter(Boolean)).toEqual(['代码', '市场', '价格', '备注'])
+    expect(host.querySelector('form[data-add] button[type=submit]')?.textContent).toBe('保存')
   })
 
   it('gives each unset company its own prefilled add form', async () => {
