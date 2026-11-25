@@ -16,7 +16,8 @@ const badVersion = JSON.parse(
 )
 let root: Root | undefined
 let host: HTMLElement
-async function show(payload: typeof ok | typeof secondMissing | typeof gap) {
+const staleMain = { ...ok, accounts: [{ ...ok.accounts[0]!, status: 'stale' as const }, ...ok.accounts.slice(1)] }
+async function show(payload: typeof ok | typeof secondMissing | typeof gap | typeof staleMain) {
   host = document.createElement('div')
   document.body.append(host)
   await act(async () => {
@@ -63,6 +64,11 @@ describe('OptionNoticesPage', () => {
     const missing = await show(secondMissing)
     const badge = missing.querySelector('[data-status=no_capture]')!
     expect(badge.textContent).toBe('未采集')
+    await act(async () => root?.unmount())
+    host.remove()
+    const stale = await show(staleMain)
+    const staleBadge = stale.querySelector('[data-alias=ok-main] [data-status=stale]')!
+    expect(staleBadge.textContent).toBe('过期')
   })
 
   it('shows the cash by date table in payload order and the cushion text', async () => {
