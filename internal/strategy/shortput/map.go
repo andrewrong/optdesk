@@ -2,6 +2,7 @@ package shortput
 
 import (
 	"encoding/json"
+	"maps"
 	"strconv"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -25,9 +26,7 @@ func evaluationOf(c compute.Candidate, s strategy.Snapshot) strategy.Evaluation 
 		checks = append(checks, strategy.Check{Name: g.Gate, Status: string(g.Status), Reason: g.Reason})
 	}
 	facts := map[string]string{}
-	for k, v := range s.Context {
-		facts[k] = v
-	}
+	maps.Copy(facts, s.Context)
 	put := func(k, v string) {
 		if v != "" {
 			facts[k] = v
