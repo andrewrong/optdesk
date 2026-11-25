@@ -347,15 +347,26 @@ func vixRow(haveMarket bool, l marketstateapi.Line, pctile reading) marketRow {
 		}
 		text := "VIX " + level + " on " + dayText(day)
 		pt, ptText := vixPctText(pctile)
-		if ptText {
+		if ptText && pctile.dataDay == day {
 			text += ", at the " + pt + " of the last 3 years"
 		}
 		row.Figure = mkFigure(level, text, unitIndexPoints, labelVix)
 	}
-	pt, _ := vixPctText(pctile)
+	pt, ptNum := vixPctText(pctile)
+	if ptNum && day != "" && pctile.dataDay != day {
+		pt = fmt.Sprintf(vixPctOtherDayFmt, dayOrUnknown(pctile.dataDay), day)
+	}
 	row.Percentile = &percentile{Text: pt, Window: pctWindowVix}
 	row.Day = dayOrGap(day, row.Figure, labelVix)
 	return row
+}
+
+// dayOrUnknown is the ISO day, or the Chinese text for a reading without a data day.
+func dayOrUnknown(day string) string {
+	if day == "" {
+		return vixPctDayUnknown
+	}
+	return day
 }
 
 // vixPctText is the percentile text of the stored reading and whether it is a number.
