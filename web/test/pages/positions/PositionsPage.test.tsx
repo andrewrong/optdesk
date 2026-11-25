@@ -328,6 +328,33 @@ describe('PositionsPage', () => {
     expect(links[0]?.parentElement).toBe(links[1]?.parentElement)
   })
 
+  it('links each options table to its structures page', async () => {
+    const payload = fixture('ok.json')
+    await show(payload)
+    const triggers = [...host.querySelectorAll('[role=tab]')]
+    expect(triggers).toHaveLength(payload.views.length)
+    for (const [i, view] of (payload.views as { key: string }[]).entries()) {
+      await pick(triggers[i]!)
+      const panel = host.querySelector('[role=tabpanel][data-state=active]')!
+      const links = [...panel.querySelectorAll('a[href^="/options/structures?account="]')]
+      expect(links.map((a) => a.getAttribute('href'))).toEqual([
+        `/options/structures?account=${view.key}`,
+      ])
+      expect(panel.querySelector('[data-table=options]')!.contains(links[0]!)).toBe(true)
+      expect(panel.querySelector('[data-table=stocks] a')).toBeNull()
+      expect(panel.querySelector('[data-table=trades] a')).toBeNull()
+    }
+  })
+
+  it('draws no structures link under an options table with a gap', async () => {
+    const payload = fixture('ok.json')
+    payload.views[0].options.rows = []
+    payload.views[0].options.gap = { reason: 'no_data', text: 'no option legs' }
+    await show(payload)
+    const panel = host.querySelectorAll('[role=tabpanel]')[0]!
+    expect(panel.querySelector('a[href^="/options/structures"]')).toBeNull()
+  })
+
   it('draws no account row without accounts', async () => {
     const payload = fixture('ok.json')
     delete payload.accounts
