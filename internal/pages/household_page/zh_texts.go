@@ -171,3 +171,51 @@ const (
 	textUnsupportedCurrency = "缺少汇率或币种暂不支持：暂无数据"
 	textNoData              = "没有数据：暂无数据"
 )
+
+// The Chinese words of the account page: title, link, card titles, table heads and row names, each
+// written as the Chinese word with the English beside it.
+const (
+	pageTitle = "家庭 Household"
+
+	// The words of the two header links, to /risk and /positions; the page draws them as given.
+	linkPositions = "持仓 Positions"
+
+	titleOverview      = "总览 Overview"
+	titleComposition   = "持仓构成 Holdings composition"
+	titleMovers        = "今日变动 What moved today"
+	titleTrend         = "净值走势 Net value trend"
+	titleStress        = "压力测试 Stress test"
+	titleIncome        = "每月收入 Monthly income"
+	titleMonthChange   = "每月变化 Monthly change"
+	titleCashAfter     = "被行权后的现金 Cash after assignment"
+	titleObligations   = "期权义务 Option obligations"
+	titleConcentration = "集中度 Concentration"
+	titleAllocation    = "资产配置 Asset allocation"
+	titleAccounts      = "账户 Account"
+
+	nameMoversTotal = "净值变动 Change in net liquidation"
+	nameMoversOther = "其他 Other"
+	headName        = "名称 Name"
+	headPrevious    = "前收 Previous (%s)"
+	headLast        = "最新 Last (%s)"
+	headMoved       = "涨跌（美元） Moved (USD)"
+	nameStock       = "股票 Stock"
+
+	nameMonthStart = "月初 Month start"
+	nameMonthEnd   = "月末 Month end"
+	whoseMain      = "本人 Me"
+	whoseOther     = "其他账户 Other account"
+
+	headPosition       = "持仓 Position"
+	headAmount         = "金额 Amount"
+	headShare          = "占比 Share"
+	headCompany        = "公司 Company"
+	headHouseholdShare = "占家庭净值比例 Share of household net value"
+	headMarketValue    = "市值 Market value"
+	headAccount        = "账户 Account"
+	headNet            = "净值 Net liquidation"
+	headCash           = "现金 Cash"
+	headStocks         = "股票 Stocks"
+	headOptions        = "期权 Options"
+	headDataDay        = "数据日 Data day"
+)

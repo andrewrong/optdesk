@@ -318,7 +318,8 @@ func TestGlossaryCoversEveryTerm(t *testing.T) {
 		gm := g.(map[string]any)
 		terms[gm["term"].(string)] = gm["text"].(string)
 	}
-	want := []string{"Fiscal year end", "Price up to", "Daily bars", "Statements", "Latest quarter", "EPS quarters", "Next report",
+	want := []string{"财年结束月 Fiscal year end", "价格更新至 Price up to", "日线根数 Daily bars", "财报数据 Statements", "最新季度 Latest quarter", "EPS 季度数 EPS quarters",
+		"下次财报 Next report",
 		"jp", "no_cik", "fundamentals_off", "no_statements", "annual_only", "no_instrument", "no_bars", "no_next_report"}
 	for _, w := range want {
 		txt := terms[w]
@@ -481,8 +482,8 @@ func TestCompanyDataTextsAreChinese(t *testing.T) {
 	for _, c := range m["columns"].([]any) {
 		cm := c.(map[string]any)
 		check("gloss", cm["gloss"].(string))
-		if hasHan(cm["label"].(string)) || hasHan(cm["key"].(string)) {
-			t.Errorf("label or key %v holds Chinese", cm)
+		if !hasHan(cm["label"].(string)) || hasHan(cm["key"].(string)) {
+			t.Errorf("label %v holds no Chinese, or key holds Chinese", cm)
 		}
 	}
 	if len(m["columns"].([]any)) != 8 {
@@ -491,8 +492,9 @@ func TestCompanyDataTextsAreChinese(t *testing.T) {
 	for _, g := range m["glossary"].([]any) {
 		gm := g.(map[string]any)
 		check("glossary text", gm["text"].(string))
-		if hasHan(gm["term"].(string)) {
-			t.Errorf("term %q holds Chinese", gm["term"])
+		term := gm["term"].(string)
+		if reason := !strings.Contains(term, " "); reason == hasHan(term) {
+			t.Errorf("term %q: reason codes stay English, the others read Chinese", term)
 		}
 	}
 	gaps := m["gaps"].([]any)

@@ -1,6 +1,18 @@
 package company_data_page
 
-// Chinese texts of the page (owner rule 2026-11-17): constants only. Labels, glossary terms and reason codes stay English.
+// Chinese texts of the page (owner rule 2026-11-17): constants only. Reason codes stay English.
+
+// Column heads and glossary terms: Chinese first, English beside.
+const (
+	labelFiscalYearEnd = "财年结束月 Fiscal year end"
+	labelPriceTo       = "价格更新至 Price up to"
+	labelBarCount      = "日线根数 Daily bars"
+	labelStatements    = "财报数据 Statements"
+	labelLatestQuarter = "最新季度 Latest quarter"
+	labelEPSQuarters   = "EPS 季度数 EPS quarters"
+	labelNextReport    = "下次财报 Next report"
+	labelMissing       = "缺失 Missing"
+)
 
 // Gloss under each column head.
 const (
