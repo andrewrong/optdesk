@@ -5,6 +5,4 @@ const (
 	headDelta = "Delta"
 	headVega  = "Vega"
 	headBeta  = "Beta"
-
-	unitVega = " USD/vol point"
 )
