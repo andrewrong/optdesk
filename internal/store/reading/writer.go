@@ -3,6 +3,7 @@ package reading
 import (
 	"context"
 	"fmt"
+
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
