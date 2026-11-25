@@ -105,6 +105,7 @@ func (g *gzipWriter) Write(p []byte) (int, error) {
 
 // Flush flushes the gzip writer and then the underlying writer, so a streaming route is not held back.
 func (g *gzipWriter) Flush() {
+	g.decide(http.StatusOK, nil)
 	if g.zw != nil {
 		_ = g.zw.Flush()
 	}

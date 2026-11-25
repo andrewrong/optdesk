@@ -128,3 +128,29 @@ func TestGzipHandlerHealth(t *testing.T) {
 		}
 	}
 }
+
+func TestGzipHandlerFlushBeforeWrite(t *testing.T) {
+	t.Parallel()
+	h := gzipHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.(http.Flusher).Flush()
+		_, _ = io.WriteString(w, `{"a":1}`)
+	}))
+	rec := gzipDo(t, h, http.MethodGet, "gzip", nil)
+	res := rec.Result() // headers as sent at the first flush
+	body, _ := io.ReadAll(res.Body)
+	if res.Header.Get("Content-Encoding") == "" && string(body) != `{"a":1}` {
+		t.Fatalf("body is gzip but sent headers have no Content-Encoding: %q", body)
+	}
+}
+
+func TestGzipHandlerNoContentStaysPlain(t *testing.T) {
+	t.Parallel()
+	h := gzipHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	if rec := gzipDo(t, h, http.MethodGet, "gzip", nil); rec.Code != 204 || rec.Header().Get("Content-Encoding") != "" {
+		t.Fatalf("%d %v", rec.Code, rec.Header())
+	}
+}
