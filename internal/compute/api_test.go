@@ -241,7 +241,8 @@ func TestBadInputIsPermanent(t *testing.T) {
 	t.Parallel()
 	check := func(name string, err error) {
 		t.Helper()
-		te, ok := err.(contracts.TypedError)
+		var te contracts.TypedError
+		ok := errors.As(err, &te)
 		if !ok || te.Kind() != contracts.Permanent {
 			t.Errorf("%s: err = %v, want Permanent TypedError", name, err)
 		}
@@ -409,13 +410,13 @@ func (fakeEase) Ease(id string, s compute.EaseSeries, asOf contracts.Day) comput
 	}
 	if id != "macro.ease" {
 		return compute.EaseFigure{
-			Figure: compute.Figure{ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.BadInput},
-			Parts:  parts,
+			ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.BadInput,
+			Parts: parts,
 		}
 	}
 	return compute.EaseFigure{
-		Figure: compute.Figure{ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.NoInput},
-		Parts:  parts,
+		ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.NoInput,
+		Parts: parts,
 	}
 }
 

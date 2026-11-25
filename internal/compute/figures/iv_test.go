@@ -112,7 +112,7 @@ func ivpRule(cmp compute.Compare) compute.Rule {
 // ramp is 1..n on consecutive days followed by today.
 func ramp(n int, today float64) (compute.Series, contracts.Day) {
 	v := make([]float64, n+1)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v[i] = float64(i + 1)
 	}
 	v[n] = today

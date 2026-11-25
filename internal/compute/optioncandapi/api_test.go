@@ -17,7 +17,7 @@ func (fakeRule) EvaluateIn(in optioncandapi.CurrencyInput, _ compute.CandidatePa
 func TestCurrencyRuleContractFake(t *testing.T) {
 	t.Parallel()
 	var newRule optioncandapi.NewCurrencyRuleFunc = func() optioncandapi.CurrencyRule { return fakeRule{} }
-	in := optioncandapi.CurrencyInput{CandidateInput: compute.CandidateInput{Underlying: "7203"}, Currency: "JPY"}
+	in := optioncandapi.CurrencyInput{Underlying: "7203", Currency: "JPY"}
 	rows := newRule().EvaluateIn(in, compute.CandidateParams{})
 	if len(rows) != 1 || rows[0].Underlying != "7203" || rows[0].Status != "JPY" {
 		t.Fatalf("rows = %+v", rows)

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -78,8 +79,8 @@ func filingsOf(c goldenFcfCase) valuationapi.Filings {
 	if c.Input.CoverShares != nil {
 		f.CoverShares = *c.Input.CoverShares
 	}
-	for i := len(c.Input.Years) - 1; i >= 0; i-- {
-		y := c.Input.Years[i]
+	for i, y := range slices.Backward(c.Input.Years) {
+
 		fy := valuationapi.FilingYear{FYEnd: contracts.Day(y.End), Values: map[string]string{
 			roleOperatingCashFlow: y.OCF, roleCapitalSpending: y.Capex, roleStockCompensation: y.SBC,
 		}}
@@ -150,7 +151,7 @@ func TestNoPriceParameter(t *testing.T) {
 	var fn valuationapi.BandFunc = Band
 	typ := reflect.TypeOf(fn)
 	want := []reflect.Type{
-		reflect.TypeOf(""), reflect.TypeOf(valuationapi.Filings{}), reflect.TypeOf(contracts.Day("")),
+		reflect.TypeFor[string](), reflect.TypeFor[valuationapi.Filings](), reflect.TypeFor[contracts.Day](),
 	}
 	if typ.NumIn() != len(want) {
 		t.Fatalf("%d parameters, want %d", typ.NumIn(), len(want))
@@ -160,7 +161,7 @@ func TestNoPriceParameter(t *testing.T) {
 			t.Errorf("parameter %d is %v, want %v", i, typ.In(i), w)
 		}
 	}
-	if _, ok := reflect.TypeOf(valuationapi.BandFigure{}).FieldByName("Spot"); ok {
+	if _, ok := reflect.TypeFor[valuationapi.BandFigure]().FieldByName("Spot"); ok {
 		t.Error("BandFigure carries a price")
 	}
 }

@@ -21,8 +21,8 @@ var suffixes = []string{".T", ".HK", ".SZ", ".SS"}
 func cleanTicker(t string) string {
 	t = strings.ToUpper(strings.TrimSpace(t))
 	for _, s := range suffixes {
-		if strings.HasSuffix(t, s) {
-			return strings.TrimSuffix(t, s)
+		if before, ok := strings.CutSuffix(t, s); ok {
+			return before
 		}
 	}
 	return strings.ReplaceAll(t, ".", " ")

@@ -54,7 +54,6 @@ func earnIn(next *contracts.Day) compute.NoticeInput {
 func TestEarningsInsideBeforeExpiry(t *testing.T) {
 	t.Parallel()
 	for _, d := range []contracts.Day{"2026-11-20", "2026-12-18"} {
-		d := d
 		r := eval(earnIn(&d))
 		if got := codes(r); !reflect.DeepEqual(got, []string{"earnings_inside:warn"}) {
 			t.Fatalf("%s: got %v", d, got)

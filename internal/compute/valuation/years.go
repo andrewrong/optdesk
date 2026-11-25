@@ -1,6 +1,7 @@
 package valuation
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -79,12 +80,7 @@ func (ix factIndex) asOfValue(taxonomy, concept, unit string, start *time.Time, 
 }
 
 func isAnnualForm(form string, p Params) bool {
-	for _, f := range p.AnnualForms {
-		if f == form {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.AnnualForms, form)
 }
 
 // eligibleYears returns the latest p.Years fiscal years, newest first. A year is an

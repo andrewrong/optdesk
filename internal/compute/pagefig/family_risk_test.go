@@ -120,7 +120,7 @@ func checkCompanies(t *testing.T, cs []blockapi.FamilyRiskCompany) {
 func TestFamilyRiskNetGapAndPutCap(t *testing.T) {
 	t.Parallel()
 	var obs []blockapi.ObligationIn
-	for i := 0; i < 61; i++ {
+	for i := range 61 {
 		obs = append(obs, frPut(fmt.Sprintf("P%02d", i), "USD", fmt.Sprint(10+i), "1", ""))
 	}
 	r := NewFamilyRisk().FamilyRisk(blockapi.FamilyRiskIn{
@@ -161,7 +161,7 @@ func TestFamilyRiskEqualsHousehold(t *testing.T) {
 func TestFamilyRiskCap(t *testing.T) {
 	t.Parallel()
 	var stocks []blockapi.HeldLineIn
-	for i := 0; i < 61; i++ {
+	for i := range 61 {
 		stocks = append(stocks, blockapi.HeldLineIn{Alias: "main", Underlying: fmt.Sprintf("S%02d", i), Currency: "USD", Value: hv(fmt.Sprint(100 + i))})
 	}
 	r := NewFamilyRisk().FamilyRisk(blockapi.FamilyRiskIn{Accounts: []blockapi.FamilyRiskAccountIn{frAcc("main", "1")}, Stocks: stocks, Net: hv("100000")})

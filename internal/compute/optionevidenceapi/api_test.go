@@ -132,7 +132,7 @@ func TestATMPickerContractFake(t *testing.T) {
 // TestChainQuoteFields: ChainQuote has exactly the five fields Expiry, Right, Strike, IV, Source.
 func TestChainQuoteFields(t *testing.T) {
 	t.Parallel()
-	typ := reflect.TypeOf(optionevidenceapi.ChainQuote{})
+	typ := reflect.TypeFor[optionevidenceapi.ChainQuote]()
 	want := []string{"Expiry", "Right", "Strike", "IV", "Source"}
 	if typ.NumField() != len(want) {
 		t.Fatalf("fields = %d", typ.NumField())

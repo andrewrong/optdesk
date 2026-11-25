@@ -5,6 +5,7 @@ package optionshortlist
 
 import (
 	"math/big"
+	"slices"
 	"sort"
 	"strings"
 
@@ -64,12 +65,7 @@ func decimal(r *big.Rat, n int) string {
 }
 
 func has(list []string, v string) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, v)
 }
 
 // judge returns the code of the first check that drops the row, or "" with the kept figures.

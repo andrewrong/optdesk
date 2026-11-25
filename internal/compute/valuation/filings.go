@@ -2,6 +2,7 @@ package valuation
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -210,8 +211,8 @@ func checkYears(years []valuationapi.FilingYear, run []fiscalYear, cutoff time.T
 	// Oldest to newest: compare each year's diluted shares with the year before.
 	var prev decimal.Decimal
 	havePrev := false
-	for i := len(years) - 1; i >= 0; i-- {
-		text, ok := years[i].Values[roleDilutedShares]
+	for _, year := range slices.Backward(years) {
+		text, ok := year.Values[roleDilutedShares]
 		if !ok {
 			havePrev = false
 			continue

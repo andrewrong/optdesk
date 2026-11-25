@@ -5,7 +5,7 @@ package optionattr
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -347,6 +347,6 @@ func gapsBetween(gaps []contracts.Day, from, to contracts.Day) []contracts.Day {
 			out = append(out, d)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }

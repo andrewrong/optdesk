@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -108,12 +109,7 @@ func one(t *testing.T, f fixture, mod func(*optiontierapi.Row), accts ...string)
 }
 
 func has(list []string, s string) bool {
-	for _, x := range list {
-		if x == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, s)
 }
 
 func TestDefaultParamsAreTrialValues(t *testing.T) {

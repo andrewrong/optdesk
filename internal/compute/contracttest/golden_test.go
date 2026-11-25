@@ -216,9 +216,9 @@ func TestGoldenCoversFigures(t *testing.T) {
 		}
 	}
 
-	typ := reflect.TypeOf((*compute.Figures)(nil)).Elem()
-	for i := 0; i < typ.NumMethod(); i++ {
-		m := typ.Method(i).Name
+	typ := reflect.TypeFor[compute.Figures]()
+	for method := range typ.Methods() {
+		m := method.Name
 		if !okByMethod[m] {
 			t.Errorf("no ok case for Figures.%s", m)
 		}

@@ -1,6 +1,7 @@
 package own_test
 
 import (
+	"errors"
 	"math"
 	"math/rand"
 	"sort"
@@ -119,7 +120,8 @@ func TestRoundHalfEvenBadInput(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := u.RoundHalfEven(c.v, c.scale)
-			te, ok := err.(contracts.TypedError)
+			var te contracts.TypedError
+			ok := errors.As(err, &te)
 			if !ok || te.Kind() != contracts.Permanent {
 				t.Errorf("err = %v, want Permanent", err)
 			}
