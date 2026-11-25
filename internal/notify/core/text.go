@@ -46,10 +46,7 @@ func sortGaps(gaps []store.Gap) {
 func buildText(gaps []store.Gap) (string, []store.Gap) {
 	s := append([]store.Gap(nil), gaps...)
 	sortGaps(s)
-	n := len(s)
-	if n > maxLines {
-		n = maxLines
-	}
+	n := min(len(s), maxLines)
 	for ; n > 1; n-- {
 		if t := render(s, n); len(t) <= maxBytes {
 			return t, s[:n]

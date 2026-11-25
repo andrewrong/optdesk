@@ -174,7 +174,7 @@ func TestAlertTextHoldsNoSentinel(t *testing.T) {
 func TestAlertTextCapsLines(t *testing.T) {
 	t.Parallel()
 	var rs []compute.AlertResult
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		rs = append(rs, fired(fmt.Sprintf("r%02d", i), "n"))
 	}
 	r := newAlertRig(t, noon(), notify.Config{}, rs...)
@@ -261,7 +261,7 @@ func TestAlertMarkFailureRetried(t *testing.T) {
 func TestAlertCapMarksOnlyPrinted(t *testing.T) {
 	t.Parallel()
 	var rs []compute.AlertResult
-	for i := 0; i < 22; i++ {
+	for i := range 22 {
 		rs = append(rs, fired(fmt.Sprintf("r%02d", i), "n"))
 	}
 	r := newAlertRig(t, noon(), notify.Config{}, rs...)

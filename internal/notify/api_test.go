@@ -2,6 +2,7 @@ package notify_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"testing"
@@ -121,7 +122,7 @@ func TestSenderAndOptionsContract(t *testing.T) {
 	if err := s.Send(context.Background(), "hi"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := newFn("", "", want); err != notify.ErrSend {
+	if _, err := newFn("", "", want); !errors.Is(err, notify.ErrSend) {
 		t.Fatalf("err = %v, want ErrSend", err)
 	}
 }

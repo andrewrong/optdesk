@@ -90,7 +90,7 @@ func TestOneMessagePerBatch(t *testing.T) {
 	if got := len(r.sender.Texts()); got != 1 {
 		t.Fatalf("%d texts", got)
 	}
-	if first := strings.SplitN(r.sender.Texts()[0], "\n", 2)[0]; first != "optdesk: 3 job(s) missed work" {
+	if first, _, _ := strings.Cut(r.sender.Texts()[0], "\n"); first != "optdesk: 3 job(s) missed work" {
 		t.Fatalf("first line %q", first)
 	}
 }
@@ -223,7 +223,7 @@ func TestTextCapsLines(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, noon(), notify.Config{})
 	var gaps []store.Gap
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		gaps = append(gaps, dsGap(fmt.Sprintf("d%02d", i), i))
 	}
 	r.src.SetGaps(gaps...)
@@ -239,7 +239,7 @@ func TestTextCapsLines(t *testing.T) {
 	r2 := newRig(t, noon(), notify.Config{})
 	long := strings.Repeat("x", 400)
 	var big []store.Gap
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		big = append(big, dsGap(fmt.Sprintf("%s%02d", long, i), i))
 	}
 	r2.src.SetGaps(big...)
@@ -256,7 +256,7 @@ func TestCapMarksOnlyPrinted(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, noon(), notify.Config{})
 	var gaps []store.Gap
-	for i := 0; i < 23; i++ {
+	for i := range 23 {
 		gaps = append(gaps, dsGap(fmt.Sprintf("d%02d", i), 22-i)) // the last one is the oldest
 	}
 	r.src.SetGaps(gaps...)
