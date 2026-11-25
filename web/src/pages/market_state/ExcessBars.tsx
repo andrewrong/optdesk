@@ -20,7 +20,7 @@ function axisTicks(values: number[]): number[] | undefined {
   return Array.from({ length: (hi - lo) / STEP + 1 }, (_, i) => lo + i * STEP)
 }
 
-const config: ChartConfig = { value: { label: 'Gap', color: 'var(--chart-1)' } }
+const config: ChartConfig = { value: { label: '差距', color: 'var(--chart-1)' } }
 
 export function ExcessBars({ block }: { block: Payload['sectors'] }) {
   const data = block.rows.flatMap((row) =>
@@ -28,7 +28,7 @@ export function ExcessBars({ block }: { block: Payload['sectors'] }) {
   )
   const ticks = axisTicks(data.map((d) => d.value))
   return (
-    <section aria-label="Gap bars" data-excess-bars>
+    <section aria-label="差距柱状图" data-excess-bars>
       <p className="mb-2 text-sm text-muted-foreground" data-bars-caption>
         {block.bars_caption}
       </p>

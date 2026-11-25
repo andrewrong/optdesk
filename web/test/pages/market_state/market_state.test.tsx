@@ -218,7 +218,7 @@ describe('market state page', () => {
     const rows = [...table.querySelectorAll('[data-sector-row]')]
     expect(rows.map((r) => r.getAttribute('data-sector-row'))).toEqual(p.sectors.rows.map((r: { symbol: string }) => r.symbol))
     const first = p.sectors.rows[0]
-    expect(rows[0]!.textContent).toContain(`${first.rank_21.at} of ${first.rank_21.of}`)
+    expect(rows[0]!.textContent).toContain(`第 ${first.rank_21.at} / 共 ${first.rank_21.of}`)
     expect(rows[0]!.textContent).toContain(first.gap_63.text)
     const gap = p.sectors.rows.find((r: { symbol: string }) => r.symbol === 'XLRE')
     expect(table.querySelector('[data-sector-row=XLRE]')!.textContent).toContain(gap.gap_21.text)
@@ -320,10 +320,10 @@ describe('market state page', () => {
     const p = fixture('ok')
     await show(p)
     const word = (corner: string) => host.querySelector(`[data-corner=${corner}]`)?.textContent
-    expect(word('insideTopRight')).toBe('Leading')
-    expect(word('insideTopLeft')).toBe('Improving')
-    expect(word('insideBottomLeft')).toBe('Lagging')
-    expect(word('insideBottomRight')).toBe('Weakening')
+    expect(word('insideTopRight')).toBe('领先')
+    expect(word('insideTopLeft')).toBe('改善')
+    expect(word('insideBottomLeft')).toBe('落后')
+    expect(word('insideBottomRight')).toBe('转弱')
     const map = host.querySelector('[data-rotation-map]')!.textContent!
     for (const q of p.sectors.rotation_axes.quadrants) expect(map).not.toContain(q.text)
     expect(host.querySelector('[data-rotation-note]')?.textContent).toBe(p.sectors.rotation_axes.note)
@@ -407,7 +407,7 @@ describe('market state page', () => {
     await show(fixture('ok'))
     expect(host.querySelector('[data-rotation-map] [data-chart-legend]')).toBeNull()
     const names = [...host.querySelectorAll('[data-quadrant-area]')].map((e) => e.textContent!.split(' — ')[0]).sort()
-    expect(names).toEqual(['Improving', 'Lagging', 'Leading', 'Weakening'])
+    expect(names).toEqual(['改善', '落后', '转弱', '领先'])
   })
 
   it('bounds each quadrant on both axes so its name sits in its own plot corner', async () => {
@@ -451,10 +451,10 @@ describe('market state page', () => {
     await show(fixture('ok'))
     const notes = [...host.querySelectorAll('[data-quadrant-notes] li')].map((e) => e.textContent)
     expect([...notes].sort()).toEqual([
-      'Improving — behind SPY over 3 months but gaining pace',
-      'Lagging — behind SPY over 3 months and still losing',
-      'Leading — ahead of SPY over 3 months and still gaining',
-      'Weakening — ahead of SPY over 3 months but losing pace',
+      '改善 — 近 3 个月落后 SPY，但在加速',
+      '落后 — 近 3 个月落后 SPY，且仍在减速',
+      '转弱 — 近 3 个月跑赢 SPY，但在减速',
+      '领先 — 近 3 个月跑赢 SPY，且仍在加速',
     ])
   })
 
@@ -467,7 +467,9 @@ describe('market state page', () => {
       expect(c.tagName).toBe('TD')
       expect(c.className).toContain('px-[10px]')
     }
-    expect(table.querySelectorAll('thead th').length).toBe(7)
+    expect([...table.querySelectorAll('thead th')].map((h) => h.textContent)).toEqual([
+      '代码', '名称', '分组', '21 日差距', '63 日差距', '21 日排名', '63 日排名',
+    ])
     expect(cells[1]!.className).toContain('whitespace-normal')
     expect(cells[1]!.className).toContain('break-words')
   })
