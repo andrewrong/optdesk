@@ -39,6 +39,8 @@ function PositionTable({ table, name }: { table: Table; name: string }) {
 }
 
 export function PositionsPage({ payload }: { payload: Payload }) {
+  // Only the v4 payload carries the account links; older payloads have none.
+  const accounts = 'accounts' in payload ? payload.accounts : undefined
   return (
     <div className="min-w-0 space-y-4" data-page="positions-page">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -49,6 +51,22 @@ export function PositionsPage({ payload }: { payload: Payload }) {
           </a>
         </Button>
       </div>
+      {accounts ? (
+        <nav className="min-w-0 flex flex-wrap gap-2" data-positions-accounts>
+          {accounts.map((account) => (
+            <Button key={account.key} asChild variant="link" size="sm">
+              <a
+                href={account.href}
+                data-account={account.key}
+                aria-current={account.current ? 'page' : undefined}
+                className={account.current ? 'font-semibold' : undefined}
+              >
+                {account.label}
+              </a>
+            </Button>
+          ))}
+        </nav>
+      ) : null}
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       <BarsSourceNote payload={payload} />
       <Tabs defaultValue={payload.views[0].key} className="min-w-0">

@@ -43,7 +43,7 @@ func withViews(t *testing.T, n int, key func(i int) string) map[string]any {
 
 func positionsValid(t *testing.T, m map[string]any) bool {
 	t.Helper()
-	s := compileCarried(t, "page.positions_page.v3.json")
+	s := compileCarried(t, "page.positions_page.v4.json")
 	b, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
