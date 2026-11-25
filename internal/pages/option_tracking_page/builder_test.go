@@ -108,7 +108,7 @@ func TestNoOpenShortsSentence(t *testing.T) {
 	res := trackapi.TrackResult{Recent: []opt{sampleClosed("p0")}}
 	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main"))
 	a := vm.Accounts[0]
-	if a.Open != nil || a.Recent == nil || !strings.Contains(a.Title, "No open short options") {
+	if a.Open != nil || a.Recent == nil || !strings.Contains(a.Title, noOpenText) {
 		t.Fatalf("account = %+v", a)
 	}
 	c := cfgFor(map[string]trackapi.TrackResult{"main": {}}, "main")
@@ -257,7 +257,7 @@ func TestOutputValidatesAgainstSchema(t *testing.T) {
 func TestBuildEmptyLedgerTitle(t *testing.T) {
 	t.Parallel()
 	a := gapAccount("main", codeGap(codeNoFlexRows))
-	if a.Title != "Account (main)" || a.Alias != "main" {
+	if a.Title != labelAccount+"main"+labelClose || a.Alias != "main" {
 		t.Fatalf("account = %+v", a)
 	}
 	res := trackapi.TrackResult{LongLegsLeftOut: 14}

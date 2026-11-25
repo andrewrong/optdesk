@@ -125,15 +125,15 @@ func TestMarkOnlyTextIsChinese(t *testing.T) {
 func TestGuardBadges(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "ok") || c.Tone != "up" || !strings.Contains(c.Text, "Basis bid") {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "ok") || c.Tone != "up" || !strings.Contains(c.Text, basisHead+"bid") {
 		t.Fatalf("ok = %+v", c)
 	}
 	o.Guard, o.GuardReason = "block", "early_assignment_risk"
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "Blocked") || c.Tone != "down" || !strings.Contains(c.Text, reasonTexts["early_assignment_risk"]) {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, blockedTxt) || c.Tone != "down" || !strings.Contains(c.Text, reasonTexts["early_assignment_risk"]) {
 		t.Fatalf("block = %+v", c)
 	}
 	o.Guard, o.GuardReason = "unknown", "no_dividend_info"
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "Unconfirmed") || !strings.Contains(c.Text, reasonTexts["no_dividend_info"]) {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, guardUnknownTxt) || !strings.Contains(c.Text, reasonTexts["no_dividend_info"]) {
 		t.Fatalf("unknown = %+v", c)
 	}
 	o.GuardReason = "no_guard_row"
@@ -141,7 +141,7 @@ func TestGuardBadges(t *testing.T) {
 		t.Fatalf("no row = %+v", g)
 	}
 	o.Right, o.Guard, o.GuardReason = "P", "n/a", ""
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "Not applicable") || c.Text != "Not applicable" {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, notApply) || c.Text != notApply {
 		t.Fatalf("put = %+v", c)
 	}
 }
@@ -149,11 +149,11 @@ func TestGuardBadges(t *testing.T) {
 func TestEarlyAssignmentBadge(t *testing.T) {
 	t.Parallel()
 	o := sampleClosed("p")
-	if c := asValue(t, statusCell(o)); hasBadge(c, "Early") || !hasBadge(c, "assigned") {
+	if c := asValue(t, statusCell(o)); hasBadge(c, earlyBadge) || !hasBadge(c, "assigned") {
 		t.Fatalf("not early = %+v", c)
 	}
 	o.Early = true
-	if c := asValue(t, statusCell(o)); !hasBadge(c, "Early") || !hasBadge(c, "assigned") {
+	if c := asValue(t, statusCell(o)); !hasBadge(c, earlyBadge) || !hasBadge(c, "assigned") {
 		t.Fatalf("early = %+v", c)
 	}
 }
@@ -161,18 +161,18 @@ func TestEarlyAssignmentBadge(t *testing.T) {
 func TestEventsInLifeBadge(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
-	if c := asValue(t, resultsCell(o, "")); c.Text != "2026-12-01" || !hasBadge(c, "In term") {
+	if c := asValue(t, resultsCell(o, "")); c.Text != "2026-12-01" || !hasBadge(c, inLife) {
 		t.Fatalf("results = %+v", c)
 	}
-	if c := asValue(t, exCell(o)); c.Text != "2026-12-05 0.25" || !hasBadge(c, "In term") {
+	if c := asValue(t, exCell(o)); c.Text != "2026-12-05 0.25" || !hasBadge(c, inLife) {
 		t.Fatalf("ex = %+v", c)
 	}
 	o.EarningsInLife, o.ExInLife = false, false
-	if c := asValue(t, resultsCell(o, "")); hasBadge(c, "In term") {
+	if c := asValue(t, resultsCell(o, "")); hasBadge(c, inLife) {
 		t.Fatalf("results = %+v", c)
 	}
 	o.Right = "P"
-	if c := asValue(t, exCell(o)); c.Text != "Not applicable" {
+	if c := asValue(t, exCell(o)); c.Text != notApply {
 		t.Fatalf("put ex = %+v", c)
 	}
 	o.Right, o.EventStatus = "C", "no_event_row"

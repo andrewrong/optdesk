@@ -157,11 +157,11 @@ func TestRecentPremiumShowsCurrency(t *testing.T) {
 func TestAccountTitleNamesAccount(t *testing.T) {
 	t.Parallel()
 	a, _ := formatAccount("a", trackapi.TrackResult{Open: []opt{sampleOpen("p")}}, false, "", nil)
-	if a.Title != "Account (a)" || a.Alias != "a" {
+	if a.Title != labelAccount+"a"+labelClose || a.Alias != "a" {
 		t.Fatalf("account = %+v", a)
 	}
 	a, _ = formatAccount("a", trackapi.TrackResult{Recent: []opt{sampleClosed("z")}}, false, "", nil)
-	if a.Title != "Account (a) · No open short options" {
+	if a.Title != labelAccount+"a"+labelClose+titleSep+noOpenText {
 		t.Fatalf("title = %q", a.Title)
 	}
 }
