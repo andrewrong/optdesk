@@ -9,7 +9,7 @@ export function UnderlyingLinks({ underlyings }: { underlyings: UnderlyingChoice
   return (
     <Card data-underlying-links>
       <CardHeader>
-        <CardTitle>Underlyings</CardTitle>
+        <CardTitle>标的 (Underlyings)</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         {underlyings.map((choice) => (
