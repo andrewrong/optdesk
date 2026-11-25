@@ -212,7 +212,7 @@ describe('option data page', () => {
     const heads = [...host.querySelectorAll('thead th')].map((h) => h.textContent ?? '')
     const all = heads.join('|')
     for (const t of ['IV', 'Δ', 'Γ', 'Θ', 'Vega', 'OI']) expect(all).toContain(t)
-    for (const t of ['Expiry', 'Type', 'Strike', 'Status', 'Bid', 'Ask', 'Last', 'Volume']) {
+    for (const t of ['到期日', '类型', '行权价', '状态', '买价', '卖价', '最新价', '成交量']) {
       expect(all).toContain(t)
     }
   })

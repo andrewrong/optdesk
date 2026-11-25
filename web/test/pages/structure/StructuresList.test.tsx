@@ -145,10 +145,10 @@ it('wide table wraps the text columns and not the figure columns', async () => {
   const payload = fixture('ok.json')
   payload.groups[1].rows[0].ex_dividend = 'Ex-dividend 2026-11-18'
   await show(payload)
-  for (const label of ['Type', 'In/out of the money', 'Ex-dividend']) {
+  for (const label of ['类型', '价内/价外', '除息']) {
     expect(bodyCell(label).className, label).toContain('whitespace-normal')
   }
-  for (const label of ['Distance to last', 'Earned %', 'Max loss', 'Max profit', 'Floating P/L']) {
+  for (const label of ['距现价', '已赚 %', '最大亏损', '最大盈利', '浮动盈亏']) {
     expect(bodyCell(label).className, label).not.toContain('whitespace-normal')
   }
 })
@@ -156,7 +156,7 @@ it('wide table wraps the text columns and not the figure columns', async () => {
 it('ex-dividend column is hidden with a Chinese line when no row has one', async () => {
   await show(fixture('ok.json'))
   const line = '除息日列暂无数据：当前没有可用的除息日来源，已隐藏。'
-  expect(headerCell('Ex-dividend')).toBeUndefined()
+  expect(headerCell('除息')).toBeUndefined()
   expect((host.textContent ?? '').split(line)).toHaveLength(2)
 })
 

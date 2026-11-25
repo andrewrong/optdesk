@@ -51,7 +51,7 @@ export function CrossCheck({ pair }: { pair: Pair }) {
           <Table>
             <TableHeader>
               <TableRow>
-                {['key', 'ours', 'other', 'difference', 'kind', 'hint'].map((h) => (
+                {['键', '本站值', '对方值', '差异', '类型', '提示'].map((h) => (
                   <TableHead key={h}>{h}</TableHead>
                 ))}
               </TableRow>
