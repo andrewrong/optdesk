@@ -133,8 +133,8 @@ func TestUpstreamTriggersDependents(t *testing.T) {
 	l = bfSetup(bfDay, keyA, keyC, keyB)
 	up, d = upJob(keyA), dep(0, keyC)
 	last := depJob{
-		scheduledJob: scheduledJob{fakeJob: &fakeJob{id: "last", keys: []contracts.ExpectedKey{keyB}}, calendarID: "XNYS", anchor: "session_close"},
-		after:        []string{"dep"},
+		fakeJob: &fakeJob{id: "last", keys: []contracts.ExpectedKey{keyB}}, calendarID: "XNYS", anchor: "session_close",
+		after: []string{"dep"},
 	}
 	if _, err := forceRec(l, afterClose(), up, d, last).BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Job: "up"}); err != nil {
 		t.Fatal(err)
