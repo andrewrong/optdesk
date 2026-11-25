@@ -134,7 +134,7 @@ func (j *resolveJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.E
 // counts are the numbers of one run, in the order of its summary line.
 type counts struct {
 	asked, found, notListed, ambiguous, timeout, disconnect, other int
-	deferred, unsent, fromPull                                     int
+	deferred, unsent, fromPull, gridSkipped                        int
 }
 
 // outcome is the class of one answer of the broker (Decision 6).
@@ -240,9 +240,9 @@ func (j *resolveJob) run(ctx context.Context, day contracts.Day, keys []contract
 		res.Err = newErr(contracts.Retryable, "%d contracts were not sent", cnt.unsent)
 	}
 	j.logf("%s day=%s cap=%d used=%d asked=%d found=%d not_listed=%d ambiguous=%d timeout=%d disconnect=%d error=%d "+
-		"deferred=%d unsent=%d from_pull=%d run_err=%s",
+		"deferred=%d unsent=%d from_pull=%d grid_skipped=%d run_err=%s",
 		j.m.ID, day, j.maxNew, j.usedOn(day), cnt.asked, cnt.found, cnt.notListed, cnt.ambiguous, cnt.timeout, cnt.disconnect, cnt.other,
-		cnt.deferred, cnt.unsent, cnt.fromPull, runErrText(res.Err))
+		cnt.deferred, cnt.unsent, cnt.fromPull, cnt.gridSkipped, runErrText(res.Err))
 	return res
 }
 
@@ -285,14 +285,14 @@ func (j *resolveJob) usedOn(day contracts.Day) int {
 	return j.used
 }
 
-// take reserves one new resolve of day against the cap.
+// take reserves one new resolve of day against the cap; with no cap (max_new 0) it always succeeds.
 func (j *resolveJob) take(day contracts.Day) bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.day != day {
 		j.day, j.used = day, 0
 	}
-	if j.used >= j.maxNew {
+	if j.maxNew > 0 && j.used >= j.maxNew {
 		return false
 	}
 	j.used++
@@ -355,7 +355,7 @@ func (r *keyRun) run(ctx context.Context) contracts.TypedError {
 	if err != nil {
 		return asTyped(err, contracts.Retryable)
 	}
-	marked, terr := r.marks(ctx, id, spot, refs, chains, now)
+	marked, terr := r.marks(ctx, id, spot, refs, now)
 	if terr != nil {
 		return terr
 	}
@@ -364,7 +364,8 @@ func (r *keyRun) run(ctx context.Context) contracts.TypedError {
 		return asTyped(err, contracts.Retryable)
 	}
 	sigma, _ := ResolveSigma(prior, last)
-	cands := r.candidates(chains, spot, sigma, hasPosition(r.pos, r.st.Symbol))
+	cands, skipped := r.candidates(chains, refs, spot, sigma, hasPosition(r.pos, r.st.Symbol))
+	r.cnt.gridSkipped += skipped
 	cached := map[string]bool{}
 	for _, ref := range refs {
 		cached[refKey(ref.Expiry, ref.Strike, ref.Right, ref.TradingClass)] = true
@@ -372,19 +373,69 @@ func (r *keyRun) run(ctx context.Context) contracts.TypedError {
 	return r.resolveAll(ctx, id, cands, cached, marked)
 }
 
-// resolveAll asks the candidates the cache and the marks do not hold, one request in flight, and writes the marks
-// of the clean not-listed answers at the end.
+// resolveAnswer is the result of one ask, handed from a worker to the goroutine that writes.
+type resolveAnswer struct {
+	c   candidate
+	got broker.Resolved
+	err error
+}
+
+// resolveState is what the goroutine that writes keeps over one resolveAll.
+type resolveState struct {
+	fresh    []contracts.OptionNotListed
+	timeouts int
+	inflight int
+	stopped  bool
+}
+
+// handle takes one answer: it stores a found contract, counts the outcome and keeps the mark of a clean not-listed.
+func (r *keyRun) handle(ctx context.Context, id int64, st *resolveState, a resolveAnswer) contracts.TypedError {
+	st.inflight--
+	switch classify(a.got, a.err, a.c.req) {
+	case outFound:
+		st.timeouts = 0
+		if perr := r.store(ctx, id, a.c, a.got.Contract); perr != nil {
+			return perr
+		}
+		r.cnt.found++
+	case outNotListed:
+		st.timeouts = 0
+		r.cnt.notListed++
+		st.fresh = append(st.fresh, r.mark(id, a.c, a.got, r.j.d.Clock.Now()))
+	case outAmbiguous:
+		st.timeouts = 0
+		r.cnt.ambiguous++
+	case outTimeout:
+		r.cnt.timeout++
+		st.timeouts++
+	case outDisconnect:
+		r.cnt.disconnect++
+		st.timeouts++
+	case outOther:
+		r.cnt.other++
+	}
+	st.stopped = st.timeouts >= stopAfterTimeouts
+	return nil
+}
+
+// resolveAll asks the candidates the cache and the marks do not hold with up to parallel requests in flight, and
+// writes the stores, the counters and (at the end) the marks of the clean not-listed answers from this goroutine only.
 func (r *keyRun) resolveAll(ctx context.Context, id int64, cands []candidate, cached, marked map[string]bool) contracts.TypedError {
 	j := r.j
-	var fresh []contracts.OptionNotListed
-	timeouts := 0
-	stopped := false
+	var st resolveState
 	budget := time.Duration(j.m.BudgetMinutes) * time.Minute
+	width := max(j.m.Parallel, 1)
+	results := make(chan resolveAnswer, width)
 	for _, c := range cands {
 		if cached[c.key()] || marked[c.key()] {
 			continue
 		}
-		if stopped || j.d.Clock.Now().Sub(r.start) >= budget {
+		for st.inflight >= width {
+			if perr := r.handle(ctx, id, &st, <-results); perr != nil {
+				return perr
+			}
+		}
+		if st.stopped || j.d.Clock.Now().Sub(r.start) >= budget {
 			r.cnt.unsent++
 			continue
 		}
@@ -393,34 +444,19 @@ func (r *keyRun) resolveAll(ctx context.Context, id int64, cands []candidate, ca
 			continue
 		}
 		r.cnt.asked++
-		got, rerr := j.d.Broker.ResolveContract(ctx, c.req)
-		switch classify(got, rerr, c.req) {
-		case outFound:
-			timeouts = 0
-			if perr := r.store(ctx, id, c, got.Contract); perr != nil {
-				return perr
-			}
-			r.cnt.found++
-		case outNotListed:
-			timeouts = 0
-			r.cnt.notListed++
-			fresh = append(fresh, r.mark(id, c, got, j.d.Clock.Now()))
-		case outAmbiguous:
-			timeouts = 0
-			r.cnt.ambiguous++
-		case outTimeout:
-			r.cnt.timeout++
-			timeouts++
-		case outDisconnect:
-			r.cnt.disconnect++
-			timeouts++
-		case outOther:
-			r.cnt.other++
-		}
-		stopped = timeouts >= stopAfterTimeouts
+		st.inflight++
+		go func() {
+			got, err := j.d.Broker.ResolveContract(ctx, c.req)
+			results <- resolveAnswer{c: c, got: got, err: err}
+		}()
 	}
-	if len(fresh) > 0 {
-		if err := j.d.Marks.AddNotListed(ctx, fresh); err != nil {
+	for st.inflight > 0 {
+		if perr := r.handle(ctx, id, &st, <-results); perr != nil {
+			return perr
+		}
+	}
+	if len(st.fresh) > 0 {
+		if err := j.d.Marks.AddNotListed(ctx, st.fresh); err != nil {
 			return asTyped(err, contracts.Retryable)
 		}
 	}
@@ -485,12 +521,11 @@ func mustDay(d contracts.Day) time.Time {
 }
 
 // marks reads the marks of the stock, applies the early ends and the pull rows, and returns the active marks by
-// contract key. The four triggers of Decision 5 end a mark early: (a) a mark past retry_at is not returned by the
-// store; (b) the same strike, right and class is stored listed at another expiry; (c) the morning chain, listed
-// by the gap pass first, lists the marked strike at the marked expiry; (d) a stored close that moved by spot_move
-// since checked_at ends every mark of the stock.
+// contract key. A mark ends at retry_at (the store does not return it past it) or when a stored close moved by
+// spot_move since checked_at, which ends every mark of the stock. Neither the same strike stored at another expiry
+// nor the chain union listing the strike ends a mark (docs/design/option-open-limits.md, Decision 3).
 func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openquote.OptionRef,
-	chains []broker.Chain, now time.Time) (map[string]bool, contracts.TypedError) {
+	now time.Time) (map[string]bool, contracts.TypedError) {
 	j := r.j
 	all, err := j.d.Marks.NotListed(ctx, now)
 	if err != nil {
@@ -529,10 +564,6 @@ func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openq
 		}
 		mine = nil
 	}
-	mine, terr := r.endMarks(ctx, id, mine, refs, chains)
-	if terr != nil {
-		return nil, terr
-	}
 	out := map[string]bool{}
 	for _, m := range mine {
 		out[markKey(m)] = true
@@ -544,57 +575,6 @@ func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openq
 		}
 	}
 	return out, nil
-}
-
-// endMarks removes the marks that trigger (b) or (c) of Decision 5 ends and returns the others. Trigger (c) is the
-// gap pass's: it is the pass that lists the morning chain first, so the evening pass keeps its marks.
-func (r *keyRun) endMarks(ctx context.Context, id int64, mine []contracts.OptionNotListed, refs []openquote.OptionRef,
-	chains []broker.Chain) ([]contracts.OptionNotListed, contracts.TypedError) {
-	listedAt := map[string][]contracts.Day{}
-	for _, ref := range refs {
-		k := strikeKey(ref.Strike) + "|" + ref.Right + "|" + ref.TradingClass
-		listedAt[k] = append(listedAt[k], ref.Expiry)
-	}
-	var keep []contracts.OptionNotListed
-	for _, m := range mine {
-		if r.otherExpiry(m, listedAt) || (r.j.m.GapOnly && chainLists(chains, m)) {
-			key := openquote.NotListedKey{UnderlyingID: id, Expiry: contracts.Day(m.Expiry.Format(time.DateOnly)),
-				Strike: m.Strike, Right: string(m.Right), TradingClass: m.TradingClass}
-			if _, err := r.j.d.Marks.RemoveNotListed(ctx, key); err != nil {
-				return nil, asTyped(err, contracts.Retryable)
-			}
-			continue
-		}
-		keep = append(keep, m)
-	}
-	return keep, nil
-}
-
-// otherExpiry is trigger (b): the strike of the mark is stored listed at an expiry other than the mark's.
-func (r *keyRun) otherExpiry(m contracts.OptionNotListed, listedAt map[string][]contracts.Day) bool {
-	day := contracts.Day(m.Expiry.Format(time.DateOnly))
-	for _, e := range listedAt[strikeKey(m.Strike)+"|"+string(m.Right)+"|"+m.TradingClass] {
-		if e != day {
-			return true
-		}
-	}
-	return false
-}
-
-// chainLists is trigger (c): a chain of the mark's class lists its expiry and its strike.
-func chainLists(chains []broker.Chain, m contracts.OptionNotListed) bool {
-	exp := m.Expiry.Format("20060102")
-	for _, ch := range chains {
-		if ch.TradingClass != m.TradingClass || !containsString(ch.Expirations, exp) {
-			continue
-		}
-		for _, s := range ch.Strikes {
-			if strikeKey(s) == strikeKey(m.Strike) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // fromPull makes a mark of each not_listed row of the pull of this stock whose answer was a clean 200 (no error
