@@ -27,9 +27,13 @@ const marketStateName = "market_state_page"
 // siteMarketStateIDsKey is the key of the stock id reader that the site opener puts in siteReaders.ext.
 const siteMarketStateIDsKey = "market_state_stock_ids"
 
+// siteMarketStateIndexIDsKey is the key of the index id reader that the site opener puts in siteReaders.ext.
+const siteMarketStateIndexIDsKey = "market_state_index_ids"
+
 func init() {
 	registerPage(pageFamily{name: marketStateName, route: siteMarketStateRoute, order: 120, build: buildMarketState, named: marketStatePageNamed})
 	siteOpeners[siteMarketStateIDsKey] = openMarketStateIDs
+	siteOpeners[siteMarketStateIndexIDsKey] = openMarketStateIndexIDs
 }
 
 // openMarketStateIDs opens the stock id reader with the pages line, through the opener of the report. Without an
@@ -51,6 +55,27 @@ func openMarketStateIDs(ctx context.Context, a *app, track func(io.Closer, error
 		return nil, false
 	}
 	return market_state_page.StockIDReader(s), true
+}
+
+// openMarketStateIndexIDs opens the index id reader (instrument.OpenIndexIDs, bound in deps.openIndexIDs) with the
+// pages line. Without the opener or the line it gives no reader and goes on: the Nasdaq-100 row is then the gap
+// no_reader. A failed open stops the site opening.
+func openMarketStateIndexIDs(ctx context.Context, a *app, track func(io.Closer, error) bool) (any, bool) {
+	if a.deps.openIndexIDs == nil {
+		return nil, true
+	}
+	env, err := a.envFile()
+	if err != nil {
+		return nil, false
+	}
+	if env[pagesDSNName] == "" {
+		return nil, true
+	}
+	s, err := a.deps.openIndexIDs(ctx, env[pagesDSNName])
+	if !track(s, err) {
+		return nil, false
+	}
+	return market_state_page.IndexIDReader(s), true
 }
 
 // marketStateSymbols are the funds (group sector) and SMH (group industry) of the manifest of bars_refresh, in its
@@ -76,9 +101,10 @@ func marketStateSymbols() []market_state_page.Symbol {
 // the compute_figures job is built with.
 func marketStateConfig(a *app, rd siteReaders) market_state_page.Config {
 	ids, _ := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey)
+	idx, _ := siteReaderOf[market_state_page.IndexIDReader](rd, siteMarketStateIndexIDsKey)
 	c := market_state_page.Config{
 		RunID: "ot-serve", BuildID: buildIDOf(version), Scope: "market_state", Zone: a.profile.Zone,
-		Readings: homeReadings(a, rd), StockIDs: ids,
+		Readings: homeReadings(a, rd), StockIDs: ids, IndexIDs: idx,
 		Market: marketstate.Compute, Liquidity: liquidity.Compute,
 		Figures: a.deps.computeFigures, Units: a.deps.computeUnits, Rules: a.deps.computeRules,
 		Indicators:   talibind.New(),

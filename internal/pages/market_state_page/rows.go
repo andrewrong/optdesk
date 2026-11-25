@@ -247,8 +247,8 @@ func dayOrGap(day string, fig any, what string) any {
 	return day
 }
 
-// buildRows makes the five rows in fixed order and the newest data day of each source.
-func buildRows(c Config, rd readings, ms marketstateapi.Result, lr liquidityapi.Result) ([]marketRow, dataDays) {
+// buildRows makes the six rows in fixed order and the newest data day of each source.
+func buildRows(c Config, rd readings, nd ndxRead, ms marketstateapi.Result, lr liquidityapi.Result) ([]marketRow, dataDays) {
 	days := dataDays{}
 	hist := func(l marketstateapi.Line, label string, f pointFormat) any {
 		if c.Market == nil {
@@ -260,20 +260,25 @@ func buildRows(c Config, rd readings, ms marketstateapi.Result, lr liquidityapi.
 	sp.History = hist(ms.History.Sp500Vs200d, labelSp500Vs200d, fmtPercentShift)
 	dd := drawdownRow(c.Market != nil, ms.Drawdown)
 	dd.History = hist(ms.History.Drawdown, labelDrawdown, fmtPercent)
+	nq := nasdaqRow(c.Market != nil, nd, ms.NasdaqDrawdown)
+	nq.History = hist(ms.History.NasdaqDrawdown, labelNasdaq, fmtPercent)
+	if nd.reason != "" && c.Market != nil {
+		nq.History = mkGap(nd.reason, reasonText(nd.reason, labelNasdaq+" history"))
+	}
 	vx := vixRow(c.Market != nil, ms.History.VIX, rd.pctile)
 	vx.History = hist(ms.History.VIX, labelVix, fmtOneDecimal)
 	tm := termRow(rd.term)
 	tm.History = hist(ms.History.VIXTerm, labelVixTerm, fmtTwoDecimals)
 	hy := hySpreadRow(c.Liquidity != nil, lr)
 	hy.History = hist(ms.History.HighYield, labelHySpread, fmtPercent)
-	rows := []marketRow{sp, dd, vx, tm, hy}
+	rows := []marketRow{sp, dd, nq, vx, tm, hy}
 	for i := range rows {
 		rows[i].Range = rangeOf(rows[i].ID, figureValue(rows[i].Figure), historyValues(rows[i].History))
 		rows[i].Hint = hintOf(rows[i].ID)
 	}
 	for _, r := range rows {
 		if day, ok := r.Day.(string); ok {
-			src := map[string]string{"sp500_vs_200d": seriesSP500, "sp500_drawdown": seriesSP500,
+			src := map[string]string{"sp500_vs_200d": seriesSP500, "sp500_drawdown": seriesSP500, "nasdaq_drawdown": seriesNDX,
 				"vix": seriesVIX, "vix_term": seriesVIX, "hy_spread": seriesHY}[r.ID]
 			days.add(src, day)
 		}
@@ -305,25 +310,30 @@ func sp500Row(r reading) marketRow {
 }
 
 func drawdownRow(haveMarket bool, n liquidityapi.Num) marketRow {
-	row := marketRow{ID: "sp500_drawdown", Label: labelDrawdown, Window: windowDrawdown}
+	return drawdownCard("sp500_drawdown", labelDrawdown, windowDrawdown, "S&P 500", haveMarket, n)
+}
+
+// drawdownCard is a drawdown row of the index called name: the same figure text and day rule for every index.
+func drawdownCard(id, label, window, name string, haveMarket bool, n liquidityapi.Num) marketRow {
+	row := marketRow{ID: id, Label: label, Window: window}
 	switch {
 	case !haveMarket:
-		row.Figure = mkGap(reasonNoReader, reasonText(reasonNoReader, labelDrawdown))
+		row.Figure = mkGap(reasonNoReader, reasonText(reasonNoReader, label))
 	case n.Reason != "":
-		row.Figure = numGap(n.Reason, labelDrawdown)
+		row.Figure = numGap(n.Reason, label)
 	default:
 		pct, err := shiftRound(n.Value, 0, 2)
 		if err != nil {
-			row.Figure = mkGap(reasonMissingInput, reasonText(reasonMissingInput, labelDrawdown))
+			row.Figure = mkGap(reasonMissingInput, reasonText(reasonMissingInput, label))
 			break
 		}
-		text := "S&P 500 is at its 60-session high of " + dayText(string(n.Aux))
+		text := name + " is at its 60-session high of " + dayText(string(n.Aux))
 		if strings.HasPrefix(pct, "-") {
-			text = "S&P 500 is " + pct[1:] + "% below its 60-session high of " + dayText(string(n.Aux))
+			text = name + " is " + pct[1:] + "% below its 60-session high of " + dayText(string(n.Aux))
 		}
-		row.Figure = mkFigure(pct, text, unitPercent, labelDrawdown)
+		row.Figure = mkFigure(pct, text, unitPercent, label)
 	}
-	row.Day = dayOrGap(string(n.Day), row.Figure, labelDrawdown)
+	row.Day = dayOrGap(string(n.Day), row.Figure, label)
 	return row
 }
 

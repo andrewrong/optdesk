@@ -127,10 +127,11 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 			return nil, err
 		}
 	}
-	bars, err := readBars(ctx, c, d)
+	bars, nd, err := readBarInputs(ctx, c, d)
 	if err != nil {
 		return nil, err
 	}
+	in.NDX = nd.series
 	if bars.ok {
 		in.Benchmark, in.Funds, in.Industry = bars.bench, bars.funds, bars.industry
 	}
@@ -146,7 +147,7 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 	if err != nil {
 		return nil, err
 	}
-	rows, days := buildRows(c, rd, ms, lr)
+	rows, days := buildRows(c, rd, nd, ms, lr)
 	vg, err := attachChart(ctx, c, d, rows, ms)
 	if err != nil {
 		return nil, err

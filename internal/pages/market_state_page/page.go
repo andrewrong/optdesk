@@ -29,8 +29,13 @@ type StockIDReader interface {
 	StockIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
 }
 
+// IndexIDReader reads the instruments of type index whose name is in names.
+type IndexIDReader interface {
+	IndexIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
+}
+
 // Config is what the market_state_page builder needs besides the series reader. A nil Market,
-// Liquidity, Readings, Bars or StockIDs gives the gap no_reader on the rows that need it, never
+// Liquidity, Readings, Bars, StockIDs or IndexIDs gives the gap no_reader on the rows that need it, never
 // a number and never an error. Figures, Units and Rules are copied into marketstateapi.Input.
 type Config struct {
 	RunID, BuildID, Scope string
@@ -38,6 +43,7 @@ type Config struct {
 	Readings              compute.ReadingFunc
 	Bars                  bar.PriceBarReader
 	StockIDs              StockIDReader
+	IndexIDs              IndexIDReader // finds NDX for the Nasdaq-100 drawdown row
 	Market                marketstateapi.Func
 	Liquidity             liquidityapi.Func
 	Figures               compute.Figures

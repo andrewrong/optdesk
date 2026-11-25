@@ -95,8 +95,9 @@ func sampleResult() marketstateapi.Result {
 	pos := func(at int) marketstateapi.Position { return marketstateapi.Position{At: at, Of: 3} }
 	num := func(v string) liquidityapi.Num { return liquidityapi.Num{Value: v, Day: "2026-11-13"} }
 	return marketstateapi.Result{
-		EndDay:   "2026-11-13",
-		Drawdown: liquidityapi.Num{Value: "-2.4", Day: "2026-11-13", Aux: "2026-10-29"},
+		EndDay:         "2026-11-13",
+		Drawdown:       liquidityapi.Num{Value: "-2.4", Day: "2026-11-13", Aux: "2026-10-29"},
+		NasdaqDrawdown: liquidityapi.Num{Value: "-3.1", Day: "2026-11-13", Aux: "2026-11-02"},
 		Funds: []marketstateapi.Fund{
 			{Symbol: "XLK", Name: "Technology", Gap21: num("1.5"), Gap63: num("5"), Rank21: pos(2), Rank63: pos(1),
 				Rotation: []marketstateapi.Spot{spot("2026-11-06", "4", "1.3"), spot("2026-11-13", "5", "-0.17")}},
@@ -109,7 +110,7 @@ func sampleResult() marketstateapi.Result {
 				Rotation: []marketstateapi.Spot{spot("2026-11-13", "9", "0")}},
 		},
 		History: marketstateapi.History{
-			Sp500Vs200d: line("2026-11-11", "2026-11-12"), Drawdown: line("2026-11-12", "2026-11-13"),
+			Sp500Vs200d: line("2026-11-11", "2026-11-12"), Drawdown: line("2026-11-12", "2026-11-13"), NasdaqDrawdown: line("2026-11-12", "2026-11-13"),
 			VIX: line("2026-11-12", "2026-11-13"), VIXTerm: line("2026-11-12", "2026-11-13"),
 			HighYield: line("2026-11-11", "2026-11-12"),
 		},
@@ -135,7 +136,7 @@ var testSymbols = []Symbol{
 // fullConfig has every reader; Bars and StockIDs are the fakes of rotation_test.go.
 func fullConfig(t *testing.T, res marketstateapi.Result) Config {
 	return Config{RunID: "run1", BuildID: "b1", Scope: "s1", Zone: testZone,
-		Readings: fakeReadings(t), Bars: &fakeBars{}, StockIDs: fakeIDs{},
+		Readings: fakeReadings(t), Bars: &fakeBars{}, StockIDs: fakeIDs{}, IndexIDs: fakeIndexIDs{ids: map[string]int64{"NDX": 100}},
 		Market: fakeMarket(res), Liquidity: fakeLiquidity, Symbols: testSymbols}
 }
 
@@ -286,7 +287,7 @@ func TestNilFuncsGiveNoReader(t *testing.T) {
 		edit(&c)
 		m := build(t, c) // never an error
 		rows := marketRows(m)
-		if len(rows) != 5 {
+		if len(rows) != 6 {
 			t.Fatalf("%s: %d rows", name, len(rows))
 		}
 		gapIDs := map[string]bool{}

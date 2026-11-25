@@ -6,6 +6,7 @@ package market_state_page
 const (
 	labelSp500Vs200d = "S&P 500 against its 200-day average"
 	labelDrawdown    = "S&P 500 drawdown"
+	labelNasdaq      = "Nasdaq-100 drawdown"
 	labelVix         = "VIX"
 	labelVixTerm     = "VIX against VIX3M"
 	labelHySpread    = "High-yield spread"

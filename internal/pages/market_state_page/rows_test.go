@@ -17,11 +17,12 @@ import (
 func TestRowsCarryWindowAndDay(t *testing.T) {
 	t.Parallel()
 	rows := marketRows(build(t, fullConfig(t, sampleResult())))
-	ids := []string{"sp500_vs_200d", "sp500_drawdown", "vix", "vix_term", "hy_spread"}
-	days := []string{"2026-11-12", "2026-11-13", "2026-11-13", "2026-11-13", "2026-11-12"}
+	ids := []string{"sp500_vs_200d", "sp500_drawdown", "nasdaq_drawdown", "vix", "vix_term", "hy_spread"}
+	days := []string{"2026-11-12", "2026-11-13", "2026-11-13", "2026-11-13", "2026-11-13", "2026-11-12"}
 	texts := []string{
 		"S&P 500 is 3.12% above its 200-day average",
 		"S&P 500 is 2.40% below its 60-session high of Oct 29",
+		"Nasdaq-100 is 3.10% below its 60-session high of Nov 2",
 		"VIX 18.5 on Nov 13, at the 38th percentile of the last 3 years",
 		"VIX is 0.92 of VIX3M on Nov 13",
 		"High-yield spread 3.12% on Nov 12, at the 41st percentile of our stored history since 2023-11-14 (780 days)",
@@ -44,7 +45,7 @@ func TestRowsCarryWindowAndDay(t *testing.T) {
 			t.Errorf("%s: text %q, want %q", ids[i], got, texts[i])
 		}
 	}
-	for _, i := range []int{0, 1, 3} {
+	for _, i := range []int{0, 1, 2, 4} {
 		if w := obj(rows[i])["window"].(string); !strings.Contains(w, "水平") {
 			t.Errorf("%s: window %q does not say 水平", ids[i], w)
 		}
@@ -57,7 +58,7 @@ func TestRowDayIsGapWhenFigureIsGap(t *testing.T) {
 	c.Liquidity = func(liquidityapi.Input) liquidityapi.Result {
 		return liquidityapi.Result{HighYield: liquidityapi.Num{Reason: "stale_input"}}
 	}
-	hy := obj(marketRows(build(t, c))[4])
+	hy := obj(marketRows(build(t, c))[5])
 	if !isGap(hy["figure"]) || obj(hy["figure"])["reason"] != "stale_input" || !isGap(hy["day"]) {
 		t.Errorf("hy_spread = %v", hy)
 	}
@@ -93,7 +94,7 @@ func TestHyPercentileShortHistoryKeepsLevel(t *testing.T) {
 			HighYieldRank: liquidityapi.Rank{Num: liquidityapi.Num{Reason: "short_history"}, Days: 100},
 		}
 	}
-	hy := obj(marketRows(build(t, c))[4])
+	hy := obj(marketRows(build(t, c))[5])
 	if isGap(hy["figure"]) || !strings.Contains(obj(hy["percentile"])["text"].(string), "no percentile") {
 		t.Errorf("hy_spread = %v", hy)
 	}
@@ -102,7 +103,7 @@ func TestHyPercentileShortHistoryKeepsLevel(t *testing.T) {
 func TestCaptionNamesFirstDayCount(t *testing.T) {
 	t.Parallel()
 	rows := marketRows(build(t, fullConfig(t, sampleResult())))
-	h := obj(obj(rows[2])["history"])
+	h := obj(obj(rows[3])["history"])
 	if h["caption"] != "2 days, 2026-11-12 to 2026-11-13" {
 		t.Errorf("caption = %v", h["caption"])
 	}
@@ -118,7 +119,7 @@ func TestCaptionNamesFirstDayCount(t *testing.T) {
 	// fewer than two points is a Gap
 	res := sampleResult()
 	res.History.VIX = line("2026-11-13")
-	got := obj(marketRows(build(t, fullConfig(t, res)))[2])["history"]
+	got := obj(marketRows(build(t, fullConfig(t, res)))[3])["history"]
 	if !isGap(got) || obj(got)["reason"] != "no_data" {
 		t.Errorf("one point: history = %v", got)
 	}
@@ -135,7 +136,7 @@ func TestHistoryCaptionWhenCapped(t *testing.T) {
 	}
 	l.Total = 900
 	res.History.VIX = l
-	h := obj(obj(marketRows(build(t, fullConfig(t, res)))[2])["history"])
+	h := obj(obj(marketRows(build(t, fullConfig(t, res)))[3])["history"])
 	if c := h["caption"].(string); c != "newest 800 of 900 days, "+string(dayAfter(0))+" to "+string(dayAfter(799)) {
 		t.Errorf("caption = %q", c)
 	}
@@ -178,9 +179,10 @@ func TestRowsCarryRangeAndHint(t *testing.T) {
 	res := sampleResult()
 	up := func(i int) float64 { return 10 + float64(i)/100 }
 	res.History = marketstateapi.History{
-		Sp500Vs200d: longLine(300, func(i int) float64 { return float64(i-100) / 1000 }),
-		Drawdown:    longLine(300, func(i int) float64 { return -float64(i) / 10 }),
-		VIX:         longLine(300, up), VIXTerm: longLine(300, up), HighYield: longLine(300, up),
+		Sp500Vs200d:    longLine(300, func(i int) float64 { return float64(i-100) / 1000 }),
+		Drawdown:       longLine(300, func(i int) float64 { return -float64(i) / 10 }),
+		NasdaqDrawdown: longLine(300, func(i int) float64 { return -float64(i) / 10 }),
+		VIX:            longLine(300, up), VIXTerm: longLine(300, up), HighYield: longLine(300, up),
 	}
 	b := buildBytes(t, fullConfig(t, res))
 	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
@@ -206,7 +208,7 @@ func TestRowsCarryRangeAndHint(t *testing.T) {
 			t.Errorf("%v: range = %v", row["id"], rg)
 		}
 	}
-	if st := obj(obj(rows[2])["range"])["state"]; st != "normal" {
+	if st := obj(obj(rows[3])["range"])["state"]; st != "normal" {
 		t.Errorf("vix 18.5 state = %v", st)
 	}
 	// a row with a Gap figure has a Gap range and still carries the hint
@@ -214,7 +216,7 @@ func TestRowsCarryRangeAndHint(t *testing.T) {
 	c.Liquidity = func(liquidityapi.Input) liquidityapi.Result {
 		return liquidityapi.Result{HighYield: liquidityapi.Num{Reason: "stale_input"}}
 	}
-	hy := obj(marketRows(build(t, c))[4])
+	hy := obj(marketRows(build(t, c))[5])
 	if !isGap(hy["range"]) || hy["hint"] == "" {
 		t.Errorf("hy_spread = %v", hy)
 	}
@@ -246,7 +248,7 @@ func TestVixPercentileOfOtherDayIsGap(t *testing.T) {
 				}
 				return recs, err
 			}
-			vix := obj(marketRows(build(t, c))[2])
+			vix := obj(marketRows(build(t, c))[3])
 			if vix["id"] != "vix" {
 				t.Fatalf("row %v", vix["id"])
 			}

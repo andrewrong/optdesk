@@ -172,8 +172,8 @@ func TestRangeDoesNotChangeRunStatus(t *testing.T) {
 			gaps++
 		}
 	}
-	if gaps != 4 {
-		t.Fatalf("%d Gap ranges, want 4", gaps)
+	if gaps != 5 {
+		t.Fatalf("%d Gap ranges, want 5", gaps)
 	}
 	if m["run_status"] != "ok" {
 		t.Errorf("run_status = %v", m["run_status"])
