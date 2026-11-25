@@ -173,6 +173,12 @@ describe('TopNav', () => {
     expect(structures?.className).toContain('pl-6')
   })
 
+  it('the phone sheet title reads 菜单', async () => {
+    await showAt('/home')
+    const sheet = await openSheet()
+    expect(sheet?.querySelector('[data-slot="sheet-title"]')?.textContent).toBe('菜单')
+  })
+
   it('TestTopNavSheetGroups: marks the link Option data at options/data/9001', async () => {
     await showAt('/options/data/9001')
     const sheet = await openSheet()
