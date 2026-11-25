@@ -1,6 +1,7 @@
 package main
 
 import (
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -10,9 +11,7 @@ import (
 
 func reviewFields(extra url.Values) url.Values {
 	v := url.Values{"company": {"US:AAA"}, "type": {"first"}, "version_date": {"2026-11-05"}, "v": {"100"}, "p": {"3"}}
-	for k, s := range extra {
-		v[k] = s
-	}
+	maps.Copy(v, extra)
 	return v
 }
 

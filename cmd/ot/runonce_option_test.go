@@ -129,7 +129,7 @@ func (j brokerJob) Run(ctx context.Context, _ contracts.Day, _ []contracts.Expec
 	_, err := j.b.Snapshot(ctx, broker.KindSnapshot, nil)
 	var te contracts.TypedError
 	if err != nil {
-		te, _ = err.(contracts.TypedError)
+		te, _ = errors.AsType[contracts.TypedError](err)
 	}
 	return contracts.JobResult{Err: te}
 }
@@ -467,7 +467,7 @@ func TestRunOnceErrors(t *testing.T) {
 	} {
 		t.Run("missing "+line, func(t *testing.T) {
 			var kept []string
-			for _, l := range strings.Split(env, "\n") {
+			for l := range strings.SplitSeq(env, "\n") {
 				if !strings.HasPrefix(l, line+"=") {
 					kept = append(kept, l)
 				}

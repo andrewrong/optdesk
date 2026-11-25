@@ -36,7 +36,7 @@ func (positionsMarks) Marks(context.Context, string, string) ([]mark.PositionMar
 // positionsSiteReaders are the household readers plus a mark reader, the readers positions_page needs.
 func positionsSiteReaders(asked *[]string) siteReaders {
 	rd := householdReaders(asked)
-	rd.noticeAccount = positionsAccount{householdAccount: householdAccount{mu: &sync.Mutex{}, asked: asked}}
+	rd.noticeAccount = positionsAccount{mu: &sync.Mutex{}, asked: asked}
 	rd.marks = positionsMarks{}
 	return rd
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"maps"
 	"regexp"
 	"strings"
 	"sync"
@@ -118,9 +119,7 @@ func (h *keyReport) recorded() map[keyID]string {
 	h.st.mu.Lock()
 	defer h.st.mu.Unlock()
 	out := make(map[keyID]string, len(h.st.texts))
-	for k, v := range h.st.texts {
-		out[k] = v
-	}
+	maps.Copy(out, h.st.texts)
 	return out
 }
 

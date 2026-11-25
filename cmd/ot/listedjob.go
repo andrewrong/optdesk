@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -194,11 +195,11 @@ func (l *listedJob) replan(ctx context.Context, day contracts.Day, keys []contra
 	noPlan := &listedError{kind: contracts.Permanent, msg: "no plan for these keys"}
 	entries, _, err := l.entries(ctx)
 	if err != nil {
-		return nil, err.(contracts.TypedError)
+		return nil, asTyped(err)
 	}
 	inner, err := l.buildInner(entries)
 	if err != nil {
-		return nil, err.(contracts.TypedError)
+		return nil, asTyped(err)
 	}
 	planned, _, err := inner.Plan(ctx, day)
 	if err != nil {
@@ -247,4 +248,10 @@ func (l *listedJob) RestartSensitive() bool {
 		return s.RestartSensitive()
 	}
 	return false
+}
+
+// asTyped returns the TypedError err is or wraps, or nil when it is none.
+func asTyped(err error) contracts.TypedError {
+	te, _ := errors.AsType[contracts.TypedError](err)
+	return te
 }

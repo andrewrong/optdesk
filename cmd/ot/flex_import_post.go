@@ -303,9 +303,8 @@ func (p *flexImportRun) importFile(ref optionledgerjob.FlexFileRef, part *multip
 	}
 	sum, err := optionledgerjob.ImportFlexReport(p.ctx, rep, p.accounts, st, st, ref, p.now)
 	if err != nil {
-		var ie *optionledgerjob.ImportError
 		code := optionledgerjob.ReasonStoreErr
-		if errors.As(err, &ie) {
+		if ie, ok := errors.AsType[*optionledgerjob.ImportError](err); ok {
 			code = ie.Code
 		}
 		return p.failFile(ref, name, code), nil

@@ -53,8 +53,8 @@ func (f *fakeValuationStore) Current(context.Context) (valuation.State, error) {
 	st := valuation.State{Entries: []valuation.Entry{}}
 	for _, p := range f.profiles {
 		e := valuation.Entry{Profile: p}
-		for i := len(f.reviews) - 1; i >= 0; i-- {
-			r := f.reviews[i]
+		for _, r := range slices.Backward(f.reviews) {
+
 			if r.CompanyKey == p.CompanyKey && r.Status == "effective" && r.Type != "backfill" && !f.voided(r.ReviewID) {
 				e.Current = &r
 				break
@@ -88,9 +88,9 @@ func (f *fakeValuationStore) Reviews(_ context.Context, key string) ([]valuation
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := []valuation.Review{}
-	for i := len(f.reviews) - 1; i >= 0; i-- {
-		if f.reviews[i].CompanyKey == key {
-			out = append(out, f.reviews[i])
+	for _, v := range slices.Backward(f.reviews) {
+		if v.CompanyKey == key {
+			out = append(out, v)
 		}
 	}
 	return out, nil
