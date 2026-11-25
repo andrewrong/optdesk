@@ -30,8 +30,8 @@ var inputNames = [4]string{"net_liquidity", "us10y", "fed_funds", "hy_oas"}
 func (c *calc) Ease(id string, s compute.EaseSeries, asOf contracts.Day) compute.EaseFigure {
 	rule, known := c.rules.Rule(id)
 	out := compute.EaseFigure{
-		Figure: compute.Figure{ID: id, Version: rule.Version, Day: asOf, Status: compute.StatusMissing},
-		Parts:  make([]compute.EasePart, len(inputNames)),
+		ID: id, Version: rule.Version, Day: asOf, Status: compute.StatusMissing,
+		Parts: make([]compute.EasePart, len(inputNames)),
 	}
 	if !known {
 		out.Reason = compute.BadInput
