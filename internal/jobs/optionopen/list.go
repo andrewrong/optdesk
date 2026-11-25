@@ -133,8 +133,8 @@ func parseList(data []byte) (listTable, error) {
 	if err := toml.Unmarshal(data, &m); err != nil {
 		return listTable{}, fmt.Errorf("optionopen: list manifest: %w", err)
 	}
-	if m.ID == "" || m.BudgetMinutes <= 0 || m.MaxNew <= 0 {
-		return listTable{}, errors.New("optionopen: list manifest needs an id, list_budget_minutes and list_max_new")
+	if m.ID == "" || m.BudgetMinutes <= 0 || m.MaxNew < 0 {
+		return listTable{}, errors.New("optionopen: list manifest needs an id, list_budget_minutes and a list_max_new of 0 or more")
 	}
 	var err error
 	if m.loc, err = time.LoadLocation(m.Zone); err != nil {
@@ -362,7 +362,7 @@ func (r *listRun) write(ctx context.Context, n *listName, g listGroup, list []br
 		if n.refSet[key] {
 			continue
 		}
-		if r.written >= r.j.m.MaxNew {
+		if r.j.m.MaxNew > 0 && r.written >= r.j.m.MaxNew {
 			return true, nil
 		}
 		cur := c.Currency
@@ -742,7 +742,7 @@ func (r *listRun) runZone(ctx context.Context) contracts.JobResult {
 		if r.stop = r.halt(); r.stop != "" {
 			break
 		}
-		if r.written >= m.MaxNew {
+		if m.MaxNew > 0 && r.written >= m.MaxNew {
 			r.stop = reasonMaxNew
 			break
 		}

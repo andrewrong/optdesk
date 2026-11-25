@@ -395,7 +395,7 @@ func TestListManifestHasItsOwnParser(t *testing.T) {
 	require.Equal(t, 45, m.BudgetMinutes)
 	require.Equal(t, []windowTableDTE{{MinDTE: 15, MaxDTE: 45}}, m.Windows)
 	require.Equal(t, 0.5, m.MinRatio)
-	require.Equal(t, 60000, m.MaxNew)
+	require.Equal(t, 0, m.MaxNew)
 	require.Equal(t, []int{7, 30}, []int{m.stopH, m.stopM})
 	require.Equal(t, "America/New_York", m.Zone)
 	require.False(t, m.Schedule.RestartSensitive)
