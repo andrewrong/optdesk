@@ -27,7 +27,7 @@ export function QuartersTable({ company, columns: spec, quarters }: Pick<Payload
       id: 'quarter',
       header: () => (
         <div>
-          <div>Quarter</div>
+          <div>季度</div>
           {company.fiscal_year_end !== '' ? <div data-fiscal-year-end className="text-xs font-normal">{company.fiscal_year_end}</div> : null}
         </div>
       ),
