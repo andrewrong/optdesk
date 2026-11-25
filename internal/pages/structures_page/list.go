@@ -262,9 +262,6 @@ func contractList(ids []string) string {
 func (c cells) rowOf(s compute.Structure) row {
 	kind, ok := kindTexts[s.Kind]
 	if !ok {
-		kind = s.Kind
-	}
-	if kind == "" {
 		kind = kindOther
 	}
 	expiry := "-"

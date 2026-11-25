@@ -641,3 +641,24 @@ func TestLinkOfRemainderRow(t *testing.T) {
 		t.Fatalf("title = %v, want the structure found by %q", got, path)
 	}
 }
+
+func TestUnmappedKindListedAsUnidentified(t *testing.T) {
+	t.Parallel()
+	res := compute.StructureResult{Structures: []compute.Structure{
+		{ID: "main:butterfly", Underlying: "X", Kind: "butterfly", Currency: "USD", Legs: []compute.StructureLeg{{Right: "P", Expiry: "2026-12-18"}}},
+		{ID: "main:empty", Underlying: "Y", Kind: "", Currency: "USD", Legs: []compute.StructureLeg{{Right: "P", Expiry: "2026-12-18"}}},
+	}}
+	m := decode(t, newRig(res).build(t, "main"))
+	n := 0
+	for _, i := range []int{0, 1} {
+		for _, r := range groupRows(t, m, i) {
+			n++
+			if r["kind_text"] != "未识别组合 Unidentified" {
+				t.Errorf("%v: kind_text = %v, want the Unidentified text", r["href"], r["kind_text"])
+			}
+		}
+	}
+	if n != 2 {
+		t.Fatalf("rows = %d, want 2", n)
+	}
+}
