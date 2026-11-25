@@ -240,15 +240,20 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 		if ctx.Err() != nil {
 			return // the call was only cut: no row
 		}
-		_, ecode := callStatus(err)
+		status, ecode := callStatus(err)
 		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", ecode, "err", err.Error(), "items", len(ts))
-		c.callFailed(st, ts, err)
-		return
+		if status == stDisconnected {
+			c.callFailed(st, ts, err)
+			return
+		}
+		spot, spotTs = 0, nil
+	} else if spot <= 0 {
+		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", code, "items", len(ts))
 	}
 	if spot <= 0 {
-		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", code, "items", len(ts))
-		// Never a quote against a stale spot: the band is built from the open spot.
-		c.finish(st, ts, stDeferred, code, 0, nil)
+		// No spot, no band: the plan items are asked as they are and their rows carry no underlying price.
+		groups, exps := c.sortNoSpot(st, ts)
+		c.askGroups(ctx, st, groups, exps, 0, nil)
 		return
 	}
 	day := ts[0].Item.SessionDay.Time
@@ -258,6 +263,11 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 		return
 	}
 	groups, exps := c.sort(st, lb, ts, spot, spotTs)
+	c.askGroups(ctx, st, groups, exps, spot, spotTs)
+}
+
+// askGroups asks the groups by expiry, each from the spot the one before ended at.
+func (c *Core) askGroups(ctx context.Context, st *runState, groups map[time.Time][]Target, exps []time.Time, spot float64, spotTs *time.Time) {
 	sort.Slice(exps, func(i, j int) bool { return exps[i].Before(exps[j]) })
 	for _, e := range exps {
 		if st.err != nil || ctx.Err() != nil {
@@ -267,6 +277,24 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 		sort.SliceStable(g, func(i, j int) bool { return g[i].Item.Rank < g[j].Item.Rank })
 		spot, spotTs = c.group(ctx, st, g, spot, spotTs)
 	}
+}
+
+// sortNoSpot is sort for a name whose spot was not read: the plan-deferred items are written as PLAN_CUT, every
+// other item is asked, and there is no band and no added contract.
+func (c *Core) sortNoSpot(st *runState, ts []Target) (map[time.Time][]Target, []time.Time) {
+	groups := map[time.Time][]Target{}
+	var exps []time.Time
+	for _, t := range ts {
+		if t.Item.Deferred {
+			c.add(st, t, c.unasked(t, stDeferred, codePlanCut, false, 0, nil))
+			continue
+		}
+		if _, ok := groups[t.Expiry]; !ok {
+			exps = append(exps, t.Expiry)
+		}
+		groups[t.Expiry] = append(groups[t.Expiry], t)
+	}
+	return groups, exps
 }
 
 // sort writes the rows of the targets that are not asked and groups the others by expiry: the plan items the live band
@@ -433,7 +461,7 @@ func (c *Core) group(ctx context.Context, st *runState, g []Target, start float6
 		}
 	}
 	end, endTs := start, startTs
-	if ctx.Err() == nil && !st.dead && !c.budgetSpent(st) {
+	if start > 0 && ctx.Err() == nil && !st.dead && !c.budgetSpent(st) {
 		if s, ts, _, err := c.spot(ctx, st, g[0].Under); err == nil && s > 0 {
 			end, endTs = s, ts
 		}
