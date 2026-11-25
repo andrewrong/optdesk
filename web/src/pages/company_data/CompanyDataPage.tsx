@@ -3,6 +3,7 @@
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScrollHint } from '@/components/ScrollHint'
 import { BarsSourceNote } from '@/components/BarsSourceNote'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/company_data_page'
@@ -27,6 +28,7 @@ export function CompanyDataPage({ payload }: { payload: Payload }) {
             </Alert>
           ))}
           <BarsSourceNote payload={payload} />
+          <ScrollHint />
           <CompanyTable columns={payload.columns} companies={payload.companies} />
         </CardContent>
       </Card>

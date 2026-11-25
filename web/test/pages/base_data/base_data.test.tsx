@@ -61,6 +61,21 @@ describe('base data page', () => {
     expect(age.classList.contains('hidden')).toBe(true)
   })
 
+  it('fixes the dataset column and shows the scroll hint', async () => {
+    const h = await render(ok)
+    expect(h.querySelectorAll('[data-scroll-hint]')).toHaveLength(1)
+    expect(h.querySelector('[data-scroll-hint]')?.compareDocumentPosition(h.querySelector('table') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    const head = h.querySelector('thead th') as HTMLElement
+    const cells = [...rowOf(h, 'option_chains').querySelectorAll('td')]
+    for (const c of [head, cells[0]!]) for (const k of ['sticky', 'left-0', 'bg-background']) expect(c.classList.contains(k)).toBe(true)
+    expect(cells[1]!.classList.contains('sticky')).toBe(false)
+    for (const i of [0, 1, 5, 6]) for (const k of ['whitespace-normal', 'break-words']) expect(cells[i]!.classList.contains(k)).toBe(true)
+    for (const i of [2, 3, 4]) {
+      expect(cells[i]!.classList.contains('whitespace-nowrap')).toBe(true)
+      expect(cells[i]!.classList.contains('whitespace-normal')).toBe(false)
+    }
+  })
+
   it('opens a row to show its checks', async () => {
     const h = await render(ok)
     expect(h.querySelector('[data-checks]')).toBeNull()
