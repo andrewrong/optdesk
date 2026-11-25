@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -189,6 +191,51 @@ func TestNoLedgerRecordsNothing(t *testing.T) {
 	}
 }
 
+// lateLedger takes the fake clock past the slot of the dependent when the first row (the upstream's)
+// closes, so the dependent is not due when the pass starts and runs only when the end of its upstream
+// triggers it.
+type lateLedger struct {
+	*fakeRunLedger
+	clk  *clockwork.FakeClock
+	once sync.Once
+}
+
+func (l *lateLedger) Close(ctx context.Context, id, outcome string, at time.Time) error {
+	err := l.fakeRunLedger.Close(ctx, id, outcome, at)
+	l.once.Do(func() { l.clk.Advance(6 * time.Hour) })
+	return err
+}
+
+// unlockSignal closes done when the first lock taken for job id is released: a dependent releases it
+// after its row is closed.
+type unlockSignal struct {
+	runner.JobLocks
+	id   string
+	done chan struct{}
+	once sync.Once
+}
+
+func (u *unlockSignal) TryLock(id string) (func(), bool) {
+	unlock, ok := u.JobLocks.TryLock(id)
+	if !ok || id != u.id {
+		return unlock, ok
+	}
+	return func() {
+		unlock()
+		u.once.Do(func() { close(u.done) })
+	}, ok
+}
+
+// triggeredDep builds a reconciler whose dependent "dep" (key keyC) is run only by the end of "up".
+func triggeredDep(led *fakeLedger, rl *fakeRunLedger, d depJob) (*reconciler, <-chan struct{}) {
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	rec := detRec(led, clk, upJob(keyA), d)
+	WithJobRunLedger(rec, &lateLedger{fakeRunLedger: rl, clk: clk})
+	sig := &unlockSignal{JobLocks: rec.locks, id: "dep", done: make(chan struct{})}
+	rec.locks = sig
+	return rec, sig.done
+}
+
 func TestDependentRunWritesRow(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -203,14 +250,14 @@ func TestDependentRunWritesRow(t *testing.T) {
 			t.Parallel()
 			led := newLedger()
 			rl := &fakeRunLedger{}
-			up, d := upJob(keyA), dep(0, keyC)
+			d := dep(5*time.Hour, keyC)
 			d.results = tc.results
-			rec := detRec(led, detClock(), up, d)
-			WithJobRunLedger(rec, rl)
+			rec, done := triggeredDep(led, rl, d)
 
 			if err := rec.ReconcileDetached(context.Background(), detDay, newSpawnLog(true).spawn); err != nil {
 				t.Fatal(err)
 			}
+			<-done
 			var depCalls []ledgerCall
 			in := false
 			for _, c := range rl.calls {
@@ -242,9 +289,8 @@ func TestSkippedDependentWritesNoRow(t *testing.T) {
 	t.Parallel()
 	led := newLedger()
 	rl := &fakeRunLedger{}
-	up, d := upJob(keyA), dep(0, keyC)
-	rec := detRec(led, detClock(), up, d)
-	WithJobRunLedger(rec, rl)
+	d := dep(5*time.Hour, keyC)
+	rec, done := triggeredDep(led, rl, d)
 	if err := led.MarkPresent(context.Background(), detDay, keyC, store.StatusPresent); err != nil {
 		t.Fatal(err)
 	}
@@ -252,6 +298,7 @@ func TestSkippedDependentWritesNoRow(t *testing.T) {
 	if err := rec.ReconcileDetached(context.Background(), detDay, newSpawnLog(true).spawn); err != nil {
 		t.Fatal(err)
 	}
+	<-done
 	var started []string
 	for _, c := range rl.calls {
 		if c.op == "start" {
