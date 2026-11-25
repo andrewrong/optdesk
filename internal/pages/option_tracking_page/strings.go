@@ -89,7 +89,7 @@ var gatherCodes = map[string]string{
 	gapNoAccount:    codeNoAccount,
 }
 
-var badgeMoneyness = map[string]string{"itm": "in the money", "otm": "out of the money", "atm": "at the money"}
+var badgeMoneyness = map[string]string{"itm": badgeItmZh, "otm": badgeOtmZh, "atm": badgeAtmZh}
 
 const blockedTxt = blockedZh + " (Blocked)"
 

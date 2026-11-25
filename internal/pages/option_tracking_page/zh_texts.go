@@ -10,6 +10,10 @@ const (
 	leftOutTailZh = " 条 long 腿未列出，见 Held options > Structures"
 	staleTextZh   = "部分未平仓合约没有最新收盘价，相关单元格显示为空缺"
 
+	badgeItmZh = "价内 In the money"
+	badgeOtmZh = "价外 Out of the money"
+	badgeAtmZh = "平值 At the money"
+
 	moneynessHintZh  = "占收盘价的百分比，正数表示价外"
 	coverageHintZh   = "从开仓日与该合约首条存档行情日两者中较晚的一天起，统计存有双边报价（bid 与 ask 都大于零）的交易日"
 	netPremiumHintZh = "开仓交易与平仓交易的现金合计，未扣佣金；买回价高于卖出价时为负"
