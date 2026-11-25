@@ -75,6 +75,15 @@ export type Group = (
         text: Text1;
       }[]
     | null;
+  /**
+   * For each Japanese name with no candidate row, its outcome (an open string), its Chinese text and its counts; additive and optional.
+   */
+  name_outcomes?: {
+    name: Text1;
+    outcome: string;
+    text: Text1;
+    counts: Text1;
+  }[];
 } & {
   kind: "short_put" | "covered_call" | "held_call_guard";
   title: Text1;
@@ -108,6 +117,15 @@ export type Group = (
         text: Text1;
       }[]
     | null;
+  /**
+   * For each Japanese name with no candidate row, its outcome (an open string), its Chinese text and its counts; additive and optional.
+   */
+  name_outcomes?: {
+    name: Text1;
+    outcome: string;
+    text: Text1;
+    counts: Text1;
+  }[];
 } & {
   kind: "short_put" | "covered_call" | "held_call_guard";
   title: Text1;
@@ -141,6 +159,15 @@ export type Group = (
         text: Text1;
       }[]
     | null;
+  /**
+   * For each Japanese name with no candidate row, its outcome (an open string), its Chinese text and its counts; additive and optional.
+   */
+  name_outcomes?: {
+    name: Text1;
+    outcome: string;
+    text: Text1;
+    counts: Text1;
+  }[];
 } & {
   kind: "short_put" | "covered_call" | "held_call_guard";
   title: Text1;
@@ -174,6 +201,15 @@ export type Group = (
         text: Text1;
       }[]
     | null;
+  /**
+   * For each Japanese name with no candidate row, its outcome (an open string), its Chinese text and its counts; additive and optional.
+   */
+  name_outcomes?: {
+    name: Text1;
+    outcome: string;
+    text: Text1;
+    counts: Text1;
+  }[];
 };
 export type Cell = ValueCell | Gap;
 

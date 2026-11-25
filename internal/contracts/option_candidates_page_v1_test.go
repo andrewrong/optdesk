@@ -772,3 +772,29 @@ func TestBlockNeedsRowIds(t *testing.T) {
 		t.Fatal("a block without row_ids is valid")
 	}
 }
+
+func nameOutcomesIs(t *testing.T, outcome any, want bool) {
+	inst := candidatesMinimal(t)
+	if outcome != nil {
+		candidatesGroup(inst)["name_outcomes"] = []any{map[string]any{"name": "Toyota", "outcome": outcome, "text": "无报价", "counts": "0 行"}}
+	}
+	if got := pageV1Valid(t, optionCandidatesPageV1, inst); got != want {
+		t.Fatalf("outcome %v: valid = %v, want %v", outcome, got, want)
+	}
+}
+
+func TestNameOutcomesValid(t *testing.T) {
+	t.Parallel()
+	nameOutcomesIs(t, "no_quote", true)
+}
+
+func TestNameOutcomesOpenString(t *testing.T) {
+	t.Parallel()
+	nameOutcomesIs(t, "some_future_outcome", true)
+	nameOutcomesIs(t, 3, false)
+}
+
+func TestNoNameOutcomesStillValid(t *testing.T) {
+	t.Parallel()
+	nameOutcomesIs(t, nil, true)
+}
