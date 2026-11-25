@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,7 +88,7 @@ func follow(t *testing.T, dir, name, ref string) (map[string]any, string) {
 		dir = schemasDir
 	}
 	var cur any = readRaw(t, dir, file)
-	for _, p := range strings.Split(strings.TrimPrefix(frag, "/"), "/") {
+	for p := range strings.SplitSeq(strings.TrimPrefix(frag, "/"), "/") {
 		if p == "" {
 			continue
 		}
@@ -211,7 +212,8 @@ func checkPageV2In(t *testing.T, dir, name string, overrides map[string]string) 
 	bad := build()
 	bad["schema_version"] = 3
 	err := s.Validate(roundTrip(bad))
-	ve, ok := err.(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(err, &ve)
 	if !ok {
 		t.Fatalf("wrong schema_version: want a validation error, got %v", err)
 	}

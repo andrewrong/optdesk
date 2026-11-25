@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -140,7 +141,7 @@ func trackedFiles(root string) ([]string, error) {
 		return nil, err
 	}
 	var files []string
-	for _, f := range strings.Split(s, "\x00") {
+	for f := range strings.SplitSeq(s, "\x00") {
 		if f != "" {
 			files = append(files, f)
 		}
@@ -222,10 +223,8 @@ var wideFiles = []string{"go.mod", "go.sum", ".golangci.yml", "docs/design/modul
 func affectedPackages(mod string, changed []string, deps string) []string {
 	dirs := map[string]bool{}
 	for _, c := range changed {
-		for _, w := range wideFiles {
-			if c == w {
-				return []string{"./..."}
-			}
+		if slices.Contains(wideFiles, c) {
+			return []string{"./..."}
 		}
 		if strings.HasPrefix(c, "contracts/") {
 			return []string{"./..."}
@@ -240,7 +239,7 @@ func affectedPackages(mod string, changed []string, deps string) []string {
 		}
 	}
 	set := map[string]bool{}
-	for _, line := range strings.Split(deps, "\n") {
+	for line := range strings.SplitSeq(deps, "\n") {
 		fields := strings.Fields(line)
 		for _, f := range fields {
 			if dirs[f] {

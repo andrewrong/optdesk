@@ -3,6 +3,7 @@ package contracts_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,8 @@ func loadMacroPageV2(t *testing.T, name string) map[string]any {
 
 func failuresOf(t *testing.T, err error) []leaf {
 	t.Helper()
-	ve, ok := err.(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(err, &ve)
 	if !ok {
 		t.Fatalf("err = %v, want a validation error", err)
 	}
