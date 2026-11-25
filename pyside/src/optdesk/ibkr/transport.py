@@ -437,6 +437,10 @@ class ContractsServicer(pb.ContractsServiceServicer):
             response.contract.exchange = result.exchange or c.exchange
             response.contract.trading_class = result.trading_class or c.trading_class
             response.contract.multiplier = result.multiplier or c.multiplier
+            response.contract.expiry = result.expiry or c.expiry
+            response.contract.strike = result.strike or c.strike
+            if result.right:
+                response.contract.right = _RIGHT_VALUES[result.right]
             response.trading_hours = result.trading_hours
             response.liquid_hours = result.liquid_hours
             response.time_zone_id = result.time_zone_id
