@@ -40,6 +40,18 @@ describe('SpreadLegsPage', () => {
     await done()
   })
 
+  it('TestSpreadLegsFixedLabelsChinese', async () => {
+    const { host, done } = await show()
+    const c = card(host, 'AAA')
+    expect([...c.querySelectorAll('thead th')].map((h) => h.textContent)).toEqual(['方向', '数量', '行权价', '开仓价'])
+    const names = (f: string) => c.querySelector(`[data-figure="${f}"] dt`)?.textContent
+    expect(names('net_credit')).toBe('净权利金收入')
+    expect(names('max_loss')).toBe('最大亏损')
+    expect(names('max_gain')).toBe('最大盈利')
+    expect(names('break_even')).toBe('盈亏平衡点')
+    await done()
+  })
+
   it('shows the iron condor with two break-evens in the order sent', async () => {
     const { host, done } = await show()
     expect(card(host, 'BBB').querySelector('[data-figure="break_even"] dd')?.textContent).toBe('86.90 和 113.10')
