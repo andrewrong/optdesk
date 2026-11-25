@@ -29,14 +29,14 @@ export function PlanTable({ labels, rows, keys, markets, ticks, onKey, onMarket,
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Company</TableHead>
-          <TableHead>Key</TableHead>
-          <TableHead>Action</TableHead>
+          <TableHead>公司</TableHead>
+          <TableHead>公司键</TableHead>
+          <TableHead>处理</TableHead>
           <TableHead className="text-right">V</TableHead>
           <TableHead className="text-right">P</TableHead>
           <TableHead className="text-right">{labels?.buy_zone_top_site}</TableHead>
           <TableHead className="text-right">{labels?.buy_zone_top_file}</TableHead>
-          <TableHead>Tick</TableHead>
+          <TableHead>勾选</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -46,7 +46,7 @@ export function PlanTable({ labels, rows, keys, markets, ticks, onKey, onMarket,
               <div>{r.name}</div>
               <div className="text-xs text-muted-foreground">
                 {r.ticker} {r.currency} {r.r_market}
-                {r.new_profile ? ' · new profile' : ''}
+                {r.new_profile ? ' · 新建档案' : ''}
               </div>
             </TableCell>
             <TableCell>

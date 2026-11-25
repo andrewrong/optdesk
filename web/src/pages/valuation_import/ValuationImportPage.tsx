@@ -39,7 +39,7 @@ function Summary({ payload }: { payload: Payload }) {
         </p>
         {r ? (
           <p className="text-sm">
-            R (discount multiple) <Badge variant="secondary">{r.action}</Badge> US {r.file_us} JP {r.file_jp} HKCN {r.file_hkcn}
+            R（折现倍数） <Badge variant="secondary">{r.action}</Badge> US {r.file_us} JP {r.file_jp} HKCN {r.file_hkcn}
             <span className="text-muted-foreground">
               {' '}
               {labels?.stored} US {r.stored_us} JP {r.stored_jp} HKCN {r.stored_hkcn}
