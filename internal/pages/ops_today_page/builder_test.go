@@ -268,3 +268,20 @@ func TestRunRowSkipsFieldReasonsAsCode(t *testing.T) {
 		t.Fatalf("row = %+v", got)
 	}
 }
+
+func TestOpsTodayPageTitle(t *testing.T) {
+	t.Parallel()
+	b, err := Build(nil, nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Title string `json:"title"`
+	}
+	if err := json.Unmarshal(b, &p); err != nil {
+		t.Fatal(err)
+	}
+	if want := "\u4eca\u65e5\u671f\u6743\u5f00\u76d8\u8fd0\u884c Today's option-open runs"; p.Title != want {
+		t.Fatalf("title = %q, want %q", p.Title, want)
+	}
+}
