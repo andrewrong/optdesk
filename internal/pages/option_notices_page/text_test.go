@@ -1,9 +1,10 @@
 package option_notices_page
 
 import (
-	"github.com/andrewrong/optdesk/internal/compute"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/compute"
 )
 
 func TestNoticeIDWithinPattern(t *testing.T) {
