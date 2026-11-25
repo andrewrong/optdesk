@@ -21,9 +21,9 @@ import { DataTimesFold } from './DataTimesFold'
 import { TitleLink } from './OverviewCard'
 
 const COLUMNS: Column[] = [
-  { id: 'date', label: 'Date' },
-  { id: 'name', label: 'Event' },
-  { id: 'previous', label: 'Previous', align: 'right' },
+  { id: 'date', label: '日期' },
+  { id: 'name', label: '事件' },
+  { id: 'previous', label: '前值', align: 'right' },
 ]
 
 export function MacroCard({
@@ -56,7 +56,7 @@ export function MacroCard({
         <StaleAlert stale={card.stale} generatedAt={payload.generated_at} />
         <Accordion type="single" collapsible data-ease-fold>
           <AccordionItem value="ease">
-            <AccordionTrigger>Ease score</AccordionTrigger>
+            <AccordionTrigger>宽松度评分</AccordionTrigger>
             <AccordionContent>
               {'reason' in ease ? (
                 <Badge

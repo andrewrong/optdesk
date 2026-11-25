@@ -46,7 +46,7 @@ function Reports({ links }: { links: readonly Link[] }) {
   return (
     <Card data-links="report_links">
       <CardHeader>
-        <CardTitle>Reports</CardTitle>
+        <CardTitle>报告</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <Button asChild variant="outline">
@@ -55,7 +55,7 @@ function Reports({ links }: { links: readonly Link[] }) {
         {rest.length > 0 && (
           <Accordion type="single" collapsible>
             <AccordionItem value="all-reports">
-              <AccordionTrigger>All reports</AccordionTrigger>
+              <AccordionTrigger>全部报告</AccordionTrigger>
               <AccordionContent className="flex flex-wrap gap-2">
                 {rest.map((link, index) => (
                   <Button key={`${index}-${link.href}`} asChild variant="outline">

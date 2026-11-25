@@ -230,7 +230,7 @@ it('links to /risk, and the Household overview card links to /household', async 
   host.remove()
   await show(<HouseholdCard payload={ok} />)
   const card = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '/household')
-  expect(card?.textContent).toContain('Household page')
+  expect(card?.textContent).toContain('家庭页面')
 })
 
 it('colours the Driver cell by the tone Python sent: up success, down down, flat muted, no amount none', async () => {
