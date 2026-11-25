@@ -3,7 +3,6 @@ package option_candidates_page
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -37,7 +36,6 @@ func readGroupWithOutcomes(ctx context.Context, c Config, series store.SeriesRea
 
 // symbolIDs maps the upper-case symbol of each stock among ids to its instrument id.
 func symbolIDs(ctx context.Context, r store.InstrumentNameReader, ids []int64) (map[string]int, error) {
-	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
 	bySymbol := map[string]int{}
 	for start := 0; start < len(ids); start += nameChunk {
 		names, err := r.InstrumentNames(ctx, ids[start:min(start+nameChunk, len(ids))])
@@ -166,7 +164,6 @@ func codesOf(facts []optioncandapi.OpenFact, pick func(optioncandapi.OpenFact) b
 			codes = append(codes, code)
 		}
 	}
-	sort.Strings(codes)
 	return strings.Join(codes, nameCodeSepZh)
 }
 
