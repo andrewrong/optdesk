@@ -13,14 +13,14 @@ export { validate as validateTracking } from '@/types/tracking'
 export type { Payload as TrackingPayload } from '@/types/tracking'
 
 const COLUMNS: Column[] = [
-  { id: 'symbol', label: 'Underlying' },
-  { id: 'expiry', label: 'Expiry' },
-  { id: 'strike', label: 'Strike', align: 'right' },
-  { id: 'status', label: 'Status' },
-  { id: 'outcome', label: 'Result', wrap: true },
-  { id: 'premium', label: 'Premium', align: 'right' },
-  { id: 'underlying_move', label: 'Underlying move', align: 'right' },
-  { id: 'assigned', label: 'Assigned' },
+  { id: 'symbol', label: '标的' },
+  { id: 'expiry', label: '到期日' },
+  { id: 'strike', label: '行权价', align: 'right' },
+  { id: 'status', label: '状态' },
+  { id: 'outcome', label: '结果', wrap: true },
+  { id: 'premium', label: '权利金 (Premium)', align: 'right' },
+  { id: 'underlying_move', label: '标的涨跌', align: 'right' },
+  { id: 'assigned', label: '是否被行权' },
 ]
 const text = (value: string) => ({ text: value, value })
 
@@ -74,7 +74,7 @@ function GroupBlock({ group }: { group: Group }) {
         )}
         <Accordion type="single" collapsible>
           <AccordionItem value="rows">
-            <AccordionTrigger>Evaluation details</AccordionTrigger>
+            <AccordionTrigger>{'评估明细'}</AccordionTrigger>
             <AccordionContent>
               <DataTable columns={COLUMNS} rows={group.rows.map(toCells)} />
             </AccordionContent>
@@ -147,7 +147,7 @@ export function Tracking({ payload }: { payload: Payload }) {
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>How it is computed</CardTitle>
+          <CardTitle>{'计算方法'}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           {payload.how.map((line) => (
@@ -166,7 +166,7 @@ export function Tracking({ payload }: { payload: Payload }) {
       {older.length > 0 ? (
         <Accordion type="single" collapsible>
           <AccordionItem value="older">
-            <AccordionTrigger>Earlier rule versions</AccordionTrigger>
+            <AccordionTrigger>{'更早的规则版本'}</AccordionTrigger>
             <AccordionContent className="space-y-6">
               {older.map((version) => (
                 <section key={version.label} className="min-w-0 space-y-4">

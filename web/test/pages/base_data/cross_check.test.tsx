@@ -33,7 +33,7 @@ const cellOf = (h: HTMLElement, dataset: string) => rowOf(h, dataset).querySelec
 describe('cross-check column', () => {
   it('renders the column with the pair verdict', async () => {
     const h = await render(crossCheck)
-    expect([...h.querySelectorAll('th')].map((c) => c.textContent)).toContain('Cross-check')
+    expect([...h.querySelectorAll('th')].map((c) => c.textContent)).toContain('交叉核对')
     const cell = cellOf(h, 'bars')
     expect(cell.textContent).toContain('fail')
     expect(cell.textContent).toContain('R6')
@@ -47,7 +47,7 @@ describe('cross-check column', () => {
     expect(pair.textContent).toContain('yfinance')
     expect(pair.textContent).toContain('2026-11-18T08:00:00Z')
     expect([...pair.querySelectorAll('[data-company]')].map((e) => e.getAttribute('data-company'))).toEqual(['Apple', 'Microsoft', 'Zeta'])
-    const heads = ['key', 'ours', 'other', 'difference', 'kind', 'hint']
+    const heads = ['键', '本站值', '对方值', '差异', '类型', '提示']
     expect([...pair.querySelectorAll('[data-company="Apple"] th')].map((c) => c.textContent)).toEqual(heads)
     expect(pair.querySelectorAll('[data-company] tbody tr')).toHaveLength(4)
   })

@@ -80,7 +80,7 @@ it('renders a my_trades gap as text with no My trades table and folds older vers
   host.remove()
   await show(ok)
   const old = [...host.querySelectorAll('[data-slot="accordion-item"]')].find((i) =>
-    i.textContent?.includes('Earlier rule versions'),
+    i.textContent?.includes('更早的规则版本'),
   )
   expect(old?.querySelector('[data-slot="accordion-trigger"]')?.getAttribute('aria-expanded')).toBe('false')
   expect(host.textContent).not.toContain('Rule v2')
