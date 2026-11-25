@@ -55,7 +55,7 @@ describe('SettingsPage', () => {
   it('draws the change column after the parameter column', async () => {
     const page = await show(editable)
     const heads = [...page.querySelectorAll('table[data-params] th')].map((h) => h.textContent)
-    expect(heads).toEqual(['Parameter', 'Change', 'Unit', 'Current value', 'Range'])
+    expect(heads).toEqual(['参数', '修改', '单位', '当前值', '范围'])
     const row = page.querySelector('tr[data-param]')!
     expect(row.children[1]!.querySelector('input')!.className).toContain('min-w-24')
     expect(row.children[0]!.className).toContain('break-words')
@@ -156,7 +156,7 @@ describe('SettingsPage confirm dialog', () => {
     for (const p of confirmStep.params) expect(hidden(form, `param.${p.key}`)).toEqual([p.value])
     expect(hidden(form, 'row')).toEqual(confirmStep.rows.map((r) => String(r.instrument_id)))
     expect(hidden(form, 'excluded')).toEqual(confirmStep.rows.filter((r) => r.excluded).map((r) => String(r.instrument_id)))
-    expect(form.querySelector('button[type=submit]')!.textContent).toBe('Confirm and save')
+    expect(form.querySelector('button[type=submit]')!.textContent).toBe('确认并保存')
   })
 
   it('TestSettingsConfirmDialogCancel', async () => {
@@ -164,7 +164,7 @@ describe('SettingsPage confirm dialog', () => {
     vi.stubGlobal('fetch', fetchSpy)
     const submitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit').mockImplementation(() => {})
     const page = await show(confirmStep)
-    const cancel = [...dialogOf()!.querySelectorAll('button')].find((b) => b.textContent === 'Cancel')!
+    const cancel = [...dialogOf()!.querySelectorAll('button')].find((b) => b.textContent === '取消')!
     expect(cancel.getAttribute('type')).toBe('button')
     await act(async () => cancel.click())
     expect(dialogOf()).toBeNull()
