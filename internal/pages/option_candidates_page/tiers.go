@@ -248,24 +248,32 @@ func markDay(marks []string, prefix string) string {
 	return ""
 }
 
+// spotDayOf is the day the spot of the row is from: the day of the quote, the day of the chain price (the day
+// of the rows when that mark has none), or the day of the rows. It has the branches of spotNoteOf.
+func spotDayOf(rowsDay string, marks []string) string {
+	if q := markDay(marks, markSpotQuotePrefix); q != "" {
+		return q
+	}
+	if slices.Contains(marks, markSpotChain) {
+		if day := markDay(marks, markChainDayPrefix); day != "" {
+			return day
+		}
+	}
+	return rowsDay
+}
+
 // spotNoteOf is the note of the spot from the marks of the row: the day of the quote when it is earlier than
 // the day of the rows (a text comparison of two YYYY-MM-DD texts), the day of the chain price, or the day of
 // the rows as before.
 func spotNoteOf(rowsDay string, marks []string) string {
-	if q := markDay(marks, markSpotQuotePrefix); q != "" {
-		if q < rowsDay {
-			return monthDay(q) + zhSpotQuote
-		}
-		return zhSpotArchive + monthDay(q)
+	day := spotDayOf(rowsDay, marks)
+	if markDay(marks, markSpotQuotePrefix) != "" && day < rowsDay {
+		return monthDay(day) + zhSpotQuote
 	}
-	if slices.Contains(marks, markSpotChain) {
-		day := markDay(marks, markChainDayPrefix)
-		if day == "" {
-			day = rowsDay
-		}
+	if markDay(marks, markSpotQuotePrefix) == "" && slices.Contains(marks, markSpotChain) {
 		return zhSpotChain + monthDay(day)
 	}
-	return zhSpotArchive + monthDay(rowsDay)
+	return zhSpotArchive + monthDay(day)
 }
 
 // stripLabelsOf are the eight words of the card.
@@ -335,7 +343,7 @@ func tierOf(b bucket, res optiontierapi.Result, f tierFacts) tierView {
 }
 
 // companiesOf is the strip of the answer's companies: ticker, stored spot and its day, buy price or "not judged", its source
-// and the next earnings, from the first row of the company. SpotDay is the day of the stored rows; an
+// and the next earnings, from the first row of the company. SpotDay is the day the spot note names, the day of the stored rows when there is no spot; an
 // earnings date before day, the data day, is shown as unknown.
 func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day contracts.Day, cur string) []companyView {
 	out := make([]companyView, 0, len(res.Companies))
@@ -346,15 +354,17 @@ func companiesOf(res optiontierapi.Result, rows []store.Candidate, rowsDay, day 
 		}
 		r := rows[i]
 		v := companyView{
-			Key: cc.Company, Ticker: r.Issuer, Spot: noSpotText, SpotDay: string(rowsDay), NextEarnings: earningsUnknown,
+			Key: cc.Company, Ticker: r.Issuer, Spot: noSpotText, NextEarnings: earningsUnknown,
 			Tier: companyTierOf(cc.Fits, cc.Check), EarningsText: zhEarningsNone,
 			CountParts: countParts{Fits: strconv.Itoa(cc.Fits), Check: strconv.Itoa(cc.Check), Grey: strconv.Itoa(cc.Grey)},
 			Counts:     strconv.Itoa(cc.Fits) + countFit + strconv.Itoa(cc.Check) + countCheck + strconv.Itoa(cc.Grey) + countCollapsed,
 		}
+		v.SpotDay = string(rowsDay) // no spot: the day of the stored rows
 		if m, ok := moneyText(deref(r.Spot), cur); deref(r.Spot) != "" && ok {
 			v.Spot = m
 			marks, _ := parseMarks(pricedOf(rows, cc.Company, r).Marks) // unreadable marks: the note as before
 			note := spotNoteOf(string(rowsDay), marks)
+			v.SpotDay = spotDayOf(string(rowsDay), marks)
 			v.SpotText, v.SpotNote = &m, &note
 		}
 		// The price and its source come from the first row of the company that has a price; the source is
