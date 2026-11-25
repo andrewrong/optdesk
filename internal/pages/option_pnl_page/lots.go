@@ -73,7 +73,7 @@ func reasonOf(c Config, l pnlLot) (class, text string) {
 	p := l.pos
 	switch {
 	case p.Status == statusOpen && p.MarkStatus == "no_mark":
-		return classNoMark, fmt.Sprintf("no stored quote of %s within %d sessions: no split", p.Underlying, c.MarkMaxAgeSessions)
+		return classNoMark, fmt.Sprintf(noMarkGapFmtZh, p.Underlying, c.MarkMaxAgeSessions)
 	case endedKind(p.Status) && l.endClose == "":
 		return classNoClose, fmt.Sprintf("no stored close of %s on %s: no split", p.Underlying, p.ClosedOn)
 	case p.Status != statusOpen && p.RealizedPnL == "":

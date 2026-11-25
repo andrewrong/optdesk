@@ -18,6 +18,15 @@ const (
 	coverageNoteMidZh  = " 个 lot-day，其中 "
 	coverageNoteTailZh = " 个没有双边报价"
 
+	pageTitleZh   = "我的 short 期权跟踪"
+	accountZh     = "账户"
+	notApplyZh    = "不适用"
+	inLifeZh      = "期内"
+	earlyZh       = "提前"
+	basisZh       = "依据"
+	blockedZh     = "阻止"
+	unconfirmedZh = "未确认"
+
 	noOpenZh     = "没有未平仓的 short 期权"
 	noMarkZh     = "没有最新收盘价"
 	noEventRowZh = "近 7 天候选表中没有该公司的记录，财报日和除息日未知"

@@ -80,3 +80,44 @@ func TestRiskUnreadableGreekGapsTotal(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestRiskDeltaTotalsPerCurrency(t *testing.T) {
+	t.Parallel()
+	t.Run("two currencies are not added", func(t *testing.T) {
+		t.Parallel()
+		got := NewHoldings().Risk(blockapi.RiskIn{
+			Stocks: []blockapi.HoldingIn{hold("A", "USD", "10", "1", "1", ""), hold("T", "JPY", "500", "1", "1", "")},
+		})
+		want := []blockapi.RiskTotal{{Currency: "USD", Value: fv("10.00")}, {Currency: "JPY", Value: fv("500.00")}}
+		if len(got.DeltaTotals) != 2 || got.DeltaTotals[0] != want[0] || got.DeltaTotals[1] != want[1] {
+			t.Fatalf("totals: %+v", got.DeltaTotals)
+		}
+		if got.Delta[0].Currency != "USD" || got.Delta[1].Currency != "JPY" || got.DeltaTotal != fv("510.00") {
+			t.Fatalf("lines: %+v total %+v", got.Delta, got.DeltaTotal)
+		}
+	})
+	t.Run("gap USD line leaves the JPY total a number", func(t *testing.T) {
+		t.Parallel()
+		got := NewHoldings().Risk(blockapi.RiskIn{
+			Stocks: []blockapi.HoldingIn{hold("A", "USD", "x", "1", "1", ""), hold("T", "JPY", "500", "1", "1", "")},
+		})
+		if len(got.DeltaTotals) != 2 || got.DeltaTotals[0] != (blockapi.RiskTotal{Currency: "USD", Value: gap("missing_input")}) ||
+			got.DeltaTotals[1] != (blockapi.RiskTotal{Currency: "JPY", Value: fv("500.00")}) {
+			t.Fatalf("totals: %+v", got.DeltaTotals)
+		}
+	})
+	t.Run("empty currency reads USD, mixed and unsupported change no total", func(t *testing.T) {
+		t.Parallel()
+		got := NewHoldings().Risk(blockapi.RiskIn{
+			Stocks: []blockapi.HoldingIn{hold("A", "", "10", "1", "1", ""), hold("M", "USD", "1", "1", "1", ""), hold("E", "EUR", "7", "1", "1", "")},
+			Greeks: []blockapi.GreekIn{{Underlying: "M", Expiry: "2026-12-18", Delta: "1", Vega: "1", Currency: "JPY"}},
+		})
+		if len(got.DeltaTotals) != 1 || got.DeltaTotals[0] != (blockapi.RiskTotal{Currency: "USD", Value: fv("10.00")}) {
+			t.Fatalf("totals: %+v", got.DeltaTotals)
+		}
+		if got.Delta[0].Currency != "USD" || got.Delta[1] != (blockapi.RiskLine{Key: "E", Currency: "EUR", Value: gap("unsupported_currency")}) ||
+			got.Delta[2] != (blockapi.RiskLine{Key: "M", Currency: "", Value: gap("missing_input")}) {
+			t.Fatalf("lines: %+v", got.Delta)
+		}
+	})
+}

@@ -391,7 +391,7 @@
           "gap": {
             "kind": "gap",
             "reason": "missing_quote",
-            "text": "no stored quote of EEE within 3 sessions: no split"
+            "text": "EEE 在 3 个交易日内没有存档报价，无法拆分"
           }
         }
       ],

@@ -64,7 +64,7 @@ func TestRuleFailingRowIsLotGap(t *testing.T) {
 	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-17", "1.20", "0", "95")}
 	vm := r.build(t)
 	g := vm.Accounts[0].Lots[0].Gap
-	if g == nil || g.Text != "no stored quote of AAA within 3 sessions: no split" || len(vm.Accounts[0].Lots[0].Lines) != 0 {
+	if g == nil || g.Text != "AAA 在 3 个交易日内没有存档报价，无法拆分" || len(vm.Accounts[0].Lots[0].Lines) != 0 {
 		t.Fatalf("lot = %+v", vm.Accounts[0].Lots[0])
 	}
 	if len(r.attr.ins) != 0 {
@@ -78,7 +78,7 @@ func TestStaleValidRowIsLotGap(t *testing.T) {
 	r.replay.positions = []compute.LedgerPosition{lotPos("p1", "AAA", "101", "90.00", "open")}
 	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-10", "1.20", "1.30", "95")} // valid, 5 sessions old
 	vm := r.build(t)
-	if g := vm.Accounts[0].Lots[0].Gap; g == nil || g.Text != "no stored quote of AAA within 3 sessions: no split" {
+	if g := vm.Accounts[0].Lots[0].Gap; g == nil || g.Text != "AAA 在 3 个交易日内没有存档报价，无法拆分" {
 		t.Fatalf("stale valid row must give the no_mark gap; lot = %+v", vm.Accounts[0].Lots[0])
 	}
 	if len(r.attr.ins) != 0 {

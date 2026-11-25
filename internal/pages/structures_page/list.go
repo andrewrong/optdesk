@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	pageTitle          = "Position structures"
-	decideTitle        = "To decide this week"
-	othersTitle        = "Other structures"
+	pageTitle          = zhPageTitle + " (Position structures)"
+	decideTitle        = zhDecideTitle + " (To decide this week)"
+	othersTitle        = zhOthersTitle + " (Other structures)"
 	shownContracts     = 2
 	exDividendLookback = 10 // days before the page day of the dividend rows read
 )
