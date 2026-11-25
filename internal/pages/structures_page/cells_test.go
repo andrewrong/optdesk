@@ -77,9 +77,9 @@ func TestMoneynessFromDistanceSign(t *testing.T) {
 	}
 	c := cells{}
 	for _, tc := range []struct{ right, dist, want string }{
-		{"P", "0.05", "out of the money"}, {"P", "-0.05", "in the money"},
-		{"C", "0.05", "out of the money"}, {"C", "-0.05", "in the money"},
-		{"P", "0.000000", "at the money"},
+		{"P", "0.05", "价外 Out of the money"}, {"P", "-0.05", "价内 In the money"},
+		{"C", "0.05", "价外 Out of the money"}, {"C", "-0.05", "价内 In the money"},
+		{"P", "0.000000", "平值 At the money"},
 	} {
 		if got := c.moneyness(mk(tc.right, tc.dist)); got != tc.want {
 			t.Errorf("%s %s = %v, want %s", tc.right, tc.dist, got, tc.want)
@@ -94,10 +94,10 @@ func TestMoneynessFromSignOnly(t *testing.T) {
 		mk := func(dist string) compute.Structure {
 			return compute.Structure{Legs: []compute.StructureLeg{{Right: right}}, Figures: compute.StructureFigures{ExpiryDistance: figure(dist)}}
 		}
-		if got := c.moneyness(mk("0.05")); got != "out of the money" {
+		if got := c.moneyness(mk("0.05")); got != "价外 Out of the money" {
 			t.Errorf("%s positive = %v", right, got)
 		}
-		if got := c.moneyness(mk("-0.05")); got != "in the money" {
+		if got := c.moneyness(mk("-0.05")); got != "价内 In the money" {
 			t.Errorf("%s negative = %v", right, got)
 		}
 	}
