@@ -2,13 +2,12 @@ package structures_page_test
 
 import (
 	"context"
-	"time"
-
-	"github.com/atombender/go-jsonschema/pkg/types"
-
-	"github.com/andrewrong/optdesk/internal/contracts"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/atombender/go-jsonschema/pkg/types"
 )
 
 func TestPayoffPointsFromCompute(t *testing.T) {

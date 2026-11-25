@@ -1,10 +1,11 @@
 package option_candidates_page
 
 import (
-	"github.com/andrewrong/optdesk/internal/store"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 func TestReasonsFromGates(t *testing.T) {

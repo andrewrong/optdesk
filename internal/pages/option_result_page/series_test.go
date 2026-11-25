@@ -1,9 +1,10 @@
 package option_result_page_test
 
 import (
-	"github.com/andrewrong/optdesk/internal/compute"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/compute"
 )
 
 func seriesOf(s map[string]any, name string) map[string]any { return s[name].(map[string]any) }

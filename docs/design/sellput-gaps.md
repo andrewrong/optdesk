@@ -45,7 +45,7 @@ All entries: `Design: docs/design/sellput-gaps.md#<decision>`. Issues 2, 3 and 4
 ### 1 tier-companies-contract (interface)
 
 Module: contracts. Size: S. Order: first. Contracts: `page.option_candidates_page v1 additive`. Design: Decisions 1, 2.
-Files: `contracts/schemas/page.option_candidates_page.v1.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `docs/contracts/page-schemas.md`, `internal/contracts/option_candidates_page_v1_test.go`, `internal/contracts/gen/records.go`, `web/src/generated/option_candidates_page.v1.ts`
+Files: `contracts/schemas/page.option_candidates_page.v1.json`, `docs/contracts/page-schemas.md`, `internal/contracts/option_candidates_page_v1_test.go`, `web/src/generated/option_candidates_page.v1.ts`
 - The schema's `Tier` has the optional property `companies` (items with `company`, `count`, `row_ids`); it is in no `required`, and an item without `count` fails (tests `TestTierCompaniesValid` (new), `TestTierCompaniesNeedsCount` (new)).
 - A document without `companies` still validates (test `TestNoTierCompaniesStillValid` (new)); `schema_version` is 1.
 - `web/src/generated/option_candidates_page.v1.ts` contains `companies` (grep); the generated Go and TypeScript are produced from the schema.

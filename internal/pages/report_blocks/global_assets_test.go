@@ -12,14 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atombender/go-jsonschema/pkg/types"
-
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages/report_blocks"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/atombender/go-jsonschema/pkg/types"
 )
 
 // fakeGlobal is a blockapi.GlobalFigures that answers a canned result and records its input.
@@ -86,7 +85,7 @@ var assets = []report_blocks.Asset{
 	{Symbol: "XLE", Label: "Energy", Group: "sector"},
 }
 
-func val(v string) compute.FigureValue { return compute.FigureValue{Value: v} }
+func val(v string) compute.FigureValue  { return compute.FigureValue{Value: v} }
 func gapv(r string) compute.FigureValue { return compute.FigureValue{Gap: r} }
 
 func fullResult() blockapi.GlobalResult {
