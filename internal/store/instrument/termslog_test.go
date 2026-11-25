@@ -64,7 +64,7 @@ var (
 
 func lines(buf *bytes.Buffer) []string {
 	var out []string
-	for _, l := range strings.Split(buf.String(), "\n") {
+	for l := range strings.SplitSeq(buf.String(), "\n") {
 		if strings.Contains(l, "option terms insert rolled back") {
 			out = append(out, l)
 		}
@@ -143,7 +143,7 @@ func TestResolveNoTermsNoLog(t *testing.T) {
 	failing := stateErr{msg: "denied", state: "42501"}
 	run := func(name string, d *logDB, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier, repeat int) {
 		s, buf := logged(d)
-		for i := 0; i < repeat; i++ {
+		for range repeat {
 			if _, err := s.ResolveInstrument(context.Background(), key, spec, extra); err != nil {
 				t.Errorf("%s: %v", name, err)
 			}

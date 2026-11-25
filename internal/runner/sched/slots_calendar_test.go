@@ -47,7 +47,7 @@ func TestSlotsDropRunOutCalendar(t *testing.T) {
 		{JobID: "jp", CalendarID: "XJPX", Anchor: "session_close"},
 	}
 	known := map[string]bool{"XJPX": true}
-	newCal := func() runOutCal { return runOutCal{fakeCal: fakeCal{rows: runOutRows()}, lastJPX: "2026-11-11"} }
+	newCal := func() runOutCal { return runOutCal{rows: runOutRows(), lastJPX: "2026-11-11"} }
 	byJob := func(s []Start, id string) int {
 		n := 0
 		for _, x := range s {

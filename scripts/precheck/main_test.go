@@ -34,7 +34,7 @@ func TestStepsMatchWorkflows(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, l := range strings.Split(string(b), "\n") {
+		for l := range strings.SplitSeq(string(b), "\n") {
 			l = strings.TrimSpace(l)
 			// a command is a one-line run: or a line of a run: | block
 			lines = append(lines, strings.TrimPrefix(l, "run: "))

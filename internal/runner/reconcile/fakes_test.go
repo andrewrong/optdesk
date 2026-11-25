@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 	"testing"
@@ -91,9 +92,7 @@ func (l *fakeLedger) Present(_ context.Context, d contracts.Day) (map[contracts.
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	out := map[contracts.ExpectedKey]store.PresentStatus{}
-	for k, v := range l.present[d] {
-		out[k] = v
-	}
+	maps.Copy(out, l.present[d])
 	return out, nil
 }
 
@@ -294,8 +293,8 @@ func upJob(keys ...contracts.ExpectedKey) *fakeJob { return &fakeJob{id: "up", k
 // dep is the dependent "dep" of "up": its slot is the session close plus offset.
 func dep(offset time.Duration, keys ...contracts.ExpectedKey) depJob {
 	return depJob{
-		scheduledJob: scheduledJob{fakeJob: &fakeJob{id: "dep", keys: keys}, calendarID: "XNYS", anchor: "session_close", offset: offset},
-		after:        []string{"up"},
+		fakeJob: &fakeJob{id: "dep", keys: keys}, calendarID: "XNYS", anchor: "session_close", offset: offset,
+		after: []string{"up"},
 	}
 }
 

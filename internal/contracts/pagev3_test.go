@@ -2,6 +2,8 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -51,7 +53,8 @@ func checkPageV3(t *testing.T, name string, overrides map[string]string) {
 	}
 	wantLeaf := func(what string, inst map[string]any, location, keyword string) {
 		t.Helper()
-		ve, ok := s.Validate(toJSONValue(t, inst)).(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(s.Validate(toJSONValue(t, inst)), &ve)
 		if !ok {
 			t.Fatalf("%s: want a validation error", what)
 		}
@@ -139,9 +142,7 @@ func TestPageV3FigureSlots(t *testing.T) {
 				t.Error("a value object is invalid in a figure slot")
 			}
 			both := map[string]any{"reason": "no_data"}
-			for k, v := range sc.figure {
-				both[k] = v
-			}
+			maps.Copy(both, sc.figure)
 			both["text"] = "x"
 			if valid(both) {
 				t.Error("an object with both shapes is valid")
@@ -333,9 +334,7 @@ func TestV3IndexIvOptional(t *testing.T) {
 	gap := gapOf("no_data")
 	row := func(extra map[string]any) map[string]any {
 		r := map[string]any{"name": "Alpha", "iv": gap, "rv20": gap, "iv_minus_rv20": gap}
-		for k, v := range extra {
-			r[k] = v
-		}
+		maps.Copy(r, extra)
 		return r
 	}
 	figure := map[string]any{"kind": "value", "value": 21.5, "text": "21.5", "unit": "vol_points"}
