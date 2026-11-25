@@ -11,7 +11,7 @@ import type { Payload } from '@/types/option_notices_page'
 
 type Block = Payload['accounts'][number]
 
-const STATUS_LABEL: Record<string, string> = { ok: 'Current', stale: 'Stale', no_capture: 'No capture' }
+const STATUS_LABEL: Record<string, string> = { ok: '最新', stale: '过期', no_capture: '未采集' }
 
 export function AliasBlock({ block }: { block: Block }) {
   return (
@@ -57,9 +57,9 @@ export function AliasBlock({ block }: { block: Block }) {
                 <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Currency</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>日期</TableHead>
+                      <TableHead>币种</TableHead>
+                      <TableHead>金额</TableHead>
                     </TableRow>
                   </TableHeader>
                 </Table>
