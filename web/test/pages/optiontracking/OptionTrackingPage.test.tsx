@@ -61,8 +61,13 @@ it('puts the recent and check tables in closed accordion items', async () => {
   const text = await show(ok)
   const items = [...host.querySelectorAll('[data-slot="accordion-item"]')]
   expect(items.map((el) => el.getAttribute('data-state'))).toEqual(['closed', 'closed'])
-  expect(text).toContain('Closed in the last 30 days')
-  expect(text).toContain('Flex reconciled with the account')
+  expect(text).toContain('近30天已平仓')
+  expect(text).toContain('Flex 与账户核对')
+})
+
+it('TestAccountBadgeChinese', async () => {
+  await show(ok)
+  expect(host.querySelector('[data-left-out]')?.textContent?.startsWith('未计入的长腿')).toBe(true)
 })
 
 it('shows the early-assignment badge once the recent item is opened', async () => {
