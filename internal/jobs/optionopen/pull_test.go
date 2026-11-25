@@ -458,7 +458,6 @@ func TestRunWithUnreadSpotIsRetryable(t *testing.T) {
 		name    string
 		callErr error
 	}{
-		{"no price", nil},
 		{"call error", typedErr{contracts.Retryable}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -489,11 +488,30 @@ func TestRunWithUnreadSpotIsRetryable(t *testing.T) {
 	}
 }
 
-func TestRunRetryOfAKeyWhoseSpotCameBack(t *testing.T) {
+func TestRunWithNoSpotPriceIsPulledNotRetryable(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 8)
 	b := newFake(100)
 	unreadSpot(b, 1, nil)
+	res := runAll(t, newPull(t, s, b))
+	if res.Err != nil || res.Usable != 8 || res.Returned != 8 {
+		t.Fatalf("err %v usable %d returned %d, want 8 usable rows and no error", res.Err, res.Usable, res.Returned)
+	}
+	if len(s.stored) != 8 {
+		t.Fatalf("stored %d rows, want 8", len(s.stored))
+	}
+	for _, r := range s.stored {
+		if r.Status != stOK || r.UnderlyingPrice != nil || r.UnderlyingEventTs != nil {
+			t.Errorf("row %d status %d price %v, want status ok and no underlying price", r.InstrumentID, r.Status, r.UnderlyingPrice)
+		}
+	}
+}
+
+func TestRunRetryOfAKeyWhoseSpotCameBack(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 8)
+	b := newFake(100)
+	unreadSpot(b, 1, typedErr{contracts.Retryable})
 	j := newPull(t, s, b)
 	if res := runAll(t, j); res.Err == nil || res.Err.Kind() != contracts.Retryable {
 		t.Fatalf("first run: %v", res.Err)

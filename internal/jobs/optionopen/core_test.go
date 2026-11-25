@@ -238,8 +238,8 @@ func TestUnderlyingSnapshotFailsOrHasNoData(t *testing.T) {
 			b.under = tc.under
 			ts := []Target{target(1, 11, ClassAroundSpot, 95, Put), target(1, 12, ClassPuts, 90, Put)}
 			r := newCore(b).Pull(context.Background(), ts)
-			if len(b.optCalls) != 0 {
-				t.Fatalf("a quote was taken against a stale spot: %d calls", len(b.optCalls))
+			if len(b.optCalls) == 0 {
+				t.Fatal("the option quotes were not asked")
 			}
 			if len(r.Rows) != 2 {
 				t.Fatalf("rows %d, want one per item", len(r.Rows))
@@ -248,11 +248,8 @@ func TestUnderlyingSnapshotFailsOrHasNoData(t *testing.T) {
 				if row.OutsideBand {
 					t.Error("outside_band must be false for a failed underlying snapshot")
 				}
-				if tc.code != "" && (row.Status != stDeferred || code(row) != tc.code) {
-					t.Errorf("status %d code %q, want deferred %q", row.Status, code(row), tc.code)
-				}
-				if tc.code == "" && row.Status != stError {
-					t.Errorf("a permanent call error gives status %d, want error", row.Status)
+				if row.UnderlyingPrice != nil {
+					t.Errorf("underlying price %v, want empty", *row.UnderlyingPrice)
 				}
 			}
 		})
