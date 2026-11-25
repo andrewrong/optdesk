@@ -38,7 +38,7 @@ func applyEarnings(ctx context.Context, c Config, d time.Time, day contracts.Day
 		if string(r.Status) != "listed" || r.ReportDate == nil || r.ReportDate.Format(dayLayout) < sessionDay {
 			continue
 		}
-		if best == nil || r.ReportDate.Time.Before(best.ReportDate.Time) {
+		if best == nil || r.ReportDate.Before(best.ReportDate.Time) {
 			best = r
 		}
 	}

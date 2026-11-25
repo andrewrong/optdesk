@@ -22,8 +22,8 @@ type earningsOut struct {
 }
 
 // earningsCell reads the stored earnings rows of the issuer for the 120 days up to day and shows
-// the earliest listed report date on or after day, whatever the status of the last row: "MM-DD". With none, the last row when it is listed and has a date before day shows
-// "<published> MM-DD" (the frozen schema value, see publishedPrefix). No reader, no row or a row without a date is a gap; a reader error is
+// the earliest listed report date on or after day, whatever the status of the last row: "MM-DD".
+// With none, the last row when it is listed and has a date before day shows "<published> MM-DD" (the frozen schema value, see publishedPrefix). No reader, no row or a row without a date is a gap; a reader error is
 // returned. An empty issuer is a gap read before the reader is called. The text copies the stored date.
 func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) (any, error) {
 	if c.Earnings == nil {
@@ -47,7 +47,7 @@ func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) 
 		if string(r.Status) != "listed" || r.ReportDate == nil || r.ReportDate.Format(dayLayout) < today {
 			continue
 		}
-		if best == nil || r.ReportDate.Time.Before(*best) {
+		if best == nil || r.ReportDate.Before(*best) {
 			t := r.ReportDate.Time
 			best = &t
 		}
