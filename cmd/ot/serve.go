@@ -92,7 +92,7 @@ func runServe(a *app, args []string) error {
 		rd.live = lq
 	}
 	a.log.Info("serve listening", "component", "ot", "status", "ok")
-	return serveHandler(ctx, ln, siteHandler(a, clk, *dayFlag, rd, a.deps.newHandler, newAssets()))
+	return serveHandler(ctx, ln, gzipHandler(siteHandler(a, clk, *dayFlag, rd, a.deps.newHandler, newAssets())))
 }
 
 // loopbackListen reports whether addr is "host:port" with a loopback IP literal as its host.
