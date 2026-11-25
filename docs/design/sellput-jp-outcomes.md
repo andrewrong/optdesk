@@ -76,7 +76,7 @@ Files: `web/src/types/option_candidates_page.ts`, `web/src/pages/candidates/Cand
 
 ## Owner-visible results
 
-- /options/candidates, yen group: each JP name without rows reads "交易所无报价", "取数失败（可重试）", "没读到标的现价", "未轮到取数" "有报价，但没有合格的候选" or "没有这个名字的期权链行（不在今日取数计划里，或今日取数未运行）", with counts; today 2413 reads no quote and 2408 reads that its stock price was not read.
+- /options/candidates, yen group: each JP name without rows reads "交易所无报价", "取数失败（可重试）", "没读到标的现价", "未轮到取数", "有报价，但没有合格的候选", "其他状态（<code>）" or "没有这个名字的期权链行（不在今日取数计划里，或今日取数未运行）", with counts; today 2413 reads no quote and 2408 reads that its stock price was not read.
 
 ## Checked by CI
 
