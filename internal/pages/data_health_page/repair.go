@@ -22,7 +22,6 @@ const (
 )
 
 const (
-	lostText     = "lost: the source gives only the present"
 	slotLayout   = "15:04"
 	dayLayout    = "2006-01-02"
 	zoneAbbrev   = "MST"
