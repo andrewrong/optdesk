@@ -250,8 +250,11 @@ func (l *listedJob) RestartSensitive() bool {
 	return false
 }
 
-// asTyped returns the TypedError err is or wraps, or nil when it is none.
+// asTyped returns the TypedError err is or wraps; an error that is none becomes a Permanent listedError that
+// wraps it, so a failure never turns into a nil error.
 func asTyped(err error) contracts.TypedError {
-	te, _ := errors.AsType[contracts.TypedError](err)
-	return te
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
+		return te
+	}
+	return &listedError{kind: contracts.Permanent, msg: "untyped error", err: err}
 }

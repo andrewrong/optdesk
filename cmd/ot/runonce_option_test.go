@@ -623,7 +623,7 @@ func TestAsTypedFindsWrappedTypedError(t *testing.T) {
 	if got := asTyped(errors.Join(errors.New("outer"), typed)); got == nil || got.Kind() != contracts.Permanent {
 		t.Fatalf("wrapped typed error not found: %v", got)
 	}
-	if got := asTyped(errors.New("plain")); got != nil {
+	if got := asTyped(errors.New("plain")); got == nil || got.Kind() != contracts.Permanent || got.Error() != "untyped error: plain" {
 		t.Fatalf("plain error answered %v", got)
 	}
 }
