@@ -25,7 +25,7 @@ func TestPlanManifestParamsEqualDefaultPlanParams(t *testing.T) {
 				got.Field(i).Interface(), want.Field(i).Interface())
 		}
 	}
-	if m.params.CeilTotal != 2050 || m.params.CeilAroundSpot != 0 || m.params.CeilPuts != 0 || m.params.CeilCalls != 0 || m.params.CeilPerStock != 0 {
+	if m.params.CeilTotal != 0 || m.params.CeilAroundSpot != 0 || m.params.CeilPuts != 0 || m.params.CeilCalls != 0 || m.params.CeilPerStock != 0 {
 		t.Errorf("ceilings of job_plan.toml: %+v", m.params)
 	}
 }

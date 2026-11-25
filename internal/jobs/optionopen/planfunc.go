@@ -102,7 +102,7 @@ func DefaultPlanParams() PlanParams {
 		FiveDollarNames: []string{"SPY", "QQQ", "IWM"},
 		DeepPutsDrop:    0.15,
 		// A ceiling of 0 means none: the US plan is cut by the total only, in the order of its rank.
-		CeilTotal: 2050,
+		CeilTotal: 0,
 	}
 }
 

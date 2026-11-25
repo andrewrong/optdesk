@@ -196,6 +196,9 @@ type fakeResolver struct {
 	asked  []broker.Contract
 	conID  int64
 	listed int
+	// hold, when set, is called by every ResolveContract before it answers, outside the lock, so that a test can keep
+	// several calls in flight.
+	hold func()
 }
 
 func (f *fakeResolver) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
@@ -206,6 +209,9 @@ func (f *fakeResolver) ListChains(context.Context, broker.Contract) ([]broker.Ch
 }
 
 func (f *fakeResolver) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+	if f.hold != nil {
+		f.hold()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	n := len(f.asked)

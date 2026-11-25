@@ -520,7 +520,7 @@ func (r *listRun) callsPhase(ctx context.Context) contracts.TypedError {
 		if r.stop = r.halt(); r.stop != "" {
 			return nil
 		}
-		if r.written >= r.j.m.MaxNew {
+		if r.j.m.MaxNew > 0 && r.written >= r.j.m.MaxNew {
 			r.stop = reasonMaxNew
 			return nil
 		}

@@ -9,13 +9,16 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
 // The stored band of a stock: which contracts of a chain the resolve jobs ask for.
 
 // candidates lists the contracts of the stored band of the stock, the held contracts first and then by distance
-// from the spot, so that a cap drops the far strikes first.
-func (r *keyRun) candidates(chains []broker.Chain, spot, sigma float64, held bool) []candidate {
+// from the spot, so that the nearest strikes are asked first. A strike off the stored grid of its expiry is dropped and counted.
+func (r *keyRun) candidates(chains []broker.Chain, refs []openquote.OptionRef, spot, sigma float64, held bool) ([]candidate, int) {
+	grid := newExpiryGrid(refs)
+	skipped := 0
 	seen := map[string]bool{}
 	var out []candidate
 	add := func(c candidate) {
@@ -45,7 +48,14 @@ func (r *keyRun) candidates(chains []broker.Chain, spot, sigma float64, held boo
 			}
 			lo, hi := StoredBand(p, spot, sigma, max(dte, 1))
 			for _, c := range bandOf(strikes, spot, lo, hi, p.MinPuts, held || p.Calls == CallsAll) {
-				add(mk(ch, exp, c.strike, c.right, false))
+				cand := mk(ch, exp, c.strike, c.right, false)
+				if !grid.allows(cand.expiry, ch.TradingClass, c.strike) {
+					if !seen[cand.key()] {
+						skipped++
+					}
+					continue
+				}
+				add(cand)
 			}
 		}
 	}
@@ -55,7 +65,7 @@ func (r *keyRun) candidates(chains []broker.Chain, spot, sigma float64, held boo
 		}
 		return out[i].dist < out[k].dist
 	})
-	return out
+	return out, skipped
 }
 
 // heldCandidates adds the open option positions of the stock, whatever their expiry, on the chain that lists
