@@ -410,3 +410,14 @@ func TestDetailNoReaderSentenceIsChinese(t *testing.T) {
 		t.Fatalf("status = %v, sentence = %v", m["run_status"], m["sentence"])
 	}
 }
+
+func TestDetailUnmappedKindTitle(t *testing.T) {
+	t.Parallel()
+	res := compute.StructureResult{Structures: []compute.Structure{{ID: "main:T1:1", Alias: "main", Underlying: "MSFT",
+		Currency: "USD", Kind: "butterfly", Legs: []compute.StructureLeg{{PositionID: "main:T1:1", Right: "P", Strike: "300",
+			Expiry: "2026-12-18", Quantity: "1", Multiplier: "100"}}}}}
+	m := readFixtureless(res).build(t, "main:T1:1", false)
+	if got := m["title"]; got != "MSFT 未识别组合 Unidentified" {
+		t.Fatalf("title = %v, want the Unidentified text", got)
+	}
+}
