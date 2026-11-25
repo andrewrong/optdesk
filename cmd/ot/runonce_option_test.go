@@ -616,3 +616,14 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }
+
+func TestAsTypedFindsWrappedTypedError(t *testing.T) {
+	t.Parallel()
+	typed := &listedError{kind: contracts.Permanent, msg: "x"}
+	if got := asTyped(errors.Join(errors.New("outer"), typed)); got == nil || got.Kind() != contracts.Permanent {
+		t.Fatalf("wrapped typed error not found: %v", got)
+	}
+	if got := asTyped(errors.New("plain")); got != nil {
+		t.Fatalf("plain error answered %v", got)
+	}
+}
