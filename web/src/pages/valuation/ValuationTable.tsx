@@ -19,8 +19,8 @@ const STICKY = 'sticky left-0 bg-background'
 const WRAP_HEAD = new Set(['buy_price', 'version_date'])
 
 // The gloss reads "<term>: <text>"; the tooltip shows the text without the leading term.
-const Head = ({ label, gloss }: { label: string; gloss?: string }) => {
-  const explain = gloss ? gloss.replace(`${label}: `, '') : ''
+const Head = ({ label, term, gloss }: { label: string; term: string; gloss?: string }) => {
+  const explain = gloss ? gloss.replace(`${term}: `, '') : ''
   return (
     <>
       {label}
@@ -38,16 +38,17 @@ const Head = ({ label, gloss }: { label: string; gloss?: string }) => {
   )
 }
 
-const text = (key: keyof Row, header: string, gloss?: string): ColumnDef<Row> => ({
+// `term` is the English key into GLOSS; `header` is the Chinese head.
+const text = (key: keyof Row, header: string, term = ''): ColumnDef<Row> => ({
   id: key,
-  header: () => <Head label={header} gloss={gloss} />,
+  header: () => <Head label={header} term={term} gloss={GLOSS[term] ?? ''} />,
   cell: ({ row }) => String(row.original[key]),
 })
 
 const COLUMNS: ColumnDef<Row>[] = [
   {
     id: 'name',
-    header: 'Name',
+    header: '名称',
     cell: ({ row: { original: r } }) => (
       <div>
         <a className="font-medium underline" href={`/valuation-company?company=${encodeURIComponent(r.company_key)}`}>
@@ -59,7 +60,7 @@ const COLUMNS: ColumnDef<Row>[] = [
           <Button asChild size="sm" variant="outline" className="ml-2">
             <a href={r.entry_link}>
               <Plus aria-hidden />
-              Enter
+              录入
             </a>
           </Button>
         )}
@@ -68,7 +69,7 @@ const COLUMNS: ColumnDef<Row>[] = [
   },
   {
     id: 'zone',
-    header: 'Zone',
+    header: '区间',
     cell: ({ row: { original: r } }) => (
       <div className="flex flex-wrap gap-1">
         {r.zone !== '' ? <Badge>{r.zone}</Badge> : null}
@@ -76,20 +77,20 @@ const COLUMNS: ColumnDef<Row>[] = [
       </div>
     ),
   },
-  text('close', 'Close'),
-  text('v', 'V', GLOSS['V'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('p', 'P', GLOSS['P'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('version_date', 'Version date', GLOSS['Version date'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('r', 'R', GLOSS['R'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('c', 'C', GLOSS['C'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('heavy', 'Heavy', GLOSS['Heavy'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('buy_zone', 'Buy zone'),
-  text('buy_price', 'Hand-typed buy price'),
-  text('fair_zone', 'Fair zone'),
-  text('trim', 'Trim', GLOSS['Trim'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('clear', 'Clear', GLOSS['Clear'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('core', 'Core', GLOSS['Core'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('status', 'Status'),
+  text('close', '收盘价'),
+  text('v', 'V', 'V'), // gloss source: GLOSS in CompanyView.tsx
+  text('p', 'P', 'P'), // gloss source: GLOSS in CompanyView.tsx
+  text('version_date', '版本日期', 'Version date'), // gloss source: GLOSS in CompanyView.tsx
+  text('r', 'R', 'R'), // gloss source: GLOSS in CompanyView.tsx
+  text('c', 'C', 'C'), // gloss source: GLOSS in CompanyView.tsx
+  text('heavy', '重仓点', 'Heavy'), // gloss source: GLOSS in CompanyView.tsx
+  text('buy_zone', '买入区间'),
+  text('buy_price', '手填买入价'),
+  text('fair_zone', '合理区间'),
+  text('trim', '减仓线', 'Trim'), // gloss source: GLOSS in CompanyView.tsx
+  text('clear', '清仓线', 'Clear'), // gloss source: GLOSS in CompanyView.tsx
+  text('core', '核心线', 'Core'), // gloss source: GLOSS in CompanyView.tsx
+  text('status', '状态'),
 ]
 
 export function ValuationTable({ rows }: { rows: Row[] }) {
