@@ -14,11 +14,11 @@ import { ValuationTable } from './ValuationTable'
 function title(payload: Payload): string {
   switch (payload.view) {
     case 'table':
-      return 'Valuation table'
+      return '估值表'
     case 'company':
-      return payload.company?.name ?? 'Company'
+      return payload.company?.name ?? '公司'
     case 'form':
-      return 'Enter a valuation'
+      return '录入估值'
   }
 }
 
@@ -28,7 +28,7 @@ function Body({ payload }: { payload: Payload }) {
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Companies{payload.unvalued_count > 0 ? `, not entered: ${payload.unvalued_count}` : ''}</CardTitle>
+            <CardTitle>公司{payload.unvalued_count > 0 ? `，未录入：${payload.unvalued_count}` : ''}</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollHint />
@@ -50,10 +50,10 @@ export function ValuationPage({ payload }: { payload: Payload }) {
         <h1 className="text-2xl font-semibold">{title(payload)}</h1>
         <p className="mt-2 flex gap-4 text-sm">
           <a href="/valuation" aria-current="page" className="font-medium">
-            Table
+            表格
           </a>
           <a href="/valuation-params" className="underline">
-            Parameters
+            参数
           </a>
         </p>
       </header>

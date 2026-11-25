@@ -63,6 +63,30 @@ describe('registration', () => {
 })
 
 describe('table view', () => {
+  it('TestValuationTableChineseTitles: the page title, the two links and the card title are Chinese', async () => {
+    const el = await render(fixture('table'))
+    expect(el.querySelector('h1')?.textContent).toBe('估值表')
+    const links = [...el.querySelectorAll('header a')].map((a) => a.textContent)
+    expect(links).toEqual(['表格', '参数'])
+    expect(el.querySelector('[data-slot="card-title"]')?.textContent?.startsWith('公司，未录入：')).toBe(true)
+  })
+
+  it('TestValuationTableCardTitleWithoutUnentered: the card title is just 公司 when no name is unentered', async () => {
+    const payload = fixture('table')
+    payload.unvalued_count = 0
+    const el = await render(payload)
+    expect(el.querySelector('[data-slot="card-title"]')?.textContent).toBe('公司')
+  })
+
+  it('TestValuationTableHeadsInOrder: the sixteen heads read in the order of the issue', async () => {
+    const el = await render(fixture('table'))
+    const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent)
+    expect(heads).toEqual([
+      '名称', '区间', '收盘价', 'V', 'P', '版本日期', 'R', 'C',
+      '重仓点', '买入区间', '手填买入价', '合理区间', '减仓线', '清仓线', '核心线', '状态',
+    ])
+  })
+
   it('TestUnvaluedRowHasEntryLink: one row per company, an entry button on an unvalued row only', async () => {
     const el = await render(fixture('table'))
     const rows = el.querySelectorAll('tbody tr')
@@ -70,7 +94,7 @@ describe('table view', () => {
     const entry = (key: string) => el.querySelector(`tr[data-company="${key}"] td:first-child a[href^="/valuation/form"]`)
     expect(entry('US:AAA')).toBeNull()
     expect(entry('HK:0001')?.getAttribute('href')).toBe('/valuation/form?key=HK%3A0001')
-    expect(entry('US:CCC')?.textContent).toContain('Enter')
+    expect(entry('US:CCC')?.textContent).toContain('录入')
     expect(entry('US:CCC')?.querySelector('svg')).not.toBeNull()
     expect(el.textContent).toContain('not entered')
   })
@@ -81,7 +105,7 @@ describe('table view', () => {
     expect(heads).toHaveLength(16)
     expect(heads.map((h) => h.textContent)).not.toContain('')
     const cell = el.querySelector('tr[data-company="HK:0001"] td') as HTMLElement
-    expect(cell.querySelector('a[href="/valuation/form?key=HK%3A0001"]')?.textContent).toContain('Enter')
+    expect(cell.querySelector('a[href="/valuation/form?key=HK%3A0001"]')?.textContent).toContain('录入')
   })
 
   it('TestFigureCellsNoWrap: figure cells stay on one line, word cells wrap', async () => {
@@ -90,16 +114,16 @@ describe('table view', () => {
     const cells = [...el.querySelectorAll('tr[data-company="US:AAA"] td')]
     const at = (head: string) => cells[heads.findIndex((h) => h.startsWith(head))]
     expect(at('V')?.className).not.toContain('whitespace-normal')
-    expect(at('Buy zone')?.className).toContain('whitespace-normal break-words')
-    expect(at('Status')?.className).toContain('whitespace-normal')
-    expect(at('Zone')?.className).toContain('whitespace-normal')
+    expect(at('买入区间')?.className).toContain('whitespace-normal break-words')
+    expect(at('状态')?.className).toContain('whitespace-normal')
+    expect(at('区间')?.className).toContain('whitespace-normal')
   })
 
   it('puts zone and close after name', async () => {
     const el = await render(fixture('table'))
     const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent)
-    expect(heads.slice(0, 3)).toEqual(['Name', 'Zone', 'Close'])
-    expect(heads[heads.length - 1]).toBe('Status')
+    expect(heads.slice(0, 3)).toEqual(['名称', '区间', '收盘价'])
+    expect(heads[heads.length - 1]).toBe('状态')
     expect(el.querySelector('[data-scroll-hint]')?.textContent).toBe('左右滑动可看全部列')
   })
 
@@ -127,10 +151,11 @@ describe('table view', () => {
     const v = heads.find((h) => h.textContent === 'V')
     expect(v?.textContent).toBe('V')
     expect(v?.querySelectorAll('[aria-label]')).toHaveLength(1)
-    expect(heads.find((h) => h.textContent === 'Name')?.querySelectorAll('[aria-label]')).toHaveLength(0)
-    for (const term of ['V', 'P', 'Version date', 'R', 'C', 'Heavy', 'Trim', 'Clear', 'Core']) {
+    expect(heads.find((h) => h.textContent === '名称')?.querySelectorAll('[aria-label]')).toHaveLength(0)
+    const shown: Record<string, string> = { V: 'V', P: 'P', 'Version date': '版本日期', R: 'R', C: 'C', Heavy: '重仓点', Trim: '减仓线', Clear: '清仓线', Core: '核心线' }
+    for (const [term, head] of Object.entries(shown)) {
       expect(GLOSS[term]).toBeTruthy()
-      const th = heads.find((h) => h.textContent === term)
+      const th = heads.find((h) => h.textContent === head)
       expect(th?.querySelectorAll('[aria-label]')).toHaveLength(1)
     }
     for (const h of heads) expect(h.querySelectorAll('[aria-label]').length).toBeLessThanOrEqual(1)
@@ -139,8 +164,8 @@ describe('table view', () => {
   it('TestHandPriceColumn: the hand-typed buy price column sits right after the buy zone', async () => {
     const el = await render(fixture('table'))
     const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent)
-    const at = heads.indexOf('Buy zone')
-    expect(heads[at + 1]).toBe('Hand-typed buy price')
+    const at = heads.indexOf('买入区间')
+    expect(heads[at + 1]).toBe('手填买入价')
     const cells = [...el.querySelectorAll('tr[data-company="US:AAA"] td')].map((c) => c.textContent)
     expect(cells[at]).toBe('67 - 72')
     expect(cells[at + 1]).toBe('70')
