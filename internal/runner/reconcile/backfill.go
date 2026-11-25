@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -151,10 +152,25 @@ func (r *reconciler) backfillPlan(
 	for _, k := range added {
 		jobs[k] = pDay.job[k]
 	}
+	live := map[string]bool{}
+	for k := range jobs {
+		live[k.DatasetID] = true
+	}
+	kept := keys[:0:0]
+	dropped := map[string]int{}
 	for _, k := range keys {
-		if _, ok := jobs[k]; !ok {
+		if _, ok := jobs[k]; ok {
+			kept = append(kept, k)
+			continue
+		}
+		if !live[k.DatasetID] {
 			return nil, plan{}, nil, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
 		}
+		dropped[k.DatasetID]++
+	}
+	keys = kept
+	for _, ds := range slices.Sorted(maps.Keys(dropped)) {
+		r.log.Warn("backfill dropped stored keys no job returns", "day", day, "dataset", ds, "keys", dropped[ds])
 	}
 	p := plan{keys: all, job: jobs, hash: pDay.hash, held: pDay.held}
 	if err := r.putMissingWindows(ctx, day, p, sess); err != nil {
