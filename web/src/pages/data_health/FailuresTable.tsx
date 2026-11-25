@@ -10,22 +10,22 @@ type Dataset = Payload['datasets'][number]
 type Failure = NonNullable<Dataset['repeated_failures']>[number]
 
 const columns = (job: string): ColumnDef<Failure>[] => [
-  { id: 'job', header: 'Job', cell: () => job },
-  { id: 'key', header: 'Key', cell: ({ row }) => row.original.key },
+  { id: 'job', header: '任务', cell: () => job },
+  { id: 'key', header: '键', cell: ({ row }) => row.original.key },
   {
     id: 'kind',
-    header: 'Kind',
+    header: '类型',
     cell: ({ row }) => (
       <Badge variant={row.original.kind === 'failed' ? 'destructive' : 'secondary'}>{row.original.kind}</Badge>
     ),
   },
-  { id: 'days', header: 'Days', cell: ({ row }) => row.original.days },
-  { id: 'runs', header: 'Runs', cell: ({ row }) => row.original.runs },
-  { id: 'first_day', header: 'First day', cell: ({ row }) => row.original.first_day },
-  { id: 'last_day', header: 'Last day', cell: ({ row }) => row.original.last_day },
+  { id: 'days', header: '天数', cell: ({ row }) => row.original.days },
+  { id: 'runs', header: '运行次数', cell: ({ row }) => row.original.runs },
+  { id: 'first_day', header: '首日', cell: ({ row }) => row.original.first_day },
+  { id: 'last_day', header: '末日', cell: ({ row }) => row.original.last_day },
   {
     id: 'last_class',
-    header: 'Last class',
+    header: '最近分类',
     cell: ({ row }) => (
       <div>
         <div>{row.original.last_class}</div>

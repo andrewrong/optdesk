@@ -16,7 +16,7 @@ export function DataHealthView({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl font-semibold">Data health</h1>
+            <h1 className="text-xl font-semibold">数据健康</h1>
           </CardTitle>
           <p className="text-sm text-muted-foreground">{payload.overwrite_note}</p>
         </CardHeader>
@@ -37,7 +37,7 @@ export function DataHealthView({ payload }: { payload: Payload }) {
       {payload.datasets.some((d) => d.repeated_failures !== undefined) ? (
         <Card>
           <CardHeader>
-            <CardTitle>Repeated failures</CardTitle>
+            <CardTitle>重复失败</CardTitle>
             {payload.failures_note ? <p className="text-sm text-muted-foreground">{payload.failures_note}</p> : null}
           </CardHeader>
           <CardContent className="space-y-4">
@@ -49,7 +49,7 @@ export function DataHealthView({ payload }: { payload: Payload }) {
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>Legend</CardTitle>
+          <CardTitle>图例</CardTitle>
         </CardHeader>
         <CardContent>
           <dl data-legend className="space-y-2 text-sm">

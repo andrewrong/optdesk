@@ -47,7 +47,7 @@ describe('repeated failures tables', () => {
     const el = await render(ok())
     const section = el.querySelector('[data-failures="account_statement"]')!
     expect([...section.querySelectorAll('th')].map((h) => h.textContent)).toEqual([
-      'Job', 'Key', 'Kind', 'Days', 'Runs', 'First day', 'Last day', 'Last class',
+      '任务', '键', '类型', '天数', '运行次数', '首日', '末日', '最近分类',
     ])
     const rows = section.querySelectorAll('tbody tr')
     expect(rows).toHaveLength(2)
