@@ -61,6 +61,15 @@ describe('base data page', () => {
     expect(age.classList.contains('hidden')).toBe(true)
   })
 
+  it('prints the title, card titles and thresholds heads in Chinese', async () => {
+    const h = await render(ok)
+    expect(h.querySelector('h1')?.textContent).toBe('基础数据 (Base data)')
+    const titles = [...h.querySelectorAll('[data-slot="card-title"]')].map((c) => c.textContent)
+    expect(titles).toContain('术语表 (Glossary)')
+    expect(titles).toContain('阈值 (Thresholds)')
+    expect([...h.querySelectorAll('[data-thresholds] th')].map((c) => c.textContent)).toEqual(['数据集', '规则', '预警线', '失败线', '来源'])
+  })
+
   it('fixes the dataset column and shows the scroll hint', async () => {
     const h = await render(ok)
     expect(h.querySelectorAll('[data-scroll-hint]')).toHaveLength(1)
