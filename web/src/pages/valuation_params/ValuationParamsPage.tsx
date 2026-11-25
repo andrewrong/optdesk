@@ -32,7 +32,7 @@ function ProposalCard({ payload }: { payload: Payload }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Proposal of R</CardTitle>
+        <CardTitle>{'R 值建议 (Proposal of R)'}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p>
@@ -45,14 +45,14 @@ function ProposalCard({ payload }: { payload: Payload }) {
           <OwnerForm form={form} action="accept_r">
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label htmlFor="ar-yield">Yield</Label>
+                <Label htmlFor="ar-yield">{'收益率'}</Label>
                 <Input id="ar-yield" name="yield" defaultValue={latest?.value ?? ''} required />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ar-date">Effective date</Label>
+                <Label htmlFor="ar-date">{'生效日'}</Label>
                 <Input id="ar-date" name="effective_date" defaultValue={latest?.day ?? ''} required />
               </div>
-              <Button type="submit">Update R</Button>
+              <Button type="submit">{'更新 R'}</Button>
             </div>
           </OwnerForm>
         ) : null}
@@ -66,13 +66,13 @@ export function ValuationParamsPage({ payload }: { payload: Payload }) {
   return (
     <div className="min-w-0 space-y-6" data-page="valuation_params">
       <header>
-        <h1 className="text-2xl font-semibold">Valuation parameters</h1>
+        <h1 className="text-2xl font-semibold">{'估值参数 (Valuation parameters)'}</h1>
         <p className="mt-2 flex gap-4 text-sm">
           <a href="/valuation" className="underline">
-            Table
+            {'估值表'}
           </a>
           <a href="/valuation-params" aria-current="page" className="font-medium">
-            Parameters
+            {'参数'}
           </a>
         </p>
       </header>

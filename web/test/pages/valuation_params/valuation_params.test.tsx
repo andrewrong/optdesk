@@ -46,8 +46,8 @@ describe('header and glosses', () => {
     const el = await render(base())
     const links = [...el.querySelectorAll('header a')]
     expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Table', '/valuation'],
-      ['Parameters', '/valuation-params'],
+      ['估值表', '/valuation'],
+      ['参数', '/valuation-params'],
     ])
     expect(links[0]?.getAttribute('aria-current')).toBeNull()
     expect(links[1]?.getAttribute('aria-current')).toBe('page')
@@ -82,7 +82,7 @@ describe('proposal and warnings', () => {
     expect(form.getAttribute('action')).toBe(payload.form?.post_path)
     expect(form.getAttribute('method')).toBe('post')
     const submit = form.querySelector('button[type="submit"]')
-    expect(submit?.textContent).toBe('Update R')
+    expect(submit?.textContent).toBe('更新 R')
     expect((form.querySelector('input[name="action"]') as HTMLInputElement).value).toBe('accept_r')
     expect((form.querySelector('input[name="yield"]') as HTMLInputElement).value).toBe('4.20')
     expect((form.querySelector('input[name="mac"]') as HTMLInputElement).value).toBe(payload.form?.mac)
