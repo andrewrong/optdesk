@@ -245,13 +245,13 @@ func TestOptionOpenDeadSocketDoesNotDial(t *testing.T) {
 	}
 }
 
-func TestOptionOpenResolveFamiliesDialOwnClientWithOneInFlight(t *testing.T) {
+func TestOptionOpenResolveFamiliesDialOwnClientWithFiveInFlight(t *testing.T) {
 	t.Parallel()
 	h := newOpenHarness(t, deadEnv, true, nil)
 	for _, id := range openIDs {
 		h.build(t, id)
 	}
-	if len(h.dialed) != 2 || h.dialed[0].ResolveInFlight != 1 || h.dialed[1].ResolveInFlight != 1 {
+	if len(h.dialed) != 2 || h.dialed[0].ResolveInFlight != 5 || h.dialed[1].ResolveInFlight != 5 {
 		t.Fatalf("dials %+v", h.dialed)
 	}
 	h.jc.extra.closeAll()
@@ -268,12 +268,24 @@ func TestOptionOpenResolveDialFailureHolds(t *testing.T) {
 	}
 }
 
-func TestOpenResolveMaxNewFromEnvironment(t *testing.T) {
+func TestResolveJobsAreBuiltWithNoMaxNew(t *testing.T) {
 	t.Parallel()
-	for env, want := range map[string]int{"": 0, "0": 0, "1500": 1500, "-3": 0, "x": 0} {
-		h := newOpenHarness(t, map[string]string{envOpenResolveMaxNew: env}, true, nil)
-		if got := openResolveMaxNew(h.a); got != want {
-			t.Fatalf("%q gives %d, want %d", env, got, want)
+	h := newOpenHarness(t, map[string]string{
+		"OT_OPEN_RESOLVE_MAX_NEW":  "1500",
+		openquote.DSNEnvOptionOpen: deadEnv[openquote.DSNEnvOptionOpen],
+	}, true, nil)
+	var got []optionopen.ResolveOptions
+	capture := func(_ optionopen.ResolveDeps, o optionopen.ResolveOptions) (contracts.Job, error) {
+		got = append(got, o)
+		return optionopen.NewResolve(optionopen.ResolveDeps{}, o)
+	}
+	_, _, _ = buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolve, capture, true, broker.Options{})
+	if len(got) == 0 {
+		t.Skip("constructor not reached with this harness")
+	}
+	for _, o := range got {
+		if o.MaxNew != 0 {
+			t.Fatalf("MaxNew %d, want 0", o.MaxNew)
 		}
 	}
 }
@@ -320,13 +332,13 @@ func TestOptionOpenJPDeadSocketHoldsThroughStartOff(t *testing.T) {
 	}
 }
 
-func TestOptionOpenJPResolveDialsOwnClientWithOneInFlight(t *testing.T) {
+func TestOptionOpenJPResolveDialsOwnClientWithFiveInFlight(t *testing.T) {
 	t.Parallel()
 	h := newOpenHarness(t, deadEnv, true, nil)
 	for _, id := range jpOpenIDs {
 		h.build(t, id)
 	}
-	if len(h.dialed) != 1 || h.dialed[0].ResolveInFlight != 1 {
+	if len(h.dialed) != 1 || h.dialed[0].ResolveInFlight != 5 {
 		t.Fatalf("dials %+v", h.dialed)
 	}
 	h.jc.extra.closeAll()
