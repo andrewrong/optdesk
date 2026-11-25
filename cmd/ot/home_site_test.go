@@ -122,7 +122,7 @@ func TestHomeCompaniesRowsFromStore(t *testing.T) {
 	if !strings.Contains(string(body), `"AAA"`) || strings.Contains(string(body), `"BBB"`) {
 		t.Fatalf("only the held name belongs in the card: %s", body)
 	}
-	if !strings.Contains(string(body), "Held companies: 1") {
+	if !strings.Contains(string(body), "持有公司：1 家") {
 		t.Fatalf("say is not the held count: %s", body)
 	}
 }
@@ -135,7 +135,7 @@ func TestHomeCompaniesNoAccountNoRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), "Held companies: 0") {
+	if strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), "持有公司：0 家") {
 		t.Fatalf("no account reader must give no rows: %s", body)
 	}
 }
