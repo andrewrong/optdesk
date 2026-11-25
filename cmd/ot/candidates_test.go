@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/jonboulle/clockwork"
 	"io"
 	"slices"
 	"strings"
@@ -24,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
+	"github.com/jonboulle/clockwork"
 )
 
 // init adds ot candidates to the exclusions of the leak table (env_test.go) from this file.

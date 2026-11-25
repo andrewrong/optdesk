@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/jonboulle/clockwork"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -16,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/jonboulle/clockwork"
 )
 
 // bookMainB is an accounts.toml of the aliases a and b whose main is b.

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/andrewrong/optdesk/internal/pages"
 	"io"
 	"net/http"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/valuelines"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/market_state_page"
 	"github.com/andrewrong/optdesk/internal/pages/valuation_page"
 	"github.com/andrewrong/optdesk/internal/pages/valuation_params_page"
