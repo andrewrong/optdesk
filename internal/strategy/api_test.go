@@ -3,6 +3,7 @@ package strategy_test
 import (
 	"go/parser"
 	"go/token"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -28,9 +29,7 @@ func (f fake) Evaluate(s strategy.Snapshot) []strategy.Evaluation {
 		"buy": s.BuyPrice, "sale": s.SalePrice, "earnings": s.Earnings.State, "dividend": s.Dividend.State,
 		"rate": s.Rate, "rate_day": string(s.RateDay), "account": s.Accounts[0].Alias,
 	}
-	for k, v := range s.Context {
-		facts[k] = v
-	}
+	maps.Copy(facts, s.Context)
 	leg := strategy.Leg{InstrumentID: "7", Side: "short", Right: "P", Strike: "50", Expiry: "2026-12-18", Multiplier: "100", Quantity: 1}
 	return []strategy.Evaluation{{
 		Key: "7", Legs: []strategy.Leg{leg},

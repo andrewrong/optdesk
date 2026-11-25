@@ -67,7 +67,7 @@ func (c cal) NextSession(ctx context.Context, calendarID string, day contracts.D
 	if err != nil {
 		return clock.Session{}, &typedError{kind: contracts.Permanent, msg: "bad day " + string(day), err: err}
 	}
-	for w := 0; w < maxWindows; w++ {
+	for w := range maxWindows {
 		from := d.AddDate(0, 0, 1+w*window)
 		to := from.AddDate(0, 0, window-1)
 		rows, err := c.src.SessionDays(ctx, calendarID, contracts.Day(from.Format(dayLayout)), contracts.Day(to.Format(dayLayout)))

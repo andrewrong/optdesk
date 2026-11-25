@@ -29,7 +29,7 @@ func (Parser) Parse(liquidHours, timeZoneID string) ([]clock.HoursDay, error) {
 	}
 	var days []clock.HoursDay
 	index := map[contracts.Day]int{}
-	for _, tok := range strings.Split(liquidHours, ";") {
+	for tok := range strings.SplitSeq(liquidHours, ";") {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
 			continue
