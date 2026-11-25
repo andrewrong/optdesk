@@ -228,3 +228,41 @@ func buildBytes(t *testing.T, c Config) []byte {
 	}
 	return b
 }
+
+func TestVixPercentileOfOtherDayIsGap(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, dataDay string }{
+		{"older data day", "2026-11-12"},
+		{"no data day", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := fullConfig(t, sampleResult())
+			base := c.Readings
+			c.Readings = func(ctx context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
+				recs, err := base(ctx, name, kind, subject, from, to)
+				if name == "market.vix_pctile_3y" {
+					recs = []contracts.ReadingRecord{rec(testDay, "0.992", tc.dataDay)}
+				}
+				return recs, err
+			}
+			vix := obj(marketRows(build(t, c))[2])
+			if vix["id"] != "vix" {
+				t.Fatalf("row %v", vix["id"])
+			}
+			if got := obj(vix["figure"])["text"]; got != "VIX 18.5 on Nov 13" {
+				t.Errorf("figure text %q", got)
+			}
+			if vix["day"] != "2026-11-13" {
+				t.Errorf("day %v", vix["day"])
+			}
+			pt := obj(vix["percentile"])["text"].(string)
+			if tc.dataDay != "" && !strings.Contains(pt, "11-12") {
+				t.Errorf("percentile text %q lacks the percentile day", pt)
+			}
+			if !strings.Contains(pt, "11-13") || strings.Contains(pt, "99") {
+				t.Errorf("percentile text %q", pt)
+			}
+		})
+	}
+}

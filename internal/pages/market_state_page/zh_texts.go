@@ -29,7 +29,11 @@ const (
 	windowHySpread    = "FRED 最新收盘值；分位覆盖已存储的全部日期"
 
 	pctWindowVix = "当日之前的 3 个日历年，不含当日；严格低于当日数值的天数占比"
-	pctWindowHy  = "已存储的全部日期，自第一个存储日起；FRED 约提供 3 年数据"
+	// vixPctOtherDayFmt takes the data day of the stored percentile and the day of the level.
+	vixPctOtherDayFmt = "暂无分位：已存储的分位对应 %s，与 VIX 水平的数据日 %s 不是同一天"
+	vixPctDayUnknown  = "日期未知"
+
+	pctWindowHy = "已存储的全部日期，自第一个存储日起；FRED 约提供 3 年数据"
 
 	sectorCaption = "基金涨跌幅减 SPY 涨跌幅，窗口为截至所示终止日的 21 个与 63 个交易日；排名只计两个收盘价都有的基金；为试验窗口，不是预测。"
 	barsCaption   = "柱表示各基金相对 SPY 的 63 日差距，顺序同表格，单位为 pp；没有数值的基金没有柱。"
