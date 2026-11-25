@@ -17,7 +17,7 @@ min_strikes_side = 3
 zone_near = 0.5
 zone_far = 1.05
 list_min_ratio = 0.5
-list_max_new = 60000
+list_max_new = 0
 stop_time = "08:40"
 
 [[window_dte]]

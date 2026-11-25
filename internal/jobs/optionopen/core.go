@@ -181,6 +181,15 @@ func (c *Core) plan() PlanFunc {
 	return BuildPlan
 }
 
+// The stored codes of a deferred row: why the item was not asked. The classifier of
+// internal/compute/optioncand/nameopen.go counts each of them as deferred.
+const (
+	codeBudget      = "BUDGET"       // the key's budget or stop_after was spent
+	codePlanCut     = "PLAN_CUT"     // the plan ceiling deferred the item
+	codeOutsideBand = "OUTSIDE_BAND" // the live band at the open dropped the item
+	codeStockCap    = "STOCK_CAP"    // an added contract over the per-stock cap
+)
+
 func (c *Core) budgetSpent(st *runState) bool {
 	return c.Budget > 0 && c.Clk.Now().Sub(st.start) >= c.Budget
 }
@@ -223,7 +232,7 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 		return
 	}
 	if c.budgetSpent(st) {
-		c.finish(st, ts, stDeferred, "BUDGET", 0, nil)
+		c.finish(st, ts, stDeferred, codeBudget, 0, nil)
 		return
 	}
 	spot, spotTs, code, err := c.spot(ctx, st, ts[0].Under)
@@ -268,9 +277,9 @@ func (c *Core) sort(st *runState, lb liveBand, ts []Target, spot float64, spotTs
 	for _, t := range ts {
 		switch {
 		case t.Item.Deferred:
-			c.add(st, t, c.unasked(t, stDeferred, "", false, spot, spotTs))
+			c.add(st, t, c.unasked(t, stDeferred, codePlanCut, false, spot, spotTs))
 		case !lb.keep[int64(t.Item.InstrumentID)]:
-			c.add(st, t, c.unasked(t, stDeferred, "", true, spot, spotTs))
+			c.add(st, t, c.unasked(t, stDeferred, codeOutsideBand, true, spot, spotTs))
 		default:
 			if _, ok := groups[t.Expiry]; !ok {
 				exps = append(exps, t.Expiry)
@@ -291,7 +300,7 @@ func (c *Core) sort(st *runState, lb liveBand, ts []Target, spot float64, spotTs
 		st.progress[int64(t.Item.UnderlyingID)].Total++
 	}
 	for _, t := range lb.over {
-		c.addAdded(st, t, c.unasked(t, stDeferred, "", false, spot, spotTs))
+		c.addAdded(st, t, c.unasked(t, stDeferred, codeStockCap, false, spot, spotTs))
 	}
 	return groups, exps
 }
@@ -472,7 +481,7 @@ func (c *Core) ask(ctx context.Context, st *runState, ts []Target) []answer {
 			fill(out[i:], stDisconnected, "UNAVAILABLE")
 			return out
 		case c.budgetSpent(st):
-			fill(out[i:], stDeferred, "BUDGET")
+			fill(out[i:], stDeferred, codeBudget)
 			return out
 		}
 		cs := make([]broker.Contract, end-i)

@@ -4,6 +4,7 @@
   {"name": "status 3 other code", "facts": [{"status": 3, "code": "ODD"}], "want": {"outcome": "other", "other": 1}},
   {"name": "failed statuses", "facts": [{"status": 6}, {"status": 8}, {"status": 9}], "want": {"outcome": "failed", "failed": 3}},
   {"name": "status 7 budget", "facts": [{"status": 7, "code": "BUDGET"}], "want": {"outcome": "deferred", "deferred": 1}},
+  {"name": "status 7 plan cut, outside band and stock cap codes", "facts": [{"status": 7, "code": "PLAN_CUT"}, {"status": 7, "code": "STOCK_CAP"}, {"status": 7, "code": "OUTSIDE_BAND"}], "want": {"outcome": "deferred", "deferred": 3}},
   {"name": "status 7 no code", "facts": [{"status": 7}], "want": {"outcome": "deferred", "deferred": 1}},
   {"name": "status 7 outside band with code", "facts": [{"status": 7, "code": "NO_DATA", "outside_band": true}], "want": {"outcome": "deferred", "deferred": 1}},
   {"name": "status 7 other codes", "facts": [{"status": 7, "code": "NO_SUBSCRIPTION"}, {"status": 7, "code": "TIMEOUT"}, {"status": 7, "code": "12"}], "want": {"outcome": "no_spot", "no_spot": 3}},

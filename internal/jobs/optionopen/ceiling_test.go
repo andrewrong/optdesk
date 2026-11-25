@@ -233,7 +233,7 @@ func TestJPPlanParamsKeepTheirCeilings(t *testing.T) {
 	if p.CeilAroundSpot != 350 || p.CeilPuts != 1400 || p.CeilCalls != 1200 || p.CeilPerStock != 60 || p.CeilTotal != 0 {
 		t.Errorf("JP ceilings %+v", p)
 	}
-	if u := DefaultPlanParams(); u.CeilAroundSpot != 0 || u.CeilPuts != 0 || u.CeilCalls != 0 || u.CeilPerStock != 0 || u.CeilTotal != 2050 {
+	if u := DefaultPlanParams(); u.CeilAroundSpot != 0 || u.CeilPuts != 0 || u.CeilCalls != 0 || u.CeilPerStock != 0 || u.CeilTotal != 0 {
 		t.Errorf("US ceilings %+v", u)
 	}
 }
