@@ -55,8 +55,8 @@ var table = []row{
 
 	// notify
 	{"internal/notify", rule{
-		Select: walkTree,
-		Banned: []string{"internal/pages", "internal/jobs", "optionnotice"},
+		Select:       walkTree,
+		BannedSubstr: []string{"internal/pages", "internal/jobs", "optionnotice"},
 		Idents: []string{"Position", "Candidate", "Cushion", "ExcessLiquidity", "AccountReader", "AccountValue",
 			"OptionLedger", "NoticeResult", "CashByDate"}}},
 

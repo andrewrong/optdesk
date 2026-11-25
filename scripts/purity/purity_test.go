@@ -367,3 +367,22 @@ func TestScanDirFailsOnMissingOrEmptyDir(t *testing.T) {
 		}
 	}
 }
+
+// TestNotifyRowBansOptionnoticeSubstring: the notify row bans any import whose path contains optionnotice.
+func TestNotifyRowBansOptionnoticeSubstring(t *testing.T) {
+	t.Parallel()
+	var r rule
+	for _, x := range table {
+		if x.Dir == "internal/notify" {
+			r = x.Rule
+		}
+	}
+	src := "package p\nimport _ \"github.com/andrewrong/optdesk/internal/compute/legacyoptionnotice\"\n"
+	got, err := scanSource(r, "a.go", src, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) == 0 {
+		t.Fatal("import containing optionnotice not reported; the old notify test reported it")
+	}
+}
