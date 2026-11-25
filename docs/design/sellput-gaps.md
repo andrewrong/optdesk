@@ -36,6 +36,8 @@ Rows used: contracts, jobs, pages, web. No row of `modules.md` is added or chang
 - `page.option_candidates_page.v1` gains the optional `Tier.companies` (Decision 2); additive, `schema_version` stays 1. Owner: contracts (issue 1). Generated Go and TypeScript come from the schema, never by hand.
 - Nothing else is shared: the kept date is inside `optioncandidates` and the earnings words are the page's own.
 
+Landed in #4022
+
 ## Issues
 
 All entries: `Design: docs/design/sellput-gaps.md#<decision>`. Issues 2, 3 and 4 are independent of each other and build in parallel after issue 1; issue 3 does not use the new field and needs no wait.
