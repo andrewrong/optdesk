@@ -57,9 +57,10 @@ def test_a_cancel_takes_no_start_slot() -> None:
         pacer = MessagePacer(clock)
         sent: list[int] = []
         for n in range(40):
-            pacer.cancel(partial(sent.append, n))
             await pacer.start()
+            pacer.cancel(partial(sent.append, n))
         await _spin()
+        at_once = len(sent)
         done: list[int] = []
 
         async def forty_first() -> None:
@@ -71,9 +72,24 @@ def test_a_cancel_takes_no_start_slot() -> None:
         before = len(done)
         await clock.advance(1)
         await task
-        return len(sent), before, len(done)
+        return at_once, before, len(done)
 
     assert asyncio.run(run()) == (40, 0, 1)
+
+
+def test_cancels_go_out_at_once_with_the_window_full_of_starts() -> None:
+    async def run() -> int:
+        clock = FakeClock()
+        pacer = MessagePacer(clock)
+        for _ in range(40):
+            await pacer.start()
+        sent: list[int] = []
+        for n in range(40):
+            pacer.cancel(partial(sent.append, n))
+        await _spin()
+        return len(sent)
+
+    assert asyncio.run(run()) == 40
 
 
 def test_error_100_logs_the_last_second(caplog: pytest.LogCaptureFixture) -> None:
@@ -117,7 +133,7 @@ def test_cancel_in_finally_does_not_block() -> None:
         return returned, before, sent
 
     returned, before, after = asyncio.run(run())
-    assert returned and before == [] and after == ["cancel"]
+    assert returned and before == ["cancel"] == after
 
 
 def test_budget_blocks_at_limit_and_releases() -> None:

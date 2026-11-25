@@ -34,10 +34,10 @@ _LINE_LIMIT_CODE = 101
 class MessagePacer:
     """Sliding window of message starts; a cancel is not a start.
 
-    A cancel takes no start slot: it is counted, never added to the starts (see
-    `last_second`). A cancel never makes its caller wait, so one in a finally
-    block is queued and sent by a drain task at once; only while the window is
-    full of starts does the drain hold it until a slot would be free.
+    A cancel takes no start slot and never waits: it is sent on the next turn
+    of the loop, whatever the window holds, so a cancel in a finally block
+    never makes its caller wait. Cancels are only counted, for the log of a
+    gateway error 100 (see `last_second`).
     """
 
     def __init__(
@@ -47,8 +47,6 @@ class MessagePacer:
         self._limit = starts_per_second
         self._starts: deque[float] = deque()
         self._sent_cancels: deque[float] = deque()
-        self._cancels: deque[Callable[[], None]] = deque()
-        self._drain: asyncio.Future[None] | None = None
 
     async def start(self) -> None:
         """Return once a start slot is free and take it."""
@@ -61,10 +59,8 @@ class MessagePacer:
             await self._clock.sleep(self._starts[0] + _WINDOW_S - now)
 
     def cancel(self, send: Callable[[], None]) -> None:
-        """Queue a cancel; send runs on the next turn unless the window is full."""
-        self._cancels.append(send)
-        if self._drain is None or self._drain.done():
-            self._drain = asyncio.ensure_future(self._drain_cancels())
+        """Send a cancel on the next turn of the loop. Never waits."""
+        asyncio.get_running_loop().call_soon(self._send_cancel, send)
 
     def last_second(self) -> tuple[int, int]:
         """The starts and the cancels sent in the last second."""
@@ -78,16 +74,9 @@ class MessagePacer:
         while stamps and now - stamps[0] >= _WINDOW_S:
             stamps.popleft()
 
-    async def _drain_cancels(self) -> None:
-        while self._cancels:
-            now = self._clock.monotonic()
-            self._expire(self._starts, now)
-            if len(self._starts) >= self._limit:
-                await self._clock.sleep(self._starts[0] + _WINDOW_S - now)
-                continue
-            send = self._cancels.popleft()
-            self._sent_cancels.append(self._clock.monotonic())
-            send()
+    def _send_cancel(self, send: Callable[[], None]) -> None:
+        self._sent_cancels.append(self._clock.monotonic())
+        send()
 
 
 class LineBudget:
