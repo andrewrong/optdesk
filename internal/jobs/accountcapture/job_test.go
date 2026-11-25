@@ -345,7 +345,6 @@ func TestResultCarriesAliasAndStatusOnly(t *testing.T) {
 	}
 	rt := reflect.TypeFor[contracts.JobResult]()
 	for f := range rt.Fields() {
-		f := f
 		if f.Type.Kind() == reflect.Int {
 			if f.Name != "Returned" && f.Name != "Usable" {
 				t.Errorf("JobResult.%s is numeric", f.Name)

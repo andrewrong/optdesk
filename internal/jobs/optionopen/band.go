@@ -93,7 +93,6 @@ func bandOf(strikes []strikeText, spot, lo, hi float64, minPuts int, calls bool)
 	}
 	var out []strikeRight
 	for _, s := range slices.Backward(strikes) {
-
 		switch {
 		case s.v <= spot && s.v >= lo, s.v == above:
 			out = append(out, strikeRight{s.text, "P"})

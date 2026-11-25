@@ -156,7 +156,6 @@ func (r *runState) impliedOf(name string) (compute.Figure, string, bool) {
 		return compute.Figure{}, "", false
 	}
 	for _, rec := range slices.Backward(rows) {
-
 		if rec.State != "ok" || rec.Value == nil || dayOf(rec.Day) != r.day {
 			continue
 		}

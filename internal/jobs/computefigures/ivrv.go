@@ -86,7 +86,6 @@ func (r *runState) runIvRv20(names []string) {
 // ivRv20Figure joins the series point and the rv20 reading of the newest day that has both.
 func (r *runState) ivRv20Figure(t target, series compute.Series, byDay map[contracts.Day]contracts.ReadingRecord) compute.Figure {
 	for _, p := range slices.Backward(series) {
-
 		rec, ok := byDay[p.Day]
 		if !ok {
 			continue
