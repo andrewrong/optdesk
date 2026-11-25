@@ -59,7 +59,7 @@ export function RTableView({ table }: { table: NonNullable<Payload['r_table']> }
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Yield up to</TableHead>
+              <TableHead>{'收益率上限'}</TableHead>
               <TableHead>US</TableHead>
               <TableHead>JP</TableHead>
               <TableHead>HKCN</TableHead>
@@ -92,7 +92,7 @@ export function MarginTableView({ table }: { table: NonNullable<Payload['margin_
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>P from</TableHead>
+              <TableHead>{'P 起点'}</TableHead>
               <TableHead>M</TableHead>
               <TableHead>W</TableHead>
               <TableHead>H</TableHead>
@@ -120,7 +120,7 @@ export function RHistoryView({ history }: { history: Payload['r_history'] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>R history</CardTitle>
+        <CardTitle>{'R 历史'}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <Gloss text={YIELD_GLOSS} />
@@ -128,14 +128,14 @@ export function RHistoryView({ history }: { history: Payload['r_history'] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Effective</TableHead>
-              <TableHead>Yield used</TableHead>
+              <TableHead>{'生效日'}</TableHead>
+              <TableHead>{'使用的收益率'}</TableHead>
               <TableHead>US</TableHead>
               <TableHead>JP</TableHead>
               <TableHead>HKCN</TableHead>
-              <TableHead>AI switch</TableHead>
-              <TableHead>AI expiry</TableHead>
-              <TableHead>Note</TableHead>
+              <TableHead>{'AI 开关'}</TableHead>
+              <TableHead>{'AI 到期日'}</TableHead>
+              <TableHead>{'备注'}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,7 +166,7 @@ function TableVersionForm({ form, action, title, hint }: { form: Form; action: s
       </CardHeader>
       <CardContent>
         <OwnerForm form={form} action={action}>
-          <Field id={`${action}-date`} label="Effective date">
+          <Field id={`${action}-date`} label="生效日">
             <Input id={`${action}-date`} name="effective_date" placeholder="YYYY-MM-DD" required />
           </Field>
           <Field id={`${action}-table`} label={hint}>
@@ -178,7 +178,7 @@ function TableVersionForm({ form, action, title, hint }: { form: Form; action: s
               className="w-full rounded-lg border border-input bg-transparent p-2 font-mono text-sm"
             />
           </Field>
-          <Button type="submit">Save table</Button>
+          <Button type="submit">{'保存表'}</Button>
         </OwnerForm>
       </CardContent>
     </Card>
@@ -191,23 +191,23 @@ export function OwnerForms({ form, latest }: { form: Form; latest: string }) {
       <TableVersionForm
         form={form}
         action="r_table"
-        title="Add an R table version"
+        title="新增 R 表版本"
         hint="每行一档：收益率上限、US、JP、HKCN"
       />
       <TableVersionForm
         form={form}
         action="margin_table"
-        title="Add a margin table version"
+        title="新增保证金表版本"
         hint="每行一档：P 起点、M、W、H、S"
       />
       <Card>
         <CardHeader>
-          <CardTitle>Add an R version</CardTitle>
+          <CardTitle>{'新增 R 版本'}</CardTitle>
         </CardHeader>
         <CardContent>
           <OwnerForm form={form} action="r_version">
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field id="rv-date" label="Effective date">
+              <Field id="rv-date" label="生效日">
                 <Input id="rv-date" name="effective_date" placeholder="YYYY-MM-DD" required />
               </Field>
               <Field id="rv-us" label="R US">
@@ -219,10 +219,10 @@ export function OwnerForms({ form, latest }: { form: Form; latest: string }) {
               <Field id="rv-hkcn" label="R HKCN">
                 <Input id="rv-hkcn" name="r_hkcn" required />
               </Field>
-              <Field id="rv-yield" label="Yield used">
+              <Field id="rv-yield" label="使用的收益率">
                 <Input id="rv-yield" name="yield_used" defaultValue={latest} />
               </Field>
-              <Field id="rv-ai" label="AI switch">
+              <Field id="rv-ai" label="AI 开关">
                 <Select name="ai_switch" defaultValue="off">
                   <SelectTrigger id="rv-ai">
                     <SelectValue />
@@ -233,14 +233,14 @@ export function OwnerForms({ form, latest }: { form: Form; latest: string }) {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field id="rv-expiry" label="AI expiry (required when on)">
+              <Field id="rv-expiry" label="AI 到期日（开启时必填）">
                 <Input id="rv-expiry" name="ai_expiry" />
               </Field>
-              <Field id="rv-note" label="Note">
+              <Field id="rv-note" label="备注">
                 <Input id="rv-note" name="note" />
               </Field>
             </div>
-            <Button type="submit">Save R version</Button>
+            <Button type="submit">{'保存 R 版本'}</Button>
           </OwnerForm>
         </CardContent>
       </Card>

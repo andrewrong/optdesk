@@ -46,8 +46,8 @@ describe('header and glosses', () => {
     const el = await render(base())
     const links = [...el.querySelectorAll('header a')]
     expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Table', '/valuation'],
-      ['Parameters', '/valuation-params'],
+      ['估值表', '/valuation'],
+      ['参数', '/valuation-params'],
     ])
     expect(links[0]?.getAttribute('aria-current')).toBeNull()
     expect(links[1]?.getAttribute('aria-current')).toBe('page')
@@ -82,7 +82,7 @@ describe('proposal and warnings', () => {
     expect(form.getAttribute('action')).toBe(payload.form?.post_path)
     expect(form.getAttribute('method')).toBe('post')
     const submit = form.querySelector('button[type="submit"]')
-    expect(submit?.textContent).toBe('Update R')
+    expect(submit?.textContent).toBe('更新 R')
     expect((form.querySelector('input[name="action"]') as HTMLInputElement).value).toBe('accept_r')
     expect((form.querySelector('input[name="yield"]') as HTMLInputElement).value).toBe('4.20')
     expect((form.querySelector('input[name="mac"]') as HTMLInputElement).value).toBe(payload.form?.mac)
@@ -128,6 +128,19 @@ describe('forms', () => {
     for (const name of ['r_us', 'r_jp', 'r_hkcn', 'yield_used', 'ai_expiry', 'note', 'effective_date'])
       expect(rv.querySelector(`[name="${name}"]`)).not.toBeNull()
     expect(rv.querySelector('select[name="ai_switch"], input[name="ai_switch"]')).not.toBeNull()
+  })
+
+  it('each Chinese label of the R version form names the field it posts', async () => {
+    const el = await render(base())
+    const rv = el.querySelector('form[data-form="r_version"]') as HTMLFormElement
+    const posted = (text: string) =>
+      (Array.from(rv.querySelectorAll('label')).find((l) => l.textContent === text)?.control as HTMLInputElement | null)
+        ?.name
+    expect(posted('生效日')).toBe('effective_date')
+    expect(posted('R HKCN')).toBe('r_hkcn')
+    expect(posted('使用的收益率')).toBe('yield_used')
+    expect(posted('AI 到期日（开启时必填）')).toBe('ai_expiry')
+    expect(posted('备注')).toBe('note')
   })
 
   it('the two table forms carry the Chinese hints', async () => {
