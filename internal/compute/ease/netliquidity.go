@@ -2,7 +2,7 @@ package ease
 
 import (
 	"math/big"
-	"slices"
+	"sort"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -47,7 +47,7 @@ func sortedDays(m map[contracts.Day]*big.Rat) []contracts.Day {
 	for d := range m {
 		days = append(days, d)
 	}
-	slices.Sort(days)
+	sort.Slice(days, func(i, j int) bool { return days[i] < days[j] })
 	return days
 }
 
@@ -69,7 +69,7 @@ func weeklyNetLiquidity(walcl, wdtgal, rrp map[contracts.Day]*big.Rat, w time.Ti
 	if a == nil || b == nil {
 		return nil
 	}
-	for k := range 7 {
+	for k := 0; k < 7; k++ {
 		if r := rrp[dayText(w.AddDate(0, 0, -k))]; r != nil {
 			out := new(big.Rat).Sub(a, b)
 			return out.Sub(out, r)
@@ -154,7 +154,7 @@ func NetLiquidity(walcl, wdtgal, rrp compute.Series, asOf contracts.Day) liquidi
 			continue
 		}
 		out := liquidityapi.Num{Value: ratText(v), Day: dayText(w)}
-		for k := range 7 {
+		for k := 0; k < 7; k++ {
 			if rr[dayText(w.AddDate(0, 0, -k))] != nil {
 				out.Aux = dayText(w.AddDate(0, 0, -k))
 				break

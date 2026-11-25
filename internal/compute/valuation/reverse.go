@@ -36,7 +36,7 @@ func mul(a, b decimal.Decimal) decimal.Decimal { return r34(a.Mul(b)) }
 func reverseValue(p BandParams, base, shares, growth, rate decimal.Decimal) decimal.Decimal {
 	f, disc, total := base, decOne, decimal.Zero
 	g, d := add(decOne, growth), add(decOne, rate)
-	for range reverseYears {
+	for i := 0; i < reverseYears; i++ {
 		f = mul(f, g)
 		disc = mul(disc, d)
 		q, _ := div(f, disc)
@@ -59,7 +59,7 @@ func solveGrowth(p BandParams, base, shares, price, rate decimal.Decimal) (growt
 	if price.GreaterThan(reverseValue(p, base, shares, hi, rate)) {
 		return "", reasonAboveRange
 	}
-	for range solverIterations {
+	for i := 0; i < solverIterations; i++ {
 		mid, _ := div(add(lo, hi), decTwo)
 		if reverseValue(p, base, shares, mid, rate).LessThan(price) {
 			lo = mid

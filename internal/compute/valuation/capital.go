@@ -1,7 +1,7 @@
 package valuation
 
 import (
-	"slices"
+	"sort"
 
 	"github.com/shopspring/decimal"
 
@@ -58,7 +58,7 @@ func (s series) ends() []contracts.Day {
 	for d := range s {
 		out = append(out, d)
 	}
-	slices.Sort(out)
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
 }
 
