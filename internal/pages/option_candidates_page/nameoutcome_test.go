@@ -137,7 +137,8 @@ func TestOutcomeTextCodes(t *testing.T) {
 	if got := outcomeText(optioncand.NewNameOpen(), optioncandapi.OutcomeNoSpot, facts); got != "没读到标的现价（NO_DATA、TIMEOUT），所以没有询价" {
 		t.Errorf("no_spot = %q", got)
 	}
-	if got := outcomeText(optioncand.NewNameOpen(), optioncandapi.OutcomeOther, []optioncandapi.OpenFact{{Status: 5}, {Status: 3, ErrorCode: "NO_QUOTE"}}); got != "其他状态（5）" {
+	other := []optioncandapi.OpenFact{{Status: 5}, {Status: 3, ErrorCode: "NO_QUOTE"}}
+	if got := outcomeText(optioncand.NewNameOpen(), optioncandapi.OutcomeOther, other); got != "其他状态（5）" {
 		t.Errorf("other = %q", got)
 	}
 }
