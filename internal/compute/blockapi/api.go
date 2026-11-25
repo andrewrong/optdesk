@@ -156,7 +156,9 @@ type GreekIn struct {
 	Currency    string
 }
 
-// RiskIn is the input of Risk. Stocks are read for Underlying and Quantity only (any currency counts in Delta); Mark is never read.
+// RiskIn is the input of Risk. Stocks are read for Underlying, Currency and Quantity only; Mark is never read.
+// A Delta line has the currency of its name (its stock and structures; "" is USD) and the Delta total is one for each
+// currency (USD, JPY), never a sum over currencies.
 // UsdJpy is the rate in JPY per USD, decimal text; empty or not positive is no rate, and then the Vega of a JPY GreekIn
 // is the gap unsupported_currency.
 type RiskIn struct {
@@ -167,16 +169,29 @@ type RiskIn struct {
 }
 
 // RiskLine is one line of delta (Key is the underlying) or of vega (Key is the expiry day).
+// Currency is the currency of a Delta line ("" on a Vega line, and on a Delta line whose name has two currencies).
 type RiskLine struct {
-	Key   string
-	Value compute.FigureValue
+	Key      string
+	Currency string
+	Value    compute.FigureValue
+}
+
+// RiskTotal is the Delta total of one currency; Value is a gap when a line of that currency is a gap.
+type RiskTotal struct {
+	Currency string
+	Value    compute.FigureValue
 }
 
 // RiskResult holds delta by underlying and vega by expiry.
-// Delta is in shares (a stock counts its share quantity, of any currency); Vega is in dollars per volatility point.
+// Delta is in shares; a Delta line has the currency of its name, so a Delta total is one for each currency in
+// DeltaTotals (USD first, then JPY, those with a counted line); Vega is in dollars per volatility point.
 type RiskResult struct {
-	Delta, Vega           []RiskLine
-	DeltaTotal, VegaTotal compute.FigureValue
+	Delta, Vega []RiskLine
+	DeltaTotals []RiskTotal
+	// DeltaTotal is the sum of all Delta lines over currencies: it adds shares of different currencies, so it is not a
+	// meaningful figure. DeltaTotals is the per-currency field to read.
+	DeltaTotal compute.FigureValue
+	VegaTotal  compute.FigureValue
 }
 
 // MoverIn is one contract held on both days, all numbers decimal text. Quantity is q_prev, signed; Multiplier is
