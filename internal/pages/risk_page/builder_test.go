@@ -682,3 +682,31 @@ func TestRiskTextsChinese(t *testing.T) {
 		t.Errorf("stale sentence = %q", stale["sentence"])
 	}
 }
+
+func TestDeltaGapLineKeepsOtherCurrencyTotal(t *testing.T) {
+	t.Parallel()
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("EEE", "EUR", "2026-12-18", "-1", "1"),
+		structure("JJJ", "JPY", "2026-12-18", "-1", "1"),
+	}}, stk("EEE", 1, "100", "EUR"), stk("JJJ", 3, "10", "JPY"))
+	m, _ := build(t, c, "main")
+	d := block(m, "delta")
+	if d["gap"] == nil || d["gap"].(map[string]any)["reason"] == "" {
+		t.Fatalf("a gap line must set the block gap: %v", d)
+	}
+	tot, ok := d["total"].(map[string]any)
+	if !ok || tot["currency"] != "JPY" || tot["text"] != "+9.00 日元/每 ¥1" {
+		t.Fatalf("the JPY total must stay, without the gap USD total in its text: %v", d)
+	}
+}
+
+func TestDeltaAllTotalsGapHasNoTotal(t *testing.T) {
+	t.Parallel()
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("EEE", "EUR", "2026-12-18", "-1", "1")}}, stk("EEE", 1, "100", "EUR"))
+	m, _ := build(t, c, "main")
+	d := block(m, "delta")
+	if d["total"] != nil || d["gap"] == nil {
+		t.Fatalf("with no numeric total there is a gap and no total: %v", d)
+	}
+}
