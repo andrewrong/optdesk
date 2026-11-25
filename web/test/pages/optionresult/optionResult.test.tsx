@@ -116,3 +116,13 @@ it('does not print endings_title as a heading', async () => {
     expect(hits.length, s.key).toBe(0)
   }
 })
+
+it('TestOptionResultTableHeadsChinese', async () => {
+  await show(ok)
+  const card = host.querySelector(`[data-section="${ok.sections[0]!.key}"]`)!
+  const heads = [...card.querySelectorAll('table')].map((t) =>
+    [...t.querySelectorAll('th')].map((h) => h.textContent),
+  )
+  expect(heads).toContainEqual(['项目', '数值'])
+  expect(heads).toContainEqual(['时点', '数字'])
+})

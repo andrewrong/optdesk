@@ -12,12 +12,12 @@ type Section = Payload['sections'][number]
 type Series = Section['months']
 
 const PAIR_COLUMNS: Column[] = [
-  { id: 'label', label: 'Item' },
-  { id: 'value', label: 'Value', wrap: true },
+  { id: 'label', label: '项目' },
+  { id: 'value', label: '数值', wrap: true },
 ]
 const POINT_COLUMNS: Column[] = [
-  { id: 'label', label: 'Point' },
-  { id: 'text', label: 'Figure' },
+  { id: 'label', label: '时点' },
+  { id: 'text', label: '数字' },
 ]
 
 function SeriesBlock({ series }: { series: Series }) {
