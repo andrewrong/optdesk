@@ -3,6 +3,7 @@ package jobrun_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"sync"
 	"testing"
@@ -98,7 +99,7 @@ func (f *fakeStore) Usuals(context.Context) ([]jobrun.UsualStat, error) {
 		for i, r := range rs {
 			d[i] = r.FinishedAt.Sub(r.StartedAt)
 		}
-		sort.Slice(d, func(i, j int) bool { return d[i] < d[j] })
+		slices.Sort(d)
 		var med time.Duration
 		if n := len(d); n%2 == 1 {
 			med = d[n/2]

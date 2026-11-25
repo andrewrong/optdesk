@@ -51,7 +51,7 @@ func TestUpsertDaySQLNeverBlanksAQuote(t *testing.T) {
 			t.Errorf("SET list lacks %q", want)
 		}
 	}
-	for _, part := range strings.Split(set, ",\n") {
+	for part := range strings.SplitSeq(set, ",\n") {
 		for _, c := range quoteColumns {
 			if strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(part, "DO UPDATE SET")), c+" =") &&
 				!strings.Contains(part, "COALESCE(EXCLUDED."+c+", option_day."+c+")") {

@@ -103,7 +103,7 @@ const insertRequest = `INSERT INTO settings.job_request (job_id, session_day, fo
 
 // Enqueue stores the request unless an open one of the same job, day and force exists.
 func (s *Store) Enqueue(ctx context.Context, r jobrequest.Request) (jobrequest.Enqueued, error) {
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		var id int64
 		err := s.pool.QueryRow(ctx, insertRequest, r.JobID, r.Day, r.Force).Scan(&id)
 		if err == nil {

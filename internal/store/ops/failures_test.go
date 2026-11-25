@@ -18,10 +18,10 @@ func (errSelectDB) Select(context.Context, string, []any, func(scanner) error) e
 
 func TestRepeatedFailuresMapsRowsAndArgs(t *testing.T) {
 	t.Parallel()
-	db := &recDB{fakeDB: fakeDB{rows: [][]any{
+	db := &recDB{rows: [][]any{
 		{"obs.bar", "AAPL", "failed", 3, 4, covDay("2026-11-03"), covDay("2026-11-12"), "retryable"},
 		{"obs.bar", "AAPL", "empty", 5, 5, covDay("2026-11-01"), covDay("2026-11-11"), "empty"},
-	}}}
+	}}
 	got, err := (&coverageReader{db: db}).RepeatedFailures(context.Background(), "2026-10-30", "2026-11-12")
 	if err != nil {
 		t.Fatal(err)

@@ -105,7 +105,7 @@ func TestEarningsUpserterContract(t *testing.T) {
 	got, err = u.UpsertEarnings(ctx, []contracts.EarningsDate{a2}, "w")
 	check(t, "differing row", got, err, 1, 0)
 
-	got, err = u.ReplayEarnings(ctx, []contracts.EarningsDate{a, contracts.EarningsDate{Issuer: "NVDA"}}, "w")
+	got, err = u.ReplayEarnings(ctx, []contracts.EarningsDate{a, {Issuer: "NVDA"}}, "w")
 	check(t, "replay keeps stored, adds missing", got, err, 1, 1)
 	if fs.earn["AAPL|"+a.ObservedOn.String()] != "x" {
 		t.Fatalf("replay replaced a stored answer")

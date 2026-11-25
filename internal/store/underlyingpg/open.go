@@ -67,8 +67,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // classify makes a Permanent error of one the database will repeat (a SQLSTATE of class 42: no grant, no table)
 // and a Retryable error of the rest. An error that already has a kind keeps it.
 func classify(err error) error {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); ok {
 		return err
 	}
 	var pe *pgconn.PgError
