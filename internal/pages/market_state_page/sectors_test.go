@@ -168,10 +168,10 @@ func TestSectorsCaptionsWriteGapsInPP(t *testing.T) {
 	m := build(t, fullConfig(t, sampleResult()))
 	s := obj(m["sectors"])
 	axes := obj(s["rotation_axes"])
-	if axes["x_caption"] != "63-session gap to SPY, pp" {
+	if axes["x_caption"] != "63 日对 SPY 的差距，百分点 63-session gap to SPY, pp" {
 		t.Errorf("x_caption = %v", axes["x_caption"])
 	}
-	if axes["y_caption"] != "21-session gap minus a third of the 63-session gap, pp" {
+	if axes["y_caption"] != "21 日差距减 63 日差距的三分之一，百分点 21-session gap minus a third of the 63-session gap, pp" {
 		t.Errorf("y_caption = %v", axes["y_caption"])
 	}
 	if c, _ := s["bars_caption"].(string); !strings.Contains(c, "单位为 pp") || strings.Contains(c, "points") {
