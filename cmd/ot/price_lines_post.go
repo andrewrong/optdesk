@@ -58,8 +58,7 @@ func postOwnerPriceLines(a *app, clk clock.Clock, rd siteReaders, newHandler pag
 	if e != nil {
 		n, err = writeUnderlyings(a, r, underlying.Change{Edits: []underlying.Edit{*e}})
 		if err != nil {
-			var ie underlying.InvalidError
-			if errors.As(err, &ie) {
+			if ie, ok := errors.AsType[underlying.InvalidError](err); ok {
 				refuse(ie.Why())
 				return
 			}

@@ -192,8 +192,7 @@ func printKeyLine(a *app, job string, day contracts.Day, dataset, subject string
 	code := "none"
 	if err != nil {
 		code = string(contracts.Permanent)
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if te, ok := errors.AsType[contracts.TypedError](err); ok {
 			code = string(te.Kind())
 		}
 	}

@@ -93,9 +93,9 @@ func buildLots(positions []compute.LedgerPosition, sessions []contracts.Day) []r
 
 // buyBack is the price of the last fill that is not the open.
 func buyBack(p compute.LedgerPosition) string {
-	for i := len(p.Fills) - 1; i >= 0; i-- {
-		if p.Fills[i].Action != "open" {
-			return p.Fills[i].Price
+	for _, v := range slices.Backward(p.Fills) {
+		if v.Action != "open" {
+			return v.Price
 		}
 	}
 	return ""

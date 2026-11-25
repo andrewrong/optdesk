@@ -154,7 +154,7 @@ func TestApproveBandSecondApprovalReplacesFirst(t *testing.T) {
 	a := approveApp(t, rd)
 	out := &strings.Builder{}
 	a.stdout = out
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := approveBand(a, []string{"--symbol", "AAA", "--day", "2026-11-06"}); err != nil {
 			t.Fatal(err)
 		}

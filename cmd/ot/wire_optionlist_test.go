@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"strings"
@@ -84,7 +85,7 @@ func TestOptionListListedJobAnswersWindowBoundAndPostcondition(t *testing.T) {
 		"none":     {[]openquote.ListRunRecord{{UnderlyingID: 7, Session: listDay, Listed: 0}}, false},
 		"no names": {nil, false},
 	} {
-		st := withLists{runsStore: runsStore{runs: tc.runs}}
+		st := withLists{runs: tc.runs}
 		j, reason, err := optionListJob(h.a, h.jc, st, "")
 		if err != nil || reason != "" {
 			t.Fatalf("%s: reason %q err %v", name, reason, err)
@@ -154,7 +155,7 @@ func TestOptionListStoreWithoutOptionListStoreIsHeld(t *testing.T) {
 func TestOptionListAbsentStandInsAnswerPermanent(t *testing.T) {
 	t.Parallel()
 	_, err := absentLister{}.ListContracts(t.Context(), broker.Contract{}, "", "", "")
-	te, ok := err.(contracts.TypedError)
+	te, ok := errors.AsType[contracts.TypedError](err)
 	if !ok || te.Kind() != contracts.Permanent || err.Error() != reasonListAbsent {
 		t.Fatalf("err %v", err)
 	}

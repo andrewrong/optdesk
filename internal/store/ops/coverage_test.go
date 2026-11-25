@@ -20,10 +20,10 @@ func covDay(s string) time.Time {
 
 func TestCellsFromRows(t *testing.T) {
 	t.Parallel()
-	db := &recDB{fakeDB: fakeDB{rows: [][]any{
+	db := &recDB{rows: [][]any{
 		{covDay("2026-11-12"), "obs.series_point", 3, 1, 1, 0, 1, []string{"DGS10"}},
 		{covDay("2026-11-12"), "obs.bar", 2, 0, 0, 2, 0, []string{}},
-	}}}
+	}}
 	got, err := (&coverageReader{db: db}).Cells(context.Background(), "2026-11-01", "2026-11-12")
 	if err != nil {
 		t.Fatal(err)
@@ -57,11 +57,11 @@ func TestCellsBadDay(t *testing.T) {
 
 func TestSessionsAscending(t *testing.T) {
 	t.Parallel()
-	db := &recDB{fakeDB: fakeDB{rows: [][]any{
+	db := &recDB{rows: [][]any{
 		{"XNYS", covDay("2026-11-13"), true},
 		{"XNYS", covDay("2026-11-12"), true},
 		{"XNYS", covDay("2026-11-14"), false},
-	}}}
+	}}
 	got, err := (&coverageReader{db: db}).Sessions(context.Background(), "XNYS", "2026-11-12", "2026-11-14")
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +81,7 @@ func TestSessionsAscending(t *testing.T) {
 
 func TestNewestObservations(t *testing.T) {
 	t.Parallel()
-	db := &recDB{fakeDB: fakeDB{rows: [][]any{{"DGS10", covDay("2026-11-12")}}}}
+	db := &recDB{rows: [][]any{{"DGS10", covDay("2026-11-12")}}}
 	got, err := (&coverageReader{db: db}).NewestObservations(context.Background())
 	if err != nil {
 		t.Fatal(err)

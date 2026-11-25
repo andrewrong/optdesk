@@ -83,7 +83,7 @@ type liveRefs struct{}
 
 func (liveRefs) ListOptions(_ context.Context, u int64) ([]openquote.OptionRef, error) {
 	var out []openquote.OptionRef
-	for i := int64(0); i < 50; i++ {
+	for i := range int64(50) {
 		id := u*100 + i
 		out = append(out, openquote.OptionRef{UnderlyingID: u, Currency: "USD", Exchange: "SMART", TradingClass: "X", Multiplier: "100",
 			Expiry: "2026-12-18", Strike: strconv.FormatInt(100+i, 10), Right: "P", InstrumentID: id})
@@ -95,7 +95,7 @@ func (liveRefs) ListOptions(_ context.Context, u int64) ([]openquote.OptionRef, 
 func liveItems(u, n int) []contracts.OptionOpenItem {
 	day, _ := time.Parse(time.DateOnly, liveDay)
 	var out []contracts.OptionOpenItem
-	for i := 0; i < n; i++ {
+	for i := range n {
 		class := "puts"
 		if i == 0 {
 			class = "held"
@@ -304,7 +304,7 @@ func (f *firstAsked) Snapshot(ctx context.Context, k broker.Kind, cs []broker.Co
 func TestLiveRefreshAtMostThirtyCallsAnHour(t *testing.T) {
 	t.Parallel()
 	r := newLiveRig(t, true, liveItems(1, 3), liveNoon)
-	for i := 0; i < liveMaxPerHour; i++ {
+	for range liveMaxPerHour {
 		r.clk.add(61 * time.Second)
 		r.l.refresh(t.Context(), []string{"AAPL"})
 	}

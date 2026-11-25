@@ -10,3 +10,6 @@ export type Payload = OptionCandidatesPage
 export type Result = Checked<Payload>
 
 export const validate = placeholderValidate<Payload>(SUPPORTED_VERSIONS)
+
+// One entry of `name_outcomes`: a Japanese name with no candidate row, its outcome, its text and its counts.
+export type NameOutcome = NonNullable<Payload['groups'][number]['name_outcomes']>[number]

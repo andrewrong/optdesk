@@ -91,7 +91,7 @@ func TestFactContractFromBothSides(t *testing.T) {
 	other := mkFact("cik:0000789019", "b1", "NetIncomeLoss", "2024-01-01", "2024-12-31", "2025-02-01", "7")
 
 	// Writer side: a rerun adds nothing, for a duration and for an instant fact.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := w.InsertFacts(ctx, []contracts.FundamentalFact{duration, instant, recast, other}); err != nil {
 			t.Fatal(err)
 		}

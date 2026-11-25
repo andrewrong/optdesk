@@ -286,8 +286,8 @@ func TestMigration0013Shape(t *testing.T) {
 			t.Errorf("enum lacks %q", unit)
 		}
 	}
-	up := strings.SplitN(sql, "-- +goose Down", 2)[0]
-	for _, line := range strings.Split(up, "\n") {
+	up, _, _ := strings.Cut(sql, "-- +goose Down")
+	for line := range strings.SplitSeq(up, "\n") {
 		if strings.HasPrefix(line, "GRANT") || strings.Contains(line, "TO ot_w_readings") {
 			for _, bad := range []string{"UPDATE", "DELETE", "TRUNCATE", "ALL"} {
 				if strings.Contains(line, bad) {

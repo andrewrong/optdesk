@@ -14,6 +14,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -150,7 +151,8 @@ func checkSelfConsistent(t *testing.T, file string) {
 	if err == nil {
 		t.Fatalf("%s: version %v validates", file, ver+1)
 	}
-	verr, ok := err.(*jsonschema.ValidationError)
+	var verr *jsonschema.ValidationError
+	ok = errors.As(err, &verr)
 	if !ok {
 		t.Fatalf("%s: %v", file, err)
 	}

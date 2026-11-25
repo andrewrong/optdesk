@@ -71,8 +71,7 @@ func postOwnerUnderlyings(a *app, clk clock.Clock, dayFlag string, rd siteReader
 		newHandler(vm).ServeHTTP(&statusWriter{ResponseWriter: w, code: code}, r)
 	}
 	refused := func(err error) {
-		var ie underlying.InvalidError
-		if errors.As(err, &ie) {
+		if ie, ok := errors.AsType[underlying.InvalidError](err); ok {
 			page(http.StatusUnprocessableEntity, underlyingsExtras{notice: "Refused " + ie.Field() + ": " + ie.Why()})
 			return
 		}

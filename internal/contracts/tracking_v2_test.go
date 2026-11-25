@@ -2,6 +2,8 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -44,7 +46,8 @@ func pageV2JSON(t *testing.T, m map[string]any) any {
 // pageV2Leaves validates m and returns the failing leaves; it fails the test when m is valid.
 func pageV2Leaves(t *testing.T, s *jsonschema.Schema, m map[string]any) []leaf {
 	t.Helper()
-	ve, ok := s.Validate(pageV2JSON(t, m)).(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(s.Validate(pageV2JSON(t, m)), &ve)
 	if !ok {
 		t.Fatal("instance is valid, want a validation error")
 	}
@@ -85,10 +88,8 @@ func TestTrackingV2VersionOneFails(t *testing.T) {
 	inst := pageV2Minimal(t, trackingV2)
 	inst["schema_version"] = 1
 	want := leaf{"/schema_version", "const"}
-	for _, l := range pageV2Leaves(t, s, inst) {
-		if l == want {
-			return
-		}
+	if slices.Contains(pageV2Leaves(t, s, inst), want) {
+		return
 	}
 	t.Errorf("want %v among the failures", want)
 }
@@ -99,10 +100,8 @@ func TestTrackingV2VersionsEmptyFails(t *testing.T) {
 	inst := pageV2Minimal(t, trackingV2)
 	inst["versions"] = []any{}
 	want := leaf{"/versions", "minItems"}
-	for _, l := range pageV2Leaves(t, s, inst) {
-		if l == want {
-			return
-		}
+	if slices.Contains(pageV2Leaves(t, s, inst), want) {
+		return
 	}
 	t.Errorf("want %v among the failures", want)
 }

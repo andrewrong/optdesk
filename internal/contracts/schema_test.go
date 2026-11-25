@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,9 +88,7 @@ func TestDatasetFixtures(t *testing.T) {
 					t.Fatalf("record %d: %v", i, err)
 				}
 				extra := map[string]any{"extra": 1}
-				for k, v := range r {
-					extra[k] = v
-				}
+				maps.Copy(extra, r)
 				if err := s.Validate(extra); err == nil {
 					t.Fatalf("record %d with an unknown field must fail", i)
 				}
@@ -107,9 +106,7 @@ func TestSnapshotSchemasReject(t *testing.T) {
 			recs, _ := loadRecords(t, name)
 			mutate := func(f func(map[string]any)) map[string]any {
 				m := map[string]any{}
-				for k, v := range recs[0] {
-					m[k] = v
-				}
+				maps.Copy(m, recs[0])
 				f(m)
 				return m
 			}
@@ -221,9 +218,7 @@ func TestReadingRejects(t *testing.T) {
 	}
 	mutate := func(i int, f func(map[string]any)) map[string]any {
 		m := map[string]any{}
-		for k, v := range recs[i] {
-			m[k] = v
-		}
+		maps.Copy(m, recs[i])
 		f(m)
 		return m
 	}
@@ -291,9 +286,7 @@ func TestOptionLedgerDatasetFiles(t *testing.T) {
 	}
 	with := func(base map[string]any, k string, v any) map[string]any {
 		m := map[string]any{}
-		for kk, vv := range base {
-			m[kk] = vv
-		}
+		maps.Copy(m, base)
 		m[k] = v
 		return m
 	}
@@ -382,9 +375,7 @@ func TestEarningsDateFixtureValues(t *testing.T) {
 
 	mutate := func(base map[string]any, f func(map[string]any)) map[string]any {
 		m := map[string]any{}
-		for k, v := range base {
-			m[k] = v
-		}
+		maps.Copy(m, base)
 		f(m)
 		return m
 	}
@@ -412,9 +403,7 @@ func TestEarningsDateStatusRulesEnforced(t *testing.T) {
 	recs, _ := loadRecords(t, "obs.earnings_date")
 	cp := func(b map[string]any) map[string]any {
 		m := map[string]any{}
-		for k, v := range b {
-			m[k] = v
-		}
+		maps.Copy(m, b)
 		return m
 	}
 	unsupportedWithVendor := cp(recs[2]) // status unsupported
@@ -436,9 +425,7 @@ func TestEarningsDateStatusRulesEnforced(t *testing.T) {
 
 func copyRec(b map[string]any, f func(map[string]any)) map[string]any {
 	m := map[string]any{}
-	for k, v := range b {
-		m[k] = v
-	}
+	maps.Copy(m, b)
 	f(m)
 	return m
 }

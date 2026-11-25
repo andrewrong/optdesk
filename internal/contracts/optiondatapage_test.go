@@ -1,8 +1,10 @@
 package contracts_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -59,7 +61,8 @@ func TestOptionDataPageFixtures(t *testing.T) {
 		}
 		first["href"] = "https://x/y"
 		err := s.Validate(v)
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok = errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}
@@ -72,7 +75,8 @@ func TestOptionDataPageFixtures(t *testing.T) {
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
 		err := s.Validate(loadOptionPageFixture(t, "bad-version"))
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}
@@ -87,16 +91,15 @@ func TestOptionDataPageFixtures(t *testing.T) {
 // wantLeaf fails unless err is a validation error with a failure at want.
 func wantLeaf(t *testing.T, err error, want leaf) {
 	t.Helper()
-	ve, ok := err.(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(err, &ve)
 	if !ok {
 		t.Fatalf("err = %v, want a validation error", err)
 	}
 	var got []leaf
 	leaves(ve, &got)
-	for _, g := range got {
-		if g == want {
-			return
-		}
+	if slices.Contains(got, want) {
+		return
 	}
 	t.Errorf("failures = %v, want one at %s with %s", got, want.location, want.keyword)
 }

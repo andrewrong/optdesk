@@ -3,6 +3,7 @@ package valuation_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"testing"
 	"time"
@@ -102,9 +103,9 @@ func (f *fake) current(key string) *valuation.Review {
 
 func (f *fake) Reviews(_ context.Context, key string) ([]valuation.Review, error) {
 	out := []valuation.Review{}
-	for i := len(f.reviews) - 1; i >= 0; i-- {
-		if f.reviews[i].CompanyKey == key {
-			out = append(out, f.reviews[i])
+	for _, v := range slices.Backward(f.reviews) {
+		if v.CompanyKey == key {
+			out = append(out, v)
 		}
 	}
 	return out, nil
@@ -112,8 +113,8 @@ func (f *fake) Reviews(_ context.Context, key string) ([]valuation.Review, error
 
 func (f *fake) RVersions(context.Context) ([]valuation.RVersion, error) {
 	out := []valuation.RVersion{}
-	for i := len(f.rvers) - 1; i >= 0; i-- {
-		out = append(out, f.rvers[i])
+	for _, v := range slices.Backward(f.rvers) {
+		out = append(out, v)
 	}
 	return out, nil
 }

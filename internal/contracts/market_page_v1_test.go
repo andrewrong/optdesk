@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"maps"
 	"testing"
 )
 
@@ -11,9 +12,7 @@ const marketPageV1 = "page.market_page.v1.json"
 func pageV1Minimal(t *testing.T, name string, extra map[string]string) map[string]any {
 	t.Helper()
 	overrides := map[string]string{"^[A-Za-z0-9_-]{1,64}$": "id_1"}
-	for k, v := range extra {
-		overrides[k] = v
-	}
+	maps.Copy(overrides, extra)
 	raw := readRaw(t, schemasDir, name)
 	inst, ok := minimal(t, schemasDir, name, raw, overrides).(map[string]any)
 	if !ok {

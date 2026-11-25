@@ -162,7 +162,7 @@ func TestBuyPriceNoReaderKeepsHand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if _, _, err := j.Plan(context.Background(), "2026-11-11"); err != nil {
 			t.Fatal(err)
 		}

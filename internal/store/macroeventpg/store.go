@@ -234,8 +234,7 @@ func checkDay(d string) error {
 // wrap makes a database error Retryable, except an integrity constraint violation (SQLSTATE class 23), which is
 // Permanent; it keeps a typed error as it is.
 func wrap(err error, what string) error {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); ok {
 		return err
 	}
 	var pe *pgconn.PgError

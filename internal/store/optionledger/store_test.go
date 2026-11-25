@@ -380,10 +380,10 @@ func TestLatestOkFetchMapsRecord(t *testing.T) {
 
 func TestNoAccountColumn(t *testing.T) {
 	t.Parallel()
-	for _, typ := range []reflect.Type{reflect.TypeOf(store.FlexTradeRow{}), reflect.TypeOf(store.FlexFetchRecord{})} {
-		for i := 0; i < typ.NumField(); i++ {
-			if n := strings.ToLower(typ.Field(i).Name); strings.Contains(n, "account") || strings.Contains(n, "acct") {
-				t.Errorf("%s has the field %s", typ.Name(), typ.Field(i).Name)
+	for _, typ := range []reflect.Type{reflect.TypeFor[store.FlexTradeRow](), reflect.TypeFor[store.FlexFetchRecord]()} {
+		for field := range typ.Fields() {
+			if n := strings.ToLower(field.Name); strings.Contains(n, "account") || strings.Contains(n, "acct") {
+				t.Errorf("%s has the field %s", typ.Name(), field.Name)
 			}
 		}
 	}

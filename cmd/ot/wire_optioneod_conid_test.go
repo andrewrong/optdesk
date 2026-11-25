@@ -84,7 +84,7 @@ func conidLog() (*slog.Logger, *bytes.Buffer) {
 
 func conidWarns(buf *bytes.Buffer) []string {
 	var out []string
-	for _, l := range strings.Split(buf.String(), "\n") {
+	for l := range strings.SplitSeq(buf.String(), "\n") {
 		if strings.Contains(l, "level=WARN") {
 			out = append(out, l)
 		}

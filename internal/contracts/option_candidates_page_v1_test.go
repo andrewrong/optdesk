@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"maps"
 	"strings"
 	"testing"
 )
@@ -512,9 +513,7 @@ func candidatesGroups(t *testing.T, n int) map[string]any {
 	groups := []any{first}
 	for i := 1; i < n; i++ {
 		g := map[string]any{}
-		for k, v := range first {
-			g[k] = v
-		}
+		maps.Copy(g, first)
 		groups = append(groups, g)
 	}
 	inst["groups"] = groups

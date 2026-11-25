@@ -56,7 +56,7 @@ type gatewayEntry struct{ alias, socket string }
 func parseGatewaySockets(v string) ([]gatewayEntry, error) {
 	bad := fmt.Errorf("%s is not a comma list of alias=socket path", envGatewaySockets)
 	var out []gatewayEntry
-	for _, part := range strings.Split(v, ",") {
+	for part := range strings.SplitSeq(v, ",") {
 		alias, sock, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok || !validGatewayAlias(alias) || sock == "" || len(sock) >= maxSocketPath {
 			return nil, bad
@@ -120,11 +120,9 @@ func (s gatewaySource) read(ctx context.Context) []gatewayReading {
 	out := make([]gatewayReading, len(s.entries))
 	var wg sync.WaitGroup
 	for i, e := range s.entries {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			out[i] = s.readOne(ctx, e)
-		}()
+		})
 	}
 	wg.Wait()
 	return out
