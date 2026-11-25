@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -55,7 +56,8 @@ func TestStructuresListHref(t *testing.T) {
 				}
 				return
 			}
-			verr, isV := err.(*jsonschema.ValidationError)
+			var verr *jsonschema.ValidationError
+			isV := errors.As(err, &verr)
 			if !isV {
 				t.Fatalf("want a validation error, got %v", err)
 			}

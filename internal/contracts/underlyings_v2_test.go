@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -28,7 +29,8 @@ func TestUnderlyingsV2Fixtures(t *testing.T) {
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
 		err := s.Validate(loadUnderlyingsV2(t, "bad-version"))
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}

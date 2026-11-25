@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,8 @@ func minimalV3(t *testing.T, name string) map[string]any {
 // hasV3Leaf reports whether validating inst against s fails at location with keyword.
 func hasV3Leaf(t *testing.T, s *jsonschema.Schema, inst any, location, keyword string) bool {
 	t.Helper()
-	ve, ok := s.Validate(toJSONValue(t, inst)).(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(s.Validate(toJSONValue(t, inst)), &ve)
 	if !ok {
 		return false
 	}

@@ -2,8 +2,10 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -71,17 +73,16 @@ func TestHomePageV2MemberChecked(t *testing.T) {
 			inst := homePageMinimal(t)
 			inst[name].(map[string]any)["schema_version"] = 99
 			err := s.Validate(homePageRoundTrip(t, inst))
-			ve, ok := err.(*jsonschema.ValidationError)
+			var ve *jsonschema.ValidationError
+			ok := errors.As(err, &ve)
 			if !ok {
 				t.Fatalf("err = %v, want a validation error", err)
 			}
 			var ls []leaf
 			leaves(ve, &ls)
 			want := leaf{"/" + name + "/schema_version", "const"}
-			for _, l := range ls {
-				if l == want {
-					return
-				}
+			if slices.Contains(ls, want) {
+				return
 			}
 			t.Errorf("failures = %v, want %v among them", ls, want)
 		})

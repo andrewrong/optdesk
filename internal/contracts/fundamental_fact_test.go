@@ -1,5 +1,7 @@
 package contracts_test
 
+import "maps"
+
 import "testing"
 
 func TestFundamentalFactFixture(t *testing.T) {
@@ -20,9 +22,7 @@ func TestFundamentalFactFixture(t *testing.T) {
 
 	mutate := func(base map[string]any, f func(map[string]any)) map[string]any {
 		m := map[string]any{}
-		for k, v := range base {
-			m[k] = v
-		}
+		maps.Copy(m, base)
 		f(m)
 		return m
 	}
