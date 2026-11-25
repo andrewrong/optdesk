@@ -646,7 +646,22 @@ func (r *reconciler) dependentRun(
 	if leave {
 		return jobEnd{}, false
 	}
-	var end jobEnd
+	// The row opens here, after every check that can leave the dependent unrun, so a skipped one writes none.
+	source, end, ran := sourceScheduler, jobEnd{}, true
+	if dc.console {
+		source = sourceConsole
+	}
+	r.recordRun(ctx, d.ID(), source, len(keys), func(rr *reconciler, c context.Context) string {
+		end, ran = rr.dependentKeys(c, dc, d, keys, byKey, mark)
+		return outcomeOf(c, end.cut, !ran || end.failed)
+	})
+	return end, ran
+}
+
+// dependentKeys runs the keys of d one after the other; false when the ledger failed a key.
+func (r *reconciler) dependentKeys(
+	ctx context.Context, dc *dayCtx, d contracts.Job, keys []contracts.ExpectedKey, byKey map[contracts.ExpectedKey][]store.Run, mark string,
+) (end jobEnd, _ bool) {
 	for _, k := range keys {
 		closeAt, err := r.closeOf(ctx, k.DatasetID, dc.day)
 		if err != nil {
