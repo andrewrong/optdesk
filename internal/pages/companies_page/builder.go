@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	pageTitle     = "Companies"
 	noReaderText  = "no band: reader not set"
 	noMoatText    = "moat record not entered"
 	noQuoteText   = "no quote"
@@ -159,7 +158,7 @@ type viewModel struct {
 
 var zoneOwner = time.FixedZone("+08:00", 8*3600)
 
-var columns = []column{{Text: "Company"}, {Text: "Price line", Numeric: true}, {Text: "Last", Numeric: true}}
+var columns = []column{{Text: columnCompany}, {Text: columnPriceLine, Numeric: true}, {Text: columnLast, Numeric: true}}
 
 // Build returns the page.companies_page.v2 JSON read through cfg. generatedAt is written in the
 // zone of cfg (+08:00 when none). The price line cell of every row is read from the band; the
@@ -193,7 +192,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		StaleAfter: at.Add(staleAfterHrs * time.Hour).Format("2006-01-02T15:04:05-07:00"),
 		Text:       dataOf + string(today),
 	}
-	vm.WatchList = watchBlock{Title: "Watch list", Columns: columns, Rows: []row{}}
+	vm.WatchList = watchBlock{Title: watchListTitle, Columns: columns, Rows: []row{}}
 	var holds []holdingRow
 	var why reasonGroups
 	var far []string
