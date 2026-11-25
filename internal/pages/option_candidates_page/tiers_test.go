@@ -415,7 +415,7 @@ func TestIdleCompaniesOneLine(t *testing.T) {
 	if len(view.Companies) != 1 || view.Companies[0].Ticker != "AAA" {
 		t.Fatalf("companies = %+v", view.Companies)
 	}
-	if view.IdleNote == nil || *view.IdleNote != "1 家公司没有买入价和估值档案：BBB" {
+	if view.IdleNote == nil || *view.IdleNote != "1 家公司没有买入价和估值档案：BBB（它们的行在“没有买入价”一组，按公司折叠）" {
 		t.Errorf("idle_note = %v", view.IdleNote)
 	}
 	if view.BuyHint == nil || !strings.Contains(*view.BuyHint, "公司 > 关注列表") {
@@ -448,7 +448,7 @@ func TestIdleLineEndsWithEllipsis(t *testing.T) {
 	c := tierConfig(rows, &fakeTierer{res: res})
 	c.Names = &namesFake{names: names}
 	view := buildTiersOf(t, c)
-	if view.IdleNote == nil || utf8.RuneCountInString(*view.IdleNote) > 200 || !strings.HasSuffix(*view.IdleNote, "…") ||
+	if view.IdleNote == nil || utf8.RuneCountInString(*view.IdleNote) > 200 || !strings.Contains(*view.IdleNote, "…（") ||
 		!strings.HasPrefix(*view.IdleNote, "60 家公司没有买入价和估值档案：") {
 		t.Errorf("idle_note = %v", view.IdleNote)
 	}

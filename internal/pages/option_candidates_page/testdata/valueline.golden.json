@@ -979,7 +979,7 @@
         "spot_text": "$96.50",
         "spot_note": "存档 11-09",
         "price_note": null,
-        "earnings_text": "未知",
+        "earnings_text": "来源暂无日期（未查到，不等于没有）",
         "source_badge": {
           "code": "hand",
           "label": "手填",
@@ -1480,6 +1480,16 @@
             ],
             "line": null
           }
+        ],
+        "companies": [
+          {
+            "company": "AAA",
+            "count": 2,
+            "row_ids": [
+              "tier-short_put-1-0",
+              "tier-short_put-2-1"
+            ]
+          }
         ]
       },
       {
@@ -1701,6 +1711,15 @@
             ],
             "line": null
           }
+        ],
+        "companies": [
+          {
+            "company": "AAA",
+            "count": 1,
+            "row_ids": [
+              "tier-short_put-3-2"
+            ]
+          }
         ]
       },
       {
@@ -1747,6 +1766,15 @@
             "notes": [],
             "fields": [],
             "line": "AAA $100.00 2026-12-18; Bid $5.40; BE $96.50; intrinsic $3.50, time value $1.90; yield 22.4%/yr"
+          }
+        ],
+        "companies": [
+          {
+            "company": "AAA",
+            "count": 1,
+            "row_ids": [
+              "tier-short_put-4-3"
+            ]
           }
         ]
       },
@@ -1795,11 +1823,20 @@
             "fields": [],
             "line": "BBB $40.00 2026-12-18; Bid $0.50; BE $96.50; yield 22.4%/yr"
           }
+        ],
+        "companies": [
+          {
+            "company": "BBB",
+            "count": 1,
+            "row_ids": [
+              "tier-short_put-5-4"
+            ]
+          }
         ]
       }
     ],
     "stored_title": "已存表格",
-    "idle_note": "1 家公司没有买入价和估值档案：BBB",
+    "idle_note": "1 家公司没有买入价和估值档案：BBB（它们的行在“没有买入价”一组，按公司折叠）",
     "buy_hint": "有公司没有买入价：导入估值，或在“公司 \u003e 关注列表”手填一个买入价，有了买入价才会被评判。",
     "spot_hint": "现价是任务为这一天运行时取到的价格，不是当天收盘价。",
     "strip_labels": {

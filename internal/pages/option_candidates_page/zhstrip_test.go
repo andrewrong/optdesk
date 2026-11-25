@@ -86,7 +86,7 @@ func TestSpotNote(t *testing.T) {
 func TestCompanyZhTexts(t *testing.T) {
 	t.Parallel()
 	cs := buildTiersOfScenario(t, "tiers_ok").Companies
-	if cs[0].PriceNote != nil || cs[0].EarningsText != "未知" {
+	if cs[0].PriceNote != nil || cs[0].EarningsText != "来源暂无日期（未查到，不等于没有）" {
 		t.Errorf("AAA = %v %q", cs[0].PriceNote, cs[0].EarningsText)
 	}
 	if bbb := bbbOf(t); bbb.PriceNote == nil || *bbb.PriceNote != "没有买入价" || bbb.BuyPriceNote == nil || *bbb.BuyPriceNote != "not judged" {

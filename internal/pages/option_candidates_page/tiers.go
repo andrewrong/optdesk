@@ -82,6 +82,8 @@ type tierView struct {
 	Explain   string    `json:"explain"`
 	Collapsed bool      `json:"collapsed"`
 	Rows      []tierRow `json:"rows"`
+	// Companies groups Rows by company, in the order of the first row of each.
+	Companies []tierCompany `json:"companies"`
 }
 
 type tiersView struct {
@@ -180,7 +182,22 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 		ChainDay: string(gr.day), Common: commonOf(res.Common),
 		Kept: keptLine(res.Kept), StoredTitle: storedTitle, Columns: columnsOf(string(gr.day)), Tiers: make([]tierView, 0, len(buckets)),
 	}
+	n := v.addTiers(buckets, res, f, env, verdicts, rowOf, posOf, gr.rows)
+	fillStrips(ctx, c, v, companiesOf(res, gr.rows, gr.day, day, gr.cur), gr.cur)
+	v.Legend = legendOf(res, f, n)
+	v.KeptNote = keptNoteOf(v.Kept)
+	v.ByCompany = byCompanyOf(v, res, f, n, string(gr.day), gr.cur)
+	return v, nil
+}
+
+// addTiers builds the tiers of the answer from its buckets into v.Tiers and returns the counts of the tiers.
+func (v *tiersView) addTiers(buckets []bucket, res optiontierapi.Result, f tierFacts, env rowEnv,
+	verdicts map[string]optiontierapi.Verdict, rowOf map[string]store.Candidate, posOf map[string]int, rows []store.Candidate) tierCounts {
 	var n tierCounts
+	names := map[string]string{}
+	for _, r := range rows {
+		names[strconv.Itoa(r.UnderlyingID)] = r.Issuer
+	}
 	for i, b := range buckets {
 		t := tierOf(b, res, f)
 		for _, k := range b.keys {
@@ -190,6 +207,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 			}
 			t.Rows = append(t.Rows, env.tierRowOf(verdicts[k], rowOf[k], pos))
 		}
+		t.Companies = companiesOfTier(t.Rows, names)
 		t.Title = titleOf(i, t.Title, len(t.Rows))
 		switch i {
 		case 0:
@@ -201,11 +219,7 @@ func buildTiers(ctx context.Context, c Config, gr groupRead, day contracts.Day, 
 		}
 		v.Tiers = append(v.Tiers, t)
 	}
-	fillStrips(ctx, c, v, companiesOf(res, gr.rows, gr.day, day, gr.cur), gr.cur)
-	v.Legend = legendOf(res, f, n)
-	v.KeptNote = keptNoteOf(v.Kept)
-	v.ByCompany = byCompanyOf(v, res, f, n, string(gr.day), gr.cur)
-	return v, nil
+	return n
 }
 
 // titleOf is the title of tier i of the answer, whose tail is tail: the word and the count for Fits and Check,
@@ -484,12 +498,13 @@ func splitIdle(all []companyView) (listed []companyView, idle, hint *string) {
 		if i > 0 {
 			entry = idleNoteSep + tk
 		}
-		if utf8.RuneCountInString(line+entry+idleNoteEllipsis) > keptMaxChars {
+		if utf8.RuneCountInString(line+entry+idleNoteEllipsis+idleNotePointer) > keptMaxChars {
 			line += idleNoteEllipsis
 			break
 		}
 		line += entry
 	}
+	line += idleNotePointer
 	return listed, &line, hint
 }
 

@@ -892,7 +892,7 @@
         "spot_text": "$96.50",
         "spot_note": "存档 11-09",
         "price_note": null,
-        "earnings_text": "未知",
+        "earnings_text": "来源暂无日期（未查到，不等于没有）",
         "source_badge": {
           "code": "hand",
           "label": "手填",
@@ -1530,6 +1530,23 @@
             ],
             "line": null
           }
+        ],
+        "companies": [
+          {
+            "company": "AAA",
+            "count": 2,
+            "row_ids": [
+              "tier-short_put-0-0",
+              "tier-short_put-1-1"
+            ]
+          },
+          {
+            "company": "BBB",
+            "count": 1,
+            "row_ids": [
+              "tier-short_put-2-2"
+            ]
+          }
         ]
       },
       {
@@ -1539,7 +1556,8 @@
         "title": "待查 0",
         "explain": "无：没有行满足三项条件却带有需要再看一眼的徽标。",
         "collapsed": false,
-        "rows": []
+        "rows": [],
+        "companies": []
       }
     ],
     "stored_title": "已存表格",
