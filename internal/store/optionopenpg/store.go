@@ -110,8 +110,7 @@ func utc(t *time.Time) *time.Time {
 // wrap makes a database error Retryable, except an integrity constraint violation (SQLSTATE class 23), which the
 // database repeats on every attempt and is Permanent; it keeps a typed error as it is.
 func wrap(err error, what string) error {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); ok {
 		return err
 	}
 	var pe *pgconn.PgError

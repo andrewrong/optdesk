@@ -30,14 +30,14 @@ var insertSQL = "INSERT INTO candidates.option_candidate (" + columns + ") VALUE
 	") ON CONFLICT DO NOTHING"
 
 func placeholders(n int) string {
-	s := ""
+	var s strings.Builder
 	for i := 1; i <= n; i++ {
 		if i > 1 {
-			s += ", "
+			s.WriteString(", ")
 		}
-		s += fmt.Sprintf("$%d", i)
+		fmt.Fprintf(&s, "$%d", i)
 	}
-	return s
+	return s.String()
 }
 
 // scanner reads the columns of the current row.

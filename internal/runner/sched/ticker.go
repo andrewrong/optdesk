@@ -560,8 +560,7 @@ func (t *ticker) reconcileAndSync(ctx context.Context, day contracts.Day) {
 	cancel()
 	if err != nil {
 		kind := "error"
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if te, ok := errors.AsType[contracts.TypedError](err); ok {
 			kind = string(te.Kind())
 		}
 		t.log.Error("reconcile failed", slog.String("day", string(day)), slog.String("kind", kind))

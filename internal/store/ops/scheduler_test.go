@@ -45,7 +45,7 @@ func (f *recDB) InTx(_ context.Context, fn func(querier) error) error {
 func TestRenewLeaseUsesDatabaseNow(t *testing.T) {
 	t.Parallel()
 	exp := time.Date(2026, 11, 8, 9, 0, 30, 0, time.FixedZone("x", 3600))
-	f := &recDB{fakeDB: fakeDB{rows: [][]any{{"scheduler-1", exp}}}}
+	f := &recDB{rows: [][]any{{"scheduler-1", exp}}}
 	s := &schedLedger{db: f}
 	got, err := s.RenewLease(context.Background(), store.Lease{Owner: "scheduler-1", ExpiresAt: time.Unix(1, 0)}, 30*time.Second)
 	if err != nil {
@@ -136,10 +136,10 @@ func TestExpectationFromWindowAndPresent(t *testing.T) {
 	day := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
 	prev := time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC)
 	due := time.Date(2026, 11, 5, 22, 0, 0, 0, time.UTC)
-	f := &recDB{fakeDB: fakeDB{rows: [][]any{
+	f := &recDB{rows: [][]any{
 		{"obs.series_point", day, &prev, &due, "partial", false},
 		{"obs.option_eod", day, (*time.Time)(nil), (*time.Time)(nil), "", true},
-	}}}
+	}}
 	r := &gapReader{db: f}
 	got, err := r.Expectations(context.Background(), "2026-11-01", "2026-11-08")
 	if err != nil {
@@ -168,7 +168,7 @@ func TestOpenGapsReadsView(t *testing.T) {
 	day := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
 	first := time.Date(2026, 11, 5, 22, 1, 0, 0, time.UTC)
 	rep := first.Add(time.Hour)
-	f := &recDB{fakeDB: fakeDB{rows: [][]any{{"", "obs.series_point", day, "expired", first, &rep, (*time.Time)(nil)}}}}
+	f := &recDB{rows: [][]any{{"", "obs.series_point", day, "expired", first, &rep, (*time.Time)(nil)}}}
 	got, err := (&gapReader{db: f}).OpenGaps(context.Background())
 	if err != nil {
 		t.Fatal(err)

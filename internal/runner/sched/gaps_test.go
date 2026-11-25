@@ -2,6 +2,7 @@ package sched
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 	"testing"
@@ -42,9 +43,7 @@ func (o *gapOps) Present(context.Context, contracts.Day) (map[contracts.Expected
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	out := map[contracts.ExpectedKey]store.PresentStatus{}
-	for k, v := range o.present {
-		out[k] = v
-	}
+	maps.Copy(out, o.present)
 	return out, nil
 }
 
@@ -347,7 +346,7 @@ func TestPartialGapAtClose(t *testing.T) {
 func tickerRig(t *testing.T, gaps func(h *harness, ops *gapOps, led *gapLedger) runner.GapSyncer, cursor contracts.Day) (*harness, *gapOps, *gapLedger) {
 	t.Helper()
 	h := newHarness(t)
-	ops, led := newGapOps(), &gapLedger{fakeLedger: fakeLedger{ev: h.ev}}
+	ops, led := newGapOps(), &gapLedger{ev: h.ev}
 	ops.cursor = cursor
 	ops.windows["ds"] = gapClose
 	g := gaps(h, ops, led)

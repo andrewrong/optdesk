@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -51,10 +52,8 @@ func TestIndicatorDetailV2VersionOneFails(t *testing.T) {
 	inst := indicatorMinimal(t)
 	inst["schema_version"] = 1
 	want := leaf{"/schema_version", "const"}
-	for _, l := range pageV2Leaves(t, s, inst) {
-		if l == want {
-			return
-		}
+	if slices.Contains(pageV2Leaves(t, s, inst), want) {
+		return
 	}
 	t.Errorf("want %v among the failures", want)
 }

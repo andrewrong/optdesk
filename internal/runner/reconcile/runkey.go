@@ -274,9 +274,7 @@ func every(ctx context.Context, clk clockwork.Clock, fn func() bool) (stop func(
 	t := clk.NewTicker(beat)
 	done := make(chan struct{})
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer t.Stop()
 		for {
 			select {
@@ -290,7 +288,7 @@ func every(ctx context.Context, clk clockwork.Clock, fn func() bool) (stop func(
 				}
 			}
 		}
-	}()
+	})
 	return func() { close(done); wg.Wait() }
 }
 
@@ -593,11 +591,9 @@ func (r *reconciler) trigger(ctx context.Context, dc *dayCtx, up string, upEnded
 		if at, sched, err := slotAt(d, dc.sess, r.rule); err != nil || (sched && r.clk.Now().Before(at)) {
 			continue // not yet its slot: left to its slot turn
 		}
-		dc.wg.Add(1)
-		go func() {
-			defer dc.wg.Done()
+		dc.wg.Go(func() {
 			r.runDependent(ctx, dc, d, up, upEndedOK)
-		}()
+		})
 	}
 }
 

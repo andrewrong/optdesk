@@ -47,7 +47,7 @@ func TestMigration0014Text(t *testing.T) {
 		}
 	}
 	down := text[strings.Index(text, "-- +goose Down\n")+len("-- +goose Down\n"):]
-	for _, line := range strings.Split(strings.TrimSpace(down), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(down), "\n") {
 		if !strings.HasPrefix(line, "--") {
 			t.Errorf("Down section holds a statement: %q", line)
 		}

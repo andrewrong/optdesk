@@ -316,7 +316,7 @@ func mayImport(t *testing.T, toml, name string) string {
 
 // hasDep reports whether a mayDependOn block lists the component.
 func hasDep(block, name string) bool {
-	for _, l := range strings.Split(block, "\n") {
+	for l := range strings.SplitSeq(block, "\n") {
 		if strings.TrimSpace(l) == "- "+name {
 			return true
 		}
@@ -492,9 +492,7 @@ func TestRootImportsOwnersetDeclarations(t *testing.T) {
 	t.Parallel()
 	fixture := strings.Replace(declFixture, "internal/store/api.go internal/store/bar", "internal/store/api.go internal/store/ownerset", 1)
 	tree := map[string]string{}
-	for k, v := range declTree {
-		tree[k] = v
-	}
+	maps.Copy(tree, declTree)
 	tree["internal/store/ownerset/api.go"] = "package ownerset\n"
 	dir := scratch(t, tree)
 	toml, _, err := generate(fixture, dir)
@@ -513,9 +511,7 @@ func TestRootImportsSettingsapiDeclarations(t *testing.T) {
 	t.Parallel()
 	fixture := strings.Replace(declFixture, "internal/compute/api.go internal/compute/contracttest", "internal/compute/api.go internal/compute/settingsapi", 1)
 	tree := map[string]string{}
-	for k, v := range declTree {
-		tree[k] = v
-	}
+	maps.Copy(tree, declTree)
 	tree["internal/compute/settingsapi/api.go"] = "package settingsapi\n"
 	dir := scratch(t, tree)
 	toml, _, err := generate(fixture, dir)
@@ -534,9 +530,7 @@ func TestRootImportsDividendDeclarations(t *testing.T) {
 	t.Parallel()
 	fixture := strings.Replace(declFixture, "internal/store/api.go internal/store/bar", "internal/store/api.go internal/store/dividend", 1)
 	tree := map[string]string{}
-	for k, v := range declTree {
-		tree[k] = v
-	}
+	maps.Copy(tree, declTree)
 	tree["internal/store/dividend/api.go"] = "package dividend\n"
 	dir := scratch(t, tree)
 	toml, _, err := generate(fixture, dir)
@@ -597,7 +591,7 @@ func lintDeps(t *testing.T, files map[string]string, component string) []string 
 		return nil
 	}
 	var out []string
-	for _, l := range strings.Split(nextKey.Split(rest, 2)[0], "\n") {
+	for l := range strings.SplitSeq(nextKey.Split(rest, 2)[0], "\n") {
 		if d, ok := strings.CutPrefix(strings.TrimSpace(l), "- "); ok {
 			out = append(out, d)
 		}

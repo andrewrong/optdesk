@@ -63,7 +63,7 @@ func TestDayReaderContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := [][2]interface{}{{contracts.Day("2026-11-12"), int64(1)}, {contracts.Day("2026-11-12"), int64(2)},
+	want := [][2]any{{contracts.Day("2026-11-12"), int64(1)}, {contracts.Day("2026-11-12"), int64(2)},
 		{contracts.Day("2026-11-13"), int64(1)}, {contracts.Day("2026-11-13"), int64(2)}}
 	if len(got) != len(want) {
 		t.Fatalf("got %d rows, want %d", len(got), len(want))

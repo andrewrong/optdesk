@@ -55,7 +55,7 @@ func parseModules(text string) ([]row, error) {
 		return nil, errors.New("no '## Modules' heading")
 	}
 	var rows []row
-	for _, line := range strings.Split(table, "\n") {
+	for line := range strings.SplitSeq(table, "\n") {
 		if strings.HasPrefix(line, "## ") {
 			break
 		}
