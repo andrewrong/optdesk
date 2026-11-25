@@ -435,6 +435,9 @@ func TestCandidatesOpenStoreErrorKeepsJob(t *testing.T) {
 // quoteStoreStub is a quote store the job factory holds; no method is called.
 type quoteStoreStub struct{ store.QuoteSnapshotStore }
 
+// quoteReaderStub is the reader of the pages role, a different value from the writer.
+type quoteReaderStub struct{ store.QuoteSnapshotReader }
+
 func TestOptionCandidatesQuotes(t *testing.T) {
 	t.Parallel()
 	var got optioncandidates.CandidateStores
@@ -444,12 +447,13 @@ func TestOptionCandidatesQuotes(t *testing.T) {
 		got = st
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
-	snap := quoteStoreStub{}
-	f := jobFactory{d: d, snap: snap}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "AAA"}})...)
+	writer := quoteStoreStub{}
+	reader := &quoteReaderStub{}
+	f := jobFactory{d: d, snap: writer, quotes: reader}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "AAA"}})...)
 	if _, err := f.optionCandidates(); err != nil {
 		t.Fatal(err)
 	}
-	if got.Quotes == nil || got.Quotes != store.QuoteSnapshotReader(snap) {
+	if got.Quotes == nil || got.Quotes != store.QuoteSnapshotReader(reader) {
 		t.Fatalf("Quotes %v", got.Quotes)
 	}
 }

@@ -269,11 +269,18 @@ func newRig(t *testing.T, env string) *rig {
 		return e, nil
 	}
 	d.openQuoteSnapshot = func(_ context.Context, dsn string) (store.QuoteSnapshotStore, error) {
-		if err := step("snap", dsn); err != nil {
+		name := "snap"
+		if dsn == r.pagesDSN() {
+			name = "c-snap"
+		}
+		if err := step(name, dsn); err != nil {
 			return nil, err
 		}
-		r.snap = evSnap{c: evc{"snap", r.ev}}
-		return r.snap, nil
+		e := evSnap{c: evc{name, r.ev}}
+		if name == "snap" {
+			r.snap = e
+		}
+		return e, nil
 	}
 	d.openInstrument = func(_ context.Context, dsn string) (store.InstrumentStore, error) {
 		if err := step("instr", dsn); err != nil {
@@ -371,7 +378,8 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"sd": "run-dsn", "ledger": "run-dsn", "series": "ser-dsn", "eod": "eod-dsn", "snap": "snap-dsn", "instr": "master-dsn",
+	want := map[string]string{"sd": "run-dsn", "ledger": "run-dsn", "series": "ser-dsn", "eod": "eod-dsn", "snap": "snap-dsn", "c-snap": "pages-dsn",
+		"instr":     "master-dsn",
 		"c-catalog": "pages-dsn", "c-eod": "pages-dsn", "c-terms": "pages-dsn", "c-names": "pages-dsn", "c-series": "pages-dsn", "readings": "readings-dsn"}
 	for k, v := range want {
 		if r.dsn[k] != v {
@@ -427,7 +435,7 @@ func TestRunOnceCloses(t *testing.T) {
 		{"dial", "broker", fullEnv}, {"fred job", "fredjob", fullEnv}, {"eod job", "eodjob", fullEnv},
 		{"snap job", "snapjob", fullEnv}, {"compute job", "figjob", fullEnv}, {"calendar job", "caljob", fullEnv},
 		{"c-catalog", "c-catalog", fullEnv}, {"c-eod", "c-eod", fullEnv}, {"c-terms", "c-terms", fullEnv},
-		{"c-names", "c-names", fullEnv}, {"c-series", "c-series", fullEnv}, {"readings", "readings", fullEnv},
+		{"c-snap", "c-snap", fullEnv}, {"c-names", "c-names", fullEnv}, {"c-series", "c-series", fullEnv}, {"readings", "readings", fullEnv},
 		{"sd-loader", "sd-loader", fullEnv}, {"reconcile", "reconcile", fullEnv},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -481,7 +489,8 @@ func TestRunOnceErrors(t *testing.T) {
 	}
 	for _, tc := range []struct{ step, line string }{
 		{"eod", "OT_PG_DSN_OPTION_EOD"}, {"snap", "OT_PG_DSN_QUOTE_SNAPSHOT"}, {"instr", "OT_PG_DSN_MASTER"},
-		{"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"}, {"readings", "OT_PG_DSN_READINGS"}, {"sd-loader", "OT_PG_DSN_LOADER"},
+		{"c-snap", "OT_PG_DSN_PAGES"}, {"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"},
+		{"readings", "OT_PG_DSN_READINGS"}, {"sd-loader", "OT_PG_DSN_LOADER"},
 	} {
 		t.Run("open "+tc.step, func(t *testing.T) {
 			r := newRig(t, env)
@@ -625,5 +634,28 @@ func TestAsTypedFindsWrappedTypedError(t *testing.T) {
 	}
 	if got := asTyped(errors.New("plain")); got == nil || got.Kind() != contracts.Permanent || got.Error() != "untyped error: plain" {
 		t.Fatalf("plain error answered %v", got)
+	}
+}
+
+func TestWithWiringQuotesReader(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, e := range r.ev.list() {
+		if e == "close c-snap" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("the pages-DSN quote snapshot store closed %d times, want 1", n)
+	}
+	if r.dsn["snap"] == r.dsn["c-snap"] {
+		t.Errorf("writer and reader opened with the same line %q", r.dsn["snap"])
+	}
+	if r.snapW != store.QuoteSnapshotWriter(r.snap) {
+		t.Error("the writer of quote_snapshot is not the store opened with the quote snapshot DSN")
 	}
 }
