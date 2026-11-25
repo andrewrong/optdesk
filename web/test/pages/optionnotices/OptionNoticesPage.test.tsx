@@ -111,13 +111,13 @@ describe('OptionNoticesPage', () => {
     expect(block.querySelector('p[data-cash-gloss]')!.textContent).toBe('ok Cash gloss sentence')
     const days = [...block.querySelectorAll('[data-cash-day]')]
     expect(days.map((d) => d.querySelector('[data-cash-available]')?.textContent ?? null)).toEqual([
-      'Account cash ok Available B',
-      'Account cash ok Available A',
+      '账户现金 ok Available B',
+      '账户现金 ok Available A',
       null,
     ])
     expect(days.map((d) => d.querySelector('[data-cash-left]')?.textContent ?? null)).toEqual([
-      'Left after dues ok Left B',
-      'Left after dues ok Left A',
+      '付款后剩余 ok Left B',
+      '付款后剩余 ok Left A',
       null,
     ])
     await act(async () => root?.unmount())
@@ -129,8 +129,8 @@ describe('OptionNoticesPage', () => {
   it('labels strike and quantity of each put', async () => {
     const page = await show(ok)
     const li = page.querySelector('[data-alias=ok-main] [data-cash-put]')!
-    expect(li.textContent).toBe('OKA2026-11-20Strikeok Strike 1PQtyok Qty 1')
-    expect([...li.querySelectorAll('[data-label]')].map((s) => s.textContent)).toEqual(['Strike', 'Qty'])
+    expect(li.textContent).toBe('OKA2026-11-20行权价ok Strike 1P数量ok Qty 1')
+    expect([...li.querySelectorAll('[data-label]')].map((s) => s.textContent)).toEqual(['行权价', '数量'])
   })
 
   it('shows the cushion and no-guard-record hints', async () => {
@@ -143,10 +143,15 @@ describe('OptionNoticesPage', () => {
     expect(second.querySelector('[data-note-hint]')).toBeNull()
   })
 
+  it('TestNoticesCashLabelsChinese', async () => {
+    const page = await show(ok)
+    expect(page.querySelector('[data-cash-available] [data-label]')!.textContent).toBe('账户现金')
+  })
+
   it('new: the cash title, its gloss and the empty line', async () => {
     const page = await show(ok)
     const first = page.querySelector('[data-alias=ok-main]')!
-    expect(first.querySelector('h3[data-cash-title]')!.textContent).toBe('Cash due if assigned')
+    expect(first.querySelector('h3[data-cash-title]')!.textContent).toBe('被指派需付现金')
     expect(first.querySelector('[data-cash]')).not.toBeNull()
     expect(first.querySelector('[data-cash-empty]')).toBeNull()
     const second = page.querySelector('[data-alias=ok-second]')!

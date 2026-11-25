@@ -41,7 +41,7 @@ export function AliasBlock({ block }: { block: Block }) {
           <>
             <NoticeList notices={block.notices} />
             <h3 data-cash-title className="text-base font-semibold">
-              Cash due if assigned
+              被指派需付现金
             </h3>
             {typeof block.cash_gloss === 'string' ? (
               <p data-cash-gloss className="text-sm text-muted-foreground">
@@ -76,12 +76,12 @@ export function AliasBlock({ block }: { block: Block }) {
                     </Table>
                     {typeof row.available_text === 'string' ? (
                       <p data-cash-available className="px-2 text-sm text-muted-foreground">
-                        <span data-label>Account cash</span> <span>{row.available_text}</span>
+                        <span data-label>账户现金</span> <span>{row.available_text}</span>
                       </p>
                     ) : null}
                     {typeof row.left_text === 'string' ? (
                       <p data-cash-left className="px-2 text-sm text-muted-foreground">
-                        <span data-label>Left after dues</span> <span>{row.left_text}</span>
+                        <span data-label>付款后剩余</span> <span>{row.left_text}</span>
                       </p>
                     ) : null}
                     <CashPuts puts={row.puts} />
