@@ -404,7 +404,7 @@ func TestLongPutNoteCount(t *testing.T) {
 		r.replay.positions = append(r.replay.positions, p)
 	}
 	vm := r.build(t)
-	want := "main: 2" + longsTailZh
+	want := "main: 2 个买入的看跌期权仓位已跳过：本页只显示卖出的看跌期权"
 	if !strings.Contains(strings.Join(vm.Notes, "|"), want) || len(vm.Accounts[0].Lots) != 0 {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
@@ -450,7 +450,7 @@ func TestNoQuotesTextsAreChinese(t *testing.T) {
 	if got := *acc.Books[0].LeftOut; !strings.Contains(got, "2 个没有存档报价的仓位（账本 $5.00；"+leftOutNoQuotesZh+"）") {
 		t.Errorf("left_out = %q", got)
 	}
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1"+longsTailZh) {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 个买入的看跌期权仓位已跳过：本页只显示卖出的看跌期权") {
 		t.Errorf("notes = %v", vm.Notes)
 	}
 }
