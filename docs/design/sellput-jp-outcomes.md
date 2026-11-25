@@ -44,7 +44,7 @@ All entries: `Design: docs/design/sellput-jp-outcomes.md#<decision>`. The order 
 
 ### 1 name-outcomes-contract (interface)
 
-Module: contracts. Size: S. Order: after the registered draft `sellput-jpy-group-live` and after issue 1 of `sellput-gaps.md`. Contracts: `page.option_candidates_page v1 additive`. Design: Decisions 1, 4.
+Module: contracts. Size: S. Order: none (the issue carries Depends on: the issues of the draft `sellput-jpy-group-live` and of issue 1 of `sellput-gaps.md`). Contracts: `page.option_candidates_page v1 additive`. Design: Decisions 1, 4.
 Files: `contracts/schemas/page.option_candidates_page.v1.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `docs/contracts/page-schemas.md`, `internal/contracts/option_candidates_page_v1_test.go`, `internal/contracts/gen/records.go`, `web/src/generated/option_candidates_page.v1.ts`
 - `Group` has the optional `name_outcomes` with `name`, `outcome` (a string, no enum), `text`, `counts`; it is in no `required` (tests `TestNameOutcomesValid` (new), `TestNameOutcomesOpenString` (new): an unknown outcome string validates).
 - A document without it still validates (test `TestNoNameOutcomesStillValid` (new)); `schema_version` is 1; `web/src/generated/option_candidates_page.v1.ts` contains `name_outcomes` (grep).
