@@ -33,13 +33,13 @@ const SWITCH_FIELDS = ['options', 'fundamentals'] as const
 
 // The gloss shown next to the field name in the label of an edit form, keyed by the field name.
 const GLOSS: Record<string, string> = {
-  buy_price: 'price you would buy at',
-  sale_price: 'price you would sell at',
-  report_date_override: 'your own report date, YYYY-MM-DD',
-  issuer: 'company id for filings and calendars',
-  status: 'whether the name is followed',
-  options: 'sell puts on this name',
-  fundamentals: 'read its filings',
+  buy_price: '你想买入的价格',
+  sale_price: '你想卖出的价格',
+  report_date_override: '你自己定的财报日，格式 YYYY-MM-DD',
+  issuer: '用于财报与日历的公司编号',
+  status: '是否关注这个标的',
+  options: '对这个标的卖出看跌期权（sell put）',
+  fundamentals: '读取它的财报',
 }
 
 function labelText(name: string, gloss: boolean) {
@@ -57,7 +57,7 @@ function Token({ form }: { form: Form }) {
 }
 
 function Flag({ on }: { on: boolean }) {
-  return <span>{on ? 'On' : 'Off'}</span>
+  return <span>{on ? '开' : '关'}</span>
 }
 
 // The anchor id of the edit form of a row: the key with every character outside letters, digits, "_" and "-" as "-".
@@ -73,7 +73,7 @@ const STICKY_CLASS = 'sticky left-0 bg-background'
 const baseColumns: ColumnDef<Name>[] = [
   {
     id: 'name',
-    header: 'Name',
+    header: '名称',
     cell: ({ row: { original: r } }) => (
       <div>
         <span className="font-medium">{r.symbol}</span> <span className="text-muted-foreground">{r.market}</span>{' '}
@@ -81,24 +81,24 @@ const baseColumns: ColumnDef<Name>[] = [
       </div>
     ),
   },
-  { id: 'kind', header: 'Kind', cell: ({ row }) => row.original.kind },
+  { id: 'kind', header: '类型', cell: ({ row }) => row.original.kind },
   {
     id: 'status',
-    header: 'Status',
+    header: '状态',
     cell: ({ row }) => <Badge variant="secondary">{row.original.status_text}</Badge>,
   },
-  { id: 'options', header: 'Options', cell: ({ row }) => <Flag on={row.original.options} /> },
+  { id: 'options', header: '期权', cell: ({ row }) => <Flag on={row.original.options} /> },
   {
     id: 'fundamentals',
-    header: 'Fundamentals',
+    header: '基本面',
     cell: ({ row }) => <Flag on={row.original.fundamentals} />,
   },
-  { id: 'held', header: 'Held', cell: ({ row }) => <Flag on={row.original.held} /> },
-  { id: 'buy', header: 'Buy', cell: ({ row }) => row.original.buy_price },
-  { id: 'sale', header: 'Sale', cell: ({ row }) => row.original.sale_price },
+  { id: 'held', header: '持有', cell: ({ row }) => <Flag on={row.original.held} /> },
+  { id: 'buy', header: '买入价', cell: ({ row }) => row.original.buy_price },
+  { id: 'sale', header: '卖出价', cell: ({ row }) => row.original.sale_price },
   {
     id: 'followed',
-    header: 'Followed by',
+    header: '关注来源',
     cell: ({ row: { original: r } }) => (
       <div className="flex flex-wrap items-center gap-1">
         {r.followed_by.map((g) => (
@@ -110,7 +110,7 @@ const baseColumns: ColumnDef<Name>[] = [
       </div>
     ),
   },
-  { id: 'note', header: 'Note', cell: ({ row }) => row.original.note },
+  { id: 'note', header: '备注', cell: ({ row }) => row.original.note },
 ]
 
 const editColumn: ColumnDef<Name> = {
@@ -118,7 +118,7 @@ const editColumn: ColumnDef<Name> = {
   header: '',
   cell: ({ row }) => (
     <Button asChild variant="link" size="sm">
-      <a href={`#${editId(row.original.key)}`}>Edit</a>
+      <a href={`#${editId(row.original.key)}`}>{'编辑'}</a>
     </Button>
   ),
 }
@@ -187,7 +187,7 @@ function AddForm({ form }: { form: Form }) {
         <Field key={n} id={`add-${n}`} name={n} defaultValue="" />
       ))}
       <div className="flex items-end">
-        <Button type="submit">Add</Button>
+        <Button type="submit">{'添加'}</Button>
       </div>
     </form>
   )
@@ -229,7 +229,7 @@ function EditForm({ row, form }: { row: Name; form: Form }) {
         </div>
       ))}
       <div className="flex items-end">
-        <Button type="submit">Save</Button>
+        <Button type="submit">{'保存'}</Button>
       </div>
     </form>
   )
@@ -241,7 +241,7 @@ function ConfirmCard({ confirm, form }: { confirm: NonNullable<Payload['confirm'
       <DialogContent data-confirm showCloseButton={false} aria-describedby={undefined} className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle asChild>
-            <h2 className="text-lg font-semibold">Confirm changes</h2>
+            <h2 className="text-lg font-semibold">{'确认修改'}</h2>
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
@@ -268,10 +268,10 @@ function ConfirmCard({ confirm, form }: { confirm: NonNullable<Payload['confirm'
                 <input key={`${i}-${f.name}`} type="hidden" name={f.name} value={f.value} />
               ))}
               <input type="hidden" name="confirm" value="1" />
-              <Button type="submit">Confirm and save</Button>
+              <Button type="submit">{'确认并保存'}</Button>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {'取消'}
                 </Button>
               </DialogClose>
             </form>
@@ -279,7 +279,7 @@ function ConfirmCard({ confirm, form }: { confirm: NonNullable<Payload['confirm'
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {'取消'}
                 </Button>
               </DialogClose>
             </DialogFooter>
@@ -320,7 +320,7 @@ export function UnderlyingsView({ payload }: { payload: Payload }) {
         <Card>
           <CardHeader>
             <CardTitle>
-              <h2 className="text-lg font-semibold">Add and edit</h2>
+              <h2 className="text-lg font-semibold">{'添加与编辑'}</h2>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -334,7 +334,7 @@ export function UnderlyingsView({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2 className="text-lg font-semibold">History</h2>
+            <h2 className="text-lg font-semibold">{'历史'}</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
