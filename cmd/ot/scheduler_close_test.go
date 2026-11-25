@@ -51,7 +51,7 @@ func useLedger(r *schedRig, l store.OpsLedger) {
 func TestSchedulerClosesRunningRowsAtStartBeforeTheTicker(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
-	l := &closeRecLedger{fakeLedger: fakeLedger{n: new(atomic.Int32)}}
+	l := &closeRecLedger{n: new(atomic.Int32)}
 	useLedger(r, l)
 	var beforeBuild int32
 	build := r.a.deps.newScheduler
@@ -81,7 +81,7 @@ func TestSchedulerClosesRunningRowsAtStartBeforeTheTicker(t *testing.T) {
 func TestSchedulerExitsWhenCloseRunningFails(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
-	l := &closeRecLedger{fakeLedger: fakeLedger{n: new(atomic.Int32)}, err: errors.New("dial postgres://u:secret@h/db")}
+	l := &closeRecLedger{n: new(atomic.Int32), err: errors.New("dial postgres://u:secret@h/db")}
 	useLedger(r, l)
 	err := <-r.start()
 	if err == nil || r.sched != nil {
@@ -105,7 +105,7 @@ func TestSchedulerExitsWhenTheLedgerIsNoRunCloser(t *testing.T) {
 func TestSchedulerDoesNotCloseRunningRowsWithoutTheFence(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
-	l := &closeRecLedger{fakeLedger: fakeLedger{n: new(atomic.Int32)}}
+	l := &closeRecLedger{n: new(atomic.Int32)}
 	useLedger(r, l)
 	r.inst.held = true
 	r.cancel() // lockFence ends at its first wait

@@ -153,7 +153,7 @@ func treeVersions(repo, commit string) ([]int64, error) {
 		return nil, fmt.Errorf("git ls-tree of the commit failed: %w", err)
 	}
 	var vs []int64
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		num := leadingNumber.FindString(path.Base(strings.TrimSpace(line)))
 		if num == "" {
 			continue
@@ -173,8 +173,7 @@ func gitOut(repo string, args ...string) (string, error) {
 	cmd := exec.CommandContext(context.Background(), "git", append([]string{"-C", repo}, args...)...)
 	out, err := cmd.Output()
 	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return "", fmt.Errorf("exit %d", ee.ExitCode())
 		}
 		return "", errors.New("git did not run")

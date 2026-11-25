@@ -143,7 +143,7 @@ func readBase(root, base string) (map[string]bool, map[string]int, error) {
 		return nil, nil, err
 	}
 	paths := map[string]bool{}
-	for _, p := range strings.Split(string(out), "\x00") {
+	for p := range strings.SplitSeq(string(out), "\x00") {
 		if p != "" {
 			paths[p] = true
 		}
@@ -167,7 +167,7 @@ func readCurrent(root string) (snapshot, error) {
 	if err != nil {
 		return snap, err
 	}
-	for _, p := range strings.Split(string(out), "\x00") {
+	for p := range strings.SplitSeq(string(out), "\x00") {
 		if p == "" || !sourceExt[strings.ToLower(filepath.Ext(p))] {
 			continue
 		}

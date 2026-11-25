@@ -186,9 +186,9 @@ var errImportTooLarge = errors.New("valuation import: file too large")
 // file part is the last and is read into memory up to MaxFileBytes. Parts after the file are not read.
 func readImportForm(mr *multipart.Reader) (importForm, error) {
 	f := importForm{fields: map[string][]string{}}
-	for n := 0; n < importPartsMax; n++ {
+	for range importPartsMax {
 		p, err := mr.NextPart()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return f, nil
 		}
 		if err != nil {
@@ -287,8 +287,7 @@ func underlyingStored(rows []underlying.Row) []valueimportapi.StoredUnderlying {
 
 // badFileText is the sentence for a file the importer cannot read: the path of the key, never a value.
 func badFileText(err error) string {
-	var fe *valueimportapi.FileError
-	if errors.As(err, &fe) {
+	if fe, ok := errors.AsType[*valueimportapi.FileError](err); ok {
 		return "The file cannot be read: " + fe.Path
 	}
 	return "The file cannot be read."

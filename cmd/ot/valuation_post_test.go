@@ -1,6 +1,7 @@
 package main
 
 import (
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -68,9 +69,7 @@ func TestOpenValuationWired(t *testing.T) {
 
 func paramsFields(extra url.Values) url.Values {
 	v := url.Values{"effective_date": {"2026-11-06"}}
-	for k, s := range extra {
-		v[k] = s
-	}
+	maps.Copy(v, extra)
 	return v
 }
 

@@ -363,8 +363,8 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 		t.Errorf("option_eod_jp starts at %v after XTKS ran out", st.NextStart)
 	}
 	// Each walk of the slots logs the dropped calendar once; the minutes above may add walks, so one line or more.
-	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
-	for _, l := range lines {
+	lines := strings.SplitSeq(strings.TrimSpace(buf.String()), "\n")
+	for l := range lines {
 		if !strings.Contains(l, "calendar XTKS: calendar: unknown_calendar, jobs dropped") {
 			t.Fatalf("unexpected log line %q in %s", l, buf.String())
 		}
@@ -414,7 +414,7 @@ func TestJPProbeKeepsJobOutWhenXTKSRunsOut(t *testing.T) {
 	if got := r.sched.disabled[jobOptionEodJP]; got != noXTKSLine {
 		t.Fatalf("option_eod_jp is left out with %q, want %q", got, noXTKSLine)
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if err := r.sched.rec.Reconcile(t.Context(), "2026-11-09"); err != nil {
 			t.Fatalf("reconcile %d: %v", i, err)
 		}
@@ -453,7 +453,7 @@ func TestJPRebuildDropsJobWhenXTKSRunsOut(t *testing.T) {
 	if got := r.lastBuild(); !slices.Equal(got, want) {
 		t.Fatalf("rebuilt with %v, want %v (without option_eod_jp: %v)", got, want, without(r.lastBuild(), jobOptionEodJP))
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if err := r.sched.rec.Reconcile(t.Context(), "2026-11-09"); err != nil {
 			t.Fatalf("reconcile %d: %v", i, err)
 		}

@@ -129,7 +129,7 @@ func (j brokerJob) Run(ctx context.Context, _ contracts.Day, _ []contracts.Expec
 	_, err := j.b.Snapshot(ctx, broker.KindSnapshot, nil)
 	var te contracts.TypedError
 	if err != nil {
-		te, _ = err.(contracts.TypedError)
+		te, _ = errors.AsType[contracts.TypedError](err)
 	}
 	return contracts.JobResult{Err: te}
 }
@@ -467,7 +467,7 @@ func TestRunOnceErrors(t *testing.T) {
 	} {
 		t.Run("missing "+line, func(t *testing.T) {
 			var kept []string
-			for _, l := range strings.Split(env, "\n") {
+			for l := range strings.SplitSeq(env, "\n") {
 				if !strings.HasPrefix(l, line+"=") {
 					kept = append(kept, l)
 				}
@@ -614,5 +614,16 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	r.jobs = nil
 	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 7 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
+	}
+}
+
+func TestAsTypedFindsWrappedTypedError(t *testing.T) {
+	t.Parallel()
+	typed := &listedError{kind: contracts.Permanent, msg: "x"}
+	if got := asTyped(errors.Join(errors.New("outer"), typed)); got == nil || got.Kind() != contracts.Permanent {
+		t.Fatalf("wrapped typed error not found: %v", got)
+	}
+	if got := asTyped(errors.New("plain")); got == nil || got.Kind() != contracts.Permanent || got.Error() != "untyped error: plain" {
+		t.Fatalf("plain error answered %v", got)
 	}
 }

@@ -31,11 +31,9 @@ func TestResolveInFlight(t *testing.T) {
 	b := serve(t, f, broker.Options{ResolveInFlight: 2})
 	var wg sync.WaitGroup
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, _ = b.ResolveContract(context.Background(), opt(1))
-		}()
+		})
 	}
 	<-entered
 	<-entered

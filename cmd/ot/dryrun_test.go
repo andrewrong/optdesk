@@ -148,7 +148,7 @@ func TestDryRunBypassesGuardsAndLedger(t *testing.T) {
 	if err := runOnce(a, []string{"--dry-run", "--day", "2026-11-10"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, l := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(out.String()), "\n") {
 		if strings.HasPrefix(l, "dry-run job=") && !strings.HasSuffix(l, "error=retryable") {
 			t.Errorf("a guard refused or the key was skipped: %s", l)
 		}

@@ -1,6 +1,9 @@
 package contracts_test
 
-import "testing"
+import (
+	"maps"
+	"testing"
+)
 
 func flexFetchRecord(over map[string]any) map[string]any {
 	rec := map[string]any{
@@ -12,9 +15,7 @@ func flexFetchRecord(over map[string]any) map[string]any {
 		"parser_version": "1", "statements": 1, "statements_unmapped": 0,
 		"rows_parsed": 2, "rows_new": 2, "rows_revised": 0, "rows_unchanged": 0,
 	}
-	for k, v := range over {
-		rec[k] = v
-	}
+	maps.Copy(rec, over)
 	return rec
 }
 

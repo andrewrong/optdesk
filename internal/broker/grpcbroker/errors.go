@@ -41,8 +41,7 @@ func wrapErr(ctx context.Context, op string, err error) error {
 	if err == nil {
 		return nil
 	}
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); ok {
 		return err
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
