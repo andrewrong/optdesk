@@ -270,7 +270,7 @@ func TestRowsCarryTheAccountLabelAndTheFigures(t *testing.T) {
 		t.Fatalf("key = %v", k)
 	}
 	for _, p := range [][]any{{"views", 0, "stocks", "rows", 0, "role", "text"}, {"views", 0, "options", "rows", 0, "role", "text"}} {
-		if r := at0(t, m, p...); r != "Account (main)" {
+		if r := at0(t, m, p...); r != "账户 Account (main)" {
 			t.Fatalf("role = %v", r)
 		}
 	}
@@ -315,7 +315,7 @@ func TestOptionWithoutLedgerMatchHasAGapPremium(t *testing.T) {
 func TestTradesAreClassifiedByFigures(t *testing.T) {
 	t.Parallel()
 	m, _ := build(t, config(account()), "main")
-	if a := at0(t, m, "views", 0, "trades", "rows", 0, "action", "text"); a != "Sell to open" {
+	if a := at0(t, m, "views", 0, "trades", "rows", 0, "action", "text"); a != "卖出开仓 Sell to open" {
 		t.Fatalf("action = %v", a)
 	}
 	if i := at0(t, m, "views", 0, "trades", "rows", 0, "instrument", "text"); i != "XYZ 2026-11-20 100 put" {
@@ -461,7 +461,7 @@ func TestDayResultCellIsShortAndTheSentenceIsInPageGaps(t *testing.T) {
 	if len(gaps) != 1 {
 		t.Fatalf("gaps = %v", gaps)
 	}
-	if g := at0(t, m, "gaps", 0, "text"); g != "Stocks, Options: Day result needs the previous trading day price: no data yet" {
+	if g := at0(t, m, "gaps", 0, "text"); g != "股票 Stocks, 期权 Options: Day result needs the previous trading day price: no data yet" {
 		t.Fatalf("gap text = %v", g)
 	}
 }
@@ -667,7 +667,7 @@ func TestAccountLinksListEveryAlias(t *testing.T) {
 		page, b := build(t, c, shown)
 		validate(t, b)
 		for i, k := range c.Aliases {
-			for f, want := range map[string]any{"key": k, "label": "Account (" + k + ")", "href": "/positions?account=" + k, "current": k == shown} {
+			for f, want := range map[string]any{"key": k, "label": "账户 Account (" + k + ")", "href": "/positions?account=" + k, "current": k == shown} {
 				if got := at0(t, page, "accounts", i, f); got != want {
 					t.Errorf("page of %s: accounts[%d].%s = %v, want %v", shown, i, f, got, want)
 				}

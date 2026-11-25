@@ -2,14 +2,7 @@ package positions_page
 
 // The words of the page, written once.
 const (
-	pageTitle = "Positions"
-
-	titleStocks  = "Stocks"
-	titleOptions = "Options"
-	titleTrades  = "Recent trades"
-
-	labelAccount = "Account ("
-	labelClose   = ")"
+	labelClose = ")"
 
 	textNoReader  = "No reader: no data yet"
 	textUnknown   = "Unknown account"
@@ -47,37 +40,26 @@ const (
 	textClosedMid     = ": the market was closed on "
 	textNoHeld        = "No positions"
 
-	actionSellOpen  = "Sell to open"
-	actionBuyOpen   = "Buy to open"
-	actionSellClose = "Sell to close"
-	actionBuyClose  = "Buy to close"
-	actionExpire    = "Expired"
-	actionExercise  = "Exercised"
-
 	unitContract = " contracts"
 	unitShare    = " shares"
 	perShare     = "/share"
-
-	sellPut  = "Sell put"
-	buyPut   = "Buy put"
-	sellCall = "Sell call"
-	buyCall  = "Buy call"
 )
 
 var (
 	stockHeads = []string{
-		"code:Code",
-		"name:Name",
-		"role:Owner",
-		"quantity:Quantity",
-		"cost:Cost (per share)",
-		"price:Last price (per share)",
-		"day:Day result",
-		"unrealised:Unrealised result",
+		"code:" + headCode,
+		"name:" + headName,
+		"role:" + headOwner,
+		"quantity:" + headQuantity,
+		"cost:" + headCost,
+		"price:" + headPrice,
+		"day:" + headDay,
+		"unrealised:" + headUnrealised,
 	}
-	optionHeads = []string{"code:Code", "name:Name", "expiry:Expiry", "days_left:Days left", "role:Owner", "quantity:Quantity",
-		"cost:Cost (per share)", "price:Last price (per share)", "day:Day result", "unrealised:Unrealised result", "open_premium:Open premium"}
-	tradeHeads = []string{"time:Time", "account:Account", "action:Action", "instrument:Underlying · structure", "quantity:Quantity", "price:Price"}
+	optionHeads = []string{"code:" + headCode, "name:" + headName, "expiry:" + headExpiry, "days_left:" + headDaysLeft, "role:" + headOwner,
+		"quantity:" + headQuantity, "cost:" + headCost, "price:" + headPrice, "day:" + headDay, "unrealised:" + headUnrealised, "open_premium:" + headOpenPremium}
+	tradeHeads = []string{"time:" + headTime, "account:" + headAccount, "action:" + headAction, "instrument:" + headInstrument,
+		"quantity:" + headQuantity, "price:" + headTradePrice}
 )
 
 // rightAligned are the columns of numbers.
