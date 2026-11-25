@@ -24,6 +24,12 @@ const allowedCJK = [
   '\u8fd9\u4e2a\u5e02\u573a\u6ca1\u6709\u4ef7\u683c\u6765\u6e90\uff0c\u6240\u4ee5\u6ca1\u6709\u4ef7\u683c\u533a\u95f4\u3002', // market without a price source: no zone
   '\u6bcf\u884c\u4e00\u6863\uff1a\u6536\u76ca\u7387\u4e0a\u9650\u3001US\u3001JP\u3001HKCN', // R table hint: one tier per row
   '\u6bcf\u884c\u4e00\u6863\uff1aP \u8d77\u70b9\u3001M\u3001W\u3001H\u3001S', // margin table hint: one tier per row
+  '\u5efa\u8bae', // advice table head: advice
+  '\u8d26\u6237', // advice table head: account
+  '\u53c2\u8003\u4ef7\u503c', // advice table head: reference value
+  '\u6536\u76d8\u540e\u4ef7\u503c', // advice table head: value after close
+  '\u53d8\u5316', // advice table head: change
+  '\u662f\u5426\u5df2\u6267\u884c', // advice table head: acted
 ]
 
 // ideographs, CJK punctuation and full-width forms
