@@ -86,7 +86,7 @@ var assets = []report_blocks.Asset{
 	{Symbol: "XLE", Label: "Energy", Group: "sector"},
 }
 
-func val(v string) compute.FigureValue { return compute.FigureValue{Value: v} }
+func val(v string) compute.FigureValue  { return compute.FigureValue{Value: v} }
 func gapv(r string) compute.FigureValue { return compute.FigureValue{Gap: r} }
 
 func fullResult() blockapi.GlobalResult {
