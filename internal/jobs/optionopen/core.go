@@ -461,14 +461,20 @@ func (c *Core) group(ctx context.Context, st *runState, g []Target, start float6
 	skew := start > 0 && end > 0 && math.Abs(end/start-1) >= skewMove
 	n := len(st.rows)
 	c.addGroup(ctx, st, g, as, requested, groupEnd{skew, end, endTs})
-	if end <= 0 {
-		// No spot was read: addGroup would leave a zero price, and the option-model value is no stock price.
-		for i := n; i < len(st.rows); i++ {
-			st.rows[i].UnderlyingPrice, st.rows[i].UnderlyingEventTs, st.rows[i].Skew = nil, nil, false
-		}
-	}
+	clearSpot(st.rows[n:], end)
 	c.flush(ctx, st, false)
 	return end, endTs
+}
+
+// clearSpot empties the underlying price of rows made with no spot read: addGroup would leave a zero price, and the
+// option-model value is no stock price.
+func clearSpot(rows []contracts.OptionOpen, spot float64) {
+	if spot > 0 {
+		return
+	}
+	for i := range rows {
+		rows[i].UnderlyingPrice, rows[i].UnderlyingEventTs, rows[i].Skew = nil, nil, false
+	}
 }
 
 // retryable is a timeout, or a partial that ended at the timeout.

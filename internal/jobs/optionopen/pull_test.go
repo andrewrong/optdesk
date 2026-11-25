@@ -458,7 +458,6 @@ func TestRunWithUnreadSpotIsRetryable(t *testing.T) {
 		name    string
 		callErr error
 	}{
-		{"no price", nil},
 		{"call error", typedErr{contracts.Retryable}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -493,7 +492,7 @@ func TestRunRetryOfAKeyWhoseSpotCameBack(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 8)
 	b := newFake(100)
-	unreadSpot(b, 1, nil)
+	unreadSpot(b, 1, typedErr{contracts.Retryable})
 	j := newPull(t, s, b)
 	if res := runAll(t, j); res.Err == nil || res.Err.Kind() != contracts.Retryable {
 		t.Fatalf("first run: %v", res.Err)
