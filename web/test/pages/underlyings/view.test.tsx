@@ -78,7 +78,7 @@ describe('underlyings view', () => {
       const tr = el.querySelector(`tr[data-name="${r.key}"]`)!
       for (const f of ['options', 'fundamentals', 'held'] as const) {
         const col = ['options', 'fundamentals', 'held'].indexOf(f) + 3
-        expect(tr.children[col]!.textContent).toBe(r[f] ? 'On' : 'Off')
+        expect(tr.children[col]!.textContent).toBe(r[f] ? '开' : '关')
       }
       const badges = [...tr.querySelectorAll('[data-slot=badge]')].map((b) => b.textContent)
       expect(badges).toEqual([r.status_text, ...r.followed_by])
@@ -92,7 +92,7 @@ describe('underlyings view', () => {
     for (const r of p.rows) {
       const id = `edit-${r.key.replace(/[^A-Za-z0-9_-]/g, '-')}`
       const a = el.querySelector(`tr[data-name="${r.key}"] a`)!
-      expect(a.textContent).toBe('Edit')
+      expect(a.textContent).toBe('编辑')
       expect(a.getAttribute('href')).toBe(`#${id}`)
       const forms = el.querySelectorAll(`form[id="${id}"]`)
       expect(forms.length).toBe(1)
@@ -121,8 +121,8 @@ describe('underlyings view', () => {
     const r = p.rows.find((x) => x.editable.includes('buy_price') && x.editable.includes('report_date_override'))!
     const f = el.querySelector(`form[data-row="${r.key}"]`)!
     const label = (name: string) => f.querySelector(`label[for="${r.key}-${name}"]`)!.textContent
-    expect(label('buy_price')).toContain('buy_price (price you would buy at)')
-    expect(label('report_date_override')).toContain('(your own report date, YYYY-MM-DD)')
+    expect(label('buy_price')).toContain('buy_price (你想买入的价格)')
+    expect(label('report_date_override')).toContain('(你自己定的财报日，格式 YYYY-MM-DD)')
     expect(f.querySelector('input[name="buy_price"]')).not.toBeNull()
     expect(f.querySelector('input[name="report_date_override"]')).not.toBeNull()
   })
@@ -194,7 +194,7 @@ describe('underlyings view', () => {
       ['confirm', '1'],
     ])
     const b = f.querySelector('button[type=submit]')!
-    expect(b.textContent).toBe('Confirm and save')
+    expect(b.textContent).toBe('确认并保存')
   })
 
   it('new: the confirm form keeps an unchecked switch off', async () => {
@@ -229,7 +229,7 @@ describe('underlyings view', () => {
       ['confirm', '1'],
     ])
     expect(f.getAttribute('action')).toBe(p.form!.post_path)
-    expect(f.querySelector('button[type=submit]')!.textContent).toBe('Confirm and save')
+    expect(f.querySelector('button[type=submit]')!.textContent).toBe('确认并保存')
   })
 
   it('TestUnderlyingsConfirmDialogCancel', async () => {
@@ -239,7 +239,7 @@ describe('underlyings view', () => {
     const submitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit')
     await render(p)
     const cancel = [...document.body.querySelectorAll<HTMLButtonElement>('[role=dialog] button')].find(
-      (b) => b.textContent === 'Cancel',
+      (b) => b.textContent === '取消',
     )!
     expect(cancel.type).toBe('button')
     await act(async () => cancel.click())
