@@ -282,7 +282,7 @@ func TestEmptyBeforeCloseSpacing(t *testing.T) {
 func TestEmptyBeforeCloseTwentyFourTicks(t *testing.T) {
 	t.Parallel()
 	_, clk, job, rec := newLongRec("2026-11-04T12:00:00Z")
-	for i := 0; i < 96; i++ {
+	for range 96 {
 		if err := rec.Reconcile(context.Background(), "2026-11-04"); err != nil {
 			t.Fatal(err)
 		}

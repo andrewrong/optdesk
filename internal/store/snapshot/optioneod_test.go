@@ -455,7 +455,7 @@ func TestOptionEodUpsertSetsNoKeyColumn(t *testing.T) {
 		t.Fatalf("no DO UPDATE SET in %s", insertOptionEodSQL)
 	}
 	sets, _, _ := strings.Cut(rest, " WHERE ")
-	for _, item := range strings.Split(sets, ",") {
+	for item := range strings.SplitSeq(sets, ",") {
 		col, _, _ := strings.Cut(strings.TrimSpace(item), " = ")
 		switch col {
 		case "session_day", "capture_id", "instrument_id":

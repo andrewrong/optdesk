@@ -83,8 +83,7 @@ func (s *Store) Apply(ctx context.Context, c underlying.Change) (int, error) {
 		return nil
 	})
 	if err != nil {
-		var ie underlying.InvalidError
-		if errors.As(err, &ie) {
+		if ie, ok := errors.AsType[underlying.InvalidError](err); ok {
 			return 0, ie
 		}
 		return 0, classify(fmt.Errorf("underlyingpg: apply: %w", err))

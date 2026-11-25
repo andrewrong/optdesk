@@ -39,12 +39,10 @@ func (s *spawnLog) spawn(id string, run func(ctx context.Context)) {
 		close(ch)
 		return
 	}
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer close(ch)
 		run(context.Background())
-	}()
+	})
 }
 
 func (s *spawnLog) count() int {

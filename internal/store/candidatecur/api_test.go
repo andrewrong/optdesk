@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/store"
 )
 
 type fake struct{ rows []Row }
@@ -35,7 +34,7 @@ func TestCandidateCurContractFake(t *testing.T) {
 	t.Parallel()
 	var w Writer = &fake{}
 	f := w.(*fake)
-	row := Row{Candidate: store.Candidate{RunID: "r1"}, Currency: "JPY"}
+	row := Row{RunID: "r1", Currency: "JPY"}
 	if n, err := w.InsertCandidatesIn(context.Background(), []Row{row}); err != nil || n != 1 {
 		t.Fatalf("insert = %d, %v", n, err)
 	}

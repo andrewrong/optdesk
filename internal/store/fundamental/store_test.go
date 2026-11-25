@@ -131,7 +131,7 @@ func TestInsertTwiceAddsNothing(t *testing.T) {
 		fact("a1", "NetIncomeLoss", "2024-01-01", "2024-12-31", "2025-02-01"),
 		fact("a1", "Assets", "", "2024-12-31", "2025-02-01"),
 	}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := s.InsertFacts(context.Background(), rows); err != nil {
 			t.Fatal(err)
 		}
