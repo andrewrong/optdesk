@@ -489,7 +489,8 @@ func TestRunOnceErrors(t *testing.T) {
 	}
 	for _, tc := range []struct{ step, line string }{
 		{"eod", "OT_PG_DSN_OPTION_EOD"}, {"snap", "OT_PG_DSN_QUOTE_SNAPSHOT"}, {"instr", "OT_PG_DSN_MASTER"},
-		{"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"}, {"readings", "OT_PG_DSN_READINGS"}, {"sd-loader", "OT_PG_DSN_LOADER"},
+		{"c-snap", "OT_PG_DSN_PAGES"}, {"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"},
+		{"readings", "OT_PG_DSN_READINGS"}, {"sd-loader", "OT_PG_DSN_LOADER"},
 	} {
 		t.Run("open "+tc.step, func(t *testing.T) {
 			r := newRig(t, env)
