@@ -2,9 +2,11 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -52,10 +54,8 @@ func hasNull(v any) bool {
 			}
 		}
 	case []any:
-		for _, c := range x {
-			if hasNull(c) {
-				return true
-			}
+		if slices.ContainsFunc(x, hasNull) {
+			return true
 		}
 	}
 	return false
@@ -91,7 +91,8 @@ func checkV3File(t *testing.T, s *jsonschema.Schema, path, label string) (any, [
 		}
 		return plain, out
 	}
-	ve, ok := verr.(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(verr, &ve)
 	if !ok {
 		return plain, []string{fmt.Sprintf("%s: want a validation error, got %v", label, verr)}
 	}
