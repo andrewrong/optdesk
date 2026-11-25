@@ -58,7 +58,7 @@ export function CompanyTable({ columns: spec, companies }: Pick<Payload, 'column
     {
       id: 'company',
       enableSorting: false,
-      header: 'Company',
+      header: '公司',
       cell: ({ row }) => {
         const c = row.original
         const label = `${c.symbol} ${c.name}`

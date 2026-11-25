@@ -110,6 +110,15 @@ describe('company data page', () => {
     expect(validate(nested).ok).toBe(false)
   })
 
+  it('TestCompanyDataFixedTextsChinese', async () => {
+    const el = await render(ok())
+    expect(el.querySelector('h1')?.textContent).toBe('公司数据')
+    expect(el.querySelector('thead th')?.textContent).toBe('公司')
+    expect(el.querySelector('a[href="/data-health"]')?.textContent).toBe('数据健康')
+    const card = el.querySelector('[data-legend]')?.closest('[data-slot="card"]')
+    expect(card?.querySelector('[data-slot="card-title"]')?.textContent).toBe('图例')
+  })
+
   it('TestNoLogicInWeb', () => {
     expect(Object.keys(pageModule).sort()).toEqual(['CompanyDataPage', 'registration'])
     expect(Object.keys(tableModule)).toEqual(['CompanyTable'])
