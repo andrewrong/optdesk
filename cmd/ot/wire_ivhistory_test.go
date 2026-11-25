@@ -180,7 +180,7 @@ func TestIvHistoryResolveErrorStaysRetryable(t *testing.T) {
 	b := &ivHistoryBroker{err: want}
 	h := &ivHistoryHistory{}
 	_, err := ivHistoryResolving(h, b).Bars(context.Background(), broker.BarQuery{Contract: jpContract()})
-	if err != want {
+	if !errors.Is(err, want) {
 		t.Fatalf("err %v", err)
 	}
 	if len(h.conIDs) != 0 {

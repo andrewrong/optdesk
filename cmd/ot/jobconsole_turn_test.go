@@ -606,7 +606,7 @@ func TestJobFilterPassedToBackfillWith(t *testing.T) {
 // jcErrorLines returns the lines of the log buffer of the rig at level ERROR.
 func jcErrorLines(r *jcRig) []string {
 	var out []string
-	for _, l := range strings.Split(strings.TrimSpace(r.out.String()), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(r.out.String()), "\n") {
 		if strings.Contains(l, "level=ERROR") {
 			out = append(out, l)
 		}

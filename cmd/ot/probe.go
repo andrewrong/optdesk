@@ -164,7 +164,7 @@ func selectProbeSymbols(flagValue string) ([]probeSymbol, error) {
 		return probeList, nil
 	}
 	var out []probeSymbol
-	for _, name := range strings.Split(flagValue, ",") {
+	for name := range strings.SplitSeq(flagValue, ",") {
 		name = strings.TrimSpace(name)
 		found := false
 		for _, s := range probeList {

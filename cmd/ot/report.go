@@ -111,13 +111,13 @@ func reportPage(ctx context.Context, a *app, market, slot string) (pages.Page, f
 // openSiteReaders.
 func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingViewReader) (reportReaders, func(), error) {
 	if m == "JP" {
-		return reportReaders{siteReaders: siteReaders{view: v}}, func() {}, nil // the builder never calls the blocks of JP
+		return reportReaders{view: v}, func() {}, nil // the builder never calls the blocks of JP
 	}
 	if a.profile.Name == "demo" {
 		// the global assets block has no demo bars: it is the gap no_reader, never a connection
-		return reportReaders{siteReaders: siteReaders{view: v, series: demoReader{}, noticeAccount: demoNoticeAccount{}}}, func() {}, nil
+		return reportReaders{view: v, series: demoReader{}, noticeAccount: demoNoticeAccount{}}, func() {}, nil
 	}
-	rd := reportReaders{siteReaders: siteReaders{view: v}}
+	rd := reportReaders{view: v}
 	openIDs := reportStockIDOpener(a)
 	if a.deps.openSeries == nil && a.deps.openAccount == nil && a.deps.openBar == nil && openIDs == nil {
 		return rd, func() {}, nil
@@ -129,8 +129,8 @@ func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingVi
 	dsn := env[pagesDSNName]
 	var closers []func() error
 	closeAll := func() {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i]()
+		for _, closer := range slices.Backward(closers) {
+			_ = closer()
 		}
 	}
 	fail := func() (reportReaders, func(), error) {

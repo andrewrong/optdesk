@@ -61,11 +61,9 @@ func buildCandidatesJP(a *app, jc *jobCtx) (contracts.Job, string, error) {
 		return left(store.DSNEnvCandidate, reasonJPNoWriter)
 	}
 	st := optioncandidates.JPStores{
-		CandidateStores: optioncandidates.CandidateStores{
-			OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
-			Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases,
-			SessionDays: f.compute.SessionDays, Open: f.candOpen,
-		},
+		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
+		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases,
+		SessionDays: f.compute.SessionDays, Open: f.candOpen,
 		Rows: rows,
 	}
 	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {

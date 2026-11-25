@@ -299,14 +299,14 @@ func (s *schemaSet) validate(schema string, version json.RawMessage, body []byte
 	}
 	sc, err := s.c.Compile(fmt.Sprintf("%spage.%s.v%d.json", schemaBase, schema, v))
 	if err != nil {
-		return fmt.Errorf("schema page.%s.v%d: %v", schema, v, err)
+		return fmt.Errorf("schema page.%s.v%d: %w", schema, v, err)
 	}
 	inst, err := jsonschema.UnmarshalJSON(strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}
 	if err := sc.Validate(inst); err != nil {
-		return fmt.Errorf("schema page.%s.v%d: %v", schema, v, err)
+		return fmt.Errorf("schema page.%s.v%d: %w", schema, v, err)
 	}
 	return nil
 }

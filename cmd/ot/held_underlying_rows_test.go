@@ -183,7 +183,7 @@ func TestHeldPlanAddsKeyWithoutWriting(t *testing.T) {
 func TestHeldPlanCapsAtMaxNames(t *testing.T) {
 	t.Parallel()
 	var ps []store.Position
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		ps = append(ps, heldPos(string(rune('A'+i)), "stock", "USD", "1"))
 	}
 	r := newHeldRig(t, ps...)

@@ -212,7 +212,7 @@ func TestResolverCachesSocketPerAlias(t *testing.T) {
 	var n0, n1 atomic.Int32
 	rs := resolverOf(t, bookMainB,
 		countingReader{idReader{id: aliasID("a")}, &n0}, countingReader{idReader{id: aliasID("b")}, &n1})
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if _, err := rs["b"].Account(context.Background()); err != nil {
 			t.Fatal(err)
 		}
