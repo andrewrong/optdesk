@@ -13,7 +13,6 @@ import (
 
 const (
 	pageName    = "ops_today_page"
-	pageTitle   = "Today's option-open runs"
 	idText      = "ops_today"
 	timeLayout  = "2006-01-02T15:04:05-07:00"
 	maxText     = 200
