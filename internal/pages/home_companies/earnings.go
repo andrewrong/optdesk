@@ -30,7 +30,7 @@ func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) 
 		return mkGap("no_reader", "earnings date: "+noReaderText), nil
 	}
 	if issuer == "" {
-		return mkGap("no_data", "earnings date: no issuer"), nil
+		return mkGap("no_data", "earnings date: "+earningsNoIssuerText), nil
 	}
 	from := contracts.Day(day.AddDate(0, 0, -earningsLookbackDays).Format(dayLayout))
 	list, err := c.Earnings.EarningsDates(ctx, issuer, from, contracts.Day(day.Format(dayLayout)))
@@ -38,11 +38,11 @@ func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) 
 		return nil, fmt.Errorf("home_companies: read earnings dates of %s: %w", issuer, err)
 	}
 	if len(list) == 0 {
-		return mkGap("no_data", "earnings date: none listed"), nil
+		return mkGap("no_data", "earnings date: "+earningsNoneListedText), nil
 	}
 	last := list[len(list)-1]
 	if string(last.Status) != "listed" || last.ReportDate == nil {
-		return mkGap("no_data", "earnings date: none listed"), nil
+		return mkGap("no_data", "earnings date: "+earningsNoneListedText), nil
 	}
 	report := last.ReportDate.Time
 	text := report.Format("01-02")
