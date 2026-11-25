@@ -201,9 +201,9 @@ func groupRow(key string, ind Indicator, obs []obsPoint, d time.Time) indicatorR
 		limit = weeklyFreshnessDays
 	}
 	if d.Sub(last.day) > time.Duration(limit)*24*time.Hour {
-		out.Status, out.Label = "late", "Late"
+		out.Status, out.Label = "late", labelLate
 	} else {
-		out.Status, out.Label = "good", "On time"
+		out.Status, out.Label = "good", labelOnTime
 	}
 	return out
 }

@@ -73,3 +73,14 @@ const (
 	whenHighSuffix        = "，重要"
 	whenReadPrefix        = "，读取于 "
 )
+
+// The page title, the card titles and the two status labels of an indicator row: the Chinese word with the English beside it.
+const (
+	title           = "宏观 Macro"
+	easeTitle       = "宽松度 Ease"
+	eventsTitle     = "本周和下周 This week and next"
+	indicatorsTitle = "指标 Indicators"
+	notesTitle      = "说明 Notes"
+	labelOnTime     = "按时 On time"
+	labelLate       = "延迟 Late"
+)
