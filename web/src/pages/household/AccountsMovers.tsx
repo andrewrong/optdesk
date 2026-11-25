@@ -89,11 +89,21 @@ const toneClass = (tone: string | null | undefined) =>
 
 // One of the two lists of What moved today (issue #1681): the names, prices, money and tags are Python's text, in the
 // order sent; nothing is summed or sorted here.
-function MoverTable({ title, heads, rows }: { title: string; heads: string[]; rows: MoverLine[] }) {
+function MoverTable({
+  list,
+  title,
+  heads,
+  rows,
+}: {
+  list: string
+  title: string
+  heads: string[]
+  rows: MoverLine[]
+}) {
   if (rows.length === 0) return null
   const shown = (price: MoverLine['previous']) => price.text
   return (
-    <div className="min-w-0 space-y-1" data-mover-list={title}>
+    <div className="min-w-0 space-y-1" data-mover-list={list}>
       <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
       <Table>
         <TableHeader>
@@ -149,8 +159,8 @@ export function MoversSection({ block, scopes }: { block: Movers; scopes: Scope[
                 <AlertDescription>{gap.gap.text}</AlertDescription>
               </Alert>
             ) : null}
-            <MoverTable title="Stocks" heads={heads} rows={stocks} />
-            <MoverTable title="Options" heads={heads} rows={options} />
+            <MoverTable list="Stocks" title="股票" heads={heads} rows={stocks} />
+            <MoverTable list="Options" title="期权" heads={heads} rows={options} />
             {other.length + total.length > 0 ? (
               <Table>
                 <TableBody>
