@@ -167,7 +167,7 @@ func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Da
 		Sectors:   sec.sectorBlock,
 		VolGap:    vg,
 	}
-	vm.BarsSource, vm.BarsSourceNote = barsSourceOf(bars)
+	vm.BarsSource, vm.BarsSourceNote = barsSourceOf(bars, nd)
 	vm.Gaps = collectGaps(vm)
 	if len(vm.Gaps) > 0 {
 		vm.RunStatus = "partial"
@@ -326,8 +326,8 @@ func attachChart(ctx context.Context, c Config, d time.Time, rows []marketRow, m
 }
 
 // barsSourceOf is the source of the bars and its note; both are empty when every bar is ibkr.
-func barsSourceOf(b barsIn) (string, string) {
-	if kind, note := shared.BarSourceOf(b.rows); kind != shared.BarSourceIbkr {
+func barsSourceOf(b barsIn, nd ndxRead) (string, string) {
+	if kind, note := shared.BarSourceOf(append(slices.Clone(b.rows), nd.rows...)); kind != shared.BarSourceIbkr {
 		return kind, note
 	}
 	return "", ""

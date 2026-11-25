@@ -261,9 +261,8 @@ func buildRows(c Config, rd readings, nd ndxRead, ms marketstateapi.Result, lr l
 	dd := drawdownRow(c.Market != nil, ms.Drawdown)
 	dd.History = hist(ms.History.Drawdown, labelDrawdown, fmtPercent)
 	nq := nasdaqRow(c.Market != nil, nd, ms.NasdaqDrawdown)
-	nq.History = hist(ms.History.NasdaqDrawdown, labelNasdaq, fmtPercent)
-	if nd.reason != "" && c.Market != nil {
-		nq.History = mkGap(nd.reason, reasonText(nd.reason, labelNasdaq+" history"))
+	if nq.History == nil {
+		nq.History = hist(ms.History.NasdaqDrawdown, labelNasdaq, fmtPercent)
 	}
 	vx := vixRow(c.Market != nil, ms.History.VIX, rd.pctile)
 	vx.History = hist(ms.History.VIX, labelVix, fmtOneDecimal)

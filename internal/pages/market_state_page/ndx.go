@@ -21,6 +21,7 @@ const (
 // Nasdaq-100 row: no_reader, no_data or missing_input.
 type ndxRead struct {
 	series compute.Series
+	rows   []contracts.PriceBar // every bar row read, for shared.BarSourceOf
 	reason string
 }
 
@@ -61,7 +62,7 @@ func readNDX(ctx context.Context, c Config, d time.Time) (ndxRead, error) {
 		}
 		s = append(s, compute.Point{Day: contracts.Day(b.SessionDay.Format(dayLayout)), Value: v})
 	}
-	return ndxRead{series: s}, nil
+	return ndxRead{series: s, rows: bars}, nil
 }
 
 // nasdaqRow is the Nasdaq-100 drawdown row; a read reason is its Gap, else it is the S&P row's method on
@@ -71,6 +72,7 @@ func nasdaqRow(haveMarket bool, nd ndxRead, n liquidityapi.Num) marketRow {
 		row := marketRow{ID: "nasdaq_drawdown", Label: labelNasdaq, Window: windowDrawdown}
 		row.Figure = mkGap(nd.reason, reasonText(nd.reason, labelNasdaq))
 		row.Day = dayOrGap("", row.Figure, labelNasdaq)
+		row.History = mkGap(nd.reason, reasonText(nd.reason, labelNasdaq+" history"))
 		return row
 	}
 	return drawdownCard("nasdaq_drawdown", labelNasdaq, windowDrawdown, "Nasdaq-100", haveMarket, n)

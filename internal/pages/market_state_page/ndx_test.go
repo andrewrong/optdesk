@@ -93,7 +93,7 @@ func TestNasdaqDrawdownRow(t *testing.T) {
 		c1 != "Alarm when below \u221228.50%, the 5th percentile of 300 days" {
 		t.Errorf("cuts = %q / %q", c0, c1)
 	}
-	if n := obj(row["range"])["notice"]; n != nil && n != "A notice only; nothing is blocked." {
+	if n := rg["notice"]; n != "A notice only; nothing is blocked." {
 		t.Errorf("notice = %v", n)
 	}
 	res.NasdaqDrawdown.Value = "0"
@@ -131,5 +131,19 @@ func TestNasdaqRowGaps(t *testing.T) {
 				t.Errorf("%s: row %d changed", name, i)
 			}
 		}
+	}
+}
+
+func TestNasdaqBarsJoinBarsSource(t *testing.T) {
+	t.Parallel()
+	c := fullConfig(t, sampleResult())
+	c.IndexIDs = fakeIndexIDs{ids: map[string]int64{"NDX": 100}}
+	c.Bars = &fakeBars{bars: map[int64][]contracts.PriceBar{100: {
+		{InstrumentID: 100, Basis: "trades", SessionDay: sdate("2026-11-12"), Close: "20000", Source: "ibkr"},
+		{InstrumentID: 100, Basis: "trades", SessionDay: sdate("2026-11-13"), Close: "20100", Source: "yfinance"},
+	}}}
+	m := decode(t, buildBytes(t, c))
+	if m["bars_source"] == nil {
+		t.Fatalf("NDX bars from yfinance are not in bars_source")
 	}
 }

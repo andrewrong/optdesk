@@ -282,6 +282,7 @@ func TestNilFuncsGiveNoReader(t *testing.T) {
 		"readings":  func(c *Config) { c.Readings = nil },
 		"bars":      func(c *Config) { c.Bars = nil },
 		"stockids":  func(c *Config) { c.StockIDs = nil },
+		"indexids":  func(c *Config) { c.IndexIDs = nil },
 	} {
 		c := base
 		edit(&c)
@@ -300,10 +301,10 @@ func TestNilFuncsGiveNoReader(t *testing.T) {
 			}
 		}
 		want := map[string][]string{
-			"market":    {"sp500_drawdown", "vix"},
+			"market":    {"sp500_drawdown", "nasdaq_drawdown", "vix"},
 			"liquidity": {"hy_spread"},
 			"readings":  {"sp500_vs_200d", "vix_term"},
-			"bars":      nil, "stockids": nil,
+			"bars":      {"nasdaq_drawdown"}, "stockids": nil, "indexids": {"nasdaq_drawdown"},
 		}[name]
 		for _, id := range want {
 			if !gapIDs[id] {
