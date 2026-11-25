@@ -28,6 +28,8 @@ const (
 // The running lines above the grid (docs/design/scheduler-per-job.md, Decision 8): the same strings as the
 // job console, the English meaning of each beside it.
 const (
+	// zhStartedFmt: "started 14:02 UTC".
+	zhStartedFmt = "开始于 %[1]s UTC (started %[1]s UTC)"
 	// zhDoneOfFmt: "done 12 / 40".
 	zhDoneOfFmt = "已完成 %[1]d / %[2]d (done %[1]d / %[2]d)"
 	// zhRanUsuallyFmt: "ran X minutes, usually Y minutes".
@@ -53,4 +55,10 @@ const (
 	zhGlossSessionDay = "session day：该数据集的交易所日历开市的一天。"
 	zhOverwriteNote   = "补取按键覆盖，不保留之前的值（a repair overwrites by key and keeps no earlier value）。"
 	zhCoverageGapText = "无法读取运行器的覆盖记录（ledger），所以不显示任何数据集。"
+)
+
+// The lost reason and the late-source note of a cell: the English meaning beside each.
+const (
+	lostText = "已丢失：数据源只提供当天的数据 (lost: the source gives only the present)"
+	lateText = "数据源晚一天发布：FRED（美联储数据服务）在次日才公布当天的点 (the source publishes a day later: FRED, the Federal Reserve data service, posts a day's point on the next day)"
 )

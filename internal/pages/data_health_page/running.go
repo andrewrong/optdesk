@@ -74,7 +74,7 @@ func runningLines(ctx context.Context, in Input) []runningVM {
 
 // runningLine is the text of one run, the same as the console's "Running now".
 func runningLine(f jobrunapi.Figure, startedAt time.Time) string {
-	parts := []string{f.JobID, "started " + startedAt.UTC().Format(clockLayout) + " UTC", fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal)}
+	parts := []string{f.JobID, fmt.Sprintf(zhStartedFmt, startedAt.UTC().Format(clockLayout)), fmt.Sprintf(zhDoneOfFmt, f.KeysDone, f.KeysTotal)}
 	if f.Step != "" {
 		parts = append(parts, f.Step)
 	}

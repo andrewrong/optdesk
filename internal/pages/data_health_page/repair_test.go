@@ -128,7 +128,7 @@ func TestPresentOnlyPastDay(t *testing.T) {
 	job := &Job{ID: "earnings_refresh", Kind: KindAnyDay, PresentOnly: true}
 	now := utc("2026-03-10", 18, 0)
 	past := one("missing", "2026-03-05", job, testForm, now, "2026-03-10")
-	if past.Repair != RepairNotRefetchable || past.WhyText != "lost: the source gives only the present" {
+	if past.Repair != RepairNotRefetchable || past.WhyText != lostText {
 		t.Fatalf("past: %+v", past)
 	}
 	if c := one("missing", "2026-03-10", job, testForm, now, "2026-03-10"); c.Repair != RepairButton {

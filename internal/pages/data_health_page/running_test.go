@@ -57,7 +57,7 @@ func TestRunningLine(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("running = %+v", got)
 	}
-	want := "statement_capture; started 14:02 UTC; 已完成 12 / 40 (done 12 / 40); k-0003; 跑了 10 分钟，平常 8 分钟 (ran 10 minutes, usually 8 minutes)"
+	want := "statement_capture; 开始于 14:02 UTC (started 14:02 UTC); 已完成 12 / 40 (done 12 / 40); k-0003; 跑了 10 分钟，平常 8 分钟 (ran 10 minutes, usually 8 minutes)"
 	if got[0].Line != want {
 		t.Errorf("line = %q, want %q", got[0].Line, want)
 	}
@@ -70,7 +70,7 @@ func TestRunningLine(t *testing.T) {
 func TestRunningSlowLine(t *testing.T) {
 	t.Parallel()
 	got := buildRunning(t, "j", jobrunapi.Figure{JobID: "j", ElapsedMinutes: 62, UsualMinutes: 3, HasUsual: true, Slow: true, KeysDone: 1, KeysTotal: 2})
-	want := "j; started 14:02 UTC; 已完成 1 / 2 (done 1 / 2); 跑了 62 分钟，平常 3 分钟 (ran 62 minutes, usually 3 minutes); 偏慢，仅提示 (slow, a notice only)"
+	want := "j; 开始于 14:02 UTC (started 14:02 UTC); 已完成 1 / 2 (done 1 / 2); 跑了 62 分钟，平常 3 分钟 (ran 62 minutes, usually 3 minutes); 偏慢，仅提示 (slow, a notice only)"
 	if len(got) != 1 || got[0].Line != want || !got[0].Slow {
 		t.Errorf("running = %+v, want line %q", got, want)
 	}
@@ -79,7 +79,7 @@ func TestRunningSlowLine(t *testing.T) {
 func TestRunningNoHistoryLine(t *testing.T) {
 	t.Parallel()
 	got := buildRunning(t, "j", jobrunapi.Figure{JobID: "j", ElapsedMinutes: 5, KeysDone: 0, KeysTotal: 7})
-	want := "j; started 14:02 UTC; 已完成 0 / 7 (done 0 / 7); 跑了 5 分钟，没有历史 (ran 5 minutes, no history)"
+	want := "j; 开始于 14:02 UTC (started 14:02 UTC); 已完成 0 / 7 (done 0 / 7); 跑了 5 分钟，没有历史 (ran 5 minutes, no history)"
 	if len(got) != 1 || got[0].Line != want {
 		t.Errorf("running = %+v, want line %q", got, want)
 	}

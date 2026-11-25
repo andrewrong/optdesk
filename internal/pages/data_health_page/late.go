@@ -9,7 +9,6 @@ import (
 
 const (
 	readingDataset = "readings.reading"
-	lateText       = "the source publishes a day later (FRED, the Federal Reserve data service, posts a day's point on the next day)"
 )
 
 // LateText sets the due text of a missing cell of obs.series_point or readings.reading whose every missing key is a
