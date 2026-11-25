@@ -276,6 +276,9 @@ func TestDatasetsResolveToFirstJob(t *testing.T) {
 	}
 }
 
+// dueTextRE matches any non-empty due_text value, whatever language it starts in.
+var dueTextRE = regexp.MustCompile(`"due_text":\s*"[^"]`)
+
 func TestDueAtFromSlot(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
@@ -325,7 +328,7 @@ func TestDataHealthTimeSlots(t *testing.T) {
 	rec := settingsGet(t, h, http.MethodGet, "/"+siteDataHealthRoute)
 	body := rec.Body.String()
 	validateDataHealth(t, rec.Body.Bytes())
-	if !strings.Contains(body, `"due_text":"due`) {
+	if !dueTextRE.MatchString(body) {
 		t.Fatalf("no due text: %s", body)
 	}
 	if strings.Contains(body, `"repair":"button"`) {
@@ -345,7 +348,7 @@ func TestListedOnlyResolveCellIsDueBeforeSlot(t *testing.T) {
 		return rec.Body.String()
 	}
 	early := get(time.Date(2026, 11, 13, 11, 0, 0, 0, time.UTC))
-	if !strings.Contains(early, `"due_text":"due`) {
+	if !dueTextRE.MatchString(early) {
 		t.Fatalf("no due text before the slot: %s", early)
 	}
 	if regexp.MustCompile(`"why_text":"[^"]`).MatchString(early) || !strings.Contains(early, `"repair":"none"`) {
