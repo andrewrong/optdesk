@@ -218,7 +218,9 @@ type jobFactory struct {
 	ser  store.SeriesStore
 	eod  store.OptionEodStore
 	snap store.QuoteSnapshotStore
-	inst store.InstrumentStore
+	// quotes reads the stored quote snapshot with the pages role; the writer role of snap has no USAGE on schema rd.
+	quotes store.QuoteSnapshotReader
+	inst   store.InstrumentStore
 	// compute holds the stores of compute_figures.
 	compute computefigures.ComputeStores
 	uv      string
@@ -307,11 +309,11 @@ func withWiring(
 		return fmt.Errorf("open option_eod store with %s failed", store.DSNEnvOptionEod)
 	}
 	defer func() { _ = eod.Close() }()
-	snap, err := d.openQuoteSnapshot(ctx, cfg.quoteSnapshotDSN)
+	snap, quotes, closeSnap, err := openQuoteSnapshots(ctx, d, cfg)
 	if err != nil {
-		return fmt.Errorf("open quote_snapshot store with %s failed", store.DSNEnvQuoteSnapshot)
+		return err
 	}
-	defer func() { _ = snap.Close() }()
+	defer closeSnap()
 	instr, err := d.openInstrument(ctx, cfg.masterDSN)
 	if err != nil {
 		return fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
@@ -336,7 +338,7 @@ func withWiring(
 	var extra closerSet
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
-		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV,
+		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, quotes: quotes, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV,
 			project: cfg.calendarProject, log: a.log,
 			events: events, earn: earn, jp: jp}, ledger)
 }
@@ -554,4 +556,21 @@ func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (
 		}
 	}
 	return events, earn, jp, func() { _ = events.Close() }, nil
+}
+
+// openQuoteSnapshots opens the quote snapshot store of the writer role and the one of the pages role that reads it
+// (the writer role has no USAGE on schema rd); closeSnap closes both.
+func openQuoteSnapshots(
+	ctx context.Context, d deps, cfg runOnceConfig,
+) (snap store.QuoteSnapshotStore, quotes store.QuoteSnapshotReader, closeSnap func(), err error) {
+	snap, err = d.openQuoteSnapshot(ctx, cfg.quoteSnapshotDSN)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("open quote_snapshot store with %s failed", store.DSNEnvQuoteSnapshot)
+	}
+	rd, err := d.openQuoteSnapshot(ctx, cfg.pagesDSN)
+	if err != nil {
+		_ = snap.Close()
+		return nil, nil, nil, fmt.Errorf("open quote_snapshot store with %s failed", store.DSNEnvPages)
+	}
+	return snap, rd, func() { _ = rd.Close(); _ = snap.Close() }, nil
 }
