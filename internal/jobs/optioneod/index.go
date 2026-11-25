@@ -53,7 +53,8 @@ func joinAnd(s []string) string {
 	var out strings.Builder
 	out.WriteString(s[0])
 	for _, x := range s[1:] {
-		out.WriteString(" and " + x)
+		out.WriteString(" and ")
+		out.WriteString(x)
 	}
 	return out.String()
 }

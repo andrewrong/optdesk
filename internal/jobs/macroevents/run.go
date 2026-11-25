@@ -111,12 +111,18 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		}
 	}
 	var text strings.Builder
-	text.WriteString("macro_events " + string(day) + ": " + strings.Join(rep.lines, "; "))
+	text.WriteString("macro_events ")
+	text.WriteString(string(day))
+	text.WriteString(": ")
+	text.WriteString(strings.Join(rep.lines, "; "))
 	for _, k := range rep.held {
-		text.WriteString("; kept stored rows of " + k + ": answer shorter or empty")
+		text.WriteString("; kept stored rows of ")
+		text.WriteString(k)
+		text.WriteString(": answer shorter or empty")
 	}
 	if len(rep.failed) > 0 {
-		text.WriteString("; not fetched: " + strings.Join(rep.failed, ", "))
+		text.WriteString("; not fetched: ")
+		text.WriteString(strings.Join(rep.failed, ", "))
 	}
 	j.log.Info(text.String())
 	res := contracts.JobResult{Returned: rep.returned, Usable: rep.usable}

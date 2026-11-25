@@ -179,7 +179,10 @@ func formatCounts(counts map[string]map[string]int) string {
 		part.WriteString(cur)
 		for _, st := range slices.Sorted(maps.Keys(counts[cur])) {
 			if n := counts[cur][st]; n > 0 {
-				part.WriteString(" " + st + "=" + strconv.Itoa(n))
+				part.WriteString(" ")
+				part.WriteString(st)
+				part.WriteString("=")
+				part.WriteString(strconv.Itoa(n))
 			}
 		}
 		parts = append(parts, part.String())
