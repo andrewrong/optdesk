@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -120,9 +121,7 @@ func newFileHarness(t *testing.T, file map[string]string, brokerUp bool) (*openH
 		store.DSNEnvMaster, store.DSNEnvPages, store.DSNEnvReadings, store.DSNEnvLoader} {
 		lines[k] = "postgres://u@127.0.0.1:1/x"
 	}
-	for k, v := range file {
-		lines[k] = v
-	}
+	maps.Copy(lines, file)
 	var path string
 	h.a.deps.readEnv = func(p string) (map[string]string, error) { path = p; return lines, nil }
 	cfg, err := loadConfig(h.a, false)

@@ -116,8 +116,7 @@ func underlyingImport(ctx context.Context, open underlying.OpenFunc, dsn string,
 	if len(change.Adds) > 0 {
 		added, err = st.Apply(ctx, change)
 		if err != nil {
-			var ie underlying.InvalidError
-			if errors.As(err, &ie) {
+			if ie, ok := errors.AsType[underlying.InvalidError](err); ok {
 				return fmt.Errorf("underlying import refused: %s: %s", ie.Field(), ie.Why())
 			}
 			return errors.New("underlying import: the store refused the write")

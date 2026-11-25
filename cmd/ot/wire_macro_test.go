@@ -30,7 +30,7 @@ var liquidityIDs = []string{
 func liquiditySeries(base, step float64) compute.Series {
 	end, _ := time.Parse(dayLayout, "2026-11-04")
 	var s compute.Series
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		d := end.AddDate(0, 0, i-199)
 		s = append(s, compute.Point{Day: contracts.Day(d.Format(dayLayout)), Value: base + step*float64(i)})
 	}

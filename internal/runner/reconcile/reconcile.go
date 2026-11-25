@@ -173,8 +173,7 @@ func (r *reconciler) planLogged(ctx context.Context, day contracts.Day, sess day
 		keys, hash, err := j.Plan(ctx, day)
 		if err != nil {
 			kind := "error"
-			var te contracts.TypedError
-			if errors.As(err, &te) {
+			if te, ok := errors.AsType[contracts.TypedError](err); ok {
 				kind = string(te.Kind())
 			}
 			lg.Warn("plan failed, job skipped", slog.String("job", j.ID()), slog.String("day", string(day)), slog.String("kind", kind))
@@ -310,11 +309,9 @@ func (r *reconciler) runJobs(
 	turns := make([]jobTurn, len(due.order))
 	var wg sync.WaitGroup
 	for i, j := range due.order {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			turns[i] = r.reconcileJob(ctx, dc, j, due.keys[j.ID()], closes)
-		}()
+		})
 	}
 	wg.Wait()
 	dc.wg.Wait()

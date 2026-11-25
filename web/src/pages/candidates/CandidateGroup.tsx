@@ -5,6 +5,7 @@ import { DataTable, type Cell, type Column } from '@/components/data-table/data-
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { NameOutcomes } from '@/pages/candidates/NameOutcomes'
 import { ReasonList } from '@/pages/candidates/ReasonList'
 import type { Payload } from '@/types/option_candidates_page'
 
@@ -59,6 +60,7 @@ export function CandidateGroup({ group, staleText }: { group: Group; staleText: 
           ))}
         </ul>
       ) : null}
+      {group.name_outcomes && group.name_outcomes.length > 0 ? <NameOutcomes outcomes={group.name_outcomes} /> : null}
       {group.gap ? (
         <Alert data-group-gap={group.gap.reason}>
           <Info aria-hidden />

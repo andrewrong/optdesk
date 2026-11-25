@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,7 +61,8 @@ func TestMacroRatesV2Fixtures(t *testing.T) {
 			t.Fatal("valid, want a failure")
 		}
 		var got []leaf
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}

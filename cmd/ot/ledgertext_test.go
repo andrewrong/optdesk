@@ -123,7 +123,7 @@ func TestLedgerNoCrossCurrencySum(t *testing.T) {
 		t.Errorf("the output has a total:\n%s", got)
 	}
 	jpy := 0
-	for _, line := range strings.Split(got, "\n") {
+	for line := range strings.SplitSeq(got, "\n") {
 		if strings.Contains(line, "JPY") {
 			jpy++
 			if strings.Contains(line, "USD") {

@@ -4,6 +4,7 @@
 package replay
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -25,7 +26,7 @@ func (engine) Replay(lots []replayapi.Lot, mkt replayapi.Market, variants []repl
 	ls := append([]replayapi.Lot(nil), lots...)
 	sort.SliceStable(ls, func(i, j int) bool { return ls[i].ID < ls[j].ID })
 	days := append([]contracts.Day(nil), sessionDays...)
-	sort.Slice(days, func(i, j int) bool { return days[i] < days[j] })
+	slices.Sort(days)
 
 	rep := replayapi.Report{Lots: len(ls), Excluded: map[string]int{}}
 	quoteDays := map[contracts.Day]bool{}

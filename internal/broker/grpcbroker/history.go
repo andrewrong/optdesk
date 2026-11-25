@@ -2,6 +2,7 @@ package grpcbroker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -73,7 +74,7 @@ func (c *historyClient) Bars(ctx context.Context, q broker.BarQuery) ([]broker.B
 			return nil, &brokerError{kind: contracts.Retryable, text: "broker: bars: " + codes.ResourceExhausted.String(), err: err}
 		}
 		wrapped := wrapErr(ctx, "bars", err)
-		if be, ok := wrapped.(*brokerError); ok && isNoData(err) {
+		if be, ok := errors.AsType[*brokerError](wrapped); ok && isNoData(err) {
 			be.kind = contracts.Retryable
 		}
 		return nil, wrapped

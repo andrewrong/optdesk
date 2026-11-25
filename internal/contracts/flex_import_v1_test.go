@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -27,7 +28,8 @@ func TestFlexImportV1Fixtures(t *testing.T) {
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
 		err := s.Validate(loadFlexImportV1(t, "bad-version"))
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}

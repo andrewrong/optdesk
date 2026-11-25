@@ -73,8 +73,7 @@ func TestCheckExitOnFail(t *testing.T) {
 		a := checkApp(t, env, &out, nil, nil)
 		err := runCheck(a, []string{"serve"}, map[string]checkService{"serve": okService(tc.r)})
 		code := 0
-		var ee *exitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exitError](err); ok {
 			code = ee.code
 		} else if err != nil {
 			t.Fatal(err)

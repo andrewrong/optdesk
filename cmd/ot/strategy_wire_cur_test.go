@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 )
 
@@ -21,7 +20,7 @@ func (c *curOldStore) CandidatesIn(context.Context, contracts.Day, string, strin
 
 func TestResultCandidatesPassYenReader(t *testing.T) {
 	t.Parallel()
-	want := candidatecur.Row{Candidate: store.Candidate{RunID: "jp1"}, Currency: "JPY"}
+	want := candidatecur.Row{RunID: "jp1", Currency: "JPY"}
 	old := &curOldStore{rows: []candidatecur.Row{want}}
 	opt, err := openResultCandidateWith(
 		func(context.Context, string) (resultStore, error) { return &fakeResultStore{}, nil },

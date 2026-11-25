@@ -59,7 +59,7 @@ func nextStarts(
 	first := time.Date(f.Year(), f.Month(), f.Day(), 0, 0, 0, 0, time.UTC)
 	var out []Start
 	dropped := map[string]bool{}
-	for d := 0; d < days; d++ {
+	for d := range days {
 		date := first.AddDate(0, 0, d)
 		day := contracts.Day(date.Format(dayLayout))
 		for _, j := range jobs {

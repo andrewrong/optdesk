@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,9 +34,7 @@ func serveBody(t *testing.T, page, day string, blocks ...string) []byte {
 	if page == "report_page" {
 		body["blocks"] = inner
 	} else {
-		for k, v := range inner {
-			body[k] = v
-		}
+		maps.Copy(body, inner)
 	}
 	b, err := json.Marshal(body)
 	if err != nil {

@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -169,7 +170,8 @@ func TestFixturesValidate(t *testing.T) {
 				if err == nil {
 					t.Fatal("want a validation error, got none")
 				}
-				verr, ok := err.(*jsonschema.ValidationError)
+				var verr *jsonschema.ValidationError
+				ok := errors.As(err, &verr)
 				if !ok {
 					t.Fatalf("unexpected error type %T: %v", err, err)
 				}

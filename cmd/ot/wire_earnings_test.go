@@ -207,7 +207,7 @@ func TestJQuantsOneCallPerDay(t *testing.T) {
 	}
 	j := earningsJob(t, r)
 	planDay(t, j, "2026-11-09")
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if res := j.Run(t.Context(), "2026-11-09", nil); res.Err != nil {
 			t.Fatalf("tick %d: %v", i, res.Err)
 		}

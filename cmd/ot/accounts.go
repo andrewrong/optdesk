@@ -110,7 +110,7 @@ func (f *jobFactory) bookAliases() []string {
 func parseAccountSockets(v string) ([]string, error) {
 	bad := fmt.Errorf("%s is not a comma list of socket paths", envAccountSockets)
 	var out []string
-	for _, part := range strings.Split(v, ",") {
+	for part := range strings.SplitSeq(v, ",") {
 		p := strings.TrimSpace(part)
 		if p == "" || strings.Contains(p, "=") || len(p) >= maxSocketPath || slices.Contains(out, p) {
 			return nil, bad

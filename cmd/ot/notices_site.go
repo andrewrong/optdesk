@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -105,8 +106,8 @@ func noticesPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 	var r noticesReaders
 	var closers []func() error
 	closeAll := func() {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i]()
+		for _, closer := range slices.Backward(closers) {
+			_ = closer()
 		}
 	}
 	fail := func() (pages.Page, func(), error) {

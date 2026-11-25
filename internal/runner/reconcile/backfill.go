@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -146,9 +147,7 @@ func (r *reconciler) backfillPlan(
 		return nil, plan{}, nil, err
 	}
 	jobs := map[contracts.ExpectedKey]contracts.Job{}
-	for k, j := range pAll.job {
-		jobs[k] = j
-	}
+	maps.Copy(jobs, pAll.job)
 	for _, k := range added {
 		jobs[k] = pDay.job[k]
 	}

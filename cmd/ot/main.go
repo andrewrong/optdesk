@@ -83,8 +83,7 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 	}
 	if err := commands[args[0]](a, args[1:]); err != nil {
 		a.log.Error("command failed", "component", "ot", "err", err.Error())
-		var ee *exitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exitError](err); ok {
 			return ee.code
 		}
 		return 1

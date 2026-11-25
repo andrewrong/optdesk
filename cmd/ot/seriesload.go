@@ -78,8 +78,7 @@ func seriesLoad(a *app, args []string) error {
 	if err != nil {
 		// The error text may carry a URL with the key: only its class is shown.
 		kind := "unclassified"
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if te, ok := errors.AsType[contracts.TypedError](err); ok {
 			kind = string(te.Kind())
 		}
 		return fmt.Errorf("series-load failed (%s): the error text is withheld because it may hold a DSN or a key", kind)

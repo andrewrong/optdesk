@@ -237,8 +237,7 @@ func TestTickerCallsNoLedgerOnLoopGoroutine(t *testing.T) {
 	h.led.block = make(chan struct{})
 	h.stuck = true
 	h.s = New(h.fence, h.led, h.ops, tickerCal(), h.clk, h.rec, nil, nil, nil, h.exe)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go func() { _ = h.s.Run(ctx) }()
 	h.until("put-blocked") // the worker is stuck in the ledger
 	h.step(30 * time.Second)
@@ -358,8 +357,7 @@ func TestTickerHealthAccessors(t *testing.T) {
 	if !s.FenceHeld() {
 		t.Fatal("FenceHeld = false while held")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go func() { _ = s.Run(ctx) }()
 	h.until("put")
 	for i := 1; i <= 2; i++ {

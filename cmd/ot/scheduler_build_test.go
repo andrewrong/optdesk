@@ -31,7 +31,7 @@ func runCloseAtStart(t *testing.T, prev prevBuildLedger) (reason any, calls, bef
 	r := newSchedRig(t, fullEnv)
 	prev.fakeSchedLedger = r.sl
 	r.a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return prev, nil }
-	l := &closeRecLedger{fakeLedger: fakeLedger{n: new(atomic.Int32)}}
+	l := &closeRecLedger{n: new(atomic.Int32)}
 	useLedger(r, l)
 	build := r.a.deps.newScheduler
 	r.a.deps.newScheduler = func(

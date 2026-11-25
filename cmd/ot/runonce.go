@@ -459,8 +459,8 @@ func openComputeStores(
 ) (computefigures.ComputeStores, func(), error) {
 	var closers []func() error
 	closeAll := func() {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i]()
+		for _, closer := range slices.Backward(closers) {
+			_ = closer()
 		}
 	}
 	pagesFail := fmt.Errorf("open compute stores with %s failed", store.DSNEnvPages)

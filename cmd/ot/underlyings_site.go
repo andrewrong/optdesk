@@ -170,8 +170,7 @@ func heldRefused(positions []store.Position, rows []underlying.Row, adder underl
 			continue
 		}
 		if _, err := adder.Check(p.Symbol, p.Currency); err != nil {
-			var ie underlying.InvalidError
-			if errors.As(err, &ie) {
+			if ie, ok := errors.AsType[underlying.InvalidError](err); ok {
 				out[p.Symbol] = ie.Why()
 			}
 		}

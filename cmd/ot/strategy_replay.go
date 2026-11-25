@@ -178,8 +178,8 @@ func (a *app) replaySessions(ctx context.Context, dsn string, from, to contracts
 func (a *app) openReplayStores(ctx context.Context, env map[string]string) (markReaders, bar.PriceBarReader, func(), error) {
 	var closers []func() error
 	closeAll := func() {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i]()
+		for _, closer := range slices.Backward(closers) {
+			_ = closer()
 		}
 	}
 	fail := func(line string) (markReaders, bar.PriceBarReader, func(), error) {

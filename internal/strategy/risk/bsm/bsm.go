@@ -137,7 +137,7 @@ func (Pricer) Implied(right, spot, strike, years, rate, price string) (string, e
 	if target >= p.value(hi) {
 		return "", ErrAboveBound
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		mid := (lo + hi) / 2
 		if p.value(mid) < target {
 			lo = mid

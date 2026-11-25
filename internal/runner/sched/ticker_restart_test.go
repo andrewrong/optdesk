@@ -2,6 +2,7 @@ package sched
 
 import (
 	"context"
+	"maps"
 	"sync"
 	"testing"
 	"time"
@@ -75,9 +76,7 @@ func (l *memOps) Present(context.Context, contracts.Day) (map[contracts.Expected
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	out := map[contracts.ExpectedKey]store.PresentStatus{}
-	for k, v := range l.present {
-		out[k] = v
-	}
+	maps.Copy(out, l.present)
 	return out, nil
 }
 func (l *memOps) RecordRun(_ context.Context, r store.Run) error {

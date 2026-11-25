@@ -35,13 +35,13 @@ func gzipHandler(h http.Handler) http.Handler {
 // acceptsGzip reports whether an Accept-Encoding header lists gzip with a quality above zero.
 func acceptsGzip(values []string) bool {
 	for _, v := range values {
-		for _, part := range strings.Split(v, ",") {
+		for part := range strings.SplitSeq(v, ",") {
 			name, params, _ := strings.Cut(strings.TrimSpace(part), ";")
 			if !strings.EqualFold(strings.TrimSpace(name), "gzip") {
 				continue
 			}
 			q := 1.0
-			for _, p := range strings.Split(params, ";") {
+			for p := range strings.SplitSeq(params, ";") {
 				k, val, ok := strings.Cut(strings.TrimSpace(p), "=")
 				if ok && strings.EqualFold(strings.TrimSpace(k), "q") {
 					if f, err := strconv.ParseFloat(strings.TrimSpace(val), 64); err == nil {
