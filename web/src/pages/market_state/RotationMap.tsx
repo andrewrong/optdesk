@@ -45,10 +45,10 @@ const RING_SYMBOL = 'SMH'
 
 // Each quadrant is bounded on both axes (0 to the axis end) so its name is drawn in its own plot corner.
 const QUADRANT = {
-  leading: { word: 'Leading — ahead of SPY over 3 months and still gaining', sx: 1, sy: 1, position: 'insideTopRight' },
-  improving: { word: 'Improving — behind SPY over 3 months but gaining pace', sx: -1, sy: 1, position: 'insideTopLeft' },
-  lagging: { word: 'Lagging — behind SPY over 3 months and still losing', sx: -1, sy: -1, position: 'insideBottomLeft' },
-  weakening: { word: 'Weakening — ahead of SPY over 3 months but losing pace', sx: 1, sy: -1, position: 'insideBottomRight' },
+  leading: { word: '领先 — 近 3 个月跑赢 SPY，且仍在加速', sx: 1, sy: 1, position: 'insideTopRight' },
+  improving: { word: '改善 — 近 3 个月落后 SPY，但在加速', sx: -1, sy: 1, position: 'insideTopLeft' },
+  lagging: { word: '落后 — 近 3 个月落后 SPY，且仍在减速', sx: -1, sy: -1, position: 'insideBottomLeft' },
+  weakening: { word: '转弱 — 近 3 个月跑赢 SPY，但在减速', sx: 1, sy: -1, position: 'insideBottomRight' },
 } as const
 
 // The end of a zero-centred axis: the largest absolute value rounded up to a multiple of 10 (at least 10), by remainder arithmetic: the web source calls no Math function.
@@ -210,7 +210,7 @@ export function RotationMap({ block }: { block: Sectors }) {
   const endY = axisEnd(all.map((p) => p.y))
   const config: ChartConfig = Object.fromEntries(drawn.map((item) => [item.symbol, { label: item.symbol, color: item.tone }]))
   return (
-    <section aria-label="Rotation map" data-rotation-map>
+    <section aria-label="轮动图" data-rotation-map>
       <p className="text-sm text-muted-foreground" data-rotation-note>
         {axes.note}
       </p>

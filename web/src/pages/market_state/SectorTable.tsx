@@ -1,16 +1,16 @@
-// The sector table: the rows in payload order, every figure and gap as its text, the rank as `at of of`.
+// The sector table: the rows in payload order, every figure and gap as its text, the rank as `第 at / 共 of`.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Payload } from '@/types/market_state_page'
 
 type Sectors = Payload['sectors']
 type Row = Sectors['rows'][number]
 
-const rank = (r: Row['rank_21']) => ('kind' in r ? r.text : `${r.at} of ${r.of}`)
+const rank = (r: Row['rank_21']) => ('kind' in r ? r.text : `第 ${r.at} / 共 ${r.of}`)
 const day = (d: Sectors['end_day']) => (typeof d === 'string' ? d : d.text)
 
 export function SectorTable({ block }: { block: Sectors }) {
   return (
-    <section aria-label="Sectors" data-sector-table>
+    <section aria-label="板块表" data-sector-table>
       <p className="text-sm text-muted-foreground" data-sector-caption>
         {block.caption}
       </p>
@@ -20,13 +20,13 @@ export function SectorTable({ block }: { block: Sectors }) {
       <Table className="mt-2">
         <TableHeader>
           <TableRow>
-            <TableHead>Symbol</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Group</TableHead>
-            <TableHead>21</TableHead>
-            <TableHead>63</TableHead>
-            <TableHead>Rank 21</TableHead>
-            <TableHead>Rank 63</TableHead>
+            <TableHead>代码</TableHead>
+            <TableHead>名称</TableHead>
+            <TableHead>分组</TableHead>
+            <TableHead>21 日差距</TableHead>
+            <TableHead>63 日差距</TableHead>
+            <TableHead>21 日排名</TableHead>
+            <TableHead>63 日排名</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
