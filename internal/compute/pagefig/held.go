@@ -146,6 +146,15 @@ func heldEarnings(c blockapi.HeldCompanyIn, today contracts.Day) (contracts.Day,
 		if len(e.Rows) == 0 {
 			return "", 0, "no_row"
 		}
+		// A listed row on or after today wins, whatever the newest row says.
+		for _, r := range e.Rows {
+			if r.Status == "listed" && r.Report >= today && (date == "" || r.Report < date) {
+				date = r.Report
+			}
+		}
+		if date != "" {
+			return heldDays(date, today)
+		}
 		newest := e.Rows[0]
 		for _, r := range e.Rows[1:] {
 			if r.ObservedOn >= newest.ObservedOn {
@@ -163,6 +172,11 @@ func heldEarnings(c blockapi.HeldCompanyIn, today contracts.Day) (contracts.Day,
 		}
 		date = newest.Report
 	}
+	return heldDays(date, today)
+}
+
+// heldDays gives date and the days from today to it; a date before today is past_date.
+func heldDays(date, today contracts.Day) (contracts.Day, int, string) {
 	d, ok := parseHeldDay(date)
 	t, tok := parseHeldDay(today)
 	if !ok || !tok {
