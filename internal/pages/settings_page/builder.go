@@ -47,12 +47,13 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, _ contracts.Day,
 	if err := validate(c); err != nil {
 		return nil, err
 	}
+	local := at.In(c.Zone).Format(time.RFC3339)
 	vm := viewModel{
 		Schema: "settings_page", SchemaVersion: 2,
 		RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
 		GeneratedAt: at.In(c.Zone).Format(time.RFC3339),
 		DataTimes:   []struct{}{}, RunStatus: "ok",
-		Title: "Settings", AsOf: "Settings as of " + at.In(c.Zone).Format(time.RFC3339),
+		Title: pageTitle, AsOf: fmt.Sprintf(asOfFormat, local, local),
 		Rows: []exclusionRow{}, History: []historyRow{}, Params: []paramRow{},
 	}
 	if n := c.Notice; n != nil {

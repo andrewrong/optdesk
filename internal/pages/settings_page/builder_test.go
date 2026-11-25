@@ -375,3 +375,18 @@ func TestBuildGapTextsAreChinese(t *testing.T) {
 		t.Errorf("not_built gap = %v", off)
 	}
 }
+
+func TestBuildTitleAndAsOfAreChinese(t *testing.T) {
+	t.Parallel()
+	m := build(t, baseConfig())
+	at, _ := m["generated_at"].(string)
+	if at == "" {
+		t.Fatalf("generated_at missing: %v", m)
+	}
+	if m["title"] != "设置 Settings" {
+		t.Errorf("title = %v", m["title"])
+	}
+	if want := "设置截至 " + at + " (Settings as of " + at + ")"; m["as_of"] != want {
+		t.Errorf("as_of = %v, want %v", m["as_of"], want)
+	}
+}
