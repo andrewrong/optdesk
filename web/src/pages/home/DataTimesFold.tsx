@@ -14,7 +14,7 @@ export function DataTimesFold({ text }: { text: string }) {
         <AccordionTrigger>
           <span className="flex items-center gap-1">
             <Clock aria-hidden className="size-4" />
-            Data times
+            数据时间
           </span>
         </AccordionTrigger>
         <AccordionContent>{text}</AccordionContent>

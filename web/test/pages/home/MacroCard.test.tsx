@@ -85,7 +85,7 @@ describe('MacroCard (macro_summary v2)', () => {
   it('keeps the Ease score in a closed fold: no ease figure text on the closed card', async () => {
     await show(ok)
     expect(host.querySelector('[data-ease-fold] [data-slot=accordion-trigger]')?.textContent).toBe(
-      'Ease score',
+      '宽松度评分',
     )
     expect(host.querySelector('[data-ease-figure]')).toBeNull()
     expect(host.querySelector('[data-neutral-band]')).toBeNull()
@@ -106,7 +106,7 @@ describe('MacroCard (macro_summary v2)', () => {
   it('shows the events of ok with the Gap text of Previous', async () => {
     await show(ok)
     const headers = [...host.querySelectorAll('[data-events] th')].map((h) => h.textContent)
-    expect(headers).toEqual(['Date', 'Event', 'Previous'])
+    expect(headers).toEqual(['日期', '事件', '前值'])
     const rows = [...host.querySelectorAll('[data-events] tbody tr')].map((r) =>
       [...r.querySelectorAll('td')].map((c) => c.textContent),
     )

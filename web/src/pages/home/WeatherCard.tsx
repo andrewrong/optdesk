@@ -20,16 +20,16 @@ import { StaleAlert } from './StaleAlert'
 import { WeatherIntraday } from './WeatherIntraday'
 
 const VERDICT = {
-  ok: { word: 'Good', variant: 'secondary' },
-  bad: { word: 'Bad', variant: 'destructive' },
-  unknown: { word: 'Unknown', variant: 'outline' },
+  ok: { word: '正常', variant: 'secondary' },
+  bad: { word: '异常', variant: 'destructive' },
+  unknown: { word: '未知', variant: 'outline' },
 } as const
 
 const COLUMNS: Column[] = [
-  { id: 'day', label: 'Date' },
+  { id: 'day', label: '日期' },
   { id: 'ibkr', label: 'IBKR', align: 'right' },
   { id: 'fred', label: 'FRED', align: 'right' },
-  { id: 'diff', label: 'Diff', align: 'right' },
+  { id: 'diff', label: '差值', align: 'right' },
 ]
 
 export function WeatherCard({ payload }: { payload: Payload }) {
@@ -81,7 +81,7 @@ export function WeatherCard({ payload }: { payload: Payload }) {
         ) : null}
         <Accordion type="single" collapsible defaultValue="footnote">
           <AccordionItem value="footnote">
-            <AccordionTrigger>Footnotes</AccordionTrigger>
+            <AccordionTrigger>脚注</AccordionTrigger>
             <AccordionContent data-footnote>{payload.footnote}</AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -32,7 +32,7 @@ const tableRows = () =>
     [...r.querySelectorAll('td')].map((c) => c.textContent),
   )
 // The badge words of the three verdicts (board v2.2: Good/Bad/Unknown).
-const WORD = { ok: 'Good', bad: 'Bad', unknown: 'Unknown' } as const
+const WORD = { ok: '正常', bad: '异常', unknown: '未知' } as const
 // jsdom has no ResizeObserver, which the Radix tooltip popper needs once it opens.
 vi.stubGlobal(
   'ResizeObserver',
@@ -101,8 +101,8 @@ describe('WeatherCard', () => {
   it('heads the difference column Diff, not with the verdict word Bad', async () => {
     await show(fixture('mismatch'))
     const heads = [...host.querySelectorAll('[data-mismatches] thead th')].map((h) => h.textContent)
-    expect(heads).toContain('Diff')
-    expect(heads).not.toContain('Bad')
+    expect(heads).toContain('差值')
+    expect(heads).not.toContain('异常')
   })
 
   it('shows the stale label of the stale fixture and none for ok', async () => {

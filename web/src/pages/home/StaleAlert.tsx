@@ -38,7 +38,7 @@ export function StaleAlert({
       {skewed ? (
         <Alert variant="destructive" data-clock-skew>
           <AlertDescription>
-            This device's clock differs from the data time by more than 5 minutes, check the device time.
+            本机时钟与数据时间相差超过 5 分钟，请检查本机时间。
           </AlertDescription>
         </Alert>
       ) : null}

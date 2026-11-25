@@ -144,7 +144,7 @@ describe('HomePage layout', () => {
     await act(async () => {
       ;(fold.querySelector('[data-slot="accordion-trigger"]') as HTMLElement).click()
     })
-    expect(fold.textContent).toContain('All reports')
+    expect(fold.textContent).toContain('全部报告')
     for (const link of rest) expect(fold.contains(anchorOf(link)), link.text).toBe(true)
   })
 
