@@ -7,7 +7,7 @@ export function GatewayBlock({ gateways }: { gateways: NonNullable<Payload['gate
   return (
     <Card data-gateways>
       <CardHeader>
-        <CardTitle>Gateways</CardTitle>
+        <CardTitle>网关</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {gateways.map((g) => (

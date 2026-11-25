@@ -99,7 +99,7 @@ describe('data health page', () => {
     })
     const button = form.querySelector('button')
     expect(button?.getAttribute('type')).toBe('submit')
-    expect(button?.textContent).toBe('repair')
+    expect(button?.textContent).toBe('修复')
   })
 
   it('not_refetchable prints why_text and no form', async () => {
@@ -125,7 +125,7 @@ describe('data health page', () => {
       expires: '2026-11-17T10:00:00Z',
       mac: 'invented-mac-0001',
     })
-    expect(forms[0]?.querySelector('button')?.textContent).toBe('repair 2 days')
+    expect(forms[0]?.querySelector('button')?.textContent).toBe('修复 2 天')
     expect(el.querySelector('[data-dataset="option_eod"] form[data-repair-all]')).toBeNull()
   })
 

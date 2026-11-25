@@ -38,7 +38,7 @@ export function CoverageGrid({ datasets, form }: { datasets: Dataset[]; form: Fo
   const columns: ColumnDef<Dataset>[] = [
     {
       id: 'dataset',
-      header: 'Dataset',
+      header: '数据集',
       cell: ({ row }) => {
         const d = row.original
         return (

@@ -23,7 +23,7 @@ export function CellRepair({ form, job, day }: { form: Form; job: string; day: s
       <input type="hidden" name="day" value={day} />
       <Token form={form} />
       <Button type="submit" size="sm" variant="outline">
-        repair
+        修复
       </Button>
     </form>
   )
@@ -37,7 +37,7 @@ export function RepairAllForm({ form, dataset, gapDays }: { form: Form; dataset:
       <input type="hidden" name="dataset" value={dataset} />
       <Token form={form} />
       <Button type="submit" size="sm">
-        repair {gapDays} days
+        修复 {gapDays} 天
       </Button>
     </form>
   )
