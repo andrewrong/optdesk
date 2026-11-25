@@ -76,6 +76,7 @@ func (g *gzipWriter) decide(status int, first []byte) {
 	ct := hd.Get("Content-Type")
 	if ct == "" && len(first) > 0 {
 		ct = http.DetectContentType(first)
+		hd.Set("Content-Type", ct)
 	}
 	mt, _, err := mime.ParseMediaType(ct)
 	if err != nil || !gzipTypes[mt] {

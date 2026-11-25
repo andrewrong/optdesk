@@ -154,3 +154,17 @@ func TestGzipHandlerNoContentStaysPlain(t *testing.T) {
 		t.Fatalf("%d %v", rec.Code, rec.Header())
 	}
 }
+
+func TestGzipHandlerSniffedTypeKept(t *testing.T) {
+	t.Parallel()
+	h := gzipHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "<!DOCTYPE html><html><body>hi</body></html>")
+	}))
+	rec := gzipDo(t, h, http.MethodGet, "gzip", nil)
+	if rec.Header().Get("Content-Encoding") != "gzip" {
+		t.Fatalf("not compressed: %v", rec.Header())
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Fatalf("Content-Type = %q, want text/html", ct)
+	}
+}
