@@ -49,4 +49,7 @@ const (
 	// unit texts of a Delta cell, one for each currency
 	unitDeltaUSD = "美元/每 $1"
 	unitDeltaJPY = "日元/每 ¥1"
+
+	// textTotalSeparator joins the Delta totals of the currencies in the total cell
+	textTotalSeparator = "；"
 )

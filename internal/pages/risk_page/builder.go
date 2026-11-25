@@ -191,7 +191,7 @@ func deltaBlock(r blockapi.RiskResult) deltaJSON {
 		}
 	}
 	if b.Total != nil {
-		b.Total.Text = strings.Join(texts, "；")
+		b.Total.Text = strings.Join(texts, textTotalSeparator)
 	}
 	b.Gap = gap
 	return b
