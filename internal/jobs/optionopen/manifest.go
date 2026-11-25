@@ -53,6 +53,7 @@ type manifest struct {
 	Slot          string        `toml:"slot"`
 	BudgetMinutes int           `toml:"budget_minutes"`
 	MaxNew        int           `toml:"max_new"`
+	Parallel      int           `toml:"parallel"`
 	RetryDays     int           `toml:"retry_days"`
 	JitterDays    int           `toml:"jitter_days"`
 	SpotMove      float64       `toml:"spot_move"`
@@ -101,10 +102,15 @@ func parseManifest(data []byte) (manifest, error) {
 	if m.params, err = m.Params.build(); err != nil {
 		return manifest{}, err
 	}
-	if m.MaxNew < 0 || m.RetryDays < 0 || m.JitterDays < 0 || m.JitterDays > m.RetryDays && m.RetryDays > 0 {
-		return manifest{}, errors.New("optionopen: manifest: max_new, retry_days and jitter_days are out of range")
+	if !m.countsInRange() {
+		return manifest{}, errors.New("optionopen: manifest: max_new, parallel, retry_days and jitter_days are out of range")
 	}
 	return m, nil
+}
+
+// countsInRange checks max_new, parallel, retry_days and jitter_days.
+func (m manifest) countsInRange() bool {
+	return m.MaxNew >= 0 && m.Parallel >= 0 && m.RetryDays >= 0 && m.JitterDays >= 0 && (m.JitterDays <= m.RetryDays || m.RetryDays == 0)
 }
 
 // build lays the set over DefaultPlanParams: a key the table does not give keeps the default.

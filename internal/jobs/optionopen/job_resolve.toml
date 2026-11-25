@@ -2,9 +2,11 @@
 version = 1
 id = "option_open_resolve"
 zone = "America/New_York"
-budget_minutes = 40
-# New resolves per run (docs/design/option-open-pull.md, Capacity); NewResolve may override it with MaxNew.
-max_new = 4000
+budget_minutes = 300
+# No count cap (docs/design/option-open-limits.md, Decision 1): 0 means none.
+max_new = 0
+# Contracts asked at once; equal to ResolveInFlight of the broker and the details lane of pyside.
+parallel = 5
 # Marks of contracts IBKR answered none for (Decision 5): the retry is seven days plus or minus two.
 retry_days = 7
 jitter_days = 2
