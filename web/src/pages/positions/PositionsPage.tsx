@@ -23,7 +23,15 @@ type Table = View['stocks'] | View['options'] | NonNullable<View['trades']>
 // The columns that hold words wrap in their cell; the figure columns keep their no-wrap.
 const WRAP = new Set(['name', 'role', 'code', 'account', 'action', 'instrument'])
 
-function PositionTable({ table, name }: { table: Table; name: string }) {
+function PositionTable({
+  table,
+  name,
+  structuresKey,
+}: {
+  table: Table
+  name: string
+  structuresKey?: string
+}) {
   return (
     <Card className="min-w-0" data-table={name}>
       <CardHeader>
@@ -41,6 +49,13 @@ function PositionTable({ table, name }: { table: Table; name: string }) {
               columns={table.columns.map((c) => (WRAP.has(c.id) ? { ...c, wrap: true } : c))}
               rows={table.rows.map((row) => ({ ...row }))}
             />
+            {structuresKey ? (
+              <Button asChild variant="link" size="sm">
+                <a href={`/options/structures?account=${encodeURIComponent(structuresKey)}`}>
+                  组合结构
+                </a>
+              </Button>
+            ) : null}
           </>
         )}
       </CardContent>
@@ -91,7 +106,7 @@ export function PositionsPage({ payload }: { payload: Payload }) {
           <TabsContent key={view.key} value={view.key} className="min-w-0 space-y-4">
             <p data-sentence>{view.sentence}</p>
             <PositionTable table={view.stocks} name="stocks" />
-            <PositionTable table={view.options} name="options" />
+            <PositionTable table={view.options} name="options" structuresKey={view.key} />
             {view.trades ? <PositionTable table={view.trades} name="trades" /> : null}
           </TabsContent>
         ))}
