@@ -56,9 +56,10 @@ var (
 		"day:" + headDay,
 		"unrealised:" + headUnrealised,
 	}
-	optionHeads = []string{"code:" + headCode, "name:" + headName, "expiry:" + headExpiry, "days_left:" + headDaysLeft, "role:" + headOwner, "quantity:" + headQuantity,
-		"cost:" + headCost, "price:" + headPrice, "day:" + headDay, "unrealised:" + headUnrealised, "open_premium:" + headOpenPremium}
-	tradeHeads = []string{"time:" + headTime, "account:" + headAccount, "action:" + headAction, "instrument:" + headInstrument, "quantity:" + headQuantity, "price:" + headTradePrice}
+	optionHeads = []string{"code:" + headCode, "name:" + headName, "expiry:" + headExpiry, "days_left:" + headDaysLeft, "role:" + headOwner,
+		"quantity:" + headQuantity, "cost:" + headCost, "price:" + headPrice, "day:" + headDay, "unrealised:" + headUnrealised, "open_premium:" + headOpenPremium}
+	tradeHeads = []string{"time:" + headTime, "account:" + headAccount, "action:" + headAction, "instrument:" + headInstrument,
+		"quantity:" + headQuantity, "price:" + headTradePrice}
 )
 
 // rightAligned are the columns of numbers.
