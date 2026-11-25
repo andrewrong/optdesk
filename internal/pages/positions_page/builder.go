@@ -152,7 +152,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if len(res.Rows) != len(in.Rows) {
 		return nil, fmt.Errorf("positions_page: holdings gave %d lines for %d rows", len(res.Rows), len(in.Rows))
 	}
-	stocks, options, skipped := rowsOf(snap.positions, price, res.Rows, prem, text2(label), day)
+	stocks, options, skipped := rowsOf(snap.positions, price, res.Rows, prem, text2(label), day, c.names(ctx))
 	trades, err := c.trades(ctx, alias, label, sessions, day)
 	if err != nil {
 		return nil, err
@@ -185,6 +185,25 @@ func (c Config) prices(ctx context.Context, alias, day string) (map[int64]string
 		}
 	}
 	return price, nil
+}
+
+// names maps a symbol to the company name the registry stores; empty when the registry is absent or cannot be
+// read, so a read error never fails the page.
+func (c Config) names(ctx context.Context) map[string]string {
+	out := map[string]string{}
+	if c.Underlyings == nil {
+		return out
+	}
+	rows, err := c.Underlyings.Current(ctx)
+	if err != nil {
+		return out
+	}
+	for _, r := range rows {
+		if r.Name != "" && out[r.Symbol] == "" {
+			out[r.Symbol] = r.Name
+		}
+	}
+	return out
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
