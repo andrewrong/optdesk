@@ -18,13 +18,9 @@ const (
 	reasonNoData   = "no_data"
 	reasonCurrency = "unsupported_currency"
 
-	textOtherCurrency = "%d non-USD structures not counted"
-	textUnreadable    = "%d structures with unreadable rows not counted"
-	textUncovered     = "%d calls without assigned shares in the ledger; other structures at least %s"
-	textReview        = "%d ledger rows need review, figures may be incomplete"
-	captionBase       = "%s, %s"
-	captionSep        = "; "
-	unitStructures    = "structures"
+	captionBase    = "%s, %s"
+	captionSep     = "; "
+	unitStructures = "structures"
 )
 
 // countFigure is the CountFigure of the schema.
@@ -86,16 +82,16 @@ func placeFigures(t *tiles, asOf string, aliases []string, o blockapi.OptionTile
 	t.MaxLoss = tile{Label: t.MaxLoss.Label, Figure: lossFigure(o), Caption: loss + extra}
 }
 
-// scopeWords names the aliases, sorted: "account a" for one, "accounts a and b combined" for several.
+// scopeWords names the aliases, sorted: scopeOne for one, scopeMany for several.
 func scopeWords(aliases []string) string {
 	s := slices.Sorted(slices.Values(aliases))
 	switch len(s) {
 	case 0:
-		return "no accounts"
+		return scopeNone
 	case 1:
-		return "account " + s[0]
+		return fmt.Sprintf(scopeOne, s[0])
 	}
-	return "accounts " + strings.Join(s[:len(s)-1], ", ") + " and " + s[len(s)-1] + " combined"
+	return fmt.Sprintf(scopeMany, strings.Join(s, scopeJoin))
 }
 
 func openFigure(o blockapi.OptionTilesOut) any {

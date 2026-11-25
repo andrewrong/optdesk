@@ -84,13 +84,13 @@ func TestFiguresFromTheFakeTiles(t *testing.T) {
 
 func checkCaptions(t *testing.T, c map[string]any) {
 	t.Helper()
-	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; 本月新开手数" {
+	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, 账户 a、b 合并; 本月新开手数" {
 		t.Fatalf("sold caption = %v", got)
 	}
-	if got := tileOf(c, "open_premium_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined; 每手的剩余部分" {
+	if got := tileOf(c, "open_premium_usd")["caption"]; got != "Ledger as of 11-04, 账户 a、b 合并; 每手的剩余部分" {
 		t.Fatalf("open caption = %v", got)
 	}
-	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, accounts a and b combined" {
+	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, 账户 a、b 合并" {
 		t.Fatalf("loss caption = %v", got)
 	}
 }
@@ -119,7 +119,7 @@ func TestUncoveredCallIsTheMaxLossGap(t *testing.T) {
 	}
 	c := card(t, figCfg(&p, compute.StructureResult{}, out))
 	g := tileFigure(c, "max_loss_usd")
-	want := "1 calls without assigned shares in the ledger; other structures at least $12,345.67"
+	want := "1 张卖出看涨期权在账本里没有对应的股数；其余结构至少 $12,345.67"
 	if g["kind"] != "gap" || g["reason"] != "no_data" || g["text"] != want {
 		t.Fatalf("gap = %v", g)
 	}
@@ -131,12 +131,12 @@ func TestUncoveredCallWithUnnumberedStructure(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{MaxLossUsd: usd("300.00", "300"), MaxLossGap: "no_data", Uncovered: 1, Unnumbered: 1, OpenCount: 3}
 	g := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
-	if g["text"] != "1 calls without assigned shares in the ledger; other structures at least $300.00" {
+	if g["text"] != "1 张卖出看涨期权在账本里没有对应的股数；其余结构至少 $300.00" {
 		t.Fatalf("gap = %v", g)
 	}
 	out.MaxLossUsd = blockapi.UsdText{}
 	g = tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
-	if g["text"] != "1 calls without assigned shares in the ledger; other structures at least $0.00" {
+	if g["text"] != "1 张卖出看涨期权在账本里没有对应的股数；其余结构至少 $0.00" {
 		t.Fatalf("gap = %v", g)
 	}
 }
@@ -178,7 +178,7 @@ func TestNoOpenStructureIsZeroWithItsCaption(t *testing.T) {
 			t.Fatalf("%s = %v", k, f)
 		}
 		got := tileOf(c, k)["caption"].(string)
-		if !strings.Contains(got, "账本里没有未平仓的结构") || !strings.HasPrefix(got, "Ledger as of 11-04, account main") {
+		if !strings.Contains(got, "账本里没有未平仓的结构") || !strings.HasPrefix(got, "Ledger as of 11-04, 账户 main") {
 			t.Fatalf("%s caption = %q", k, got)
 		}
 	}
@@ -201,14 +201,14 @@ func TestUnreadableAndNonUsdCaptions(t *testing.T) {
 	c := card(t, figCfg(&p, compute.StructureResult{}, out))
 	for _, k := range []string{"open_premium_usd", "max_loss_usd"} {
 		got := tileOf(c, k)["caption"].(string)
-		for _, w := range []string{"2 non-USD structures not counted", "1 structures with unreadable rows not counted"} {
+		for _, w := range []string{"2 个非美元结构未计入", "1 个结构因账本行无法读取未计入"} {
 			if !strings.Contains(got, w) {
 				t.Fatalf("%s caption lacks %q: %q", k, w, got)
 			}
 		}
 	}
 	plain := card(t, figCfg(&p, compute.StructureResult{}, blockapi.OptionTilesOut{OpenCount: 1}))
-	if got := tileOf(plain, "open_premium_usd")["caption"].(string); strings.Contains(got, "non-USD") || strings.Contains(got, "unreadable") {
+	if got := tileOf(plain, "open_premium_usd")["caption"].(string); strings.Contains(got, "非美元") || strings.Contains(got, "无法读取") {
 		t.Fatalf("caption = %q", got)
 	}
 }
@@ -226,15 +226,15 @@ func TestReviewLineAppearsAndDisappears(t *testing.T) {
 		return reviewReplayer{replayer{[]compute.LedgerPosition{pos()}}, []string{"u1"}, []string{"r1", "r2"}}
 	}
 	c := card(t, with)
-	if !strings.Contains(gapTexts(c), "3 ledger rows need review, figures may be incomplete") || strings.Count(gapTexts(c), "need review") != 1 {
+	if !strings.Contains(gapTexts(c), "3 条账本记录需要复核，数字可能不完整") || strings.Count(gapTexts(c), "需要复核") != 1 {
 		t.Fatalf("gaps = %v", c["gaps"])
 	}
 	for _, g := range c["gaps"].([]any) {
-		if m := g.(map[string]any); strings.Contains(m["text"].(string), "need review") && m["reason"] != "no_data" {
+		if m := g.(map[string]any); strings.Contains(m["text"].(string), "需要复核") && m["reason"] != "no_data" {
 			t.Fatalf("gap = %v", m)
 		}
 	}
-	if without := card(t, figCfg(&p, compute.StructureResult{}, blockapi.OptionTilesOut{})); strings.Contains(gapTexts(without), "need review") {
+	if without := card(t, figCfg(&p, compute.StructureResult{}, blockapi.OptionTilesOut{})); strings.Contains(gapTexts(without), "需要复核") {
 		t.Fatalf("gaps = %v", without["gaps"])
 	}
 }
@@ -267,7 +267,7 @@ func TestCardGapLeavesOnlyWithBothFields(t *testing.T) {
 		if g := tileFigure(k, "max_loss_usd"); g["kind"] != "gap" || g["text"] != gapText {
 			t.Errorf("%s: tile = %v", name, g)
 		}
-		if strings.Contains(gapTexts(k), "need review") {
+		if strings.Contains(gapTexts(k), "需要复核") {
 			t.Errorf("%s: review line without figures", name)
 		}
 	}
@@ -351,7 +351,7 @@ func TestUsd2TwoDecimals(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{MaxLossUsd: usd("100000.5", "100001"), MaxLossGap: "no_data", Uncovered: 2, OpenCount: 1}
 	g := tileFigure(card(t, figCfg(&p, compute.StructureResult{}, out)), "max_loss_usd")
-	if want := "2 calls without assigned shares in the ledger; other structures at least $100,000.50"; g["text"] != want {
+	if want := "2 张卖出看涨期权在账本里没有对应的股数；其余结构至少 $100,000.50"; g["text"] != want {
 		t.Errorf("caption = %v", g["text"])
 	}
 }
@@ -361,10 +361,10 @@ func TestCaptionNamesOneAlias(t *testing.T) {
 	var p probe
 	out := blockapi.OptionTilesOut{SoldCount: 1, OpenPremium: usd("1.00", "1"), MaxLossUsd: usd("2.00", "2"), OpenCount: 1}
 	c := card(t, withFigures(cfg(ledger{aliases: map[string]int{"a": 1}}, results{}, pos()), &p, compute.StructureResult{}, out))
-	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, account a; 本月新开手数" {
+	if got := tileOf(c, "sold_count_month")["caption"]; got != "Ledger as of 11-04, 账户 a; 本月新开手数" {
 		t.Fatalf("sold caption = %v", got)
 	}
-	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, account a" {
+	if got := tileOf(c, "max_loss_usd")["caption"]; got != "Ledger as of 11-04, 账户 a" {
 		t.Fatalf("loss caption = %v", got)
 	}
 }

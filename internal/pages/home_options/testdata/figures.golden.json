@@ -32,7 +32,7 @@
           "text": "3",
           "unit": "structures"
         },
-        "caption": "Ledger as of 11-04, account main; 本月新开手数"
+        "caption": "Ledger as of 11-04, 账户 main; 本月新开手数"
       },
       "premium_month_usd": {
         "label": "Closed premium",
@@ -43,7 +43,7 @@
           "unit": "usd_signed",
           "tone": "up"
         },
-        "caption": "Ledger as of 11-04, account main; all closed sold positions; realised −$15.25; kept share 32.4%"
+        "caption": "Ledger as of 11-04, 账户 main; 所有已平仓的卖出持仓; 已实现 −$15.25; 留存比例 32.4%"
       },
       "open_premium_usd": {
         "label": "Open premium",
@@ -53,7 +53,7 @@
           "text": "$1,234.50",
           "unit": "usd"
         },
-        "caption": "Ledger as of 11-04, account main; 每手的剩余部分"
+        "caption": "Ledger as of 11-04, 账户 main; 每手的剩余部分"
       },
       "max_loss_usd": {
         "label": "Max loss",
@@ -63,7 +63,7 @@
           "text": "$4,000.00",
           "unit": "usd"
         },
-        "caption": "Ledger as of 11-04, account main"
+        "caption": "Ledger as of 11-04, 账户 main"
       }
     },
     "premium_series_6m": [

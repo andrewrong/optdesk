@@ -120,6 +120,6 @@ describe('sample pages', () => {
   })
 
   it('no href of a sample leaves the eight bar routes', () => {
-    for (const name of NAMES) for (const href of hrefs(samples[name])) expect(BAR).toContain(href)
+    for (const name of NAMES) for (const href of hrefs(samples[name])) expect(BAR).toContain(href.split('?')[0])
   })
 })

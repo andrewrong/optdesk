@@ -42,8 +42,6 @@ const (
 	staleDays = 4
 	maxRows   = 30
 	maxText   = 200
-
-	noReaderText = "reader not set"
 )
 
 // Row is one held company. Issuer is the issuer text of the watch list, Market its market (US or
@@ -172,8 +170,7 @@ type reading struct {
 }
 
 const (
-	notComputedText = "not computed yet, comes with the next figures run"
-	reasonFewYears  = "fewer_than_5_years"
+	reasonFewYears = "fewer_than_5_years"
 )
 
 const (
@@ -217,7 +214,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	for _, r := range rows {
 		cur, ok := currencyOf(r.Market)
 		if !ok {
-			doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_data", clip(r.Symbol + ": market " + r.Market + " has no currency")})
+			doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_data", clip(fmt.Sprintf(noCurrencyText, r.Symbol, r.Market))})
 			continue
 		}
 		out, hasPrice, seen, err := cfg.rowOf(ctx, r, cur, day)
@@ -235,7 +232,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	if cfg.Read == nil && len(rows) > 0 {
 		doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_reader", "price line and volatility: " + noReaderText})
 	}
-	doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_data", "sharp moves: no sharpmove readings"})
+	doc.Card.Gaps = append(doc.Card.Gaps, gap{"gap", "no_data", "sharp moves: " + sharpGapText})
 	doc.Card.SharpNote = sharpNoteText
 	if len(doc.Card.Rows) > 0 && priced < len(doc.Card.Rows) {
 		doc.RunStatus = "partial"
@@ -253,7 +250,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	doc.StaleAfter = time.Date(dataDay.Year(), dataDay.Month(), dataDay.Day()+staleDays, 9, 30, 0, 0, zone).Format(timeLayout)
 	doc.DataTimes = []sourceTime{{Source: "held_companies", DataTime: at.Format(timeLayout)}}
 	doc.Card.DataTimesText = "Data day " + dataDay.Format("01-02")
-	doc.Card.Say = fmt.Sprintf("Held companies: %d · %d with a price line.", len(doc.Card.Rows), priced)
+	doc.Card.Say = fmt.Sprintf(sayText, len(doc.Card.Rows), priced)
 	return json.Marshal(doc)
 }
 
@@ -302,7 +299,7 @@ func (c Config) rowOf(ctx context.Context, r Row, currency string, day time.Time
 	default:
 		bandValue, derr := decimal.NewFromString(band.value)
 		if derr != nil {
-			out.Price = mkGap("no_data", "band reading is not a number"+hand)
+			out.Price = mkGap("no_data", bandNotNumber+hand)
 			break
 		}
 		shown := bandValue.String()
@@ -351,11 +348,11 @@ func (c Config) percent(rd *reading, day time.Time, label, source string) any {
 		return mkGap("no_reader", label+": "+noReaderText)
 	}
 	if rd == nil {
-		return mkGap("no_data", label+": no stored reading")
+		return mkGap("no_data", label+": "+noStoredText)
 	}
 	v, err := decimal.NewFromString(rd.value)
 	if err != nil {
-		return mkGap("no_data", label+": reading is not a number")
+		return mkGap("no_data", label+": "+notNumberText)
 	}
 	n := v.Shift(2).RoundBank(2)
 	text := n.StringFixed(2) + "%"
@@ -405,13 +402,13 @@ func missingText(label, reason string) string {
 	if reason == "" {
 		return label + ": " + notComputedText
 	}
-	return label + ": missing input (" + strings.ReplaceAll(reason, "_", " ") + ")"
+	return label + ": " + fmt.Sprintf(missingInputText, strings.ReplaceAll(reason, "_", " "))
 }
 
 // bandGapText is the gap sentence of the buy band.
 func bandGapText(reason string) string {
 	if reason == reasonFewYears {
-		return "valuation band: needs 5 years of fundamentals, fewer stored; shown once 5 years are loaded"
+		return "valuation band: " + bandFewYearsText
 	}
 	return missingText("valuation band", reason)
 }
@@ -465,7 +462,7 @@ func (c Config) ivpOf(ctx context.Context, symbol string, day time.Time) (*readi
 func ivpGapOf(own []contracts.ReadingRecord) gap {
 	const label = "IV percentile: "
 	if len(own) == 0 {
-		return mkGap("no_data", label+"no own IV30 history is stored")
+		return mkGap("no_data", label+ivpNoHistoryText)
 	}
 	r := own[len(own)-1]
 	code := 0
@@ -474,7 +471,7 @@ func ivpGapOf(own []contracts.ReadingRecord) gap {
 	}
 	switch code {
 	case 1:
-		return mkGap("missing_input", label+"no input, no IV30 reading for the day")
+		return mkGap("missing_input", label+ivpNoInputText)
 	case 2:
 		n := 0
 		for _, p := range r.Parameters {
@@ -482,13 +479,13 @@ func ivpGapOf(own []contracts.ReadingRecord) gap {
 				n = int(*p.ValueNum)
 			}
 		}
-		return mkGap("missing_input", fmt.Sprintf("%sshort history, %d/252 own IV30 sessions", label, n))
+		return mkGap("missing_input", label+fmt.Sprintf(ivpShortText, n))
 	case 3:
-		return mkGap("stale_input", label+"stale input, own IV30 is out of date")
+		return mkGap("stale_input", label+ivpStaleText)
 	case 5:
-		return mkGap("missing_input", label+"bad input, own IV30 history is unusable")
+		return mkGap("missing_input", label+ivpBadText)
 	}
-	return mkGap("missing_input", fmt.Sprintf("%sown reading is missing (reason %d)", label, code))
+	return mkGap("missing_input", label+fmt.Sprintf(ivpOtherText, code))
 }
 
 // zone is the zone of cfg when generatedAt is +08:00 in it, else +08:00: the schema fixes the offset.

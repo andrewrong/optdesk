@@ -173,7 +173,7 @@ func TestTilesEqualTheSectionFields(t *testing.T) {
 		t.Fatalf("figure = %v", f)
 	}
 	cap := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
-	if !strings.Contains(cap, "−$15.25") || !strings.Contains(cap, "kept share −1.2%") {
+	if !strings.Contains(cap, "−$15.25") || !strings.Contains(cap, "留存比例 −1.2%") {
 		t.Fatalf("caption = %q", cap)
 	}
 	if !strings.Contains(c["say"].(string), "+$1,234.50") {
@@ -442,7 +442,7 @@ func TestKeptSharePercent(t *testing.T) {
 	t.Parallel()
 	c := card(t, okCfg(sold("1234.5000", "", "0.324170")))
 	cap := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
-	if !strings.HasSuffix(cap, "kept share 32.4%") {
+	if !strings.HasSuffix(cap, "留存比例 32.4%") {
 		t.Fatalf("caption = %q", cap)
 	}
 }
@@ -454,12 +454,12 @@ func TestClosedPremiumCaptionNamesTheAccounts(t *testing.T) {
 		c := card(t, cfg(ledger{aliases: aliases}, results{sections: []compute.ResultSection{sold("1234.5000", "-15.2500", "0.324170")}}, p))
 		return c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
 	}
-	want := "Ledger as of 11-04, accounts a and b combined; all closed sold positions; realised −$15.25; kept share 32.4%; the Result page shows one account"
+	want := "Ledger as of 11-04, 账户 a、b 合并; 所有已平仓的卖出持仓; 已实现 −$15.25; 留存比例 32.4%; 结果页只显示一个账户"
 	if got := capOf(map[string]int{"a": 1, "b": 1}); got != want {
 		t.Fatalf("caption = %q", got)
 	}
 	got := capOf(map[string]int{"a": 1})
-	if got != "Ledger as of 11-04, account a; all closed sold positions; realised −$15.25; kept share 32.4%" || strings.Contains(got, "Result page") {
+	if got != "Ledger as of 11-04, 账户 a; 所有已平仓的卖出持仓; 已实现 −$15.25; 留存比例 32.4%" || strings.Contains(got, "结果页") {
 		t.Fatalf("one alias: caption = %q", got)
 	}
 }
@@ -533,5 +533,26 @@ func TestCardTextsAreChinese(t *testing.T) {
 				t.Errorf("%s: text %q holds no Chinese character", name, s)
 			}
 		}
+	}
+}
+
+// The caption of the closed series is Chinese in its words; the day text and the percent stay as they are.
+func TestOptionsCardCaptionIsChinese(t *testing.T) {
+	t.Parallel()
+	p := compute.LedgerPosition{Currency: "USD", Status: "closed", OpenedOn: "2026-11-02", ClosedOn: "2026-11-04"}
+	capOf := func(aliases map[string]int) string {
+		c := card(t, cfg(ledger{aliases: aliases}, results{sections: []compute.ResultSection{sold("1234.5000", "-15.2500", "0.324170")}}, p))
+		return c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
+	}
+	han := regexp.MustCompile(`\p{Han}`)
+	for _, aliases := range []map[string]int{{"a": 1}, {"a": 1, "b": 1, "c": 1}} {
+		got := capOf(aliases)
+		if !han.MatchString(got) || !strings.Contains(got, "Ledger as of") || !strings.Contains(got, "32.4%") {
+			t.Errorf("%d aliases: caption = %q", len(aliases), got)
+		}
+	}
+	three := capOf(map[string]int{"a": 1, "b": 1, "c": 1})
+	if !strings.Contains(three, "结果页只显示一个账户") || strings.Contains(three, "the Result page shows one account") {
+		t.Errorf("three aliases: caption = %q", three)
 	}
 }
