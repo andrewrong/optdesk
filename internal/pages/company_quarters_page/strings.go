@@ -15,10 +15,6 @@ const (
 	epsDerivedGloss  = "annual minus the first three quarters; may differ from the reported Q4 EPS by rounding or a change in the share count"
 	flowDerivedGloss = "year-to-date value minus the year-to-date value before it"
 	freeCashGloss    = "operating cash flow minus capex"
-	missingGeneric   = "No value is stored for this quarter."
-
-	noteNoLabel = "Fiscal-year labels (for example FY2025 Q3) appear after the next daily run of fundamentals " +
-		"re-fetches the SEC filings; until then a quarter is named by its end date."
 )
 
 const (
@@ -27,12 +23,6 @@ const (
 	gapJP             = "jp"
 	gapNoStatements   = "no_quarters"
 	gapReadFailed     = "read_failed"
-
-	textUnknownCompany = "No company is chosen or the name is not on the list; pick one below."
-	textNoCIK          = "This company has no SEC number (cik); type it on the underlyings page, then its quarters can be shown."
-	textJP             = "Statements of Japanese companies are left out on purpose; no source is wired for them."
-	textNoStatements   = "No quarter could be derived from the stored SEC filings yet."
-	textReadFailed     = "The stored values could not be read, so no quarter is shown."
 )
 
 type column struct {
@@ -63,8 +53,8 @@ var columns = []column{
 }
 
 var whyTexts = map[companydataapi.Why]string{
-	companydataapi.WhyNoFact:            "No filing reported this figure for the quarter.",
-	companydataapi.WhyCannotDerive:      "The year-to-date figures needed to work out this quarter are not all stored.",
-	companydataapi.WhyPeriodMismatch:    "The fiscal period named in the filing does not match its dates, so the quarter is not guessed.",
-	companydataapi.WhyShareBasisChanged: "The share count changed (for example a split), so the quarter is not worked out.",
+	companydataapi.WhyNoFact:            "没有任何财报披露这个季度的这项数据。",
+	companydataapi.WhyCannotDerive:      "推算这个季度所需的年初至今数据没有全部存下。",
+	companydataapi.WhyPeriodMismatch:    "财报标注的财政期间与它的日期对不上，所以不去猜这个季度。",
+	companydataapi.WhyShareBasisChanged: "股数发生了变化（例如拆股），所以不推算这个季度。",
 }
