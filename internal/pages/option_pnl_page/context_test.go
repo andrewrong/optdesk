@@ -371,7 +371,7 @@ func TestLongPutIsSkipped(t *testing.T) {
 	r.days.rows[101] = []optionday.Day{dayRow(101, "2026-11-17", "1.20", "1.30", "95")}
 	r.attr.results["90.00"] = res("1", "1", "1", "1", "1", "", "-1", "0", "100")
 	vm := r.build(t)
-	if len(vm.Accounts[0].Lots) != 1 || !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 long put lots skipped: "+longPutSkippedZh) {
+	if len(vm.Accounts[0].Lots) != 1 || !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1"+longsTailZh) {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
 }

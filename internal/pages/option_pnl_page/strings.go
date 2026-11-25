@@ -7,7 +7,7 @@ const (
 	modelNote    = modelNoteZh
 	quoteDayNote = quoteDayNoteZh
 	callsTail    = callsTailZh
-	longsTail    = " long put lots skipped: " + longPutSkippedZh
+	longsTail    = longsTailZh
 
 	sampleFew  = sampleFewZh
 	sampleEnuf = sampleEnufZh
