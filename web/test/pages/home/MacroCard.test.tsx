@@ -85,7 +85,7 @@ describe('MacroCard (macro_summary v2)', () => {
   it('keeps the Ease score in a closed fold: no ease figure text on the closed card', async () => {
     await show(ok)
     expect(host.querySelector('[data-ease-fold] [data-slot=accordion-trigger]')?.textContent).toBe(
-      'Ease score',
+      '宽松度评分',
     )
     expect(host.querySelector('[data-ease-figure]')).toBeNull()
     expect(host.querySelector('[data-neutral-band]')).toBeNull()
@@ -103,10 +103,16 @@ describe('MacroCard (macro_summary v2)', () => {
     expect(text.endsWith(ok.card.ease.week_change.text)).toBe(true)
   })
 
+  it('titles the data times fold in Chinese', async () => {
+    await show(ok)
+    const triggers = [...host.querySelectorAll('[data-slot=accordion-trigger]')].map((t) => t.textContent)
+    expect(triggers).toContain('数据时间')
+  })
+
   it('shows the events of ok with the Gap text of Previous', async () => {
     await show(ok)
     const headers = [...host.querySelectorAll('[data-events] th')].map((h) => h.textContent)
-    expect(headers).toEqual(['Date', 'Event', 'Previous'])
+    expect(headers).toEqual(['日期', '事件', '前值'])
     const rows = [...host.querySelectorAll('[data-events] tbody tr')].map((r) =>
       [...r.querySelectorAll('td')].map((c) => c.textContent),
     )
@@ -199,6 +205,9 @@ describe('MacroCard (macro_summary v2)', () => {
       vi.setSystemTime(new Date(Date.parse(ok.generated_at) - 6 * 60_000))
       await show(ok)
       expect(host.querySelector('[data-clock-skew]')).not.toBeNull()
+      expect(host.querySelector('[data-clock-skew]')?.textContent).toContain(
+        '本机时钟与数据时间相差超过 5 分钟，请检查本机时间。',
+      )
     } finally {
       vi.useRealTimers()
     }

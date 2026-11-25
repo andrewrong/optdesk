@@ -7,7 +7,7 @@ type Notice = Payload['accounts'][number]['notices'][number]
 
 const SEVERITY_VARIANT = { info: 'secondary', warn: 'warning', act: 'destructive' } as const
 
-const SEVERITY_LABEL: Record<string, string> = { info: 'Info', warn: 'Warning', act: 'Action needed' }
+const SEVERITY_LABEL: Record<string, string> = { info: '提示', warn: '警告', act: '需处理' }
 
 function NoticeItem({ notice }: { notice: Notice }) {
   return (

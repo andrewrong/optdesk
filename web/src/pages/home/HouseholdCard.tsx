@@ -112,7 +112,7 @@ export function HouseholdCard({
         <CardAction>
           <Button asChild variant="link">
             <a href="/household">
-              Household page
+              家庭页面
               <ChevronRight />
             </a>
           </Button>

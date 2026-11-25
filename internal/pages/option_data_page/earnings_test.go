@@ -98,6 +98,18 @@ func TestEarningsListedOutside(t *testing.T) {
 	}
 }
 
+func TestEarningsFutureRowSurvivesAbsent(t *testing.T) {
+	t.Parallel()
+	fe := &fakeEarnings{rows: []contracts.EarningsDate{
+		earnRow(t, "listed", "alphavantage", "2026-11-15"),
+		earnRow(t, "absent", "alphavantage", ""),
+	}}
+	u := under(buildChecked(t, earningsCfg(t, fe)))
+	if u["earnings_text"] != "E 11-15 · source vendor" || u["earnings_tone"] != "in_term" {
+		t.Fatalf("underlying = %v", u)
+	}
+}
+
 func TestEarningsNoneCases(t *testing.T) {
 	t.Parallel()
 	cases := map[string][]contracts.EarningsDate{

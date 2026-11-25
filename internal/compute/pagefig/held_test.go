@@ -97,8 +97,8 @@ func TestHeldEarnings(t *testing.T) {
 	}{
 		{"listed", rd(row("listed", "2026-11-25", "2026-11-20")), "2026-11-25", 4, ""},
 		{"today", rd(row("listed", "2026-11-21", "2026-11-20")), "2026-11-21", 0, ""},
-		{"newest wins", rd(row("listed", "2026-11-25", "2026-11-19"), row("absent", "", "2026-11-20")), "", 0, "no_row"},
-		{"tie keeps later", rd(row("listed", "2026-11-25", "2026-11-20"), row("error", "", "2026-11-20")), "", 0, "row_error"},
+		{"newest wins", rd(row("listed", "2026-11-25", "2026-11-19"), row("absent", "", "2026-11-20")), "2026-11-25", 4, ""},
+		{"tie keeps later", rd(row("listed", "2026-11-25", "2026-11-20"), row("error", "", "2026-11-20")), "2026-11-25", 4, ""},
 		{"override", over, "2026-12-01", 10, ""},
 		{"past", rd(row("listed", "2026-11-20", "2026-11-20")), "", 0, "past_date"},
 		{"past override", pastOver, "", 0, "past_date"},
@@ -120,6 +120,27 @@ func TestHeldEarnings(t *testing.T) {
 		if string(w.Next) != tc.next || w.DaysTo != tc.days || w.EarnReason != tc.reason {
 			t.Errorf("%s: got %q %d %q", tc.name, w.Next, w.DaysTo, w.EarnReason)
 		}
+	}
+}
+
+func TestHeldEarningsEarliestFutureRow(t *testing.T) {
+	t.Parallel()
+	row := func(st, rep, obs string) blockapi.HeldEarningsRow {
+		return blockapi.HeldEarningsRow{Status: st, Report: contracts.Day(rep), ObservedOn: contracts.Day(obs)}
+	}
+	c := blockapi.HeldCompanyIn{Underlying: "AAA", Currency: "USD", Resolve: "ok", Earnings: blockapi.HeldEarningsIn{Read: true, Rows: []blockapi.HeldEarningsRow{
+		row("listed", "2026-11-30", "2026-11-18"),
+		row("listed", "2026-11-25", "2026-11-19"),
+		row("absent", "", "2026-11-20"),
+	}}}
+	r := NewHeld().HeldCompanies(blockapi.HeldIn{
+		Lines:     []blockapi.HeldLineIn{hline("main", "AAA", "10", "2026-11-20")},
+		Companies: []blockapi.HeldCompanyIn{c},
+		TotalUSD:  hv("100"), Today: "2026-11-21",
+	})
+	w := r.Rows[0]
+	if w.Next != "2026-11-25" || w.DaysTo != 4 || w.EarnReason != "" {
+		t.Errorf("got %q %d %q", w.Next, w.DaysTo, w.EarnReason)
 	}
 }
 

@@ -137,6 +137,14 @@ it('draws the movers as two lists under their scope, in the order and with the t
   )
 })
 
+it('TestMoverTitlesChinese: the two mover list headings print in Chinese while the keys keep the codes', async () => {
+  await show(<HouseholdPage payload={fixture('ok.json')} />)
+  const title = (list: string) =>
+    host.querySelector(`[data-mover-list=${list}] h4`)?.textContent
+  expect(title('Stocks')).toBe('股票')
+  expect(title('Options')).toBe('期权')
+})
+
 it('shows no table header that is not a payload text, and the obligations heads and total labels', async () => {
   const payload = fixture('ok.json')
   await show(<HouseholdPage payload={payload} />)
@@ -230,7 +238,7 @@ it('links to /risk, and the Household overview card links to /household', async 
   host.remove()
   await show(<HouseholdCard payload={ok} />)
   const card = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '/household')
-  expect(card?.textContent).toContain('Household page')
+  expect(card?.textContent).toContain('家庭页面')
 })
 
 it('colours the Driver cell by the tone Python sent: up success, down down, flat muted, no amount none', async () => {

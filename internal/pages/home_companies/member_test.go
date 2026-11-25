@@ -546,8 +546,10 @@ func TestEarningsCell(t *testing.T) {
 		er   store.EarningsDateReader
 		want map[string]any
 	}{
-		{"future", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-10"), earnRow("listed", "2026-11-28")}},
-			map[string]any{"kind": "value", "date": "2026-11-28", "text": "11-28"}},
+		{"future", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-28"), earnRow("listed", "2026-11-12")}},
+			map[string]any{"kind": "value", "date": "2026-11-12", "text": "11-12"}},
+		{"future two", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-10"), earnRow("listed", "2026-11-28")}},
+			map[string]any{"kind": "value", "date": "2026-11-10", "text": "11-10"}},
 		{"today", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-10")}},
 			map[string]any{"kind": "value", "date": "2026-11-10", "text": "11-10"}},
 		{"past", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-03")}},
@@ -574,6 +576,14 @@ func TestEarningsCell(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestEarningsCellFutureRowSurvivesAbsent(t *testing.T) {
+	t.Parallel()
+	got := earningsOf(t, fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-20"), earnRow("absent", "")}})
+	if got["kind"] != "value" || got["date"] != "2026-11-20" || got["text"] != "11-20" {
+		t.Errorf("cell = %v, want the value of 2026-11-20", got)
 	}
 }
 

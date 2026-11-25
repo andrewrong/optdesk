@@ -111,6 +111,32 @@ func TestSessionDaysSupplied(t *testing.T) {
 	}
 }
 
+func TestEarningsFutureRowSurvivesAbsentCheck(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	f.chainDay = "2026-11-06"
+	f.earnings = map[string][]contracts.EarningsDate{"cik:0000000001": {
+		{Issuer: "cik:0000000001", Status: "listed", ObservedOn: day("2026-11-01"), ReportDate: dayPtr("2026-12-20")},
+		{Issuer: "cik:0000000001", Status: "absent", ObservedOn: day("2026-11-05")},
+	}}
+	build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil)
+	e := f.inputs[0].Earnings
+	if e.State != "listed" || e.Next != "2026-12-20" || e.RowDay != "2026-11-05" {
+		t.Fatalf("earnings %+v", e)
+	}
+
+	g := newFakes()
+	g.chainDay = "2026-11-06"
+	g.earnings = map[string][]contracts.EarningsDate{"cik:0000000001": {
+		{Issuer: "cik:0000000001", Status: "listed", ObservedOn: day("2026-11-01"), ReportDate: dayPtr("2026-12-20")},
+		{Issuer: "cik:0000000001", Status: "listed", ObservedOn: day("2026-11-05"), ReportDate: dayPtr("2026-12-10")},
+	}}
+	build(t, g.stores(), g, usEntry()).Run(context.Background(), runDay, nil)
+	if e := g.inputs[0].Earnings; e.State != "listed" || e.Next != "2026-12-10" {
+		t.Fatalf("earnings %+v", e)
+	}
+}
+
 func TestRateIsPercentText(t *testing.T) {
 	t.Parallel()
 	f := newFakes()

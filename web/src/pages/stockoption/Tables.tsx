@@ -38,7 +38,7 @@ export function MatrixTable({ matrix }: { matrix: Matrix }) {
           onPressedChange={setShowPremium}
           aria-label="Annualised / premium"
         >
-          {showPremium ? 'Premium' : 'Annualised'}
+          {showPremium ? '权利金' : '年化'}
         </Toggle>
         {matrix.facts ? <p className="text-sm text-muted-foreground">{matrix.facts}</p> : null}
         {matrix.empty ? (

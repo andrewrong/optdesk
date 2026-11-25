@@ -1,0 +1,17 @@
+[
+  {"name": "empty", "facts": [], "want": {"outcome": "no_rows"}},
+  {"name": "only no quote", "facts": [{"status": 3, "code": "NO_QUOTE", "n": 2}], "want": {"outcome": "no_quote", "no_quote": 2}},
+  {"name": "status 3 other code", "facts": [{"status": 3, "code": "ODD"}], "want": {"outcome": "other", "other": 1}},
+  {"name": "failed statuses", "facts": [{"status": 6}, {"status": 8}, {"status": 9}], "want": {"outcome": "failed", "failed": 3}},
+  {"name": "status 7 budget", "facts": [{"status": 7, "code": "BUDGET"}], "want": {"outcome": "deferred", "deferred": 1}},
+  {"name": "status 7 no code", "facts": [{"status": 7}], "want": {"outcome": "deferred", "deferred": 1}},
+  {"name": "status 7 outside band with code", "facts": [{"status": 7, "code": "NO_DATA", "outside_band": true}], "want": {"outcome": "deferred", "deferred": 1}},
+  {"name": "status 7 other codes", "facts": [{"status": 7, "code": "NO_SUBSCRIPTION"}, {"status": 7, "code": "TIMEOUT"}, {"status": 7, "code": "12"}], "want": {"outcome": "no_spot", "no_spot": 3}},
+  {"name": "unknown status", "facts": [{"status": 4}, {"status": 5, "code": "X"}], "want": {"outcome": "other", "other": 2}},
+  {"name": "only ok", "facts": [{"status": 1, "n": 3}, {"status": 2}], "want": {"outcome": "no_candidate", "ok": 4}},
+  {"name": "failed beats everything", "facts": [{"status": 3, "code": "NO_QUOTE"}, {"status": 7, "code": "NO_DATA"}, {"status": 7}, {"status": 9}, {"status": 1}, {"status": 4}], "want": {"outcome": "failed", "no_quote": 1, "no_spot": 1, "deferred": 1, "failed": 1, "ok": 1, "other": 1}},
+  {"name": "no_spot beats deferred", "facts": [{"status": 7, "code": "NO_DATA"}, {"status": 7, "code": "BUDGET"}, {"status": 3, "code": "NO_QUOTE"}], "want": {"outcome": "no_spot", "no_spot": 1, "deferred": 1, "no_quote": 1}},
+  {"name": "deferred beats no_quote", "facts": [{"status": 7}, {"status": 3, "code": "NO_QUOTE"}, {"status": 4}], "want": {"outcome": "deferred", "deferred": 1, "no_quote": 1, "other": 1}},
+  {"name": "no_quote beats other and ok", "facts": [{"status": 3, "code": "NO_QUOTE"}, {"status": 4}, {"status": 1}], "want": {"outcome": "no_quote", "no_quote": 1, "other": 1, "ok": 1}},
+  {"name": "other beats ok", "facts": [{"status": 4}, {"status": 1}], "want": {"outcome": "other", "other": 1, "ok": 1}}
+]

@@ -62,6 +62,12 @@ describe('company quarters page', () => {
     expect(row(el, p.quarters[0]!.period_end).textContent).toContain('2025-11-01')
   })
 
+  it('TestQuartersFixedTextsChinese', async () => {
+    const el = await render(ok())
+    expect(el.querySelector('h1')?.textContent).toBe('公司季度')
+    expect(el.querySelector('thead th')?.textContent?.startsWith('季度')).toBe(true)
+  })
+
   it('TestQuartersGapFixtureRenders', async () => {
     const el = await render(fixture('gap'))
     expect(el.querySelector('[data-gap="unknown_company"]')?.textContent).toBe('The company in the address is not on the list; pick one.')
