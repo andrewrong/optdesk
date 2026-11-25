@@ -51,7 +51,7 @@ func TestDecisionGroupFirst(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	groups := m["groups"].([]any)
-	if len(groups) != 2 || groups[0].(map[string]any)["title"] != "To decide this week" {
+	if len(groups) != 2 || groups[0].(map[string]any)["title"] != "本周待决策 (To decide this week)" {
 		t.Fatalf("groups = %v", groups)
 	}
 	if got := symbols(groupRows(t, m, 0)); got != "AAPL" {

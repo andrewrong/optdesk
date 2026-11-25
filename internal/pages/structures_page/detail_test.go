@@ -395,7 +395,7 @@ func hasHan(s string) bool {
 func TestLevelsTitleUnchanged(t *testing.T) {
 	t.Parallel()
 	m := readFixture(t, "detail_spread").build(t, spreadID, true)
-	if m["levels_title"] != "Key levels" {
+	if m["levels_title"] != "关键价位 (Key levels)" {
 		t.Fatalf("levels_title = %v", m["levels_title"])
 	}
 }
