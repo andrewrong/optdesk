@@ -273,12 +273,17 @@ func maskExplanation(raw []byte) []byte {
 
 func TestMacroPageDemoGoldenIgnoresExplanationText(t *testing.T) {
 	t.Parallel()
-	base := `{"at":"a","sentence":"x","title":"T","ease_title":"E","events_title":"V","indicators_title":"I","notes_title":"N","indicators":[{"status":"good","label":"L"}],"lead":{"note":"n","rows":[1.5]},"liquidity":{"taps":[{"note":"t"}],"lines":[{"key":"conditions","sentence":{"text":"c"}}]}}`
+	base := `{"at":"a","sentence":"x","title":"T","ease_title":"E","events_title":"V","indicators_title":"I","notes_title":"N",` +
+		`"indicators":[{"status":"good","label":"L"}],"lead":{"note":"n","rows":[1.5]},` +
+		`"liquidity":{"taps":[{"note":"t"}],"lines":[{"key":"conditions","sentence":{"text":"c"}}]}}`
 	r := strings.NewReplacer(`"x"`, `"其他"`, `"n"`, `""`, `"t"`, `""`, `"c"`, `"中"`, `"T"`, `"标"`, `"L"`, `"签"`)
 	if !bytes.Equal(maskExplanation([]byte(base)), maskExplanation([]byte(r.Replace(base)))) {
 		t.Fatal("explanation text must not matter")
 	}
-	for _, d := range [][2]string{{`"a"`, `"b"`}, {`1.5`, `1.6`}, {`"sentence"`, `"sentence2"`}, {`"good"`, `"bad"`}, {`"title"`, `"title2"`}, {`"label"`, `"label2"`}} {
+	for _, d := range [][2]string{
+		{`"a"`, `"b"`}, {`1.5`, `1.6`}, {`"sentence"`, `"sentence2"`},
+		{`"good"`, `"bad"`}, {`"title"`, `"title2"`}, {`"label"`, `"label2"`},
+	} {
 		if bytes.Equal(maskExplanation([]byte(base)), maskExplanation([]byte(strings.Replace(base, d[0], d[1], 1)))) {
 			t.Fatalf("difference %v not seen", d)
 		}
