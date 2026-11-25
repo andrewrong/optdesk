@@ -208,9 +208,9 @@ func TestWeeklyLateAfter14Days(t *testing.T) {
 	t.Parallel()
 	// The page day is 2026-11-05.
 	cases := []struct{ day, status, label string }{
-		{"2026-10-31", "good", "On time"}, // 5 days
-		{"2026-10-22", "good", "On time"}, // 14 days
-		{"2026-10-21", "late", "Late"},    // 15 days
+		{"2026-10-31", "good", "\u6309\u65f6 On time"}, // 5 days
+		{"2026-10-22", "good", "\u6309\u65f6 On time"}, // 14 days
+		{"2026-10-21", "late", "\u5ef6\u8fdf Late"},    // 15 days
 	}
 	for _, tc := range cases {
 		t.Run(tc.day, func(t *testing.T) {
@@ -250,9 +250,9 @@ func TestH10LateAfter14Days(t *testing.T) {
 	t.Parallel()
 	// The page day is 2026-11-05.
 	cases := []struct{ day, status, label string }{
-		{"2026-10-31", "good", "On time"}, // 5 days
-		{"2026-10-22", "good", "On time"}, // 14 days
-		{"2026-10-21", "late", "Late"},    // 15 days
+		{"2026-10-31", "good", "\u6309\u65f6 On time"}, // 5 days
+		{"2026-10-22", "good", "\u6309\u65f6 On time"}, // 14 days
+		{"2026-10-21", "late", "\u5ef6\u8fdf Late"},    // 15 days
 	}
 	for _, id := range []string{"DTWEXBGS", "DEXJPUS"} {
 		pos := map[string]int{"DTWEXBGS": 3, "DEXJPUS": 4}[id]
@@ -278,10 +278,10 @@ func TestRhythmLimitsPerSeries(t *testing.T) {
 	cases := []struct {
 		name, id, obs, status, label string
 	}{
-		{"weekly 6 days", "DEXJPUS", "2026-11-14", "good", "On time"},
-		{"monthly 40 days", "IRLTLT01JPM156N", "2026-10-11", "good", "On time"},
-		{"daily 7 days", "DGS10", "2026-11-13", "late", "Late"},
-		{"daily 5 days", "DGS10", "2026-11-15", "good", "On time"},
+		{"weekly 6 days", "DEXJPUS", "2026-11-14", "good", "\u6309\u65f6 On time"},
+		{"monthly 40 days", "IRLTLT01JPM156N", "2026-10-11", "good", "\u6309\u65f6 On time"},
+		{"daily 7 days", "DGS10", "2026-11-13", "late", "\u5ef6\u8fdf Late"},
+		{"daily 5 days", "DGS10", "2026-11-15", "good", "\u6309\u65f6 On time"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -323,10 +323,10 @@ func TestMonthlyWeeklyLimits(t *testing.T) {
 		name, id, day, label string
 		pos                  int
 	}{
-		{"monthly 60 days", "IRLTLT01JPM156N", "2026-09-06", "On time", 5},
-		{"monthly 110 days", "IRLTLT01JPM156N", "2026-07-18", "Late", 5},
-		{"weekly 12 days", "NFCI", "2026-10-24", "On time", 2},
-		{"weekly 16 days", "NFCI", "2026-10-20", "Late", 2},
+		{"monthly 60 days", "IRLTLT01JPM156N", "2026-09-06", "\u6309\u65f6 On time", 5},
+		{"monthly 110 days", "IRLTLT01JPM156N", "2026-07-18", "\u5ef6\u8fdf Late", 5},
+		{"weekly 12 days", "NFCI", "2026-10-24", "\u6309\u65f6 On time", 2},
+		{"weekly 16 days", "NFCI", "2026-10-20", "\u5ef6\u8fdf Late", 2},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

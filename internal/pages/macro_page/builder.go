@@ -35,16 +35,11 @@ const (
 	// maxIndicators is the maxItems of the indicators array in the schema.
 	maxIndicators = 20
 
-	title        = "Macro"
 	sentence     = "Macro indicators come from stored series; ease and events: no data yet."
 	sentenceEase = "Macro indicators come from stored series; events: no data yet."
 	// With an events reader the sentences no longer say the events are missing.
-	sentenceEv      = "Macro indicators come from stored series; ease: no data yet."
-	sentenceEaseEv  = "Macro indicators come from stored series."
-	easeTitle       = "Ease"
-	eventsTitle     = "This week and next"
-	indicatorsTitle = "Indicators"
-	notesTitle      = "Notes"
+	sentenceEv     = "Macro indicators come from stored series; ease: no data yet."
+	sentenceEaseEv = "Macro indicators come from stored series."
 )
 
 var (
@@ -377,9 +372,9 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 		out.Latest = figure{Value: v, Text: strconv.FormatFloat(v, 'f', -1, 64) + "%", Unit: "percent"}
 	}
 	if d.Sub(latest.ObservationDate.Time) > time.Duration(rhythmOf(ind.SeriesID).limitDays())*24*time.Hour {
-		out.Status, out.Label = "late", "Late"
+		out.Status, out.Label = "late", labelLate
 	} else {
-		out.Status, out.Label = "good", "On time"
+		out.Status, out.Label = "good", labelOnTime
 	}
 	return out
 }

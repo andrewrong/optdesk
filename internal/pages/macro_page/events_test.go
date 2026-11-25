@@ -181,7 +181,7 @@ func TestEventsWindow60AndCap(t *testing.T) {
 func TestEventsNilReaderKeepsGap(t *testing.T) {
 	t.Parallel()
 	m := buildEvents(t, nil)
-	if m["events_title"] != "This week and next" {
+	if m["events_title"] != "\u672c\u5468\u548c\u4e0b\u5468 This week and next" {
 		t.Errorf("title %v", m["events_title"])
 	}
 	if m["sentence"] != "Macro indicators come from stored series; ease and events: no data yet." {
