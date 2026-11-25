@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
+	"github.com/andrewrong/optdesk/internal/store/candidatecur"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
 	"github.com/andrewrong/optdesk/internal/store/strategyresultpg"
 	"github.com/andrewrong/optdesk/internal/strategy"
@@ -101,6 +103,17 @@ func (r resultCandidates) Close() error {
 	return errors.Join(r.res.Close(), r.old.Close())
 }
 
+// resultCandidatesCur is resultCandidates over an old store that reads rows by currency: it passes CandidatesIn
+// through, so the site finds the yen reader on the live path. An old store without it gets resultCandidates alone.
+type resultCandidatesCur struct {
+	resultCandidates
+	cur candidatecur.Reader
+}
+
+func (r resultCandidatesCur) CandidatesIn(ctx context.Context, day contracts.Day, kind, currency string) ([]candidatecur.Row, error) {
+	return r.cur.CandidatesIn(ctx, day, kind, currency)
+}
+
 // openResultCandidateStore is the default of deps.openCandidate (docs/design/strategy-framework.md, 8 cutover):
 // short_put of a day with a result run is read from strategy.result, everything else from the old rows. A failed
 // open is a nil interface, not a typed nil.
@@ -120,6 +133,10 @@ func openResultCandidateWith(openRes openStrategyResultsFunc, openOld openCandid
 			_ = res.Close()
 			return nil, err
 		}
-		return resultCandidates{CandidateReader: strategyresultpg.NewCandidateReader(res, oldReader(old)), res: res, old: old}, nil
+		rc := resultCandidates{CandidateReader: strategyresultpg.NewCandidateReader(res, oldReader(old)), res: res, old: old}
+		if cur, ok := old.(candidatecur.Reader); ok {
+			return resultCandidatesCur{resultCandidates: rc, cur: cur}, nil
+		}
+		return rc, nil
 	}
 }
