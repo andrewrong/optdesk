@@ -115,37 +115,38 @@ func (r *runState) runMarket(ts []target) {
 			r.failStore(r.ctx.Err())
 			return
 		}
-		from := shiftDay(r.day, -lookbackDays(t.rule))
-		var series []compute.Series
-		var lines []string
-		bad := false
-		for _, id := range t.spec.Series {
-			pts, err := r.j.stores.Series.SeriesPoints(r.ctx, id, from, r.day)
-			if err != nil {
-				r.failStore(fmt.Errorf("computefigures: series %s: %w", id, err))
-				bad = true
-				break
-			}
-			s := r.j.ops.FromSeriesPoints(pts)
-			series = append(series, s)
-			for _, p := range s {
-				lines = append(lines, id+"|"+string(p.Day)+"|"+fnum(p.Value))
-			}
-		}
-		if bad {
-			continue
-		}
-		var f compute.Figure
-		switch t.spec.Method {
-		case methodRatio:
-			f = r.j.figs.Ratio(t.rule.ID, series[0], series[1], r.day)
-		case methodPercent:
-			f = r.j.figs.PercentileInYears(t.rule.ID, series[0], r.day)
-		default:
-			f = r.j.figs.MovingAverageGap(t.rule.ID, series[0], r.day)
-		}
-		r.store(t, f, hashLines(lines), []input{{table: tableSeriesPoint, keys: t.spec.Series}}, figureParams(t.rule, false))
+		r.marketDay(t)
+		r.catchUpMarket(t)
 	}
+}
+
+// marketDay computes and stores the figure of t for the day of r.
+func (r *runState) marketDay(t target) {
+	from := shiftDay(r.day, -lookbackDays(t.rule))
+	var series []compute.Series
+	var lines []string
+	for _, id := range t.spec.Series {
+		pts, err := r.j.stores.Series.SeriesPoints(r.ctx, id, from, r.day)
+		if err != nil {
+			r.failStore(fmt.Errorf("computefigures: series %s: %w", id, err))
+			return
+		}
+		s := r.j.ops.FromSeriesPoints(pts)
+		series = append(series, s)
+		for _, p := range s {
+			lines = append(lines, id+"|"+string(p.Day)+"|"+fnum(p.Value))
+		}
+	}
+	var f compute.Figure
+	switch t.spec.Method {
+	case methodRatio:
+		f = r.j.figs.Ratio(t.rule.ID, series[0], series[1], r.day)
+	case methodPercent:
+		f = r.j.figs.PercentileInYears(t.rule.ID, series[0], r.day)
+	default:
+		f = r.j.figs.MovingAverageGap(t.rule.ID, series[0], r.day)
+	}
+	r.store(t, f, hashLines(lines), []input{{table: tableSeriesPoint, keys: t.spec.Series}}, figureParams(t.rule, false))
 }
 
 // runIvStats computes IVP and IVR from the stored IV30 readings, and the IVP of market.ivp_ibkr from the stored
