@@ -212,11 +212,11 @@ func rateOf(ctx context.Context, s inputs, day contracts.Day) (compute.Point, er
 		return compute.Point{}, fmt.Errorf("computefigures: rate series: %w", err)
 	}
 	series := s.ops.FromSeriesPoints(pts)
-	for _, serie := range slices.Backward(series) {
-		if serie.Day > day {
+	for _, pt := range slices.Backward(series) {
+		if pt.Day > day {
 			continue
 		}
-		p := compute.Point{Day: serie.Day, Value: s.units.PercentToDecimal(serie.Value)}
+		p := compute.Point{Day: pt.Day, Value: s.units.PercentToDecimal(pt.Value)}
 		if daysBetween(p.Day, day) > s.rateMaxAge {
 			return p, errStaleRate
 		}
