@@ -115,7 +115,7 @@ func TestGzipHandlerHealth(t *testing.T) {
 	h := gzipHandler(siteHandler(a, clk, "2026-01-01", siteReaders{series: &healthSeries{}}, echoHandler, http.NotFoundHandler()))
 	for _, ae := range []string{"", "gzip"} {
 		rec := gzipDo(t, h, http.MethodGet, ae, nil)
-		var body []byte = rec.Body.Bytes()
+		body := rec.Body.Bytes()
 		if ae != "" {
 			zr, err := gzip.NewReader(bytes.NewReader(body))
 			if err != nil {
