@@ -53,16 +53,16 @@ function ConfirmCard({ payload, confirm }: { payload: Payload; confirm: NonNulla
       <DialogContent data-confirm showCloseButton={false} aria-describedby={undefined} className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle asChild>
-            <h2 className="text-lg font-semibold">Confirm changes</h2>
+            <h2 className="text-lg font-semibold">{"确认修改"}</h2>
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Old value</TableHead>
-                <TableHead>New value</TableHead>
+                <TableHead>{"项目"}</TableHead>
+                <TableHead>{"旧值"}</TableHead>
+                <TableHead>{"新值"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -87,10 +87,10 @@ function ConfirmCard({ payload, confirm }: { payload: Payload; confirm: NonNulla
             {payload.rows.map((row) =>
               row.excluded ? <input key={row.instrument_id} type="hidden" name="excluded" value={row.instrument_id} /> : null,
             )}
-            <Button type="submit">Confirm and save</Button>
+            <Button type="submit">{"确认并保存"}</Button>
             <DialogClose asChild>
               <Button type="button" variant="outline">
-                Cancel
+                {"取消"}
               </Button>
             </DialogClose>
           </form>
@@ -109,7 +109,7 @@ function EditCard({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2 className="text-lg font-semibold">Rule parameters</h2>
+            <h2 className="text-lg font-semibold">{"规则参数"}</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -117,11 +117,11 @@ function EditCard({ payload }: { payload: Payload }) {
           <Table data-params>
             <TableHeader>
               <TableRow>
-                <TableHead>Parameter</TableHead>
-                <TableHead>Change</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Current value</TableHead>
-                <TableHead>Range</TableHead>
+                <TableHead>{"参数"}</TableHead>
+                <TableHead>{"修改"}</TableHead>
+                <TableHead>{"单位"}</TableHead>
+                <TableHead>{"当前值"}</TableHead>
+                <TableHead>{"范围"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -155,7 +155,7 @@ function EditCard({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2 className="text-lg font-semibold">Option exclusions</h2>
+            <h2 className="text-lg font-semibold">{"期权排除"}</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -163,8 +163,8 @@ function EditCard({ payload }: { payload: Payload }) {
           <Table data-exclusions>
             <TableHeader>
               <TableRow>
-                <TableHead>Underlying</TableHead>
-                <TableHead>Excluded</TableHead>
+                <TableHead>{"标的"}</TableHead>
+                <TableHead>{"已排除"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -190,7 +190,7 @@ function EditCard({ payload }: { payload: Payload }) {
         </CardContent>
       </Card>
       <Button type="submit" disabled={locked}>
-        Save
+        {"保存"}
       </Button>
     </form>
   )
@@ -202,7 +202,7 @@ function HistoryCard({ payload }: { payload: Payload }) {
     <Card data-history>
       <CardHeader>
         <CardTitle>
-          <h2 className="text-lg font-semibold">Change history</h2>
+          <h2 className="text-lg font-semibold">{"修改历史"}</h2>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -210,10 +210,10 @@ function HistoryCard({ payload }: { payload: Payload }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Item</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead>Action</TableHead>
+              <TableHead>{"时间"}</TableHead>
+              <TableHead>{"项目"}</TableHead>
+              <TableHead>{"值"}</TableHead>
+              <TableHead>{"操作"}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -227,7 +227,7 @@ function HistoryCard({ payload }: { payload: Payload }) {
                     {form ? <Token form={form} /> : null}
                     <RevertFields row={row} />
                     <Button type="submit" variant="outline" size="sm" disabled={form === null}>
-                      Use this value
+                      {"使用这个值"}
                     </Button>
                   </form>
                 </TableCell>
