@@ -80,6 +80,13 @@ describe('flex_import view', () => {
     expect(el.textContent).toContain(p.form?.max_file_text)
   })
 
+  it('prints the alias table heads and the upload button in Chinese', async () => {
+    const el = await render(fixture('result'))
+    const heads = Array.from(el.querySelector('[data-file] table')?.querySelectorAll('th') ?? []).map((th) => th.textContent)
+    expect(heads).toEqual(['别名', '报表数', '解析行数', '新增', '已存在'])
+    expect(el.querySelector('form button[type=submit]')?.textContent).toBe('上传')
+  })
+
   it('shows a failed file and a nothing_found file with their own status text and reason', async () => {
     const p = fixture('result')
     const el = await render(p)

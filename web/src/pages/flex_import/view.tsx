@@ -17,18 +17,18 @@ const text = (t: string): Cell => ({ text: t })
 const count = (n: number): Cell => ({ text: String(n), value: n })
 
 const ALIAS_COLUMNS: Column[] = [
-  { id: 'alias', label: 'Alias' },
-  { id: 'statements', label: 'Statements', align: 'right' },
-  { id: 'parsed', label: 'Rows parsed', align: 'right' },
-  { id: 'new', label: 'New', align: 'right' },
-  { id: 'present', label: 'Already present', align: 'right' },
+  { id: 'alias', label: '别名' },
+  { id: 'statements', label: '报表数', align: 'right' },
+  { id: 'parsed', label: '解析行数', align: 'right' },
+  { id: 'new', label: '新增', align: 'right' },
+  { id: 'present', label: '已存在', align: 'right' },
 ]
 const RECENT_COLUMNS: Column[] = [
-  { id: 'at', label: 'Time' },
-  { id: 'alias', label: 'Alias' },
-  { id: 'status', label: 'Status' },
-  { id: 'new', label: 'New', align: 'right' },
-  { id: 'present', label: 'Already present', align: 'right' },
+  { id: 'at', label: '时间' },
+  { id: 'alias', label: '别名' },
+  { id: 'status', label: '状态' },
+  { id: 'new', label: '新增', align: 'right' },
+  { id: 'present', label: '已存在', align: 'right' },
 ]
 
 const aliasRow = (a: Alias) => ({
@@ -53,7 +53,7 @@ function UploadForm({ form }: { form: Form }) {
       <input type="hidden" name="mac" value={form.mac} />
       <Label htmlFor="flex-files">{form.max_file_text}</Label>
       <Input id="flex-files" type="file" name="files" multiple accept=".xml,.gz" />
-      <Button type="submit">Upload</Button>
+      <Button type="submit">上传</Button>
     </form>
   )
 }
