@@ -188,9 +188,8 @@ type RiskTotal struct {
 type RiskResult struct {
 	Delta, Vega []RiskLine
 	DeltaTotals []RiskTotal
-	// DeltaTotal is the sum of all Delta lines over currencies.
-	//
-	// Deprecated: adds shares of different currencies; read DeltaTotals.
+	// DeltaTotal is the sum of all Delta lines over currencies: it adds shares of different currencies, so it is not a
+	// meaningful figure. DeltaTotals is the per-currency field to read.
 	DeltaTotal compute.FigureValue
 	VegaTotal  compute.FigureValue
 }
