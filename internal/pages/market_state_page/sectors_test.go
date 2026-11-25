@@ -269,3 +269,14 @@ func TestMarketStateCaptionsAreChinese(t *testing.T) {
 		}
 	}
 }
+
+func TestPageAndMarketTitlesReadChineseWithEnglishBeside(t *testing.T) {
+	t.Parallel()
+	m := build(t, fullConfig(t, sampleResult()))
+	if m["title"] != "市场状态 Market state" {
+		t.Errorf("title = %v", m["title"])
+	}
+	if got := obj(m["market"])["title"]; got != "市场 Market" {
+		t.Errorf("market title = %v", got)
+	}
+}
