@@ -58,3 +58,20 @@ func TestDeferredItemsCarryTheirCodeInTheSummary(t *testing.T) {
 		t.Errorf("line %q does not name deferred_BUDGET=%d", line, deferred)
 	}
 }
+
+func TestPlanDeferredItemCarriesACode(t *testing.T) {
+	t.Parallel()
+	b := newFake(100)
+	c := newCore(b)
+	ts := []Target{target(1, 10, ClassPuts, 95, Put), target(1, 11, ClassPuts, 94.9, Put)}
+	ts[1].Item.Deferred = true
+	r := c.Pull(context.Background(), ts)
+	for _, row := range r.Rows {
+		if row.Status == stDeferred && code(row) == "" {
+			t.Errorf("deferred row has no stored code")
+		}
+	}
+	if len(r.Summary.Deferred) == 0 {
+		t.Errorf("summary line does not count the deferred item: %q", r.Summary.String())
+	}
+}
