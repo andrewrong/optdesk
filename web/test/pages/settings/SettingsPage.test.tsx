@@ -52,6 +52,24 @@ describe('SettingsPage', () => {
     expect(page.querySelector('script')).toBeNull()
   })
 
+  it('draws the change column after the parameter column', async () => {
+    const page = await show(editable)
+    const heads = [...page.querySelectorAll('table[data-params] th')].map((h) => h.textContent)
+    expect(heads).toEqual(['Parameter', 'Change', 'Unit', 'Current value', 'Range'])
+    const row = page.querySelector('tr[data-param]')!
+    expect(row.children[1]!.querySelector('input')!.className).toContain('min-w-24')
+    expect(row.children[0]!.className).toContain('break-words')
+    expect(row.children[2]!.className).toContain('break-words')
+  })
+
+  it('shows the scroll hint above the tables', async () => {
+    const page = await show(editable)
+    for (const sel of ['table[data-params]', 'table[data-exclusions]', '[data-history] table']) {
+      const table = page.querySelector(sel)!
+      expect(table.closest('[data-slot=table-container]')!.previousElementSibling!.hasAttribute('data-scroll-hint')).toBe(true)
+    }
+  })
+
   it('has one param.<key> input per params row with the default as placeholder', async () => {
     const page = await show(editable)
     const inputs = [...page.querySelectorAll<HTMLInputElement>('input:not([type=hidden])[name^="param."]')]

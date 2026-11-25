@@ -8,6 +8,7 @@ import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ScrollHint } from '@/components/ScrollHint'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { page } from '@/shell/page'
@@ -112,26 +113,26 @@ function EditCard({ payload }: { payload: Payload }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <ScrollHint />
           <Table data-params>
             <TableHeader>
               <TableRow>
                 <TableHead>Parameter</TableHead>
+                <TableHead>Change</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Current value</TableHead>
-                <TableHead>Change</TableHead>
                 <TableHead>Range</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payload.params.map((param) => (
                 <TableRow key={param.key} data-param={param.key}>
-                  <TableCell>
+                  <TableCell className="whitespace-normal break-words">
                     <Label htmlFor={`param-${param.key}`}>{param.label}</Label>
                   </TableCell>
-                  <TableCell>{param.unit}</TableCell>
-                  <TableCell data-current>{param.value === '' ? param.default : param.value}</TableCell>
                   <TableCell>
                     <Input
+                      className="min-w-24"
                       id={`param-${param.key}`}
                       name={`param.${param.key}`}
                       inputMode={param.kind === 'int' ? 'numeric' : 'decimal'}
@@ -140,6 +141,8 @@ function EditCard({ payload }: { payload: Payload }) {
                       disabled={locked}
                     />
                   </TableCell>
+                  <TableCell className="whitespace-normal break-words">{param.unit}</TableCell>
+                  <TableCell data-current>{param.value === '' ? param.default : param.value}</TableCell>
                   <TableCell data-bounds>
                     {param.min} – {param.max}
                   </TableCell>
@@ -156,6 +159,7 @@ function EditCard({ payload }: { payload: Payload }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <ScrollHint />
           <Table data-exclusions>
             <TableHeader>
               <TableRow>
@@ -202,6 +206,7 @@ function HistoryCard({ payload }: { payload: Payload }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <ScrollHint />
         <Table>
           <TableHeader>
             <TableRow>
