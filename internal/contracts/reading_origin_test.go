@@ -1,6 +1,9 @@
 package contracts_test
 
-import "testing"
+import (
+	"maps"
+	"testing"
+)
 
 func TestReadingOwnerCommandOrigin(t *testing.T) {
 	t.Parallel()
@@ -17,9 +20,7 @@ func TestReadingOwnerCommandOrigin(t *testing.T) {
 		t.Fatalf("band approval: %v", err)
 	}
 	bad := map[string]any{}
-	for k, v := range r {
-		bad[k] = v
-	}
+	maps.Copy(bad, r)
 	bad["origin"] = "other"
 	if err := s.Validate(bad); err == nil {
 		t.Fatal("origin other must be rejected")

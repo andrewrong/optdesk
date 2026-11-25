@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,7 +31,8 @@ func TestSamplePageV1Fixtures(t *testing.T) {
 	failsAt := func(t *testing.T, m map[string]any, want leaf) {
 		t.Helper()
 		err := s.Validate(m)
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}
