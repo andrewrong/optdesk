@@ -30,19 +30,19 @@ export { validate as validateMacroPage } from '@/types/macro_page'
 export type { Payload as MacroPagePayload } from '@/types/macro_page'
 
 const EVENTS: Column[] = [
-  { id: 'date', label: 'Date' },
-  { id: 'name', label: 'Event' },
-  { id: 'previous', label: 'Previous' },
-  { id: 'actual', label: 'Actual' },
-  { id: 'days_to', label: 'Days to' },
-  { id: 'window', label: 'Window' },
+  { id: 'date', label: '日期' },
+  { id: 'name', label: '事件' },
+  { id: 'previous', label: '前值' },
+  { id: 'actual', label: '公布值' },
+  { id: 'days_to', label: '距今天数' },
+  { id: 'window', label: '事件窗口' },
 ]
-const INDICATOR_HEADS = ['Indicator · timeliness', 'Latest', 'Change', 'Data day', 'Source', 'Detail']
+const INDICATOR_HEADS = ['指标 · 时效', '最新值', '变化', '数据日', '来源', '详情']
 // Group headings; the payload sends the key only (docs/design/macro-page-v2.md Decision 5).
 const GROUP_TITLE = {
-  rates: 'Rates and curve',
-  credit: 'Credit and conditions',
-  dollar_japan: 'Dollar and Japan',
+  rates: '利率与曲线 (Rates and curve)',
+  credit: '信用与金融状况 (Credit and conditions)',
+  dollar_japan: '美元与日本 (Dollar and Japan)',
 } as const
 
 type Indicator = MacroPageV2['indicators'][number]
@@ -84,7 +84,7 @@ function IndicatorRow({ indicator }: { indicator: Indicator }) {
       <TableCell className="py-1.5">
         {indicator.detail_href && (
           <Button asChild variant="link" size="sm">
-            <a href={indicator.detail_href}>Detail</a>
+            <a href={indicator.detail_href}>详情</a>
           </Button>
         )}
       </TableCell>
@@ -112,7 +112,7 @@ export function MacroPage({ payload }: { payload: Payload }) {
     previous: typeof event.previous === 'string' ? { text: event.previous } : event.previous,
     ...(event.actual !== undefined && { actual: event.actual }),
     ...(event.days_to !== undefined && { days_to: { text: String(event.days_to) } }),
-    ...(event.in_window === true && { window: { text: 'in window', badge: true } }),
+    ...(event.in_window === true && { window: { text: '窗口内', badge: true } }),
   }))
   return (
     <div className="min-w-0 space-y-6" data-page="macro-page">

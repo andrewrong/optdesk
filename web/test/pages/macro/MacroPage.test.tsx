@@ -278,14 +278,14 @@ it('TestMacroPageOrder: lead, events, indicators, ease, liquidity, notes; no lea
 it('TestEventWindowMarker: marker and day count only where the payload sends them', async () => {
   await show(withV2Fields())
   const rows = host.querySelectorAll('[data-events] tbody tr')
-  expect(rows[0]!.textContent).toContain('in window')
+  expect(rows[0]!.textContent).toContain('窗口内')
   expect(rows[0]!.textContent).toContain('19')
-  expect(rows[1]!.textContent).not.toContain('in window')
+  expect(rows[1]!.textContent).not.toContain('窗口内')
   expect(rows[1]!.textContent).toContain('50')
   await act(async () => root?.unmount())
   host.remove()
   await show(v2('golden'))
-  expect(host.querySelector('[data-events]')!.textContent).not.toContain('in window')
+  expect(host.querySelector('[data-events]')!.textContent).not.toContain('窗口内')
 })
 
 it('TestGroupedIndicators: groups in payload order with change, day and hint', async () => {
@@ -324,8 +324,8 @@ it('renders actual column', async () => {
   expect(validateMacroPage(payload).ok).toBe(true)
   await show(payload)
   const heads = [...host.querySelectorAll('[data-events] thead th')].map((th) => th.textContent)
-  const col = heads.indexOf('Actual')
-  expect(col).toBe(heads.indexOf('Previous') + 1)
+  const col = heads.indexOf('公布值')
+  expect(col).toBe(heads.indexOf('前值') + 1)
   const rows = host.querySelectorAll('[data-events] tbody tr')
   expect(rows[0]!.querySelectorAll('td')[col]!.textContent).toBe('3.1%')
   const gap = rows[1]!.querySelectorAll('td')[col]!
@@ -338,7 +338,7 @@ it('renders an event without actual as before', async () => {
   expect(payload.events[0].actual).toBeUndefined()
   await show(payload)
   const col = [...host.querySelectorAll('[data-events] thead th')].findIndex(
-    (th) => th.textContent === 'Actual',
+    (th) => th.textContent === '公布值',
   )
   expect(host.querySelectorAll('[data-events] tbody tr')[0]!.querySelectorAll('td')[col]!.textContent).toBe('')
 })
