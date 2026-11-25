@@ -27,6 +27,10 @@ func history(in marketstateapi.Input) marketstateapi.History {
 			text, _, why := drawdownAt(in.SP500, i, p.HighSessions)
 			return text, why == ""
 		}),
+		NasdaqDrawdown: line(in.NDX, p, func(i int) (string, bool) {
+			text, _, why := drawdownAt(in.NDX, i, p.HighSessions)
+			return text, why == ""
+		}),
 		VIX:       line(in.VIXCLS, p, func(i int) (string, bool) { return levelText(in.VIXCLS[i].Value), true }),
 		VIXTerm:   termLine(in),
 		HighYield: line(in.BAMLH0A0HYM2, p, func(i int) (string, bool) { return levelText(in.BAMLH0A0HYM2[i].Value), true }),
