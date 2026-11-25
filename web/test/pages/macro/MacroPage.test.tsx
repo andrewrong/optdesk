@@ -342,3 +342,28 @@ it('renders an event without actual as before', async () => {
   )
   expect(host.querySelectorAll('[data-events] tbody tr')[0]!.querySelectorAll('td')[col]!.textContent).toBe('')
 })
+
+it('prints the event heads, indicator heads, group titles and detail link in Chinese', async () => {
+  await show(withV2Fields())
+  const text = (els: Iterable<Element>) => [...els].map((e) => e.textContent)
+  expect(text(host.querySelectorAll('[data-events] thead th'))).toEqual([
+    '日期',
+    '事件',
+    '前值',
+    '公布值',
+    '距今天数',
+    '事件窗口',
+  ])
+  const groups = [...host.querySelectorAll('[data-indicator-group]')]
+  expect(text(groups[0]!.querySelectorAll('thead th'))).toEqual([
+    '指标 · 时效',
+    '最新值',
+    '变化',
+    '数据日',
+    '来源',
+    '详情',
+  ])
+  expect(groups[0]!.textContent).toContain('利率与曲线 (Rates and curve)')
+  expect(groups[1]!.textContent).toContain('信用与金融状况 (Credit and conditions)')
+  expect(groups[0]!.querySelector('a[href]')?.textContent).toBe('详情')
+})
