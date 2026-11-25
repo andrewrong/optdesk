@@ -13,7 +13,6 @@ import (
 
 // Texts of the page. Option terms stay English, other text is Chinese.
 const (
-	pageTitle     = "Option notices"
 	gapNoCapture  = "No position snapshot of the main account in the last 7 days"
 	gapNoReader   = "No reader: cannot show"
 	noteNoCapture = "No position snapshot of this account in the last 7 days"
@@ -40,20 +39,20 @@ var (
 
 // noticeTitles are the titles of the known codes; a code not listed is shown as it is.
 var noticeTitles = map[string]string{
-	"expiry_today":    "Expires today",
-	"expiry_near":     "Expiring soon",
-	"call_guard":      "Held call blocked by the guard",
-	"earnings_inside": "Earnings date is before expiry",
-	"assignment_seen": "Suspected assignment",
-	"cushion_low":     "Cushion is low",
-	"capture_stale":   "Position snapshot is too old",
+	"expiry_today":    titleExpiryToday,
+	"expiry_near":     titleExpiryNear,
+	"call_guard":      titleCallGuard,
+	"earnings_inside": titleEarningsInside,
+	"assignment_seen": titleAssignmentSeen,
+	"cushion_low":     titleCushionLow,
+	"capture_stale":   titleCaptureStale,
 }
 
 // factLabels are the labels of the known facts; a label not listed is shown as it is.
 var factLabels = map[string]string{
-	"earnings":     "Earnings date",
-	"capture_day":  "Snapshot day",
-	"session_days": "Trading days apart",
+	"earnings":     labelEarnings,
+	"capture_day":  labelCaptureDay,
+	"session_days": labelSessionDays,
 	"cushion":      "Cushion",
 }
 
