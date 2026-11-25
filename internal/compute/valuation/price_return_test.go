@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -75,8 +76,8 @@ func goldenCase(t *testing.T, name string) goldenReturnCase {
 // filingsOfReturn builds the Filings of a golden case, newest first.
 func filingsOfReturn(c goldenReturnCase) valuationapi.Filings {
 	f := valuationapi.Filings{Standard: valuationapi.USGAAP, SharesOutstanding: c.Input.SharesNow}
-	for i := len(c.Input.Years) - 1; i >= 0; i-- {
-		y := c.Input.Years[i]
+	for _, y := range slices.Backward(c.Input.Years) {
+
 		vals := map[string]string{}
 		for role, v := range map[string]*string{
 			roleRevenue: y.Revenue, roleOperatingCashFlow: y.OCF, roleCapitalSpending: y.Capex,

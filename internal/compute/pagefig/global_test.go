@@ -193,7 +193,7 @@ func TestSectorsSortedByD5GapsLast(t *testing.T) {
 	spy := ser("SPY", friday, flat(6, "100")...)
 	rows := []blockapi.CloseIn{
 		ser("A", friday, flat(6, "101")...),
-		blockapi.CloseIn{Name: "B", Symbol: "B"},
+		{Name: "B", Symbol: "B"},
 		ser("C", friday, flat(6, "103")...),
 		ser("D", friday, flat(6, "101")...),
 		ser("E", friday, flat(6, "99")...),
@@ -211,7 +211,7 @@ func TestSectorsSortedByD5GapsLast(t *testing.T) {
 func elevenSectors(n int) (blockapi.CloseIn, []blockapi.CloseIn) {
 	spy := ser("SPY", friday, flat(n, "100")...)
 	var rows []blockapi.CloseIn
-	for i := 0; i < 11; i++ {
+	for i := range 11 {
 		rows = append(rows, ser(fmt.Sprintf("S%d", i), friday, flat(n, fmt.Sprint(111-i))...))
 	}
 	return spy, rows

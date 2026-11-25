@@ -2,6 +2,7 @@ package valuation
 
 import (
 	"reflect"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -213,10 +214,8 @@ func mustEq(t *testing.T, want, got any, msg ...any) {
 
 func contains(t *testing.T, list []string, want string) {
 	t.Helper()
-	for _, s := range list {
-		if s == want {
-			return
-		}
+	if slices.Contains(list, want) {
+		return
 	}
 	t.Errorf("%v does not contain %q", list, want)
 }

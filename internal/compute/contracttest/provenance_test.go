@@ -143,7 +143,7 @@ func checkLengths(f File) error {
 		}
 		var out map[string][]*float64
 		if err := json.Unmarshal(c.Expected, &out); err != nil || len(out) == 0 {
-			return fmt.Errorf("%s: expected is not a map of arrays: %v", c.Name, err)
+			return fmt.Errorf("%s: expected is not a map of arrays: %w", c.Name, err)
 		}
 		for k, a := range out {
 			if len(a) != len(series) {

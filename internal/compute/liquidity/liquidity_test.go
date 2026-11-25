@@ -175,7 +175,7 @@ func TestLiquiditySOFRFiveDaysCurrent(t *testing.T) {
 
 func hySeries(f fixture, count int) compute.Series {
 	var s compute.Series
-	for i := 0; i < count; i++ {
+	for i := range count {
 		s = append(s, compute.Point{Day: plus(f.Day, i-count+1), Value: f.Rank.Values[i%len(f.Rank.Values)]})
 	}
 	return s

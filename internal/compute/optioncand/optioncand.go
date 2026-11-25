@@ -5,6 +5,7 @@ package optioncand
 
 import (
 	"math/big"
+	"slices"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 )
@@ -63,12 +64,7 @@ func wants(kinds []compute.CandidateKind, kind compute.CandidateKind) bool {
 	if len(kinds) == 0 {
 		return kind == compute.KindShortPut
 	}
-	for _, k := range kinds {
-		if k == kind {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(kinds, kind)
 }
 
 func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute.OptionQuote, dte int, strike, spot *big.Rat, spotOK bool) scored {

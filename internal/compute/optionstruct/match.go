@@ -258,7 +258,7 @@ func (p *piece) slice(t *big.Rat) leg {
 // exactText writes a rational that has a finite decimal expansion with the fewest places, at
 // least none.
 func exactText(r *big.Rat) string {
-	for places := 0; places < 20; places++ {
+	for places := range 20 {
 		s := r.FloatString(places)
 		if back, ok := parseDec(s); ok && back.Cmp(r) == 0 {
 			return s

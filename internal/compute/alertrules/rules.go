@@ -100,8 +100,7 @@ func decodeError(err error) error {
 	if errors.As(err, &sm) && len(sm.Errors) > 0 {
 		return fmt.Errorf("alertrules: unknown key %q", strings.Join(sm.Errors[0].Key(), "."))
 	}
-	var de *toml.DecodeError
-	if errors.As(err, &de) {
+	if de, ok := errors.AsType[*toml.DecodeError](err); ok {
 		line, col := de.Position()
 		return fmt.Errorf("alertrules: the rule file does not decode at line %d, column %d", line, col)
 	}

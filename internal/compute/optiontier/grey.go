@@ -1,6 +1,8 @@
 package optiontier
 
 import (
+	"slices"
+
 	"github.com/shopspring/decimal"
 
 	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
@@ -77,10 +79,5 @@ func needsEvaluate(grey string) bool {
 }
 
 func hasMark(marks []string, m string) bool {
-	for _, x := range marks {
-		if x == m {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(marks, m)
 }

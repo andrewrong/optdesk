@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -97,7 +98,7 @@ func dayN(n int) contracts.Day {
 
 func series(n int, value func(i int) float64) compute.Series {
 	var s compute.Series
-	for i := 0; i < n; i++ {
+	for i := range n {
 		s = append(s, compute.Point{Day: dayN(i), Value: value(i)})
 	}
 	return s
@@ -151,7 +152,7 @@ func TestSectorMatchesReportRule(t *testing.T) {
 	common := cut(in.Benchmark, 1) // the common day: the newest day all funds that are not left out have
 	onCommon := make([]blockapi.CloseIn, len(in.Funds))
 	for i, fd := range in.Funds {
-		for fd.Days = fd.Days[:len(fd.Days):len(fd.Days)]; len(fd.Days) > 0 && fd.Days[0] > common.Days[0]; {
+		for fd.Days = slices.Clip(fd.Days); len(fd.Days) > 0 && fd.Days[0] > common.Days[0]; {
 			fd.Closes, fd.Days = fd.Closes[1:], fd.Days[1:]
 		}
 		onCommon[i] = fd
@@ -332,7 +333,7 @@ func TestHistoryDropsOneCalendarGap(t *testing.T) {
 	vix := series(8, func(i int) float64 { return 20 })
 	vix[5].Value = 18
 	var vxv compute.Series
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if i != 4 {
 			v := 25.0
 			if i == 5 {

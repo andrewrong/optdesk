@@ -1,6 +1,7 @@
 package optioncand
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -121,12 +122,7 @@ func TestBuyPriceBoundary(t *testing.T) {
 }
 
 func hasMark(c compute.Candidate, m string) bool {
-	for _, x := range c.Marks {
-		if x == m {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Marks, m)
 }
 
 func TestNoBuyPriceIsMarkNotBlock(t *testing.T) {

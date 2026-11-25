@@ -50,10 +50,7 @@ func rankPercent(stats compute.Stats, values []float64, x float64) (int, bool) {
 
 // nearestRank is the value at rank p (percent) of the sorted values, nearest rank.
 func nearestRank(sorted []decimal.Decimal, p int) decimal.Decimal {
-	i := int(math.Ceil(float64(p)/100*float64(len(sorted)))) - 1
-	if i < 0 {
-		i = 0
-	}
+	i := max(int(math.Ceil(float64(p)/100*float64(len(sorted))))-1, 0)
 	if i >= len(sorted) {
 		i = len(sorted) - 1
 	}
@@ -63,10 +60,7 @@ func nearestRank(sorted []decimal.Decimal, p int) decimal.Decimal {
 // history picks every Nth day, counting back from the last, so at most 120 points result,
 // the last is today and the order is oldest first.
 func history(days []day) []pepbapi.Point {
-	n := (len(days) + maxHistory - 1) / maxHistory
-	if n < 1 {
-		n = 1
-	}
+	n := max((len(days)+maxHistory-1)/maxHistory, 1)
 	var rev []pepbapi.Point
 	for i := len(days) - 1; i >= 0; i -= n {
 		t := days[i].ratio.StringFixed(1)

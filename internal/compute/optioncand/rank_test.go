@@ -99,7 +99,7 @@ func TestDeterministic(t *testing.T) {
 	)
 	want := eval(in)
 	rng := rand.New(rand.NewSource(42))
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		shuffled := in
 		shuffled.Quotes = append([]compute.OptionQuote(nil), in.Quotes...)
 		rng.Shuffle(len(shuffled.Quotes), func(a, b int) {
