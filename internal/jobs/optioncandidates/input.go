@@ -189,7 +189,7 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 		info.Next = contracts.Day(last.ReportDate.Format(time.DateOnly))
 	}
 	// A future date stored by an earlier check outlives a newer check that says absent.
-	if future := earliestFuture(rows, chainDay); future != "" {
+	if future := newestFuture(rows, chainDay); future != "" {
 		info.Next, info.State = future, "listed"
 	}
 	ce := chainEarnings{state: info.State, next: info.Next}
@@ -199,15 +199,18 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 	return info, ce, nil
 }
 
-// earliestFuture is the earliest listed report date on or after chainDay among rows, or "" when there is none.
-func earliestFuture(rows []contracts.EarningsDate, chainDay contracts.Day) contracts.Day {
+// newestFuture is the report date of the newest listed row of rows whose date is on or after chainDay, or "" when
+// there is none (ties on the observed day keep the later row).
+func newestFuture(rows []contracts.EarningsDate, chainDay contracts.Day) contracts.Day {
 	var future contracts.Day
+	var seen time.Time
 	for _, r := range rows {
 		if string(r.Status) != "listed" || r.ReportDate == nil {
 			continue
 		}
-		if d := contracts.Day(r.ReportDate.Format(time.DateOnly)); d >= chainDay && (future == "" || d < future) {
-			future = d
+		d := contracts.Day(r.ReportDate.Format(time.DateOnly))
+		if d >= chainDay && (future == "" || !r.ObservedOn.Before(seen)) {
+			future, seen = d, r.ObservedOn.Time
 		}
 	}
 	return future

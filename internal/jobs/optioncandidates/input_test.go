@@ -268,3 +268,22 @@ func TestOverrideWins(t *testing.T) {
 		t.Fatalf("info %+v chain %+v", info, ce)
 	}
 }
+
+func TestKeepNewestListedNotEarliest(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	f.earnings = map[string][]contracts.EarningsDate{"cik:0000000001": {
+		{Issuer: "cik:0000000001", Status: "listed", ObservedOn: day("2026-11-01"), ReportDate: dayPtr("2026-12-05")},
+		{Issuer: "cik:0000000001", Status: "listed", ObservedOn: day("2026-11-05"), ReportDate: dayPtr("2026-12-20")},
+	}}
+	e := usEntry()
+	e.Issuer = "cik:0000000001"
+	j := &job{st: f.stores()}
+	info, ce, err := j.earnings(context.Background(), e, contracts.Day("2026-11-06"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Next != "2026-12-20" || ce.next != "2026-12-20" {
+		t.Fatalf("want newest listed 2026-12-20, got %s / %s", info.Next, ce.next)
+	}
+}
