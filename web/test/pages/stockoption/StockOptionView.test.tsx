@@ -164,6 +164,16 @@ describe('stock option view', () => {
     expect(validate({ ...ok, schema_version: 2 }).ok).toBe(true)
   })
 
+  it('TestMatrixToggleWordsChinese', async () => {
+    await show(ok)
+    const toggle = document.querySelector('[data-block="matrix"] [data-slot="toggle"]')
+    expect(toggle?.textContent).toBe('年化')
+    await act(async () => {
+      ;(toggle as HTMLElement).click()
+    })
+    expect(toggle?.textContent).toBe('权利金')
+  })
+
   it('registers under its schema name', () => {
     expect(registration.schema).toBe(ok.schema)
   })
