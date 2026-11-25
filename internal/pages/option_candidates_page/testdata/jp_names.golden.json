@@ -1,0 +1,5 @@
+[
+ {"name": "2413", "outcome": "no_quote", "text": "交易所无报价（NO_QUOTE：没有人挂单，不是出错）", "counts": "交易所无报价 11 个合约"},
+ {"name": "2408", "outcome": "no_spot", "text": "没读到标的现价（NO_DATA），所以没有询价", "counts": "没读到现价 28 个合约"},
+ {"name": "9999", "outcome": "no_rows", "text": "没有这个名字的期权链行（不在今日取数计划里，或今日取数未运行）", "counts": "没有行"}
+]

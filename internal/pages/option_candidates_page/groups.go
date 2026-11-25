@@ -65,6 +65,8 @@ type group struct {
 	Currency    *string      `json:"currency,omitempty"`
 	Note        *string      `json:"note,omitempty"`
 	LimitCounts []limitCount `json:"limit_counts,omitempty"`
+	// NameOutcomes is the yen group only: each watch-list name with no candidate row (sellput-jp-outcomes.md).
+	NameOutcomes []nameOutcome `json:"name_outcomes,omitempty"`
 }
 
 func gapGroup(s groupSpec, g gap) group {

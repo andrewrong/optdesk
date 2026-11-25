@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute/optioncand"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -52,8 +54,29 @@ func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 		readers.Tiers, readers.Account, readers.Aliases = newTierer(), rd.account, rd.aliasList()
 		readers.Owner, readers.RuleParams = rd.owner, a.deps.newRuleParams()
 		readers.Valuation = valuationReaderOf(rd)
+		// The outcome of each JP name with no row needs the stored open rows; without them the page has none.
+		if rd.open != nil {
+			readers.OpenRows, readers.NameOpen, readers.JPNames = rd.open, optioncand.NewNameOpen, jpWatchNames(a)
+		}
 	}
 	return newCandidatesPage(a, "ot-serve", readers).Build(ctx, rd.series, day, clk.Now().UTC())
+}
+
+// jpWatchNames are the symbols of the JP stock entries of the watch list with an issuer, the entries the JP
+// candidate job reads, sorted. A watch list that cannot be read gives none.
+func jpWatchNames(a *app) []string {
+	entries, err := loadWatch(a)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range entries {
+		if e.Issuer != "" && e.Market == "JP" && e.Contract.SecType == "STK" {
+			out = append(out, e.Contract.Symbol)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // newCandidatesPage calls deps.optionCandidatesPage with the plain arguments (scope "candidates").
