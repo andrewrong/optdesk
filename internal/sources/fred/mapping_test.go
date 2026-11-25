@@ -3,6 +3,7 @@ package fred
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -235,9 +236,7 @@ func TestSeriesUnitsMatchMetadata(t *testing.T) {
 func TestSeriesUnitsDetectsWrongClaim(t *testing.T) {
 	t.Parallel()
 	table := map[string]unitRow{}
-	for k, v := range seriesUnits {
-		table[k] = v
-	}
+	maps.Copy(table, seriesUnits)
 	table["CPIAUCSL"] = unitRow{unit: contracts.SeriesUnit("percent")}
 	fails := compareUnits(table, loadMeta(t))
 	// An "Index 1982-1984=100" text is an index text: both directions of the check fire.
@@ -326,9 +325,7 @@ func TestUnitsTextMatchesShift(t *testing.T) {
 		t.Errorf("table fails: %v", fails)
 	}
 	table := map[string]unitRow{}
-	for k, v := range seriesUnits {
-		table[k] = v
-	}
+	maps.Copy(table, seriesUnits)
 	row := table["WALCL"]
 	row.shift = 9
 	table["WALCL"] = row

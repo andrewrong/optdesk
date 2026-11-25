@@ -54,8 +54,7 @@ func Load(path string) (sources.FlexFile, error) {
 	}
 	var doc map[string]any
 	if err := toml.Unmarshal(data, &doc); err != nil {
-		var de *toml.DecodeError
-		if errors.As(err, &de) {
+		if de, ok := errors.AsType[*toml.DecodeError](err); ok {
 			row, col := de.Position()
 			return zero, bad("invalid TOML at line %d column %d", row, col)
 		}
