@@ -54,6 +54,7 @@ optdesk is written in three languages: Go (services and the command line), Pytho
 
 ## Pull requests
 
+- Before a push run `go run ./scripts/precheck` (`-fast` skips go-arch-lint, the regeneration check and go test): it runs the fast checks of CI in the order of the workflows.
 - The `test` check runs on every pull request; the workflows for each language run when their paths change.
   A scheduled workflow runs everything.
 - Commit with the identity the history uses. No secrets, API keys, account ids, tokens, broker credentials,
