@@ -53,6 +53,12 @@ describe('OpsTodayPage', () => {
     })
   })
 
+  it('prints the nine column heads in Chinese, in order', async () => {
+    const page = await render(ok)
+    const heads = [...page.querySelectorAll('th')].map((th) => th.textContent)
+    expect(heads).toEqual(['数据集', '键', '市场', '状态', '错误码', '原因码', '返回数', '可用数', '详情'])
+  })
+
   it('marks status and reason code with badges that carry the producer text', async () => {
     const page = await render(ok)
     const badges = [...page.querySelectorAll('tbody tr')[1]!.querySelectorAll('[data-slot=badge]')].map(

@@ -9,15 +9,15 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/ops_today_page'
 
 const COLUMNS: Column[] = [
-  { id: 'dataset', label: 'Dataset' },
-  { id: 'key', label: 'Key' },
-  { id: 'market', label: 'Market' },
-  { id: 'status', label: 'Status' },
-  { id: 'error_code', label: 'Error code' },
-  { id: 'reason_code', label: 'Reason code' },
-  { id: 'returned_n', label: 'Returned', align: 'right' },
-  { id: 'usable_n', label: 'Usable', align: 'right' },
-  { id: 'detail', label: 'Detail', wrap: true },
+  { id: 'dataset', label: '数据集' },
+  { id: 'key', label: '键' },
+  { id: 'market', label: '市场' },
+  { id: 'status', label: '状态' },
+  { id: 'error_code', label: '错误码' },
+  { id: 'reason_code', label: '原因码' },
+  { id: 'returned_n', label: '返回数', align: 'right' },
+  { id: 'usable_n', label: '可用数', align: 'right' },
+  { id: 'detail', label: '详情', wrap: true },
 ]
 
 // A null text is shown empty; the producer's words are not replaced.
