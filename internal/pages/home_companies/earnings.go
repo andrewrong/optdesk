@@ -22,9 +22,11 @@ type earningsOut struct {
 }
 
 // earningsCell reads the stored earnings rows of the issuer for the 120 days up to day and shows
-// the report date of the last row when it is listed and has one: "MM-DD" on or after day,
-// "<published> MM-DD" before it (the frozen schema value, see publishedPrefix). No reader, no row or a row without a date is a gap; a reader error is
-// returned. An empty issuer is a gap read before the reader is called. The text copies the stored date.
+// the earliest listed report date on or after day, whatever the status of the last row: "MM-DD".
+// With none, the last row when it is listed and has a date before day shows "<published> MM-DD"
+// (the frozen schema value, see publishedPrefix). No reader, no row or a row without a date is a gap;
+// a reader error is returned. An empty issuer is a gap read before the reader is called. The text copies
+// the stored date.
 func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) (any, error) {
 	if c.Earnings == nil {
 		return mkGap("no_reader", "earnings date: "+noReaderText), nil
@@ -40,14 +42,25 @@ func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) 
 	if len(list) == 0 {
 		return mkGap("no_data", "earnings date: "+earningsNoneListedText), nil
 	}
+	today := day.Format(dayLayout)
+	var best *time.Time
+	for i := range list {
+		r := list[i]
+		if string(r.Status) != "listed" || r.ReportDate == nil || r.ReportDate.Format(dayLayout) < today {
+			continue
+		}
+		if best == nil || r.ReportDate.Before(*best) {
+			t := r.ReportDate.Time
+			best = &t
+		}
+	}
+	if best != nil {
+		return earningsOut{Kind: "value", Date: best.Format(dayLayout), Text: best.Format("01-02")}, nil
+	}
 	last := list[len(list)-1]
 	if string(last.Status) != "listed" || last.ReportDate == nil {
 		return mkGap("no_data", "earnings date: "+earningsNoneListedText), nil
 	}
 	report := last.ReportDate.Time
-	text := report.Format("01-02")
-	if report.Format(dayLayout) < day.Format(dayLayout) {
-		text = publishedPrefix + text
-	}
-	return earningsOut{Kind: "value", Date: report.Format(dayLayout), Text: text}, nil
+	return earningsOut{Kind: "value", Date: report.Format(dayLayout), Text: publishedPrefix + report.Format("01-02")}, nil
 }
