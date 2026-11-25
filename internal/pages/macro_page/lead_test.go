@@ -55,7 +55,7 @@ func daily(t *testing.T, last string, n int, start, step float64) []contracts.Se
 		t.Fatal(err)
 	}
 	var out []contracts.SeriesPoint
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d := end.AddDate(0, 0, i-n+1).Format(dayLayout)
 		out = append(out, pt(t, d, d, "percent", f64(start+step*float64(i))))
 	}

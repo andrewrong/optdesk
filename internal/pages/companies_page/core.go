@@ -388,8 +388,8 @@ func grouped(d decimal.Decimal) string {
 func sortedEnds(figs map[string]valuationapi.DiagnosisFigure, name string) []string {
 	var ends []string
 	for k := range figs {
-		if strings.HasPrefix(k, name+"@") {
-			ends = append(ends, strings.TrimPrefix(k, name+"@"))
+		if after, ok := strings.CutPrefix(k, name+"@"); ok {
+			ends = append(ends, after)
 		}
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(ends)))

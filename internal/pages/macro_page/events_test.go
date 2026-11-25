@@ -160,7 +160,7 @@ func TestEventsWindow60AndCap(t *testing.T) {
 	}
 
 	f = healthy()
-	for i := 0; i < 21; i++ {
+	for i := range 21 {
 		d := contracts.Day(fmt.Sprintf("2026-12-%02d", 1+i))
 		f.events = append(f.events, macroevent.Event{Kind: "h41", Source: "fred", Date: d, RunDay: "2026-11-04"})
 	}
@@ -252,7 +252,7 @@ func TestEventsHeldGap(t *testing.T) {
 func TestEventsGapsMerged(t *testing.T) {
 	t.Parallel()
 	f := healthy()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		f.kinds[i].LastRunDay = "2026-10-01"
 	}
 	m := buildEvents(t, f)
@@ -392,7 +392,7 @@ func TestMacroGapTextsAreChinese(t *testing.T) {
 	f.kinds[0].LastRunDay = "2026-10-20" // cpi stale
 	f.kinds[1].LastDate = "2026-11-05"   // employment situation: no date after the day
 	f.events = append(f.events, macroevent.Event{Kind: "cpi", Source: "fred", Date: "2026-11-12", RunDay: "2026-11-04"})
-	for i := 0; i < 21; i++ {
+	for i := range 21 {
 		d := contracts.Day(fmt.Sprintf("2026-12-%02d", 1+i))
 		f.events = append(f.events, macroevent.Event{Kind: "h41", Source: "fred", Date: d, RunDay: "2026-11-04"})
 	}

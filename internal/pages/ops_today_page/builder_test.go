@@ -60,7 +60,7 @@ func run(dataset, key, status string, at time.Time) runview.Row {
 func TestNewestRunPerKeyOnly(t *testing.T) {
 	t.Parallel()
 	var runs []runview.Row
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		r := run("obs.option_open", "k1", "retryable", t0.Add(time.Duration(i)*time.Minute))
 		r.Returned = i
 		runs = append(runs, r)

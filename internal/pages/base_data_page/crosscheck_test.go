@@ -146,7 +146,7 @@ func TestFirstTwentyItems(t *testing.T) {
 	t.Parallel()
 	run := r6Run()
 	run.Items = nil
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		run.Items = append(run.Items, reconstore.Item{Key: fmt.Sprintf("k%02d", i), Company: "NVDA", Kind: "diff"})
 	}
 	items := crossOf(t, reconInput([]reconstore.Run{run}, basecheckapi.Fail, nil))["items"].([]any)

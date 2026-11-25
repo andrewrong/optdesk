@@ -398,7 +398,7 @@ func checkSizes(t *testing.T) {
 		rows = append(rows, eodRow(t, i, f64(float64(i)), "2026-11-06T21:00:00Z"))
 	}
 	var qs []contracts.QuoteSnapshot
-	for i := 0; i < 300; i++ {
+	for i := range 300 {
 		qs = append(qs, contracts.QuoteSnapshot{SessionDay: sday(t, "2026-11-06"), Slot: fmt.Sprint(i), Bid: f64(1)})
 	}
 	m := buildMap(t, cfg(&fakeEod{rows: rows}, &fakeQuotes{rows: map[int64][]contracts.QuoteSnapshot{600: qs}}))

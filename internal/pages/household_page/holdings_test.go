@@ -323,7 +323,7 @@ func TestUnmarkedOptionIsNamedInTheCellGap(t *testing.T) {
 func TestManyUnmarkedOptionsFitTheGapText(t *testing.T) {
 	t.Parallel()
 	var ps []store.Position
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		ps = append(ps, shortOption(fmt.Sprintf("LONGSYMBOL%02d", i), int64(100+i)))
 	}
 	c, _ := holdingsConfig(ps, &fakeMarks{})

@@ -186,7 +186,7 @@ type builder struct {
 }
 
 func newBuilder(c Config, s compute.Structure, in compute.StructureInput) *builder {
-	b := &builder{cells: cells{noQuotes: c.Eod == nil || c.Terms == nil}, s: s, quotes: in.Quotes, zone: c.Zone,
+	b := &builder{noQuotes: c.Eod == nil || c.Terms == nil, s: s, quotes: in.Quotes, zone: c.Zone,
 		pos: map[string]compute.LedgerPosition{}}
 	for _, p := range in.Positions {
 		b.pos[p.PositionID] = p

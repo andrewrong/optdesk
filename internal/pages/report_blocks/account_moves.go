@@ -3,6 +3,7 @@ package report_blocks
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
@@ -99,8 +100,8 @@ func AccountMoves(c Config) BlockFunc {
 // capture reads the values of the session days newest first until it has the data day and the one before it.
 func (c Config) capture(ctx context.Context, alias string, sessions []contracts.Day) (accountCapture, error) {
 	var cp accountCapture
-	for i := len(sessions) - 1; i >= 0; i-- {
-		rows, err := c.Account.Values(ctx, alias, string(sessions[i]))
+	for i, session := range slices.Backward(sessions) {
+		rows, err := c.Account.Values(ctx, alias, string(session))
 		if err != nil {
 			return cp, fmt.Errorf("report_blocks: read values: %w", err)
 		}
@@ -108,7 +109,7 @@ func (c Config) capture(ctx context.Context, alias string, sessions []contracts.
 			continue
 		}
 		if cp.day == "" {
-			cp.day, cp.values, cp.staleSession = string(sessions[i]), rows, len(sessions)-1-i
+			cp.day, cp.values, cp.staleSession = string(session), rows, len(sessions)-1-i
 			continue
 		}
 		cp.prior = rows

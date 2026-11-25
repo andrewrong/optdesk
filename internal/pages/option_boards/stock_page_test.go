@@ -216,10 +216,10 @@ func TestContractsElevenColumns(t *testing.T) {
 func TestMatrixCutAtLimits(t *testing.T) {
 	t.Parallel()
 	var rows []store.Candidate
-	for i := 0; i < 105; i++ {
+	for i := range 105 {
 		rows = append(rows, stockRowOf(1000+i, issuerApple, "2026-11-13", 3, fmt.Sprint(10+i), "ok", nil, nil, gatesPass))
 	}
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		d := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, i).Format("2006-01-02")
 		rows = append(rows, stockRowOf(2000+i, issuerApple, d, 21+i, "10", "ok", nil, nil, gatesPass))
 	}

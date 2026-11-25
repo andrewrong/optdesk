@@ -2,6 +2,7 @@ package option_pnl_page
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/optionattrapi"
@@ -172,7 +173,7 @@ func ledgerGroup(c Config, tok string, gi int, label string, outs []outcome, spa
 			byCur[b.Currency] = b
 		}
 	}
-	summary := ""
+	var summary strings.Builder
 	for ci, cur := range order {
 		b, ok := byCur[cur]
 		if !ok {
@@ -187,17 +188,17 @@ func ledgerGroup(c Config, tok string, gi int, label string, outs []outcome, spa
 		}
 		g.Books = append(g.Books, ledgerBook(tok, gi, ci, cur, curOuts, b))
 		if ci > 0 {
-			summary += "; "
+			summary.WriteString("; ")
 		}
-		summary += cur + ", " + plural(b.Lots, "split lot", "split lots")
+		summary.WriteString(cur + ", " + plural(b.Lots, "split lot", "split lots"))
 		if !span {
-			summary += ", " + plural(len(curOuts), "ended lot", "ended lots")
+			summary.WriteString(", " + plural(len(curOuts), "ended lot", "ended lots"))
 		}
 	}
 	if span {
-		summary += ", lots ended " + string(first) + " to " + string(last)
+		summary.WriteString(", lots ended " + string(first) + " to " + string(last))
 	}
-	g.Summary = fit(summary)
+	g.Summary = fit(summary.String())
 	return g
 }
 

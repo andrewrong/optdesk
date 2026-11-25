@@ -306,7 +306,7 @@ func TestChunksOf500(t *testing.T) {
 	}
 	r := newRig()
 	var ps []compute.LedgerPosition
-	for i := 0; i < 501; i++ {
+	for i := range 501 {
 		ps = append(ps, lotPos("p"+itoa(i), "AAA", itoa(1000+i), "90", "open"))
 	}
 	r.replay.positions = ps

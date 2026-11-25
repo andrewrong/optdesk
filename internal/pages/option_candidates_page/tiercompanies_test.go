@@ -1,11 +1,11 @@
 package option_candidates_page
 
 import (
-	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
-	"github.com/andrewrong/optdesk/internal/contracts"
 	"slices"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 

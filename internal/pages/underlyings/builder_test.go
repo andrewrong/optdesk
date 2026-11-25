@@ -240,7 +240,7 @@ func TestBuildHistoryLimitAndDiff(t *testing.T) {
 	t.Parallel()
 	in := fixtureInput()
 	in.History = nil
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		in.History = append(in.History, underlying.Row{
 			ID: int64(100 - i), Key: "US:AAA", Symbol: "AAA", Status: "active", Options: true,
 			Note: fmt.Sprintf("n%d", 100-i), SetAt: at("2026-11-04", "09:00"),

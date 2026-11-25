@@ -3,6 +3,7 @@ package positions_page
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -69,9 +70,7 @@ func (c Config) barPrices(ctx context.Context, ps []store.Position, marks map[in
 		ids[f.Name] = append(ids[f.Name], f.InstrumentID)
 	}
 	price := make(map[int64]string, len(marks))
-	for k, v := range marks {
-		price[k] = v
-	}
+	maps.Copy(price, marks)
 	out.Price = price
 	from := contracts.Day(capD.AddDate(0, 0, -barLookbackDays).Format(dayLayout))
 	shut, err := c.shutStocks(ctx, ps, ids, capDay)

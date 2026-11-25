@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -121,10 +122,8 @@ func datasetIDs(rows []coverage.Cell) []string {
 // jobOf is the first job, in Jobs order, that lists the dataset (Decision 17); nil when none does.
 func jobOf(jobs []Job, dataset string) *Job {
 	for i := range jobs {
-		for _, d := range jobs[i].Datasets {
-			if d == dataset {
-				return &jobs[i]
-			}
+		if slices.Contains(jobs[i].Datasets, dataset) {
+			return &jobs[i]
 		}
 	}
 	return nil

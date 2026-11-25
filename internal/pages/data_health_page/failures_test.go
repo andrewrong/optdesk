@@ -91,7 +91,7 @@ func TestOrderTiebreaks(t *testing.T) {
 func TestCapAtFifty(t *testing.T) {
 	t.Parallel()
 	var rows []coverage.Failure
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		rows = append(rows, fail(fmt.Sprintf("k%02d", i), 3, 3, "2026-03-09", "retryable"))
 	}
 	_, in := failIn(rows)

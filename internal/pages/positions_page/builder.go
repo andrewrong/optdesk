@@ -230,13 +230,13 @@ func (c Config) sessionDays(ctx context.Context, d time.Time) ([]contracts.Day, 
 
 // capture reads the positions of the session days, newest first, until one has rows.
 func (c Config) capture(ctx context.Context, alias string, sessions []contracts.Day) (capture, error) {
-	for i := len(sessions) - 1; i >= 0; i-- {
-		rows, err := c.Account.Positions(ctx, alias, string(sessions[i]))
+	for _, session := range slices.Backward(sessions) {
+		rows, err := c.Account.Positions(ctx, alias, string(session))
 		if err != nil {
 			return capture{}, fmt.Errorf("positions_page: read positions: %w", err)
 		}
 		if len(rows) > 0 {
-			return capture{day: string(sessions[i]), positions: rows}, nil
+			return capture{day: string(session), positions: rows}, nil
 		}
 	}
 	return capture{}, nil

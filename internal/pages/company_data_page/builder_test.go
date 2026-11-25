@@ -437,7 +437,7 @@ func TestNilStockIDsReadsNoBars(t *testing.T) {
 func TestStockIDsReadOncePerBatchOf500(t *testing.T) {
 	t.Parallel()
 	var rows []underlying.Row
-	for i := 0; i < 1001; i++ {
+	for i := range 1001 {
 		s := fmt.Sprintf("S%d", i)
 		rows = append(rows, underlying.Row{Key: "US:" + s, Symbol: s, Market: "US", Kind: "stock", Status: "active"})
 	}

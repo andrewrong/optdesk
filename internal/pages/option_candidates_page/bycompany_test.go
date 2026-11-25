@@ -134,7 +134,7 @@ func TestVerdictWordsAndTexts(t *testing.T) {
 func TestFoldedSummaryCounts(t *testing.T) {
 	t.Parallel()
 	var keys []string
-	for i := 0; i < 69; i++ {
+	for i := range 69 {
 		keys = append(keys, "r"+strconv.Itoa(i))
 	}
 	cb := optiontierapi.CompanyBlock{Company: "7", State: "sellable", Folded: keys, Why: []optiontierapi.GreyCount{

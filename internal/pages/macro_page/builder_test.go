@@ -266,7 +266,7 @@ func TestBuildErrors(t *testing.T) {
 	t.Parallel()
 	mod := func(f func(*Config)) Config { c := cfg("S"); f(&c); return c }
 	many := cfg()
-	for i := 0; i < 21; i++ {
+	for range 21 {
 		many.Indicators = append(many.Indicators, Indicator{SeriesID: "S", Name: "n"})
 	}
 	cases := []struct {

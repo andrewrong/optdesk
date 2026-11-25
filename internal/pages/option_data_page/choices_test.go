@@ -91,7 +91,7 @@ func TestBuildChoices(t *testing.T) {
 	}
 	t.Run("capped at 50 in order", func(t *testing.T) {
 		c := base()
-		for i := 0; i < 60; i++ {
+		for i := range 60 {
 			c.Choices = append(c.Choices, Choice{ID: int64(i), Label: "L", Href: "/o/" + fmt.Sprint(i)})
 		}
 		list := buildMap(t, c)["underlyings"].([]any)

@@ -287,7 +287,7 @@ func TestBlockReaderErrorIsError(t *testing.T) {
 func TestBlockManyFiredStaysInSchema(t *testing.T) {
 	t.Parallel()
 	var res []compute.AlertResult
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		res = append(res, fired(fmt.Sprintf("r%d", i), "Title", "market.vix_pctile_3y", "w", "d", fmt.Sprintf("2026-11-%02d", i+1)))
 	}
 	res = append(res, fired("long", "Title", "market.ivr_own", "w", strings.Repeat("x", 300), "2026-11-06"))

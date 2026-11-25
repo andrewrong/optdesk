@@ -129,7 +129,7 @@ func TestHistoryCaptionWhenCapped(t *testing.T) {
 	res := sampleResult()
 	l := res.History.VIX
 	l.Points = nil
-	for i := 0; i < 800; i++ {
+	for i := range 800 {
 		l.Points = append(l.Points, line("2026-11-13").Points[0])
 		l.Points[i].Day = dayAfter(i)
 	}
@@ -167,7 +167,7 @@ func TestHistoryPointTextUsesTypographicMinus(t *testing.T) {
 // longLine is n points of value v(i), one per day.
 func longLine(n int, v func(i int) float64) marketstateapi.Line {
 	l := marketstateapi.Line{Total: n}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		l.Points = append(l.Points, marketstateapi.Point{Day: dayAfter(i), Value: fmt.Sprintf("%.4f", v(i))})
 	}
 	return l
