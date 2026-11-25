@@ -82,9 +82,9 @@ func failedSummary(checks []basecheckapi.Check) string {
 		}
 		p := c.Rule
 		if c.Rule == "coverage_gap" {
-			p = fmt.Sprintf("%s %d days", c.Rule, c.Bad)
+			p = fmt.Sprintf(failedGapFormat, c.Rule, c.Bad)
 		} else if pct, ok := percentText(c.Share); ok && c.Rule == "coverage_latest" {
-			p = fmt.Sprintf("%s %d of %d keys missing or expired (%s%%)", c.Rule, c.Bad, c.N, pct)
+			p = fmt.Sprintf(failedLatestFormat, c.Rule, c.Bad, c.N, pct)
 		} else if pct, ok := percentText(c.Share); ok {
 			p = fmt.Sprintf("%s %s%%", c.Rule, pct)
 		}
