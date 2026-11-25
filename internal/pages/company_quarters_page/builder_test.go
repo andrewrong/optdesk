@@ -242,22 +242,30 @@ func TestEveryColumnHasGloss(t *testing.T) {
 	i, _ := in("US:AAPL", []underlying.Row{aapl}, quarters())
 	m := build(t, i)
 	glosses := map[string]string{}
+	var labels []string
 	for _, c := range m["columns"].([]any) {
 		cm := c.(map[string]any)
+		labels = append(labels, cm["label"].(string))
 		g := cm["gloss"].(string)
 		if g == "" || strings.Count(g, ". ") > 0 {
 			t.Errorf("column %v gloss %q is not one sentence", cm["key"], g)
 		}
 		glosses[cm["label"].(string)] = g
 	}
-	for _, l := range []string{labelFilingDate, labelDilutedEPS, labelDilutedShares, labelFreeCashFlow, labelCapex, labelBuybacks} {
+	want := []string{"披露日 Filing date", "营收 Revenue", "营业利润 Operating income", "净利润 Net income", "稀释每股收益 Diluted EPS",
+		"稀释股数 Diluted shares", "经营现金流 Operating cash flow", "资本开支 Capex", "自由现金流 Free cash flow", "回购 Buybacks",
+		"分红 Dividends", "现金 Cash", "长期债务 Long-term debt", "短期债务 Short-term debt"}
+	if !slices.Equal(labels, want) {
+		t.Errorf("column labels = %q, want %q", labels, want)
+	}
+	for _, l := range []string{"披露日 Filing date", "稀释每股收益 Diluted EPS", "稀释股数 Diluted shares", "自由现金流 Free cash flow", "资本开支 Capex", "回购 Buybacks"} {
 		if glosses[l] == "" {
 			t.Errorf("no gloss for %s", l)
 		}
 	}
-	if glosses[labelFilingDate] != "the day the report was filed with the SEC; usually a few days after the earnings release; "+
+	if glosses["披露日 Filing date"] != "the day the report was filed with the SEC; usually a few days after the earnings release; "+
 		"your own report-day record is not changed" {
-		t.Errorf("filing date gloss = %q", glosses[labelFilingDate])
+		t.Errorf("filing date gloss = %q", glosses["披露日 Filing date"])
 	}
 }
 
