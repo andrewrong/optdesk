@@ -121,7 +121,9 @@ const golden = `{"schema":"macro_page","schema_version":1,"run_id":"run-1","buil
 	`"scope":"macro","generated_at":"2026-11-06T00:00:00+08:00",` +
 	`"data_times":[{"source":"DGS10","data_time":"2026-11-04T00:00:00+08:00"}],` +
 	`"run_status":"partial","title":"` + "\u5b8f\u89c2" + ` Macro","sentence":"Macro indicators come from stored series; ease and events: no data yet.",` +
-	`"ease_title":"` + "\u5bbd\u677e\u5ea6" + ` Ease","events_title":"` + "\u672c\u5468\u548c\u4e0b\u5468" + ` This week and next","indicators_title":"` + "\u6307\u6807" + ` Indicators","notes_title":"` + "\u8bf4\u660e" + ` Notes",` +
+	`"ease_title":"` + "\u5bbd\u677e\u5ea6" + ` Ease",` +
+	`"events_title":"` + "\u672c\u5468\u548c\u4e0b\u5468" + ` This week and next",` +
+	`"indicators_title":"` + "\u6307\u6807" + ` Indicators","notes_title":"` + "\u8bf4\u660e" + ` Notes",` +
 	`"ease":{"reason":"no_data","text":"Ease: no data yet"},"events":[],"indicators":[{"name":"Name DGS10",` +
 	`"latest":{"value":4.3,"text":"4.3%","unit":"percent"},"status":"good","label":"` + "\u6309\u65f6" + ` On time",` +
 	`"source_text":"FRED","detail_href":"/indicator/DGS10"},{"name":"Name DGS2",` +
