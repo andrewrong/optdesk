@@ -178,7 +178,7 @@ func TestSumsComeFromBooker(t *testing.T) {
 	b := r.build(t).Accounts[0].Books[0]
 	found := false
 	for _, l := range b.Lines {
-		if l.Label == "Total options P&L" {
+		if l.Label == lblTotalZh {
 			found = l.Text == "$999.99"
 		}
 	}
@@ -220,7 +220,7 @@ func TestNoQuotesCardNoZeroLines(t *testing.T) {
 			t.Errorf("line %s reads %q", l.Label, l.Text)
 		}
 	}
-	if texts["Ledger says"] != "$50.00" || texts["Commissions"] != "−$1.30" || texts["Reason"] != noQuotesZh ||
+	if texts[lblLedgerZh] != "$50.00" || texts[lblCommZh] != "−$1.30" || texts[lblReasonZh] != noQuotesZh ||
 		len(card.Lines) != 3 || card.DaysLine.Text != noQuoteDaysZh {
 		t.Fatalf("card = %+v", card)
 	}
@@ -239,12 +239,12 @@ func TestUnreconciledCardShowsReason(t *testing.T) {
 	for _, l := range card.Lines {
 		labels[l.Label] = true
 	}
-	for _, w := range []string{"Time (theta)", "Move cost (gamma)", "Direction (delta)", "Commissions", "Ledger says"} {
+	for _, w := range []string{lblTimeZh, lblMoveZh, lblDirZh, lblCommZh, lblLedgerZh} {
 		if !labels[w] {
 			t.Errorf("no %q line", w)
 		}
 	}
-	if labels["Total options P&L"] {
+	if labels[lblTotalZh] {
 		t.Error("an unreconciled lot has no total")
 	}
 	if card.Recon[0].Text != x.Reason || strings.Contains(card.Recon[0].Text, "difference $") || card.DaysLine.Text == "" {
@@ -435,7 +435,7 @@ func TestNoQuotesTextsAreChinese(t *testing.T) {
 	}
 	reason := ""
 	for _, l := range bbb.Lines {
-		if l.Label == "Reason" {
+		if l.Label == lblReasonZh {
 			reason = l.Text
 		}
 	}
@@ -443,7 +443,7 @@ func TestNoQuotesTextsAreChinese(t *testing.T) {
 		t.Errorf("reason = %q", reason)
 	}
 	for _, l := range aaa.Lines {
-		if l.Label == "Reason" && l.Text == noQuotesZh {
+		if l.Label == lblReasonZh && l.Text == noQuotesZh {
 			t.Errorf("card with quotes shows the no-quotes text")
 		}
 	}

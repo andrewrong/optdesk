@@ -50,7 +50,7 @@ func TestNumericCellsCarryValue(t *testing.T) {
 		t.Fatalf("gap = %+v", g)
 	}
 	m := asValue(t, moneynessCell(sampleOpen("p")))
-	if m.Text != "3.2%" || *m.Value != "3.20" || !hasBadge(m, "out of the money") {
+	if m.Text != "3.2%" || *m.Value != "3.20" || !hasBadge(m, badgeOtmZh) {
 		t.Fatalf("moneyness = %+v", m)
 	}
 }

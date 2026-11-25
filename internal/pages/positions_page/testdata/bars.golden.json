@@ -16,7 +16,7 @@
     }
   ],
   "run_status": "partial",
-  "title": "Positions",
+  "title": "持仓 Positions",
   "stale": {
     "data_time": "2026-11-10T09:00:00+08:00",
     "stale_after": "2026-11-14T09:00:00+08:00",
@@ -25,49 +25,49 @@
   "views": [
     {
       "key": "main",
-      "label": "Account (main)",
+      "label": "账户 Account (main)",
       "sentence": "Stocks 3 rows, options 1 legs.",
       "stocks": {
-        "title": "Stocks",
+        "title": "股票 Stocks",
         "columns": [
           {
             "id": "code",
-            "label": "Code",
+            "label": "代码 Code",
             "align": "left"
           },
           {
             "id": "name",
-            "label": "Name",
+            "label": "名称 Name",
             "align": "left"
           },
           {
             "id": "role",
-            "label": "Owner",
+            "label": "持有人 Owner",
             "align": "left"
           },
           {
             "id": "quantity",
-            "label": "Quantity",
+            "label": "数量 Quantity",
             "align": "right"
           },
           {
             "id": "cost",
-            "label": "Cost (per share)",
+            "label": "成本（每股） Cost (per share)",
             "align": "right"
           },
           {
             "id": "price",
-            "label": "Last price (per share)",
+            "label": "最新价（每股） Last price (per share)",
             "align": "right"
           },
           {
             "id": "day",
-            "label": "Day result",
+            "label": "当日结果 Day result",
             "align": "right"
           },
           {
             "id": "unrealised",
-            "label": "Unrealised result",
+            "label": "未实现结果 Unrealised result",
             "align": "right"
           }
         ],
@@ -82,8 +82,8 @@
               "value": "未存储名称"
             },
             "role": {
-              "text": "Account (main)",
-              "value": "Account (main)"
+              "text": "账户 Account (main)",
+              "value": "账户 Account (main)"
             },
             "quantity": {
               "value": 10,
@@ -129,8 +129,8 @@
               "value": "未存储名称"
             },
             "role": {
-              "text": "Account (main)",
-              "value": "Account (main)"
+              "text": "账户 Account (main)",
+              "value": "账户 Account (main)"
             },
             "quantity": {
               "value": 100,
@@ -176,8 +176,8 @@
               "value": "未存储名称"
             },
             "role": {
-              "text": "Account (main)",
-              "value": "Account (main)"
+              "text": "账户 Account (main)",
+              "value": "账户 Account (main)"
             },
             "quantity": {
               "value": 5,
@@ -214,61 +214,61 @@
         "gap": null
       },
       "options": {
-        "title": "Options",
+        "title": "期权 Options",
         "columns": [
           {
             "id": "code",
-            "label": "Code",
+            "label": "代码 Code",
             "align": "left"
           },
           {
             "id": "name",
-            "label": "Name",
+            "label": "名称 Name",
             "align": "left"
           },
           {
             "id": "expiry",
-            "label": "Expiry",
+            "label": "到期日 Expiry",
             "align": "left"
           },
           {
             "id": "days_left",
-            "label": "Days left",
+            "label": "剩余天数 Days left",
             "align": "right"
           },
           {
             "id": "role",
-            "label": "Owner",
+            "label": "持有人 Owner",
             "align": "left"
           },
           {
             "id": "quantity",
-            "label": "Quantity",
+            "label": "数量 Quantity",
             "align": "right"
           },
           {
             "id": "cost",
-            "label": "Cost (per share)",
+            "label": "成本（每股） Cost (per share)",
             "align": "right"
           },
           {
             "id": "price",
-            "label": "Last price (per share)",
+            "label": "最新价（每股） Last price (per share)",
             "align": "right"
           },
           {
             "id": "day",
-            "label": "Day result",
+            "label": "当日结果 Day result",
             "align": "right"
           },
           {
             "id": "unrealised",
-            "label": "Unrealised result",
+            "label": "未实现结果 Unrealised result",
             "align": "right"
           },
           {
             "id": "open_premium",
-            "label": "Open premium",
+            "label": "开仓权利金 Open premium",
             "align": "right"
           }
         ],
@@ -279,8 +279,8 @@
               "value": "XYZ 11-20 P100"
             },
             "name": {
-              "text": "XYZ Sell put",
-              "value": "XYZ Sell put"
+              "text": "XYZ 卖出看跌 Sell put",
+              "value": "XYZ 卖出看跌 Sell put"
             },
             "expiry": {
               "text": "2026-11-20",
@@ -292,8 +292,8 @@
               "unit": "days"
             },
             "role": {
-              "text": "Account (main)",
-              "value": "Account (main)"
+              "text": "账户 Account (main)",
+              "value": "账户 Account (main)"
             },
             "quantity": {
               "value": -1,
@@ -337,36 +337,36 @@
         "gap": null
       },
       "trades": {
-        "title": "Recent trades",
+        "title": "最近成交 Recent trades",
         "columns": [
           {
             "id": "time",
-            "label": "Time",
+            "label": "时间 Time",
             "align": "left"
           },
           {
             "id": "account",
-            "label": "Account",
+            "label": "账户 Account",
             "align": "left"
           },
           {
             "id": "action",
-            "label": "Action",
+            "label": "动作 Action",
             "align": "left"
           },
           {
             "id": "instrument",
-            "label": "Underlying · structure",
+            "label": "标的 · 结构 Underlying · structure",
             "align": "left"
           },
           {
             "id": "quantity",
-            "label": "Quantity",
+            "label": "数量 Quantity",
             "align": "right"
           },
           {
             "id": "price",
-            "label": "Price",
+            "label": "价格 Price",
             "align": "right"
           }
         ],
@@ -384,19 +384,19 @@
   "gaps": [
     {
       "reason": "no_data",
-      "text": "Stocks, Options: Day result needs the previous trading day price: no data yet"
+      "text": "股票 Stocks, 期权 Options: Day result needs the previous trading day price: no data yet"
     }
   ],
   "accounts": [
     {
       "key": "main",
-      "label": "Account (main)",
+      "label": "账户 Account (main)",
       "href": "/positions?account=main",
       "current": true
     },
     {
       "key": "wife",
-      "label": "Account (wife)",
+      "label": "账户 Account (wife)",
       "href": "/positions?account=wife",
       "current": false
     }
