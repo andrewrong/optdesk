@@ -132,7 +132,7 @@ Acceptance:
 
 ### 4 option-limits-pyside-pacing
 
-Module: pyside. Size: M. Order: first. Files: `pyside/src/optdesk/ibkr/pacing.py`, `pyside/src/optdesk/ibkr/server.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/tests/ibkr/test_pacing.py`, `pyside/tests/ibkr/test_server.py`.
+Module: pyside. Size: M. Order: first. Files: `pyside/src/optdesk/ibkr/pacing.py`, `pyside/src/optdesk/ibkr/server.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/tests/ibkr/test_pacing.py`, `pyside/tests/ibkr/test_server.py`, `pyside/tests/ibkr/test_ibgateway.py`.
 
 Acceptance:
 1. A cancel takes no slot: `test_pacer_counts_cancels` is replaced by a new test `test_a_cancel_takes_no_start_slot` that sends 40 starts and 40 cancels in one second and expects all cancels sent at once and the 41st start waiting; the docstring of `MessagePacer` says a cancel is not a start, and a cancel in a finally still never waits (`test_cancel_in_finally_does_not_block` passes).
