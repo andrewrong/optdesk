@@ -200,7 +200,7 @@ func TestBarPricedRowFillsFigures(t *testing.T) {
 		t.Fatalf("day = %q", got)
 	}
 	gap := at0(t, m, "gaps", 0, "text")
-	if gap != "Options: Day result needs the previous trading day price: no data yet" {
+	if gap != "期权 Options: Day result needs the previous trading day price: no data yet" {
 		t.Fatalf("gap = %v", gap)
 	}
 }
