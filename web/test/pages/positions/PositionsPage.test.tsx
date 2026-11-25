@@ -302,4 +302,23 @@ describe('PositionsPage', () => {
     await show(old)
     expect(host.querySelector('[data-table=options]')!.querySelectorAll('th')).toHaveLength(8)
   })
+
+  it('renders one link per account and marks the current one', async () => {
+    await show(fixture('ok.json'))
+    const nav = host.querySelector('nav')!
+    expect(nav.className).toContain('min-w-0')
+    expect(nav.className).toContain('flex-wrap')
+    const links = [...nav.querySelectorAll('a')]
+    expect(links.map((a) => a.textContent)).toEqual(['Me', 'Wife'])
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/positions', '/positions?account=wife'])
+    expect(links.map((a) => a.getAttribute('aria-current'))).toEqual(['page', null])
+    expect(links[0]?.parentElement).toBe(links[1]?.parentElement)
+  })
+
+  it('draws no account row without accounts', async () => {
+    const payload = fixture('ok.json')
+    delete payload.accounts
+    await show(payload)
+    expect(host.querySelector('nav')).toBeNull()
+  })
 })
