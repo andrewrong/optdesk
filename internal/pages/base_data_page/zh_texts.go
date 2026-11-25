@@ -128,5 +128,5 @@ const (
 // Formats of the failed-check summary of a row: the rule name stays English.
 const (
 	failedGapFormat    = "%s %d 天"
-	failedLatestFormat = "%s 共 %[3]d 个键，缺失或过期 %[2]d 个（%[4]s%%）"
+	failedLatestFormat = "%s 缺失或过期 %d 个，共 %d 个键（%s%%）"
 )

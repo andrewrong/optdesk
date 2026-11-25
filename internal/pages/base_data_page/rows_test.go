@@ -18,7 +18,7 @@ func TestFailedSummaryNamesWarnAndFail(t *testing.T) {
 		{Rule: "coverage_latest", Level: basecheckapi.Warn, N: 75, Bad: 4, Share: "0.0533"},
 		{Rule: "empty", Level: basecheckapi.Unknown, Share: "0.5"},
 	})
-	if want := "coverage_gap 3 天; crossed 2.1%; age; coverage_latest 共 75 个键，缺失或过期 4 个（5.33%）"; got != want {
+	if want := "coverage_gap 3 天; crossed 2.1%; age; coverage_latest 缺失或过期 4 个，共 75 个键（5.33%）"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
@@ -77,7 +77,7 @@ func TestCoverageLatestSummaryAndLabel(t *testing.T) {
 		t.Fatalf("label %q", list[0].Label)
 	}
 	got := failedSummary(checks)
-	for _, w := range []string{"共 75 个键，缺失或过期 4 个", "5.33%"} {
+	for _, w := range []string{"缺失或过期 4 个，共 75 个键", "5.33%"} {
 		if !strings.Contains(got, w) {
 			t.Fatalf("summary %q lacks %q", got, w)
 		}
@@ -114,5 +114,16 @@ func TestFailedSummaryCoverageFormsAreChinese(t *testing.T) {
 				t.Errorf("%q lacks %q", c.part, n)
 			}
 		}
+	}
+}
+
+// TestFailedSummaryLatestKeepsMissingBeforeKeyCount: the missing count comes before the key count.
+func TestFailedSummaryLatestKeepsMissingBeforeKeyCount(t *testing.T) {
+	t.Parallel()
+	got := failedSummary([]basecheckapi.Check{
+		{Rule: "coverage_latest", Level: basecheckapi.Warn, N: 75, Bad: 4, Share: "0.0533"},
+	})
+	if i, j := strings.Index(got, " 4 "), strings.Index(got, "75"); i < 0 || j < 0 || i > j {
+		t.Fatalf("%q: missing count must come before key count", got)
 	}
 }
