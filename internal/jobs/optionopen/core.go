@@ -241,14 +241,14 @@ func (c *Core) stock(ctx context.Context, st *runState, all []Target) {
 			return // the call was only cut: no row
 		}
 		status, ecode := callStatus(err)
-		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", ecode, "err", err.Error(), "items", len(ts))
+		c.warnSpot(ts, ecode, err)
 		if status == stDisconnected {
 			c.callFailed(st, ts, err)
 			return
 		}
 		spot, spotTs = 0, nil
 	} else if spot <= 0 {
-		c.logger().Warn("spot not read", "symbol", ts[0].Under.Symbol, "code", code, "items", len(ts))
+		c.warnSpot(ts, code, nil)
 	}
 	if spot <= 0 {
 		// No spot, no band: the plan items are asked as they are and their rows carry no underlying price.
@@ -738,4 +738,13 @@ func roundDelta(v *float64) *float64 {
 		return v
 	}
 	return &r
+}
+
+// warnSpot writes the one "spot not read" line of a name, with its code and, for a failed call, the error.
+func (c *Core) warnSpot(ts []Target, code string, err error) {
+	args := []any{"symbol", ts[0].Under.Symbol, "code", code}
+	if err != nil {
+		args = append(args, "err", err.Error())
+	}
+	c.logger().Warn("spot not read", append(args, "items", len(ts))...)
 }
