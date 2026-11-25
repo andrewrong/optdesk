@@ -9,6 +9,7 @@
     "shortlist.ts",
     "stale.ts",
     "bycompany.ts",
+    "nameoutcomes.ts",
     "tiers-null.ts",
     "tiers.ts",
     "valueline.ts"

@@ -38,7 +38,7 @@ func TestGapsSinceClearedAfterSince(t *testing.T) {
 	t.Parallel()
 	cleared := gapSince.Add(time.Hour)
 	first := gapSince.Add(-48 * time.Hour)
-	got := gapsSince(t, &recDB{fakeDB: fakeDB{rows: [][]any{gapRow("", "obs.series_point", "2026-11-05", first, &cleared)}}})
+	got := gapsSince(t, &recDB{rows: [][]any{gapRow("", "obs.series_point", "2026-11-05", first, &cleared)}})
 	if len(got) != 1 {
 		t.Fatalf("got %+v", got)
 	}
@@ -52,7 +52,7 @@ func TestGapsSinceClearedAfterSince(t *testing.T) {
 func TestGapsSinceOpenFirstSeenAfterSince(t *testing.T) {
 	t.Parallel()
 	first := gapSince.Add(time.Minute)
-	db := &recDB{fakeDB: fakeDB{rows: [][]any{gapRow("fred", "", "2026-11-08", first, nil)}}}
+	db := &recDB{rows: [][]any{gapRow("fred", "", "2026-11-08", first, nil)}}
 	got := gapsSince(t, db)
 	if len(got) != 1 || got[0].JobID != "fred" || !got[0].ClearedAt.IsZero() || !got[0].FirstSeenAt.Equal(first) {
 		t.Fatalf("got %+v", got)
@@ -66,12 +66,12 @@ func TestGapsSinceOrder(t *testing.T) {
 	t.Parallel()
 	t1 := gapSince.Add(time.Hour)
 	t2 := gapSince.Add(2 * time.Hour)
-	db := &recDB{fakeDB: fakeDB{rows: [][]any{
+	db := &recDB{rows: [][]any{
 		gapRow("", "b", "2026-11-05", t2, nil),
 		gapRow("", "b", "2026-11-04", t1, nil),
 		gapRow("", "a", "2026-11-04", t1, nil),
 		gapRow("", "a", "2026-11-03", t1, nil),
-	}}}
+	}}
 	got := gapsSince(t, db)
 	want := []struct{ ds, day string }{{"a", "2026-11-03"}, {"a", "2026-11-04"}, {"b", "2026-11-04"}, {"b", "2026-11-05"}}
 	if len(got) != len(want) {

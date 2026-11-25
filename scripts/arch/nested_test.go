@@ -131,7 +131,7 @@ func componentsOfYAML(yml string) []component {
 	_, body, _ := strings.Cut(yml, "\ncomponents:\n")
 	body, _, _ = strings.Cut(body, "\ndeps:\n")
 	var out []component
-	for _, l := range strings.Split(body, "\n") {
+	for l := range strings.SplitSeq(body, "\n") {
 		switch {
 		case strings.HasPrefix(l, "    in: "):
 			out[len(out)-1].dir = strings.TrimPrefix(l, "    in: ")
@@ -147,7 +147,7 @@ func depsOfYAML(yml, name string) []string {
 	_, deps, _ := strings.Cut(yml, "\ndeps:\n")
 	var out []string
 	in := false
-	for _, l := range strings.Split(deps, "\n") {
+	for l := range strings.SplitSeq(deps, "\n") {
 		switch {
 		case strings.HasPrefix(l, "  ") && !strings.HasPrefix(l, "   "):
 			in = strings.TrimSuffix(strings.TrimSpace(l), ":") == name

@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -40,7 +41,8 @@ func TestUnderlyingsV1Fixtures(t *testing.T) {
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
 		err := s.Validate(loadUnderlyingsV1(t, "bad-version"))
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}
@@ -210,7 +212,7 @@ func TestUnderlyingsFollowTable(t *testing.T) {
 		}
 	}
 	for _, st := range []string{"pending", "active", "paused", "retired", "unresolved"} {
-		for n := 0; n < 16; n++ {
+		for n := range 16 {
 			k := key{st, n&1 != 0, n&2 != 0, n&4 != 0, n&8 != 0}
 			if !seen[k] {
 				t.Errorf("no case for %+v", k)

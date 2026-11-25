@@ -12,8 +12,7 @@ import (
 )
 
 func kindOf(err error) (contracts.ErrorKind, bool) {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te.Kind(), true
 	}
 	return contracts.Retryable, false

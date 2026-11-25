@@ -119,8 +119,7 @@ func (d pgDB) Close() error {
 
 // asTyped keeps a typed error and makes any other error from the database a Retryable one.
 func asTyped(err error, op string) error {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); ok {
 		return err
 	}
 	return retryable(fmt.Errorf("instrument: %s: %w", op, err))

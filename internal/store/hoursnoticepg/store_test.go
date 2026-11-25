@@ -45,7 +45,6 @@ func (f *fakeDB) InTx(_ context.Context, fn func(execer) error) error {
 func (f *fakeDB) Select(_ context.Context, sql string, row func(func(...any) error) error) error {
 	f.events = append(f.events, sql)
 	for _, r := range f.rows {
-		r := r
 		if err := row(func(dest ...any) error {
 			for i, d := range dest {
 				*(d.(*string)) = r[i]
