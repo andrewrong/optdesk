@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // positionsAccount notes the alias of each positions read too (householdAccount notes values only).
@@ -122,6 +123,29 @@ func TestPositionsPageGetsBarsAndStockIDs(t *testing.T) {
 	} {
 		if cfg.Bars != nil || cfg.StockIDs != nil {
 			t.Fatalf("%s: a site with neither reader gave Bars %v StockIDs %v", name, cfg.Bars, cfg.StockIDs)
+		}
+	}
+}
+
+type positionsRegistry struct{ underlying.Reader }
+
+func TestPositionsConfigCarriesRegistry(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	reg := positionsRegistry{}
+	rd := siteReaders{underlying: reg}
+	for name, got := range map[string]any{
+		"site": positionsPageConfig(a, rd).Underlyings, "named": positionsNamedConfig(a, rd).Underlyings,
+	} {
+		if got != reg {
+			t.Fatalf("%s: Underlyings %v, want the registry reader of the site", name, got)
+		}
+	}
+	for name, cfg := range map[string]positions_page.Config{
+		"site": positionsPageConfig(a, siteReaders{}), "named": positionsNamedConfig(a, siteReaders{}),
+	} {
+		if cfg.Underlyings != nil {
+			t.Fatalf("%s: a site without a registry gave Underlyings %v", name, cfg.Underlyings)
 		}
 	}
 }
