@@ -220,8 +220,7 @@ func TestEmptyLabelNoteBeforeRefetch(t *testing.T) {
 		t.Fatalf("labels = %v", rows)
 	}
 	notes := m["notes"].([]any)
-	if len(notes) != 1 || notes[0] != "Fiscal-year labels (for example FY2025 Q3) appear after the next daily run of fundamentals "+
-		"re-fetches the SEC filings; until then a quarter is named by its end date." {
+	if len(notes) != 1 || notes[0] != noteNoLabel {
 		t.Fatalf("notes = %v", notes)
 	}
 	qs = quarters()
@@ -269,5 +268,60 @@ func TestReadErrorIsGap(t *testing.T) {
 	m := build(t, i)
 	if len(m["gaps"].([]any)) != 1 {
 		t.Fatalf("gaps = %v", m["gaps"])
+	}
+}
+
+func hasHan(s string) bool {
+	for _, r := range s {
+		if r >= 0x4e00 && r <= 0x9fff {
+			return true
+		}
+	}
+	return false
+}
+
+func TestGapAndReasonTextsAreChinese(t *testing.T) {
+	t.Parallel()
+	jp := aapl
+	jp.Market = "JP"
+	noCIK := aapl
+	noCIK.Issuer = ""
+	rows := []underlying.Row{aapl}
+	gapCases := map[string]func() Input{
+		"unknown": func() Input { i, _ := in("US:NOPE", rows, quarters()); return i },
+		"no_cik":  func() Input { i, _ := in("US:AAPL", []underlying.Row{noCIK}, quarters()); return i },
+		"jp":      func() Input { i, _ := in("US:AAPL", []underlying.Row{jp}, quarters()); return i },
+		"empty":   func() Input { i, _ := in("US:AAPL", rows, nil); return i },
+		"failed": func() Input {
+			i, _ := in("US:AAPL", nil, nil)
+			i.Underlyings = fakeUnderlyings{err: errors.New("down")}
+			return i
+		},
+	}
+	for name, mk := range gapCases {
+		gaps := build(t, mk())["gaps"].([]any)
+		if len(gaps) != 1 {
+			t.Fatalf("%s: gaps = %v", name, gaps)
+		}
+		if text := gaps[0].(map[string]any)["text"].(string); !hasHan(text) {
+			t.Errorf("%s: gap text %q has no Chinese character", name, text)
+		}
+	}
+	for _, why := range []companydataapi.Why{companydataapi.WhyNoFact, companydataapi.WhyCannotDerive,
+		companydataapi.WhyPeriodMismatch, companydataapi.WhyShareBasisChanged} {
+		qs := quarters()
+		qs[0].Capex = companydataapi.Cell{Missing: true, Why: why}
+		i, _ := in("US:AAPL", rows, qs)
+		c := build(t, i)["quarters"].([]any)[0].(map[string]any)["cells"].(map[string]any)["capex"].(map[string]any)
+		if text, _ := c["why_text"].(string); !hasHan(text) {
+			t.Errorf("reason %v: text %q has no Chinese character", why, text)
+		}
+	}
+	qs := quarters()
+	qs[0].Capex = companydataapi.Cell{Missing: true}
+	i, _ := in("US:AAPL", rows, qs)
+	c := build(t, i)["quarters"].([]any)[0].(map[string]any)["cells"].(map[string]any)["capex"].(map[string]any)
+	if text, _ := c["why_text"].(string); !hasHan(text) {
+		t.Errorf("generic reason %q has no Chinese character", text)
 	}
 }
