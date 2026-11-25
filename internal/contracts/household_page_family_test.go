@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"maps"
 	"testing"
 )
 
@@ -14,9 +15,7 @@ func familyInstance(t *testing.T, extra map[string]any) map[string]any {
 	if !ok {
 		t.Fatal("household page: not an object schema")
 	}
-	for k, v := range extra {
-		inst[k] = v
-	}
+	maps.Copy(inst, extra)
 	return inst
 }
 

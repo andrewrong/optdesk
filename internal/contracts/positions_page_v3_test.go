@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,11 +30,9 @@ func withViews(t *testing.T, n int, key func(i int) string) map[string]any {
 	m := positionsOK(t)
 	first := m["views"].([]any)[0].(map[string]any)
 	out := make([]any, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := map[string]any{}
-		for k, x := range first {
-			v[k] = x
-		}
+		maps.Copy(v, first)
 		v["key"] = key(i)
 		out = append(out, v)
 	}

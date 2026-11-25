@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -39,7 +40,8 @@ func TestMacroRatesV3Fixtures(t *testing.T) {
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
 		err := s.Validate(loadMacroRatesV3(t, "bad-version"))
-		ve, ok := err.(*jsonschema.ValidationError)
+		var ve *jsonschema.ValidationError
+		ok := errors.As(err, &ve)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
 		}
