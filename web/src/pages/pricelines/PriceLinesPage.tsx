@@ -34,7 +34,7 @@ function Tokens({ form }: { form: Payload['form'] }) {
 
 function MarketSelect({ markets, value }: { markets: readonly Market[]; value?: Market }) {
   return (
-    <select name="market" defaultValue={value} className={FIELD} aria-label="market">
+    <select name="market" defaultValue={value} className={FIELD} aria-label="市场">
       {markets.map((market) => (
         <option key={market} value={market}>
           {market}
@@ -47,8 +47,8 @@ function MarketSelect({ markets, value }: { markets: readonly Market[]; value?: 
 function PriceNoteInputs({ price, note }: { price?: string; note?: string }) {
   return (
     <>
-      <input name="price" defaultValue={price} className={FIELD} aria-label="price" />
-      <input name="note" defaultValue={note} className={FIELD} aria-label="note" />
+      <input name="price" defaultValue={price} className={FIELD} aria-label="价格" />
+      <input name="note" defaultValue={note} className={FIELD} aria-label="备注" />
     </>
   )
 }
@@ -56,7 +56,7 @@ function PriceNoteInputs({ price, note }: { price?: string; note?: string }) {
 function Fields({ markets, symbol, market }: { markets: readonly Market[]; symbol?: string; market?: Market }) {
   return (
     <>
-      <input name="symbol" defaultValue={symbol} className={FIELD} aria-label="code" />
+      <input name="symbol" defaultValue={symbol} className={FIELD} aria-label="代码" />
       <MarketSelect markets={markets} value={market} />
       <PriceNoteInputs />
     </>
@@ -86,10 +86,10 @@ function SavedRow({ row, form }: { row: Payload['rows'][number]; form: Payload['
           <input type="hidden" name="market" value={row.market} />
           <PriceNoteInputs price={row.price ?? ''} note={row.note ?? ''} />
           <Button type="submit" name="action" value="save">
-            Save
+            {'保存'}
           </Button>
           <Button type="submit" name="action" value="delete" variant="destructive">
-            Delete
+            {'删除'}
           </Button>
         </form>
       </TableCell>
@@ -119,16 +119,16 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>Price lines</CardTitle>
+          <CardTitle>{'价位线 (Price lines)'}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Market</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Note</TableHead>
+                <TableHead>{'代码'}</TableHead>
+                <TableHead>{'市场'}</TableHead>
+                <TableHead>{'价格'}</TableHead>
+                <TableHead>{'备注'}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -142,7 +142,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Add</CardTitle>
+          <CardTitle>{'添加'}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-xs text-muted-foreground">{add.hint}</p>
@@ -150,7 +150,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
             <Tokens form={form} />
             <Fields markets={add.markets} />
             <Button type="submit" name="action" value="save">
-              Save
+              {'保存'}
             </Button>
           </form>
         </CardContent>
@@ -158,7 +158,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
       {payload.unset.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Positions without a price line</CardTitle>
+            <CardTitle>{'未设价位线的持仓'}</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2" data-unset>
@@ -168,7 +168,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
                     <Tokens form={form} />
                     <Fields markets={add.markets} symbol={row.symbol} market={row.market} />
                     <Button type="submit" name="action" value="save">
-                      Save
+                      {'保存'}
                     </Button>
                   </form>
                 </li>
