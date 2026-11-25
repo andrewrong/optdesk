@@ -97,7 +97,7 @@ func TestAllShortIsRetryable(t *testing.T) {
 
 func seedContracts(t *testing.T, g *lrig, id int64, class string, expiry contracts.Day, n int) {
 	t.Helper()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r := []string{"C", "P"}[i%2]
 		require.NoError(t, g.opts.PutOption(context.Background(), openquote.OptionRef{UnderlyingID: id, TradingClass: class,
 			Expiry: expiry, Strike: fmt.Sprint(50 + i/2), Right: r, Multiplier: "100"}))
@@ -277,7 +277,7 @@ func TestNameWithSomeGroupsShortIsSomeShort(t *testing.T) {
 func TestBudgetStopWithSomethingListedIsErrNilAndPartial(t *testing.T) {
 	t.Parallel()
 	var syms []string
-	for i := 0; i < 45; i++ {
+	for i := range 45 {
 		syms = append(syms, fmt.Sprintf("N%02d", i))
 	}
 	g := newLRig(t, syms...)

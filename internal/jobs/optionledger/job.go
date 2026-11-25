@@ -11,6 +11,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
 
@@ -311,8 +312,7 @@ func (r *run) fetch(ctx context.Context, l FlexRun, queryID string, w window) st
 	rec.FinishedAt = r.j.clk.Now()
 	if err != nil {
 		rec.Status = statusFailed
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if te, ok := errors.AsType[contracts.TypedError](err); ok {
 			rec.ErrorKind = string(te.Kind())
 		} else {
 			rec.ErrorKind = "bad_report"

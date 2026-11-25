@@ -3,6 +3,7 @@ package computefigures
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -28,10 +29,8 @@ func (j *job) isVolID(id string) bool {
 // volIDs are the ids the vol step plans for a name; market.rv20 is planned by runRv20 for an index name.
 func (j *job) volIDs(name string) []string {
 	ids := []string{j.m.Rv60, j.m.Rv120, j.m.VolForecast, j.m.VolEdge, j.m.VolForecastErr}
-	for _, n := range j.m.Rv20Indices {
-		if n == name {
-			return ids
-		}
+	if slices.Contains(j.m.Rv20Indices, name) {
+		return ids
 	}
 	return append([]string{j.m.Rv20}, ids...)
 }
@@ -156,8 +155,7 @@ func (r *runState) impliedOf(name string) (compute.Figure, string, bool) {
 		r.failStore(fmt.Errorf("computefigures: %s readings: %w", r.j.m.IvIbkr, err))
 		return compute.Figure{}, "", false
 	}
-	for i := len(rows) - 1; i >= 0; i-- {
-		rec := rows[i]
+	for _, rec := range slices.Backward(rows) {
 		if rec.State != "ok" || rec.Value == nil || dayOf(rec.Day) != r.day {
 			continue
 		}
@@ -195,10 +193,8 @@ func volParams(rule compute.Rule, days []dayParam) paramsOf {
 // empty manifest key is an error.
 func (j *job) volRuleIDs() ([]string, error) {
 	ids := []string{j.m.Rv60, j.m.Rv120, j.m.VolForecast, j.m.VolEdge, j.m.VolForecastErr}
-	for _, id := range ids {
-		if id == "" {
-			return nil, errors.New("computefigures: manifest: no vol ids")
-		}
+	if slices.Contains(ids, "") {
+		return nil, errors.New("computefigures: manifest: no vol ids")
 	}
 	return ids, nil
 }

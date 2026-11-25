@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -73,7 +74,7 @@ func ivInputCounted(ctx context.Context, s inputs, underlyingID int64, day contr
 	for id := range latest {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	terms := map[int64]termsRow{}
 	for _, c := range chunks(ids) {
 		got, err := s.Terms.OptionTerms(ctx, c)
@@ -211,11 +212,11 @@ func rateOf(ctx context.Context, s inputs, day contracts.Day) (compute.Point, er
 		return compute.Point{}, fmt.Errorf("computefigures: rate series: %w", err)
 	}
 	series := s.ops.FromSeriesPoints(pts)
-	for i := len(series) - 1; i >= 0; i-- {
-		if series[i].Day > day {
+	for _, pt := range slices.Backward(series) {
+		if pt.Day > day {
 			continue
 		}
-		p := compute.Point{Day: series[i].Day, Value: s.units.PercentToDecimal(series[i].Value)}
+		p := compute.Point{Day: pt.Day, Value: s.units.PercentToDecimal(pt.Value)}
 		if daysBetween(p.Day, day) > s.rateMaxAge {
 			return p, errStaleRate
 		}

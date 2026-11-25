@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"strconv"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -112,9 +113,7 @@ func (s *shadowRun) rows(puts []store.Candidate) ([]strategyresult.Row, error) {
 			return nil, err
 		}
 		facts := make(map[string]string, len(e.Facts)+1)
-		for k, v := range e.Facts {
-			facts[k] = v
-		}
+		maps.Copy(facts, e.Facts)
 		if m, ok := written[e.Key]; ok {
 			facts["marks"] = m
 		}

@@ -52,7 +52,7 @@ func TestResolvePairsInFlight(t *testing.T) {
 		}
 		done <- got
 	}()
-	for i := 0; i < resolveInFlight; i++ { // the pool fills to its width
+	for range resolveInFlight { // the pool fills to its width
 		<-entered
 	}
 	go func() {
@@ -138,10 +138,10 @@ func TestResolvePairsFirstErrorInOrder(t *testing.T) {
 		_, terr := resolvePairs(context.Background(), resolve, strikePairs(40), noBudget)
 		done <- terr
 	}()
-	for i := 0; i < resolveInFlight; i++ { // pairs 0..4 are the five in flight
+	for range resolveInFlight { // pairs 0..4 are the five in flight
 		<-started
 	}
-	for i := 0; i < 1000; i++ { // let the failure of pair 3 be recorded before the others end
+	for range 1000 { // let the failure of pair 3 be recorded before the others end
 		runtime.Gosched()
 	}
 	close(release)

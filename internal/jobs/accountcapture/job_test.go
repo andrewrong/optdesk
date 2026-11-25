@@ -337,15 +337,14 @@ func TestDegradedLogCarriesAliasAndStatusOnly(t *testing.T) {
 func TestResultCarriesAliasAndStatusOnly(t *testing.T) {
 	t.Parallel()
 	// The error of the run is a string-only type; JobResult's only numbers are the two counts of aliases.
-	typ := reflect.TypeOf(typedError{})
-	for i := 0; i < typ.NumField(); i++ {
-		if k := typ.Field(i).Type.Kind(); k != reflect.String && k != reflect.Int {
-			t.Errorf("%s.%s is %s", typ.Name(), typ.Field(i).Name, typ.Field(i).Type)
+	typ := reflect.TypeFor[typedError]()
+	for field := range typ.Fields() {
+		if k := field.Type.Kind(); k != reflect.String && k != reflect.Int {
+			t.Errorf("%s.%s is %s", typ.Name(), field.Name, field.Type)
 		}
 	}
-	rt := reflect.TypeOf(contracts.JobResult{})
-	for i := 0; i < rt.NumField(); i++ {
-		f := rt.Field(i)
+	rt := reflect.TypeFor[contracts.JobResult]()
+	for f := range rt.Fields() {
 		if f.Type.Kind() == reflect.Int {
 			if f.Name != "Returned" && f.Name != "Usable" {
 				t.Errorf("JobResult.%s is numeric", f.Name)

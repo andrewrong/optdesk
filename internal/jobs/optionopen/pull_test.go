@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -114,7 +115,7 @@ func seed(stocks, perStock int) *pullStores {
 	for u := 1; u <= stocks; u++ {
 		s.insts = append(s.insts, store.Instrument{ID: int64(u), Spec: store.InstrumentSpec{Type: "stock", Name: "S" + strconv.Itoa(u), Currency: "USD"},
 			Identifiers: []store.Identifier{conidOf(int64(u))}})
-		for k := 0; k < perStock; k++ {
+		for k := range perStock {
 			id := int64(u*1000 + k)
 			strike := strconv.Itoa(95 - k)
 			right := "P"
@@ -274,7 +275,7 @@ func TestPostconditionOkShareOfTheItemsNotDeferred(t *testing.T) {
 	b := newFake(100)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		qs := okQuotes(b.clk, cs)
-		for i := 0; i < 6; i++ { // 4 ok of 10: under 0.5
+		for i := range 6 { // 4 ok of 10: under 0.5
 			qs[i] = broker.Quote{Contract: cs[i], Status: broker.StatusNoData, ReceivedAt: b.clk.Now()}
 		}
 		return qs, nil
@@ -357,7 +358,8 @@ func TestPlanReturnsTheRetryableErrorOfTheStore(t *testing.T) {
 	s := seed(1, 1)
 	s.planErr = errors.New("db down")
 	_, _, err := newPull(t, s, newFake(100)).Plan(context.Background(), pullDay)
-	if err == nil || err.(contracts.TypedError).Kind() != contracts.Retryable {
+	var typed contracts.TypedError
+	if !errors.As(err, &typed) || typed.Kind() != contracts.Retryable {
 		t.Fatalf("Plan err %v", err)
 	}
 }
@@ -513,7 +515,7 @@ func TestPartialRowsUnderShareAreRetryable(t *testing.T) {
 	b := newFake(100)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		qs := okQuotes(b.clk, cs)
-		for i := 0; i < 6; i++ { // a bid and no ask or IV: partial
+		for i := range 6 { // a bid and no ask or IV: partial
 			bid := qs[i].Bid
 			qs[i] = broker.Quote{Contract: cs[i], Status: broker.StatusOK, Bid: bid, ReceivedAt: b.clk.Now()}
 		}
@@ -534,7 +536,7 @@ func TestPullPartialUnchangedPermanent(t *testing.T) {
 	b := newFake(100)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		qs := okQuotes(b.clk, cs)
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			bid := qs[i].Bid
 			qs[i] = broker.Quote{Contract: cs[i], Status: broker.StatusOK, Bid: bid, ReceivedAt: b.clk.Now()}
 		}
@@ -545,9 +547,7 @@ func TestPullPartialUnchangedPermanent(t *testing.T) {
 		t.Fatalf("first run: %v, want Retryable", res.Err)
 	}
 	before := map[string]contracts.OptionOpen{}
-	for k, r := range s.stored {
-		before[k] = r
-	}
+	maps.Copy(before, s.stored)
 	res := runAll(t, j)
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
 		t.Fatalf("second run: %v, want Permanent", res.Err)
@@ -572,7 +572,7 @@ func TestPullPartialUnchangedLeavesRowsWhenClockMoves(t *testing.T) {
 	b := newFake(100)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		qs := okQuotes(b.clk, cs)
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			qs[i] = broker.Quote{Contract: cs[i], Status: broker.StatusOK, Bid: qs[i].Bid, ReceivedAt: b.clk.Now()}
 		}
 		return qs, nil
@@ -580,9 +580,7 @@ func TestPullPartialUnchangedLeavesRowsWhenClockMoves(t *testing.T) {
 	j := newPull(t, s, b)
 	runAll(t, j)
 	before := map[string]contracts.OptionOpen{}
-	for k, r := range s.stored {
-		before[k] = r
-	}
+	maps.Copy(before, s.stored)
 	b.clk.Advance(time.Minute)
 	res := runAll(t, j)
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent {

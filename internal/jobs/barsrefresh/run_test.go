@@ -495,13 +495,13 @@ func TestConIDKeptBetweenRuns(t *testing.T) {
 			t.Parallel()
 			h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "50.0000"))}
 			st := &memBars{}
-			b := &failFirstBroker{fakeBroker: fakeBroker{listed: true}, failFirst: tc.failFirst}
+			b := &failFirstBroker{listed: true, failFirst: tc.failFirst}
 			j, err := newJob(b, h, fakeResolver{}, st, st, nil, fixedClock{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			j.(*job).m.AdjustedCadenceDays = 0
-			for i := 0; i < 2; i++ {
+			for range 2 {
 				j.Run(context.Background(), runDay, keysOf("index:SPX"))
 			}
 			if b.resolved != tc.want {

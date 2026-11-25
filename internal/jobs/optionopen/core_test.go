@@ -437,7 +437,7 @@ func TestGroupsAreByExpiryAndChunked(t *testing.T) {
 	t.Parallel()
 	b := newFake(100)
 	var ts []Target
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		ts = append(ts, target(1, 10+i, ClassPuts, 90+float64(i), Put))
 	}
 	ts[0].Strike = 95 // the strike at or below the spot is around_spot, the others puts
@@ -706,7 +706,7 @@ func TestPullLogsEveryRowThatIsNotOkWithItsAbsentFields(t *testing.T) {
 	c.Log = slog.New(slog.NewTextHandler(&buf, nil))
 	c.Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put), target(1, 12, ClassPuts, 90, Put), target(1, 13, ClassPuts, 80, Put)})
 	var lines []string
-	for _, l := range strings.Split(buf.String(), "\n") {
+	for l := range strings.SplitSeq(buf.String(), "\n") {
 		if strings.Contains(l, "option_open row not ok") {
 			lines = append(lines, l)
 		}

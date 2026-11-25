@@ -98,8 +98,7 @@ func (j calendarJob) Run(ctx context.Context, day contracts.Day, _ []contracts.E
 	}
 	fresh, err := j.src.SessionDays(ctx, "XNYS", from, to)
 	if err != nil {
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if te, ok := errors.AsType[contracts.TypedError](err); ok {
 			return contracts.JobResult{Err: te}
 		}
 		return contracts.JobResult{Err: kindErr{contracts.Permanent}}

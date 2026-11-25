@@ -638,7 +638,7 @@ func TestErrorAnswerForFailedMarketAsBefore(t *testing.T) {
 	usSrc := &fakeSource{err: codedErr{"http_status"}}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": usSrc}, st, us("cik:1", "A"))
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		res := j.Run(context.Background(), day, keyOf("cik:1"))
 		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "earningsrefresh: us: http_status" {
 			t.Fatalf("run %d: err %v", i, res.Err)

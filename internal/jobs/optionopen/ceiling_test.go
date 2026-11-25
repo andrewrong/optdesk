@@ -10,7 +10,7 @@ import (
 // for 100 names, four for the other 250) and 800 calls (three a name for 100 names, two for the other 250).
 func rankFixture() []NameInput {
 	var out []NameInput
-	for i := 0; i < 350; i++ {
+	for i := range 350 {
 		puts, calls := 4, 2
 		if i < 100 {
 			puts, calls = 5, 3
@@ -90,7 +90,7 @@ func TestCeilTotalCountsTheHeldItemsAndNeverDefersThem(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			names := rankFixture()
-			for k := 0; k < 22; k++ {
+			for k := range 22 {
 				names[0].Held = append(names[0].Held, chain(120, "C", float64(300+k))...)
 			}
 			got := BuildPlan(testDay, rankParams(tc.total), names)

@@ -41,9 +41,7 @@ func resolvePairs(ctx context.Context, resolve func(context.Context, broker.Cont
 		return i, true
 	}
 	for w := 0; w < min(resolveInFlight, len(pairs)); w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				i, ok := claim()
 				if !ok {
@@ -58,7 +56,7 @@ func resolvePairs(ctx context.Context, resolve func(context.Context, broker.Cont
 				}
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	for _, e := range errs {

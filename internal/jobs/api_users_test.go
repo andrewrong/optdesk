@@ -137,7 +137,7 @@ func modulePath(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, l := range strings.Split(string(b), "\n") {
+	for l := range strings.SplitSeq(string(b), "\n") {
 		if m, ok := strings.CutPrefix(strings.TrimSpace(l), "module "); ok {
 			return strings.TrimSpace(m), nil
 		}

@@ -196,8 +196,7 @@ func errClass(err error) string {
 // original error. ok is false for any other shape; ibkr is "" unless 1 to 5 digits follow "broker error ".
 // Only the code word and the digits are returned, never the free text.
 func grpcCode(err error) (code, ibkr string, ok bool) {
-	var te contracts.TypedError
-	if !errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); !ok {
 		return "", "", false
 	}
 	rest, found := strings.CutPrefix(err.Error(), "broker: ")

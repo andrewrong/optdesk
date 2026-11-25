@@ -55,8 +55,7 @@ func DefaultManifest() (Manifest, error) { return LoadManifest(manifestBytes) }
 func LoadManifest(data []byte) (Manifest, error) {
 	var r rawManifest
 	if err := toml.Unmarshal(data, &r); err != nil {
-		var de *toml.DecodeError
-		if errors.As(err, &de) {
+		if de, ok := errors.AsType[*toml.DecodeError](err); ok {
 			row, col := de.Position()
 			return Manifest{}, fmt.Errorf("underlyingresolve: manifest: not valid TOML at line %d column %d", row, col)
 		}

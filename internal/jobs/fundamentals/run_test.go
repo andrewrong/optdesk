@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"testing"
@@ -197,9 +198,7 @@ func TestRunTwiceSameRowsNoDuplicate(t *testing.T) {
 	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
 	j.Run(context.Background(), "2026-11-05", keys)
 	first := map[string]contracts.FundamentalFact{}
-	for k, v := range w.rows {
-		first[k] = v
-	}
+	maps.Copy(first, w.rows)
 	j.Run(context.Background(), "2026-11-05", keys)
 	if len(w.rows) != 2 || !reflect.DeepEqual(w.rows, first) {
 		t.Fatalf("rows after second run = %v, first %v", w.rows, first)

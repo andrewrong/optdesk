@@ -33,7 +33,7 @@ func pieceHistory() *fakeHistory {
 func deepenJob(t *testing.T, h *fakeHistory, st *memBars, names int, tune func(*Manifest)) *job {
 	t.Helper()
 	var es []jobs.WatchEntry
-	for i := 0; i < names; i++ {
+	for i := range names {
 		es = append(es, entry("cik:"+string(rune('1'+i)), "N"+string(rune('A'+i)), int64(101+i)))
 	}
 	j, err := newJob(&fakeBroker{listed: true}, h, fakeResolver{}, st, st, es, fixedClock{})
@@ -48,7 +48,7 @@ func deepenJob(t *testing.T, h *fakeHistory, st *memBars, names int, tune func(*
 
 func allKeys(names int) []contracts.ExpectedKey {
 	var subjects []string
-	for i := 0; i < names; i++ {
+	for i := range names {
 		subjects = append(subjects, "cik:"+string(rune('1'+i)))
 	}
 	return keysOf(subjects...)
@@ -185,7 +185,7 @@ func TestDeepenZeroCapIsUnlimited(t *testing.T) {
 	t.Parallel()
 	h := pieceHistory()
 	st := &memBars{}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		st.rows = append(st.rows, storedFor(101+i, 400, 1)...)
 	}
 	j := deepenJob(t, h, st, 3, func(m *Manifest) { m.DeepenNamesPerRun = 0 })
@@ -205,7 +205,7 @@ func TestDeepenCapDefersWithoutRequest(t *testing.T) {
 	t.Parallel()
 	h := pieceHistory()
 	st := &memBars{}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		st.rows = append(st.rows, storedFor(101+i, 400, 1)...)
 	}
 	j := deepenJob(t, h, st, 2, func(m *Manifest) { m.DeepenNamesPerRun = 1 })

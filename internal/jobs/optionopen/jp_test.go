@@ -33,8 +33,8 @@ func jpPlanRig(t *testing.T, manifest []byte, codes ...string) (*planRig, contra
 		r.seed(t, int64(100+i), putStrikes...)
 	}
 	j, err := newPlanJP(manifest, PlanDeps{
-		Stored: Stored{Watch: append(jpWatch(codes...), watchOf("AAPL")...), Instruments: r.inst, Bars: r.bars, Options: r.opts,
-			Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod},
+		Watch: append(jpWatch(codes...), watchOf("AAPL")...), Instruments: r.inst, Bars: r.bars, Options: r.opts,
+		Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod,
 		Marks: r.marks, Plans: r.plans, Clock: r.clk,
 	})
 	if err != nil {
@@ -129,7 +129,7 @@ func TestJPPlanFuncCapsAnIndexAt80AndAStockAt60(t *testing.T) {
 	}
 	day := time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)
 	var cand []Contract
-	for k := 0; k < 120; k++ {
+	for k := range 120 {
 		cand = append(cand, Contract{InstrumentID: int64(1000 + k), Expiry: day.AddDate(0, 0, 30), Strike: float64(1 + k), Right: Put})
 	}
 	p := JPPlanParams()
@@ -191,7 +191,7 @@ func TestNewResolveJPSlotAndPorts(t *testing.T) {
 	}
 	r := newPlanRig()
 	j, err := NewResolveJP(ResolveDeps{
-		Stored: Stored{Instruments: r.inst, Bars: r.bars, Options: r.opts}, Broker: &fakeResolver{}, Marks: r.marks, Clock: r.clk,
+		Instruments: r.inst, Bars: r.bars, Options: r.opts, Broker: &fakeResolver{}, Marks: r.marks, Clock: r.clk,
 	}, ResolveOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -325,8 +325,8 @@ func TestPlanJPPlansTheIndexOfTheWatchList(t *testing.T) {
 	r.clk.t = time.Date(2026, 11, 9, 23, 15, 0, 0, time.UTC)
 	r.seed(t, 100, putStrikes...)
 	j, err := NewPlanJP(PlanDeps{
-		Stored: Stored{Watch: []jobs.WatchEntry{{Market: "JP", Contract: broker.Contract{SecType: "IND", Symbol: "N225", Exchange: "OSE.JPN",
-			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod},
+		Watch: []jobs.WatchEntry{{Market: "JP", Contract: broker.Contract{SecType: "IND", Symbol: "N225", Exchange: "OSE.JPN",
+			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod,
 		Marks: r.marks, Plans: r.plans, Clock: r.clk,
 	})
 	if err != nil {

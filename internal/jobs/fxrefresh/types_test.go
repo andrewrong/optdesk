@@ -46,7 +46,7 @@ type recordingJob struct {
 
 func TestAttachSecondaryContract(t *testing.T) {
 	t.Parallel()
-	known := &recordingJob{fakeJob: fakeJob{id: "fx_refresh"}}
+	known := &recordingJob{id: "fx_refresh"}
 	var f fxrefresh.AttachSecondaryFunc = func(j contracts.Job, second sources.Source) bool {
 		r, ok := j.(*recordingJob)
 		if !ok {

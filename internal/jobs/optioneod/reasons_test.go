@@ -104,7 +104,7 @@ func TestTallyQuotesScope(t *testing.T) {
 func TestReasonsDetailText(t *testing.T) {
 	t.Parallel()
 	var tl tally
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		q := fullQuote()
 		q.OpenInterest = nil
 		q.Missing = []broker.MissingField{{Field: "open_interest", Reason: broker.MissingNotReceivedGrace}}
@@ -117,7 +117,7 @@ func TestReasonsDetailText(t *testing.T) {
 		}
 		tl.add(q, statusOK)
 	}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		tl.add(broker.Quote{Status: broker.StatusNoData}, statusNoQuote)
 	}
 	tl.add(broker.Quote{Status: broker.StatusTimeout}, statusError)
@@ -143,7 +143,7 @@ func TestFieldsCompleteRow(t *testing.T) {
 	t.Parallel()
 	at := time.Unix(0, 0).UTC()
 	var tl tally
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		tl.add(fullQuote(), statusOK)
 	}
 	rows := tl.reasons(testDay, "d", "s", at)

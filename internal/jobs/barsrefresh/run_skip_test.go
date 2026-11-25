@@ -19,7 +19,7 @@ func TestRunKeySkipsCompleteKey(t *testing.T) {
 		stored(102, "2026-11-08", "11.0", 1), // newest row a day earlier
 	}}
 	j, _ := build(t, h, st, entry("cik:1", "AAA", 101), entry("cik:2", "BBB", 102))
-	for i := 0; i < 2; i++ { // a second run of the same day
+	for range 2 { // a second run of the same day
 		if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
 			t.Fatal(res.Err)
 		}

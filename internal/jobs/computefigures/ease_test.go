@@ -60,8 +60,8 @@ func okParts() []compute.EasePart {
 }
 
 func okFigure() compute.EaseFigure {
-	return compute.EaseFigure{Figure: compute.Figure{ID: "macro.ease", Version: 2, Day: dayD, DataDay: dayD,
-		Status: compute.StatusOK, Value: 56.42, Observations: 4}, Band: compute.EaseSteady, Parts: okParts()}
+	return compute.EaseFigure{ID: "macro.ease", Version: 2, Day: dayD, DataDay: dayD,
+		Status: compute.StatusOK, Value: 56.42, Observations: 4, Band: compute.EaseSteady, Parts: okParts()}
 }
 
 func easeJob2(t *testing.T, s ComputeStores, figs compute.Figures, e compute.Ease) contracts.Job {

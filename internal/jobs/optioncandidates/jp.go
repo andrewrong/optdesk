@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,7 +118,7 @@ func (j *jpJob) locateJP(ctx context.Context, src *sourceRun, es []jobs.WatchEnt
 	for id := range src.open {
 		ids = append(ids, int64(id))
 	}
-	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
+	slices.Sort(ids)
 	bySymbol := map[string]int64{}
 	for start := 0; start < len(ids); start += termsChunk {
 		end := min(start+termsChunk, len(ids))
@@ -271,11 +272,10 @@ func (j *jpJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Expect
 		for _, a := range accts {
 			inputs = append(inputs, a.CaptureDay)
 		}
-		in := optioncandapi.CurrencyInput{CandidateInput: compute.CandidateInput{
+		in := optioncandapi.CurrencyInput{
 			RunDay: day, ChainDay: ul.chainDay, SessionDays: trimSessionDays(days, inputs...), Underlying: ul.symbol,
 			Spot: ch.spot, Quotes: ch.quotes, BuyPrice: entry.BuyPrice, SalePrice: entry.SalePrice, Earnings: info,
-			Accounts: accts, Kinds: []compute.CandidateKind{compute.KindShortPut},
-		}, Currency: currency}
+			Accounts: accts, Kinds: []compute.CandidateKind{compute.KindShortPut}, Currency: currency}
 		cands := j.rule.EvaluateIn(in, j.params)
 		spreadMin, spreadMed := spreadFigures(ch.quotes, day, j.params.MinDTE, j.params.MaxDTE)
 		j.logger().Info("option_candidates_jp name", "component", "jobs", "job", j.m.ID, "symbol", ul.symbol,

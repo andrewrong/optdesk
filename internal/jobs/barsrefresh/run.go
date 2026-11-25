@@ -206,7 +206,7 @@ func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]bro
 	}
 	var bars []broker.Bar
 	var err error
-	for attempt := 0; attempt < historyAttempts; attempt++ {
+	for attempt := range historyAttempts {
 		if attempt > 0 {
 			if r.retries >= histDownAfter {
 				break

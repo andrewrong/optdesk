@@ -164,7 +164,7 @@ func (e *jpEnv) EvaluateIn(in optioncandapi.CurrencyInput, _ compute.CandidatePa
 }
 
 func (e *jpEnv) stores() JPStores {
-	return JPStores{CandidateStores: CandidateStores{OptionEod: e, Terms: e, Names: e, SessionDays: e, Open: e}, Rows: e}
+	return JPStores{OptionEod: e, Terms: e, Names: e, SessionDays: e, Open: e, Rows: e}
 }
 
 func jpEntry(symbol, issuer string) jobs.WatchEntry {

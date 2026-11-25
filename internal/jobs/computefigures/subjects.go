@@ -5,7 +5,7 @@ package computefigures
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"time"
 
@@ -54,7 +54,7 @@ func listSubjects(ctx context.Context, s ComputeStores, day contracts.Day) (out 
 			dropped++
 		}
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	names := map[int64]string{}
 	for _, c := range chunks(ids) {
 		got, err := s.Names.InstrumentNames(ctx, c)

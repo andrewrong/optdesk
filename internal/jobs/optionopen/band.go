@@ -2,6 +2,7 @@ package optionopen
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -91,8 +92,7 @@ func bandOf(strikes []strikeText, spot, lo, hi float64, minPuts int, calls bool)
 		}
 	}
 	var out []strikeRight
-	for i := len(strikes) - 1; i >= 0; i-- {
-		s := strikes[i]
+	for _, s := range slices.Backward(strikes) {
 		switch {
 		case s.v <= spot && s.v >= lo, s.v == above:
 			out = append(out, strikeRight{s.text, "P"})
@@ -139,10 +139,5 @@ func aroundSpot(strikes []strikeText, spot float64) (below, above float64) {
 }
 
 func containsString(ss []string, s string) bool {
-	for _, x := range ss {
-		if x == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ss, s)
 }

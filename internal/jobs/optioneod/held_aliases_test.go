@@ -54,9 +54,9 @@ func runHeldAliases(t *testing.T, acct store.AccountReader, aliases []string) in
 
 func TestWithHeldAliasesReadsTheGivenAlias(t *testing.T) {
 	t.Parallel()
-	acct := &aliasRecorder{fakeAccount: fakeAccount{positions: map[string][]store.Position{
+	acct := &aliasRecorder{positions: map[string][]store.Position{
 		"mine 2026-11-06": {shortCall("2026-11-16", "100")},
-	}}}
+	}}
 	if n := runHeldAliases(t, acct, []string{"mine"}); n != 1 {
 		t.Fatalf("held call of alias mine asked %d times, want 1", n)
 	}
@@ -67,9 +67,9 @@ func TestWithHeldAliasesReadsTheGivenAlias(t *testing.T) {
 
 func TestWithHeldAliasesNoneReadsNothing(t *testing.T) {
 	t.Parallel()
-	acct := &aliasRecorder{fakeAccount: fakeAccount{positions: map[string][]store.Position{
+	acct := &aliasRecorder{positions: map[string][]store.Position{
 		"mine 2026-11-06": {shortCall("2026-11-16", "100")},
-	}}}
+	}}
 	if n := runHeldAliases(t, acct, nil); n != 0 {
 		t.Fatalf("held call asked %d times with no alias, want 0", n)
 	}

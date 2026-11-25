@@ -172,7 +172,7 @@ func TestIndexDropsAStrikeWithOneRightUnlisted(t *testing.T) {
 func TestSigmaOfTwentyLogReturns(t *testing.T) {
 	t.Parallel()
 	var closes []string
-	for i := 0; i < 21; i++ {
+	for i := range 21 {
 		closes = append(closes, []string{"100", "101"}[i%2])
 	}
 	// Returns alternate +ln(1.01) and -ln(1.01); sample deviation x sqrt(252) = 0.162060 (worked by hand).

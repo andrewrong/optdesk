@@ -3,6 +3,7 @@ package optioncandidates
 import (
 	"context"
 	"math/big"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -55,7 +56,7 @@ func sessionDays(ctx context.Context, rd store.SessionDayReader, cal string, day
 			out = append(out, contracts.Day(r.SessionDay.Format(time.DateOnly)))
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out, nil
 }
 

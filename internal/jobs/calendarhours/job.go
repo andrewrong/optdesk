@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"sort"
 	"time"
+
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
 
@@ -89,8 +90,7 @@ func (e *typedError) Unwrap() error             { return e.err }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te
 	}
 	return &typedError{kind: kind, err: err}
@@ -166,8 +166,7 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 	res, err := j.br.ResolveContract(ctx, j.ref)
 	if err != nil {
 		kind, code := contracts.Retryable, "unknown"
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if te, ok := errors.AsType[contracts.TypedError](err); ok {
 			kind, code = te.Kind(), string(te.Kind())
 		}
 		return j.fail("resolve", &typedError{kind: kind,

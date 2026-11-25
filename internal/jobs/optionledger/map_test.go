@@ -2,6 +2,7 @@ package optionledger
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"testing"
 
@@ -58,9 +59,7 @@ func TestAccountAttributesRemovedBeforeHash(t *testing.T) {
 	}
 	// the hash does not depend on the removed attributes
 	plain := map[string]string{}
-	for k, v := range got {
-		plain[k] = v
-	}
+	maps.Copy(plain, got)
 	want, _ := AttributesSHA256(plain)
 	if rows[0].AttributesSHA256 != want {
 		t.Fatal("hash over other attributes")
