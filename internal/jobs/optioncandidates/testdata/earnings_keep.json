@@ -1,0 +1,39 @@
+{
+  "chain_day": "2026-11-06",
+  "issuer": "cik:0000000001",
+  "cases": {
+    "keep_last_known": {
+      "rows": [
+        {"status": "listed", "observed_on": "2026-11-01", "report_date": "2026-12-20"},
+        {"status": "absent", "observed_on": "2026-11-05"}
+      ],
+      "want_state": "listed",
+      "want_next": "2026-12-20"
+    },
+    "keep_after_error": {
+      "rows": [
+        {"status": "listed", "observed_on": "2026-11-01", "report_date": "2026-11-06"},
+        {"status": "error", "observed_on": "2026-11-05"}
+      ],
+      "want_state": "listed",
+      "want_next": "2026-11-06"
+    },
+    "past_date_ignored": {
+      "rows": [
+        {"status": "listed", "observed_on": "2026-10-01", "report_date": "2026-11-05"},
+        {"status": "absent", "observed_on": "2026-11-05"}
+      ],
+      "want_state": "absent",
+      "want_next": ""
+    },
+    "override": {
+      "override": "2026-12-01",
+      "rows": [
+        {"status": "listed", "observed_on": "2026-11-01", "report_date": "2026-12-20"},
+        {"status": "absent", "observed_on": "2026-11-05"}
+      ],
+      "want_state": "listed",
+      "want_next": "2026-12-01"
+    }
+  }
+}
