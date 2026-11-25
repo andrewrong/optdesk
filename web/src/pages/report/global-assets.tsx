@@ -30,8 +30,8 @@ function barSpec(proxies: readonly Proxy[]): { spec: ChartSpec | null; listed: s
       kind: 'bar',
       categories: bars.map((bar) => bar.label),
       series: [
-        { name: 'Today', points: bars.map((bar) => point(bar.day)) },
-        { name: 'Five days', points: bars.map((bar) => point(bar.five)) },
+        { name: '当日', points: bars.map((bar) => point(bar.day)) },
+        { name: '五日', points: bars.map((bar) => point(bar.five)) },
       ],
       legend: true,
     },
