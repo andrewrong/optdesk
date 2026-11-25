@@ -330,7 +330,7 @@ func TestRunLeaseRenewedWhileRunning(t *testing.T) {
 	if err := clk.BlockUntilContext(ctx, 3); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		clk.Advance(30 * time.Second)
 		l := <-sched.renewed
 		if l.Owner != "runner" {

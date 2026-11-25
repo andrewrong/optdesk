@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -106,8 +107,7 @@ func (r *reconciler) probeKnown() map[string]bool {
 }
 
 func kindOf(err error) (contracts.ErrorKind, bool) {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te.Kind(), true
 	}
 	return "", false
@@ -149,7 +149,7 @@ func (r *reconciler) walk(ctx context.Context, from, to contracts.Day) ([]contra
 	for d := range sessionsByDay {
 		days = append(days, d)
 	}
-	sort.Slice(days, func(a, b int) bool { return days[a] < days[b] })
+	slices.Sort(days)
 	return days, sessionsByDay, nil
 }
 
