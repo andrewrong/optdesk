@@ -9,6 +9,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
@@ -233,5 +234,34 @@ func TestDependentRunWritesRow(t *testing.T) {
 				t.Fatalf("close = %+v, want outcome %s", depCalls[2], tc.outcome)
 			}
 		})
+	}
+}
+
+// A dependent that already ran for the day is not run again when its upstream ends, and opens no row.
+func TestSkippedDependentWritesNoRow(t *testing.T) {
+	t.Parallel()
+	led := newLedger()
+	rl := &fakeRunLedger{}
+	up, d := upJob(keyA), dep(0, keyC)
+	rec := detRec(led, detClock(), up, d)
+	WithJobRunLedger(rec, rl)
+	if err := led.MarkPresent(context.Background(), detDay, keyC, store.StatusPresent); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := rec.ReconcileDetached(context.Background(), detDay, newSpawnLog(true).spawn); err != nil {
+		t.Fatal(err)
+	}
+	var started []string
+	for _, c := range rl.calls {
+		if c.op == "start" {
+			started = append(started, c.run.JobID)
+		}
+	}
+	if len(started) != 1 || started[0] != "up" {
+		t.Fatalf("rows started for %v, want only the upstream", started)
+	}
+	if len(d.calls) != 0 {
+		t.Fatalf("dependent ran for %v", d.calls)
 	}
 }
