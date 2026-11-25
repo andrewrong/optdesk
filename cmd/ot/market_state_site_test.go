@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/compute/talibind"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -96,6 +98,20 @@ func (msBars) PriceBars(_ context.Context, id int64, _ string, from, to contract
 	return out, nil
 }
 
+type msIndexIDs map[string]int64
+
+func (m msIndexIDs) IndexIDs(_ context.Context, names []string) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, n := range names {
+		if id, ok := m[n]; ok {
+			out = append(out, store.InstrumentName{InstrumentID: id, Type: "index", Name: n})
+		}
+	}
+	return out, nil
+}
+
+func (msIndexIDs) Close() error { return nil }
+
 func msReaders() siteReaders {
 	ids := msIDs{"SPY": 1}
 	for i, s := range marketStateSymbols() {
@@ -103,7 +119,7 @@ func msReaders() siteReaders {
 	}
 	return siteReaders{
 		series: msSeries{}, bars: msBars{},
-		ext: map[string]any{siteMarketStateIDsKey: ids},
+		ext: map[string]any{siteMarketStateIDsKey: ids, siteMarketStateIndexIDsKey: msIndexIDs{"NDX": 99}},
 	}
 }
 
@@ -137,7 +153,7 @@ func TestMSRouteBuildsRealFigures(t *testing.T) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatal(err)
 	}
-	if len(m.Market.Rows) != 5 || len(m.Sectors.Rows) != 12 {
+	if len(m.Market.Rows) != 6 || len(m.Sectors.Rows) != 12 {
 		t.Fatalf("%d market rows, %d sector rows", len(m.Market.Rows), len(m.Sectors.Rows))
 	}
 	var drawdown struct{ Text string }
@@ -224,4 +240,33 @@ func TestMarketStateSiteIndicators(t *testing.T) {
 	if got, want := fmt.Sprintf("%T", c.Indicators), fmt.Sprintf("%T", talibind.New()); got != want {
 		t.Errorf("Indicators is %s, want %s", got, want)
 	}
+}
+
+func TestMarketStateConfigIndexIDs(t *testing.T) {
+	t.Parallel()
+	a := msApp(t)
+	if c := marketStateConfig(a, msReaders()); c.IndexIDs == nil {
+		t.Error("IndexIDs is nil with the index id reader opened")
+	}
+	if c := marketStateConfig(a, siteReaders{}); c.IndexIDs != nil {
+		t.Errorf("IndexIDs = %v without the reader, want nil", c.IndexIDs)
+	}
+	track := func(io.Closer, error) bool { return true }
+	for name, tc := range map[string]struct {
+		env string
+		set bool
+	}{"line set": {pagesDSNName + "=postgres://pages\n", true}, "no line": {underlyingsEnv + "\n", false}} {
+		a := mustApp(t, tc.env)
+		a.deps.openIndexIDs = func(context.Context, string) (computefigures.IndexIDStore, error) { return msIndexIDs{}, nil }
+		got, ok := openMarketStateIndexIDs(t.Context(), a, track)
+		if !ok || (got != nil) != tc.set {
+			t.Errorf("%s: reader %v ok %v, set want %v", name, got, ok, tc.set)
+		}
+	}
+}
+
+func mustApp(t *testing.T, env string) *app {
+	t.Helper()
+	a, _ := testApp(t, env)
+	return a
 }

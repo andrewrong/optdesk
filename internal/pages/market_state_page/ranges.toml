@@ -60,6 +60,23 @@ basis = "percentile"
 percentile = 5.0
 
 [[row]]
+id = "nasdaq_drawdown"
+direction = "low_bad"
+unit_text = "%"
+decimals = 2
+hint = "纳斯达克 100 距近 60 个交易日最高点的回撤。区间按它自己的历史分位给出（越低越差），试用，只是提示。"
+
+[[row.cut]]
+level = "caution"
+basis = "percentile"
+percentile = 20.0
+
+[[row.cut]]
+level = "alarm"
+basis = "percentile"
+percentile = 5.0
+
+[[row]]
 id = "vix"
 direction = "high_bad"
 unit_text = " index points"
