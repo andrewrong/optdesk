@@ -2,23 +2,19 @@ package market_page
 
 // Fixed texts of the page.
 const (
-	pageTitle    = "Market"
 	pageSentence = "Weather, percentile and term come from stored data; " +
 		"the trend chart and market breadth are not built yet, " +
 		"the Nikkei percentile and volatility columns have no stored series."
 
-	weatherHeadline    = "S&P 500 against its 200-day average"
 	weatherSentenceFmt = "Gap to the 200-day average: "
 	weatherNoRow       = "Weather: no data yet, nothing stored"
 	weatherMissing     = "Weather: n/a, input incomplete"
 	weatherStale       = "Weather data is stale, data day "
 
-	indicesTitle    = "Index volatility"
 	indicesSentence = "Percentile is the index position over 3 years; the volatility columns are stored data, " +
 		"implied minus realised is built for SPX, NDX and RUT, not the Nikkei."
 	indicesNote = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
-	termTitle        = "Term structure"
 	termSentenceFmt  = "VIX to 3-month VIX ratio "
 	termSentenceNone = "Term structure ratio: nothing stored."
 	// termSentenceStale is followed by MM-DD of the points and a full stop.
@@ -58,6 +54,6 @@ var (
 		"Percentile is given only when the stored history covers 3 years.",
 		"Term structure points come from the stored series, nothing is filled in or computed.",
 	}
-	indicesColumns = []string{"Index", "Implied volatility", "20-day realised", "Implied minus realised", "3-year percentile"}
+	indicesColumns = []string{colIndex, colIV, colRV20, colIVRV, colPctile3y}
 	termLabels     = []string{"1M", "3M"}
 )

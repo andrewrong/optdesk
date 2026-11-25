@@ -141,7 +141,7 @@ func TestWeatherSignedPercent(t *testing.T) {
 		if got := at(t, m, "weather", "sentence"); got != want {
 			t.Errorf("%s: sentence = %v, want %s", in, got, want)
 		}
-		if at(t, m, "weather", "headline") != "S&P 500 against its 200-day average" {
+		if at(t, m, "weather", "headline") != weatherHeadline {
 			t.Errorf("headline = %v", at(t, m, "weather", "headline"))
 		}
 	}
