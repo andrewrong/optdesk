@@ -44,3 +44,12 @@ const (
 	freshnessNone = "尚未存储"
 	freshnessTail = "；非盘中数据。标普 500、VIX、VIX3M 与高收益利差各行：FRED 日度序列，于纽约时间 07:30 存储，每行标明各自的数据日。"
 )
+
+// Titles and axis captions: the Chinese word first, the English beside it.
+const (
+	pageTitle   = "市场状态 Market state"
+	marketTitle = "市场 Market"
+
+	axisX = "63 日对 SPY 的差距，百分点 63-session gap to SPY, pp"
+	axisY = "21 日差距减 63 日差距的三分之一，百分点 21-session gap minus a third of the 63-session gap, pp"
+)
