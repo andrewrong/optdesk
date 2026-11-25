@@ -187,3 +187,51 @@ func TestNoLedgerRecordsNothing(t *testing.T) {
 		t.Fatal("the key was not run without a ledger")
 	}
 }
+
+func TestDependentRunWritesRow(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		results map[contracts.ExpectedKey]contracts.JobResult
+		outcome string
+	}{
+		{"ok", nil, "ok"},
+		{"failed", map[contracts.ExpectedKey]contracts.JobResult{keyC: {Err: kindErr{kind: contracts.Permanent}}}, "failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			led := newLedger()
+			rl := &fakeRunLedger{}
+			up, d := upJob(keyA), dep(0, keyC)
+			d.results = tc.results
+			rec := detRec(led, detClock(), up, d)
+			WithJobRunLedger(rec, rl)
+
+			if err := rec.ReconcileDetached(context.Background(), detDay, newSpawnLog(true).spawn); err != nil {
+				t.Fatal(err)
+			}
+			var depCalls []ledgerCall
+			in := false
+			for _, c := range rl.calls {
+				if c.op == "start" {
+					in = c.run.JobID == "dep"
+				}
+				if in {
+					depCalls = append(depCalls, c)
+				}
+			}
+			if len(depCalls) != 3 {
+				t.Fatalf("dependent calls = %+v, want start, progress, close", depCalls)
+			}
+			if s := depCalls[0].run; s.Source != "scheduler" || s.KeysTotal != 1 {
+				t.Fatalf("started row = %+v", s)
+			}
+			if depCalls[1].op != "progress" || depCalls[1].done != 1 || depCalls[1].total != 1 {
+				t.Fatalf("progress = %+v", depCalls[1])
+			}
+			if depCalls[2].op != "close" || depCalls[2].outcome != tc.outcome {
+				t.Fatalf("close = %+v, want outcome %s", depCalls[2], tc.outcome)
+			}
+		})
+	}
+}
