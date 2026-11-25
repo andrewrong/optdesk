@@ -32,7 +32,10 @@ var cjkRun = regexp.MustCompile(`[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{
 // The file may hold only string constants; checkZhTexts enforces it.
 func isZhTextsDoor(rel string) bool {
 	parts := strings.Split(rel, "/")
-	return len(parts) == 4 && parts[0] == "internal" && parts[1] == "pages" && parts[3] == "zh_texts.go"
+	// zh_jp_names.go is the second door: the outcome words of the yen names (docs/design/sellput-jp-outcomes.md
+	// entry 3 names this file); it is held to the same rule, constants only.
+	return len(parts) == 4 && parts[0] == "internal" && parts[1] == "pages" &&
+		(parts[3] == "zh_texts.go" || parts[3] == "zh_jp_names.go")
 }
 
 // cjkFindings returns the CJK findings of one file text that is not part of an allowedCJK entry. A door file

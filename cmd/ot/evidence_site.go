@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/optioncandapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionevidence"
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfig"
@@ -16,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/candidatecur"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
@@ -53,6 +55,11 @@ type candidateReaders struct {
 	Valuation valuation.Reader
 	// Shortlist is the short-put shortlist rule; nil on the named path (ot page), where short_put_list is omitted.
 	Shortlist optionshortlistapi.Shortlister
+	// OpenRows, NameOpen and JPNames give the yen group the outcome of each JP name with no row; all three are
+	// unset on the named path, in the demo profile and on a site with no open-row reader.
+	OpenRows openquote.OptionOpenReader
+	NameOpen optioncandapi.NewNameOpenRuleFunc
+	JPNames  []string
 }
 
 // bsmValuer adapts the Black-Scholes pricer to optionevidenceapi.Valuer, so cmd/ot is the place that joins the
@@ -87,6 +94,7 @@ func candidatesConfig(zone *time.Location, runID, buildID, scope string, r candi
 		Tiers:    r.Tiers, Account: r.Account, Aliases: r.Aliases, Owner: r.Owner, RuleParams: r.RuleParams,
 		Valuation: r.Valuation, ValueLines: newValueLines(), Buy: newBuyPriceResolver(),
 		Shortlist: r.Shortlist,
+		OpenRows:  r.OpenRows, NameOpen: r.NameOpen, JPNames: r.JPNames,
 	}
 }
 

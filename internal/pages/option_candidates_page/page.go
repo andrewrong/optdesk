@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/buypriceapi"
+	"github.com/andrewrong/optdesk/internal/compute/optioncandapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionevidenceapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
 	"github.com/andrewrong/optdesk/internal/compute/optionshortlistapi"
@@ -16,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/candidatecur"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/valuation"
 )
@@ -49,6 +51,11 @@ type Config struct {
 	CandCur candidatecur.Reader
 	// Shortlist selects the short-put shortlist; nil gives no short_put_list.
 	Shortlist optionshortlistapi.Shortlister
+	// OpenRows reads the stored open rows, NameOpen builds the rule that classifies them and JPNames are the
+	// symbols of the JP names of the watch list; with any missing the yen group has no name_outcomes.
+	OpenRows openquote.OptionOpenReader
+	NameOpen optioncandapi.NewNameOpenRuleFunc
+	JPNames  []string
 }
 
 // NewPage is the option_candidates_page page for c.

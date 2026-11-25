@@ -13,10 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/optioncandapi"
 	"github.com/andrewrong/optdesk/internal/compute/ruleparam"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionday"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
 	"github.com/andrewrong/optdesk/internal/store/strategyresultpg"
@@ -427,5 +429,66 @@ func TestCandidatesNamedNoEvidence(t *testing.T) {
 	g := f.gotAll
 	if g.View != nil || g.Terms != nil || g.Days != nil || g.Cands == nil || g.Names == nil || closed.Load() != 2 {
 		t.Fatalf("readers %+v closed %d", g, closed.Load())
+	}
+}
+
+// nameOpenReader is a stored open-row reader that holds no row.
+type nameOpenReader struct{}
+
+func (nameOpenReader) OptionOpen(context.Context, contracts.Day) ([]contracts.OptionOpen, error) {
+	return nil, nil
+}
+
+func TestCandidatesSiteNameOutcomes(t *testing.T) {
+	t.Parallel()
+	const watch = `
+[[underlying]]
+issuer = "edinet:E00002"
+market = "JP"
+symbol = "2413"
+sec_type = "STK"
+exchange = "TSEJ"
+currency = "JPY"
+con_id = 910001
+
+[[underlying]]
+issuer = "edinet:E00001"
+market = "JP"
+symbol = "2408"
+sec_type = "STK"
+exchange = "TSEJ"
+currency = "JPY"
+con_id = 910002
+
+[[underlying]]
+issuer = "cik:0000320193"
+market = "US"
+symbol = "AAPL"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 265598
+`
+	f := newCandidatesFixture(t, "")
+	f.a.profile.Name = "real"
+	f.a.deps.readFile = func(string) ([]byte, error) { return []byte(watch), nil }
+	reader := nameOpenReader{}
+	build := func(rd siteReaders) candidateReaders {
+		h := siteHandler(f.a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+		if rec := candidatesGet(t, h, http.MethodGet, "/"+siteCandidatesRoute); rec.Code != 200 {
+			t.Fatalf("code %d", rec.Code)
+		}
+		return f.gotAll
+	}
+	g := build(siteReaders{cands: demoCandidates{}, open: reader})
+	if g.OpenRows != openquote.OptionOpenReader(reader) || g.NameOpen == nil || len(g.JPNames) != 2 || g.JPNames[0] != "2408" || g.JPNames[1] != "2413" {
+		t.Fatalf("with an open-row reader: %+v", g)
+	}
+	if g.NameOpen().Classify(optioncandapi.NameOpenFacts{}).Outcome != optioncandapi.OutcomeNoRows {
+		t.Error("the rule is not the name-open rule")
+	}
+	g = build(siteReaders{cands: demoCandidates{}})
+	if g.OpenRows != nil || g.NameOpen != nil || g.JPNames != nil {
+		t.Fatalf("without an open-row reader: %+v", g)
 	}
 }

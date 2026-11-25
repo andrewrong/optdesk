@@ -94,17 +94,20 @@ func Build(ctx context.Context, c Config, series store.SeriesReader, day contrac
 	} else {
 		for _, s := range specsOf(c) {
 			bday := buildDayOf(s, day, generatedAt)
-			gr, err := readGroup(ctx, c, series, s, bday)
+			gr, err := readGroupWithOutcomes(ctx, c, series, s, bday)
 			if err != nil {
 				return nil, err
 			}
 			gd, rows := gr.day, gr.rows
 			tally.add(gr.cur, rows)
 			if len(rows) == 0 {
-				vm.Groups = append(vm.Groups, gapGroup(s, mkGap("no_rows", gapNoRows)))
+				g := gapGroup(s, mkGap("no_rows", gapNoRows))
+				g.NameOutcomes = gr.outcomes
+				vm.Groups = append(vm.Groups, g)
 				continue
 			}
 			g := buildGroup(s, gd, bday, rows, c.Figures, gr.rate, gr.ev)
+			g.NameOutcomes = gr.outcomes
 			vm.Groups = append(vm.Groups, g)
 			if err = fillShortPut(ctx, c, &vm, s, gr, bday, generatedAt); err != nil {
 				return nil, err
@@ -164,6 +167,8 @@ type groupRead struct {
 	rate    rateRead
 	ev      evidenceSet
 	tickers map[int]string
+	// outcomes are the name outcomes of the yen group (nameoutcome.go); nil for every other group.
+	outcomes []nameOutcome
 }
 
 // specsOf are the groups in page order: the yen short-put group follows the US one when a yen reader is set.
