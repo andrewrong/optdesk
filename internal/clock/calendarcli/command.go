@@ -21,8 +21,7 @@ func Exec(ctx context.Context, argv []string) (int, error) {
 	if err == nil {
 		return 0, nil
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		return exit.ExitCode(), nil
 	}
 	return -1, err
