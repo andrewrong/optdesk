@@ -25,23 +25,23 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 const GROUPS: readonly (readonly [string, readonly (readonly [string, string])[]])[] = [
-  ['Market', [['Macro', '/macro'], ['Market state', '/market-state']]],
-  ['Portfolio', [['Household', '/household'], ['Positions', '/positions'], ['Held companies', '/held-family'], ['Risk', '/risk']]],
+  ['市场', [['宏观', '/macro'], ['市场状态', '/market-state']]],
+  ['持仓', [['家庭账户', '/household'], ['持仓明细', '/positions'], ['持有公司', '/held-family'], ['风险', '/risk']]],
   [
-    'Options',
+    '期权',
     [
-      ['Candidates', '/options/candidates'],
-      ['Structures', '/options/structures'],
-      ['Spread legs', '/options/spread-legs'],
-      ['Result', '/options/result'],
-      ['Notices', '/options/notices'],
-      ['Tracking', '/options/tracking'],
-      ['P&L split', '/options/pnl'],
-      ['Strategy replay', '/strategy-replay'],
+      ['候选', '/options/candidates'],
+      ['组合结构', '/options/structures'],
+      ['价差腿', '/options/spread-legs'],
+      ['结果', '/options/result'],
+      ['通知', '/options/notices'],
+      ['跟踪', '/options/tracking'],
+      ['盈亏拆分', '/options/pnl'],
+      ['策略回放', '/strategy-replay'],
     ],
   ],
-  ['Companies', [['Watch list', '/underlyings'], ['Price lines', '/plan/price-lines'], ['Valuation', '/valuation'], ['Import valuations', '/valuation-import'], ['Data', '/company-data']]],
-  ['System', [['Settings', '/settings'], ['Job console', '/job-console'], ['Base data', '/base-data'], ['Data health', '/data-health'], ['Option data', '/options/data']]],
+  ['公司', [['自选清单', '/underlyings'], ['价位线', '/plan/price-lines'], ['估值', '/valuation'], ['导入估值', '/valuation-import'], ['数据', '/company-data']]],
+  ['系统', [['设置', '/settings'], ['任务台', '/job-console'], ['基础数据', '/base-data'], ['数据健康', '/data-health'], ['期权数据', '/options/data']]],
 ]
 
 const triggers = () => [...host.querySelectorAll('nav > div > button')] as HTMLElement[]
@@ -65,10 +65,18 @@ describe('TestTopNavSixTopLevelItems', () => {
     const bar = host.querySelector('nav > div')
     const children = [...(bar?.children ?? [])]
     expect(children.length).toBeLessThanOrEqual(6)
-    expect(children.map((e) => e.textContent)).toEqual(['Home', 'Market', 'Portfolio', 'Options', 'Companies', 'System'])
+    expect(children.map((e) => e.textContent)).toEqual(['首页', '市场', '持仓', '期权', '公司', '系统'])
     expect(bar?.className).not.toContain('flex-wrap')
     expect(bar?.className).not.toContain('gap-y-1')
     expect(bar?.className).toContain('hidden md:flex gap-1')
+  })
+})
+
+describe('TestTopNavLabelsChinese', () => {
+  it('the bar item texts are 首页 and the five group texts in order', async () => {
+    await showAt('/home')
+    const bar = host.querySelector('nav > div')
+    expect([...(bar?.children ?? [])].map((e) => e.textContent)).toEqual(['首页', '市场', '持仓', '期权', '公司', '系统'])
   })
 })
 
@@ -77,33 +85,33 @@ describe('TestTopNavGroupMenus', () => {
     await showAt('/home')
     const menu = await openMenu(name)
     expect(pairs(menu.querySelectorAll('a'))).toEqual(expected.map(([l, h]) => [l, h]))
-    if (name === 'Options') {
+    if (name === '期权') {
       const texts = [...menu.querySelectorAll('a, [data-slot="dropdown-menu-label"]')].map((e) => e.textContent)
       expect(texts).toEqual([
-        'Candidates', 'Held options', 'Structures', 'Spread legs', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
+        '候选', '持有期权', '组合结构', '价差腿', '结果', '通知', '跟踪', '盈亏拆分', '策略回放',
       ])
     }
   })
 
   it('marks Option data in the System menu at options/data/9001', async () => {
     await showAt('/options/data/9001')
-    const menu = await openMenu('System')
+    const menu = await openMenu('系统')
     const marked = [...menu.querySelectorAll('a[aria-current="page"]')]
-    expect(marked.map((a) => a.textContent)).toEqual(['Option data'])
+    expect(marked.map((a) => a.textContent)).toEqual(['期权数据'])
   })
 })
 
 describe('TestTopNavMarksGroup', () => {
   it.each([
-    ['/home', 'Home', 'page'],
-    ['/macro', 'Market', 'true'],
-    ['/risk/', 'Portfolio', 'true'],
-    ['/options/data/9001', 'System', 'true'],
-    ['/options/structures', 'Options', 'true'],
-    ['/plan/price-lines', 'Companies', 'true'],
-    ['/valuation', 'Companies', 'true'],
-    ['/job-console', 'System', 'true'],
-    ['/data-health', 'System', 'true'],
+    ['/home', '首页', 'page'],
+    ['/macro', '市场', 'true'],
+    ['/risk/', '持仓', 'true'],
+    ['/options/data/9001', '系统', 'true'],
+    ['/options/structures', '期权', 'true'],
+    ['/plan/price-lines', '公司', 'true'],
+    ['/valuation', '公司', 'true'],
+    ['/job-console', '系统', 'true'],
+    ['/data-health', '系统', 'true'],
   ])('at %s the bar marks %s', async (pathname, label, value) => {
     await showAt(pathname)
     const marked = [...host.querySelectorAll('nav > div [aria-current]')].filter((e) => e.matches('button, a'))
@@ -147,21 +155,21 @@ describe('TopNav', () => {
     expect(sheet?.getAttribute('data-side')).toBe('left')
     const rows = [...(sheet?.querySelectorAll('ul > li') ?? [])]
     const headings = rows.filter((li) => !li.querySelector('a')).map((li) => li.textContent)
-    expect(headings).toEqual(['Market', 'Portfolio', 'Options', 'Held options', 'Companies', 'System'])
-    expect(rows[0]?.textContent).toBe('Home')
+    expect(headings).toEqual(['市场', '持仓', '期权', '持有期权', '公司', '系统'])
+    expect(rows[0]?.textContent).toBe('首页')
     expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe('/home')
     const flat = rows.map((li) => li.querySelector('a')?.textContent ?? li.textContent)
     expect(flat).toEqual([
-      'Home',
-      'Market', 'Macro', 'Market state',
-      'Portfolio', 'Household', 'Positions', 'Held companies', 'Risk',
-      'Options', 'Candidates', 'Held options', 'Structures', 'Spread legs', 'Result', 'Notices', 'Tracking', 'P&L split', 'Strategy replay',
-      'Companies', 'Watch list', 'Price lines', 'Valuation', 'Import valuations', 'Data',
-      'System', 'Settings', 'Job console', 'Base data', 'Data health', 'Option data',
+      '首页',
+      '市场', '宏观', '市场状态',
+      '持仓', '家庭账户', '持仓明细', '持有公司', '风险',
+      '期权', '候选', '持有期权', '组合结构', '价差腿', '结果', '通知', '跟踪', '盈亏拆分', '策略回放',
+      '公司', '自选清单', '价位线', '估值', '导入估值', '数据',
+      '系统', '设置', '任务台', '基础数据', '数据健康', '期权数据',
     ])
-    const expected = [['Home', '/home'], ...GROUPS.flatMap(([, l]) => l)].map(([l, h]) => [l, h])
+    const expected = [['首页', '/home'], ...GROUPS.flatMap(([, l]) => l)].map(([l, h]) => [l, h])
     expect(pairs(sheet?.querySelectorAll('a') ?? [])).toEqual(expected)
-    const structures = [...(sheet?.querySelectorAll('a') ?? [])].find((a) => a.textContent === 'Structures')
+    const structures = [...(sheet?.querySelectorAll('a') ?? [])].find((a) => a.textContent === '组合结构')
     expect(structures?.className).toContain('pl-6')
   })
 
@@ -169,7 +177,7 @@ describe('TopNav', () => {
     await showAt('/options/data/9001')
     const sheet = await openSheet()
     const marked = [...(sheet?.querySelectorAll('[aria-current]') ?? [])]
-    expect(marked.map((a) => [a.textContent, a.getAttribute('aria-current')])).toEqual([['Option data', 'page']])
+    expect(marked.map((a) => [a.textContent, a.getAttribute('aria-current')])).toEqual([['期权数据', 'page']])
   })
 })
 
@@ -178,10 +186,10 @@ describe('TestTopNavHasCompanyData', () => {
     await showAt('/home')
     const bar = host.querySelector('nav > div')
     expect([...(bar?.children ?? [])]).toHaveLength(6)
-    const menu = await openMenu('Companies')
+    const menu = await openMenu('公司')
     expect(pairs(menu.querySelectorAll('a')).slice(-2)).toEqual([
-      ['Import valuations', '/valuation-import'],
-      ['Data', '/company-data'],
+      ['导入估值', '/valuation-import'],
+      ['数据', '/company-data'],
     ])
   })
 })
