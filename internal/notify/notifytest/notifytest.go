@@ -4,6 +4,7 @@ package notifytest
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -182,10 +183,8 @@ func (s *SentStore) MarkSent(_ context.Context, ruleID string, day contracts.Day
 	}
 	m := store.SentMark{RuleID: ruleID, Day: day}
 	s.marks = append(s.marks, m)
-	for _, r := range s.rows {
-		if r == m {
-			return nil
-		}
+	if slices.Contains(s.rows, m) {
+		return nil
 	}
 	s.rows = append(s.rows, m)
 	return nil

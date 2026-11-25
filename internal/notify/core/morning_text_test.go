@@ -27,7 +27,7 @@ func TestSelfHealedListed(t *testing.T) {
 func TestMoreThan20LinesCut(t *testing.T) {
 	t.Parallel()
 	in := morningInput{day: "2026-11-10", zone: time.UTC, open: 2, clearedSent: 1, late: 3, sessionDay: "2026-11-09"}
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		in.selfHealed = append(in.selfHealed, healed(i))
 	}
 	text := morningText(in)

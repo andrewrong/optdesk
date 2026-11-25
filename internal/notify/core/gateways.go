@@ -103,11 +103,11 @@ func (n *gatewayNotifier) recovery(ctx context.Context, gateway string, marks []
 			continue
 		}
 		rest := m.RuleID[len(prefix):]
-		i := strings.LastIndexByte(rest, '_')
-		if i < 0 {
+		_, num, found := strings.CutLast(rest, "_")
+		if !found {
 			continue
 		}
-		if _, err := strconv.ParseInt(rest[i+1:], 10, 64); err != nil {
+		if _, err := strconv.ParseInt(num, 10, 64); err != nil {
 			continue
 		}
 		open = append(open, m)
