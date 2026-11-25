@@ -16,7 +16,8 @@ const badVersion = JSON.parse(
 )
 let root: Root | undefined
 let host: HTMLElement
-async function show(payload: typeof ok | typeof secondMissing | typeof gap) {
+const staleMain = { ...ok, accounts: [{ ...ok.accounts[0]!, status: 'stale' as const }, ...ok.accounts.slice(1)] }
+async function show(payload: typeof ok | typeof secondMissing | typeof gap | typeof staleMain) {
   host = document.createElement('div')
   document.body.append(host)
   await act(async () => {
@@ -43,7 +44,7 @@ describe('OptionNoticesPage', () => {
     rows.forEach((row, i) => {
       const badge = row.querySelector('[data-slot=badge][data-severity]')!
       expect(badge.textContent).toBe(
-        { info: 'Info', warn: 'Warning', act: 'Action needed' }[ok.accounts[0]!.notices[i]!.severity],
+        { info: '提示', warn: '警告', act: '需处理' }[ok.accounts[0]!.notices[i]!.severity],
       )
       expect(badge.getAttribute('data-severity')).toBe(ok.accounts[0]!.notices[i]!.severity)
     })
@@ -56,13 +57,18 @@ describe('OptionNoticesPage', () => {
   it('shows the status badge as a word and keeps the code in data-status', async () => {
     const okPage = await show(ok)
     const okBadge = okPage.querySelector('[data-alias=ok-main] [data-status]')!
-    expect(okBadge.textContent).toBe('Current')
+    expect(okBadge.textContent).toBe('最新')
     expect(okBadge.getAttribute('data-status')).toBe('ok')
     await act(async () => root?.unmount())
     host.remove()
     const missing = await show(secondMissing)
     const badge = missing.querySelector('[data-status=no_capture]')!
-    expect(badge.textContent).toBe('No capture')
+    expect(badge.textContent).toBe('未采集')
+    await act(async () => root?.unmount())
+    host.remove()
+    const stale = await show(staleMain)
+    const staleBadge = stale.querySelector('[data-alias=ok-main] [data-status=stale]')!
+    expect(staleBadge.textContent).toBe('过期')
   })
 
   it('shows the cash by date table in payload order and the cushion text', async () => {
@@ -74,6 +80,12 @@ describe('OptionNoticesPage', () => {
     expect(amounts).toEqual(ok.accounts[0]!.cash_by_date.map((r) => r.amount_text))
     expect(block.querySelector('[data-cushion]')!.textContent).toBe(ok.accounts[0]!.cushion_text)
     expect(page.querySelector('[data-alias=ok-second] table')).toBeNull()
+  })
+
+  it('TestNoticesFixedTextsChinese: the cash table heads read in Chinese', async () => {
+    const page = await show(ok)
+    const heads = [...page.querySelectorAll('[data-alias=ok-main] [data-cash] thead th')].map((th) => th.textContent)
+    expect(heads).toEqual(['日期', '币种', '金额'])
   })
 
   it('lists the puts under each cash day', async () => {
