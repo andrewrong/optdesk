@@ -85,7 +85,7 @@ export function AccountSection({ account }: { account: Account }) {
           {account.mark_day ? <Badge variant="secondary">{account.mark_day}</Badge> : null}
           {account.guard_day ? <Badge variant="secondary">{account.guard_day}</Badge> : null}
           <Badge variant="outline" data-left-out>
-            Long legs left out {account.long_legs_left_out}
+            未计入的长腿 {account.long_legs_left_out}
           </Badge>
         </CardDescription>
       </CardHeader>
@@ -99,8 +99,8 @@ export function AccountSection({ account }: { account: Account }) {
           <>
             {account.open ? <PayloadTable name="open" table={account.open} /> : null}
             <Accordion type="multiple">
-              {account.recent ? <Fold value="recent" title="Closed in the last 30 days" table={account.recent} /> : null}
-              {account.recon ? <Fold value="recon" title="Flex reconciled with the account" table={account.recon} /> : null}
+              {account.recent ? <Fold value="recent" title="近30天已平仓" table={account.recent} /> : null}
+              {account.recon ? <Fold value="recon" title="Flex 与账户核对" table={account.recon} /> : null}
             </Accordion>
           </>
         )}
