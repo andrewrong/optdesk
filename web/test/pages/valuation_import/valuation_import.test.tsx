@@ -58,8 +58,15 @@ describe('registration', () => {
 describe('valuation import page', () => {
   it('labels the R line with the English name of R', async () => {
     const el = await render(preview())
-    expect(el.textContent).toContain('R (discount multiple)')
+    expect(el.textContent).toContain('R（折现倍数）')
     expect(el.textContent).not.toContain('R (R)')
+  })
+
+  it('TestPlanTableHeadsChinese', async () => {
+    const el = await render(preview())
+    const heads = [...el.querySelectorAll('table thead th')].map((h) => h.textContent)
+    expect(heads.slice(0, 4)).toEqual(['公司', '公司键', '处理', 'V'])
+    expect(heads[heads.length - 1]).toBe('勾选')
   })
 
   it('renders the empty page with a file field', async () => {
