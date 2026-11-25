@@ -217,7 +217,7 @@ func (b *builder) fill(vm *detailModel) {
 	s := b.s
 	kind := kindTexts[s.Kind]
 	if kind == "" {
-		kind = "Unidentified"
+		kind = kindOther
 	}
 	vm.Title = clip(s.Underlying + " " + kind)
 	if s.Underlying == "" {

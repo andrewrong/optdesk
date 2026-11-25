@@ -63,10 +63,10 @@ func TestRowFieldsFromFigures(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	r := groupRows(t, m, 0)[0]
-	if r["kind_text"] != "Short put" || r["expiry_text"] != "2026-12-18" || r["distance"] != "9.1200%" || r["earned"] != "52.0000%" {
+	if r["kind_text"] != kindShortPut || r["expiry_text"] != "2026-12-18" || r["distance"] != "9.1200%" || r["earned"] != "52.0000%" {
 		t.Fatalf("row = %v", r)
 	}
-	if r["moneyness"] != "out of the money" {
+	if r["moneyness"] != moneyOut {
 		t.Fatalf("moneyness = %v", r["moneyness"])
 	}
 	loss := r["max_loss"].(map[string]any)
@@ -113,7 +113,7 @@ func TestOtherRowsListed(t *testing.T) {
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	rows := groupRows(t, m, 1)
 	last := rows[len(rows)-1]
-	if last["symbol"] != "AMD" || last["kind_text"] != "Unidentified" || last["compare"] != nil {
+	if last["symbol"] != "AMD" || last["kind_text"] != kindOther || last["compare"] != nil {
 		t.Fatalf("other row = %v", last)
 	}
 	if !strings.Contains(m["note"].(string), otherNote) {
@@ -388,7 +388,7 @@ func TestShortPutMoneynessMatchesSign(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	r := groupRows(t, m, 0)[0]
-	if r["kind_text"] != "Short put" || r["distance"] != "9.1200%" || r["moneyness"] != "out of the money" {
+	if r["kind_text"] != kindShortPut || r["distance"] != "9.1200%" || r["moneyness"] != moneyOut {
 		t.Fatalf("row = %v", r)
 	}
 }
@@ -587,11 +587,11 @@ func TestSentenceAndNoteAreChinese(t *testing.T) {
 func TestListNewKindLabels(t *testing.T) {
 	t.Parallel()
 	want := map[string]string{
-		"put_debit_spread": "Put debit spread", "call_debit_spread": "Call debit spread",
-		"calendar_spread": "Calendar spread", "diagonal_spread": "Diagonal spread",
-		"long_straddle": "Long straddle", "short_straddle": "Short straddle",
-		"long_strangle": "Long strangle", "short_strangle": "Short strangle",
-		"iron_condor": "Iron condor", "reverse_iron_condor": "Reverse iron condor", "collar": "Collar",
+		"put_debit_spread": kindPutDebitSpread, "call_debit_spread": kindCallDebitSpread,
+		"calendar_spread": kindCalendarSpread, "diagonal_spread": kindDiagonalSpread,
+		"long_straddle": kindLongStraddle, "short_straddle": kindShortStraddle,
+		"long_strangle": kindLongStrangle, "short_strangle": kindShortStrangle,
+		"iron_condor": kindIronCondor, "reverse_iron_condor": kindReverseIronCondor, "collar": kindCollar,
 	}
 	var res compute.StructureResult
 	for kind := range want {
@@ -637,7 +637,7 @@ func TestLinkOfRemainderRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := decode(t, b)["title"]; got != "MSFT Short put" {
+	if got := decode(t, b)["title"]; got != "MSFT "+kindShortPut {
 		t.Fatalf("title = %v, want the structure found by %q", got, path)
 	}
 }

@@ -163,7 +163,7 @@ func TestFindByID(t *testing.T) {
 	other := fx.Result.Structures[0]
 	other.ID, other.Underlying = "main:T999:1", "ZZZ"
 	fx.Result.Other = []compute.Structure{other}
-	for id, want := range map[string]string{spreadID: "MSFT Put spread", "main:T999:1": "ZZZ Put spread"} {
+	for id, want := range map[string]string{spreadID: "MSFT 认沽价差 Put spread", "main:T999:1": "ZZZ 认沽价差 Put spread"} {
 		m := fx.build(t, id, true)
 		if m["title"] != want || m["scope"] != "main" || m["schema"] != "structure_detail" || m["schema_version"] != 3.0 {
 			t.Errorf("%s: title = %v, scope = %v", id, m["title"], m["scope"])
@@ -292,7 +292,7 @@ func TestDetailKindGloss(t *testing.T) {
 	}
 	spread := readFixtureless(mk("put_debit_spread", "1", "-1")).build(t, "main:T1:1", false)
 	sub, _ := spread["subline"].(string)
-	const head = "Put debit spread · expiry 2026-12-18 · account main · "
+	const head = "认沽借方价差 Put debit spread · expiry 2026-12-18 · account main · "
 	if len(sub) <= len(head) || sub[:len(head)] != head {
 		t.Fatalf("subline = %q, want the gloss after %q", sub, head)
 	}
@@ -300,7 +300,7 @@ func TestDetailKindGloss(t *testing.T) {
 		t.Fatalf("subline = %q, want %q", sub, want)
 	}
 	short := readFixtureless(mk("short_put", "-1")).build(t, "main:T1:1", false)
-	if got := short["subline"]; got != "Short put · expiry 2026-12-18 · account main" {
+	if got := short["subline"]; got != "卖出认沽 Short put"+" · expiry 2026-12-18 · account main" {
 		t.Fatalf("subline = %v, want no gloss", got)
 	}
 }

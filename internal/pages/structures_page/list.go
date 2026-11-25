@@ -23,14 +23,14 @@ const (
 )
 
 var kindTexts = map[string]string{
-	"short_put": "Short put", "covered_call": "Covered call", "naked_call": "Naked call",
-	"put_spread": "Put spread", "call_spread": "Call spread", "long_put": "Long put", "long_call": "Long call",
-	"put_debit_spread": "Put debit spread", "call_debit_spread": "Call debit spread",
-	"calendar_spread": "Calendar spread", "diagonal_spread": "Diagonal spread",
-	"long_straddle": "Long straddle", "short_straddle": "Short straddle",
-	"long_strangle": "Long strangle", "short_strangle": "Short strangle",
-	"iron_condor": "Iron condor", "reverse_iron_condor": "Reverse iron condor", "collar": "Collar",
-	"other": "Unidentified",
+	"short_put": kindShortPut, "covered_call": kindCoveredCall, "naked_call": kindNakedCall,
+	"put_spread": kindPutSpread, "call_spread": kindCallSpread, "long_put": kindLongPut, "long_call": kindLongCall,
+	"put_debit_spread": kindPutDebitSpread, "call_debit_spread": kindCallDebitSpread,
+	"calendar_spread": kindCalendarSpread, "diagonal_spread": kindDiagonalSpread,
+	"long_straddle": kindLongStraddle, "short_straddle": kindShortStraddle,
+	"long_strangle": kindLongStrangle, "short_strangle": kindShortStrangle,
+	"iron_condor": kindIronCondor, "reverse_iron_condor": kindReverseIronCondor, "collar": kindCollar,
+	"other": kindOther,
 }
 
 type sourceTime struct {
@@ -265,7 +265,7 @@ func (c cells) rowOf(s compute.Structure) row {
 		kind = s.Kind
 	}
 	if kind == "" {
-		kind = "Unidentified"
+		kind = kindOther
 	}
 	expiry := "-"
 	for i, l := range s.Legs {

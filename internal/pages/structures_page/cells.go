@@ -150,12 +150,12 @@ func (c cells) moneyness(s compute.Structure) any {
 		return mkGap(reasonMissing)
 	}
 	if strings.Trim(f.Value, "-0.") == "" {
-		return "at the money"
+		return moneyAt
 	}
 	if strings.HasPrefix(f.Value, "-") {
-		return "in the money"
+		return moneyIn
 	}
-	return "out of the money"
+	return moneyOut
 }
 
 // maxLossCell is max_loss; an unbounded naked call is shown as such.
