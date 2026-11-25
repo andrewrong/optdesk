@@ -60,6 +60,16 @@ describe('data health page', () => {
     expect(pageFolder.registration.schema).toBe('data_health_page')
   })
 
+  it('prints the page title, card titles and the dataset head in Chinese', async () => {
+    const p = ok()
+    p.gateways = JSON.parse(readFileSync(path.resolve(import.meta.dirname, '../../../../contracts/fixtures/page.data_health_page.v1.gateways.json'), 'utf8')).gateways
+    const el = await render(p)
+    expect(el.querySelector('h1')?.textContent).toBe('数据健康')
+    const titles = [...el.querySelectorAll('[data-slot="card-title"]')].map((t) => t.textContent)
+    expect(titles).toEqual(['网关', '数据健康', '重复失败', '图例'])
+    expect(el.querySelector('thead th')?.textContent).toBe('数据集')
+  })
+
   it('prints a row per dataset with its cells, the state and the counts as given', async () => {
     const el = await render(withCell({ state: 'missing', keys: 3, ok: 1, missing: 2, missing_keys: ['AAA', 'BBB'], repair: 'none' }))
     expect(el.querySelectorAll('[data-dataset]')).toHaveLength(3)
