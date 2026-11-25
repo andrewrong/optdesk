@@ -5,7 +5,8 @@ package option_pnl_page
 const (
 	noQuotesZh        = "该合约在仓位持有期间没有存档报价（报价从 2026-11-07 起才开始存档），所以无法拆分，只显示账本数字。"
 	leftOutNoQuotesZh = "多为 2026-11-07 前已结束的仓位，当时还没有报价存档"
-	longPutSkippedZh  = "本页只显示卖出的看跌期权，已跳过买入的看跌期权仓位"
+	longsTailZh       = " 个买入的看跌期权仓位已跳过：本页只显示卖出的看跌期权"
+	noMarkGapFmtZh    = "%s 在 %d 个交易日内没有存档报价，无法拆分"
 )
 
 // Ledger block texts. Design: docs/design/options-pnl-ledger.md#Decisions (7).

@@ -270,7 +270,7 @@ func TestLotErrorIsCardBookSaysSo(t *testing.T) {
 	if lots[2].Gap == nil || lots[2].Gap.Text != "no stored close of DDD on 2026-11-13: no split" || len(lots[2].Lines) != 0 {
 		t.Fatalf("DDD = %+v", lots[2])
 	}
-	if lots[3].Gap == nil || lots[3].Gap.Text != "no stored quote of EEE within 3 sessions: no split" {
+	if lots[3].Gap == nil || lots[3].Gap.Text != "EEE 在 3 个交易日内没有存档报价，无法拆分" {
 		t.Fatalf("EEE = %+v", lots[3])
 	}
 	b := vm.Accounts[0].Books[0]
@@ -404,7 +404,7 @@ func TestLongPutNoteCount(t *testing.T) {
 		r.replay.positions = append(r.replay.positions, p)
 	}
 	vm := r.build(t)
-	want := "main: 2 long put lots skipped: " + longPutSkippedZh
+	want := "main: 2 个买入的看跌期权仓位已跳过：本页只显示卖出的看跌期权"
 	if !strings.Contains(strings.Join(vm.Notes, "|"), want) || len(vm.Accounts[0].Lots) != 0 {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
@@ -450,7 +450,7 @@ func TestNoQuotesTextsAreChinese(t *testing.T) {
 	if got := *acc.Books[0].LeftOut; !strings.Contains(got, "2 个没有存档报价的仓位（账本 $5.00；"+leftOutNoQuotesZh+"）") {
 		t.Errorf("left_out = %q", got)
 	}
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 long put lots skipped: "+longPutSkippedZh) {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "main: 1 个买入的看跌期权仓位已跳过：本页只显示卖出的看跌期权") {
 		t.Errorf("notes = %v", vm.Notes)
 	}
 }
