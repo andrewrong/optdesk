@@ -1,8 +1,9 @@
 package contracts_test
 
-import "maps"
-
-import "testing"
+import (
+	"maps"
+	"testing"
+)
 
 func TestReadingOwnerCommandOrigin(t *testing.T) {
 	t.Parallel()

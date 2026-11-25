@@ -1,8 +1,9 @@
 package contracts_test
 
-import "maps"
-
-import "testing"
+import (
+	"maps"
+	"testing"
+)
 
 func flexFetchRecord(over map[string]any) map[string]any {
 	rec := map[string]any{
