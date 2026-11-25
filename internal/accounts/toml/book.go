@@ -107,8 +107,7 @@ func Load(path string) (accounts.Book, error) {
 		b.ids = append(b.ids, val)
 	}
 	if err := p.Error(); err != nil {
-		var pe *unstable.ParserError
-		if errors.As(err, &pe) {
+		if pe, ok := errors.AsType[*unstable.ParserError](err); ok {
 			return nil, fmt.Errorf("accounts: line %d: not valid TOML", lineAt(data, offsetOf(data, pe.Highlight)))
 		}
 		return nil, fmt.Errorf("accounts: not valid TOML: %w", err)

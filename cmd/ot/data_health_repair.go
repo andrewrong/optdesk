@@ -57,11 +57,8 @@ func postRepair(ctx context.Context, a *app, st jobrequest.Poster, clk clock.Clo
 func repairJobsOf(dataset string) []data_health_page.Job {
 	out := []data_health_page.Job{}
 	for _, j := range dataHealthJobs() {
-		for _, d := range j.Datasets {
-			if d == dataset {
-				out = append(out, j)
-				break
-			}
+		if slices.Contains(j.Datasets, dataset) {
+			out = append(out, j)
 		}
 	}
 	return out

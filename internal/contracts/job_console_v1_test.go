@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -25,7 +26,8 @@ func TestJobConsoleBadVersion(t *testing.T) {
 	t.Parallel()
 	s := compilePageV2(t, "page.job_console.v1.json")
 	err := s.Validate(loadJobConsoleV1(t, "bad-version"))
-	ve, ok := err.(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(err, &ve)
 	if !ok {
 		t.Fatalf("err = %v, want a validation error", err)
 	}

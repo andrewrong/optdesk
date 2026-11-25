@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -337,9 +338,7 @@ func TestCalendarLoadIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := map[string]contracts.SessionDay{}
-	for k, v := range e.store.rows {
-		first[k] = v
-	}
+	maps.Copy(first, e.store.rows)
 	if err := runCalendar(e.a, []string{"load", syntheticFile}); err != nil {
 		t.Fatal(err)
 	}

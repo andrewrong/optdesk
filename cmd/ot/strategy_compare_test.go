@@ -66,7 +66,7 @@ func compareRig(t *testing.T, old []store.Candidate, res *fakeResultStore) (*app
 		if dsn != "pages-dsn" {
 			t.Errorf("dsn %q", dsn)
 		}
-		return &dayCandidates{fakeCandidateRW: fakeCandidateRW{closed: &closed}, rows: old}, nil
+		return &dayCandidates{closed: &closed, rows: old}, nil
 	}
 	a.deps.openStrategyResults = func(_ context.Context, dsn string) (resultStore, error) {
 		if dsn != "pages-dsn" {

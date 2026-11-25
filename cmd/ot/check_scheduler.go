@@ -75,7 +75,7 @@ func windowResults(now, from time.Time, exps []store.Expectation) []Result {
 		byDay[string(x.ExpectedDay)] = append(byDay[string(x.ExpectedDay)], x)
 	}
 	var out []Result
-	for i := 0; i < schedDays; i++ {
+	for i := range schedDays {
 		d := from.AddDate(0, 0, i)
 		day := d.Format(schedDayLayout)
 		rows := byDay[day]

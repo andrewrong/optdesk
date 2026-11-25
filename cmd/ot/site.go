@@ -238,8 +238,8 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	}
 	var closers []func() error
 	closeAll := func() {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i]()
+		for _, closer := range slices.Backward(closers) {
+			_ = closer()
 		}
 	}
 	fail := func() (siteReaders, func(), error) {

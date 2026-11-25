@@ -342,8 +342,8 @@ func (a *app) openMarkReaders(ctx context.Context, dsn string) (markReaders, fun
 	var rd markReaders
 	var closers []func() error
 	closeAll := func() {
-		for i := len(closers) - 1; i >= 0; i-- {
-			_ = closers[i]()
+		for _, closer := range slices.Backward(closers) {
+			_ = closer()
 		}
 	}
 	skip := func(why string) (markReaders, func()) {

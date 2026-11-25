@@ -55,8 +55,7 @@ func runProbe(t *testing.T, f *fakeReference, args ...string) (string, int) {
 	code := 0
 	if err != nil {
 		code = 1
-		var ee *exitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exitError](err); ok {
 			code = ee.code
 		}
 	}
