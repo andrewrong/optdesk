@@ -11,16 +11,16 @@ export { validate as validateStructuresList } from '@/types/structures_list'
 export type { Payload as StructuresListPayload } from '@/types/structures_list'
 
 const COLUMNS: Column[] = [
-  { id: 'symbol', label: 'Underlying' },
-  { id: 'kind', label: 'Type', wrap: true },
-  { id: 'expiry', label: 'Expiry' },
-  { id: 'moneyness', label: 'In/out of the money', wrap: true },
-  { id: 'distance', label: 'Distance to last', align: 'right' },
-  { id: 'earned', label: 'Earned %', align: 'right' },
-  { id: 'ex_dividend', label: 'Ex-dividend', wrap: true },
-  { id: 'max_loss', label: 'Max loss', align: 'right' },
-  { id: 'max_gain', label: 'Max profit', align: 'right' },
-  { id: 'pnl', label: 'Floating P/L', align: 'right' },
+  { id: 'symbol', label: '标的' },
+  { id: 'kind', label: '类型', wrap: true },
+  { id: 'expiry', label: '到期日' },
+  { id: 'moneyness', label: '价内/价外 (In/out of the money)', wrap: true },
+  { id: 'distance', label: '距现价', align: 'right' },
+  { id: 'earned', label: '已赚 %', align: 'right' },
+  { id: 'ex_dividend', label: '除息', wrap: true },
+  { id: 'max_loss', label: '最大亏损', align: 'right' },
+  { id: 'max_gain', label: '最大盈利', align: 'right' },
+  { id: 'pnl', label: '浮动盈亏', align: 'right' },
 ]
 const text = (value: string) => ({ text: value, value })
 // A text of Python's that is a Badge, or its Gap as it is.

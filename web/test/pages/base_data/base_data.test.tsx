@@ -35,7 +35,7 @@ describe('base data page', () => {
   it('renders one row per dataset with its verdict', async () => {
     const h = await render(ok)
     expect([...(h.querySelector('table') as HTMLElement).querySelectorAll('th')].map((c) => c.textContent)).toEqual([
-      'Dataset', 'Verdict', 'Newest value', 'Date', 'Age', 'Failed checks', 'Cross-check',
+      '数据集', '结论', '最新值', '日期', '时长', '失败检查', '交叉核对',
     ])
     expect([...h.querySelectorAll('tr[data-dataset]')].map((r) => r.getAttribute('data-dataset'))).toEqual(['quotes', 'option_chains', 'fx'])
     const chains = rowOf(h, 'option_chains')
@@ -57,8 +57,17 @@ describe('base data page', () => {
     expect(block).not.toBeNull()
     expect(block.textContent).toContain('1 s')
     expect(block.textContent).toContain('age; crossed 2.1%')
-    const age = [...h.querySelectorAll('th')].find((c) => c.textContent === 'Age') as HTMLElement
+    const age = [...h.querySelectorAll('th')].find((c) => c.textContent === '时长') as HTMLElement
     expect(age.classList.contains('hidden')).toBe(true)
+  })
+
+  it('prints the title, card titles and thresholds heads in Chinese', async () => {
+    const h = await render(ok)
+    expect(h.querySelector('h1')?.textContent).toBe('基础数据 (Base data)')
+    const titles = [...h.querySelectorAll('[data-slot="card-title"]')].map((c) => c.textContent)
+    expect(titles).toContain('术语表 (Glossary)')
+    expect(titles).toContain('阈值 (Thresholds)')
+    expect([...h.querySelectorAll('[data-thresholds] th')].map((c) => c.textContent)).toEqual(['数据集', '规则', '预警线', '失败线', '来源'])
   })
 
   it('fixes the dataset column and shows the scroll hint', async () => {

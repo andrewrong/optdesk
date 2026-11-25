@@ -27,7 +27,7 @@ export function BaseDataView({ payload }: { payload: Payload }) {
       <Card className="min-w-0">
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl font-semibold">Base data</h1>
+            <h1 className="text-xl font-semibold">{'基础数据 (Base data)'}</h1>
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             as of {payload.as_of} (last closed session US {payload.last_sessions.XNYS}, JP {payload.last_sessions.XTKS})
@@ -59,7 +59,7 @@ export function BaseDataView({ payload }: { payload: Payload }) {
       {payload.glossary.length > 0 ? (
         <Card className="min-w-0">
           <CardHeader>
-            <CardTitle>Glossary</CardTitle>
+            <CardTitle>{'术语表 (Glossary)'}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl data-glossary className="space-y-2 text-sm">
@@ -75,17 +75,17 @@ export function BaseDataView({ payload }: { payload: Payload }) {
       {thresholds.length > 0 ? (
         <Card className="min-w-0">
           <CardHeader>
-            <CardTitle>Thresholds</CardTitle>
+            <CardTitle>{'阈值 (Thresholds)'}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table data-thresholds>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Dataset</TableHead>
-                  <TableHead>Rule</TableHead>
-                  <TableHead>Warn at</TableHead>
-                  <TableHead>Fail at</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead>{'数据集'}</TableHead>
+                  <TableHead>{'规则'}</TableHead>
+                  <TableHead>{'预警线'}</TableHead>
+                  <TableHead>{'失败线'}</TableHead>
+                  <TableHead>{'来源'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

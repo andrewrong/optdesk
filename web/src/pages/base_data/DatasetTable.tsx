@@ -30,7 +30,7 @@ const isSorted = (table: ReactTable<Dataset>) => table.getState().sorting.length
 const columns: ColumnDef<Dataset>[] = [
   {
     id: 'dataset',
-    header: 'Dataset',
+    header: '数据集',
     enableSorting: false,
     cell: ({ row, table }) => (
       <button
@@ -56,18 +56,18 @@ const columns: ColumnDef<Dataset>[] = [
   },
   {
     id: 'verdict',
-    header: 'Verdict',
+    header: '结论',
     accessorFn: (r) => r.level,
     sortingFn: (a: TableRowModel<Dataset>, b: TableRowModel<Dataset>) => WORST_FIRST[a.original.level] - WORST_FIRST[b.original.level],
     cell: ({ row }) => <LevelBadge level={row.original.level} />,
   },
-  { id: 'newest_value', header: 'Newest value', enableSorting: false, cell: ({ row }) => row.original.newest_value || DASH },
-  { id: 'date', header: 'Date', enableSorting: false, cell: ({ row }) => row.original.newest_day ?? DASH },
-  { id: 'age', header: 'Age', enableSorting: false, cell: ({ row }) => row.original.age_text || DASH },
-  { id: 'failed', header: 'Failed checks', enableSorting: false, cell: ({ row }) => row.original.failed_summary || DASH },
+  { id: 'newest_value', header: '最新值', enableSorting: false, cell: ({ row }) => row.original.newest_value || DASH },
+  { id: 'date', header: '日期', enableSorting: false, cell: ({ row }) => row.original.newest_day ?? DASH },
+  { id: 'age', header: '时长', enableSorting: false, cell: ({ row }) => row.original.age_text || DASH },
+  { id: 'failed', header: '失败检查', enableSorting: false, cell: ({ row }) => row.original.failed_summary || DASH },
   {
     id: 'cross_check',
-    header: 'Cross-check',
+    header: '交叉核对',
     enableSorting: false,
     cell: ({ row }) => {
       const cc = row.original.cross_check
