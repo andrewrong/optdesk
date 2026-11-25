@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -31,9 +30,9 @@ const (
 	jobOptionOpenPlanJP    = "option_open_plan_jp"
 	jobOptionOpenJP        = "option_open_jp"
 
-	// envOpenResolveMaxNew is read from the process environment: a positive value is passed as MaxNew to the
-	// resolve jobs (unset or 0 keeps max_new of the manifest), so the window runs it once with 1500.
-	envOpenResolveMaxNew = "OT_OPEN_RESOLVE_MAX_NEW"
+	// openResolveInFlight is the resolves in flight of the client of the US resolve, the gap pass and the JP
+	// resolve: the parallel of their manifests.
+	openResolveInFlight = 5
 
 	reasonNoOpenDSN     = openquote.DSNEnvOptionOpen + " is not set"
 	reasonOpenStoreFail = "the option open store could not be opened"
@@ -45,7 +44,7 @@ func init() {
 	registerJob(jobFamily{
 		id: jobOptionOpenResolve, order: 120, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
-			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolve, optionopen.NewResolve, true, broker.Options{ResolveInFlight: 1})
+			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolve, optionopen.NewResolve, true, broker.Options{ResolveInFlight: openResolveInFlight})
 		},
 	})
 	registerJob(jobFamily{
@@ -63,14 +62,14 @@ func init() {
 	registerJob(jobFamily{
 		id: jobOptionOpenResolveGap, order: 190, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
-			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveGap, optionopen.NewGap, false, broker.Options{ResolveInFlight: 1})
+			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveGap, optionopen.NewGap, false, broker.Options{ResolveInFlight: openResolveInFlight})
 		},
 	})
 	// Orders 165, 170 and 180: the Japan resolve, plan and pull, with the rules of the US families.
 	registerJob(jobFamily{
 		id: jobOptionOpenResolveJP, order: 165, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
-			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveJP, optionopen.NewResolveJP, true, broker.Options{ResolveInFlight: 1})
+			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveJP, optionopen.NewResolveJP, true, broker.Options{ResolveInFlight: openResolveInFlight})
 		},
 	})
 	registerJob(jobFamily{
@@ -128,7 +127,7 @@ func buildOpenPull(ctx context.Context, a *app, jc *jobCtx, id string,
 }
 
 // buildOpenResolve builds the evening resolve (withPull) or the gap pass over a client of its own, dialled with
-// opts (one resolve in flight), and the first-day limit of OT_OPEN_RESOLVE_MAX_NEW.
+// opts (openResolveInFlight resolves in flight); MaxNew is left to the manifest.
 func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 	newJob func(optionopen.ResolveDeps, optionopen.ResolveOptions) (contracts.Job, error), withPull bool, opts broker.Options) (contracts.Job, string, error) {
 	stores, reason, ok := openOptionOpen(ctx, a, jc, id, true)
@@ -158,18 +157,9 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 		if withPull {
 			d.Pull = stores
 		}
-		return newJob(d, optionopen.ResolveOptions{MaxNew: openResolveMaxNew(a)})
+		return newJob(d, optionopen.ResolveOptions{})
 	})
 	return held(a, id, j, reason, err)
-}
-
-// openResolveMaxNew is the value of OT_OPEN_RESOLVE_MAX_NEW; unset, 0, negative or not a number is 0 (the manifest).
-func openResolveMaxNew(a *app) int {
-	n, err := strconv.Atoi(a.getenv(envOpenResolveMaxNew))
-	if err != nil || n < 0 {
-		return 0
-	}
-	return n
 }
 
 // historyOf is the HistoryClient of a broker (the dialled client implements both; the stand-in of a dead socket

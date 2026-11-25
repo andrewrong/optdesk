@@ -14,7 +14,7 @@ Evening: `session_close` plus 60 minutes. The job states its own window and slot
 - `OT_PG_DSN_MASTER`: the instrument store; `OT_PG_DSN_BAR`: the bar store (not for `option_open`).
 - `$OT_HOME/watch.toml`: the watch list.
 - The broker socket `$OT_HOME/run/ibkr.sock` (a profile value can name `ibkr-main.sock`).
-- `OT_OPEN_RESOLVE_MAX_NEW` (process environment): a positive number overrides `max_new` of the manifest and is passed as `MaxNew` to the job; unset or 0 keeps the manifest value. The first day runs `OT_OPEN_RESOLVE_MAX_NEW=1500 ot run-once` once. The family dials its own client with one resolve in flight.
+- No cap is read from the environment: `max_new` is 0 (no cap). The family dials its own client with 5 resolves in flight.
 
 ## Left out
 
