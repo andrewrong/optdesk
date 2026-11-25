@@ -43,6 +43,9 @@ class ResolveResult:
     trading_hours: str = ""
     liquid_hours: str = ""
     time_zone_id: str = ""
+    expiry: str = ""
+    strike: str = ""
+    right: str = ""
 
 
 @dataclass(frozen=True)

@@ -21,7 +21,7 @@ from typing import Any
 
 from ib_async import IB, Contract, RequestError
 
-from optdesk.ibkr import spec
+from optdesk.ibkr import resolve_check, spec
 from optdesk.ibkr.accounts import drop_resubscribe, read_account, read_executions
 from optdesk.ibkr.api import DividendKey, DividendReading, HistoryBar, HistoryRequest
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
@@ -423,14 +423,13 @@ class IbGateway:
             return ResolveResult(False, 0)
         if len(details) > 1:
             raise spec.AmbiguousResolve(f"{len(details)} results for one contract")
-        found = details[0].contract
-        return ResolveResult(
-            True,
-            int(found.conId),
-            exchange=found.exchange,
-            trading_class=found.tradingClass,
-            multiplier=found.multiplier,
-            **spec.hours_fields(details[0]),
+        return resolve_check.answer(
+            details[0],
+            expiry=expiry,
+            strike=strike,
+            right=right,
+            multiplier=multiplier,
+            trading_class=trading_class,
         )
 
     # --- account ----------------------------------------------------------

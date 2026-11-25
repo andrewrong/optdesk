@@ -335,7 +335,7 @@ func holdingsOf(ps []store.Position, price, prev map[int64]string) blockapi.Hold
 // rowsOf builds the stock and option rows; lines is the result of Holdings over holdingsOf(ps).
 // Positions whose quantity cannot be shown (a fractional option, a stock over 6 places) are counted in skipped and not listed.
 func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.HoldingLine, prem map[string]string,
-	role textCell, day contracts.Day) (stocks []stockRow, options []optionRow, skipped int) {
+	role textCell, day contracts.Day, names map[string]string) (stocks []stockRow, options []optionRow, skipped int) {
 	stocks, options = []stockRow{}, []optionRow{}
 	i := 0
 	for _, p := range ps {
@@ -361,8 +361,12 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 			if line.Day.Gap == "" {
 				stockDay = figure(line.Day, p.Currency, "amount_signed")
 			}
+			name := text2(TextNoStoredName)
+			if n := names[p.Symbol]; n != "" {
+				name = text2(n)
+			}
 			stocks = append(stocks, stockRow{
-				Code: text2(p.Symbol), Name: text2(p.Symbol), Role: role, Quantity: q,
+				Code: text2(p.Symbol), Name: name, Role: role, Quantity: q,
 				Cost: cost, Price: pr, Day: stockDay, Unrealised: unreal,
 			})
 			continue
