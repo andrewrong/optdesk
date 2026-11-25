@@ -281,7 +281,7 @@ func TestResolveJobsAreBuiltWithNoMaxNew(t *testing.T) {
 	}
 	_, _, _ = buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolve, capture, true, broker.Options{})
 	if len(got) == 0 {
-		t.Skip("constructor not reached with this harness")
+		t.Fatal("the job constructor was not reached")
 	}
 	for _, o := range got {
 		if o.MaxNew != 0 {
