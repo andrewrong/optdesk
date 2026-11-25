@@ -161,3 +161,14 @@ const (
 	kindUnknown           = "其他结构"
 	glossUnknown          = "此类型没有说明"
 )
+
+// The Chinese parts of the titles of the list and detail pages; each is written with the English phrase beside it.
+const (
+	zhPageTitle   = "持仓结构"
+	zhDecideTitle = "本周待决策"
+	zhOthersTitle = "其他结构"
+	zhLegsTitle   = "腿明细"
+	zhPayoffTitle = "到期盈亏"
+	zhGreeksTitle = "希腊值"
+	zhLevelsTitle = "关键价位"
+)
