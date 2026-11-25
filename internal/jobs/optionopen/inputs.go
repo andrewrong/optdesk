@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"math"
 	"math/big"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -121,8 +122,8 @@ func (s Stored) lastClose(ctx context.Context, id int64, through time.Time) (flo
 	if err != nil {
 		return 0, false, err
 	}
-	for i := len(bars) - 1; i >= 0; i-- {
-		if v, err := strconv.ParseFloat(bars[i].Close, 64); err == nil && v > 0 {
+	for _, bar := range slices.Backward(bars) {
+		if v, err := strconv.ParseFloat(bar.Close, 64); err == nil && v > 0 {
 			return v, true, nil
 		}
 	}
@@ -324,8 +325,8 @@ func (r *listRun) historySpot(ctx context.Context, n *listName) (float64, bool) 
 	if err != nil {
 		return 0, false
 	}
-	for i := len(bars) - 1; i >= 0; i-- {
-		if v, err := strconv.ParseFloat(bars[i].Close, 64); err == nil && v > 0 {
+	for _, bar := range slices.Backward(bars) {
+		if v, err := strconv.ParseFloat(bar.Close, 64); err == nil && v > 0 {
 			return v, true
 		}
 	}

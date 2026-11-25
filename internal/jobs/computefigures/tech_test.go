@@ -51,7 +51,7 @@ func addTechBars(b *fakeBars, id int, days int, closeOf func(i int) string) {
 		b.rows = map[string][]contracts.PriceBar{}
 	}
 	key := strconv.Itoa(id) + "|trades"
-	for i := 0; i < days; i++ {
+	for i := range days {
 		d := shiftDay(dayD, i-days+1)
 		b.rows[key] = append(b.rows[key], contracts.PriceBar{InstrumentID: id, Basis: gen.PriceBarBasis("trades"),
 			Close: closeOf(i), SessionDay: dateOf(d), AdjustEpoch: 1})
@@ -284,7 +284,7 @@ func TestTechRowsHashIsTheCloses(t *testing.T) {
 	j, f, _ := techWorld(t, &techFake{res: okTech()}, newIndexes())
 	runTech(j)
 	var lines []string
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		d := string(shiftDay(dayD, i-2))
 		lines = append(lines, "NDX|"+d+"|100.5"+strconv.Itoa(i), "SPX|"+d+"|50.2"+strconv.Itoa(i))
 	}

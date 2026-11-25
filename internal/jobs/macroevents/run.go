@@ -110,14 +110,15 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			j.replace(ctx, rep, day, kind, sourceFile, files[kind])
 		}
 	}
-	text := "macro_events " + string(day) + ": " + strings.Join(rep.lines, "; ")
+	var text strings.Builder
+	text.WriteString("macro_events " + string(day) + ": " + strings.Join(rep.lines, "; "))
 	for _, k := range rep.held {
-		text += "; kept stored rows of " + k + ": answer shorter or empty"
+		text.WriteString("; kept stored rows of " + k + ": answer shorter or empty")
 	}
 	if len(rep.failed) > 0 {
-		text += "; not fetched: " + strings.Join(rep.failed, ", ")
+		text.WriteString("; not fetched: " + strings.Join(rep.failed, ", "))
 	}
-	j.log.Info(text)
+	j.log.Info(text.String())
 	res := contracts.JobResult{Returned: rep.returned, Usable: rep.usable}
 	if rep.firstErr != nil {
 		res.Err = asTyped(rep.firstErr, contracts.Retryable)
@@ -147,8 +148,7 @@ func fileEvents(srcs []handSource) map[string][]macroevent.Event {
 
 // asTyped wraps err as a TypedError; a TypedError found inside err keeps its own kind, else kind is used.
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		kind = te.Kind()
 	}
 	return &typedError{kind: kind, msg: err.Error(), cause: err}

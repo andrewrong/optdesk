@@ -3,6 +3,7 @@ package computefigures
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -12,12 +13,7 @@ func (j *job) isRv20Key(name, kind, subj string) bool {
 	if j.m.Rv20 == "" || name != j.m.Rv20 || kind != kindUnderlying {
 		return false
 	}
-	for _, n := range j.m.Rv20Indices {
-		if n == subj {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(j.m.Rv20Indices, subj)
 }
 
 // runRv20 stores the 20-day realised volatility of each named index. The name is resolved to the id of the

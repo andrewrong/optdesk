@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
 
@@ -342,8 +343,7 @@ func withErr(r contracts.JobResult, e contracts.TypedError) contracts.JobResult 
 }
 
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te
 	}
 	return &typedError{kind: kind, err: err}

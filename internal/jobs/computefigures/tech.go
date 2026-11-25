@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -61,9 +62,7 @@ func (j *job) withTech(d TechDeps) *job {
 	c := *j
 	c.tech = &techStep{classify: d.Classify, params: d.Params}
 	c.rule = make(map[string]compute.Rule, len(j.rule)+1)
-	for k, r := range j.rule {
-		c.rule[k] = r
-	}
+	maps.Copy(c.rule, j.rule)
 	p := d.Params
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%s|%s|%d|%d|%d|%d", j.m.Tech, techVersion, p.Band, p.Hard,
 		p.Short, p.Long, p.Fold, p.MaxAgeDays)))

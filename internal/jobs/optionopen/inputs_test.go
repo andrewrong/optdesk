@@ -13,7 +13,7 @@ func TestRv20FromStoredCloses(t *testing.T) {
 	t.Parallel()
 	through := time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC)
 	closes := map[string]string{}
-	for i := 0; i < 21; i++ {
+	for i := range 21 {
 		c := "100"
 		if i%2 == 1 {
 			c = "101.005016708417" // 100 * e^0.01

@@ -44,7 +44,7 @@ func newRig(chains ...broker.Chain) *rig {
 
 func (r *rig) deps(symbols ...string) ResolveDeps {
 	return ResolveDeps{
-		Stored: Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases},
+		Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases,
 		Broker: r.brk, Marks: r.marks, Pull: r.pull, Clock: r.clk,
 		Log:  func(l string) { r.logs = append(r.logs, l) },
 		Rand: func() float64 { return 0.5 },
@@ -285,7 +285,7 @@ func TestNotListedRowOfThePullBecomesAMarkOnlyAfterACleanAnswer(t *testing.T) {
 func bigChains() []broker.Chain {
 	// 13 trading classes of 100 contracts each: 97 puts at or below 100, the put above, the two calls around.
 	var chains []broker.Chain
-	for i := 0; i < 13; i++ {
+	for i := range 13 {
 		chains = append(chains, chainOf("C"+string(rune('A'+i)), 904, 1001, expiry30))
 	}
 	return chains

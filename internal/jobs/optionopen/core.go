@@ -500,7 +500,6 @@ func (c *Core) ask(ctx context.Context, st *runState, ts []Target) []answer {
 			continue
 		}
 		for k, q := range qs {
-			q := q
 			s, code := rowStatus(q)
 			out[i+k] = answer{status: s, code: code, q: &q, sent: sent}
 		}

@@ -175,13 +175,14 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 func formatCounts(counts map[string]map[string]int) string {
 	var parts []string
 	for _, cur := range slices.Sorted(maps.Keys(counts)) {
-		part := cur
+		var part strings.Builder
+		part.WriteString(cur)
 		for _, st := range slices.Sorted(maps.Keys(counts[cur])) {
 			if n := counts[cur][st]; n > 0 {
-				part += " " + st + "=" + strconv.Itoa(n)
+				part.WriteString(" " + st + "=" + strconv.Itoa(n))
 			}
 		}
-		parts = append(parts, part)
+		parts = append(parts, part.String())
 	}
 	return strings.Join(parts, "; ")
 }

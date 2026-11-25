@@ -244,7 +244,7 @@ func TestIvInputTermsChunkOf500(t *testing.T) {
 	t.Parallel()
 	f := world()
 	f.eod[1], f.terms = nil, map[int64]store.OptionTerms{}
-	for i := 0; i < 501; i++ {
+	for i := range 501 {
 		f.addOption(1000+i, "C", "500", dayE, eodRow(1000+i, fp(9), fp(11), fp(0.2), closeD))
 	}
 	mustChain(t, f)

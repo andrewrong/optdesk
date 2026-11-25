@@ -25,7 +25,7 @@ func gapStore(expiries, lo, hi, planLo, planHi int) *pullStores {
 	s := &pullStores{refs: map[int64][]openquote.OptionRef{}}
 	s.insts = append(s.insts, store.Instrument{ID: 1, Spec: store.InstrumentSpec{Type: "stock", Name: "S1", Currency: "USD"},
 		Identifiers: []store.Identifier{conidOf(1)}})
-	for e := 0; e < expiries; e++ {
+	for e := range expiries {
 		for k := hi; k >= lo; k-- {
 			id := int64(gapID(e, k))
 			s.insts = append(s.insts, store.Instrument{ID: id, Identifiers: []store.Identifier{conidOf(id)}})

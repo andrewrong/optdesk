@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -476,8 +477,8 @@ func fetchClose(ctx context.Context, h broker.HistoryClient, s stock) (float64, 
 	if err != nil {
 		return 0, false, err
 	}
-	for i := len(bars) - 1; i >= 0; i-- {
-		if v, err := strconv.ParseFloat(bars[i].Close, 64); err == nil && v > 0 {
+	for _, bar := range slices.Backward(bars) {
+		if v, err := strconv.ParseFloat(bar.Close, 64); err == nil && v > 0 {
 			return v, true, nil
 		}
 	}

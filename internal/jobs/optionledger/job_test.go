@@ -227,7 +227,7 @@ func TestNonRequiredLoginDegradedOk(t *testing.T) {
 		t.Fatalf("result must be ok: %v", res.Err)
 	}
 	var lines []string // the "fetched" total record is not a degraded record
-	for _, l := range strings.Split(strings.TrimSpace(e.log.String()), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(e.log.String()), "\n") {
 		if !strings.Contains(l, "optionledger: fetched") {
 			lines = append(lines, l)
 		}
@@ -283,7 +283,7 @@ func TestRetriedKeyDoesNotFetchAgainAndIsPresent(t *testing.T) {
 	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
 		t.Fatal("present before any run")
 	}
-	for i := 0; i < 3; i++ { // the runner retries a missing key
+	for range 3 { // the runner retries a missing key
 		if res := j.Run(ctx, "2026-11-10", nil); res.Err != nil {
 			t.Fatal(res.Err)
 		}
@@ -301,7 +301,7 @@ func TestRequiredFailureKeyMissingUntilRetrySucceeds(t *testing.T) {
 	src := &fakeSource{fail: true}
 	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	ctx := context.Background()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if res := j.Run(ctx, "2026-11-10", nil); res.Err == nil {
 			t.Fatal("want error")
 		}

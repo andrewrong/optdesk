@@ -393,7 +393,7 @@ func storedTwoDaysBack() map[string][]contracts.SeriesPoint {
 
 func TestRunPastDayFetchesFromTheGap(t *testing.T) {
 	t.Parallel()
-	w := &readerWriter{readerFake: readerFake{byID: storedTwoDaysBack()}}
+	w := &readerWriter{byID: storedTwoDaysBack()}
 	src := sizedRun(t, "2026-11-10", time.Date(2026, 11, 20, 3, 0, 0, 0, time.UTC), w)
 	if len(src.plans) != 2 {
 		t.Fatalf("plans = %d", len(src.plans))
@@ -407,7 +407,7 @@ func TestRunPastDayFetchesFromTheGap(t *testing.T) {
 
 func TestRunTodayKeepsLookback(t *testing.T) {
 	t.Parallel()
-	w := &readerWriter{readerFake: readerFake{byID: storedTwoDaysBack()}}
+	w := &readerWriter{byID: storedTwoDaysBack()}
 	src := sizedRun(t, "2026-11-10", time.Date(2026, 11, 10, 3, 0, 0, 0, time.UTC), w)
 	want := map[string]contracts.Day{"WALCL": "2026-10-27", "CPIAUCNS": "2025-08-07"}
 	for _, p := range src.plans {
@@ -426,7 +426,7 @@ func TestRunTodayKeepsLookback(t *testing.T) {
 
 func TestRunReaderErrorKeepsLookback(t *testing.T) {
 	t.Parallel()
-	w := &readerWriter{readerFake: readerFake{err: errors.New("db down")}}
+	w := &readerWriter{err: errors.New("db down")}
 	src := sizedRun(t, "2026-11-10", time.Date(2026, 11, 20, 3, 0, 0, 0, time.UTC), w)
 	want := map[string]contracts.Day{"WALCL": "2026-10-27", "CPIAUCNS": "2025-08-07"}
 	if len(src.plans) != 2 {

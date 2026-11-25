@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -251,7 +251,7 @@ func (j *job) eodQuotes(ctx context.Context, ul underlyingRef, calls bool) (spot
 
 // termsOf reads the terms of the ids in chunks of 500, ids ascending.
 func (j *job) termsOf(ctx context.Context, ids []int64) ([]store.OptionTerms, error) {
-	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
+	slices.Sort(ids)
 	var out []store.OptionTerms
 	for start := 0; start < len(ids); start += termsChunk {
 		end := min(start+termsChunk, len(ids))

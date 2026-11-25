@@ -61,8 +61,7 @@ func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 // fail is a failed run with a named code; a typed error of the store keeps its kind, any other is Retryable.
 func fail(code string, err error) contracts.JobResult {
 	kind := contracts.Retryable
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		kind = te.Kind()
 	}
 	return contracts.JobResult{Err: &typedError{kind: kind, code: code, err: err}}

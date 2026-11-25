@@ -323,7 +323,7 @@ func TestMixedRunStoresItemsAndReasonsForFailedNames(t *testing.T) {
 	t.Parallel()
 	r := newPlanRig()
 	var symbols []string
-	for i := 0; i < 44; i++ {
+	for i := range 44 {
 		symbols = append(symbols, fmt.Sprintf("S%02d", i))
 		r.seed(t, int64(100+i), putStrikes...)
 	}

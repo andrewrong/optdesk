@@ -2,6 +2,7 @@ package optionopen
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"slices"
 	"sort"
@@ -75,9 +76,7 @@ func TestJPPartialUnderShareRetries(t *testing.T) {
 		t.Errorf("written %d rows, want 10", s.total())
 	}
 	before := map[string]contracts.OptionOpen{}
-	for k, r := range s.stored {
-		before[k] = r
-	}
+	maps.Copy(before, s.stored)
 	res = j.Run(context.Background(), "2026-11-11", keys)
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
 		t.Fatalf("second attempt: %v, want Permanent", res.Err)

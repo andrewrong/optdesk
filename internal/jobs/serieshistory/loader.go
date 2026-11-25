@@ -28,8 +28,7 @@ func permanent(format string, a ...any) contracts.TypedError {
 
 // classOf is the kind of err when it is a TypedError, else fallback.
 func classOf(err error, fallback contracts.ErrorKind) contracts.ErrorKind {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te.Kind()
 	}
 	return fallback

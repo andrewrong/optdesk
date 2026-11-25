@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -49,11 +50,12 @@ func NewIndex(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWr
 }
 
 func joinAnd(s []string) string {
-	out := s[0]
+	var out strings.Builder
+	out.WriteString(s[0])
 	for _, x := range s[1:] {
-		out += " and " + x
+		out.WriteString(" and " + x)
 	}
-	return out
+	return out.String()
 }
 
 // closesOf reads the stored closes of index from 70 calendar days before the day up to the day; nil without a reader.

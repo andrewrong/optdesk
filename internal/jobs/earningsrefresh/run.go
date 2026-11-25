@@ -75,8 +75,7 @@ func (e *typedError) Error() string             { return e.msg }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te
 	}
 	return &typedError{kind, err.Error()}

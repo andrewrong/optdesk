@@ -29,10 +29,10 @@ func TestPullWritesRowsInHandOnCancel(t *testing.T) {
 	c := newCore(b)
 	c.Chunk = 2
 	var targets []Target
-	for i := 0; i < 2; i++ { // group 1: one chunk
+	for i := range 2 { // group 1: one chunk
 		targets = append(targets, target(1, 10+i, ClassHeld, float64(95-i), "P"))
 	}
-	for i := 0; i < 4; i++ { // group 2 (another expiry): two chunks
+	for i := range 4 { // group 2 (another expiry): two chunks
 		t := target(1, 20+i, ClassHeld, float64(95-i), "P")
 		t.Expiry = testExpiry.AddDate(0, 0, 7)
 		targets = append(targets, t)
