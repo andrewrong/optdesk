@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -27,7 +28,8 @@ func (h *heldLedger) Acquire(ctx context.Context, o string, ttl time.Duration) (
 }
 
 func leaseRetryable(err error) bool {
-	te, ok := err.(contracts.TypedError)
+	var te contracts.TypedError
+	ok := errors.As(err, &te)
 	return ok && te.Kind() == contracts.Retryable
 }
 

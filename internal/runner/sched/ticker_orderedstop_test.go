@@ -44,7 +44,7 @@ func TestDrainCancelsWorkerWithOrderedStop(t *testing.T) {
 			h.rec = rec
 			var calls atomic.Int32
 			h.stuck = true // the worker stays busy in Reconcile
-			if tc.want == ErrExecutableChanged {
+			if errors.Is(tc.want, ErrExecutableChanged) {
 				h.exe = func() (string, error) {
 					if calls.Add(1) > 1 {
 						return "new", nil
