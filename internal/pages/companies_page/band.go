@@ -3,6 +3,7 @@ package companies_page
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -115,8 +116,8 @@ func (c Config) approvalState(ctx context.Context, symbol, value string, today c
 	if err != nil {
 		return "", fmt.Errorf("companies_page: approval of %s: %w", symbol, err)
 	}
-	for i := len(rows) - 1; i >= 0; i-- {
-		r := rows[i]
+	for _, r := range slices.Backward(rows) {
+
 		if r.State != "ok" || r.Value == nil {
 			continue
 		}

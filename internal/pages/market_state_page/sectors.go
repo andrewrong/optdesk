@@ -3,6 +3,7 @@ package market_state_page
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
@@ -114,9 +115,9 @@ func readBars(ctx context.Context, c Config, d time.Time) (barsIn, error) {
 				return in, fmt.Errorf("market_state_page: read bars of %s: %w", symbol, err)
 			}
 			read = append(read, bars...)
-			for i := len(bars) - 1; i >= 0; i-- { // the reader gives ascending days
-				in.Closes = append(in.Closes, bars[i].Close)
-				in.Days = append(in.Days, contracts.Day(bars[i].SessionDay.Format(dayLayout)))
+			for _, bar := range slices.Backward(bars) { // the reader gives ascending days
+				in.Closes = append(in.Closes, bar.Close)
+				in.Days = append(in.Days, contracts.Day(bar.SessionDay.Format(dayLayout)))
 			}
 		default: // two instruments of one name: a close that is no number, so the figures answer missing_input
 			in.Closes, in.Days = []string{"?"}, []contracts.Day{to}
@@ -149,11 +150,10 @@ func readBars(ctx context.Context, c Config, d time.Time) (barsIn, error) {
 // live is false without a Func or a reader: every row is then the gap no_reader. With an empty
 // EndDay every fund row is a gap and end_day is the Gap no_data.
 func buildSectors(c Config, ms marketstateapi.Result, live bool) sectorResult {
-	out := sectorResult{sectorBlock: sectorBlock{
+	out := sectorResult{
 		Caption: sectorCaption, BarsCaption: barsCaption,
 		RotationAxes: rotationAxes{XCaption: axisX, YCaption: axisY, Note: rotationNote, Quadrants: quadrants()},
-		Rows:         []sectorRow{},
-	}}
+		Rows:         []sectorRow{}}
 	funds, industry := c.listed()
 	labels := map[string]string{}
 	for _, s := range append(append([]Symbol{}, funds...), industry...) {

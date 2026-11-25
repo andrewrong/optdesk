@@ -222,7 +222,7 @@ type colDef struct {
 }
 
 func col(id, label, align string, cell func(store.Candidate) any) colDef {
-	return colDef{column: column{ID: id, Label: label, Align: align}, cell: cell}
+	return colDef{ID: id, Label: label, Align: align, cell: cell}
 }
 
 func (d colDef) hinted(h string) colDef {
@@ -245,8 +245,8 @@ var (
 	colBreakEven = col("break_even", "Break-even", "right", func(c store.Candidate) any { return moneyCell(c.BreakEven) })
 	colDelta     = col("delta", "Delta", "right", func(c store.Candidate) any { return deltaCell(c.Delta) })
 	colIV        = col("iv", "IV", "right", func(c store.Candidate) any { return ivCell(c.Iv) })
-	colITM       = colDef{column: column{ID: itmID, Label: "ITM probability", Align: "right", Hint: ptr(itmHint)}}
-	colExcess    = colDef{column: column{ID: excessID, Label: "Vs cash", Align: "right"}}
+	colITM       = colDef{ID: itmID, Label: "ITM probability", Align: "right", Hint: ptr(itmHint)}
+	colExcess    = colDef{ID: excessID, Label: "Vs cash", Align: "right"}
 	colMarks     = col("marks", "Marks", "left", marksCell)
 	colFit       = col("fit", "Account cash", "left", fitCell)
 	colEarnings  = col("next_earnings", "Next earnings", "left", earningsCell)

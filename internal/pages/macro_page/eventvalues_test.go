@@ -20,7 +20,7 @@ func monthlySeries(t *testing.T, id, unit, start string, n int, val func(i int) 
 		t.Fatal(err)
 	}
 	var out []contracts.SeriesPoint
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d := s.AddDate(0, i, 0).Format(dayLayout)
 		out = append(out, pt(t, d, d, unit, val(i)))
 	}
@@ -81,7 +81,7 @@ func daily2(t *testing.T, id, from string, n int, val func(i int) float64) []con
 	t.Helper()
 	s, _ := time.Parse(dayLayout, from)
 	var out []contracts.SeriesPoint
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d := s.AddDate(0, 0, i).Format(dayLayout)
 		out = append(out, pt(t, d, d, "percent", f64(val(i))))
 	}

@@ -29,9 +29,7 @@ func evidenceCols(set evidenceSet) []colDef {
 		return evCell(set, f)
 	}
 	mk := func(id, label, hint string, f func(rowEvidence, store.Candidate) any) colDef {
-		d := colDef{column: column{ID: id, Label: label, Align: "right"}, cellAt: cell(f)}
-		d.Hint = &hint
-		return d
+		return colDef{ID: id, Label: label, Align: "right", Hint: &hint, cellAt: cell(f)}
 	}
 	bid := evBidFcstHintHead + trialRateSentence + evBidFcstDays + day + evBidFcstRate + rateDay
 	return []colDef{

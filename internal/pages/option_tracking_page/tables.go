@@ -35,7 +35,7 @@ type colDef[T any] struct {
 }
 
 func col[T any](id, label, align string, cell func(T) any) colDef[T] {
-	return colDef[T]{column: column{ID: id, Label: label, Align: align}, cell: cell}
+	return colDef[T]{ID: id, Label: label, Align: align, cell: cell}
 }
 
 func (d colDef[T]) hinted(h string) colDef[T] {

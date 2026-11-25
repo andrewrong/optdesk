@@ -4,7 +4,7 @@ package data_health_page
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
@@ -46,7 +46,7 @@ func WindowDays(sessions []coverage.Session, today contracts.Day) []contracts.Da
 			days = append(days, s.Day)
 		}
 	}
-	sort.Slice(days, func(i, j int) bool { return days[i] < days[j] })
+	slices.Sort(days)
 	if len(days) > coverage.WindowSessions {
 		days = days[len(days)-coverage.WindowSessions:]
 	}

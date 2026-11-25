@@ -163,7 +163,7 @@ func TestLedgerNoConclusionUnder20(t *testing.T) {
 	t.Parallel()
 	for n, few := range map[int]bool{19: true, 20: false} {
 		r := ledgerRig()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			r.closed("p"+itoa(i), "AAA", "38.00", "2026-11-13")
 		}
 		b := r.ledger(t).view("by_month").Groups[0].Books[0]
@@ -485,7 +485,7 @@ func TestLedgerValidatesSchema(t *testing.T) {
 		r.closed("po"+itoa(i), "DDD", strike, "2026-10-1"+itoa(i))
 		r.attr.results[strike] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: ledger, Commission: "-1"}
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		r.replay.positions = append(r.replay.positions, lotPos("op"+itoa(i), "EEE", "o"+itoa(i+90), "90.00", "open"))
 	}
 	raw := r.raw(t)
@@ -556,7 +556,7 @@ func TestLedgerFoldedGroupSumsMonths(t *testing.T) {
 func TestLedgerGroupLateEntryCount(t *testing.T) {
 	t.Parallel()
 	r := ledgerRig()
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		strike := "38.00"
 		if i < 2 {
 			strike = "late"

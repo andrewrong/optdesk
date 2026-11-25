@@ -3,6 +3,7 @@ package valuation_page
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -204,8 +205,8 @@ func history(in Input) []historyJSON {
 		}
 	}
 	prev := ""
-	for i := len(in.Reviews) - 1; i >= 0; i-- { // oldest first
-		r := in.Reviews[i]
+	for _, r := range slices.Backward(in.Reviews) { // oldest first
+
 		if r.Status != "effective" {
 			continue
 		}

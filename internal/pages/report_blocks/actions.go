@@ -68,8 +68,8 @@ func (c Config) priorPositions(ctx context.Context, alias string, d time.Time) (
 	if err != nil {
 		return nil, err
 	}
-	for i := len(sessions) - 1; i >= 0; i-- {
-		rows, err := c.Account.Positions(ctx, alias, string(sessions[i]))
+	for _, session := range slices.Backward(sessions) {
+		rows, err := c.Account.Positions(ctx, alias, string(session))
 		if err != nil {
 			return nil, fmt.Errorf("report_blocks: read positions: %w", err)
 		}

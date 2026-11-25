@@ -3,7 +3,7 @@ package option_boards
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -29,7 +29,7 @@ func loadNames(ctx context.Context, r store.InstrumentNameReader, rows []store.C
 	if len(ids) == 0 {
 		return out, nil
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	names, err := r.InstrumentNames(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("option_boards: names of %d underlyings: %w", len(ids), err)

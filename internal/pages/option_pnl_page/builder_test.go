@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -349,7 +350,7 @@ func TestFewerThan20EndedLots(t *testing.T) {
 	const few = sampleFewZh
 	for n, want := range map[int]string{19: "19 个已结束的仓位，0 个已拆分的仓位：" + few, 20: "20 个已结束的仓位，0 个已拆分的仓位：" + few} {
 		r := newRig()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			r.replay.positions = append(r.replay.positions, lotPos("p"+itoa(i), "BBB", itoa(1000+i), "38.00", "closed"))
 		}
 		r.attr.results["38.00"] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: "50", Commission: "-1"}
@@ -372,12 +373,7 @@ func TestRollBadge(t *testing.T) {
 	r.attr.results["38.00"] = optionattrapi.Result{Currency: "USD", NoQuotes: true, LedgerPnL: "50", Commission: "-1"}
 	lots := r.build(t).Accounts[0].Lots
 	has := func(l lotView) bool {
-		for _, x := range l.Badges {
-			if x == "looks like a roll" {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(l.Badges, "looks like a roll")
 	}
 	if !has(lots[0]) || !has(lots[1]) || has(lots[2]) {
 		t.Fatalf("badges = %v %v %v", lots[0].Badges, lots[1].Badges, lots[2].Badges)
@@ -479,7 +475,7 @@ func TestSampleNoteCountsEndedAndSplit(t *testing.T) {
 func TestSampleThresholdCountsSplit(t *testing.T) {
 	t.Parallel()
 	r := newRig()
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		r.oldLot("p"+itoa(i), i >= 5)
 	}
 	r.attr.results["38.00"] = res("20", "-8", "4", "2", "-2", "", "-2", "0", "14")

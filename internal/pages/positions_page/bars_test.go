@@ -175,7 +175,7 @@ func TestSharedSymbolAndCurrencyMismatchAreGaps(t *testing.T) {
 			t.Fatalf("row %d price = %q, want %q", row, got, want)
 		}
 	}
-	for row := 0; row < 4; row++ {
+	for row := range 4 {
 		if got := cellText(t, m, row, "day"); got != "n/a" {
 			t.Fatalf("row %d day = %q, want the gap", row, got)
 		}

@@ -2,14 +2,14 @@ package base_data_page
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute/basecheckapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-func sortDays(d []contracts.Day) { sort.Slice(d, func(i, j int) bool { return d[i] < d[j] }) }
+func sortDays(d []contracts.Day) { slices.Sort(d) }
 
 // groupsOf lays out the rows of the verdicts in the order and the groups of basecheckapi.Rows. A row the verdicts
 // do not carry is shown unknown, with no check.

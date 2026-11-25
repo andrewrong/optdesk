@@ -70,7 +70,7 @@ func cfgFor(results map[string]trackapi.TrackResult, aliases ...string) Config {
 	r.positions["2026-11-10"] = []store.Position{{SecType: "stock"}}
 	c := r.config()
 	c.RunID, c.BuildID, c.Scope, c.Zone = "r1", "b1", "s1", time.UTC
-	c.Ledger = aliasLedger{fakeLedger: fakeLedger{rows: []store.FlexTradeRow{{TransactionID: "t1", Revision: 1, Attributes: `{}`}}}, aliases: aliases}
+	c.Ledger = aliasLedger{rows: []store.FlexTradeRow{{TransactionID: "t1", Revision: 1, Attributes: `{}`}}, aliases: aliases}
 	c.Tracker = stubTracker{results: results}
 	c.Params = trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30}
 	return c

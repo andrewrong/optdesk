@@ -83,7 +83,7 @@ func TestCoverageUsesTheNewestRunOfAKey(t *testing.T) {
 func TestCoverageCutsLongGapLists(t *testing.T) {
 	t.Parallel()
 	var runs []runview.Row
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		runs = append(runs, covRun(dsUS, fmt.Sprintf("K%d", i), "failed", 0, covT))
 	}
 	got := coverage(runs)
@@ -91,7 +91,7 @@ func TestCoverageCutsLongGapLists(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 	var many []runview.Row
-	for i := 0; i < 80; i++ {
+	for i := range 80 {
 		many = append(many, covRun(dsUS, fmt.Sprintf("LONGKEY%02d", i), "failed", 0, covT))
 	}
 	if n := len([]rune(coverage(many))); n > maxText {

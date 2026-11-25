@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -96,12 +97,7 @@ func notesOf(m map[string]any) []string {
 func subtitleOf(m map[string]any) string { return m["card"].(map[string]any)["subtitle"].(string) }
 
 func hasNote(m map[string]any, want string) bool {
-	for _, n := range notesOf(m) {
-		if n == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(notesOf(m), want)
 }
 
 func figureOf(m map[string]any, tile string) map[string]any {

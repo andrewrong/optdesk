@@ -174,9 +174,9 @@ func (c Config) captureOf(ctx context.Context, alias string, sessions []contract
 			break
 		}
 	}
-	for j := len(sessions) - 1; j >= 0; j-- {
-		if string(sessions[j]) < cp.day[:7] {
-			if cp.monthStart, err = read(sessions[j]); err != nil {
+	for _, session := range slices.Backward(sessions) {
+		if string(session) < cp.day[:7] {
+			if cp.monthStart, err = read(session); err != nil {
 				return cp, 0, err
 			}
 			break

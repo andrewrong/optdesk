@@ -435,7 +435,7 @@ func TestIdleLineEndsWithEllipsis(t *testing.T) {
 	var vs []optiontierapi.Verdict
 	names := map[int]string{}
 	var counts []optiontierapi.CompanyCount
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		r := tierPut(i+1, "ok", "40.00", "0.50")
 		r.UnderlyingID, r.BuyPrice = 100+i, nil
 		names[100+i] = "TICKER" + strings.Repeat("X", 3) + string(rune('A'+i%26))

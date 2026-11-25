@@ -79,7 +79,7 @@ func union(in Input) []namedEntry {
 			n.buyPrice = r.BuyPrice
 			continue
 		}
-		byKey[r.Key] = &namedEntry{Entry: valuation.Entry{Profile: profileFromRow(r)}, buyPrice: r.BuyPrice}
+		byKey[r.Key] = &namedEntry{Profile: profileFromRow(r), buyPrice: r.BuyPrice}
 	}
 	out := make([]namedEntry, 0, len(byKey))
 	for _, n := range byKey {

@@ -137,21 +137,21 @@ func (c Config) sessionDays(ctx context.Context, d time.Time) ([]contracts.Day, 
 func (c Config) capture(ctx context.Context, alias string, sessions []contracts.Day) (capture, error) {
 	var cp capture
 	byDay := map[string][]store.AccountValue{}
-	for i := len(sessions) - 1; i >= 0; i-- {
-		rows, err := c.Account.Values(ctx, alias, string(sessions[i]))
+	for _, session := range slices.Backward(sessions) {
+		rows, err := c.Account.Values(ctx, alias, string(session))
 		if err != nil {
 			return cp, fmt.Errorf("household_page: read values: %w", err)
 		}
 		if len(rows) == 0 {
 			continue
 		}
-		byDay[string(sessions[i])] = rows
+		byDay[string(session)] = rows
 		if cp.day == "" {
-			cp.day = string(sessions[i])
+			cp.day = string(session)
 		}
 		for _, v := range rows {
 			if v.Tag == "NetLiquidation" {
-				cp.history = append(cp.history, blockapi.DayValue{Day: sessions[i], NetLiquidation: v.Value, Currency: v.Currency})
+				cp.history = append(cp.history, blockapi.DayValue{Day: session, NetLiquidation: v.Value, Currency: v.Currency})
 			}
 		}
 	}
@@ -159,8 +159,8 @@ func (c Config) capture(ctx context.Context, alias string, sessions []contracts.
 		return cp, nil
 	}
 	cp.values = byDay[cp.day]
-	for i := len(sessions) - 1; i >= 0; i-- {
-		if s := string(sessions[i]); s < cp.day[:7] {
+	for _, session := range slices.Backward(sessions) {
+		if s := string(session); s < cp.day[:7] {
 			cp.monthStart = byDay[s]
 			break
 		}

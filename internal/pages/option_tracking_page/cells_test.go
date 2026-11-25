@@ -2,6 +2,7 @@ package option_tracking_page
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -28,12 +29,7 @@ func asValue(t *testing.T, c any) valueCell {
 }
 
 func hasBadge(c valueCell, b string) bool {
-	for _, x := range c.Badges {
-		if x == b {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Badges, b)
 }
 
 func TestNumericCellsCarryValue(t *testing.T) {

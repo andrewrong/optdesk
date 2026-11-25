@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -36,9 +37,9 @@ func (c Config) changeCells(ctx context.Context, r Row, day time.Time) (dayCell,
 		return nil, nil, fmt.Errorf("home_companies: read price bars of %s: %w", r.Symbol, err)
 	}
 	in := blockapi.CloseIn{Name: r.Symbol, Symbol: r.Symbol}
-	for i := len(bars) - 1; i >= 0; i-- {
-		in.Closes = append(in.Closes, bars[i].Close)
-		in.Days = append(in.Days, contracts.Day(bars[i].SessionDay.Format(dayLayout)))
+	for _, bar := range slices.Backward(bars) {
+		in.Closes = append(in.Closes, bar.Close)
+		in.Days = append(in.Days, contracts.Day(bar.SessionDay.Format(dayLayout)))
 	}
 	lines := c.Figures().Moves([]blockapi.CloseIn{in})
 	if len(lines) == 0 {

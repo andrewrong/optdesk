@@ -480,7 +480,6 @@ func TestEmptyVegaBlockNamesItsGap(t *testing.T) {
 		"no structure": {},
 	}
 	for name, res := range cases {
-		res := res
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			m, _ := build(t, okConfig(res, stk("AAA", 1, "100", "USD")), "main")

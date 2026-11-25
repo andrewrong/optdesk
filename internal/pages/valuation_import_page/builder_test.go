@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
 	"strings"
@@ -296,9 +297,7 @@ func TestBuildLabelsInEveryView(t *testing.T) {
 			"r": TextR, "buy_zone_top_site": TextBuyZoneTopSite,
 			"buy_zone_top_file": TextBuyZoneTopFile, "general_tick": TextGeneralTick,
 		}
-		for k, v := range newLabels() {
-			want[k] = v
-		}
+		maps.Copy(want, newLabels())
 		if len(labels) != len(want) {
 			t.Errorf("%s: labels %v", name, labels)
 		}

@@ -1,7 +1,7 @@
 package data_health_page
 
 import (
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -116,7 +116,7 @@ func GapDays(cells []Cell) []contracts.Day {
 			days = append(days, c.Day)
 		}
 	}
-	sort.Slice(days, func(i, j int) bool { return days[i] < days[j] })
+	slices.Sort(days)
 	return days
 }
 

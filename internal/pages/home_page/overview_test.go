@@ -326,7 +326,7 @@ func withGaps(t *testing.T, doc []byte, n int) []byte {
 		t.Fatal(err)
 	}
 	gaps := []any{}
-	for i := 0; i < n; i++ {
+	for range n {
 		gaps = append(gaps, map[string]any{"kind": "gap", "reason": "no_data", "text": "missing"})
 	}
 	m["card"].(map[string]any)["gaps"] = gaps

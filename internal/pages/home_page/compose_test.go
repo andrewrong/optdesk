@@ -242,7 +242,7 @@ func TestComposeDataTimes(t *testing.T) {
 		in := input(t)
 		for i, slot := range slots {
 			var pairs [][2]string
-			for j := 0; j < 5; j++ {
+			for j := range 5 {
 				pairs = append(pairs, [2]string{fmt.Sprintf("s%d_%d", i, j), "2026-01-01T00:00:00Z"})
 			}
 			if slot == "options" {

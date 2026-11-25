@@ -386,7 +386,7 @@ func (f fakeFigures) Moves(in []blockapi.CloseIn) []blockapi.MoveLine {
 
 func sixBars() []contracts.PriceBar {
 	var out []contracts.PriceBar
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		d := time.Date(2026, 11, 3+i, 0, 0, 0, 0, time.UTC)
 		out = append(out, contracts.PriceBar{Close: strconv.Itoa(100 + i), SessionDay: types.SerializableDate{Time: d}})
 	}

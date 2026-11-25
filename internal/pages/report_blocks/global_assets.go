@@ -3,6 +3,7 @@ package report_blocks
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -127,9 +128,9 @@ func (c Config) globalSeries(ctx context.Context, d time.Time) (map[string]block
 			if err != nil {
 				return nil, fmt.Errorf("report_blocks: read bars of %s: %w", n, err)
 			}
-			for i := len(bars) - 1; i >= 0; i-- { // the reader gives ascending days
-				in.Closes = append(in.Closes, bars[i].Close)
-				in.Days = append(in.Days, contracts.Day(bars[i].SessionDay.Format(dayLayout)))
+			for _, bar := range slices.Backward(bars) { // the reader gives ascending days
+				in.Closes = append(in.Closes, bar.Close)
+				in.Days = append(in.Days, contracts.Day(bar.SessionDay.Format(dayLayout)))
 			}
 		default: // two instruments of one name: one close that is no number, so the figures answer missing_input
 			in.Closes, in.Days = []string{"?"}, []contracts.Day{contracts.Day(to)}
