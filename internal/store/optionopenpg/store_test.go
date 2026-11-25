@@ -50,8 +50,7 @@ func (f *fakeDB) Close() error { f.closed = true; return nil }
 
 func kind(err error) contracts.ErrorKind {
 	const none = contracts.ErrorKind("")
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if te, ok := errors.AsType[contracts.TypedError](err); ok {
 		return te.Kind()
 	}
 	return none
@@ -230,7 +229,7 @@ func TestOptionOpenUpsertSetsNoKeyColumn(t *testing.T) {
 		t.Fatalf("no DO UPDATE SET in %s", insertOptionOpenSQL)
 	}
 	sets, _, _ := strings.Cut(rest, " WHERE ")
-	for _, item := range strings.Split(sets, ",") {
+	for item := range strings.SplitSeq(sets, ",") {
 		col, _, _ := strings.Cut(strings.TrimSpace(item), " = ")
 		switch col {
 		case "session_day", "capture_id", "slot", "instrument_id":

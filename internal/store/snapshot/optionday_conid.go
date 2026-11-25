@@ -37,8 +37,7 @@ func (c *conidDB) InstrumentIDs(ctx context.Context, conids []int64) (map[int64]
 		return nil
 	})
 	if err != nil {
-		var te contracts.TypedError
-		if errors.As(err, &te) {
+		if _, ok := errors.AsType[contracts.TypedError](err); ok {
 			return nil, err
 		}
 		return nil, retryable(fmt.Errorf("option_conid: select: %w", err))

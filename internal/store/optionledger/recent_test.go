@@ -39,7 +39,7 @@ func importRow(login, query string, finished time.Time) []any {
 func TestRecentFetchesLimitCapsTheList(t *testing.T) {
 	t.Parallel()
 	db := &recentDB{}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		db.rows = append(db.rows, importRow("import", "file:r:1:a", fixedNow.Add(time.Duration(i)*time.Hour)))
 	}
 	got, err := (&Store{db: db}).RecentFetches(context.Background(), "import", 2)
