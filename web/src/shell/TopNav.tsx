@@ -16,60 +16,60 @@ type NavGroup = { label: string; items: readonly (NavLink | NavSection)[] }
 
 // The top bar (Decisions 1 and 5 of docs/design/nav-groups.md): Home and five menus, in order. The desktop bar and the
 // phone sheet both read this list; a new page adds one link to one group. Fixed shell text: no payload field is read.
-const HOME: NavLink = { label: 'Home', path: '/home' }
+const HOME: NavLink = { label: '首页', path: '/home' }
 const NAV_GROUPS: readonly NavGroup[] = [
   {
-    label: 'Market',
+    label: '市场',
     items: [
-      { label: 'Macro', path: '/macro' },
-      { label: 'Market state', path: '/market-state' },
+      { label: '宏观', path: '/macro' },
+      { label: '市场状态', path: '/market-state' },
     ],
   },
   {
-    label: 'Portfolio',
+    label: '持仓',
     items: [
-      { label: 'Household', path: '/household' },
-      { label: 'Positions', path: '/positions' },
-      { label: 'Held companies', path: '/held-family' },
-      { label: 'Risk', path: '/risk' },
+      { label: '家庭账户', path: '/household' },
+      { label: '持仓明细', path: '/positions' },
+      { label: '持有公司', path: '/held-family' },
+      { label: '风险', path: '/risk' },
     ],
   },
   {
-    label: 'Options',
+    label: '期权',
     items: [
-      { label: 'Candidates', path: '/options/candidates' },
+      { label: '候选', path: '/options/candidates' },
       {
-        label: 'Held options',
+        label: '持有期权',
         links: [
-          { label: 'Structures', path: '/options/structures' },
-          { label: 'Spread legs', path: '/options/spread-legs' },
-          { label: 'Result', path: '/options/result' },
-          { label: 'Notices', path: '/options/notices' },
-          { label: 'Tracking', path: '/options/tracking' },
-          { label: 'P&L split', path: '/options/pnl' },
+          { label: '组合结构', path: '/options/structures' },
+          { label: '价差腿', path: '/options/spread-legs' },
+          { label: '结果', path: '/options/result' },
+          { label: '通知', path: '/options/notices' },
+          { label: '跟踪', path: '/options/tracking' },
+          { label: '盈亏拆分', path: '/options/pnl' },
         ],
       },
-      { label: 'Strategy replay', path: '/strategy-replay' },
+      { label: '策略回放', path: '/strategy-replay' },
     ],
   },
   {
-    label: 'Companies',
+    label: '公司',
     items: [
-      { label: 'Watch list', path: '/underlyings' },
-      { label: 'Price lines', path: '/plan/price-lines' },
-      { label: 'Valuation', path: '/valuation' },
-      { label: 'Import valuations', path: '/valuation-import' },
-      { label: 'Data', path: '/company-data' },
+      { label: '自选清单', path: '/underlyings' },
+      { label: '价位线', path: '/plan/price-lines' },
+      { label: '估值', path: '/valuation' },
+      { label: '导入估值', path: '/valuation-import' },
+      { label: '数据', path: '/company-data' },
     ],
   },
   {
-    label: 'System',
+    label: '系统',
     items: [
-      { label: 'Settings', path: '/settings' },
-      { label: 'Job console', path: '/job-console' },
-      { label: 'Base data', path: '/base-data' },
-      { label: 'Data health', path: '/data-health' },
-      { label: 'Option data', path: '/options/data', prefix: true },
+      { label: '设置', path: '/settings' },
+      { label: '任务台', path: '/job-console' },
+      { label: '基础数据', path: '/base-data' },
+      { label: '数据健康', path: '/data-health' },
+      { label: '期权数据', path: '/options/data', prefix: true },
     ],
   },
 ]
@@ -135,7 +135,7 @@ export function TopNav() {
         </SheetTrigger>
         <SheetContent side="left" className="overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Menu</SheetTitle>
+            <SheetTitle>菜单</SheetTitle>
           </SheetHeader>
           <ul className="flex flex-col gap-1 px-2 pb-4">
             {sheetLink(HOME, false)}
