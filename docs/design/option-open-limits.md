@@ -110,7 +110,7 @@ Acceptance:
 
 ### 2 option-limits-plan-pull
 
-Module: jobs. Size: M. Order: first. Files: `internal/jobs/optionopen/job_plan.toml`, `internal/jobs/optionopen/job_pull.toml`, `internal/jobs/optionopen/job_pull_jp.toml`, `internal/jobs/optionopen/job_list_preopen.toml`, `internal/jobs/optionopen/job_list_zone.toml`, `internal/jobs/optionopen/job_list_preopen_jp.toml`, `internal/jobs/optionopen/list.go`, `internal/jobs/optionopen/list_run.go`, `internal/jobs/optionopen/core.go`, `internal/jobs/optionopen/summary.go`, `internal/jobs/optionopen/ceiling_test.go`, `internal/jobs/optionopen/manifest_test.go`, `internal/jobs/optionopen/list_run_test.go`, `internal/jobs/optionopen/core_test.go`.
+Module: jobs. Size: M. Order: first. Files: `internal/jobs/optionopen/job_plan.toml`, `internal/jobs/optionopen/job_pull.toml`, `internal/jobs/optionopen/job_pull_jp.toml`, `internal/jobs/optionopen/job_list_preopen.toml`, `internal/jobs/optionopen/job_list_zone.toml`, `internal/jobs/optionopen/job_list_preopen_jp.toml`, `internal/jobs/optionopen/list.go`, `internal/jobs/optionopen/list_run.go`, `internal/jobs/optionopen/core.go`, `internal/jobs/optionopen/summary.go`, `internal/jobs/optionopen/ceiling_test.go`, `internal/jobs/optionopen/manifest_test.go`, `internal/jobs/optionopen/list_run_test.go`, `internal/jobs/optionopen/core_test.go`, `internal/jobs/optionopen/list_test.go`, `internal/jobs/optionopen/list_fresh_test.go`.
 
 Acceptance:
 1. The US plan keeps every planned item: `job_plan.toml` has `ceil_total = 0`, and `TestPlanManifestParamsEqualDefaultPlanParams` is changed to the new value; `TestCeilTotalDefersTheTailOfTheRank` and the other tests of `ceiling_test.go` that pass an explicit ceiling still pass.
