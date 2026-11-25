@@ -137,6 +137,14 @@ it('draws the movers as two lists under their scope, in the order and with the t
   )
 })
 
+it('TestMoverTitlesChinese: the two mover list headings print in Chinese while the keys keep the codes', async () => {
+  await show(<HouseholdPage payload={fixture('ok.json')} />)
+  const title = (list: string) =>
+    host.querySelector(`[data-mover-list=${list}] h4`)?.textContent
+  expect(title('Stocks')).toBe('股票')
+  expect(title('Options')).toBe('期权')
+})
+
 it('shows no table header that is not a payload text, and the obligations heads and total labels', async () => {
   const payload = fixture('ok.json')
   await show(<HouseholdPage payload={payload} />)
