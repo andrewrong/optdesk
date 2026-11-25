@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { OptionCandidatesPage } from '@/pages/candidates/OptionCandidatesPage'
 import { TierView } from '@/pages/candidates/TierView'
 import { tiers } from './fixtures/tiers'
-import { bycompany } from './fixtures/bycompany'
+import { bycompany, tierCompanies } from './fixtures/bycompany'
 import { jp } from './fixtures/jp'
 import { tiersNoHeads, tiersNull, tiersTextsNull } from './fixtures/tiers-null'
 
@@ -364,5 +364,29 @@ describe('TierView', () => {
     }
     const old = await show(<TierView tiers={tiers} />)
     expect(old.querySelectorAll('th[data-col]').length).toBeGreaterThan(0)
+  })
+
+  it('TestTierDrawsOneFoldedLinePerCompany', async () => {
+    const page = await show(<TierView tiers={tierCompanies} />)
+    const fits = page.querySelector('section[data-tier=fits]')!
+    const lines = fits.querySelectorAll('[data-tier-company]')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]!.querySelector('button')!.textContent).toContain('AAA')
+    expect(lines[0]!.querySelector('[data-company-count]')!.textContent).toBe('2')
+    expect(lines[0]!.querySelector('button')!.getAttribute('aria-expanded')).toBe('false')
+    expect(fits.querySelectorAll('[data-row]')).toHaveLength(0)
+    await open(lines[0]!.querySelector('button')!)
+    expect([...fits.querySelectorAll('[data-row]')].map((r) => r.getAttribute('data-row'))).toEqual(['a2', 'a1'])
+    const grey = page.querySelector('[data-tier=grey_above_buy_price]')!
+    await open(grey.querySelector('button')!)
+    expect(grey.querySelectorAll('[data-tier-company]')).toHaveLength(3)
+    await open(grey.querySelector('[data-tier-company=BBB] button')!)
+    expect([...grey.querySelectorAll('[data-row]')].map((r) => r.getAttribute('data-row'))).toEqual(['b1'])
+  })
+
+  it('TestTierWithoutCompaniesDrawsRowsAsBefore', async () => {
+    const page = await show(<TierView tiers={tiers} />)
+    expect(page.querySelectorAll('[data-tier-company]')).toHaveLength(0)
+    expect(page.querySelectorAll('section[data-tier=fits] [data-row]')).toHaveLength(2)
   })
 })

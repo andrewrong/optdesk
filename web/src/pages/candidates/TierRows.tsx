@@ -270,8 +270,48 @@ export function DataRow({ tier, row, fit }: { tier: Tier | null; row: TierRow; f
   )
 }
 
+// One folded line per entry of tier.companies ("AAPL 125"); the rows named by its row_ids open under it.
+function CompanyLines({ tier }: { tier: Tier }) {
+  return (
+    <div className="space-y-1">
+      {(tier.companies ?? []).map((co) => (
+        <Accordion key={co.company} type="single" collapsible data-tier-company={co.company}>
+          <AccordionItem value={co.company}>
+            <AccordionTrigger>
+              <span className="flex items-center gap-2">
+                <span>{co.company}</span>
+                <Badge variant="outline" data-company-count>
+                  {co.count}
+                </Badge>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              {co.row_ids.map((id) => {
+                const row = tier.rows.find((r) => r.id === id)
+                return row ? <DataRow key={id} tier={tier} row={row} /> : null
+              })}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ))}
+    </div>
+  )
+}
+
 function TierTable({ tier, columns }: { tier: Tier; columns: TierColumn[] }) {
   if (tier.rows.length === 0) return null
+  if (tier.companies && tier.companies.length > 0) {
+    return (
+      <div className="overflow-x-auto">
+        <div className="sm:min-w-[66rem]">
+          <div className="max-sm:hidden">
+            <TierHead columns={columns} />
+          </div>
+          <CompanyLines tier={tier} />
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="overflow-x-auto">
       <div className="sm:min-w-[66rem]">

@@ -67,6 +67,7 @@ export const bycompany: TierView = {
         row('a2', 'AAA', { tier: { id: 'fits', word: 'bc 适合', glyph: '✓' } }),
         row('a1', 'AAA', { tier: { id: 'fits', word: 'bc 适合', glyph: '✓' } }),
       ],
+      companies: [{ company: 'AAA', count: 2, row_ids: ['a2', 'a1'] }],
     },
     {
       id: 'check',
@@ -88,6 +89,11 @@ export const bycompany: TierView = {
         row('a4', 'AAA', { line: 'bc 折叠行 a4' }),
         row('b1', 'BBB', { line: 'bc 折叠行 b1' }),
         row('c1', 'CCC', { line: 'bc 折叠行 c1' }),
+      ],
+      companies: [
+        { company: 'AAA', count: 1, row_ids: ['a4'] },
+        { company: 'BBB', count: 1, row_ids: ['b1'] },
+        { company: 'CCC', count: 1, row_ids: ['c1'] },
       ],
     },
   ],
@@ -142,3 +148,7 @@ export const bycompany: TierView = {
     ],
   },
 }
+
+// The same payload without the by_company layout: the tier sections draw, each with its companies lines.
+export const tierCompanies: TierView = structuredClone(bycompany)
+delete tierCompanies.by_company
