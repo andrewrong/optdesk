@@ -130,6 +130,19 @@ describe('forms', () => {
     expect(rv.querySelector('select[name="ai_switch"], input[name="ai_switch"]')).not.toBeNull()
   })
 
+  it('each Chinese label of the R version form names the field it posts', async () => {
+    const el = await render(base())
+    const rv = el.querySelector('form[data-form="r_version"]') as HTMLFormElement
+    const posted = (text: string) =>
+      (Array.from(rv.querySelectorAll('label')).find((l) => l.textContent === text)?.control as HTMLInputElement | null)
+        ?.name
+    expect(posted('生效日')).toBe('effective_date')
+    expect(posted('R HKCN')).toBe('r_hkcn')
+    expect(posted('使用的收益率')).toBe('yield_used')
+    expect(posted('AI 到期日（开启时必填）')).toBe('ai_expiry')
+    expect(posted('备注')).toBe('note')
+  })
+
   it('the two table forms carry the Chinese hints', async () => {
     const el = await render(base())
     expect(el.querySelector('form[data-form="r_table"]')?.textContent).toContain(
