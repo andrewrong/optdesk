@@ -291,7 +291,7 @@ func TestRunOnceClosesStores(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runWired(a, nil); err != nil || opened.Load() != 15 || closed.Load() != 15 {
+	if err := runWired(a, nil); err != nil || opened.Load() != 16 || closed.Load() != 16 {
 		t.Fatalf("err %v opened %d closed %d", err, opened.Load(), closed.Load())
 	}
 	// A failure after two stores are open closes them too.
