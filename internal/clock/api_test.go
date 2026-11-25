@@ -129,7 +129,7 @@ func TestCalendarContract(t *testing.T) {
 		t.Fatalf("session %+v err %v", s, err)
 	}
 	_, err = cal.Session(context.Background(), "NOPE", "2026-11-04")
-	te, ok := err.(contracts.TypedError)
+	te, ok := errors.AsType[contracts.TypedError](err)
 	if !ok || te.Kind() != contracts.UnknownCalendar {
 		t.Fatalf("want UnknownCalendar, got %v", err)
 	}
@@ -165,7 +165,7 @@ func TestCommandSessionSourceContract(t *testing.T) {
 		t.Fatalf("argv %v", got)
 	}
 	failing := newFakeCommandSource(nil, t.TempDir(), fakeCommand{err: context.Canceled}.run)
-	if _, err := failing.SessionDays(context.Background(), "XNYS", "2026-11-02", "2026-11-02"); err != context.Canceled {
+	if _, err := failing.SessionDays(context.Background(), "XNYS", "2026-11-02", "2026-11-02"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("want start error, got %v", err)
 	}
 }

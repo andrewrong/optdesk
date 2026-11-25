@@ -176,8 +176,8 @@ func TestBadRequestedDayIsPermanentAndRunsNothing(t *testing.T) {
 func TestTruncatedFileIsPermanent(t *testing.T) {
 	t.Parallel()
 	body := testdata(t)
-	i := strings.Index(body, `    {"calendar_id": "XNYS", "session_day": "2026-11-30"`)
-	cut := strings.TrimRight(body[:i], ",\n") + "\n  ]\n}\n"
+	before, _, _ := strings.Cut(body, `    {"calendar_id": "XNYS", "session_day": "2026-11-30"`)
+	cut := strings.TrimRight(before, ",\n") + "\n  ]\n}\n"
 	permanentFor(t, cut) // rows 2026-11-02..2026-11-29 for a request up to 2026-11-30
 }
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -96,10 +97,8 @@ func check(f file, calendarID string, first, last time.Time) error {
 	if p == nil {
 		return permanent("the generated file has no provenance")
 	}
-	for _, v := range []string{p.Generator, p.GeneratorVersion, p.SourceLibrary, p.SourceLibraryVersion, p.GeneratedAt} {
-		if v == "" {
-			return permanent("the provenance of the generated file is incomplete")
-		}
+	if slices.Contains([]string{p.Generator, p.GeneratorVersion, p.SourceLibrary, p.SourceLibraryVersion, p.GeneratedAt}, "") {
+		return permanent("the provenance of the generated file is incomplete")
 	}
 	if len(f.Rows) == 0 {
 		return permanent("the generated file has no rows")
