@@ -10,17 +10,15 @@ import (
 	"sort"
 	"strings"
 	"time"
-
 	// The zone database is embedded so that the New York zone loads on every machine.
 	_ "time/tzdata"
-
-	"github.com/pelletier/go-toml/v2"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/pelletier/go-toml/v2"
 )
 
 const (
