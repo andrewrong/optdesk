@@ -37,6 +37,14 @@ it('shows the delta and the acted word of the ok fixture', async () => {
   expect(first).toContain('-0.40')
   expect(first).toContain('Acted')
   expect(host.querySelectorAll('tbody tr')).toHaveLength(payload.rows.length)
+  expect([...host.querySelectorAll('th')].map((th) => th.textContent)).toEqual([
+    '\u5efa\u8bae',
+    '\u8d26\u6237',
+    '\u53c2\u8003\u4ef7\u503c',
+    '\u6536\u76d8\u540e\u4ef7\u503c',
+    '\u53d8\u5316',
+    '\u662f\u5426\u5df2\u6267\u884c',
+  ])
 })
 
 it('shows the title of the ok fixture once', async () => {
