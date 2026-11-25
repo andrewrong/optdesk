@@ -105,7 +105,7 @@ export function CompanyTable({ columns: spec, companies }: Pick<Payload, 'column
                   data-sort={sortable ? h.column.id : undefined}
                   aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
                   tabIndex={sortable ? 0 : undefined}
-                  className={`align-top whitespace-normal ${sortable ? 'cursor-pointer' : ''}`}
+                  className={`align-top whitespace-normal ${h.column.id === 'company' ? 'sticky left-0 bg-background ' : ''}${sortable ? 'cursor-pointer' : ''}`.trim()}
                   onClick={sortable ? h.column.getToggleSortingHandler() : undefined}
                   onKeyDown={
                     sortable
@@ -129,7 +129,7 @@ export function CompanyTable({ columns: spec, companies }: Pick<Payload, 'column
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id} data-company={row.original.key}>
             {row.getVisibleCells().map((c) => (
-              <TableCell key={c.id} className="align-top whitespace-normal">
+              <TableCell key={c.id} className={`align-top whitespace-normal ${c.column.id === 'company' ? 'sticky left-0 bg-background' : ''}`.trim()}>
                 {flexRender(c.column.columnDef.cell, c.getContext())}
               </TableCell>
             ))}

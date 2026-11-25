@@ -3,6 +3,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ScrollHint } from '@/components/ScrollHint'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/base_data_page'
 import { DatasetTable } from './DatasetTable'
@@ -47,6 +48,7 @@ export function BaseDataView({ payload }: { payload: Payload }) {
               <AlertDescription>{g.text}</AlertDescription>
             </Alert>
           ))}
+          <ScrollHint />
           <DatasetTable groups={payload.groups} />
           {payload.derived_note !== '' ? <p className="text-sm text-muted-foreground">{payload.derived_note}</p> : null}
           <a href={payload.repair_path} className="text-sm underline underline-offset-4">

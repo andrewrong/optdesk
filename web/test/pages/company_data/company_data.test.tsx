@@ -45,6 +45,17 @@ describe('company data page', () => {
     expect(el.querySelector('[data-term="no_cik"]')?.textContent).toContain('The company has no SEC number yet.')
   })
 
+  it('fixes the company column and shows the scroll hint', async () => {
+    const el = await render(ok())
+    expect(el.querySelectorAll('[data-scroll-hint]')).toHaveLength(1)
+    expect(el.querySelector('[data-scroll-hint]')?.compareDocumentPosition(el.querySelector('table') as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    const head = el.querySelector('thead th') as HTMLElement
+    const cell = el.querySelector('tbody tr td') as HTMLElement
+    for (const c of [head, cell]) for (const k of ['sticky', 'left-0', 'bg-background']) expect(c.classList.contains(k)).toBe(true)
+    expect(cell.classList.contains('whitespace-normal')).toBe(true)
+    expect(el.querySelectorAll('thead th')[1]?.classList.contains('sticky')).toBe(false)
+  })
+
   it('links the rows to their quarters page and the page to data health, as links', async () => {
     const el = await render(ok())
     const hrefs = [...el.querySelectorAll('a')].map((a) => a.getAttribute('href'))

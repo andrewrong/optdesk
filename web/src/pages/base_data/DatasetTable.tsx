@@ -87,7 +87,11 @@ const columns: ColumnDef<Dataset>[] = [
 
 // Below md these columns show inside the dataset cell instead.
 const NARROW_HIDDEN = new Set(['date', 'age', 'failed'])
+// The first column stays in view while the table scrolls sideways; numbers and dates keep one line, words wrap.
+const NO_WRAP = new Set(['newest_value', 'date', 'age'])
 const narrowClass = (id: string) => (NARROW_HIDDEN.has(id) ? 'hidden md:table-cell' : '')
+const stickyClass = (id: string) => (id === 'dataset' ? 'sticky left-0 bg-background' : '')
+const wrapClass = (id: string) => (NO_WRAP.has(id) ? 'whitespace-nowrap' : 'whitespace-normal break-words')
 
 export function DatasetTable({ groups }: { groups: readonly Group[] }) {
   // Memoised: a new `data` array on every render would reset the opened rows.
@@ -117,7 +121,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
                   key={h.id}
                   aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
                   tabIndex={sortable ? 0 : undefined}
-                  className={[sortable ? 'cursor-pointer' : '', narrowClass(h.column.id)].filter(Boolean).join(' ') || undefined}
+                  className={[sortable ? 'cursor-pointer' : '', narrowClass(h.column.id), stickyClass(h.column.id)].filter(Boolean).join(' ') || undefined}
                   onClick={sortable ? h.column.getToggleSortingHandler() : undefined}
                   onKeyDown={
                     sortable
@@ -149,7 +153,7 @@ export function DatasetTable({ groups }: { groups: readonly Group[] }) {
             ) : null}
             <TableRow data-dataset={row.original.dataset}>
               {row.getVisibleCells().map((c) => (
-                <TableCell key={c.id} className={`align-top whitespace-normal ${narrowClass(c.column.id)}`.trim()}>
+                <TableCell key={c.id} className={`align-top ${wrapClass(c.column.id)} ${narrowClass(c.column.id)} ${stickyClass(c.column.id)}`.trim().replace(/ +/g, ' ')}>
                   {flexRender(c.column.columnDef.cell, c.getContext())}
                 </TableCell>
               ))}
