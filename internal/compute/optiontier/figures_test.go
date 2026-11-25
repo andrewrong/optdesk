@@ -1,8 +1,10 @@
 package optiontier
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+)
 
 func TestFiguresOfFitsRow(t *testing.T) {
 	t.Parallel()
