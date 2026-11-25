@@ -35,7 +35,7 @@ function RunForm({ job, form }: { job: Job; form: Form }) {
       <input type="hidden" name="job" value={job.id} />
       <Token form={form} />
       <Label className="gap-2">
-        Day
+        {'日期'}
         {today ? (
           <Input type="date" name="day" value={job.today} readOnly className="w-auto" />
         ) : (
@@ -45,14 +45,14 @@ function RunForm({ job, form }: { job: Job; form: Form }) {
       {job.force ? (
         <Label className="gap-2">
           <Switch name="force" />
-          Force
+          {'强制'}
         </Label>
       ) : (
         <span data-force-why className="text-sm text-muted-foreground">
           {job.force_why}
         </span>
       )}
-      <Button type="submit">Run</Button>
+      <Button type="submit">{'运行'}</Button>
     </form>
   )
 }
@@ -81,9 +81,9 @@ function JobsTable({ jobs, form }: { jobs: Job[]; form: Form | null }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Job</TableHead>
-          <TableHead>Run</TableHead>
-          <TableHead>Note</TableHead>
+          <TableHead>{'任务'}</TableHead>
+          <TableHead>{'运行'}</TableHead>
+          <TableHead>{'说明'}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -100,11 +100,11 @@ function KeysTable({ keys }: { keys: Key[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Dataset</TableHead>
-          <TableHead>Subject</TableHead>
-          <TableHead>Outcome</TableHead>
-          <TableHead>Key</TableHead>
-          <TableHead>Reason</TableHead>
+          <TableHead>{'数据集'}</TableHead>
+          <TableHead>{'对象'}</TableHead>
+          <TableHead>{'结果'}</TableHead>
+          <TableHead>{'键'}</TableHead>
+          <TableHead>{'原因'}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -153,7 +153,7 @@ function RequestItem({ r, form }: { r: Request; form: Form | null }) {
             <input type="hidden" name="id" value={r.id} />
             <Token form={form} />
             <Button type="submit" variant="outline">
-              Withdraw
+              {'撤回'}
             </Button>
           </form>
         ) : null}
@@ -206,7 +206,7 @@ export function JobConsoleView({ payload }: { payload: Payload }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Requests</CardTitle>
+          <CardTitle>{'请求'}</CardTitle>
         </CardHeader>
         <CardContent>
           <Accordion type="multiple" defaultValue={payload.requests.map((r) => String(r.id))}>

@@ -153,7 +153,13 @@ describe('job console view', () => {
     expect(day('compute_figures').readOnly).toBe(false)
     const form = el.querySelector('form[data-run-form="compute_figures"]')!
     for (const n of ['action', 'job', 'expires', 'mac']) expect(form.querySelector(`input[type="hidden"][name="${n}"]`), n).not.toBeNull()
-    expect(form.querySelector('button')?.textContent).toBe('Run')
+    expect(form.querySelector('button')?.textContent).toBe('运行')
+  })
+
+  it('prints the heads of the jobs table in Chinese', async () => {
+    const el = await render(golden())
+    const heads = [...el.querySelectorAll('table')[0]!.querySelectorAll('th')].map((h) => h.textContent)
+    expect(heads).toEqual(['任务', '运行', '说明'])
   })
 
   it('shows the note beside the form of a job', async () => {
