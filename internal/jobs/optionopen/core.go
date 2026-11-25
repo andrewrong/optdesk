@@ -282,19 +282,11 @@ func (c *Core) askGroups(ctx context.Context, st *runState, groups map[time.Time
 // sortNoSpot is sort for a name whose spot was not read: the plan-deferred items are written as PLAN_CUT, every
 // other item is asked, and there is no band and no added contract.
 func (c *Core) sortNoSpot(st *runState, ts []Target) (map[time.Time][]Target, []time.Time) {
-	groups := map[time.Time][]Target{}
-	var exps []time.Time
+	lb := liveBand{keep: map[int64]bool{}}
 	for _, t := range ts {
-		if t.Item.Deferred {
-			c.add(st, t, c.unasked(t, stDeferred, codePlanCut, false, 0, nil))
-			continue
-		}
-		if _, ok := groups[t.Expiry]; !ok {
-			exps = append(exps, t.Expiry)
-		}
-		groups[t.Expiry] = append(groups[t.Expiry], t)
+		lb.keep[int64(t.Item.InstrumentID)] = true
 	}
-	return groups, exps
+	return c.sort(st, lb, ts, 0, nil)
 }
 
 // sort writes the rows of the targets that are not asked and groups the others by expiry: the plan items the live band
@@ -467,7 +459,14 @@ func (c *Core) group(ctx context.Context, st *runState, g []Target, start float6
 		}
 	}
 	skew := start > 0 && end > 0 && math.Abs(end/start-1) >= skewMove
+	n := len(st.rows)
 	c.addGroup(ctx, st, g, as, requested, groupEnd{skew, end, endTs})
+	if end <= 0 {
+		// No spot was read: addGroup would leave a zero price, and the option-model value is no stock price.
+		for i := n; i < len(st.rows); i++ {
+			st.rows[i].UnderlyingPrice, st.rows[i].UnderlyingEventTs, st.rows[i].Skew = nil, nil, false
+		}
+	}
 	c.flush(ctx, st, false)
 	return end, endTs
 }
@@ -682,7 +681,7 @@ func (c *Core) row(t Target, a answer, requested time.Time) contracts.OptionOpen
 	r.IvDecimal, r.Delta, r.Gamma = q.ImpliedVol, roundDelta(q.Delta), q.Gamma
 	r.ThetaPerCalendarDay, r.VegaPerVolPoint = q.Theta, q.Vega
 	// The quote's UndPrice is the option-model value, not the stock's price: it is the fallback only. A Pull
-	// overwrites it in addGroup with the stock's spot; Refresh reads no stock and keeps it.
+	// overwrites it in group with the stock's spot, or clears it when no spot was read; Refresh reads no stock and keeps it.
 	r.UnderlyingPrice = q.UndPrice
 	return r
 }

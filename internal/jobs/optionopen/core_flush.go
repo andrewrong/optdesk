@@ -57,9 +57,8 @@ func (c *Core) addGroup(ctx context.Context, st *runState, g []Target, as []answ
 			price := e.price
 			r.UnderlyingPrice, r.UnderlyingEventTs = &price, e.ts
 			r.Skew = e.skew && ctx.Err() == nil
-		} else {
-			// No spot was read: the row keeps no underlying price, not even the option-model value.
-			r.UnderlyingPrice, r.UnderlyingEventTs = nil, nil
+		} else if ctx.Err() == nil {
+			r.Skew, r.UnderlyingPrice, r.UnderlyingEventTs = e.skew, &e.price, e.ts
 		}
 		c.logNotOk(t, r)
 		c.add(st, t, r)
