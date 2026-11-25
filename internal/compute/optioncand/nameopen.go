@@ -5,6 +5,10 @@ import "github.com/andrewrong/optdesk/internal/compute/optioncandapi"
 const (
 	codeNoQuote = "NO_QUOTE"
 	codeBudget  = "BUDGET"
+	// The other codes of a deferred row, written by internal/jobs/optionopen/core.go.
+	codePlanCut     = "PLAN_CUT"
+	codeOutsideBand = "OUTSIDE_BAND"
+	codeStockCap    = "STOCK_CAP"
 )
 
 type nameOpenRule struct{}
@@ -29,7 +33,7 @@ func (nameOpenRule) Classify(f optioncandapi.NameOpenFacts) optioncandapi.NameOp
 			n.NoQuote++
 		case r.Status == 6 || r.Status == 8 || r.Status == 9:
 			n.Failed++
-		case r.Status == 7 && (r.OutsideBand || r.ErrorCode == "" || r.ErrorCode == codeBudget):
+		case r.Status == 7 && (r.OutsideBand || deferredCode(r.ErrorCode)):
 			n.Deferred++
 		case r.Status == 7:
 			n.NoSpot++
@@ -52,4 +56,13 @@ func (nameOpenRule) Classify(f optioncandapi.NameOpenFacts) optioncandapi.NameOp
 		n.Outcome = optioncandapi.OutcomeNoCandidate
 	}
 	return n
+}
+
+// deferredCode reports whether a status 7 row with this code is a deferral: none, or a code of the pull.
+func deferredCode(c string) bool {
+	switch c {
+	case "", codeBudget, codePlanCut, codeOutsideBand, codeStockCap:
+		return true
+	}
+	return false
 }

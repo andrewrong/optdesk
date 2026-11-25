@@ -2,6 +2,7 @@ package optionopen
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -19,6 +20,7 @@ type Summary struct {
 	Items, OK, Partial, OutsideBand int
 	Added                           int // contracts of the live band the plan did not hold (stored final rows included)
 	Seconds                         float64
+	Deferred                        map[string]int // items ended deferred, by their stored code
 	Stocks                          []StockProgress
 }
 
@@ -26,6 +28,14 @@ type Summary struct {
 func (s Summary) String() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "option_open: items=%d ok=%d partial=%d outside_band=%d added=%d seconds=%.1f", s.Items, s.OK, s.Partial, s.OutsideBand, s.Added, s.Seconds)
+	codes := make([]string, 0, len(s.Deferred))
+	for k := range s.Deferred {
+		codes = append(codes, k)
+	}
+	slices.Sort(codes)
+	for _, k := range codes {
+		fmt.Fprintf(&b, " deferred_%s=%d", k, s.Deferred[k])
+	}
 	for _, p := range s.Stocks {
 		fmt.Fprintf(&b, " %s=%d/%d@%s", p.Symbol, p.Done, p.Total, p.LastRowT.UTC().Format("15:04:05"))
 	}
@@ -43,6 +53,12 @@ func (c *Core) summary(st *runState) Summary {
 			s.OK++
 		case stPartial:
 			s.Partial++
+		}
+		if r.Status == stDeferred && r.ErrorCode != nil {
+			if s.Deferred == nil {
+				s.Deferred = map[string]int{}
+			}
+			s.Deferred[*r.ErrorCode]++
 		}
 		if r.OutsideBand {
 			s.OutsideBand++

@@ -418,7 +418,7 @@ func (*notServed) Unwrap() error { return broker.ErrNotServed }
 func TestListMaxNewStopsTheWrites(t *testing.T) {
 	t.Parallel()
 	g := newLRig(t, "AAA", "BBB")
-	j := g.job(replaceKey(t, "list_max_new = 60000", "list_max_new = 8"))
+	j := g.job(replaceKey(t, "list_max_new = 0", "list_max_new = 8"))
 	res := g.run(j)
 	require.Nil(t, res.Err, "something was listed: Err nil and partial")
 	require.Equal(t, 8, g.opts.puts, "no more than list_max_new contracts are written")
@@ -516,4 +516,27 @@ func TestNothingListedNamesEveryReasonWithItsCount(t *testing.T) {
 	require.NotNil(t, res.Err)
 	require.Equal(t, contracts.Retryable, res.Err.Kind())
 	require.Equal(t, "option_open: list_preopen: nothing was listed: no_expiry_in_window 2, listchains_failed 1", res.Err.Error())
+}
+
+func TestListRunWithNoCapListsEveryGroup(t *testing.T) {
+	t.Parallel()
+	var syms []string
+	for i := range 18 {
+		syms = append(syms, fmt.Sprintf("S%02d", i))
+	}
+	g := newLRig(t, syms...)
+	var strikes []string
+	for i := range 1000 {
+		strikes = append(strikes, fmt.Sprintf("%.2f", 95+float64(i)*0.01))
+	}
+	g.lst.list = func(_ int, _ string, _ contracts.Day, class string) ([]broker.Contract, error) {
+		return g.lst.sample(class, "", strikes...), nil
+	}
+	j := g.job(nil)
+	res := g.run(j)
+	require.Nil(t, res.Err)
+	require.Equal(t, 18*2*1000*2, g.opts.puts, "every contract of every group is written: list_max_new is 0")
+	for _, s := range syms {
+		require.NotEqual(t, reasonMaxNew, g.row(s).Reason)
+	}
 }

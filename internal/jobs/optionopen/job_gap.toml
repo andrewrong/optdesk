@@ -4,7 +4,10 @@ id = "option_open_resolve_gap"
 zone = "America/New_York"
 # Ends before the plan job at 08:45 ET (08:00 plus 40 minutes).
 budget_minutes = 40
-max_new = 4000
+# No count cap (docs/design/option-open-limits.md, Decision 1): 0 means none.
+max_new = 0
+# Contracts asked at once; equal to ResolveInFlight of the broker and the details lane of pyside.
+parallel = 5
 retry_days = 7
 jitter_days = 2
 spot_move = 0.05
