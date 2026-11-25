@@ -31,7 +31,8 @@ var _ marketstateapi.Func = Compute
 func Compute(in marketstateapi.Input) marketstateapi.Result {
 	r := marketstateapi.Result{}
 	r.EndDay = commonDay(in)
-	r.Drawdown = drawdown(in)
+	r.Drawdown = drawdown(in, in.SP500)
+	r.NasdaqDrawdown = drawdown(in, in.NDX)
 	r.Funds, r.Industry = sectors(in)
 	r.History = history(in)
 	return r
@@ -131,9 +132,8 @@ func drawdownAt(s compute.Series, i, n int) (text string, high contracts.Day, re
 	return roundText(x, 2), s[at].Day, ""
 }
 
-// drawdown is the newest SP500 close against the highest of the newest HighSessions closes.
-func drawdown(in marketstateapi.Input) liquidityapi.Num {
-	s := in.SP500
+// drawdown is the newest close of s against the highest of the newest HighSessions closes.
+func drawdown(in marketstateapi.Input, s compute.Series) liquidityapi.Num {
 	if len(s) == 0 {
 		return gapNum(compute.NoInput)
 	}
