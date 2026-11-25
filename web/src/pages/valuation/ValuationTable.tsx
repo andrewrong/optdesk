@@ -7,13 +7,15 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import type { Payload } from '@/types/valuation_page'
 import { FlagBadges, GLOSS } from './CompanyView'
 
 type Row = NonNullable<Payload['rows']>[number]
 
 // The cells that hold words wrap; the figure cells keep the whitespace-nowrap of the Table cell.
-const WRAP_CELL = new Set(['version_date', 'status', 'zone'])
+const WRAP_CELL = new Set(['version_date', 'status', 'zone', 'buy_zone'])
+const STICKY = 'sticky left-0 bg-background'
 const WRAP_HEAD = new Set(['buy_price', 'version_date'])
 
 // The gloss reads "<term>: <text>"; the tooltip shows the text without the leading term.
@@ -64,6 +66,17 @@ const COLUMNS: ColumnDef<Row>[] = [
       </div>
     ),
   },
+  {
+    id: 'zone',
+    header: 'Zone',
+    cell: ({ row: { original: r } }) => (
+      <div className="flex flex-wrap gap-1">
+        {r.zone !== '' ? <Badge>{r.zone}</Badge> : null}
+        <FlagBadges flags={r.flags} />
+      </div>
+    ),
+  },
+  text('close', 'Close'),
   text('v', 'V', GLOSS['V'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('p', 'P', GLOSS['P'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('version_date', 'Version date', GLOSS['Version date'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
@@ -76,17 +89,6 @@ const COLUMNS: ColumnDef<Row>[] = [
   text('trim', 'Trim', GLOSS['Trim'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('clear', 'Clear', GLOSS['Clear'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
   text('core', 'Core', GLOSS['Core'] ?? ''), // gloss source: GLOSS in CompanyView.tsx
-  text('close', 'Close'),
-  {
-    id: 'zone',
-    header: 'Zone',
-    cell: ({ row: { original: r } }) => (
-      <div className="flex flex-wrap gap-1">
-        {r.zone !== '' ? <Badge>{r.zone}</Badge> : null}
-        <FlagBadges flags={r.flags} />
-      </div>
-    ),
-  },
   text('status', 'Status'),
 ]
 
@@ -99,7 +101,7 @@ export function ValuationTable({ rows }: { rows: Row[] }) {
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>
               {group.headers.map((h) => (
-                <TableHead key={h.id} className={WRAP_HEAD.has(h.column.id) ? 'whitespace-normal' : undefined}>
+                <TableHead key={h.id} className={cn(WRAP_HEAD.has(h.column.id) && 'whitespace-normal', h.column.id === 'name' && STICKY)}>
                   {flexRender(h.column.columnDef.header, h.getContext())}
                 </TableHead>
               ))}
@@ -110,7 +112,10 @@ export function ValuationTable({ rows }: { rows: Row[] }) {
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id} data-company={row.original.company_key}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className={WRAP_CELL.has(cell.column.id) ? 'whitespace-normal' : undefined}>
+                <TableCell key={cell.id} className={cn(
+                    WRAP_CELL.has(cell.column.id) && 'whitespace-normal break-words',
+                    cell.column.id === 'name' && STICKY,
+                  )}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}

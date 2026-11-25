@@ -90,9 +90,25 @@ describe('table view', () => {
     const cells = [...el.querySelectorAll('tr[data-company="US:AAA"] td')]
     const at = (head: string) => cells[heads.findIndex((h) => h.startsWith(head))]
     expect(at('V')?.className).not.toContain('whitespace-normal')
-    expect(at('Buy zone')?.className).not.toContain('whitespace-normal')
+    expect(at('Buy zone')?.className).toContain('whitespace-normal break-words')
     expect(at('Status')?.className).toContain('whitespace-normal')
     expect(at('Zone')?.className).toContain('whitespace-normal')
+  })
+
+  it('puts zone and close after name', async () => {
+    const el = await render(fixture('table'))
+    const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent)
+    expect(heads.slice(0, 3)).toEqual(['Name', 'Zone', 'Close'])
+    expect(heads[heads.length - 1]).toBe('Status')
+    expect(el.querySelector('[data-scroll-hint]')?.textContent).toBe('左右滑动可看全部列')
+  })
+
+  it('fixes the name column', async () => {
+    const el = await render(fixture('table'))
+    const head = el.querySelector('thead th') as HTMLElement
+    const cell = el.querySelector('tbody tr td') as HTMLElement
+    for (const c of [head, cell]) expect(c.className).toContain('sticky left-0 bg-background')
+    expect(el.querySelectorAll('tbody tr:first-child td')[1]?.className).not.toContain('sticky')
   })
 
   it('TestGlossesPresent: the heads of the table carry a gloss', async () => {

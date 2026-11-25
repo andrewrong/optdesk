@@ -49,6 +49,19 @@ afterEach(async () => {
 })
 
 describe('PositionsPage', () => {
+  it('shows the scroll hint above each table', async () => {
+    await show(fixture('ok.json'))
+    const cards = [...host.querySelectorAll('[data-table]')].filter((c) => c.querySelector('table'))
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      const hint = card.querySelector('p[data-scroll-hint]')
+      expect(hint?.className).toContain('sm:hidden')
+      expect(hint?.nextElementSibling?.contains(card.querySelector('table'))).toBe(true)
+    }
+    const wordCell = host.querySelector('[data-table=stocks] tbody tr td') as HTMLElement
+    expect(wordCell.className).toContain('whitespace-normal')
+  })
+
   it('renders each view exactly as payload cells and keeps stocks before option legs', async () => {
     // Source: #1205 board 6 and CI contract: browser displays every supplied string unchanged.
     const payload = fixture('ok.json')
