@@ -19,8 +19,8 @@ const STICKY = 'sticky left-0 bg-background'
 const WRAP_HEAD = new Set(['buy_price', 'version_date'])
 
 // The gloss reads "<term>: <text>"; the tooltip shows the text without the leading term.
-const Head = ({ label, term, gloss }: { label: string; term: string; gloss?: string }) => {
-  const explain = gloss ? gloss.replace(`${term}: `, '') : ''
+const Head = ({ label, term, gloss }: { label: string; term?: string; gloss?: string }) => {
+  const explain = gloss && term ? gloss.replace(`${term}: `, '') : ''
   return (
     <>
       {label}
