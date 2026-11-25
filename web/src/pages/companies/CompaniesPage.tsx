@@ -73,7 +73,7 @@ function V2Blocks({ payload }: { payload: CompaniesPageV2 }) {
   const { core, diagnosis, questions } = payload
   return (
     <>
-      <Section name="core" title="Core">
+      <Section name="core" title="核心 (Core)">
         {isGap(core) ? (
           <p data-gap>{core.text}</p>
         ) : (
@@ -86,10 +86,10 @@ function V2Blocks({ payload }: { payload: CompaniesPageV2 }) {
             </p>
             <DataTable
               columns={[
-                { id: 'symbol', label: 'Company' },
-                { id: 'price', label: 'Cost', align: 'right' },
-                { id: 'assumption', label: 'Case' },
-                { id: 'ret', label: 'Return', align: 'right' },
+                { id: 'symbol', label: '公司' },
+                { id: 'price', label: '成本', align: 'right' },
+                { id: 'assumption', label: '情形' },
+                { id: 'ret', label: '回报', align: 'right' },
               ]}
               rows={core.rows.flatMap((row) => {
                 const head = { symbol: { text: row.symbol }, price: { text: row.price_text } }
@@ -119,7 +119,7 @@ function V2Blocks({ payload }: { payload: CompaniesPageV2 }) {
           </>
         )}
       </Section>
-      <Section name="diagnosis" title="Diagnosis">
+      <Section name="diagnosis" title="诊断 (Diagnosis)">
         {isGap(diagnosis) ? (
           <p data-gap>{diagnosis.text}</p>
         ) : (
@@ -152,14 +152,14 @@ function V2Blocks({ payload }: { payload: CompaniesPageV2 }) {
           </>
         )}
       </Section>
-      <Section name="questions" title="Questions">
+      <Section name="questions" title="问题 (Questions)">
         {isGap(questions) ? (
           <p data-gap>{questions.text}</p>
         ) : (
           <>
             <p className="text-xs text-muted-foreground">{questions.basis_note}</p>
             <DataTable
-              columns={['Company', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5'].map((label, i) => ({
+              columns={['公司', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5'].map((label, i) => ({
                 id: `c${i}`,
                 label,
               }))}

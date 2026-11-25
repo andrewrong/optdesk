@@ -72,7 +72,7 @@ export function PepbBlock({ pepb }: { pepb: Block | Gap }) {
   return (
     <Card className="min-w-0" data-block="pepb">
       <CardHeader>
-        <CardTitle>PE and PB</CardTitle>
+        <CardTitle>市盈率与市净率 (PE and PB)</CardTitle>
       </CardHeader>
       <CardContent className="min-w-0 space-y-3">
         {isGap(pepb) ? (
