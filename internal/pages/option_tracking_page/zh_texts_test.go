@@ -30,13 +30,8 @@ func TestTrackingTextsAreChinese(t *testing.T) {
 	res.LongLegsLeftOut = 2
 	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main"))
 
-	for _, s := range []string{vm.Title, noOpenText, notApply, inLife, earlyBadge, basisHead, guardUnknownTxt, blockedTxt} {
-		if !hasHan(s) || !strings.Contains(s, "(") {
-			t.Errorf("text %q lacks a Chinese word or the English beside it", s)
-		}
-	}
-	if want := labelAccount + "main" + labelClose + titleSep + noOpenText; !hasHan(want) || !hasHan(labelAccount) {
-		t.Errorf("account title %q", want)
+	if vm.Title != "我的 short 期权跟踪 (My short option tracking)" {
+		t.Errorf("title = %q", vm.Title)
 	}
 	for _, n := range append([]string{vm.MarkNote}, vm.Notes...) {
 		if !hasHan(n) {
@@ -84,5 +79,43 @@ func TestNoOpenGapTextIsChinese(t *testing.T) {
 	a := buildPage(t, c).Accounts[0]
 	if a.Gap == nil || !hasHan(a.Gap.Text) || a.Gap.Text != "没有未平仓的 short 期权" {
 		t.Fatalf("gap = %+v", a.Gap)
+	}
+}
+
+func TestBadgesAndTitlesBuiltFromOutputAreBilingual(t *testing.T) {
+	t.Parallel()
+	o := sampleOpen("p")
+	o.Guard, o.GuardReason = "block", "early_assignment_risk"
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "阻止 (Blocked)") {
+		t.Errorf("block = %+v", c)
+	}
+	o.Guard, o.GuardReason = "unknown", "no_dividend_info"
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "未确认 (Unconfirmed)") {
+		t.Errorf("unknown = %+v", c)
+	}
+	o.Guard, o.GuardReason = "ok", ""
+	o.GuardBasis = "bid"
+	if c := asValue(t, guardCell(o)); !strings.Contains(c.Text, "依据 (Basis) bid") {
+		t.Errorf("basis = %+v", c)
+	}
+	o.Right, o.Guard = "P", "n/a"
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "不适用 (Not applicable)") || c.Text != "不适用 (Not applicable)" {
+		t.Errorf("put = %+v", c)
+	}
+	if c := asValue(t, resultsCell(sampleOpen("p"), "")); !hasBadge(c, "期内 (In term)") {
+		t.Errorf("results = %+v", c)
+	}
+	e := sampleClosed("p")
+	e.Early = true
+	if c := asValue(t, statusCell(e)); !hasBadge(c, "提前 (Early)") {
+		t.Errorf("early = %+v", c)
+	}
+}
+
+func TestEmptyAccountTitleIsBilingual(t *testing.T) {
+	t.Parallel()
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": {}}, "main")).Accounts[0]
+	if want := "账户 (Account: main) · 没有未平仓的 short 期权 (No open short options)"; a.Title != want {
+		t.Errorf("title = %q, want %q", a.Title, want)
 	}
 }
