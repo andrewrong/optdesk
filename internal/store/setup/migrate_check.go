@@ -89,8 +89,7 @@ func missingFrom(ctx context.Context, query versionQuerier, want []int64) (missi
 }
 
 func classifyCheck(err error) error {
-	var pe *pgconn.PgError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*pgconn.PgError](err); ok {
 		switch pe.Code {
 		case "42501":
 			return errCheckDenied

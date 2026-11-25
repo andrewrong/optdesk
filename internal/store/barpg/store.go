@@ -191,8 +191,7 @@ func (s *Store) UpsertFxRates(ctx context.Context, rows []contracts.FxRate, writ
 // wrap keeps a typed error as it is, makes a constraint violation (SQLSTATE class 23) Permanent, because the
 // database repeats it on every attempt, and makes every other database error Retryable.
 func wrap(err error, what string) error {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
+	if _, ok := errors.AsType[contracts.TypedError](err); ok {
 		return err
 	}
 	if isConstraintViolation(err) {
