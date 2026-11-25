@@ -25,8 +25,6 @@ const (
 	staleFetchDays = 10
 	// maxGapText is the maxLength of a gap text in the schema.
 	maxGapText = 200
-
-	eventsTitleWithReader = "Next 60 days, dates in the publisher's own zone (ET, JST)"
 )
 
 // eventConvention is the one row of the table of conventions of a kind.
@@ -41,19 +39,19 @@ type eventConvention struct {
 
 // conventions is the table of Decision 2, in the order the gap lines list the kinds.
 var conventions = []eventConvention{
-	{kind: "cpi", source: "fred", name: "CPI", when: "usually 8:30 ET", high: true},
-	{kind: "employment_situation", source: "fred", name: "Employment situation", when: "usually 8:30 ET", high: true},
-	{kind: "pce", source: "fred", name: "PCE", when: "usually 8:30 ET", high: true},
-	{kind: "gdp", source: "fred", name: "GDP", when: "usually 8:30 ET", high: true},
-	{kind: "ppi", source: "fred", name: "PPI", when: "usually 8:30 ET"},
-	{kind: "retail_sales", source: "fred", name: "Retail sales", when: "usually 8:30 ET"},
-	{kind: "jolts", source: "fred", name: "JOLTS", when: "usually 10:00 ET"},
-	{kind: "h41", source: "fred", name: "H.4.1", when: "usually 4:30 pm ET"},
-	{kind: "fomc", source: "file", name: "FOMC decision", when: "usually 2:00 pm ET", high: true, entered: "FOMC"},
-	{kind: "fomc_minutes", source: "file", name: "FOMC minutes", when: "usually 2:00 pm ET"},
-	{kind: "boj", source: "file", name: "BoJ decision", when: "usually around midday JST, date in JST", high: true, entered: "BoJ"},
-	{kind: "quarter_end", source: "file", name: "Quarter-end", when: "date only", entered: "Quarter-end"},
-	{kind: "us_tax", source: "file", name: "US corporate tax date", when: "date only", entered: "US tax"},
+	{kind: "cpi", source: "fred", name: "CPI", when: whenET830, high: true},
+	{kind: "employment_situation", source: "fred", name: "Employment situation", when: whenET830, high: true},
+	{kind: "pce", source: "fred", name: "PCE", when: whenET830, high: true},
+	{kind: "gdp", source: "fred", name: "GDP", when: whenET830, high: true},
+	{kind: "ppi", source: "fred", name: "PPI", when: whenET830},
+	{kind: "retail_sales", source: "fred", name: "Retail sales", when: whenET830},
+	{kind: "jolts", source: "fred", name: "JOLTS", when: whenET1000},
+	{kind: "h41", source: "fred", name: "H.4.1", when: whenET1630},
+	{kind: "fomc", source: "file", name: "FOMC decision", when: whenET1400, high: true, entered: "FOMC"},
+	{kind: "fomc_minutes", source: "file", name: "FOMC minutes", when: whenET1400},
+	{kind: "boj", source: "file", name: "BoJ decision", when: whenJSTMidday, high: true, entered: "BoJ"},
+	{kind: "quarter_end", source: "file", name: "Quarter-end", when: whenDateOnly, entered: "Quarter-end"},
+	{kind: "us_tax", source: "file", name: "US corporate tax date", when: whenDateOnly, entered: "US tax"},
 }
 
 var conventionOf = func() map[string]eventConvention {
@@ -82,14 +80,14 @@ type eventRow struct {
 func newEventRow(e macroevent.Event, cells eventCells, figures bool) eventRow {
 	c, ok := conventionOf[e.Kind]
 	if !ok {
-		c = eventConvention{name: e.Kind, when: "date only"}
+		c = eventConvention{name: e.Kind, when: whenDateOnly}
 	}
 	when := c.when
 	if c.high {
-		when += ", high"
+		when += whenHighSuffix
 	}
 	if e.Source == "file" && e.RunDay != "" {
-		when += ", read " + string(e.RunDay)
+		when += whenReadPrefix + string(e.RunDay)
 	}
 	row := eventRow{Date: string(e.Date), WhenText: when, NameText: c.name, Previous: cells.Previous}
 	if figures {

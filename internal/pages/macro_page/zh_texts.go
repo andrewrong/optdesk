@@ -60,3 +60,16 @@ const (
 	gapNotYetPublished = "FRED 尚未发布"
 	gapUnitUnknown     = "单位未知"
 )
+
+// The title of the event table and the release-time texts of its rows; the clock times and the zone codes stay as they are.
+const (
+	eventsTitleWithReader = "未来 60 天，日期按发布方所在时区（ET、JST）"
+	whenET830             = "通常 8:30 ET"
+	whenET1000            = "通常 10:00 ET"
+	whenET1630            = "通常 4:30 pm ET"
+	whenET1400            = "通常 2:00 pm ET"
+	whenJSTMidday         = "通常中午前后 JST，日期按 JST"
+	whenDateOnly          = "仅日期"
+	whenHighSuffix        = "，重要"
+	whenReadPrefix        = "，读取于 "
+)

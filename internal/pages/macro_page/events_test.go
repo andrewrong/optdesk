@@ -127,14 +127,14 @@ func TestEventsConventionTexts(t *testing.T) {
 		}
 	}
 	want := map[string][2]string{
-		"2026-11-10": {"CPI", "usually 8:30 ET, high"},
-		"2026-11-11": {"JOLTS", "usually 10:00 ET"},
-		"2026-11-12": {"H.4.1", "usually 4:30 pm ET"},
-		"2026-11-13": {"PPI", "usually 8:30 ET"},
-		"2026-12-09": {"FOMC decision", "usually 2:00 pm ET, high, read 2026-10-01"},
-		"2026-12-19": {"BoJ decision", "usually around midday JST, date in JST, high, read 2026-10-02"},
-		"2026-12-31": {"Quarter-end", "date only, read 2026-10-03"},
-		"2026-12-15": {"US corporate tax date", "date only, read 2026-10-04"},
+		"2026-11-10": {"CPI", "\u901a\u5e38 8:30 ET\uff0c\u91cd\u8981"},
+		"2026-11-11": {"JOLTS", "\u901a\u5e38 10:00 ET"},
+		"2026-11-12": {"H.4.1", "\u901a\u5e38 4:30 pm ET"},
+		"2026-11-13": {"PPI", "\u901a\u5e38 8:30 ET"},
+		"2026-12-09": {"FOMC decision", "\u901a\u5e38 2:00 pm ET\uff0c\u91cd\u8981\uff0c\u8bfb\u53d6\u4e8e 2026-10-01"},
+		"2026-12-19": {"BoJ decision", "\u901a\u5e38\u4e2d\u5348\u524d\u540e JST\uff0c\u65e5\u671f\u6309 JST\uff0c\u91cd\u8981\uff0c\u8bfb\u53d6\u4e8e 2026-10-02"},
+		"2026-12-31": {"Quarter-end", "\u4ec5\u65e5\u671f\uff0c\u8bfb\u53d6\u4e8e 2026-10-03"},
+		"2026-12-15": {"US corporate tax date", "\u4ec5\u65e5\u671f\uff0c\u8bfb\u53d6\u4e8e 2026-10-04"},
 	}
 	for d, w := range want {
 		if got[d] != w {
@@ -201,7 +201,7 @@ func TestEventsReaderDropsOldGap(t *testing.T) {
 	if _, ok := gapWithPrefix(m, "Event calendar: no data yet"); ok {
 		t.Errorf("old gap kept: %v", gapTexts(m))
 	}
-	if m["events_title"] != "Next 60 days, dates in the publisher's own zone (ET, JST)" {
+	if m["events_title"] != "\u672a\u6765 60 \u5929\uff0c\u65e5\u671f\u6309\u53d1\u5e03\u65b9\u6240\u5728\u65f6\u533a\uff08ET\u3001JST\uff09" {
 		t.Errorf("title %v", m["events_title"])
 	}
 	if m["sentence"] != "Macro indicators come from stored series; ease: no data yet." {
