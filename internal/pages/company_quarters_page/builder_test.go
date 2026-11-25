@@ -250,14 +250,14 @@ func TestEveryColumnHasGloss(t *testing.T) {
 		}
 		glosses[cm["label"].(string)] = g
 	}
-	for _, l := range []string{"Filing date", "Diluted EPS", "Diluted shares", "Free cash flow", "Capex", "Buybacks"} {
+	for _, l := range []string{labelFilingDate, labelDilutedEPS, labelDilutedShares, labelFreeCashFlow, labelCapex, labelBuybacks} {
 		if glosses[l] == "" {
 			t.Errorf("no gloss for %s", l)
 		}
 	}
-	if glosses["Filing date"] != "the day the report was filed with the SEC; usually a few days after the earnings release; "+
+	if glosses[labelFilingDate] != "the day the report was filed with the SEC; usually a few days after the earnings release; "+
 		"your own report-day record is not changed" {
-		t.Errorf("filing date gloss = %q", glosses["Filing date"])
+		t.Errorf("filing date gloss = %q", glosses[labelFilingDate])
 	}
 }
 
