@@ -3,6 +3,7 @@ package quotesnapshot
 import (
 	"errors"
 	"time"
+
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
 )
