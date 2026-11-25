@@ -31,6 +31,7 @@ type Params struct {
 type Input struct {
 	Day                                 contracts.Day
 	SP500, VIXCLS, VXVCLS, BAMLH0A0HYM2 compute.Series
+	NDX                                 compute.Series     // Nasdaq-100 closes, ascending by day; nil when none is stored
 	Benchmark                           blockapi.CloseIn   // SPY
 	Funds, Industry                     []blockapi.CloseIn // the 11 sector funds; SMH
 	Figures                             compute.Figures    // the one the registered figures use (cmd/ot/wire.go)
@@ -83,16 +84,18 @@ type Line struct {
 // a day without a defined value has no point.
 type History struct {
 	Sp500Vs200d, Drawdown, VIX, VIXTerm, HighYield Line
+	NasdaqDrawdown                                 Line // the NDX drawdown line, same shape as Drawdown
 	Close, Ma200, BandLow, BandHigh                Line
 }
 
 // Result holds every figure of the page that this package computes.
 type Result struct {
-	EndDay   contracts.Day    // SPY's newest close day; empty when SPY has no close
-	Drawdown liquidityapi.Num // percent, 2 places, 0 or below; Aux is the day of the high
-	Funds    []Fund           // the sector funds sorted by Gap63, greatest first, gap rows last, ties in input order
-	Industry []Fund           // in input order, never ranked
-	History  History
+	EndDay         contracts.Day    // SPY's newest close day; empty when SPY has no close
+	Drawdown       liquidityapi.Num // percent, 2 places, 0 or below; Aux is the day of the high
+	NasdaqDrawdown liquidityapi.Num // NDX drawdown: percent, 2 places, 0 or below; Aux is the day of the high
+	Funds          []Fund           // the sector funds sorted by Gap63, greatest first, gap rows last, ties in input order
+	Industry       []Fund           // in input order, never ranked
+	History        History
 }
 
 // Func computes the Result; no I/O, no clock (internal/compute/marketstate.Compute).
