@@ -1,6 +1,6 @@
 package company_quarters_page
 
-// Chinese texts of the page (owner rule 2026-11-17): constants only. Labels, column names and terms (SEC, cik, EPS, FY) stay English.
+// Chinese texts of the page (owner rule 2026-11-17): constants only. Column labels read "中文 English"; terms (SEC, cik, EPS, FY) stay English.
 
 const (
 	missingGeneric = "这个季度没有存下这项数据。"
@@ -22,4 +22,22 @@ const (
 	whyCannotDerive      = "推算这个季度所需的年初至今数据没有全部存下。"
 	whyPeriodMismatch    = "财报标注的财政期间与它的日期对不上，所以不去猜这个季度。"
 	whyShareBasisChanged = "股数发生了变化（例如拆股），所以不推算这个季度。"
+)
+
+// Column labels of the quarter table: the Chinese word first, the English beside it.
+const (
+	labelFilingDate        = "披露日 Filing date"
+	labelRevenue           = "营收 Revenue"
+	labelOperatingIncome   = "营业利润 Operating income"
+	labelNetIncome         = "净利润 Net income"
+	labelDilutedEPS        = "稀释每股收益 Diluted EPS"
+	labelDilutedShares     = "稀释股数 Diluted shares"
+	labelOperatingCashFlow = "经营现金流 Operating cash flow"
+	labelCapex             = "资本开支 Capex"
+	labelFreeCashFlow      = "自由现金流 Free cash flow"
+	labelBuybacks          = "回购 Buybacks"
+	labelDividends         = "分红 Dividends"
+	labelCash              = "现金 Cash"
+	labelLongTermDebt      = "长期债务 Long-term debt"
+	labelShortTermDebt     = "短期债务 Short-term debt"
 )
