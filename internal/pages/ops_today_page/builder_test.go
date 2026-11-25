@@ -281,7 +281,7 @@ func TestOpsTodayPageTitle(t *testing.T) {
 	if err := json.Unmarshal(b, &p); err != nil {
 		t.Fatal(err)
 	}
-	if want := "今日期权开盘运行 Today's option-open runs"; p.Title != want {
+	if want := "\u4eca\u65e5\u671f\u6743\u5f00\u76d8\u8fd0\u884c Today's option-open runs"; p.Title != want {
 		t.Fatalf("title = %q, want %q", p.Title, want)
 	}
 }
