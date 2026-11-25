@@ -134,10 +134,22 @@ func TestJPNameOutcomesReadError(t *testing.T) {
 func TestOutcomeTextCodes(t *testing.T) {
 	t.Parallel()
 	facts := []optioncandapi.OpenFact{{Status: 7, ErrorCode: "NO_DATA"}, {Status: 7, ErrorCode: "TIMEOUT"}, {Status: 7, ErrorCode: "NO_DATA"}}
-	if got := outcomeText(optioncandapi.OutcomeNoSpot, facts); got != "没读到标的现价（NO_DATA、TIMEOUT），所以没有询价" {
+	if got := outcomeText(optioncand.NewNameOpen(), optioncandapi.OutcomeNoSpot, facts); got != "没读到标的现价（NO_DATA、TIMEOUT），所以没有询价" {
 		t.Errorf("no_spot = %q", got)
 	}
-	if got := outcomeText(optioncandapi.OutcomeOther, []optioncandapi.OpenFact{{Status: 5}, {Status: 3, ErrorCode: "NO_QUOTE"}}); got != "其他状态（5）" {
+	if got := outcomeText(optioncand.NewNameOpen(), optioncandapi.OutcomeOther, []optioncandapi.OpenFact{{Status: 5}, {Status: 3, ErrorCode: "NO_QUOTE"}}); got != "其他状态（5）" {
 		t.Errorf("other = %q", got)
+	}
+}
+
+func TestOutcomeTextNoSpotSkipsOutsideBand(t *testing.T) {
+	t.Parallel()
+	facts := []optioncandapi.OpenFact{{Status: 7, ErrorCode: "TIMEOUT"}, {Status: 7, ErrorCode: "NO_DATA", OutsideBand: true}}
+	res := optioncand.NewNameOpen().Classify(optioncandapi.NameOpenFacts{Name: "x", Facts: facts})
+	if res.Outcome != optioncandapi.OutcomeNoSpot || res.NoSpot != 1 || res.Deferred != 1 {
+		t.Fatalf("rule %+v", res)
+	}
+	if got := outcomeText(optioncand.NewNameOpen(), res.Outcome, facts); got != "没读到标的现价（TIMEOUT），所以没有询价" {
+		t.Errorf("no_spot = %q", got)
 	}
 }

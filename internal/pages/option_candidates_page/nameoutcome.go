@@ -113,22 +113,21 @@ func nameOutcomesOf(ctx context.Context, c Config, day contracts.Day, rows []sto
 		}
 		facts := openFactsOf(rs)
 		res := rule.Classify(optioncandapi.NameOpenFacts{Name: name, Facts: facts})
-		out = append(out, nameOutcome{Name: name, Outcome: res.Outcome, Text: outcomeText(res.Outcome, facts), Counts: countsText(res)})
+		out = append(out, nameOutcome{Name: name, Outcome: res.Outcome, Text: outcomeText(rule, res.Outcome, facts), Counts: countsText(res)})
 	}
 	return out, nil
 }
 
 // outcomeText is the Chinese words of an outcome; an outcome this page does not know reads as "other".
-func outcomeText(outcome string, facts []optioncandapi.OpenFact) string {
+// The codes it names are those of the rows the rule itself puts in that kind: it classifies each row alone.
+func outcomeText(rule optioncandapi.NameOpenRule, outcome string, facts []optioncandapi.OpenFact) string {
 	switch outcome {
 	case optioncandapi.OutcomeNoQuote:
 		return nameNoQuoteZh
 	case optioncandapi.OutcomeFailed:
 		return nameFailedZh
 	case optioncandapi.OutcomeNoSpot:
-		return nameNoSpotHeadZh + codesOf(facts, func(f optioncandapi.OpenFact) bool {
-			return f.Status == 7 && f.ErrorCode != "" && f.ErrorCode != "BUDGET"
-		}) + nameNoSpotTailZh
+		return nameNoSpotHeadZh + codesOf(rule, facts, optioncandapi.OutcomeNoSpot) + nameNoSpotTailZh
 	case optioncandapi.OutcomeDeferred:
 		return nameDeferredZh
 	case optioncandapi.OutcomeNoCandidate:
@@ -136,23 +135,15 @@ func outcomeText(outcome string, facts []optioncandapi.OpenFact) string {
 	case optioncandapi.OutcomeNoRows:
 		return nameNoRowsZh
 	}
-	return nameOtherHeadZh + codesOf(facts, func(f optioncandapi.OpenFact) bool {
-		switch f.Status {
-		case 1, 2, 6, 7, 8, 9:
-			return false
-		case 3:
-			return f.ErrorCode != "NO_QUOTE"
-		}
-		return true
-	}) + nameOtherTailZh
+	return nameOtherHeadZh + codesOf(rule, facts, optioncandapi.OutcomeOther) + nameOtherTailZh
 }
 
-// codesOf lists the distinct codes (the status number when a row has no code) of the facts that pick selects.
-func codesOf(facts []optioncandapi.OpenFact, pick func(optioncandapi.OpenFact) bool) string {
+// codesOf lists the distinct codes (the status number when a row has no code) of the facts the rule alone classes as kind.
+func codesOf(rule optioncandapi.NameOpenRule, facts []optioncandapi.OpenFact, kind string) string {
 	seen := map[string]bool{}
 	var codes []string
 	for _, f := range facts {
-		if !pick(f) {
+		if rule.Classify(optioncandapi.NameOpenFacts{Facts: []optioncandapi.OpenFact{f}}).Outcome != kind {
 			continue
 		}
 		code := f.ErrorCode
