@@ -68,3 +68,10 @@ it('fixed titles and column heads read Chinese', async () => {
   expect(heads('core')).toEqual(['公司', '成本', '情形', '回报'])
   expect(heads('questions')[0]).toBe('公司')
 })
+
+it('pepb card title reads Chinese', async () => {
+  await show(fixture('../contracts/fixtures', 'page.companies_page.v2.pepb.json'))
+  expect(host.querySelector('[data-block="pepb"] [data-slot="card-title"]')?.textContent).toBe(
+    '市盈率与市净率 (PE and PB)',
+  )
+})
