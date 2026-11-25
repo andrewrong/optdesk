@@ -15,3 +15,11 @@ const (
 	textNoStatements   = "已存的 SEC 财报里还推算不出任何一个季度。"
 	textReadFailed     = "读取已存的数据失败，所以不显示季度。"
 )
+
+// Reasons a quarter misses a value; whyTexts in strings.go maps them to the reason codes.
+const (
+	whyNoFact            = "没有任何财报披露这个季度的这项数据。"
+	whyCannotDerive      = "推算这个季度所需的年初至今数据没有全部存下。"
+	whyPeriodMismatch    = "财报标注的财政期间与它的日期对不上，所以不去猜这个季度。"
+	whyShareBasisChanged = "股数发生了变化（例如拆股），所以不推算这个季度。"
+)

@@ -53,8 +53,8 @@ var columns = []column{
 }
 
 var whyTexts = map[companydataapi.Why]string{
-	companydataapi.WhyNoFact:            "没有任何财报披露这个季度的这项数据。",
-	companydataapi.WhyCannotDerive:      "推算这个季度所需的年初至今数据没有全部存下。",
-	companydataapi.WhyPeriodMismatch:    "财报标注的财政期间与它的日期对不上，所以不去猜这个季度。",
-	companydataapi.WhyShareBasisChanged: "股数发生了变化（例如拆股），所以不推算这个季度。",
+	companydataapi.WhyNoFact:            whyNoFact,
+	companydataapi.WhyCannotDerive:      whyCannotDerive,
+	companydataapi.WhyPeriodMismatch:    whyPeriodMismatch,
+	companydataapi.WhyShareBasisChanged: whyShareBasisChanged,
 }
