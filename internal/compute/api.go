@@ -1,11 +1,11 @@
 // Package compute turns typed series into figures. It is pure: no store, no clock, no file.
 package compute
 
-import "github.com/andrewrong/optdesk/internal/contracts"
-
 import (
 	"context"
 	"io"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 // Point is one value of a series on one day.
