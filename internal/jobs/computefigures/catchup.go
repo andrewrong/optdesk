@@ -33,6 +33,8 @@ func (r *runState) catchUpMarket(t target) {
 			r.catchupFail(r.ctx.Err())
 			return
 		}
+		// A throwaway state: the failed count of an earlier day is dropped on purpose, and its error, whatever its
+		// kind, becomes the retryable error of the run (the next run looks back again).
 		sub := &runState{j: r.j, ctx: r.ctx, day: d}
 		sub.marketDay(t)
 		if sub.firstErr != nil {

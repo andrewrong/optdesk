@@ -2,6 +2,7 @@ package computefigures
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -97,5 +98,51 @@ func TestMarketCatchupCoversRatioAndMAGap(t *testing.T) {
 		if r := readingOn(t, f, name, subj, cuD2); r.Rev != 2 || tagOf(r, "data_day") != string(cuD2) {
 			t.Fatalf("%s: rev %d data_day %s, want rev 2 of %s", name, r.Rev, tagOf(r, "data_day"), cuD2)
 		}
+	}
+}
+
+type failSeriesBefore struct {
+	*fx
+	day contracts.Day // a read that ends before this day fails
+}
+
+func (s failSeriesBefore) SeriesPoints(ctx context.Context, id string, from, to contracts.Day) ([]contracts.SeriesPoint, error) {
+	if to < s.day {
+		return nil, errors.New("series read failed")
+	}
+	return s.fx.SeriesPoints(ctx, id, from, to)
+}
+
+type failSessions struct{ *fx }
+
+func (failSessions) SessionDays(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SessionDay, error) {
+	return nil, errors.New("session read failed")
+}
+
+func TestMarketCatchupFailureIsRetryableAndKeepsAsOfDay(t *testing.T) {
+	t.Parallel()
+	cases := map[string]func(f *fx, st *ComputeStores){
+		"earlier day series": func(f *fx, st *ComputeStores) { st.Series = failSeriesBefore{fx: f, day: cuD3} },
+		"session days":       func(f *fx, st *ComputeStores) { st.SessionDays = failSessions{f} },
+	}
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := catchupWorld()
+			st := f.rvStores()
+			setup(f, &st)
+			keys := []contracts.ExpectedKey{keyOf("market.vix_pctile_3y", "market", "VIXCLS"),
+				keyOf("market.sp500_vs_200d", "market", "SP500")}
+			res := rvJobOn(t, st, newFigs()).Run(context.Background(), cuD3, keys)
+			if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+				t.Fatalf("Err %v, want a retryable error", res.Err)
+			}
+			if res.Returned != 2 || res.Usable != 2 {
+				t.Fatalf("returned %d usable %d, want 2 and 2: the as-of day of every target is stored", res.Returned, res.Usable)
+			}
+			for _, k := range []struct{ n, s string }{{"market.vix_pctile_3y", "VIXCLS"}, {"market.sp500_vs_200d", "SP500"}} {
+				readingOn(t, f, k.n, k.s, cuD3)
+			}
+		})
 	}
 }
