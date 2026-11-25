@@ -71,6 +71,22 @@ describe('table view', () => {
     expect(el.querySelector('[data-slot="card-title"]')?.textContent?.startsWith('公司，未录入：')).toBe(true)
   })
 
+  it('TestValuationTableCardTitleWithoutUnentered: the card title is just 公司 when no name is unentered', async () => {
+    const payload = fixture('table')
+    payload.unvalued_count = 0
+    const el = await render(payload)
+    expect(el.querySelector('[data-slot="card-title"]')?.textContent).toBe('公司')
+  })
+
+  it('TestValuationTableHeadsInOrder: the sixteen heads read in the order of the issue', async () => {
+    const el = await render(fixture('table'))
+    const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent)
+    expect(heads).toEqual([
+      '名称', '区间', '收盘价', 'V', 'P', '版本日期', 'R', 'C',
+      '重仓点', '买入区间', '手填买入价', '合理区间', '减仓线', '清仓线', '核心线', '状态',
+    ])
+  })
+
   it('TestUnvaluedRowHasEntryLink: one row per company, an entry button on an unvalued row only', async () => {
     const el = await render(fixture('table'))
     const rows = el.querySelectorAll('tbody tr')

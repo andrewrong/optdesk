@@ -39,9 +39,9 @@ const Head = ({ label, term, gloss }: { label: string; term: string; gloss?: str
 }
 
 // `term` is the English key into GLOSS; `header` is the Chinese head.
-const text = (key: keyof Row, header: string, term = ''): ColumnDef<Row> => ({
+const text = (key: keyof Row, header: string, term?: string): ColumnDef<Row> => ({
   id: key,
-  header: () => <Head label={header} term={term} gloss={GLOSS[term] ?? ''} />,
+  header: () => <Head label={header} term={term} gloss={term ? (GLOSS[term] ?? '') : ''} />,
   cell: ({ row }) => String(row.original[key]),
 })
 
