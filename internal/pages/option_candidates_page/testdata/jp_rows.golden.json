@@ -880,7 +880,7 @@
     "spot_text": "¥3,100",
     "spot_note": "存档 11-19",
     "price_note": null,
-    "earnings_text": "未知",
+    "earnings_text": "来源暂无日期（未查到，不等于没有）",
     "source_badge": {
      "code": "hand",
      "label": "手填",
@@ -1559,6 +1559,17 @@
       ],
       "line": null
      }
+    ],
+    "companies": [
+     {
+      "company": "6758",
+      "count": 3,
+      "row_ids": [
+       "tier-short_put-3-3",
+       "tier-short_put-4-4",
+       "tier-short_put-5-5"
+      ]
+     }
     ]
    },
    {
@@ -2180,6 +2191,29 @@
        }
       ],
       "line": null
+     }
+    ],
+    "companies": [
+     {
+      "company": "7203",
+      "count": 1,
+      "row_ids": [
+       "tier-short_put-0-0"
+      ]
+     },
+     {
+      "company": "6954",
+      "count": 1,
+      "row_ids": [
+       "tier-short_put-1-1"
+      ]
+     },
+     {
+      "company": "6758",
+      "count": 1,
+      "row_ids": [
+       "tier-short_put-2-2"
+      ]
      }
     ]
    }
