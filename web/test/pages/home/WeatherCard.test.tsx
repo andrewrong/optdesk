@@ -101,8 +101,13 @@ describe('WeatherCard', () => {
   it('heads the difference column Diff, not with the verdict word Bad', async () => {
     await show(fixture('mismatch'))
     const heads = [...host.querySelectorAll('[data-mismatches] thead th')].map((h) => h.textContent)
-    expect(heads).toContain('差值')
+    expect(heads).toEqual(['日期', 'IBKR', 'FRED', '差值'])
     expect(heads).not.toContain('异常')
+  })
+
+  it('titles the footnote fold 脚注', async () => {
+    await show(fixture('ok'))
+    expect(host.querySelector('[data-slot=accordion-trigger]')?.textContent).toBe('脚注')
   })
 
   it('shows the stale label of the stale fixture and none for ok', async () => {

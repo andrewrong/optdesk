@@ -148,6 +148,10 @@ describe('HomePage layout', () => {
     for (const link of rest) expect(fold.contains(anchorOf(link)), link.text).toBe(true)
   })
 
+  it('titles the report card 报告', async () => {
+    expect(host.querySelector('[data-links="report_links"] [data-slot=card-title]')?.textContent).toBe('报告')
+  })
+
   it('has no fold for a single report link', async () => {
     await renderWith({ ...ok, report_links: ok.report_links.slice(0, 1) as unknown as typeof ok.report_links })
     expect(host.querySelector('[data-links="report_links"] [data-slot="accordion"]')).toBeNull()
