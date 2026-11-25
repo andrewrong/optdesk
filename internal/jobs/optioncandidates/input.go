@@ -189,6 +189,18 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 		info.Next = contracts.Day(last.ReportDate.Format(time.DateOnly))
 	}
 	// A future date stored by an earlier check outlives a newer check that says absent.
+	if future := earliestFuture(rows, chainDay); future != "" {
+		info.Next, info.State = future, "listed"
+	}
+	ce := chainEarnings{state: info.State, next: info.Next}
+	if info.Override != "" {
+		ce.next = info.Override
+	}
+	return info, ce, nil
+}
+
+// earliestFuture is the earliest listed report date on or after chainDay among rows, or "" when there is none.
+func earliestFuture(rows []contracts.EarningsDate, chainDay contracts.Day) contracts.Day {
 	var future contracts.Day
 	for _, r := range rows {
 		if string(r.Status) != "listed" || r.ReportDate == nil {
@@ -198,14 +210,7 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 			future = d
 		}
 	}
-	if future != "" {
-		info.Next, info.State = future, "listed"
-	}
-	ce := chainEarnings{state: info.State, next: info.Next}
-	if info.Override != "" {
-		ce.next = info.Override
-	}
-	return info, ce, nil
+	return future
 }
 
 // accounts reads the newest capture of each alias of j.st.Aliases separately. An alias with no capture in the
