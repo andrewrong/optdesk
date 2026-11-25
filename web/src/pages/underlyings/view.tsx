@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ScrollHint } from '@/components/ScrollHint'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { page } from '@/shell/page'
@@ -63,6 +64,11 @@ function Flag({ on }: { on: boolean }) {
 function editId(key: string) {
   return `edit-${key.replace(/[^A-Za-z0-9_-]/g, '-')}`
 }
+
+// The columns of text that wrap on a narrow screen; the figure cells keep their no-wrap.
+const WRAP = new Set(['name', 'status', 'note'])
+const WRAP_CLASS = 'whitespace-normal break-words'
+const STICKY_CLASS = 'sticky left-0 bg-background'
 
 const baseColumns: ColumnDef<Name>[] = [
   {
@@ -121,26 +127,36 @@ function NamesTable({ rows, editable }: { rows: Name[]; editable: boolean }) {
   const columns = editable ? [...baseColumns, editColumn] : baseColumns
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
   return (
-    <Table data-names>
-      <TableHeader>
-        {table.getHeaderGroups().map((hg) => (
-          <TableRow key={hg.id}>
-            {hg.headers.map((h) => (
-              <TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.original.key} data-name={row.original.key}>
-            {row.getVisibleCells().map((c) => (
-              <TableCell key={c.id}>{flexRender(c.column.columnDef.cell, c.getContext())}</TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <>
+      <ScrollHint />
+      <Table data-names>
+        <TableHeader>
+          {table.getHeaderGroups().map((hg) => (
+            <TableRow key={hg.id}>
+              {hg.headers.map((h, i) => (
+                <TableHead key={h.id} className={i === 0 ? STICKY_CLASS : undefined}>
+                  {flexRender(h.column.columnDef.header, h.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.original.key} data-name={row.original.key}>
+              {row.getVisibleCells().map((c, i) => (
+                <TableCell
+                  key={c.id}
+                  className={[WRAP.has(c.column.id) ? WRAP_CLASS : '', i === 0 ? STICKY_CLASS : ''].filter(Boolean).join(' ') || undefined}
+                >
+                  {flexRender(c.column.columnDef.cell, c.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </>
   )
 }
 

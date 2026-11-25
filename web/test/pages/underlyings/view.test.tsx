@@ -60,6 +60,17 @@ describe('underlyings view', () => {
     expect(el.querySelector('[data-confirm]')).toBeNull()
   })
 
+  it('wraps the name cells and shows the scroll hint', async () => {
+    const el = await render(fixture('golden'))
+    const table = el.querySelector('table[data-names]')!
+    expect(table.closest('[data-slot=table-container]')!.previousElementSibling!.hasAttribute('data-scroll-hint')).toBe(true)
+    const cells = table.querySelectorAll('tbody tr')[0]!.children
+    expect(cells[0]!.className).toContain('whitespace-normal break-words')
+    expect(cells[0]!.className).toContain('sticky left-0 bg-background')
+    expect(cells[2]!.className).toContain('break-words')
+    expect(cells[6]!.className).not.toContain('break-words')
+  })
+
   it('shows the flags of each row as On or Off text and its followed_by groups as badges', async () => {
     const p = fixture('golden')
     const el = await render(p)
