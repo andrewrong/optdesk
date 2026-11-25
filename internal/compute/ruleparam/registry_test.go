@@ -3,7 +3,9 @@ package ruleparam
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 )
@@ -112,5 +114,23 @@ func TestSpecsThirteenWithPutDeltaMax(t *testing.T) {
 	}
 	if last := specs[len(specs)-1]; last.Key != "put_delta_max" {
 		t.Fatalf("last = %q", last.Key)
+	}
+}
+
+func TestRuleParamLabelsChinese(t *testing.T) {
+	t.Parallel()
+	specs := New().Specs()
+	if len(specs) != 13 {
+		t.Fatalf("len = %d", len(specs))
+	}
+	seen := map[string]string{}
+	for _, s := range specs {
+		if !strings.ContainsFunc(s.Label, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Errorf("%s: label %q has no Chinese character", s.Key, s.Label)
+		}
+		if other, dup := seen[s.Label]; dup {
+			t.Errorf("%s and %s share label %q", s.Key, other, s.Label)
+		}
+		seen[s.Label] = s.Key
 	}
 }

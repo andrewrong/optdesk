@@ -23,19 +23,19 @@ const (
 // bounds from Decision 3 of docs/design/settings-form.md. Defaults are
 // canonical text. A key is added here, by a reviewed change, never by the form.
 var specs = []settingsapi.RuleParamSpec{
-	{Key: "min_dte", Label: "Minimum days to expiry", Unit: "days", Kind: kindInt, Default: "21", Min: "7", Max: "120"},
-	{Key: "max_dte", Label: "Maximum days to expiry", Unit: "days", Kind: kindInt, Default: "45", Min: "14", Max: "180"},
-	{Key: "min_bid_size", Label: "Minimum bid size", Unit: "contracts", Kind: kindInt, Default: "1", Min: "1", Max: "100"},
-	{Key: "max_spread", Label: "Maximum bid-ask spread", Unit: "ratio", Kind: kindDecimal, Default: "0.1", Min: "0.01", Max: "0.3"},
-	{Key: "min_open_interest", Label: "Minimum open interest", Unit: "contracts", Kind: kindInt, Default: "10", Min: "1", Max: "1000"},
-	{Key: "div_guard_factor", Label: "Dividend guard factor", Unit: "factor", Kind: kindDecimal, Default: "1", Min: "0.5", Max: "3"},
-	{Key: "max_rate_age_days", Label: "Maximum rate age", Unit: "days", Kind: kindInt, Default: "7", Min: "1", Max: "30"},
-	{Key: "max_event_age_sessions", Label: "Maximum event age", Unit: "sessions", Kind: kindInt, Default: "2", Min: "1", Max: "10"},
-	{Key: "min_report_gap_days", Label: "Minimum days between reports", Unit: "days", Kind: kindInt, Default: "60", Min: "30", Max: "100"},
-	{Key: "max_strikes", Label: "Maximum strikes per expiry", Unit: "strikes", Kind: kindInt, Default: "24", Min: "4", Max: "60"},
-	{Key: "capture_target", Label: "Premium capture target", Unit: "ratio", Kind: kindDecimal, Default: "0.5", Min: "0.1", Max: "0.95"},
-	{Key: "exit_dte", Label: "Exit days to expiry", Unit: "days", Kind: kindInt, Default: "21", Min: "1", Max: "45"},
-	{Key: "put_delta_max", Label: "Maximum put delta", Unit: "delta", Kind: kindDecimal, Default: "0.3", Min: "0.05", Max: "0.5"},
+	{Key: "min_dte", Label: "最短到期天数", Unit: "days", Kind: kindInt, Default: "21", Min: "7", Max: "120"},
+	{Key: "max_dte", Label: "最长到期天数", Unit: "days", Kind: kindInt, Default: "45", Min: "14", Max: "180"},
+	{Key: "min_bid_size", Label: "最小买量", Unit: "contracts", Kind: kindInt, Default: "1", Min: "1", Max: "100"},
+	{Key: "max_spread", Label: "最大买卖价差", Unit: "ratio", Kind: kindDecimal, Default: "0.1", Min: "0.01", Max: "0.3"},
+	{Key: "min_open_interest", Label: "最小未平仓量", Unit: "contracts", Kind: kindInt, Default: "10", Min: "1", Max: "1000"},
+	{Key: "div_guard_factor", Label: "股息保护系数", Unit: "factor", Kind: kindDecimal, Default: "1", Min: "0.5", Max: "3"},
+	{Key: "max_rate_age_days", Label: "利率数据最长陈旧天数", Unit: "days", Kind: kindInt, Default: "7", Min: "1", Max: "30"},
+	{Key: "max_event_age_sessions", Label: "事件最长陈旧交易日数", Unit: "sessions", Kind: kindInt, Default: "2", Min: "1", Max: "10"},
+	{Key: "min_report_gap_days", Label: "两次财报最少间隔天数", Unit: "days", Kind: kindInt, Default: "60", Min: "30", Max: "100"},
+	{Key: "max_strikes", Label: "每个到期日最多行权价数", Unit: "strikes", Kind: kindInt, Default: "24", Min: "4", Max: "60"},
+	{Key: "capture_target", Label: "权利金收回目标", Unit: "ratio", Kind: kindDecimal, Default: "0.5", Min: "0.1", Max: "0.95"},
+	{Key: "exit_dte", Label: "退出到期天数", Unit: "days", Kind: kindInt, Default: "21", Min: "1", Max: "45"},
+	{Key: "put_delta_max", Label: "卖出看跌期权 Delta 上限", Unit: "delta", Kind: kindDecimal, Default: "0.3", Min: "0.05", Max: "0.5"},
 }
 
 type registry struct{}
