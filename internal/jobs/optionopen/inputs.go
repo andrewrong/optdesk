@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/atombender/go-jsonschema/pkg/types"
 	"math"
 	"math/big"
 	"sort"
@@ -18,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/atombender/go-jsonschema/pkg/types"
 )
 
 // stored inputs shared by the plan job and the evening jobs: the stocks, their close, sigma and held contracts.

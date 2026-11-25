@@ -11,12 +11,11 @@ import (
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
 
-	"github.com/pelletier/go-toml/v2"
-
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/pelletier/go-toml/v2"
 )
 
 // The Japan side of the option open pull (docs/design/option-open-pull.md, Decision 21): the same jobs over the

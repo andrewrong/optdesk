@@ -14,12 +14,11 @@ import (
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
 
-	"github.com/pelletier/go-toml/v2"
-
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/pelletier/go-toml/v2"
 )
 
 //go:embed job.toml
