@@ -38,3 +38,21 @@ const (
 	textAtLeast      = "至少：%d 个结构没有亏损数字"
 	textOnlyOtherCcy = "只有非美元结构未平仓（%d 个），不换算"
 )
+
+// The Chinese sentences of the gap reasons of the figure tiles, the scope of the aliases and the caption of the closed series.
+// Each format keeps its count first; textUncovered ends with the dollar figure.
+const (
+	textOtherCurrency = "%d 个非美元结构未计入"
+	textUnreadable    = "%d 个结构因账本行无法读取未计入"
+	textUncovered     = "%d 张卖出看涨期权在账本里没有对应的股数；其余结构至少 %s"
+	textReview        = "%d 条账本记录需要复核，数字可能不完整"
+
+	scopeNone    = "无账户"
+	scopeOne     = "账户 %s"
+	scopeMany    = "账户 %s 合并"
+	scopeJoin    = "、"
+	captionAll   = "所有已平仓的卖出持仓"
+	captionReal  = "已实现 "
+	captionKept  = "留存比例 "
+	captionOneAc = "结果页只显示一个账户"
+)
