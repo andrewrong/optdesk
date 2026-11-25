@@ -1,6 +1,8 @@
 package option_candidates_page
 
 import (
+	"github.com/andrewrong/optdesk/internal/compute/optiontierapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"slices"
 	"testing"
 
@@ -11,6 +13,7 @@ func TestTierCompaniesSumToRows(t *testing.T) {
 	t.Parallel()
 	c, _ := tierScenario("tiers_ok")
 	view := buildTiersOf(t, c)
+	const rowsRead = 5 // the tiers_ok scenario stores five rows
 	total, shown := 0, 0
 	for _, tr := range view.Tiers {
 		sum := 0
@@ -36,8 +39,8 @@ func TestTierCompaniesSumToRows(t *testing.T) {
 			t.Errorf("%s: companies is nil", tr.ID)
 		}
 	}
-	if total != shown || total == 0 {
-		t.Errorf("tiers sum %d, rows %d", total, shown)
+	if total != shown || total != rowsRead {
+		t.Errorf("tiers sum %d, shown %d, rows read %d", total, shown, rowsRead)
 	}
 	bbb := tierByID(view, "grey_no_buy_price")
 	if len(bbb.Companies) != 1 || bbb.Companies[0].Company != "BBB" {
@@ -65,9 +68,20 @@ func TestTierCompaniesFirstRowOrder(t *testing.T) {
 
 func TestEarningsTextUnknown(t *testing.T) {
 	t.Parallel()
-	c, _ := tierScenario("tiers_ok")
-	view := buildTiersOf(t, c)
-	if got := view.Companies[0].EarningsText; got != "来源暂无日期（未查到，不等于没有）" {
-		t.Errorf("earnings text = %q", got)
+	mk := func(id, co int, issuer string, next *contracts.Day) store.Candidate {
+		r := tierPut(id, "ok", "85.00", "0.42")
+		r.UnderlyingID, r.Issuer, r.NextEarnings = co, issuer, next
+		return r
+	}
+	date, past := contracts.Day("2026-12-10"), contracts.Day("2026-11-01")
+	rows := []store.Candidate{mk(1, 7, "AAA", &date), mk(2, 8, "BBB", nil), mk(3, 9, "CCC", &past)}
+	res := resultOf(fitsVerdict(keyOf(rows, 0)), fitsVerdict(keyOf(rows, 1)), fitsVerdict(keyOf(rows, 2)))
+	res.Companies = []optiontierapi.CompanyCount{{Company: "7", Fits: 1}, {Company: "8", Fits: 1}, {Company: "9", Fits: 1}}
+	c := tierConfig(rows, &fakeTierer{res: res})
+	c.Names = &namesFake{names: map[int]string{7: "AAA", 8: "BBB", 9: "CCC"}}
+	cs := buildTiersOf(t, c).Companies
+	const unknown = "来源暂无日期（未查到，不等于没有）"
+	if len(cs) != 3 || cs[0].EarningsText != "2026-12-10" || cs[1].EarningsText != unknown || cs[2].EarningsText != unknown {
+		t.Errorf("earnings texts = %q %q %q", cs[0].EarningsText, cs[1].EarningsText, cs[2].EarningsText)
 	}
 }
