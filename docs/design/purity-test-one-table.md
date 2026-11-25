@@ -80,12 +80,12 @@ none (test code only; no interface file changes)
 
 | issue | module | order |
 |---|---|---|
-| purity-table-scanner | repo | first |
-| purity-delete-compute | compute | after purity-table-scanner |
-| purity-delete-notify | notify | after purity-table-scanner |
-| purity-delete-pages | pages | after purity-table-scanner |
+| 1 purity-table-scanner | repo | first |
+| 2 purity-delete-compute | compute | after 1 |
+| 3 purity-delete-notify | notify | after 1 |
+| 4 purity-delete-pages | pages | after 1 |
 
-### purity-table-scanner
+### 1 purity-table-scanner
 
 Module: repo. Files: `scripts/purity/purity_test.go`, `scripts/purity/rules_test.go`. Order: first.
 
@@ -101,9 +101,9 @@ Acceptance:
 
 Checked by CI: `ci-go` runs `go test ./scripts/purity/...` and it passes on main without any change to the 29 packages.
 
-### purity-delete-compute
+### 2 purity-delete-compute
 
-Module: compute. Files: `internal/compute/optioncand/purity_test.go`, `internal/compute/optionfig/purity_test.go`, `internal/compute/optionnotice/purity_test.go`, `internal/compute/optionshortlist/purity_test.go`, `internal/compute/optiontier/purity_test.go`, `internal/compute/optiontrack/purity_test.go`. Order: after purity-table-scanner.
+Module: compute. Files: `internal/compute/optioncand/purity_test.go`, `internal/compute/optionfig/purity_test.go`, `internal/compute/optionnotice/purity_test.go`, `internal/compute/optionshortlist/purity_test.go`, `internal/compute/optiontier/purity_test.go`, `internal/compute/optiontrack/purity_test.go`. Order: after 1.
 
 Result for the owner: six copies of the scan are gone; the rule is checked by `scripts/purity`.
 
@@ -114,9 +114,9 @@ Acceptance:
 
 Checked by CI: `ci-go` runs `go test ./internal/compute/... ./scripts/purity/...`.
 
-### purity-delete-notify
+### 3 purity-delete-notify
 
-Module: notify. Files: `internal/notify/core/morning_purity_test.go`. Order: after purity-table-scanner.
+Module: notify. Files: `internal/notify/core/morning_purity_test.go`. Order: after 1.
 
 Result for the owner: the notify scan is gone; the table row of `internal/notify` checks the same names and imports.
 
@@ -127,9 +127,9 @@ Acceptance:
 
 Checked by CI: `ci-go` runs `go test ./internal/notify/... ./scripts/purity/...`.
 
-### purity-delete-pages
+### 4 purity-delete-pages
 
-Module: pages. Files: the 22 `purity_test.go` files under `internal/pages/` (advice_page, base_data_page, company_data_page, company_quarters_page, data_health_page, home_companies, home_household, home_macro, home_market, home_options, household_page, market_page, market_state_page, option_candidates_page, option_notices_page, option_pnl_page, option_tracking_page, positions_page, risk_page, strategy_replay_page, valuation_import_page, valuation_page) and one new file `internal/pages/company_quarters_page/free_cash_test.go`. Order: after purity-table-scanner.
+Module: pages. Files: the 22 `purity_test.go` files under `internal/pages/` (advice_page, base_data_page, company_data_page, company_quarters_page, data_health_page, home_companies, home_household, home_macro, home_market, home_options, household_page, market_page, market_state_page, option_candidates_page, option_notices_page, option_pnl_page, option_tracking_page, positions_page, risk_page, strategy_replay_page, valuation_import_page, valuation_page) and one new file `internal/pages/company_quarters_page/free_cash_test.go`. Order: after 1.
 
 Result for the owner: 22 copies of the scan are gone; the one behaviour test among them is kept.
 
