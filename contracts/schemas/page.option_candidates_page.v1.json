@@ -568,6 +568,21 @@
               "type": "null"
             }
           ]
+        },
+        "name_outcomes": {
+          "description": "For each Japanese name with no candidate row, its outcome (an open string), its Chinese text and its counts; additive and optional.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "outcome", "text", "counts"],
+            "properties": {
+              "name": {"$ref": "#/$defs/Text"},
+              "outcome": {"type": "string", "minLength": 1},
+              "text": {"$ref": "#/$defs/Text"},
+              "counts": {"$ref": "#/$defs/Text"}
+            }
+          }
         }
       },
       "allOf": [
