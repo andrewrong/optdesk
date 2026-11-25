@@ -39,6 +39,9 @@ func positionsPageConfig(a *app, rd siteReaders) positions_page.Config {
 	if rd.bars != nil {
 		c.Bars = rd.bars
 	}
+	if rd.underlying != nil {
+		c.Underlyings = rd.underlying
+	}
 	if ids, ok := siteReaderOf[market_state_page.StockIDReader](rd, siteMarketStateIDsKey); ok && ids != nil {
 		c.StockIDs = ids
 	}
