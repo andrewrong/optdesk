@@ -81,11 +81,11 @@ func TestTextHasNoIDs(t *testing.T) {
 	var fs []finding.Finding
 	for _, r := range rules {
 		f := fresh(r, "obs.price_bar", finding.SeverityWarn)
-		f.Subject = "acct-U1234567" // a subject never reaches the text
+		f.Subject = "subject-x" // a subject never reaches the text
 		fs = append(fs, f)
 	}
 	text, _ := announceText(fs)
-	if strings.Contains(text, "U1234567") {
+	if strings.Contains(text, "subject-x") {
 		t.Fatalf("subject in text: %q", text)
 	}
 	// What is left once the fixed words, the dataset, the day and the evidence names are removed is digits and
