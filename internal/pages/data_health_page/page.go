@@ -6,6 +6,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/jobrunapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
+	"github.com/andrewrong/optdesk/internal/store/finding"
 	"github.com/andrewrong/optdesk/internal/store/jobrun"
 )
 
@@ -21,6 +22,8 @@ type Input struct {
 
 	Runs    jobrun.JobRunReader   // nil: no running lines
 	Figures jobrunapi.FiguresFunc // the figures of the open runs at Now; nil: no running lines
+
+	Checks finding.Reader // the newest data check run; nil: data_check is null and there is no gap
 }
 
 // Newest is the newest observation of one FRED series and its age in days at Today.
@@ -80,4 +83,5 @@ type viewModel struct {
 	Gaps          []Gap         `json:"gaps"`
 	FailuresNote  string        `json:"failures_note"`
 	FailuresNone  string        `json:"failures_none_text"`
+	DataCheck     *DataCheckVM  `json:"data_check"`
 }

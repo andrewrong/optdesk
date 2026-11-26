@@ -21,5 +21,9 @@ func glossary() []GlossaryRow {
 		{"not refetchable", zhGlossNotRefetch},
 		{"ledger", zhGlossLedger},
 		{"session day", zhGlossSessionDay},
+		{zhSevError, zhGlossSevError},
+		{zhSevWarn, zhGlossSevWarn},
+		{zhSevUnknown, zhGlossSevUnknown},
+		{zhTermNew, zhGlossNew},
 	}
 }

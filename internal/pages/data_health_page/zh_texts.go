@@ -62,3 +62,58 @@ const (
 	lostText = "已丢失：数据源只提供当天的数据 (lost: the source gives only the present)"
 	lateText = "数据源晚一天发布：FRED（美联储数据服务）在次日才公布当天的点 (the source publishes a day later: FRED, the Federal Reserve data service, posts a day's point on the next day)"
 )
+
+// The data check block (docs/design/data-check.md, Decisions 12, 13): Chinese only; a rule id stands beside its
+// label and a dataset id stands alone.
+const (
+	zhDataCheckTitle   = "数据检查"
+	zhDataCheckNote    = "每天检查一次已保存的数据有没有错误的值和没有被发现的缺口；目前只报告，不修改任何数据。"
+	zhDataCheckNone    = "还没有数据检查的结果。"
+	zhDataCheckGapText = "无法读取数据检查的结果，所以不显示这一块，不代表没有问题；其余部分不受影响。"
+
+	zhSevError   = "错误"
+	zhSevWarn    = "缺口"
+	zhSevUnknown = "无法判断"
+
+	zhGlossSevError   = "错误：数据检查发现已保存的数据里有错误的值，却被当作好数据保存了。"
+	zhGlossSevWarn    = "缺口：数据检查发现应该有的数据没有保存，或保存得不完整。"
+	zhGlossSevUnknown = "无法判断：这条规则这次没有能力判断，例如读不到它需要的数据，不代表数据有问题。"
+	zhTermNew         = "新"
+	zhEvSep           = "，"
+	zhGlossNew        = "新：这个问题在之前已经通知过的检查里没有出现过。"
+
+	zhRuleWhyOther = "数据检查的一条规则发现了这个问题。"
+
+	zhEvOKSame   = "%[1]d 个读数中 %[2]d 个与前一日相同"
+	zhEvRowsLate = "%[1]d 行中 %[2]d 行在交易日之后才收到"
+	zhEvOther    = "%d 个计数"
+	zhEvNone     = "没有计数"
+)
+
+const (
+	zhLabelReadingRepeat = "读数重复前一日"
+	zhLabelOpenLate      = "期权开盘报价晚到"
+	zhLabelCandidates    = "候选早于最新设置"
+	zhLabelCaptureGap    = "采集缺口"
+	zhLabelPlanAbsent    = "缺少计划"
+	zhLabelGapUnclosed   = "缺口未补"
+
+	zhWhyReadingRepeat = "一天的读数和前一天完全一样，通常说明源站没有更新，旧值被当作新值保存了。"
+	zhWhyOpenLate      = "期权开盘报价在交易日之后才收到，用它算出的结果可能不是那一天的真实情况。"
+	zhWhyCandidates    = "候选是在最新设置保存之前算出的，没有按现在的设置重算。"
+	zhWhyCaptureGap    = "运行器记录里这一天有缺失或过期的键，这些数据没有保存。"
+	zhWhyPlanAbsent    = "这个数据集在这个交易日没有任何计划记录，任务可能根本没有运行。"
+	zhWhyGapUnclosed   = "任务记录了这个缺口，超过宽限时间仍然没有补上。"
+
+	zhEvOK         = "%d 个读数正常"
+	zhEvSame       = "%d 个与前一日相同"
+	zhEvRows       = "共 %d 行"
+	zhEvLate       = "%d 行晚到"
+	zhEvHoursBehnd = "落后 %d 小时"
+	zhEvKeys       = "共 %d 个键"
+	zhEvMissing    = "缺失 %d 个"
+	zhEvExpired    = "过期 %d 个"
+	zhEvCells      = "%d 个格子"
+	zhEvAgeHours   = "已经 %d 小时没有补上"
+	zhEvReadFailed = "%d 次读取失败"
+)
