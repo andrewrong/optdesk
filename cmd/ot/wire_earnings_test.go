@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/sources/yfinance"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
@@ -214,5 +215,52 @@ func TestJQuantsOneCallPerDay(t *testing.T) {
 	}
 	if src.fetches.Load() != 1 || src.calls.Load() != 2 {
 		t.Fatalf("fetches %d calls %d, want 1 and 2 (one per JP entry)", src.fetches.Load(), src.calls.Load())
+	}
+}
+
+// earnFBFactory is a factory over the stored list of one US name, a primary source that lists nothing and the real job.
+func earnFBFactory(mem *memEvents) jobFactory {
+	f := jobFactory{
+		d:      deps{newEarningsRefresh: earningsrefresh.NewWithSymbols},
+		events: mem, clk: earningsTestClock{},
+		earn: map[string]sources.EarningsSource{"US": &jqSource{}},
+	}
+	return f.withList(oneUSRow())
+}
+
+func runFallbackJob(t *testing.T, run yfinance.CommandFunc) []contracts.EarningsDate {
+	t.Helper()
+	mem := &memEvents{}
+	j, err := earnFBFactory(mem).earningsRefreshVia(run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planDay(t, j, "2026-11-09")
+	j.Run(t.Context(), "2026-11-09", nil)
+	return rowsOf(mem, "US")
+}
+
+func TestEarningsFallbackFillsFromYFinance(t *testing.T) {
+	t.Parallel()
+	var asked atomic.Int32
+	run := func(_ context.Context, _ []string, stdin []byte) ([]byte, int, error) {
+		asked.Add(1)
+		if !strings.Contains(string(stdin), `"AAPL"`) {
+			t.Errorf("stdin %s", stdin)
+		}
+		return []byte(`{"results":[{"symbol":"AAPL","currency":"USD","error_code":"","dates":["2099-01-15"]}]}`), 0, nil
+	}
+	rows := runFallbackJob(t, run)
+	if len(rows) != 1 || rows[0].Source != "yfinance" || rows[0].Status != "listed" || asked.Load() != 1 {
+		t.Fatalf("rows %+v asked %d", rows, asked.Load())
+	}
+}
+
+func TestEarningsFallbackFailureKeepsPrimaryRow(t *testing.T) {
+	t.Parallel()
+	run := func(context.Context, []string, []byte) ([]byte, int, error) { return nil, 1, nil }
+	rows := runFallbackJob(t, run)
+	if len(rows) != 1 || rows[0].Source == "yfinance" || rows[0].Status == "listed" {
+		t.Fatalf("rows %+v", rows)
 	}
 }

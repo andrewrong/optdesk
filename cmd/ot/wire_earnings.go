@@ -8,6 +8,9 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
+	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/sources/yfinance"
 )
 
 // Design: docs/design/ot-wire-split.md#Decisions 2 and 7.
@@ -37,8 +40,17 @@ func (c runOnceConfig) earningsOff() string {
 
 // earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the fundamentals names
 // of the stored list at each Plan; the J-Quants source is built anew over the JP symbols of those names, so a paused
-// JP name is not asked and a new one is.
+// JP name is not asked and a new one is. A name the primary source gives no date is asked of yfinance, which runs the
+// refearn command through yfinance.Exec, as the bars source does (earnings-fallback.md Decision 8).
 func (f jobFactory) earningsRefresh() (contracts.Job, error) {
+	return f.earningsRefreshVia(yfinance.Exec)
+}
+
+// earningsRefreshVia is earningsRefresh with run as the command runner of the yfinance fallback.
+func (f jobFactory) earningsRefreshVia(run yfinance.CommandFunc) (contracts.Job, error) {
+	mk := func(market string, symbols []string) (sources.EarningsSource, error) {
+		return yfinance.NewEarnings(market, run, sources.EarningsConfig{Symbols: symbols})
+	}
 	return f.listed(groupFundamentals, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		earn := maps.Clone(f.earn)
 		if f.jp != nil {
@@ -52,7 +64,7 @@ func (f jobFactory) earningsRefresh() (contracts.Job, error) {
 		if err != nil {
 			return nil, fmt.Errorf("build earnings_refresh job failed: %w", err)
 		}
-		return j, nil
+		return earningsrefresh.WithFallback(j, mk), nil
 	})
 }
 
