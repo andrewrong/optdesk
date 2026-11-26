@@ -17,8 +17,7 @@ func TestDataCheckGrants(t *testing.T) {
 	if _, err := c.Exec(ctx, `INSERT INTO datacheck.run (check_day, started_at, finished_at, rules_total, rules_unknown)
 		VALUES ('2026-11-02', now(), now(), 3, 0);
 		INSERT INTO datacheck.finding (run_id, rule, dataset, day, severity, evidence, is_new)
-		VALUES (1, 'capture_gap', 'obs.price_bar', '2026-11-02', 'warn', '[]', true);
-		INSERT INTO datacheck.notice (run_id, noticed_at) VALUES (1, now())`); err != nil {
+		VALUES (1, 'capture_gap', 'obs.price_bar', '2026-11-02', 'warn', '[]', true)`); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	const runIns = `INSERT INTO datacheck.run (check_day, started_at, finished_at, rules_total, rules_unknown) VALUES ('2026-11-03', now(), now(), 1, 0)`
@@ -26,7 +25,7 @@ func TestDataCheckGrants(t *testing.T) {
 		"insert run": runIns,
 		"insert finding": `INSERT INTO datacheck.finding (run_id, rule, dataset, day, severity, evidence, is_new)
 			VALUES (1, 'plan_absent', 'obs.price_bar', '2026-11-02', 'error', '[]', false)`,
-		"insert notice": runIns + `; INSERT INTO datacheck.notice (run_id, noticed_at) VALUES (currval(pg_get_serial_sequence('datacheck.run', 'run_id')), now())`,
+		"insert notice": `INSERT INTO datacheck.notice (run_id, noticed_at) VALUES (1, now())`,
 	} {
 		if err := asRole(ctx, t, c, "ot_w_datacheck", q); err != nil {
 			t.Errorf("%s as ot_w_datacheck: %v", name, err)
