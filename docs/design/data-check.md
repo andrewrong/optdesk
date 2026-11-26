@@ -308,7 +308,7 @@ Acceptance:
 1. `Input` gains `Checks finding.Reader` (nil: `data_check` is null and no gap); the builder always writes the key `data_check` on every document ("always present", `TestDataCheckKeyAlwaysPresent` (new): nil reader, empty reader, a run).
 2. With a run of two findings the document's `data_check` has `counts` per severity, `rules_total` and `rules_unknown`, and one finding row each with `label` and `severity_text` from `zh_texts.go` (`错误`, `缺口`, `无法判断`), `evidence_text` built from the counts as a Chinese sentence naming each count (for `reading_repeat` with `ok` 35 and `same` 35: "35 个读数中 35 个与前一日相同"), `why_text` one sentence for the rule, and `is_new` carried `TestDataCheckRows` (new) decodes the fixture `datacheck.json` into the view-model).
 3. Findings are ordered `error`, `warn`, `unknown`, then dataset, day, rule, and the order is the builder's `TestDataCheckOrder` (new).
-4. A reader error gives `data_check` null and one `gaps` entry `{kind: data_check, reason: data_check_unavailable, text: ...}`; the rest of the page is built as before `TestDataCheckUnavailable` (new).
+4. A reader error gives `data_check` null and one `gaps` entry `{kind: gap, reason: data_check_unavailable, text: ...}`; the rest of the page is built as before `TestDataCheckUnavailable` (new).
 5. The glossary gains rows for `错误`, `缺口`, `无法判断` and `新`, each one sentence; `TestSeveritiesHaveGlossary` (new) asserts a glossary row for each of the three severities.
 6. No string of the block is English except dataset and rule identifiers (the rule identifiers are shown next to the Chinese label); `cmd/ot/english_test.go` is not edited by this entry and is run in CI.
 
