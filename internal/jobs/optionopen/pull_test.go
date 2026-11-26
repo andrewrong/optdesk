@@ -317,14 +317,14 @@ func TestPullPastStopAfterRuns(t *testing.T) {
 	}
 }
 
-func TestPullPastDayRunsToday(t *testing.T) {
+func TestPullRunsTheClockDate(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 3)
 	j := newPull(t, s, newFake(100))
 	keys, _, _ := j.Plan(context.Background(), pullDay)
-	res := j.Run(context.Background(), "2026-11-10", keys)
+	res := j.Run(context.Background(), pullDay, keys)
 	if res.Err != nil || s.total() != 3 {
-		t.Fatalf("past day: err %v written %d", res.Err, s.total())
+		t.Fatalf("clock date: err %v written %d", res.Err, s.total())
 	}
 	s.stored = nil // a store with nothing final: the key is asked again
 	s.writeErr = errors.New("db down")
@@ -386,44 +386,49 @@ func TestPullWindowIsXNYS(t *testing.T) {
 	}
 }
 
-func TestRunReadsThePlanOfItsGivenDay(t *testing.T) {
-	t.Parallel()
-	s := seed(1, 3)
-	s.onlyDay = "2026-11-10"
-	j := newPull(t, s, newFake(100)) // the clock is on 2026-11-11
-	keys, _, err := j.Plan(context.Background(), "2026-11-10")
-	if err != nil || len(keys) == 0 {
-		t.Fatalf("Plan: keys %v err %v", keys, err)
-	}
-	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err != nil || s.total() != 3 {
-		t.Fatalf("Run: err %v written %d", res.Err, s.total())
-	}
-	if s.planDay != "2026-11-10" {
-		t.Errorf("last plan read for %s, want 2026-11-10", s.planDay)
-	}
-}
-
-func TestRunFallsBackToTheClockDatePlan(t *testing.T) {
+func TestRunReadsThePlanOfTheClockDate(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 3)
 	s.onlyDay = pullDay
-	j := newPull(t, s, newFake(100))
+	j := newPull(t, s, newFake(100)) // the clock is on 2026-11-11
 	keys, _, err := j.Plan(context.Background(), pullDay)
 	if err != nil || len(keys) == 0 {
 		t.Fatalf("Plan: keys %v err %v", keys, err)
 	}
-	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err != nil || s.total() != 3 {
+	if res := j.Run(context.Background(), pullDay, keys); res.Err != nil || s.total() != 3 {
 		t.Fatalf("Run: err %v written %d", res.Err, s.total())
+	}
+	if s.planDay != pullDay {
+		t.Errorf("last plan read for %s, want %s", s.planDay, pullDay)
 	}
 }
 
-func TestRunWithNoPlanOfEitherDayIsRetryable(t *testing.T) {
+func TestPullOfAPastDayIsRefused(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 3)
+	b := newFake(100)
+	j := newPull(t, s, b) // the clock is on 2026-11-11
+	keys, _, err := j.Plan(context.Background(), pullDay)
+	if err != nil || len(keys) == 0 {
+		t.Fatalf("Plan: keys %v err %v", keys, err)
+	}
+	res := j.Run(context.Background(), "2026-11-10", keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent ||
+		!strings.Contains(res.Err.Error(), "2026-11-10") || !strings.Contains(res.Err.Error(), "2026-11-11") {
+		t.Fatalf("err %v", res.Err)
+	}
+	if len(b.optCalls) != 0 || s.total() != 0 {
+		t.Errorf("quote calls %d, rows written %d; want none", len(b.optCalls), s.total())
+	}
+}
+
+func TestRunWithNoPlanIsRetryable(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 3)
 	s.onlyDay = "2026-11-09"
 	j := newPull(t, s, newFake(100))
-	res := j.Run(context.Background(), "2026-11-10", []contracts.ExpectedKey{{DatasetID: PullDatasetID, SubjectKey: "batch-001"}})
-	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "the plan of 2026-11-10 is gone") {
+	res := j.Run(context.Background(), pullDay, []contracts.ExpectedKey{{DatasetID: PullDatasetID, SubjectKey: "batch-001"}})
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "the plan of 2026-11-11 is gone") {
 		t.Fatalf("err %v", res.Err)
 	}
 }
