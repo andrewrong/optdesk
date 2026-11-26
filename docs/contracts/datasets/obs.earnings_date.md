@@ -17,7 +17,7 @@ obs.earnings_date r1: one answer about the next earnings date of one issuer on o
 | time_of_day | string | no | Time text of the source, for example pre-market or post-market; empty when none. |
 | estimate | string | yes | Estimate of the source as decimal text, currency not stored; null when none. |
 | error_code | string | no | Error code when status is error, for example rate_limited; empty otherwise. |
-| source | enum(alphavantage, jquants, owner, none) | no | Where the row came from; owner is a report_date_override (the only row of that issuer that day, attempt 1); none is a status unsupported row, since no source produced it. Never null. |
+| source | enum(alphavantage, jquants, yfinance, owner, none) | no | Where the row came from; yfinance is a date read from Yahoo when the primary source had none; owner is a report_date_override (the only row of that issuer that day, attempt 1); none is a status unsupported row, since no source produced it. Never null. |
 | received_at | string (date-time) | no | Instant the row was produced, UTC. |
 
 Primary key: (observed_on, issuer, attempt)
