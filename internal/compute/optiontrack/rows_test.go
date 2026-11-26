@@ -14,8 +14,43 @@ func TestRowCopiesLedgerTerms(t *testing.T) {
 	r := one(t, pos("p9", call), callQuote("1", "1.2", "110"))
 	if r.PositionID != "p9" || r.Right != "call" || r.Strike != "100" || r.Expiry != "2026-12-18" ||
 		r.Quantity != "-1" || r.Multiplier != "100" || r.Currency != "USD" || r.Status != "open" ||
-		r.PremiumIncome != "150.0000" || r.Commissions != "1.3000" || r.OpenedOn != "2026-10-01" || r.Spot != "110" {
+		r.PremiumIncome != "150.0000" || r.Commissions != "1.3000" || r.OpenedOn != "2026-10-01" || r.Spot != "110" ||
+		r.BrokerRealized != "" {
 		t.Fatalf("%+v", r)
+	}
+	r = one(t, pos("p9", func(p *compute.LedgerPosition) { p.BrokerRealized = "-3577.86" }))
+	if r.BrokerRealized != "-3577.86" {
+		t.Fatalf("broker realized not copied: %+v", r)
+	}
+}
+
+// TestOpeningCreditAndClosingCostApart reads the two halves from the fills: a buy-back is a
+// cost, an expiry costs nothing, an open piece has no cost yet, no fills give neither.
+func TestOpeningCreditAndClosingCostApart(t *testing.T) {
+	t.Parallel()
+	open := compute.LedgerFill{Action: "open", Quantity: "-1", Price: "20.00"}
+	closed := baseRow(pos("c", func(p *compute.LedgerPosition) {
+		p.Status, p.ClosedOn, p.PremiumIncome, p.RealizedPnL = "closed", "2026-11-01", "1990.0000", "1980.0000"
+		p.Fills = []compute.LedgerFill{open, {Action: "close", Quantity: "1", Price: "55.00"}}
+	}))
+	if closed.OpeningCredit != "2000.0000" || closed.ClosingCost != "5500.0000" ||
+		closed.PremiumIncome != "1990.0000" || closed.RealizedPnL != "1980.0000" {
+		t.Fatalf("closed: %+v", closed)
+	}
+	expired := baseRow(pos("e", func(p *compute.LedgerPosition) {
+		p.Status = "expired"
+		p.Fills = []compute.LedgerFill{open}
+	}))
+	if expired.OpeningCredit != "2000.0000" || expired.ClosingCost != "0.0000" {
+		t.Fatalf("expired: %+v", expired)
+	}
+	opened := baseRow(pos("o", func(p *compute.LedgerPosition) { p.Fills = []compute.LedgerFill{open} }))
+	if opened.OpeningCredit != "2000.0000" || opened.ClosingCost != "" {
+		t.Fatalf("open: %+v", opened)
+	}
+	none := baseRow(pos("n", func(p *compute.LedgerPosition) { p.Status = "closed" }))
+	if none.OpeningCredit != "" || none.ClosingCost != "" {
+		t.Fatalf("no fills: %+v", none)
 	}
 }
 

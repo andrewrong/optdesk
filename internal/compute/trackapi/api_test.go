@@ -33,6 +33,7 @@ func fixedResult() trackapi.TrackResult {
 		NextEarnings: "2026-12-01", NextExDate: "2026-11-20", ExAmount: "0.25",
 		EarningsInLife: true, ExInLife: true, EventStatus: "ok", Guard: "unknown",
 		GuardReason: "no_guard_row", GuardBasis: "bid", OpenedOn: "2026-10-01", ClosedOn: "2026-11-01",
+		OpeningCredit: "2000", ClosingCost: "5500", BrokerRealized: "-3577.86",
 	}
 	return trackapi.TrackResult{
 		Open:   []trackapi.TrackedOption{row},
@@ -102,6 +103,7 @@ func assertOption(t *testing.T, o trackapi.TrackedOption) {
 		"NextEarnings": string(o.NextEarnings), "NextExDate": string(o.NextExDate), "ExAmount": o.ExAmount,
 		"EventStatus": o.EventStatus, "Guard": o.Guard, "GuardReason": o.GuardReason,
 		"GuardBasis": o.GuardBasis, "OpenedOn": string(o.OpenedOn), "ClosedOn": string(o.ClosedOn),
+		"OpeningCredit": o.OpeningCredit, "ClosingCost": o.ClosingCost, "BrokerRealized": o.BrokerRealized,
 	}
 	want := map[string]string{
 		"PositionID": "p1", "Underlying": "AAPL", "Right": "put", "Strike": "180", "Expiry": "2026-12-18",
@@ -111,6 +113,7 @@ func assertOption(t *testing.T, o trackapi.TrackedOption) {
 		"RealizedPnL": "148.7", "Delta": "-0.2", "Iv": "0.31", "NextEarnings": "2026-12-01",
 		"NextExDate": "2026-11-20", "ExAmount": "0.25", "EventStatus": "ok", "Guard": "unknown",
 		"GuardReason": "no_guard_row", "GuardBasis": "bid", "OpenedOn": "2026-10-01", "ClosedOn": "2026-11-01",
+		"OpeningCredit": "2000", "ClosingCost": "5500", "BrokerRealized": "-3577.86",
 	}
 	for k, v := range want {
 		if text[k] != v {
