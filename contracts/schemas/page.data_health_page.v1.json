@@ -19,7 +19,8 @@
     "failures_note": {"$ref": "#/$defs/Text"},
     "failures_none_text": {"$ref": "#/$defs/Text"},
     "running": {"type": "array", "items": {"$ref": "#/$defs/Running"}},
-    "gateways": {"type": "array", "items": {"$ref": "#/$defs/Gateway"}}
+    "gateways": {"type": "array", "items": {"$ref": "#/$defs/Gateway"}},
+    "data_check": {"oneOf": [{"$ref": "#/$defs/DataCheck"}, {"type": "null"}]}
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
@@ -62,6 +63,48 @@
       }
     },
     "Count": {"type": "integer", "minimum": 0},
+    "DataCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_day", "finished_at", "none_text", "rules_total", "rules_unknown", "title", "note", "counts", "findings"],
+      "properties": {
+        "check_day": {"oneOf": [{"$ref": "#/$defs/Day"}, {"const": ""}]},
+        "finished_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"const": ""}]},
+        "none_text": {"$ref": "#/$defs/Optional"},
+        "rules_total": {"$ref": "#/$defs/Count"},
+        "rules_unknown": {"$ref": "#/$defs/Count"},
+        "title": {"$ref": "#/$defs/Text"},
+        "note": {"$ref": "#/$defs/Text"},
+        "counts": {"$ref": "#/$defs/DataCheckCounts"},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/DataCheckFinding"}}
+      }
+    },
+    "DataCheckCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error", "warn", "unknown"],
+      "properties": {
+        "error": {"$ref": "#/$defs/Count"},
+        "warn": {"$ref": "#/$defs/Count"},
+        "unknown": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "DataCheckFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "label", "dataset", "day", "severity", "severity_text", "is_new", "evidence_text", "why_text"],
+      "properties": {
+        "rule": {"$ref": "#/$defs/Text"},
+        "label": {"$ref": "#/$defs/Text"},
+        "dataset": {"$ref": "#/$defs/Text"},
+        "day": {"$ref": "#/$defs/Day"},
+        "severity": {"enum": ["error", "warn", "unknown"]},
+        "severity_text": {"$ref": "#/$defs/Text"},
+        "is_new": {"type": "boolean"},
+        "evidence_text": {"$ref": "#/$defs/Text"},
+        "why_text": {"$ref": "#/$defs/Text"}
+      }
+    },
     "Form": {
       "type": "object",
       "additionalProperties": false,
@@ -78,7 +121,7 @@
       "required": ["kind", "reason", "text"],
       "properties": {
         "kind": {"const": "gap"},
-        "reason": {"enum": ["coverage_unavailable", "failures_unavailable"]},
+        "reason": {"enum": ["coverage_unavailable", "failures_unavailable", "data_check_unavailable"]},
         "text": {"type": "string", "minLength": 1, "maxLength": 200}
       }
     },
