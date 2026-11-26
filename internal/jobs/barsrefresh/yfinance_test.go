@@ -140,7 +140,7 @@ func TestNoEventNoHistoryRequest(t *testing.T) {
 		t.Fatalf("replaced %d upserts %d", len(st.replaced), len(st.calls))
 	}
 	tr, adj := rowsOf(st, 101, basisTrades), rowsOf(st, 101, basisAdjusted)
-	if len(tr) != 2 || len(adj) != 2 || tr[1].Close != "11.0000" || adj[1].Close != "10.0000" || adj[1].Open != "" || adj[1].Source != "yfinance" {
+	if len(tr) != 2 || len(adj) != 2 || tr[1].Close != "11.0000" || adj[1].Close != "10.0000" || adj[1].Open != "10.0000" || adj[1].Source != "yfinance" {
 		t.Fatalf("trades %+v adjusted %+v", tr, adj)
 	}
 	if st.by[0] != "bars_refresh:2026-11-09" {
@@ -183,7 +183,7 @@ func TestEventFullPullReplaces(t *testing.T) {
 					t.Fatalf("trades row %+v", r)
 				}
 				a := adj[i]
-				if a.Source != "yfinance" || a.Close != all[i].AdjClose || a.Open != "" || a.High != "" || a.Low != "" {
+				if a.Source != "yfinance" || a.Close != all[i].AdjClose || a.Open != a.Close || a.High != a.Close || a.Low != a.Close {
 					t.Fatalf("adjusted row %+v", a)
 				}
 			}
@@ -238,4 +238,35 @@ func TestYfinanceFailureKeepsRows(t *testing.T) {
 			t.Fatalf("err %v rows %+v", res.Err, st.rows)
 		}
 	})
+}
+
+func TestYfinanceAdjustedRowScalesOpenHighLow(t *testing.T) {
+	t.Parallel()
+	full := sources.RefBar{Day: "2026-11-06", Open: "10.4", High: "10.8", Low: "9.6", Close: "10", AdjClose: "9.5", Volume: "1000"}
+	noOpen := sources.RefBar{Day: "2026-11-09", High: "11", Low: "10", Close: "10.5", AdjClose: "10"}
+	noAdj := yb("2026-11-05", "9.9000")
+	st := &memBars{rows: yfStored()}
+	src := &fakeBarSource{fn: answerFrom([]sources.RefBar{noAdj, full, noOpen})}
+	j, buf := buildFB(t, closed, fakeCal{}, historyThatFails(t), st, src, entry("cik:1", "AAA", 101))
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	adj := rowsOf(st, 101, basisAdjusted)
+	if len(adj) != 1 {
+		t.Fatalf("adjusted rows %+v", adj)
+	}
+	if a := adj[0]; a.Open != "9.8800" || a.High != "10.2600" || a.Low != "9.1200" || a.Close != "9.5" {
+		t.Fatalf("adjusted row %+v", a)
+	}
+	for _, r := range st.rows {
+		if r.Basis == basisAdjusted && (r.Open == "" || r.High == "" || r.Low == "") {
+			t.Fatalf("empty price in %+v", r)
+		}
+	}
+	if tr := rowsOf(st, 101, basisTrades); len(tr) != 1 || tr[0].Open != "10.4" || tr[0].Close != "10" {
+		t.Fatalf("trades %+v", tr)
+	}
+	if !strings.Contains(buf.String(), "left as a gap") {
+		t.Fatalf("log %s", buf.String())
+	}
 }
