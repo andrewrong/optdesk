@@ -40,6 +40,7 @@ CODE_NOT_LISTED = 200
 CODE_LINE_LIMIT = 101
 CODE_NO_SUBSCRIPTION = 354
 CODE_CONNECTIVITY_LOST = 1100
+CODE_SOCKET_RESET = 1300  # the socket port was reset: the session is over
 CODE_DATA_LOST = 1101  # connectivity restored, market data lost: resubscribe
 CODE_DATA_KEPT = 1102  # connectivity restored, market data kept
 CODE_SERVER_LOST = 2110  # connectivity between TWS and the server is broken
@@ -53,15 +54,39 @@ CODES_FARM_OK = frozenset({CODE_FARM_OK, CODE_HMDS_OK, CODE_SEC_DEF_OK})
 # option for PROBE_WAIT_S; the sum of the intervals is the deadline of the wait.
 PROBE_INTERVALS_S = (5.0, 10.0, 20.0)
 PROBE_WAIT_S = 5.0
-SESSION_CODES = frozenset(
-    {
-        CODE_CONNECTIVITY_LOST,
-        CODE_DATA_LOST,
-        CODE_DATA_KEPT,
-        CODE_SERVER_LOST,
-        CODE_COMPETING_SESSION,
-    }
+
+# What a session code does to the session (the table `_session_code` applies).
+LOSS, RESTORE, RESTORE_NEW, END, BLOCK, NOTHING = (
+    "loss",  # soft-lost: down, but the socket lives and the gateway restores it
+    "restore",  # connected again, same generation
+    "restore_new",  # connected again, a new generation, the lines asked again
+    "end",  # the session is over: down, not soft-lost
+    "block",  # market data taken by another login
+    "nothing",
 )
+_ENDS_2110 = "ends_2110"  # a farm-ok code: RESTORE after a 2110, else NOTHING
+TRANSITIONS: dict[int, str] = {
+    CODE_CONNECTIVITY_LOST: LOSS,
+    CODE_DATA_LOST: RESTORE_NEW,
+    CODE_DATA_KEPT: RESTORE,
+    CODE_SOCKET_RESET: END,
+    CODE_SERVER_LOST: LOSS,
+    **dict.fromkeys(CODES_FARM_OK, _ENDS_2110),
+    CODE_COMPETING_SESSION: BLOCK,
+}
+SESSION_CODES = frozenset(TRANSITIONS)
+
+
+def transition(code: int, held: int) -> str:
+    """What a session code does, given the code a soft loss is held under (0: none)."""
+    action = TRANSITIONS[code]
+    if action != _ENDS_2110:
+        return action
+    return RESTORE if held == CODE_SERVER_LOST else NOTHING
+
+
+def state_word(connected: bool, held: int) -> str:
+    return "connected" if connected else "soft_lost" if held else "down"
 
 
 def soft_cause(held: int, code: int) -> int:

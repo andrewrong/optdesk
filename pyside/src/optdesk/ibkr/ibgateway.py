@@ -127,7 +127,6 @@ def _decimal_text(strike: float) -> str:
 
 _CLIENT_ID_IN_USE = 326
 _HELD = "held"  # a quote held by a 10197, never sent on as a status
-_SESSION_LOSS_CODES = frozenset({spec.CODE_CONNECTIVITY_LOST, spec.CODE_SERVER_LOST})
 
 
 class ClientIdInUse(SystemExit):
@@ -266,11 +265,8 @@ class IbGateway:
             _log.warning("error_100 starts=%d cancels=%d", *self._pacer.last_second())
         con_id = getattr(contract, "conId", 0)
         if not con_id and code in spec.SESSION_CODES:
-            _log.info("session_code code=%d", code)
             self._session_code(code, text)
             return
-        if code in spec.CODES_FARM_OK and self._soft_lost == spec.CODE_SERVER_LOST:
-            self._session_code(spec.CODE_DATA_KEPT, text)  # ends a 2110, like a 1102
         if spec.is_informational(code):
             return
         if spec.classify_error(code).shrink_budget:
@@ -283,24 +279,28 @@ class IbGateway:
                     job.on_error(code, text)
 
     def _session_code(self, code: int, text: str) -> None:
-        if code in _SESSION_LOSS_CODES:  # 1100 and 2110: the session is lost
+        act = spec.transition(code, self._soft_lost)
+        if act == spec.LOSS:
             self._on_end(self._ib, soft=spec.soft_cause(self._soft_lost, code))
-        elif code in (spec.CODE_DATA_LOST, spec.CODE_DATA_KEPT):
-            if not (self._connected or self._soft_lost):
-                return  # the socket ended: it stays down
-            self._lost = asyncio.Event() if self._lost.is_set() else self._lost
-            self._connected, self._soft_lost = True, 0
-            if code == spec.CODE_DATA_LOST:  # 1101: a new generation, lines again
-                self._generation += 1
-                for job in list(self._jobs):
-                    job.resubscribe()
-        else:  # 10197
+        elif act == spec.END:
+            self._on_end(self._ib)
+        elif act in (spec.RESTORE, spec.RESTORE_NEW):
+            if self._connected or self._soft_lost:  # a socket that ended stays down
+                self._lost = asyncio.Event() if self._lost.is_set() else self._lost
+                self._connected, self._soft_lost = True, 0
+                if act == spec.RESTORE_NEW:  # 1101: a new generation, lines again
+                    self._generation += 1
+                    for job in list(self._jobs):
+                        job.resubscribe()
+        elif act == spec.BLOCK:  # 10197
             self._blocked = True  # the quotes in hand stay, the lines are cancelled
             for job in list(self._jobs):
                 job.blocked = True
                 job.wake()
                 if job.on_error is not None:
                     job.on_error(code, text)
+        state = spec.state_word(self._connected, self._soft_lost)
+        _log.info("session_code alias=%s code=%d state=%s", self._alias, code, state)
 
     async def _market_data_back(self, targets: Sequence[QuoteTarget]) -> bool:
         if not self._blocked:

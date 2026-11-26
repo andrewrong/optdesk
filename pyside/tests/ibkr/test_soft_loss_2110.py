@@ -73,15 +73,38 @@ def test_new_1100_is_not_ended_by_a_farm_ok_code(end: int, generation: int) -> N
     assert asyncio.run(run()) == [soft, soft, soft, (True, False, generation)]
 
 
+def test_new_1300_ends_the_session() -> None:
+    async def run() -> tuple[bool, bool, bool, bool]:
+        gateway, fake = await _connect_with(None)
+        fake.errorEvent.emit(-1, 1300, "socket port reset", None)
+        st = await gateway.status()
+        down = (st.connected, st.soft_lost, gateway._lost.is_set())
+        # a 1300 in a soft loss ends it too: nothing but a new session revives it
+        gateway2, fake2 = await _connect_with(1100)
+        fake2.errorEvent.emit(-1, 1300, "socket port reset", None)
+        fake2.errorEvent.emit(-1, 1102, "restored", None)
+        st2 = await gateway2.status()
+        return (*down, st2.connected or st2.soft_lost)
+
+    assert asyncio.run(run()) == (False, False, True, False)
+
+
 def test_new_session_code_line_is_logged_once(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    codes = (1100, 1101, 1102, 1300, 2110, 2104, 2106, 2158, 10197)
+
     async def run() -> None:
-        _, fake = await _connect_with(None)
-        for code in (1100, 1101, 1102, 2110, 10197, 2104, 2105, 354, 100):
+        gateway, fake = await _connect_with(None)
+        gateway._alias = "wife"
+        for code in (*codes, 2105, 354, 100):
             fake.errorEvent.emit(-1, code, "x", None)
 
     with caplog.at_level(logging.INFO):
         asyncio.run(run())
     lines = [r.getMessage() for r in caplog.records if "session_code" in r.getMessage()]
-    assert lines == [f"session_code code={c}" for c in (1100, 1101, 1102, 2110, 10197)]
+    assert [line.split()[2] for line in lines] == [f"code={c}" for c in codes]
+    # the state after the code: a 1100 soft-lost, a 1102 back, a 1300 down
+    assert lines[0] == "session_code alias=wife code=1100 state=soft_lost"
+    assert lines[2] == "session_code alias=wife code=1102 state=connected"
+    assert lines[3] == "session_code alias=wife code=1300 state=down"
