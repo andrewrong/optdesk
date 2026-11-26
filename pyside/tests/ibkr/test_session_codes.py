@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from pathlib import Path
+from typing import Any
 
 import pytest
 from ib_async import Contract, OptionChain
@@ -14,7 +15,7 @@ from test_ibgateway import FakeIb, _found, _spec, fill, make, over, spin
 from optdesk.ibkr import spec
 from optdesk.ibkr.gateways import ConfigError, from_env, load_gateways
 from optdesk.ibkr.ibgateway import IbGateway
-from optdesk.ibkr.model import QuoteRow, QuoteTarget
+from optdesk.ibkr.model import QuoteRow, QuoteTarget, SessionState
 
 
 async def _opened(clock: FakeClock) -> tuple[IbGateway, FakeIb]:
@@ -509,3 +510,57 @@ def test_open_session_restores_the_line_limit() -> None:
     before, lowered, after = asyncio.run(run())
     assert lowered < before
     assert after == before
+
+
+def _gateway_with_probe(fake: FakeIb, clock: FakeClock, probe: Any) -> IbGateway:
+    return IbGateway(
+        lambda client: None,
+        host="127.0.0.1",
+        port=4002,
+        client_id=33,
+        clock=clock,
+        ib_factory=lambda: fake,
+        readonly_probe=probe,
+    )
+
+
+def test_a_restore_during_open_session_waits_for_open_session_to_finish() -> None:
+    async def run() -> tuple[bool, SessionState, SessionState]:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+        inside: list[SessionState] = []
+
+        async def farm_down_then_up() -> None:
+            fake.errorEvent.emit(-1, 2110, "farm", None)
+            fake.errorEvent.emit(-1, 2104, "ok", None)
+            inside.append(await gateway.status())
+
+        gateway = _gateway_with_probe(fake, clock, farm_down_then_up)
+        await gateway.open_session()
+        return inside[0].connected, inside[0], await gateway.status()
+
+    connected_inside, inside, after = asyncio.run(run())
+    assert not connected_inside
+    assert inside.generation == 0
+    assert after.connected
+    assert after.generation == 1
+    assert not after.soft_lost
+
+
+def test_a_loss_after_a_restore_during_open_session_stays_lost() -> None:
+    async def run() -> SessionState:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+
+        async def down_up_down() -> None:
+            fake.errorEvent.emit(-1, 2110, "farm", None)
+            fake.errorEvent.emit(-1, 2104, "ok", None)
+            fake.errorEvent.emit(-1, 1100, "lost", None)
+
+        gateway = _gateway_with_probe(fake, clock, down_up_down)
+        await gateway.open_session()
+        return await gateway.status()
+
+    state = asyncio.run(run())
+    assert not state.connected
+    assert state.soft_lost
