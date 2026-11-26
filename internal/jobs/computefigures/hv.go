@@ -17,7 +17,7 @@ const (
 func (j *job) hvOn() bool { return j.stores.PriceBars != nil }
 
 // runHv30 stores the HV30 of each underlying from its winner "trades" closes (never adjusted_last, never
-// IBKR's own figure). Fewer closes than the rule needs, none, or a stale newest one is a missing reading.
+// IBKR's own figure). Fewer closes than the rule needs, none, or a newest one dated before the reading day is a missing reading.
 func (r *runState) runHv30(ts []target) {
 	for _, t := range ts {
 		if r.ctx.Err() != nil {
@@ -41,6 +41,10 @@ func (r *runState) runHv30(ts []target) {
 			lines = append(lines, string(d)+"|"+row.Close)
 		}
 		f := r.j.figs.HistoricalVol(t.rule.ID, closes, r.day)
+		if n := len(closes); n > 0 && closes[n-1].Day < r.day {
+			// the reading day is a session day of the market: a newest close before it means a session is missing.
+			f.Status, f.Reason, f.DataDay, f.Value = compute.StatusMissing, compute.StaleInput, closes[n-1].Day, 0
+		}
 		in := []input{{table: tablePriceBar, keys: []string{strconv.FormatInt(t.subj.id, 10) + "|" + basisTrades}}}
 		r.store(t, f, hashLines(lines), in, hvParams(t.rule))
 	}

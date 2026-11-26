@@ -250,3 +250,25 @@ func wantRvFailure(t *testing.T, f *fx, res contracts.JobResult, kind contracts.
 		t.Fatal("the other keys are stored")
 	}
 }
+
+func TestRv20OldCloseMissing(t *testing.T) {
+	t.Parallel()
+	old := shiftDay(dayD, -2)
+	b := &fakeBars{}
+	b.addFor(11, "trades", old, alternating(30))
+	f, _ := runRv(t, b)
+	rec := rvReading(t, f)
+	if rec.State != "missing_input" || rec.Value != nil || rec.ReasonCode == nil || *rec.ReasonCode != 3 {
+		t.Fatalf("reading %+v, want missing stale_input (3) without a value", rec)
+	}
+	if got := dataDayTag(rec); got != string(old) {
+		t.Fatalf("data day %q, want %s", got, old)
+	}
+
+	b2 := &fakeBars{}
+	b2.addFor(11, "trades", dayD, alternating(30))
+	f2, _ := runRv(t, b2)
+	if rec := rvReading(t, f2); rec.State != "ok" || rec.Value == nil {
+		t.Fatalf("close on the reading day: reading %+v, want ok", rec)
+	}
+}

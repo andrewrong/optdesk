@@ -263,3 +263,34 @@ func TestHv30ClosesAscendingLast31(t *testing.T) {
 		t.Fatalf("read %+v, want instrument 1, %s to %s", c, shiftDay(dayD, -70), dayD)
 	}
 }
+
+func TestHv30OldCloseMissing(t *testing.T) {
+	t.Parallel()
+	f, b := world(), &fakeBars{}
+	old := shiftDay(dayD, -2)
+	b.addCloses("trades", old, alternating(40))
+	runAll(t, hvJob(t, f, b, realFigs()))
+	rec := reading(t, f, hvName, "underlying", "SPY")
+	if rec.State != "missing_input" || rec.Value != nil || rec.ReasonCode == nil || *rec.ReasonCode != 3 {
+		t.Fatalf("reading %+v, want missing stale_input (3) without a value", rec)
+	}
+	if got := dataDayTag(rec); got != string(old) {
+		t.Fatalf("data day %q, want %s", got, old)
+	}
+
+	f2, b2 := world(), &fakeBars{}
+	b2.addCloses("trades", dayD, alternating(40))
+	runAll(t, hvJob(t, f2, b2, realFigs()))
+	if rec := reading(t, f2, hvName, "underlying", "SPY"); rec.State != "ok" || rec.Value == nil {
+		t.Fatalf("close on the reading day: reading %+v, want ok", rec)
+	}
+}
+
+func dataDayTag(rec contracts.ReadingRecord) string {
+	for _, p := range rec.Parameters {
+		if p.Param == "data_day" && p.ValueTag != nil {
+			return *p.ValueTag
+		}
+	}
+	return ""
+}
