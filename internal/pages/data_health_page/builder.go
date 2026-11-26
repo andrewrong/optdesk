@@ -40,6 +40,11 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 			vm.Gaps = append(vm.Gaps, Gap{Kind: "gap", Reason: gapFailures, Text: gapFailuresText})
 		}
 	}
+	block, gap := dataCheckBlock(ctx, in)
+	vm.DataCheck = block
+	if gap != nil {
+		vm.Gaps = append(vm.Gaps, *gap)
+	}
 	return json.Marshal(vm)
 }
 
