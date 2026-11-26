@@ -155,14 +155,15 @@ func (h *consoleHost) finish(ctx context.Context, id int64, s jobrequest.State, 
 	return true
 }
 
-// runClaimed runs a claimed request, writes its end and, after a run of a missing key, syncs the key gaps.
+// runClaimed runs a claimed request, writes its end and, after a run or re-run of a key, syncs the key gaps.
 func (h *consoleHost) runClaimed(ctx context.Context, r jobrequest.Row, jobs []contracts.Job, bf runner.ForceBackfiller) {
 	day := contracts.Day(r.Request.Day)
 	out := h.execute(ctx, r.Request, jobs, bf)
 	if !h.finish(ctx, r.ID, out.state, out.reason, out.lines) {
 		return
 	}
-	if (out.state != jobrequest.StateDone && out.state != jobrequest.StateFailed) || !hasGroup(out.lines, runner.GroupRan) {
+	wrote := hasGroup(out.lines, runner.GroupRan) || hasGroup(out.lines, runner.GroupRerun)
+	if (out.state != jobrequest.StateDone && out.state != jobrequest.StateFailed) || !wrote {
 		return
 	}
 	c, cancel := clockTimeout(ctx, h.clk, syncTimeout)
