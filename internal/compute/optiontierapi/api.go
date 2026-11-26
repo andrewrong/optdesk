@@ -60,7 +60,7 @@ type Input struct {
 type CashCell struct{ Alias, Verdict, Free, Committed, Why string }
 
 // Verdict is the judgement of one row. Tier is fits, check or grey; Grey is the reason when Tier is grey
-// (no_buy_price, no_spot, in_the_money, no_bid, above_buy_price, bad_input). Place is the 1-based position
+// (no_buy_price, no_spot, in_the_money, no_bid, bad_input). Place is the 1-based position
 // inside the tier. The money fields are decimal text; the percent fields are percents at four decimals;
 // an empty text is "no value" and Why names the figure that could not be formed.
 type Verdict struct {
@@ -94,9 +94,9 @@ type Kept struct {
 const (
 	StateSellable   = "sellable"     // a fit or check row is inside the band and shown
 	StateOutBand    = "out_band"     // some row fits or is to check, none is inside the band
-	StateAboveBuy   = "above_buy"    // all rows grey; every priced out-of-the-money row has a break-even above the buy price
+	StateAboveBuy   = "above_buy"    // no longer produced: a row above the buy price keeps its tier with a note; the constant stays declared
 	StateNoBuyPrice = "no_buy_price" // all rows grey, one has no buy price
-	StateNoQuote    = "no_quote"     // all rows grey, one has no spot or no bid (and the above_buy rule does not hold)
+	StateNoQuote    = "no_quote"     // all rows grey, one has no spot or no bid
 	StateBlocked    = "blocked"      // any other all-grey company
 )
 
