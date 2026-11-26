@@ -2,6 +2,7 @@ package barsrefresh
 
 import (
 	"context"
+	"math/big"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
@@ -162,16 +163,36 @@ func (r *runState) yfinanceRows(
 				t.Volume = &v
 			}
 			rows = append(rows, t)
+			if o, h, l, ok := adjustedOHL(b); ok {
+				a := base
+				a.Basis, a.Open, a.High, a.Low, a.Close = basisAdjusted, o, h, l, b.AdjClose
+				rows = append(rows, a)
+			}
 		} else {
 			skipped++
 		}
-		if positive(b.AdjClose) {
-			a := base
-			a.Basis, a.Close = basisAdjusted, b.AdjClose
-			rows = append(rows, a)
-		}
 	}
 	return rows, skipped, nil
+}
+
+// adjustedOHL scales the trades open, high and low of a bar by AdjClose / Close, the adjustment factor of
+// that bar, to 4 decimals. ok is false when the adjusted close is not positive or a result rounds to zero.
+func adjustedOHL(b sources.RefBar) (o, h, l string, ok bool) {
+	if !positive(b.AdjClose) {
+		return "", "", "", false
+	}
+	adj, _ := parseRat(b.AdjClose)
+	cl, _ := parseRat(b.Close)
+	f := new(big.Rat).Quo(adj, cl)
+	out := make([]string, 3)
+	for i, v := range []string{b.Open, b.High, b.Low} {
+		x, _ := parseRat(v)
+		out[i] = new(big.Rat).Mul(x, f).FloatString(4)
+		if !positive(out[i]) {
+			return "", "", "", false
+		}
+	}
+	return out[0], out[1], out[2], true
 }
 
 func positive(s string) bool {

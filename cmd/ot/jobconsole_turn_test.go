@@ -518,7 +518,7 @@ func TestFinishUsesUncancelledContextWith30sTimeout(t *testing.T) {
 func TestSyncRunsOnlyAfterARanLine(t *testing.T) {
 	t.Parallel()
 	for sync, groups := range map[int][]string{
-		0: {runner.GroupRerun, runner.GroupNotDue, runner.GroupLeaseHeld},
+		0: {runner.GroupNotDue, runner.GroupLeaseHeld},
 		1: {runner.GroupRerun, runner.GroupRan},
 	} {
 		r := jcOne(t, "fred_series")

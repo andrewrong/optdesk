@@ -172,6 +172,11 @@ func (j *planJob) run(ctx context.Context, day contracts.Day, keys []contracts.E
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
 	}
+	// The plan reads a live close when no close is stored, so only the clock's own date may be planned.
+	if today := j.d.Clock.Now().In(j.m.loc).Format(time.DateOnly); string(day) != today {
+		return contracts.JobResult{Err: newErr(contracts.Permanent,
+			"plan of %s refused: it reads a live close and the date of the clock is %s", day, today)}
+	}
 	for _, k := range keys {
 		if k.DatasetID != j.dataset || k.SubjectKey != j.subject {
 			return contracts.JobResult{Err: newErr(contracts.Permanent, "unknown key %s/%s", k.DatasetID, k.SubjectKey)}
