@@ -259,12 +259,11 @@ class IbGateway:
             job.wake()
 
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:
-        if code == _CLIENT_ID_IN_USE and not self._connected:
-            self._id_in_use = True
+        self._id_in_use |= code == _CLIENT_ID_IN_USE and not self._connected
         if code == 100:  # max message rate: log the load of the last second
             _log.warning("error_100 starts=%d cancels=%d", *self._pacer.last_second())
-        con_id = getattr(contract, "conId", 0)
-        if not con_id and code in spec.SESSION_CODES:
+        con_id = getattr(contract, "conId", 0) * (code != spec.CODE_COMPETING_SESSION)
+        if not con_id and code in spec.SESSION_CODES:  # 10197 is per request: no gate
             self._session_code(code, text)
             return
         if spec.is_informational(code):

@@ -7,7 +7,7 @@ import contextlib
 from pathlib import Path
 
 import pytest
-from ib_async import OptionChain
+from ib_async import Contract, OptionChain
 from kit.fakeclock import FakeClock
 from test_ibgateway import FakeIb, _found, _spec, fill, make, over, spin
 
@@ -152,7 +152,8 @@ def test_1101_does_not_revive_a_session_the_socket_ended() -> None:
 class Run:
     """A quotes() call of one stock and one option held under a 10197."""
 
-    def __init__(self) -> None:
+    def __init__(self, error_con_id: int = 0) -> None:
+        self.error_con_id = error_con_id
         self.clock = FakeClock()
         self.rows: dict[int, QuoteRow] = {}
 
@@ -174,7 +175,8 @@ class Run:
         fill(fake.tickers[40])
         fake.tickers[40].updateEvent.emit(fake.tickers[40])
         await spin()
-        fake.errorEvent.emit(-1, 10197, "competing session", None)
+        contract = Contract(conId=self.error_con_id) if self.error_con_id else None
+        fake.errorEvent.emit(-1, 10197, "competing session", contract)
         await spin()
         return fake, task
 
@@ -192,6 +194,48 @@ def test_10197_keeps_received_quotes_and_cancels_the_lines() -> None:
     assert statuses == {40: "ok"}
     assert 42 in cancelled
     assert not done
+
+
+def test_10197_with_a_con_id_holds_the_quotes_like_one_without() -> None:
+    async def run() -> tuple[dict[int, str], list[int], bool]:
+        run = Run(error_con_id=42)
+        fake, task = await run.start()
+        return run.statuses(), fake.cancelled, task.done()
+
+    statuses, cancelled, done = asyncio.run(run())
+    assert statuses == {40: "ok"}
+    assert 42 in cancelled
+    assert not done
+
+
+def test_a_line_error_with_a_con_id_still_ends_only_its_job() -> None:
+    async def run() -> tuple[dict[int, str], dict[int, int]]:
+        run = Run()
+        run.clock = FakeClock()
+        gateway, fake = make(run.clock)
+        await gateway.open_session()
+
+        async def keep(row: QuoteRow) -> None:
+            run.rows[row.con_id] = row
+
+        task = asyncio.ensure_future(
+            gateway.quotes(
+                spec.SNAPSHOT,
+                [QuoteTarget(40, sec_type="STK"), QuoteTarget(42, sec_type="OPT")],
+                keep,
+            )
+        )
+        await spin()
+        fake.errorEvent.emit(-1, 200, "no security definition", Contract(conId=42))
+        await spin()
+        fill(fake.tickers[40])
+        fake.tickers[40].updateEvent.emit(fake.tickers[40])
+        await asyncio.wait_for(task, 1)
+        return run.statuses(), {c: r.error_code for c, r in run.rows.items()}
+
+    statuses, codes = asyncio.run(run())
+    assert statuses == {40: "ok", 42: "error"}
+    assert codes == {40: 0, 42: 200}
 
 
 def test_10197_probe_waits_5_then_10_then_20_seconds() -> None:
