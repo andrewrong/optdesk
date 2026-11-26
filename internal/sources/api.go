@@ -118,7 +118,9 @@ type HTTPDoer interface {
 }
 
 // EarningsConfig holds the arguments of NewEarningsFunc. APIKey is passed in by the caller; this package
-// reads no environment. Symbols are the JP codes of the J-Quants source; Alpha Vantage ignores them.
+// reads no environment. Symbols are the symbols the source is asked for: the JP codes
+// for J-Quants, the symbols of the entries without a date for the yfinance source; Alpha Vantage
+// ignores them.
 // Doer is optional: nil means an http.Client that follows no redirect. Sleep is the wait of the J-Quants
 // client between calls and before its one retry; nil means a real wait that returns ctx.Err() on cancel,
 // and Alpha Vantage ignores it.
