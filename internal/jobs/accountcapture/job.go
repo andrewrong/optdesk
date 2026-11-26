@@ -115,13 +115,13 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, keys []contracts.Expecte
 				res.Usable++
 				continue
 			}
-			if alias == j.main {
-				if res.Err == nil {
-					res.Err = &typedError{kind: contracts.Retryable, text: "account_capture: alias " + alias + " status " + status}
-				}
-				continue
+			// A failed alias of any kind, or a main alias that is not ok, leaves the day open for a later run.
+			if (alias == j.main || status == statusFailed) && res.Err == nil {
+				res.Err = &typedError{kind: contracts.Retryable, text: "account_capture: alias " + alias + " status " + status}
 			}
-			j.log.Warn("degraded", "alias", alias, "status", status)
+			if alias != j.main {
+				j.log.Warn("degraded", "alias", alias, "status", status)
+			}
 		}
 	}
 	return res

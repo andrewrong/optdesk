@@ -195,13 +195,68 @@ func TestFailingAliasAmongTwoDoesNotStopOther(t *testing.T) {
 	t.Parallel()
 	bad := goodReader("a")
 	bad.accErr = errors.New("logged out")
+	bad.exErr = errors.New("logged out")
 	e := setup(t, "b", map[string]*fakeReader{"a": bad, "b": goodReader("b")})
 	res := run(e)
-	if res.Err != nil {
-		t.Fatalf("run failed: %v", res.Err)
+	if k, ok := errors.AsType[contracts.TypedError](res.Err); !ok || k.Kind() != contracts.Retryable {
+		t.Fatalf("err = %v", res.Err)
+	}
+	if res.Err.Error() != "account_capture: alias a status failed" {
+		t.Fatalf("err = %q", res.Err)
 	}
 	if _, ok := e.w.captures["b:2026-11-05:daily"]; !ok {
 		t.Fatal("main not written")
+	}
+	if len(e.w.captures) != 1 || len(e.w.execs["b"]) != 1 || len(e.w.execs["a"]) != 0 {
+		t.Fatalf("captures %v execs %v", e.w.captures, e.w.execs)
+	}
+}
+
+func TestBothAliasesSucceedNoError(t *testing.T) {
+	t.Parallel()
+	e := setup(t, "a", map[string]*fakeReader{"a": goodReader("a"), "b": goodReader("b")})
+	res := run(e)
+	if res.Err != nil || res.Returned != 2 || res.Usable != 2 {
+		t.Fatalf("res = %+v", res)
+	}
+}
+
+func TestBothAliasesFailNamesFirst(t *testing.T) {
+	t.Parallel()
+	a, b := goodReader("a"), goodReader("b")
+	a.accErr = errors.New("down 111")
+	b.accErr = errors.New("down 222")
+	e := setup(t, "b", map[string]*fakeReader{"a": a, "b": b})
+	res := run(e)
+	if k, ok := errors.AsType[contracts.TypedError](res.Err); !ok || k.Kind() != contracts.Retryable {
+		t.Fatalf("err = %v", res.Err)
+	}
+	if res.Err.Error() != "account_capture: alias a status failed" {
+		t.Fatalf("err = %q", res.Err)
+	}
+}
+
+func TestSecondRunStoresFailedAliasOnce(t *testing.T) {
+	t.Parallel()
+	bad := goodReader("b")
+	bad.accErr = errors.New("down")
+	e := setup(t, "a", map[string]*fakeReader{"a": goodReader("a"), "b": bad})
+	if res := run(e); res.Err == nil {
+		t.Fatal("first run: want error")
+	}
+	if e.w.writes != 1 {
+		t.Fatalf("writes after first run = %d", e.w.writes)
+	}
+	bad.accErr = nil
+	res := run(e)
+	if res.Err != nil || res.Usable != 2 {
+		t.Fatalf("res = %+v", res)
+	}
+	if _, ok := e.w.captures["b:2026-11-05:daily"]; !ok {
+		t.Fatal("failed alias not stored")
+	}
+	if len(e.w.captures) != 2 || e.w.writes != 2 {
+		t.Fatalf("captures %d writes %d", len(e.w.captures), e.w.writes)
 	}
 }
 
@@ -228,8 +283,8 @@ func TestNonMainFailureDegraded(t *testing.T) {
 	bad.accErr = errors.New("logged out 99999")
 	e := setup(t, "a", map[string]*fakeReader{"a": goodReader("a"), "b": bad})
 	res := run(e)
-	if res.Err != nil {
-		t.Fatalf("run failed: %v", res.Err)
+	if res.Err == nil || strings.Contains(res.Err.Error(), "99999") || !strings.Contains(res.Err.Error(), "alias b status failed") {
+		t.Fatalf("err = %v", res.Err)
 	}
 	if n := strings.Count(e.log.String(), "degraded"); n != 1 {
 		t.Fatalf("degraded records = %d in %q", n, e.log.String())
@@ -267,15 +322,15 @@ func TestNonMainPendingDegraded(t *testing.T) {
 	}
 }
 
-func TestNoGapForNonMain(t *testing.T) {
+func TestFailedNonMainLeavesGap(t *testing.T) {
 	t.Parallel()
 	bad := goodReader("b")
 	bad.accErr = errors.New("down")
 	bad.exErr = errors.New("down")
 	e := setup(t, "a", map[string]*fakeReader{"a": goodReader("a"), "b": bad})
 	res := run(e)
-	// no gap: the result carries no error, so the runner marks the key present.
-	if res.Err != nil || res.Returned != 2 || res.Usable != 1 {
+	// gap: the Retryable error keeps the runner from marking the key present.
+	if k, ok := errors.AsType[contracts.TypedError](res.Err); !ok || k.Kind() != contracts.Retryable || res.Returned != 2 || res.Usable != 1 {
 		t.Fatalf("res = %+v", res)
 	}
 	if len(e.w.captures) != 1 {
