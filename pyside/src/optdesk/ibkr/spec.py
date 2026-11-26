@@ -44,6 +44,10 @@ CODE_DATA_LOST = 1101  # connectivity restored, market data lost: resubscribe
 CODE_DATA_KEPT = 1102  # connectivity restored, market data kept
 CODE_SERVER_LOST = 2110  # connectivity between TWS and the server is broken
 CODE_COMPETING_SESSION = 10197  # another login took the market data
+CODE_FARM_OK = 2104  # a market data farm is connected
+CODE_HMDS_OK = 2106  # a historical data farm is connected
+CODE_SEC_DEF_OK = 2158  # the security definition farm is connected
+CODES_FARM_OK = frozenset({CODE_FARM_OK, CODE_HMDS_OK, CODE_SEC_DEF_OK})
 
 # The 10197 probe: wait each interval in turn, then probe one underlying and one
 # option for PROBE_WAIT_S; the sum of the intervals is the deadline of the wait.
