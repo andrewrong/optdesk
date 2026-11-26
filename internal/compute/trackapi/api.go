@@ -81,12 +81,17 @@ type TrackedOption struct {
 	MarkDay                                                                               contracts.Day
 	MarkStatus                                                                            string
 	Extrinsic, PremiumIncome, Commissions, Kept, KeptPercent, RealizedPnL, Delta, Iv      string
-	NextEarnings, NextExDate                                                              contracts.Day
-	ExAmount                                                                              string
-	EarningsInLife, ExInLife                                                              bool
-	EventStatus                                                                           string
-	Guard, GuardReason, GuardBasis                                                        string
-	OpenedOn, ClosedOn                                                                    contracts.Day
+	// OpeningCredit and ClosingCost are gross trade money from the fill prices
+	// (decimal text, 4 places); they equal PremiumIncome only up to the rounding
+	// of the price text. ClosingCost is empty while the piece is open.
+	// BrokerRealized is the broker's own realized figure, empty when it reports none.
+	OpeningCredit, ClosingCost, BrokerRealized string
+	NextEarnings, NextExDate                   contracts.Day
+	ExAmount                                   string
+	EarningsInLife, ExInLife                   bool
+	EventStatus                                string
+	Guard, GuardReason, GuardBasis             string
+	OpenedOn, ClosedOn                         contracts.Day
 }
 
 // TrackRecon is one row of the check between Flex and the account. Code is not_in_flex
