@@ -157,7 +157,7 @@ Acceptance:
 Module: ot. Size: S. Order: after 7. Design: docs/design/earnings-fallback.md#decisions. Files: `cmd/ot/wire_earnings.go`, `cmd/ot/wire_earnings_test.go`.
 
 Acceptance:
-1. In `cmd/ot/wire_earnings.go`, `earningsRefresh` wraps the job it builds with `earningsrefresh.WithFallback`, giving a maker that builds `yfinance.NewEarnings(market, run, sources.EarningsConfig{Symbols: symbols})` with `run` the `yfinance.Exec` of `internal/sources/yfinance/command.go` (the real `CommandFunc` the bars source also runs); `earningsOff` is unchanged, so with no Alpha Vantage key the job is still left out as before.
+1. In `cmd/ot/wire_earnings.go`, `earningsRefresh` wraps the job it builds with `earningsrefresh.WithFallback`, giving a maker that builds `yfinance.NewEarnings(market, run, sources.EarningsConfig{Symbols: symbols})` with `run` the `yfinance.Exec` of `internal/sources/yfinance/command.go` (the real `CommandFunc` the bars source also runs; `earningsRefresh` calls `earningsRefreshVia(run)`, the seam a test gives a fake runner); `earningsOff` is unchanged, so with no Alpha Vantage key the job is still left out as before.
 2. `wire_earnings_test.go` has a case (new) that builds the job with a fake command runner and a fake primary source that lists nothing, and sees the row written with source `yfinance`; and a case with a failing runner that sees the primary row written.
 3. No setting, environment name or key is added, and `cmd/ot/runonce.go` is not edited.
 4. Docs: docs/design/earnings-fallback.md#decisions.
