@@ -64,7 +64,6 @@ const (
 var verdictSpecs = map[string]verdictView{
 	optiontierapi.StateSellable:   {optiontierapi.StateSellable, zhVerdictSellable, glyphFits, toneSuccess},
 	optiontierapi.StateOutBand:    {optiontierapi.StateOutBand, zhVerdictOutBand, glyphCheck, toneWarn},
-	optiontierapi.StateAboveBuy:   {optiontierapi.StateAboveBuy, zhVerdictAboveBuy, glyphCheck, toneWarn},
 	optiontierapi.StateNoBuyPrice: {optiontierapi.StateNoBuyPrice, zhVerdictNoBuyPrice, glyphGrey, toneMuted},
 	optiontierapi.StateNoQuote:    {optiontierapi.StateNoQuote, zhVerdictNoQuote, glyphGrey, toneMuted},
 	optiontierapi.StateBlocked:    {optiontierapi.StateBlocked, zhVerdictBlocked, glyphGrey, toneMuted},
@@ -168,8 +167,6 @@ func verdictTextOf(state string, cb optiontierapi.CompanyBlock, cv companyView, 
 		return zhOutBandHead + strconv.Itoa(cb.NOpen) + zhOutBandOTM + decimalText(p.BandOTMMinPct, 0) + zhOutBandTo +
 			decimalText(p.BandOTMMaxPct, 0) + zhOutBandDelta + decimalText(p.BandDeltaMin, 2) + zhOutBandDTo +
 			decimalText(p.DeltaMax, 2) + zhOutBandTail
-	case optiontierapi.StateAboveBuy:
-		return zhAboveBuyHead + cv.Spot + zhAboveBuyMid + deref(cv.BuyPrice) + zhAboveBuyTail
 	case optiontierapi.StateNoBuyPrice:
 		return zhNoBuyPriceText
 	case optiontierapi.StateNoQuote:

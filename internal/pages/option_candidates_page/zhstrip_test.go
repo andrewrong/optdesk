@@ -306,14 +306,14 @@ func TestTierViewZhWords(t *testing.T) {
 	}
 	for tail, want := range map[string]string{
 		"no_spot": " 行：没有现价", "in_the_money": " 行：价内", "no_bid": " 行：没有买价",
-		"above_buy_price": " 行：保本点高于买入价", "bad_input": " 行：数字读不出", "no_buy_price": " 行：没有买入价",
+		"bad_input": " 行：数字读不出", "no_buy_price": " 行：没有买入价",
 	} {
 		exact("grey tail "+tail, greySpecs[tail].titleTail, want)
 	}
 	badges := map[string]string{
 		"no_open_interest": "无未平仓量", "low_open_interest": "未平仓量低", "one_sided_quote": "单边报价", "wide_quote": "报价价差大",
 		"stale_quote": "报价过时", "earnings_before_expiry": "到期前有财报", "cash_short": "现金不足", "delta_above_bound": "Delta 超上限",
-		"delta_unknown": "Delta 未知", "thin_premium": "权利金薄", "earnings_unconfirmed": "财报日未确认",
+		"delta_unknown": "Delta 未知", "thin_premium": "权利金薄", "above_buy_price": "行权价高于买入价", "earnings_unconfirmed": "财报日未确认",
 		"earnings_beyond_horizon": "财报日在期限之外", "earnings_unknown": "财报日未知", "cash_unknown": "现金未知",
 		"no_jpy_rate": "无日元现金利率", "no_jpy_funds": "无日元账户",
 	}

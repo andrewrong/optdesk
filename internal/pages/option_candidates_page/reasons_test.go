@@ -34,7 +34,7 @@ func TestReasonsFromGates(t *testing.T) {
 
 func TestEveryRuleCodeHasSentence(t *testing.T) {
 	t.Parallel()
-	// the 30 codes of the GateResult comment of internal/compute/api.go
+	// the 30 reason codes the gates and the page still use; above_buy_price stays for rows stored by an older run
 	codes := []string{"no_buy_price", "above_buy_price",
 		"no_quote", "no_bid", "no_ask", "small_bid_size", "wide_spread", "low_open_interest", "delayed_data",
 		"earnings_before_expiry", "earnings_unsupported", "earnings_error", "no_earnings", "stale_earnings",
@@ -93,5 +93,17 @@ func TestBadGatesJSONKeepsRow(t *testing.T) {
 		if _, err := parseGates(g); err == nil {
 			t.Errorf("parseGates(%s) has no error", g)
 		}
+	}
+}
+
+func TestAboveBuyMarkCarriesItsSentence(t *testing.T) {
+	t.Parallel()
+	c := store.Candidate{Marks: `["above_buy_price"]`}
+	cell, ok := marksCell(c).(valueCell)
+	if !ok {
+		t.Fatalf("cell = %#v", marksCell(c))
+	}
+	if want := []string{"above_buy_price · Strike is above the buy price"}; !reflect.DeepEqual(cell.Badges, want) {
+		t.Errorf("badges = %v", cell.Badges)
 	}
 }

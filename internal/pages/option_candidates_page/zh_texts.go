@@ -3,7 +3,7 @@ package option_candidates_page
 // Chinese texts of the tier view (candidates-tiers.md Decision 11): string constants only, so the
 // English guard of cmd/ot lets this file hold them. tierstrings.go joins them with the English labels.
 const (
-	explainFitsHead                      = "满足你的全部条件：有买入价；保本点（行权价减 bid）不高于买入价；价外；|delta| 不高于 "
+	explainFitsHead                      = "满足你的全部条件：有买入价；价外；|delta| 不高于 "
 	explainFitsMid                       = "（"
 	explainFitsClose                     = "）；"
 	explainFitsTail                      = "。这不是买入建议。"
@@ -11,13 +11,13 @@ const (
 	deltaSourceFixed                     = "默认值"
 	cashClauseBuilt                      = "现金够付全额行权价（已扣除已卖出的 put 占用的行权价）"
 	cashClauseMark                       = "现金只做标记，现有数据算不出全额行权价覆盖"
-	explainCheck                         = "有买入价、保本点不高于买入价、价外这三项都满足，但有需要再看一眼的徽标。"
+	explainCheck                         = "有买入价、价外这两项都满足，但有需要再看一眼的徽标。"
 	explainGrey                          = "未评判，已折叠，只显示数量；点开可看每一行为什么在这里。"
-	legendFitsHead                       = "满足你的全部条件：有买入价、保本点不高于买入价、价外、|delta| 不高于 "
+	legendFitsHead                       = "满足你的全部条件：有买入价、价外、|delta| 不高于 "
 	legendFitsMid                        = "、"
 	legendCashBuilt                      = "现金够付全额行权价"
 	legendFitsTail                       = "。这不是买入建议。"
-	legendCheckText                      = "买入价、保本点、价外三项都满足，但有需要再看一眼的徽标。"
+	legendCheckText                      = "买入价、价外两项都满足，但有需要再看一眼的徽标。"
 	legendGreyText                       = "没有买入价等原因，所以没有评判；已折叠，点开可看每一行为什么在这里。"
 	legendCashMark                       = "现金只做标记"
 	legendCashText                       = "每一行单独对照一个账户的可用现金，不在各行之间扣减，也不替你选账户。"
@@ -55,8 +55,7 @@ const (
 	zhGreyGloss_in_the_money             = "价内：行权价高于现价，卖出后几乎一定被指派（按行权价买入股票）；权利金里含内在价值，收益只按时间价值算。"
 	zhGreyLabel_no_bid                   = "没有 bid"
 	zhGreyGloss_no_bid                   = "没有 bid，无法算保本点。"
-	zhGreyLabel_above_buy_price          = "保本点高于买入价"
-	zhGreyGloss_above_buy_price          = "保本点（行权价减 bid）高于你的买入价：被指派后的成本高于你愿意付的价。"
+	zhBadgeGloss_above_buy_price         = "行权价减 bid（保本点）高于你的买入价：被指派后的成本高于你愿意付的价；仍然参与排名，档位不变。"
 	zhGreyLabel_bad_input                = "数据读不出来"
 	zhGreyGloss_bad_input                = "数据读不出来，没有评判。"
 	zhKeptLabel_no_open_interest         = "没有未平仓量"
@@ -109,8 +108,8 @@ const (
 	noneHead         = "无："
 	noneFitsAllGrey  = "所有行都未评判，原因见下方折叠的分组。"
 	noneFitsHasCheck = "满足条件的行都带有需要再看一眼的徽标，见“待查”。"
-	noneFits         = "没有一行同时满足有买入价、保本点不高于买入价、价外和 delta 上限。"
-	noneCheck        = "没有行满足三项条件却带有需要再看一眼的徽标。"
+	noneFits         = "没有一行同时满足有买入价、价外和 delta 上限。"
+	noneCheck        = "没有行满足有买入价、价外两项条件却带有需要再看一眼的徽标。"
 )
 
 // Chinese hints and glosses of the short put list (candidates-page-v2.md Decisions 2, 9, 10, 14 and 17).
@@ -190,7 +189,6 @@ const (
 	zhTitleNoSpot       = " 行：没有现价"
 	zhTitleInTheMoney   = " 行：价内"
 	zhTitleNoBid        = " 行：没有买价"
-	zhTitleAboveBuy     = " 行：保本点高于买入价"
 	zhTitleBadInput     = " 行：数字读不出"
 	zhColArrow          = "详情"
 	zhColTier           = "档位"
@@ -214,6 +212,7 @@ const (
 	zhBadgeDeltaAbove   = "Delta 超上限"
 	zhBadgeDeltaUnknown = "Delta 未知"
 	zhBadgeThinPremium  = "权利金薄"
+	zhBadgeAboveBuy     = "行权价高于买入价"
 	zhBadgeEarnUnconf   = "财报日未确认"
 	zhBadgeEarnBeyond   = "财报日在期限之外"
 	zhBadgeEarnUnknown  = "财报日未知"
@@ -267,7 +266,6 @@ const (
 const (
 	zhVerdictSellable   = "有可卖"
 	zhVerdictOutBand    = "筛选范围内暂无可卖"
-	zhVerdictAboveBuy   = "价格高于买入价·暂无可卖"
 	zhVerdictNoBuyPrice = "未设买入价·未判定"
 	zhVerdictNoQuote    = "无报价"
 	zhVerdictBlocked    = "暂无可卖"
@@ -283,10 +281,6 @@ const (
 	zhOutBandDelta = "%，delta "
 	zhOutBandDTo   = " 到 "
 	zhOutBandTail  = "，持仓量够），原因见下方折叠。"
-
-	zhAboveBuyHead = "现价 "
-	zhAboveBuyMid  = " 高于买入价 "
-	zhAboveBuyTail = "：有报价的价外合约，保本点（行权价减 bid）都高于买入价，所以暂无可卖；价内和没有 bid 的合约在下方折叠。这不是没判定，是判定过了。"
 
 	zhNoBuyPriceText = "没有买入价（估值买入区间和手填价格都没有），所以不判定；设了买入价才会判定。"
 	zhNoQuoteText    = "没有现价或没有 bid，所以没法判定。"
@@ -312,7 +306,7 @@ const (
 
 	zhLegendFolded     = "– 未显示"
 	zhLegendYield      = "年化"
-	zhFoldedLegendHead = "已判定但不能卖（价内，或保本点高于买入价，或没有 bid），或不在筛选范围内，或超出每家 "
+	zhFoldedLegendHead = "已判定但不能卖（价内，或没有 bid），或不在筛选范围内，或超出每家 "
 	zhFoldedLegendTail = " 个；点开每个公司下的折叠看原因。"
 	zhYieldLegend      = "年化 = bid 里的时间价值，按这一行的到期天数折成一年，除以占用的现金（行权价）；公司按自己最高的年化排序；日元公司在日本标签页，不和美元公司排在一起。"
 

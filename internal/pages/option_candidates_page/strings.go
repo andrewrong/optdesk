@@ -51,6 +51,7 @@ var markHints = map[string]string{
 	"oi_prior_session":        "Open interest is from an earlier session",
 	"no_jpy_rate":             markHintNoJPYRateZh,
 	"no_jpy_funds":            markHintNoJPYFundsZh,
+	"above_buy_price":         "· Strike is above the buy price", // the dot is part of the hint: fitSeparator joins it
 }
 
 // fitHints are the hints of the stored fit words.

@@ -47,25 +47,26 @@ func blockScenario() (Config, optiontierapi.Result) {
 	k := func(i int) string { return keyOf(rows, i) }
 	vs := []optiontierapi.Verdict{
 		fitsVerdict(k(0)), checkVerdict(k(1), "no_open_interest"), fitsVerdict(k(2)),
-		greyVerdict(k(3), "in_the_money"), greyVerdict(k(4), "above_buy_price"),
-		greyVerdict(k(5), "in_the_money"), greyVerdict(k(6), "above_buy_price"), greyVerdict(k(7), "above_buy_price"),
+		greyVerdict(k(3), "in_the_money"), aboveBuyVerdict(k(4)),
+		greyVerdict(k(5), "in_the_money"), aboveBuyVerdict(k(6)), aboveBuyVerdict(k(7)),
 		fitsVerdict(k(8)), checkVerdict(k(9), "delta_above_bound"),
 		greyVerdict(k(10), "no_buy_price"), greyVerdict(k(11), "no_buy_price"),
 	}
 	res := resultOf(vs...)
 	res.Params = bandParams
 	res.Companies = []optiontierapi.CompanyCount{
-		{Company: "7", Fits: 2, Check: 1, Grey: 2}, {Company: "8", Grey: 3},
+		{Company: "7", Fits: 3, Check: 1, Grey: 1}, {Company: "8", Fits: 2, Grey: 1},
 		{Company: "9", Fits: 1, Check: 1}, {Company: "10", Grey: 2},
 	}
 	res.Blocks = []optiontierapi.CompanyBlock{
-		{Company: "7", State: optiontierapi.StateSellable, Best: "87.5000", NFit: 1, NCheck: 1, NOpen: 1,
-			Shown: []string{k(0), k(1)}, Folded: []string{k(3), k(4), k(2)},
-			Why: []optiontierapi.GreyCount{{Code: "in_the_money", N: 1}, {Code: "above_buy_price", N: 1}, {Code: optiontierapi.FoldOverCap, N: 1}}},
+		{Company: "7", State: optiontierapi.StateSellable, Best: "87.5000", NFit: 3, NCheck: 1, NOpen: 1,
+			Shown: []string{k(0), k(1), k(4)}, Folded: []string{k(3), k(2)},
+			Why: []optiontierapi.GreyCount{{Code: "in_the_money", N: 1}, {Code: optiontierapi.FoldOverCap, N: 1}}},
 		{Company: "9", State: optiontierapi.StateOutBand, NOpen: 2, Folded: []string{k(8), k(9)},
 			Why: []optiontierapi.GreyCount{{Code: optiontierapi.FoldOTMLow, N: 1}, {Code: optiontierapi.FoldDeltaOut, N: 1}}},
-		{Company: "8", State: optiontierapi.StateAboveBuy, Folded: []string{k(5), k(6), k(7)},
-			Why: []optiontierapi.GreyCount{{Code: "in_the_money", N: 1}, {Code: "above_buy_price", N: 2}}},
+		{Company: "8", State: optiontierapi.StateSellable, Best: "85.0000", NFit: 2, NOpen: 1,
+			Shown: []string{k(6), k(7)}, Folded: []string{k(5)},
+			Why: []optiontierapi.GreyCount{{Code: "in_the_money", N: 1}}},
 		{Company: "10", State: optiontierapi.StateNoBuyPrice, Folded: []string{k(10), k(11)},
 			Why: []optiontierapi.GreyCount{{Code: "no_buy_price", N: 2}}},
 	}
@@ -98,7 +99,7 @@ func TestVerdictWordsAndTexts(t *testing.T) {
 	cb := optiontierapi.CompanyBlock{NFit: 2, NCheck: 1, NOpen: 4}
 	want := []struct{ state, word, glyph, tone string }{
 		{"sellable", "有可卖", "✓", "success"}, {"out_band", "筛选范围内暂无可卖", "!", "warn"},
-		{"above_buy", "价格高于买入价·暂无可卖", "!", "warn"}, {"no_buy_price", "未设买入价·未判定", "–", "muted"},
+		{"no_buy_price", "未设买入价·未判定", "–", "muted"},
 		{"no_quote", "无报价", "–", "muted"}, {"blocked", "暂无可卖", "–", "muted"},
 	}
 	for _, w := range want {
@@ -112,13 +113,6 @@ func TestVerdictWordsAndTexts(t *testing.T) {
 		}
 		if n := len([]rune(b.VerdictText)); n == 0 || n > 200 {
 			t.Errorf("%s text has %d characters", w.state, n)
-		}
-	}
-	cb.State = "above_buy"
-	text := blockViewOf(cb, cv, bandParams).VerdictText
-	for _, part := range []string{"$130.00", "$40.00", "有报价的价外合约，保本点（行权价减 bid）都高于买入价", "这不是没判定，是判定过了"} {
-		if !strings.Contains(text, part) {
-			t.Errorf("above_buy text %q lacks %q", text, part)
 		}
 	}
 	cb.State = "sellable"
@@ -138,12 +132,12 @@ func TestFoldedSummaryCounts(t *testing.T) {
 		keys = append(keys, "r"+strconv.Itoa(i))
 	}
 	cb := optiontierapi.CompanyBlock{Company: "7", State: "sellable", Folded: keys, Why: []optiontierapi.GreyCount{
-		{Code: "in_the_money", N: 16}, {Code: "above_buy_price", N: 40}, {Code: "otm_low", N: 8}, {Code: "over_cap", N: 5}}}
+		{Code: "in_the_money", N: 16}, {Code: "otm_low", N: 8}, {Code: "over_cap", N: 5}}}
 	f := blockViewOf(cb, companyView{}, bandParams).Folded
-	if f == nil || f.Title != "未显示 69" || f.Summary != "价内 16 · 保本点高于买入价 40 · 价外不足 5% 8 · 超出每家 3 个 5" {
+	if f == nil || f.Title != "未显示 69" || f.Summary != "价内 16 · 价外不足 5% 8 · 超出每家 3 个 5" {
 		t.Fatalf("folded = %+v", f)
 	}
-	if len(f.Reasons) != 4 || f.Reasons[2] != (foldReasonView{Code: "otm_low", Label: "价外不足 5%", Count: "8"}) {
+	if len(f.Reasons) != 3 || f.Reasons[1] != (foldReasonView{Code: "otm_low", Label: "价外不足 5%", Count: "8"}) {
 		t.Errorf("reasons = %+v", f.Reasons)
 	}
 }
@@ -358,4 +352,10 @@ func TestByCompanyGolden(t *testing.T) {
 	if !bytes.Equal(compact(t, want), compact(t, tiers.ByCompany)) {
 		t.Errorf("by_company differs from testdata/by_company.golden.json:\n%s", tiers.ByCompany)
 	}
+}
+
+func aboveBuyVerdict(key string) optiontierapi.Verdict {
+	v := fitsVerdict(key)
+	v.Notes = []string{"above_buy_price"}
+	return v
 }

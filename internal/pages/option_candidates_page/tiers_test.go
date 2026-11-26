@@ -274,7 +274,7 @@ func TestChineseTextsFit200(t *testing.T) {
 	t.Parallel()
 	rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42"), tierPut(2, "ok", "100.00", "5.40")}
 	var vs []optiontierapi.Verdict
-	for i, g := range []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "above_buy_price", "bad_input"} {
+	for i, g := range []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "bad_input"} {
 		vs = append(vs, greyVerdict(keyOf(rows, i%2), g))
 		vs[i].Key += "-" + g
 	}
@@ -390,7 +390,7 @@ func TestGreyExplainIsGlossAlone(t *testing.T) {
 func TestKeptLongSetEndsWithEllipsis(t *testing.T) {
 	t.Parallel()
 	var kept []optiontierapi.Kept
-	for _, code := range []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "above_buy_price", "bad_input",
+	for _, code := range []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "bad_input",
 		"no_open_interest", "low_open_interest", "one_sided_quote", "wide_quote", "stale_quote", "earnings_before_expiry",
 		"cash_short", "delta_above_bound", "delta_unknown"} {
 		kept = append(kept, optiontierapi.Kept{Code: code, N: 1234, Every: true})
@@ -568,5 +568,21 @@ func TestCompanyCardSpotNote(t *testing.T) {
 				t.Errorf("note = %v, want %q", cv.SpotNote, tc.want)
 			}
 		})
+	}
+}
+
+func TestAboveBuyNoteIsShownOnTheRow(t *testing.T) {
+	t.Parallel()
+	rows := []store.Candidate{tierPut(1, "ok", "85.00", "0.42")}
+	v := fitsVerdict(keyOf(rows, 0))
+	v.Badges, v.Notes = []string{}, []string{"above_buy_price"}
+	view := buildTiersOf(t, tierConfig(rows, &fakeTierer{res: resultOf(v)}))
+	fits := tierByID(view, "fits")
+	if fits == nil || len(fits.Rows) != 1 || fits.Collapsed {
+		t.Fatalf("fits = %+v", fits)
+	}
+	n := fits.Rows[0].Notes
+	if len(n) != 1 || n[0].Code != "above_buy_price" || n[0].Label != "行权价高于买入价" || n[0].Gloss == "" {
+		t.Errorf("notes = %+v", n)
 	}
 }
