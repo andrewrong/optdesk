@@ -66,6 +66,8 @@ Owner-visible result: every day two hours after the US close one job, `data_chec
 
 ## Interface
 
+Landed in #4181
+
 Entry 1 (module store, new package `internal/store/finding`, `api.go` declarations only, `api_test.go` the contract from both sides: a fake writer, reader and probe, and a caller):
 
     // DSNEnvDataCheck is the line of the role ot_w_datacheck.
