@@ -162,7 +162,8 @@ func (h *consoleHost) runClaimed(ctx context.Context, r jobrequest.Row, jobs []c
 	if !h.finish(ctx, r.ID, out.state, out.reason, out.lines) {
 		return
 	}
-	if (out.state != jobrequest.StateDone && out.state != jobrequest.StateFailed) || (!hasGroup(out.lines, runner.GroupRan) && !hasGroup(out.lines, runner.GroupRerun)) {
+	wrote := hasGroup(out.lines, runner.GroupRan) || hasGroup(out.lines, runner.GroupRerun)
+	if (out.state != jobrequest.StateDone && out.state != jobrequest.StateFailed) || !wrote {
 		return
 	}
 	c, cancel := clockTimeout(ctx, h.clk, syncTimeout)
