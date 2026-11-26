@@ -18,8 +18,17 @@ export function DataCheckBlock({ check }: { check: NonNullable<Payload['data_che
             <p data-last-run>
               {check.check_day} {check.finished_at} {check.rules_unknown} / {check.rules_total}
             </p>
-            <p data-counts>
-              error {check.counts.error} · warn {check.counts.warn} · unknown {check.counts.unknown}
+            <p data-counts className="flex gap-3">
+              {(['error', 'warn', 'unknown'] as const).map((sev) => {
+                // The payload carries no label per count, so the web layer words none: the count is a bare number and the
+                // severity_text of a finding of that severity, when there is one, is its tooltip.
+                const word = check.findings.find((f) => f.severity === sev)?.severity_text
+                return (
+                  <span key={sev} data-count={sev} title={word}>
+                    {check.counts[sev]}
+                  </span>
+                )
+              })}
             </p>
             <table className="w-full text-left">
               <tbody>

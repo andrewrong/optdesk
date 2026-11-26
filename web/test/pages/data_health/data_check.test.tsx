@@ -54,6 +54,9 @@ describe('data check block', () => {
     expect(text).toContain(dc.finished_at)
     expect(text).toContain(String(dc.rules_total))
     expect(text).toContain(String(dc.rules_unknown))
+    for (const sev of ['error', 'warn', 'unknown'] as const) {
+      expect(block!.querySelector(`[data-count="${sev}"]`)?.textContent).toContain(String(dc.counts[sev]))
+    }
     const rows = block!.querySelectorAll('[data-finding]')
     expect(rows).toHaveLength(dc.findings.length)
     dc.findings.forEach((f, i) => {
@@ -61,6 +64,13 @@ describe('data check block', () => {
       for (const v of [f.label, f.dataset, f.day, f.severity_text, f.evidence_text, f.why_text]) expect(row).toContain(v)
       expect(rows[i]!.querySelector('[data-new]') !== null).toBe(f.is_new)
     })
+  })
+
+  it('TestCountsCarryNoWebWords', async () => {
+    const p = fixture('datacheck')
+    const el = await render(p)
+    const counts = el.querySelector('[data-counts]')!.textContent ?? ''
+    expect(counts).not.toMatch(/error|warn|unknown/)
   })
 
   it('TestNoRunShowsNoneText', async () => {
