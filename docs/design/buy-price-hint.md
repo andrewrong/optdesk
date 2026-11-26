@@ -1,7 +1,7 @@
 ---
 type: design
 title: "buy price is a hint, not a block: a put whose strike is above the buy price stays ranked and shown"
-status: draft
+status: accepted
 date: "2026-11-26"
 need: [none]
 none_reason: "owner ask optdesk-6294 (2026-11-26), word a; no need record exists"
