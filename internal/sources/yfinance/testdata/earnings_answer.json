@@ -1,0 +1,5 @@
+{"results": [
+  {"symbol": "AAPL", "currency": "USD", "error_code": "", "dates": ["2026-12-03", "2026-12-07"]},
+  {"symbol": "MSFT", "currency": "USD", "error_code": "", "dates": []},
+  {"symbol": "NVDA", "currency": "USD", "error_code": "no_data", "dates": []}
+]}
