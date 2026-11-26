@@ -96,7 +96,7 @@ rows above name every other top-level path of the planned tree.
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store compute gaphistory |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store compute |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/test/** | contracts |
-| pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/ibkr/api.py pyside/src/optdesk/refbars/api.py | pyside/tests/contracts/test_ibkr_api.py pyside/tests/contracts/test_refbars_api.py | contracts |
+| pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/ibkr/api.py pyside/src/optdesk/refbars/api.py pyside/src/optdesk/refearn/api.py | pyside/tests/contracts/test_ibkr_api.py pyside/tests/contracts/test_refbars_api.py pyside/tests/contracts/test_refearn_api.py | contracts |
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
