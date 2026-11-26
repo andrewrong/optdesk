@@ -12,18 +12,16 @@ const (
 	daysPerYear   = 365
 )
 
-// buyPriceGate: with no usable buy price it passes (owner 2026-11-12, marked by evaluatePut);
-// otherwise strike minus bid (a missing bid counts as no premium) is at most the buy price.
-func buyPriceGate(in compute.CandidateInput, strike, bid *big.Rat) compute.GateResult {
-	buy, ok := parseDec(in.BuyPrice)
-	if !ok {
-		return gate("buy_price", compute.GatePass, "") // marked no_buy_price by evaluatePut
-	}
-	net := new(big.Rat).Sub(strike, bid)
-	if net.Cmp(buy) > 0 {
-		return gate("buy_price", compute.GateBlock, "above_buy_price")
-	}
+// buyPriceGate never blocks: the buy price is a hint (owner 2026-11-26). A missing buy price is marked
+// no_buy_price and a break-even above it above_buy_price, both by evaluatePut.
+func buyPriceGate() compute.GateResult {
 	return gate("buy_price", compute.GatePass, "")
+}
+
+// aboveBuyPrice: strike minus bid (a missing bid counts as no premium) is above a usable buy price.
+func aboveBuyPrice(in compute.CandidateInput, strike, premium *big.Rat) bool {
+	buy, ok := parseDec(in.BuyPrice)
+	return ok && new(big.Rat).Sub(strike, premium).Cmp(buy) > 0
 }
 
 // quoteGate: the first blocking reason wins; delayed data is unknown only when nothing blocks.

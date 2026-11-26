@@ -21,7 +21,8 @@ const (
 	infoEarningsUnknown     = "earnings_unknown"
 	infoCashUnknown         = "cash_unknown"
 
-	noteThinPremium = "thin_premium"
+	noteThinPremium   = "thin_premium"
+	noteAboveBuyPrice = "above_buy_price"
 
 	eventsEarningsBeforeExpiry = "earnings_before_expiry"
 )

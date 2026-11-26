@@ -113,9 +113,10 @@ func TestShortPutEvaluateMapsEveryColumn(t *testing.T) {
 		want wantRow
 	}{
 		{"ok", func(*strategy.Snapshot) {}, wantRow{"ok", 1, allPass, okFacts()}},
-		{"buy_price blocked", func(s *strategy.Snapshot) { s.Quotes[0].Bid = "1.99"; s.Quotes[0].Ask = "2.04" },
-			wantRow{"blocked", 0, replace(0, strategy.Check{Name: "buy_price", Status: "block", Reason: "above_buy_price"}),
-				with(okFacts(), "bid", "1.99", "ask", "2.04", "break_even", "98.01", "annualized_yield", "0.242117")}},
+		{"above buy price is a mark", func(s *strategy.Snapshot) { s.Quotes[0].Bid = "1.99"; s.Quotes[0].Ask = "2.04" },
+			wantRow{"ok", 1, allPass,
+				with(okFacts(), "bid", "1.99", "ask", "2.04", "break_even", "98.01", "annualized_yield", "0.242117",
+					"marks", `["earnings_unconfirmed","above_buy_price"]`)}},
 		{"quote blocked", func(s *strategy.Snapshot) { s.Quotes[0].BidSize = 0 },
 			wantRow{"blocked", 0, replace(1, strategy.Check{Name: "quote", Status: "block", Reason: "small_bid_size"}), okFacts()}},
 		{"events blocked", func(s *strategy.Snapshot) { s.Earnings.Next = addDays(runDay, 10) },

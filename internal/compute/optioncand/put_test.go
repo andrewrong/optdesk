@@ -107,20 +107,6 @@ func TestBaseInputIsOK(t *testing.T) {
 	}
 }
 
-func TestBuyPriceBoundary(t *testing.T) {
-	t.Parallel()
-	in := baseInput()
-	in.BuyPrice = "98.00"
-	in.Quotes[0].Strike, in.Quotes[0].Bid = "100", "2.00"
-	wantGate(t, only(t, eval(in)), "buy_price", compute.GatePass, "")
-	in.Quotes[0].Bid = "1.99"
-	c := only(t, eval(in))
-	wantGate(t, c, "buy_price", compute.GateBlock, "above_buy_price")
-	if c.Status != "blocked" {
-		t.Errorf("status %s", c.Status)
-	}
-}
-
 func hasMark(c compute.Candidate, m string) bool {
 	return slices.Contains(c.Marks, m)
 }
@@ -136,15 +122,39 @@ func TestNoBuyPriceIsMarkNotBlock(t *testing.T) {
 	}
 }
 
-func TestBuyPriceSetStillBlocks(t *testing.T) {
+func TestAboveBuyPriceIsMarkNotBlock(t *testing.T) {
 	t.Parallel()
 	in := baseInput()
 	in.BuyPrice = "98.00"
 	in.Quotes[0].Strike, in.Quotes[0].Bid = "100", "1.99"
 	c := only(t, eval(in))
-	wantGate(t, c, "buy_price", compute.GateBlock, "above_buy_price")
-	if hasMark(c, "no_buy_price") {
-		t.Errorf("marks %v", c.Marks)
+	wantGate(t, c, "buy_price", compute.GatePass, "")
+	if c.Status != "ok" || c.Rank != 1 || !hasMark(c, "above_buy_price") || hasMark(c, "no_buy_price") {
+		t.Errorf("status %s rank %d marks %v", c.Status, c.Rank, c.Marks)
+	}
+	in.Quotes[0].Bid = "2.00"
+	c = only(t, eval(in))
+	wantGate(t, c, "buy_price", compute.GatePass, "")
+	if hasMark(c, "above_buy_price") {
+		t.Errorf("marks %v at the boundary", c.Marks)
+	}
+}
+
+func TestAboveBuyPriceDoesNotHideOtherBlocks(t *testing.T) {
+	t.Parallel()
+	in := baseInput()
+	in.BuyPrice = "98.00"
+	in.Quotes[0].Strike, in.Quotes[0].Bid, in.Quotes[0].Ask = "100", "1.99", "2.50"
+	c := only(t, eval(in))
+	if c.Status != "blocked" {
+		t.Errorf("status %s", c.Status)
+	}
+	for _, g := range c.Gates {
+		if g.Gate == "quote" {
+			wantGate(t, c, "quote", compute.GateBlock, "wide_spread")
+		} else if g.Status != compute.GatePass {
+			t.Errorf("gate %s is %v %q", g.Gate, g.Status, g.Reason)
+		}
 	}
 }
 
@@ -295,7 +305,7 @@ func TestUnknownIsNotPass(t *testing.T) {
 	}
 	wantGate(t, c, "events", compute.GateUnknown, "no_earnings")
 	// a block outranks an unknown
-	in.BuyPrice = "50"
+	in.Quotes[0].Ask = "2.50"
 	if c := only(t, eval(in)); c.Status != "blocked" {
 		t.Errorf("status %s", c.Status)
 	}

@@ -10,18 +10,17 @@ import (
 
 // Grey reasons, in the order of precedence (Decision 3).
 const (
-	greyNoBuyPrice    = "no_buy_price"
-	greyNoSpot        = "no_spot"
-	greyInTheMoney    = "in_the_money"
-	greyNoBid         = "no_bid"
-	greyAboveBuyPrice = "above_buy_price"
-	greyBadInput      = "bad_input"
+	greyNoBuyPrice = "no_buy_price"
+	greyNoSpot     = "no_spot"
+	greyInTheMoney = "in_the_money"
+	greyNoBid      = "no_bid"
+	greyBadInput   = "bad_input"
 
 	markUnreadableGates = "unreadable_gates"
 )
 
 // greyOrder is the order of precedence and of display.
-var greyOrder = []string{greyNoBuyPrice, greyNoSpot, greyInTheMoney, greyNoBid, greyAboveBuyPrice, greyBadInput}
+var greyOrder = []string{greyNoBuyPrice, greyNoSpot, greyInTheMoney, greyNoBid, greyBadInput}
 
 // numbers are the parsed inputs of a row; a flag is false for an empty or unreadable text.
 type numbers struct {
@@ -65,17 +64,15 @@ func greyReason(r optiontierapi.Row, n numbers) string {
 		return greyInTheMoney
 	case nonPositive(r.Bid, n.bid, n.okBid):
 		return greyNoBid
-	case n.okBuy && n.okStrike && n.okBid && n.strike.Sub(n.bid).GreaterThan(n.buy):
-		return greyAboveBuyPrice
 	case unreadable(r, n):
 		return greyBadInput
 	}
 	return ""
 }
 
-// needsEvaluate: the evaluator is called for a live row and for the two greys that still show figures.
+// needsEvaluate: the evaluator is called for a live row and for the grey that still shows figures.
 func needsEvaluate(grey string) bool {
-	return grey == "" || grey == greyInTheMoney || grey == greyAboveBuyPrice
+	return grey == "" || grey == greyInTheMoney
 }
 
 func hasMark(marks []string, m string) bool {

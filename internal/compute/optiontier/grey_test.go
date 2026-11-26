@@ -22,7 +22,6 @@ func TestGreyPrecedence(t *testing.T) {
 		{"in the money beats no bid", func(r *optiontierapi.Row) { r.Strike = "100.00"; r.Bid = "" }, "in_the_money"},
 		{"empty bid", func(r *optiontierapi.Row) { r.Bid = "" }, "no_bid"},
 		{"zero bid", func(r *optiontierapi.Row) { r.Bid = "0.00" }, "no_bid"},
-		{"above buy price", func(r *optiontierapi.Row) { r.BuyPrice = "80.00" }, "above_buy_price"},
 		{"unreadable gates mark", func(r *optiontierapi.Row) { r.Marks = []string{"unreadable_gates"} }, "bad_input"},
 		{"no bid beats unreadable gates", func(r *optiontierapi.Row) { r.Marks = []string{"unreadable_gates"}; r.Bid = "" }, "no_bid"},
 	}
@@ -31,6 +30,16 @@ func TestGreyPrecedence(t *testing.T) {
 		if v.Tier != "grey" || v.Grey != c.want {
 			t.Errorf("%s: tier %q grey %q, want grey %q", c.name, v.Tier, v.Grey, c.want)
 		}
+	}
+}
+
+func TestAboveBuyPriceIsNotGrey(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	r := f.Base
+	r.BuyPrice = "80.00"
+	if got := greyReason(r, readNumbers(r)); got != "" {
+		t.Errorf("grey reason = %q, want none", got)
 	}
 }
 
