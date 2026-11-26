@@ -181,6 +181,8 @@ Entry 6 (module jobs): package `internal/jobs/datacheck`, exported surface only:
     }
     func New(st Stores, clk clock.Clock) (contracts.Job, error) // an error names a key, never a value
 
+A rule that returns an error is stored as one finding of severity `unknown` with the rule id as its rule and as its dataset, because a `Rule` names no dataset. With no rule the job returns the error `no_rules` and writes nothing.
+
 ## Issues
 
 Build order: the design is cut into entries by the numbers below; a draft names an entry as `Design: docs/design/data-check.md#<n>`. Every entry compiles and its tests pass against main. Entry 3 is the only migration and holds the auto-deploy. Every entry carries a `Contracts:` line; entry 2 alone changes a file under `contracts/schemas`. Order: 1 and 2 first; 3 after 1; 4 and 5 after 1 and 3 (parallel); 6 after 1; 7 after 5 and 6; 8 after 7; 9 after 1 and 2; 10 after 2; 11 after 4, 5, 6, 8 and 9. Test runs are in `## Checked by CI`. Each entry is one module and lists only paths of that module.

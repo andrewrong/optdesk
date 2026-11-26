@@ -1,0 +1,13 @@
+# Manifest of the data_check job (docs/design/data-check.md, Decision 2): once per XNYS session day, two hours after
+# the close, after book_risk (45m) and recon_bars (30m) and after the Japanese close. The owner may move the slot by
+# editing the offset.
+version = 1
+id = "data_check"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+zone = "America/New_York"
+offset = "120m"
+run_bound = "10m"
+restart_sensitive = false
