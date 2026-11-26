@@ -352,6 +352,7 @@ func TestEarningsDateFixtureValues(t *testing.T) {
 		{"absent", "alphavantage", false},
 		{"unsupported", "none", false},
 		{"error", "jquants", false},
+		{"listed", "yfinance", true},
 	}
 	if len(recs) != len(want) {
 		t.Fatalf("want %d records, got %d", len(want), len(recs))
