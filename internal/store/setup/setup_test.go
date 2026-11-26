@@ -10,6 +10,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/finding"
 	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
 )
 
@@ -113,8 +114,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 21 {
-		t.Fatalf("%d roles, want 21", len(roles))
+	if len(roles) != 22 {
+		t.Fatalf("%d roles, want 22", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -368,4 +369,21 @@ func TestReconRoleAndDsnLine(t *testing.T) {
 		}
 	}
 	t.Error("ot_w_recon is not in the role list")
+}
+
+// TestDataCheckLineEqualsStoreConstant: the line of ot_w_datacheck is the one the finding package names.
+func TestDataCheckLineEqualsStoreConstant(t *testing.T) {
+	t.Parallel()
+	if dsnEnvDataCheck != finding.DSNEnvDataCheck {
+		t.Fatalf("setup line %q, finding line %q", dsnEnvDataCheck, finding.DSNEnvDataCheck)
+	}
+	for _, r := range roles {
+		if r.name == roleDataCheck {
+			if r.envKey != finding.DSNEnvDataCheck || r.name != "ot_w_datacheck" {
+				t.Errorf("role %q has line %q", r.name, r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_datacheck is not in the role list")
 }

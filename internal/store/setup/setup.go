@@ -84,7 +84,15 @@ const (
 
 	// roleRecon: INSERT and SELECT on recon.run and recon.item, nothing else (migrations/0060_recon.sql).
 	roleRecon = "ot_w_recon"
+
+	// roleDataCheck: INSERT and SELECT on datacheck.run, finding and notice, SELECT on the views of the data check
+	// (migrations/0073_data_check.sql).
+	roleDataCheck = "ot_w_datacheck"
 )
+
+// dsnEnvDataCheck is the line of roleDataCheck. It equals finding.DSNEnvDataCheck; store/setup may not import
+// store/finding.
+const dsnEnvDataCheck = "OT_PG_DSN_DATACHECK"
 
 // dsnEnvRecon is the line of roleRecon. It equals reconstore.DSNEnvRecon; store/setup may not import store/recon.
 const dsnEnvRecon = "OT_PG_DSN_RECON"
@@ -129,12 +137,13 @@ var roles = []roleSpec{
 	{roleOptionOpen, dsnEnvOptionOpen},               // ot_w_option_open, line OT_PG_DSN_OPTION_OPEN
 	{roleUnderlyingResolve, dsnEnvUnderlyingResolve}, // ot_w_underlying_resolve, line OT_PG_DSN_UNDERLYING_RESOLVE
 	{roleRecon, dsnEnvRecon},                         // ot_w_recon, line OT_PG_DSN_RECON
+	{roleDataCheck, dsnEnvDataCheck},                 // ot_w_datacheck, line OT_PG_DSN_DATACHECK
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the twenty-one roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the twenty-two roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
