@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"syscall"
 	"time"
@@ -201,14 +203,7 @@ func runScheduler(
 		return errors.New("record the build in ops.scheduler_state failed")
 	}
 	disabled := schedulerDisabled(cfg, w)
-	var enabled []contracts.Job
-	for _, j := range w.jobs {
-		if reason, off := disabled[j.ID()]; off {
-			a.log.Warn("job left out", "component", "ot", "job", j.ID(), "reason", reason)
-			continue
-		}
-		enabled = append(enabled, j)
-	}
+	enabled := logLeftOut(a.log, w.jobs, disabled)
 	kr := d.newKeyRunner(w.ledger, sl, fw)
 	host, closeConsole := openConsoleHost(ctx, a, cfg.runnerDSN, cfg.pagesDSN, d.newKeyGapSyncer, w.ledger, sl, fw)
 	defer closeConsole()
@@ -437,6 +432,27 @@ func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job,
 		}
 		return j, ""
 	}
+}
+
+// logLeftOut logs one "job left out" warning with job and reason for every entry of disabled, in sorted order,
+// whether or not the job was built, so a job that was never built still shows why it is held. The reason goes
+// under "status": the log whitelist drops a "reason" key. It returns the jobs of jobs that are not in disabled.
+func logLeftOut(log *slog.Logger, jobs []contracts.Job, disabled map[string]string) []contracts.Job {
+	ids := make([]string, 0, len(disabled))
+	for id := range disabled {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		log.Warn("job left out", "component", "ot", "job", id, "status", disabled[id])
+	}
+	var enabled []contracts.Job
+	for _, j := range jobs {
+		if _, off := disabled[j.ID()]; !off {
+			enabled = append(enabled, j)
+		}
+	}
+	return enabled
 }
 
 // schedulerDisabled is startDisabled plus, for each held job, its reason when startDisabled lacks it.
