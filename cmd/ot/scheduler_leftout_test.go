@@ -7,17 +7,12 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/profile"
 )
 
 func TestSchedulerLogsEveryLeftOutJob(t *testing.T) {
 	t.Parallel()
-	p, err := profile.Load(func(string) string { return "" })
-	if err != nil {
-		t.Fatal(err)
-	}
 	var buf bytes.Buffer
-	log := slog.New(profile.NewLogHandler(p, slog.NewTextHandler(&buf, nil)))
+	log := slog.New(slog.NewTextHandler(&buf, nil))
 	built := candJobStub{id: jobBookRisk}
 	kept := candJobStub{id: jobFredSeries}
 	disabled := map[string]string{
