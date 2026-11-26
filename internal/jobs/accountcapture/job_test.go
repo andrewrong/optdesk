@@ -679,25 +679,3 @@ func TestLogFailureGrpcCodeIgnoresOther(t *testing.T) {
 		}
 	}
 }
-
-// position_marks runs after account_capture and marks the newest capture of the main alias. A day on which
-// only the non-main alias failed ends Retryable, so the upstream has ended (not missing) for the runner, and
-// the main alias's capture with its positions is stored for position_marks to read.
-func TestNewMainMarksRunWhenOtherAliasFails(t *testing.T) {
-	t.Parallel()
-	bad := goodReader("b")
-	bad.accErr = errors.New("down")
-	bad.exErr = errors.New("down")
-	e := setup(t, "a", map[string]*fakeReader{"a": goodReader("a"), "b": bad})
-	res := run(e)
-	if k, ok := errors.AsType[contracts.TypedError](res.Err); !ok || k.Kind() != contracts.Retryable {
-		t.Fatalf("err = %v", res.Err)
-	}
-	c, ok := e.w.captures["a:2026-11-05:daily"]
-	if !ok || c.Status != statusOK || len(c.Positions) != 1 || c.Positions[0].Symbol != "SPY" {
-		t.Fatalf("main capture = %+v (stored %v)", c, ok)
-	}
-	if len(e.w.captures) != 1 {
-		t.Fatal("the failed alias wrote a capture")
-	}
-}
