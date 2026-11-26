@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
-	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -23,7 +22,7 @@ const checkErrMax = 200
 var leadingNumber = regexp.MustCompile(`^[0-9]+`)
 
 // migrateCheckCmd is `ot migrate check --repo <clone> [--commit <sha>]`. It exits 0 only when every migration of the
-// commit is applied and the commit changes nothing under internal/store/setup since the deployed build. It writes
+// commit is applied; an applied migration stands for the finished hand step (`ot setup pg`, then `ot migrate`). It writes
 // nothing: git is read through argv, the database through deps.migrateMissing alone.
 func migrateCheckCmd(a *app, args []string) error {
 	fs := flag.NewFlagSet("migrate check", flag.ContinueOnError)
@@ -36,8 +35,7 @@ func migrateCheckCmd(a *app, args []string) error {
 	if *commit == "" {
 		*commit = a.getenv("CREW_COMMIT")
 	}
-	bi, _ := debug.ReadBuildInfo()
-	return shortCheckErr(migrateCheck(a, *repo, *commit, bi))
+	return shortCheckErr(migrateCheck(a, *repo, *commit))
 }
 
 // shortCheckErr cuts the text of err to checkErrMax characters.
@@ -52,8 +50,8 @@ func shortCheckErr(err error) error {
 	return errors.New(string(r[:checkErrMax]))
 }
 
-// migrateCheck returns the first failing reason, or nil. bi is the build info of the running binary.
-func migrateCheck(a *app, repo, commit string, bi *debug.BuildInfo) error {
+// migrateCheck returns the first failing reason, or nil.
+func migrateCheck(a *app, repo, commit string) error {
 	if commit == "" {
 		return errors.New("no commit: pass --commit or set CREW_COMMIT")
 	}
@@ -62,17 +60,6 @@ func migrateCheck(a *app, repo, commit string, bi *debug.BuildInfo) error {
 	}
 	if err := ensureCommit(repo, commit); err != nil {
 		return err
-	}
-	deployed, err := deployedRevision(bi)
-	if err != nil {
-		return err
-	}
-	out, err := gitOut(repo, "diff", "--name-only", deployed, commit, "--", "internal/store/setup/")
-	if err != nil {
-		return fmt.Errorf("git diff of internal/store/setup failed: %w", err)
-	}
-	if files := strings.Fields(out); len(files) > 0 {
-		return fmt.Errorf("the commit changes internal/store/setup (%s): held for the hand setup step", files[0])
 	}
 	want, err := treeVersions(repo, commit)
 	if err != nil {
@@ -121,29 +108,6 @@ func joinVersions(v []int64) string {
 		s[i] = strconv.FormatInt(n, 10)
 	}
 	return strings.Join(s, ",")
-}
-
-// deployedRevision is the vcs.revision of bi; a missing or modified build has no known commit.
-func deployedRevision(bi *debug.BuildInfo) (string, error) {
-	if bi == nil {
-		return "", errors.New("no build info: the deployed commit is unknown")
-	}
-	var rev, modified string
-	for _, s := range bi.Settings {
-		switch s.Key {
-		case "vcs.revision":
-			rev = s.Value
-		case "vcs.modified":
-			modified = s.Value
-		}
-	}
-	if rev == "" {
-		return "", errors.New("the binary carries no vcs.revision: the deployed commit is unknown")
-	}
-	if modified == "true" {
-		return "", errors.New("the binary was built from a modified tree (vcs.modified): the deployed commit is unknown")
-	}
-	return rev, nil
 }
 
 // treeVersions lists the versions of the files of migrations/ in the tree of commit.
