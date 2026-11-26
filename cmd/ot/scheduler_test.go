@@ -522,7 +522,7 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 		t.Fatalf("disabled %v", r.sched.disabled)
 	}
 	_ = r.stop(t, done)
-	if n := strings.Count(r.errb.String(), "job left out"); n != 1 || !strings.Contains(r.errb.String(), jobFredSeries) {
+	if n := strings.Count(r.errb.String(), `"job left out" component=ot job=`+jobFredSeries+" "); n != 1 {
 		t.Fatalf("log %q", r.errb.String())
 	}
 }
