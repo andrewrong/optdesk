@@ -84,7 +84,49 @@ func baseRow(pos compute.LedgerPosition) trackapi.TrackedOption {
 		Currency: pos.Currency, Status: pos.Status, Early: pos.Early,
 		PremiumIncome: pos.PremiumIncome, Commissions: pos.Commissions, RealizedPnL: pos.RealizedPnL,
 		OpenedOn: pos.OpenedOn, ClosedOn: pos.ClosedOn,
+		OpeningCredit: openingCredit(pos), ClosingCost: closingCost(pos), BrokerRealized: pos.BrokerRealized,
 	}
+}
+
+// fillMoney is quantity times price times multiplier of one fill; false when a number is missing.
+func fillMoney(f compute.LedgerFill, mult *big.Rat) (*big.Rat, bool) {
+	q, ok1 := dec(f.Quantity)
+	px, ok2 := dec(f.Price)
+	if !ok1 || !ok2 {
+		return nil, false
+	}
+	m := new(big.Rat).Mul(q, px)
+	return m.Mul(m, mult), true
+}
+
+// openingCredit is minus the opening fill's quantity times price times multiplier (Decision 1);
+// empty without a usable opening fill.
+func openingCredit(pos compute.LedgerPosition) string {
+	mult, ok := dec(pos.Multiplier)
+	if !ok || len(pos.Fills) == 0 {
+		return ""
+	}
+	m, ok := fillMoney(pos.Fills[0], mult)
+	if !ok {
+		return ""
+	}
+	return fixed(m.Neg(m), 4)
+}
+
+// closingCost sums the closing fills' quantity times price times multiplier; "0.0000" when none
+// has a price, empty while the piece is open or has no fills.
+func closingCost(pos compute.LedgerPosition) string {
+	mult, ok := dec(pos.Multiplier)
+	if !ok || len(pos.Fills) == 0 || pos.Status == "open" {
+		return ""
+	}
+	sum := new(big.Rat)
+	for _, f := range pos.Fills[1:] {
+		if m, ok := fillMoney(f, mult); ok {
+			sum.Add(sum, m)
+		}
+	}
+	return fixed(sum, 4)
 }
 
 // openRow builds the row of an open short position (Decisions 5 to 8).
