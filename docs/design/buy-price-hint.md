@@ -112,7 +112,7 @@ Acceptance:
 
 ## Left out
 
-- `internal/strategy/shortput` is unchanged: its check list (`buy_price` block with `above_buy_price` in its own test, `shortput_test.go` line 117) was read only at that test line, and neither compute nor pages is changed to import it, so it keeps its own rule; making it a hint too is a separate owner word, not cut here.
+- `internal/strategy/shortput` is not edited, but it uses the same optioncand evaluator, so an above-buy put there also passes with the mark and keeps its rank; the owner chose this (2026-11-26, answer a on ticket 1315 of #4136): the buy price is a hint in shortput too.
 - Deleting `optiontierapi.StateAboveBuy`, the `above_buy` and `grey_above_buy_price` values of `page.option_candidates_page.v1.json` and the generated type: a second interface change plus a contract change (`Contracts: changed`), after the pages issue; not cut, the values are harmless.
 - A new `GateStatus` level (warn/hint): rejected, see Decision 1.
 - Old stored rows: not rewritten; the next candidates run stores them as ok with the mark. A forced re-run of a stored day (`-force`) does it at once; that is the owner's call.
