@@ -14,7 +14,7 @@ Owner approved: (pending)
 Revision: 1
 Plan: none — owner word 2026-11-25, a gap of the event sources (docs/design/event-sources.md), not a plan item
 
-摘要：美股用 Alpha Vantage、日股用 J-Quants 查“下一个财报日”，但两者只列近期要报的公司，远期的公司查不到（状态 absent）。现在这类公司在同一次 earnings_refresh 里再向 yfinance 问一次（yfinance 已在 pyside 里固定为 1.8.0，只用于日线，不需要账号和密钥）。问到日期就按 listed 存，来源写 yfinance；问不到就保持 absent，不编日期。每个日期的来源本来就存在行里（source 一栏），这里只是多一个取值 yfinance。页面不改，仍然只显示库里的日期。分七件事：先改契约取值，再加迁移、pyside 命令、sources 注释和适配器、job、接线。
+摘要：美股用 Alpha Vantage、日股用 J-Quants 查“下一个财报日”，但两者只列近期要报的公司，远期的公司查不到（状态 absent）。现在这类公司在同一次 earnings_refresh 里再向 yfinance 问一次（yfinance 已在 pyside 里固定为 1.8.0，只用于日线，不需要账号和密钥）。问到日期就按 listed 存，来源写 yfinance；问不到就保持 absent，不编日期。每个日期的来源本来就存在行里（source 一栏），这里只是多一个取值 yfinance。页面不改，仍然只显示库里的日期。分八件事：先改契约取值，再加迁移、pyside 接口、pyside 命令、sources 注释、sources 适配器、job、接线。
 
 Source: owner word 2026-11-25 ("earnings dates must use more sources"). Survey 2026-11-25 by the dispatcher: Alpha Vantage (US) and J-Quants (JP) work but list only near-term reporters; yfinance 1.8.0 is pinned in `pyside/pyproject.toml` and needs no key; FMP free tier unclear (not used); the IBKR Wall Street Horizon feed is a paid subscription and is not used. Read from origin/main 076ebfac. The other earnings bug (readers following only the newest `earnings_check`) is closed: issues 4008, 4009, 4011 and 4038 landed (`5c930c1b`, `faff191a`, `0d42639f`, `67fabe44`); this design does not touch a reader.
 
@@ -74,7 +74,7 @@ Four interface changes, each its own entry and landing before the issues that us
 - The command cannot run (no `uv` environment, deadline): same as a failed fallback, the primary rows stand.
 - With no Alpha Vantage key `earningsOff` leaves the whole job out (unchanged), so the fallback runs for neither market then.
 - A stored row of an earlier day is not rewritten; a forced re-run of a stored day (`-force`) asks the fallback again.
-- Carried decisions: Decision 1 and 2 in issue 6, Decision 3 in issues 3, 4 and 5, Decision 4 in issues 6 and 7, Decision 5 has no entry.
+- Carried decisions: Decisions 1 and 2 in issue 7, Decision 3 in issues 3, 4 and 6, Decision 4 in issues 7 and 8, Decision 5 has no entry.
 
 ## Issues
 
