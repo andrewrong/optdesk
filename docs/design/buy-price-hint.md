@@ -3,9 +3,12 @@
 Author: the optdesk designer
 Owner approved: (pending)
 Date: 2026-11-26
+Revision: 3
 Plan: P2
 
-Source: owner ask optdesk-6294 (2026-11-26), word "a": the sell-put gate "strike above buy price" becomes a hint, not a block. Read from origin/main 073ef977.
+Source: owner ask optdesk-6294 (2026-11-26), word "a": the sell-put gate "strike above buy price" becomes a hint, not a block. Read from origin/main 073ef977; the paths this design names are unchanged on origin/main c0b2cac6 (`git diff --stat` of `internal/compute`, `internal/pages/option_candidates_page` and `docs/contracts/compute` is empty).
+
+Needs the owner: nothing. The other design files carry no type/status block and no Chinese summary, so none is added here.
 
 ## Frame
 
@@ -43,9 +46,15 @@ compute (`internal/compute/optioncand`, `internal/compute/optiontier`, the inter
 Comments only, owned by compute, landing first (issue 1):
 
 - `internal/compute/api.go`: the `GateResult` code list says `buy_price: no_buy_price (block: no BuyPrice), above_buy_price (block)`; it becomes "buy_price: none (never blocks; no_buy_price and above_buy_price are marks of the row)". Types and constants unchanged.
-- `internal/compute/optiontierapi/api.go`: the `Verdict.Grey` comment drops `above_buy_price` from its list of reasons; the `StateAboveBuy` comment says it is no longer produced; the `Blocks` and `Tierer` text is unchanged. `StateAboveBuy` is not deleted (Decision 3).
+- `internal/compute/optiontierapi/api.go`: the `Verdict.Grey` comment drops `above_buy_price` from its list of reasons; the `StateAboveBuy` comment says it is no longer produced; the `StateNoQuote` comment drops "(and the above_buy rule does not hold)"; the `Blocks` and `Tierer` text is unchanged. `StateAboveBuy` is not deleted (Decision 3).
 
 `contracts/schemas/page.option_candidates_page.v1.json` keeps the values `grey_above_buy_price` and `above_buy` in its enums: a value that no longer occurs is not a change of shape, so `Contracts: unchanged`.
+
+## Failure paths
+
+- A stored row of an older run (gate `above_buy_price`, status blocked) stays in the blocked list with its sentence until the next candidates run stores it as ok (issue 3 acceptance 7).
+- A row whose break-even cannot be read (buy price, strike or bid not a number) gets no note and keeps its grey reason (`no_buy_price`, `no_bid` or `bad_input`), as before.
+- Carried decisions: Decision 1 in issue 2 (acceptances 1 to 3), Decision 2 in issues 2 and 3, Decision 3 in issues 1 and 2 (the constant stays; no entry removes it), Decision 4 in issue 3.
 
 ## Issues
 
@@ -55,7 +64,7 @@ Module: compute. Size: S. Order: first. Design: docs/design/buy-price-hint.md#in
 
 Acceptance:
 1. The `GateResult` comment in `internal/compute/api.go` no longer says `above_buy_price (block)` and says that `buy_price` never blocks; no type, constant or signature of the file changes.
-2. The `Verdict.Grey` comment in `internal/compute/optiontierapi/api.go` lists five grey reasons without `above_buy_price`, and the `StateAboveBuy` comment says it is no longer produced; the constant is still declared.
+2. The `Verdict.Grey` comment in `internal/compute/optiontierapi/api.go` lists five grey reasons without `above_buy_price`, and the `StateAboveBuy` comment says it is no longer produced; the constant is still declared (`internal/compute/optiontierapi/api_test.go` still uses it and is not edited); the `StateNoQuote` comment has no "above_buy rule" clause.
 3. Docs: docs/design/buy-price-hint.md#interface.
 
 ### 2 buy-price-hint-compute
@@ -63,13 +72,13 @@ Acceptance:
 Module: compute. Size: M. Order: after 1. Design: docs/design/buy-price-hint.md#decisions. Files: `internal/compute/optioncand/put.go`, `internal/compute/optioncand/optioncand.go`, `internal/compute/optioncand/put_test.go`, `internal/compute/optiontier/grey.go`, `internal/compute/optiontier/blocks.go`, `internal/compute/optiontier/tier.go`, `internal/compute/optiontier/badges.go`, `internal/compute/optiontier/grey_test.go`, `internal/compute/optiontier/blocks_test.go`, `internal/compute/optiontier/tier_test.go`, `docs/contracts/compute/optiontier.md`.
 
 Acceptance:
-1. A put with strike 100, bid 1.99 and buy price 98.00 has the gate `buy_price` with status pass and an empty reason, the row status `ok`, a rank, and the mark `above_buy_price`; at bid 2.00 the mark is absent: a new test `TestAboveBuyPriceIsMarkNotBlock` in `put_test.go` pins both, and `TestBuyPriceBoundary` and `TestBuyPriceSetStillBlocks` are replaced by it.
-2. A put with no buy price still passes with the mark `no_buy_price` and no `above_buy_price`: `TestNoBuyPriceIsMarkNotBlock` passes unchanged.
-3. Every other gate still blocks as before: a row with strike above buy price and a wide spread has status `blocked` by the quote gate only (new test `TestAboveBuyPriceDoesNotHideOtherBlocks` in `put_test.go`).
-4. The tier judge no longer greys the row: the case "above buy price" of `grey_test.go` expects an empty grey reason and the tier fits, with the note `above_buy_price` in `Verdict.Notes` (new test `TestAboveBuyPriceRowKeepsItsTierWithANote` in `tier_test.go`); a row with the same break-even and a wide quote is tier check with the note.
-5. The grey order has five reasons (`blocks_test.go` line 261 list drops `above_buy_price`), and a company whose priced rows are all above the buy price is `sellable` with those rows shown, not `above_buy` (new test `TestCompanyAboveBuyIsSellableNotFolded` in `blocks_test.go`).
+1. A put with strike 100, bid 1.99 and buy price 98.00 has the gate `buy_price` with status pass and an empty reason, the row status `ok`, a rank, and the mark `above_buy_price`; at bid 2.00 the mark is absent: a new test `TestAboveBuyPriceIsMarkNotBlock` (new) in `put_test.go` pins both.
+2. A put with no buy price still passes with the mark `no_buy_price` and no `above_buy_price`: `TestNoBuyPriceIsMarkNotBlock` passes unchanged. The two old tests `TestBuyPriceBoundary` and `TestBuyPriceSetStillBlocks` are removed in `put_test.go`; the first new test of item 1 takes their place.
+3. Every other gate still blocks as before: a row with strike above buy price and a wide spread has status `blocked` by the quote gate only (new test `TestAboveBuyPriceDoesNotHideOtherBlocks` (new) in `put_test.go`).
+4. The tier judge no longer greys the row: the case "above buy price" of `grey_test.go` expects an empty grey reason and the tier fits, with the note `above_buy_price` in `Verdict.Notes` (new test `TestAboveBuyPriceRowKeepsItsTierWithANote` (new) in `tier_test.go`); a row with the same break-even and a wide quote is tier check with the note.
+5. The grey order has five reasons (`blocks_test.go` line 261 list drops `above_buy_price`), and a company whose priced rows are all above the buy price is `sellable` with those rows shown, not `above_buy` (new test `TestCompanyAboveBuyIsSellableNotFolded` (new) in `blocks_test.go`).
 6. `docs/contracts/compute/optiontier.md` lists the five grey reasons, says the company state `above_buy` is not produced and names the note `above_buy_price`; its sentence "A row is green, fits ... when all hold" no longer has the condition "break-even (strike minus bid) is at most the buy price" and its check rule reads "when the first two hold"; the comment of `rule` in `tier.go` says the same.
-7. Checked at this head: `internal/compute/optioncand/testdata` and `internal/compute/optiontier/testdata` hold no `above_buy` text, and among the compute tests only `grey_test.go`, `blocks_test.go` and `put_test.go` name it, so no listed file is missing.
+7. Checked at origin/main c0b2cac6 by `grep -rn "above_buy\|AboveBuy" internal/compute`: outside `grey.go`, `blocks.go`, `put.go`, `api.go` and `internal/compute/optiontierapi/api.go` the only hits are `grey_test.go`, `blocks_test.go`, `put_test.go` (listed) and `internal/compute/optiontierapi/api_test.go` (the constant stays, not edited); `contract_test.go`, `jpy_test.go`, `order_test.go`, `tier_test.go` and every `testdata` file of `optioncand` and `optiontier` have none, so no file is missing from Files.
 8. Docs: docs/design/buy-price-hint.md#decisions.
 
 ### 3 buy-price-hint-page
@@ -77,12 +86,12 @@ Acceptance:
 Module: pages. Size: M. Order: after 2. Design: docs/design/buy-price-hint.md#decisions. Files: `internal/pages/option_candidates_page/tierstrings.go`, `internal/pages/option_candidates_page/strings.go`, `internal/pages/option_candidates_page/zh_texts.go`, `internal/pages/option_candidates_page/bycompany.go`, `internal/pages/option_candidates_page/bycompany_test.go`, `internal/pages/option_candidates_page/tiers_test.go`, `internal/pages/option_candidates_page/zhstrip_test.go`, `internal/pages/option_candidates_page/reasons_test.go`, `internal/pages/option_candidates_page/tiersfakes_test.go`, `internal/pages/option_candidates_page/tierlegend_test.go`, `internal/pages/option_candidates_page/testdata/by_company.golden.json`, `internal/pages/option_candidates_page/testdata/jp_rows.golden.json`, `internal/pages/option_candidates_page/testdata/tiers_gaps.golden.json`, `internal/pages/option_candidates_page/testdata/shortlist_ok.golden.json`, `internal/pages/option_candidates_page/testdata/valueline.golden.json`, `internal/pages/option_candidates_page/testdata/tiers_ok.golden.json`. It is ordered after 2 because the page labels a note code that only issue 2 produces.
 
 Acceptance:
-1. A tier row whose verdict has the note `above_buy_price` shows the badge with the label "行权价高于买入价" and a gloss, in the tier row and not in a grey or folded block: a new test `TestAboveBuyNoteIsShownOnTheRow` in `tiers_test.go`.
-2. The Marks column of a stored row with the mark `above_buy_price` shows `above_buy_price · Strike is above the buy price` (new test `TestAboveBuyMarkCarriesItsSentence` in `reasons_test.go`).
+1. A tier row whose verdict has the note `above_buy_price` shows the badge with the label "行权价高于买入价" and a gloss, in the tier row and not in a grey or folded block: a new test `TestAboveBuyNoteIsShownOnTheRow` (new) in `tiers_test.go`.
+2. The Marks column of a stored row with the mark `above_buy_price` shows `above_buy_price · Strike is above the buy price` (new test `TestAboveBuyMarkCarriesItsSentence` (new) in `reasons_test.go`).
 3. The page has no grey title, grey label, state verdict or state sentence for `above_buy`, and no use of `optiontierapi.StateAboveBuy`; `by_company.golden.json` carries no `above_buy_price` fold and no `above_buy` block.
-4. The definition of fits and check on the page no longer has the break-even condition: in `zh_texts.go` `explainFitsHead` and `legendFitsHead` read "有买入价；价外；|delta| 不高于 ..." without "保本点（行权价减 bid）不高于买入价", `explainCheck` reads "有买入价、价外这两项都满足，但有需要再看一眼的徽标。", `legendCheckText` reads "买入价、价外两项都满足，但有需要再看一眼的徽标。", `noneFits` reads "没有一行同时满足有买入价、价外和 delta 上限。", and `zhFoldedLegendHead` reads "已判定但不能卖（价内，或没有 bid）..." without "或保本点高于买入价".
-5. The goldens `by_company`, `jp_rows`, `tiers_gaps`, `shortlist_ok`, `valueline` and `tiers_ok` carry the new legend, explain and folded-legend lines of item 4 and no other change; the literals of `tierlegend_test.go` (lines 105, 112, 123) match them. `markhints_test.go` lists no hint one by one for this mark, so it is not edited (checked).
-6. A row of an older stored run with the gate `above_buy_price` (status blocked) is still listed with the sentence "Strike is above the buy price" in the blocked list: `reasonTexts` keeps its entry, and the existing code-coverage loop of `reasons_test.go` (line 38) still passes.
+4. The definition of fits and check on the page no longer has the break-even condition: in `zh_texts.go` `explainFitsHead` and `legendFitsHead` read "有买入价；价外；|delta| 不高于 ..." without "保本点（行权价减 bid）不高于买入价", `explainCheck` reads "有买入价、价外这两项都满足，但有需要再看一眼的徽标。", `legendCheckText` reads "买入价、价外两项都满足，但有需要再看一眼的徽标。", `noneFits` reads "没有一行同时满足有买入价、价外和 delta 上限。", `zhFoldedLegendHead` reads "已判定但不能卖（价内，或没有 bid）..." without "或保本点高于买入价", and `noneCheck` reads "没有行满足有买入价、价外两项条件却带有需要再看一眼的徽标。".
+5. The goldens `jp_rows`, `tiers_gaps`, `shortlist_ok`, `valueline` and `tiers_ok` carry the new legend and explain lines of item 4 and no other change, among them the empty-check explain line "无：没有行满足有买入价、价外两项条件却带有需要再看一眼的徽标。" in `shortlist_ok` and `tiers_gaps`; `by_company` carries the same lines and, besides them, only the removals of item 3; the literals of `tierlegend_test.go` (lines 105, 112, 123) match them. `markhints_test.go` lists no hint one by one for this mark, so it is not edited (checked).
+6. A row of an older stored run with the gate `above_buy_price` (status blocked) is still listed with the sentence "Strike is above the buy price" in the blocked list: `reasonTexts` keeps its entry, and the existing code-coverage loop of `reasons_test.go` (line 38) still passes; the comment of that test (`TestEveryRuleCodeHasSentence`) that cites the code list of the `GateResult` comment is reworded to say the list is the reason codes the gates and the page still use.
 7. Docs: docs/design/buy-price-hint.md#decisions.
 
 ## Checked by CI
