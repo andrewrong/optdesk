@@ -244,16 +244,14 @@ func (p *pull) fault(day contracts.Day, keys []contracts.ExpectedKey, res contra
 	return res
 }
 
-// runPlan reads the plan that made the keys: the plan of day, else the plan of the clock's date (the local date of
-// p.loc). Both empty is the Retryable "the plan of <day> is gone"; a store error is returned as it is.
+// runPlan refuses a day other than the clock's date (the local date of p.loc): the pull reads live quotes, which
+// are those of today and never of a past day. Then it reads the plan of day; none is the Retryable "the plan of
+// <day> is gone"; a store error is returned as it is.
 func (p *pull) runPlan(ctx context.Context, day contracts.Day) ([]batch, contracts.TypedError) {
-	bs, err := p.batches(ctx, day)
-	if errors.Is(err, errNoPlan) {
-		today := contracts.Day(p.d.Clock.Now().In(p.loc).Format(time.DateOnly))
-		if today != day {
-			bs, err = p.batches(ctx, today)
-		}
+	if today := contracts.Day(p.d.Clock.Now().In(p.loc).Format(time.DateOnly)); today != day {
+		return nil, newErr(contracts.Permanent, "option_open pull of %s refused: it reads live quotes and the date of the clock is %s", day, today)
 	}
+	bs, err := p.batches(ctx, day)
 	if errors.Is(err, errNoPlan) {
 		return nil, newErr(contracts.Retryable, "the plan of %s is gone", day)
 	}
