@@ -40,6 +40,12 @@ class Farms:
         self._probe: str | None = None  # a farm the history probe named broken
         self._broken: str | None = None  # the farm last logged as farm_broken
 
+    def reset(self) -> None:
+        """Forget the farms, the history-probe mark and the logged broken name (a new session)."""
+        self._farms.clear()
+        self._probe = None
+        self._broken = None
+
     def now_ms(self) -> int:
         """Return the unix milliseconds of the injected clock."""
         return int(self._clock.now().timestamp() * 1000)

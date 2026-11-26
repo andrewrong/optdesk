@@ -159,6 +159,7 @@ class Run:
 
     async def start(self) -> tuple[FakeIb, asyncio.Future[None]]:
         gateway, fake = make(self.clock)
+        self.gateway = gateway
         await gateway.open_session()
 
         async def keep(row: QuoteRow) -> None:
@@ -434,3 +435,77 @@ def test_apiend_during_open_session_does_not_report_connected() -> None:
         return (await gateway.status()).connected
 
     assert asyncio.run(run()) is False
+
+
+def test_a_failed_10197_probe_does_not_hold_the_next_session() -> None:
+    async def run() -> tuple[dict[int, str], bool, int]:
+        run = Run()
+        gateway, fake = make(run.clock)
+        await gateway.open_session()
+
+        async def keep(row: QuoteRow) -> None:
+            run.rows[row.con_id] = row
+
+        targets = [QuoteTarget(40, sec_type="STK"), QuoteTarget(42, sec_type="OPT")]
+        calls = 0
+
+        async def failing(_: object) -> bool:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise ConnectionError("socket dropped")
+            return False
+
+        gateway._probe_data = failing  # type: ignore[method-assign,assignment]
+        fake.errorEvent.emit(-1, 10197, "competing session", None)
+        first = asyncio.ensure_future(gateway.quotes(spec.SNAPSHOT, targets, keep))
+        await spin()
+        await run.clock.advance(5)
+        await asyncio.gather(first, return_exceptions=True)
+        await gateway.open_session()
+        run.rows.clear()
+        fake.errorEvent.emit(-1, 10197, "competing session", None)
+        second = asyncio.ensure_future(gateway.quotes(spec.SNAPSHOT, targets, keep))
+        await spin()
+        await run.clock.advance(5)  # the probe runs again and answers False
+        held = not second.done()
+        await run.clock.advance(120)
+        result = await asyncio.gather(second, return_exceptions=True)
+        return run.statuses(), held, int(isinstance(result[0], BaseException))
+
+    statuses, held, raised = asyncio.run(run())
+    assert held
+    assert raised == 0
+    assert set(statuses.values()) == {"disconnected"}
+
+
+def test_open_session_ends_a_quote_waiting_on_the_10197_probe_disconnected() -> None:
+    async def run() -> tuple[dict[int, str], bool]:
+        run = Run()
+        _, task = await run.start()
+        await run.gateway.open_session()
+        await asyncio.wait_for(task, 1)
+        return run.statuses(), task.cancelled()
+
+    statuses, cancelled = asyncio.run(run())
+    assert statuses == {40: "ok", 42: "disconnected"}
+    assert not cancelled
+
+
+def test_open_session_restores_the_line_limit() -> None:
+    async def run() -> tuple[int, int, int]:
+        gateway, fake = await _opened(FakeClock())
+        before = gateway._lines.limit
+        async with gateway._lines.lease(), gateway._lines.lease():
+            fake.errorEvent.emit(-1, 101, "max tickers", None)
+            lowered = gateway._lines.limit
+            waiter = asyncio.ensure_future(gateway._lines.lease().__aenter__())
+            await spin()
+            assert not waiter.done()  # blocked at the lowered limit
+            await gateway.open_session()
+            await asyncio.wait_for(waiter, 1)  # the restored limit lets it in
+        return before, lowered, gateway._lines.limit
+
+    before, lowered, after = asyncio.run(run())
+    assert lowered < before
+    assert after == before

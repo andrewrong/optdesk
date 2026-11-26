@@ -83,13 +83,20 @@ class LineBudget:
     """Leases of market-data lines (or of snapshots in flight), released in finally."""
 
     def __init__(self, limit: int = DEFAULT_LINES) -> None:
-        self._limit = max(1, limit)
+        self._start = self._limit = max(1, limit)
         self._in_use = 0
         self._waiters: list[asyncio.Future[None]] = []
 
     @property
     def limit(self) -> int:
         return self._limit
+
+    def reset(self) -> None:
+        """Restore the limit given to the constructor and wake the waiters."""
+        self._limit = self._start
+        for waiter in self._waiters:
+            if not waiter.done():
+                waiter.set_result(None)
 
     @property
     def in_use(self) -> int:
