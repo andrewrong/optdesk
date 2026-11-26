@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/data_health_page'
+import { DataCheckBlock } from './DataCheckBlock'
 import { CoverageGrid } from './CoverageGrid'
 import { FailuresTable } from './FailuresTable'
 import { GatewayBlock } from './GatewayBlock'
@@ -34,6 +35,7 @@ export function DataHealthView({ payload }: { payload: Payload }) {
           <CoverageGrid datasets={payload.datasets} form={payload.form} />
         </CardContent>
       </Card>
+      {payload.data_check ? <DataCheckBlock check={payload.data_check} /> : null}
       {payload.datasets.some((d) => d.repeated_failures !== undefined) ? (
         <Card>
           <CardHeader>
