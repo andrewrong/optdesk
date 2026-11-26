@@ -106,14 +106,11 @@ def ticker_fields(ticker: Any) -> dict[str, float]:
         number = _first(greeks, attribute, signed=name in _SIGNED_FIELDS)
         if number is not None:
             found[name] = number
-    volume = _first(ticker, "volume", "callVolume", "putVolume")
-    if volume is not None:
+    if (volume := _first(ticker, "volume", "callVolume", "putVolume")) is not None:
         found["volume"] = volume
-    interest = _open_interest(ticker)
-    if interest is not None:
+    if (interest := _open_interest(ticker)) is not None:
         found["open_interest"] = interest
-    moment = getattr(ticker, "time", None)
-    if moment is not None:
+    if (moment := getattr(ticker, "time", None)) is not None:
         found["event_ts"] = float(moment.timestamp())
     return found
 
@@ -191,7 +188,7 @@ class IbGateway:
         self._generation = 0
         self._data_type = 0
         self._jobs: set[_Job] = set()
-        self._soft_lost, self._blocked = 0, False  # code of a soft loss; 10197 seen
+        self._soft_lost, self._blocked, self._opening = 0, False, False
         self._recovery: asyncio.Future[bool] | None = None
         self._lost = asyncio.Event()
         self._account_lock = asyncio.Lock()
@@ -218,26 +215,29 @@ class IbGateway:
         # the library's 1102 handler opens a summary it never cancels (limit 2)
         drop_resubscribe(ib)
         ib.RaiseRequestErrors = True
-        self._ib, self._id_in_use = ib, False
+        self._ib, self._id_in_use, self._opening = ib, False, True
         try:
-            await ib.client.connectAsync(self._host, self._port, self._client_id)
-        except Exception:
+            try:
+                await ib.client.connectAsync(self._host, self._port, self._client_id)
+            except Exception:
+                if self._id_in_use:
+                    raise ClientIdInUse(self._client_id) from None
+                raise
             if self._id_in_use:
-                raise ClientIdInUse(self._client_id) from None
-            raise
-        if self._id_in_use:
-            raise ClientIdInUse(self._client_id)
-        try:
-            async with self._probe_lock:
-                await self._probe()
-        except BaseException:
-            self._ib.disconnect()
-            raise
-        await self._pacer.start()
-        ib.reqMarketDataType(self._wanted_type)
-        self._data_type = self._wanted_type
-        self._generation += 1
-        self._connected = not self._lost.is_set()  # a 1100 in the probe: a 1102 revives
+                raise ClientIdInUse(self._client_id)
+            try:
+                async with self._probe_lock:
+                    await self._probe()
+            except BaseException:
+                self._ib.disconnect()
+                raise
+            await self._pacer.start()
+            ib.reqMarketDataType(self._wanted_type)
+            self._data_type = self._wanted_type
+            self._generation += 1
+            self._connected = not self._lost.is_set()  # a 1100: 1102 revives
+        finally:
+            self._opening = False
 
     async def status(self) -> SessionState:
         return SessionState(
@@ -283,8 +283,8 @@ class IbGateway:
         elif act in (spec.RESTORE, spec.RESTORE_NEW):
             if self._connected or self._soft_lost:  # a socket that ended stays down
                 self._lost = asyncio.Event() if self._lost.is_set() else self._lost
-                self._connected, self._soft_lost = True, 0
-                if act == spec.RESTORE_NEW:  # 1101: a new generation, lines again
+                self._connected, self._soft_lost = not self._opening, 0  # open decides
+                if act == spec.RESTORE_NEW and not self._opening:
                     self._generation += 1
                     for job in list(self._jobs):
                         job.resubscribe()
