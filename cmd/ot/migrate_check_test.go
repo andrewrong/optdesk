@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -50,17 +49,6 @@ func newRepo(t *testing.T) (dir, base string) {
 	writeIn(t, dir, "internal/store/setup/a.go")
 	writeIn(t, dir, "migrations/0001_a.sql")
 	return dir, commitAll(t, dir, "base")
-}
-
-func buildInfo(rev, modified string) *debug.BuildInfo {
-	bi := &debug.BuildInfo{}
-	if rev != "" {
-		bi.Settings = append(bi.Settings, debug.BuildSetting{Key: "vcs.revision", Value: rev})
-	}
-	if modified != "" {
-		bi.Settings = append(bi.Settings, debug.BuildSetting{Key: "vcs.modified", Value: modified})
-	}
-	return bi
 }
 
 func migCheckApp(t *testing.T, applied []int64, dsn string, mErr error) (*app, *bytes.Buffer, *[]int64) {
@@ -122,12 +110,12 @@ func TestMigrateCheckNoCommit(t *testing.T) {
 
 func TestMigrateCheckVersionsFromTree(t *testing.T) {
 	t.Parallel()
-	dir, base := newRepo(t)
+	dir, _ := newRepo(t)
 	writeIn(t, dir, "migrations/0065_x.sql")
 	head := commitAll(t, dir, "two")
 	writeIn(t, dir, "migrations/0099_wt.sql") // working tree only
 	a, _, want := migCheckApp(t, []int64{1, 65}, "dsn", nil)
-	if err := migrateCheck(a, dir, head, buildInfo(base, "")); err != nil {
+	if err := migrateCheck(a, dir, head); err != nil {
 		t.Fatal(err)
 	}
 	if len(*want) != 2 || (*want)[0] != 1 || (*want)[1] != 65 {
@@ -152,7 +140,7 @@ func TestMigrateCheckNoDSNOrConnectError(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			a, _, _ := migCheckApp(t, nil, c.dsn, c.err)
-			err := migrateCheck(a, dir, base, buildInfo(base, ""))
+			err := migrateCheck(a, dir, base)
 			if err == nil {
 				t.Fatal("exit 0")
 			}
@@ -165,22 +153,22 @@ func TestMigrateCheckNoDSNOrConnectError(t *testing.T) {
 
 func TestMigrateCheckZeroFiles(t *testing.T) {
 	t.Parallel()
-	dir, base := newRepo(t)
+	dir, _ := newRepo(t)
 	gitIn(t, dir, "rm", "-q", "-r", "migrations")
 	head := commitAll(t, dir, "none")
 	a, _, _ := migCheckApp(t, nil, "dsn", nil)
-	if err := migrateCheck(a, dir, head, buildInfo(base, "")); err == nil {
+	if err := migrateCheck(a, dir, head); err == nil {
 		t.Fatal("exit 0 with no migration file")
 	}
 }
 
 func TestMigrateCheckOneMissing(t *testing.T) {
 	t.Parallel()
-	dir, base := newRepo(t)
+	dir, _ := newRepo(t)
 	writeIn(t, dir, "migrations/0066_y.sql")
 	head := commitAll(t, dir, "two")
 	a, out, _ := migCheckApp(t, []int64{1}, "dsn", nil)
-	if err := migrateCheck(a, dir, head, buildInfo(base, "")); err == nil {
+	if err := migrateCheck(a, dir, head); err == nil {
 		t.Fatal("exit 0 with a missing version")
 	}
 	if !strings.Contains(out.String(), "missing 66") {
@@ -192,7 +180,7 @@ func TestMigrateCheckAllApplied(t *testing.T) {
 	t.Parallel()
 	dir, base := newRepo(t)
 	a, _, _ := migCheckApp(t, []int64{1}, "dsn", nil)
-	if err := migrateCheck(a, dir, base, buildInfo(base, "")); err != nil {
+	if err := migrateCheck(a, dir, base); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -201,7 +189,7 @@ func TestMigrateCheckExtraTableVersions(t *testing.T) {
 	t.Parallel()
 	dir, base := newRepo(t)
 	a, out, _ := migCheckApp(t, []int64{1, 70}, "dsn", nil)
-	if err := migrateCheck(a, dir, base, buildInfo(base, "")); err != nil {
+	if err := migrateCheck(a, dir, base); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "extra 70") {
@@ -217,39 +205,35 @@ func TestMigrateCheckNoWrite(t *testing.T) {
 	m := a.deps.migrateMissing
 	r := a.deps.readEnv
 	a.deps = deps{migrateMissing: m, readEnv: r}
-	if err := migrateCheck(a, dir, base, buildInfo(base, "")); err != nil {
+	if err := migrateCheck(a, dir, base); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestMigrateCheckSetupChanged(t *testing.T) {
+func TestMigrateCheckSetupChangedAllApplied(t *testing.T) {
 	t.Parallel()
-	dir, base := newRepo(t)
-	writeIn(t, dir, "migrations/0002_b.sql")
-	same := commitAll(t, dir, "migration only")
-	a, _, _ := migCheckApp(t, []int64{1, 2}, "dsn", nil)
-	if err := migrateCheck(a, dir, same, buildInfo(base, "")); err != nil {
-		t.Fatalf("no setup change: %v", err)
-	}
+	dir, _ := newRepo(t)
 	writeIn(t, dir, "internal/store/setup/b.go")
-	changed := commitAll(t, dir, "setup")
-	if err := migrateCheck(a, dir, changed, buildInfo(base, "")); err == nil {
-		t.Fatal("exit 0 though setup changed")
+	writeIn(t, dir, "migrations/0002_b.sql")
+	head := commitAll(t, dir, "setup and migration")
+	a, _, _ := migCheckApp(t, []int64{1, 2}, "dsn", nil)
+	if err := migrateCheck(a, dir, head); err != nil {
+		t.Fatalf("setup changed, all applied: %v", err)
 	}
 }
 
-func TestMigrateCheckBuildInfo(t *testing.T) {
+func TestMigrateCheckSetupChangedMissing(t *testing.T) {
 	t.Parallel()
-	dir, base := newRepo(t)
-	a, _, _ := migCheckApp(t, []int64{1}, "dsn", nil)
-	if err := migrateCheck(a, dir, base, buildInfo("", "")); err == nil {
-		t.Fatal("exit 0 without revision")
+	dir, _ := newRepo(t)
+	writeIn(t, dir, "internal/store/setup/b.go")
+	writeIn(t, dir, "migrations/0002_b.sql")
+	head := commitAll(t, dir, "setup and migration")
+	a, out, _ := migCheckApp(t, []int64{1}, "dsn", nil)
+	if err := migrateCheck(a, dir, head); err == nil {
+		t.Fatal("exit 0 with version 2 not applied")
 	}
-	if err := migrateCheck(a, dir, base, buildInfo(base, "true")); err == nil {
-		t.Fatal("exit 0 with vcs.modified")
-	}
-	if err := migrateCheck(a, dir, base, nil); err == nil {
-		t.Fatal("exit 0 without build info")
+	if !strings.Contains(out.String(), "missing 2") {
+		t.Fatalf("stdout %q", out)
 	}
 }
 
@@ -278,9 +262,9 @@ func originAndClone(t *testing.T) (clone, base, head string) {
 
 func TestMigrateCheckFetchesMissingCommit(t *testing.T) {
 	t.Parallel()
-	clone, base, head := originAndClone(t)
+	clone, _, head := originAndClone(t)
 	a, _, want := migCheckApp(t, []int64{1, 2}, "dsn", nil)
-	if err := migrateCheck(a, clone, head, buildInfo(base, "")); err != nil {
+	if err := migrateCheck(a, clone, head); err != nil {
 		t.Fatal(err)
 	}
 	if len(*want) != 2 || (*want)[1] != 2 {
@@ -290,10 +274,10 @@ func TestMigrateCheckFetchesMissingCommit(t *testing.T) {
 
 func TestMigrateCheckMissingCommitFailsClosed(t *testing.T) {
 	t.Parallel()
-	clone, base, _ := originAndClone(t)
+	clone, _, _ := originAndClone(t)
 	const absent = "0123456789abcdef0123456789abcdef01234567"
 	a, _, _ := migCheckApp(t, []int64{1}, "dsn", nil)
-	err := migrateCheck(a, clone, absent, buildInfo(base, ""))
+	err := migrateCheck(a, clone, absent)
 	if err == nil || !strings.Contains(err.Error(), absent) {
 		t.Fatalf("err %v", err)
 	}
