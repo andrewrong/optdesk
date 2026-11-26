@@ -65,7 +65,7 @@ Four interface changes, each its own entry and landing before the issues that us
 - contracts: the `source` enum of `obs.earnings_date` r1 gains `yfinance` (an additive value; schema, fixture and generated type together).
 - store: the two `source` checks accept `yfinance` (migration 0072; no table shape change).
 - pyside: `pyside/src/optdesk/refearn/api.py` declares `Request`, `SymbolResult`, `Answer` and the error codes of the command (new file, declarations only).
-- sources: the comment of `EarningsConfig` says `Symbols` are the symbols the source is asked for (JP codes for J-Quants, the symbols of the entries without a date for yfinance). No type or signature changes.
+- sources: the comment of `EarningsConfig` says `Symbols` are the symbols the source is asked for (JP codes for J-Quants, the symbols of the entries without a date for yfinance). No type or signature changes. The command runner is not part of `EarningsConfig`: the yfinance constructor takes `yfinance.CommandFunc` (declared in `internal/sources/yfinance/command.go`) as its own argument, `NewEarnings(market string, run CommandFunc, cfg sources.EarningsConfig)`.
 
 ## Failure paths
 
@@ -132,7 +132,7 @@ Acceptance:
 Module: sources. Size: M. Order: after 4 and 5. Design: docs/design/earnings-fallback.md#decisions. Files: `internal/sources/yfinance/earnings.go`, `internal/sources/yfinance/earnings_test.go`, `internal/sources/yfinance/testdata/earnings_answer.json`.
 
 Acceptance:
-1. `internal/sources/yfinance/earnings.go` (new) declares `NewEarnings(market string, cfg sources.EarningsConfig) (sources.EarningsSource, error)`; the returned source runs the `optdesk.refearn` command through the existing `CommandFunc`, one request of at most 10 symbols per batch, and stops asking at the first answer with `rate_limited`.
+1. `internal/sources/yfinance/earnings.go` (new) declares `NewEarnings(market string, run CommandFunc, cfg sources.EarningsConfig) (sources.EarningsSource, error)`, where `CommandFunc` is the type the yfinance package already declares (a test passes a fake, the wiring passes `Exec`); the returned source runs the `optdesk.refearn` command through `run`, one request of at most 10 symbols per batch, and stops asking at the first answer with `rate_limited`.
 2. `Fetch` returns one `sources.EarningsListing` per date of a result with an empty `error_code` (symbol as asked, `ReportDate` the date, the other fields empty); a result with an error code gives no listing; if every batch fails it returns a `CodedError` with the first code (`rate_limited`, `network`, `timeout`, `source_changed`, or `no_data` when all results say so), and a partly answered request returns the listings it has with no error.
 3. `earnings_test.go` (new) uses `testdata/earnings_answer.json` and a fake `CommandFunc`: one batch, 25 symbols split into batches of 10, a rate limit in the second batch that stops the third, a non-zero exit code, and a bad JSON answer. No test starts a process or reaches the network, and none sleeps.
 4. The error returned and the source hold no address and no environment value, as the other sources.
@@ -156,7 +156,7 @@ Acceptance:
 Module: ot. Size: S. Order: after 7. Design: docs/design/earnings-fallback.md#decisions. Files: `cmd/ot/wire_earnings.go`, `cmd/ot/wire_earnings_test.go`.
 
 Acceptance:
-1. In `cmd/ot/wire_earnings.go`, `earningsRefresh` wraps the job it builds with `earningsrefresh.WithFallback`, giving a maker that builds `yfinance.NewEarnings(market, sources.EarningsConfig{Symbols: symbols})` over the same command runner the bars fallback uses (`cmd/ot/wire_barsfallback.go`); `earningsOff` is unchanged, so with no Alpha Vantage key the job is still left out as before.
+1. In `cmd/ot/wire_earnings.go`, `earningsRefresh` wraps the job it builds with `earningsrefresh.WithFallback`, giving a maker that builds `yfinance.NewEarnings(market, run, sources.EarningsConfig{Symbols: symbols})` with `run` the `yfinance.Exec` of `internal/sources/yfinance/command.go` (the real `CommandFunc` the bars source also runs); `earningsOff` is unchanged, so with no Alpha Vantage key the job is still left out as before.
 2. `wire_earnings_test.go` has a case (new) that builds the job with a fake command runner and a fake primary source that lists nothing, and sees the row written with source `yfinance`; and a case with a failing runner that sees the primary row written.
 3. No setting, environment name or key is added, and `cmd/ot/runonce.go` is not edited.
 4. Docs: docs/design/earnings-fallback.md#decisions.
