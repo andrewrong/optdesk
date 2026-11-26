@@ -61,6 +61,7 @@ type job struct {
 	loc      *time.Location
 	tr       symbol.Translator
 	log      *slog.Logger
+	fallback FallbackMaker // nil means none (WithFallback)
 	// memo holds, per day, what the first Run of this instance did: one Plan makes one Fetch per source.
 	mu   sync.Mutex
 	memo map[contracts.Day]outcome
@@ -92,10 +93,12 @@ func (j *job) logFailure(step string, err error) {
 	j.log.Warn("run failed", "step", step, "kind", kind)
 }
 
-// vendor is the row source of a market's EarningsSource.
+// vendor is the row source of a market's EarningsSource; the yfinance entry is only the source text the fallback
+// writes and is no market (a watch entry's market must be US or JP).
 var vendor = map[string]contracts.EarningsDate{
-	"US": {Market: "US", Source: "alphavantage"},
-	"JP": {Market: "JP", Source: "jquants"},
+	"US":       {Market: "US", Source: "alphavantage"},
+	"JP":       {Market: "JP", Source: "jquants"},
+	"yfinance": {Source: "yfinance"},
 }
 
 var _ NewEarningsRefreshSymbolsFunc = NewWithSymbols
@@ -136,7 +139,7 @@ func NewWithSymbols(
 		if e.Issuer == "" || seen[e.Issuer] {
 			return nil, errors.New("earningsrefresh: an entry needs a unique issuer")
 		}
-		if _, ok := vendor[e.Market]; !ok {
+		if e.Market != "US" && e.Market != "JP" {
 			return nil, errors.New("earningsrefresh: market must be US or JP")
 		}
 		seen[e.Issuer] = true
@@ -286,6 +289,7 @@ func (j *job) fetchAndWrite(ctx context.Context, day contracts.Day, observed *ty
 	}
 	fetched, failed := j.fetchPending(ctx, day, pending, base)
 	rows = append(rows, fetched...)
+	j.applyFallback(ctx, day, rows)
 	return outcome{res: j.write(ctx, up, replay, "earnings_refresh:"+string(day), rows), failed: failed}
 }
 
