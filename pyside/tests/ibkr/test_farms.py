@@ -10,6 +10,7 @@ from kit.fakeclock import FakeClock
 from test_ibgateway import FakeIb, probe_passes
 
 from optdesk.ibkr.farms import Farms, farm_word
+from optdesk.ibkr.health_constants import FARM_GRACE_S
 from optdesk.ibkr.session_probe import ProbedGateway
 
 
@@ -94,3 +95,47 @@ class TestFarmCodes:
         assert [r.getMessage() for r in caplog.records] == [
             "farm_code gateway=main code=2105 farm=ushmds"
         ]
+
+
+def test_reset_clears_the_farms_and_the_probe_mark() -> None:
+    board = _board()
+    board.record(2105, "x:ushmds", board.now_ms())
+    board.probe_broken("ushmds")
+    assert board.state(True, False) == "farm_broken"
+    board.reset()
+    assert board.snapshot() == ()
+    assert board.state(True, False) == "up"
+
+
+def test_a_farm_down_before_an_outage_does_not_break_the_new_session() -> None:
+    async def run() -> tuple[str, tuple[tuple[str, bool], ...]]:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+        gateway = ProbedGateway(
+            lambda client: None,
+            host="h",
+            port=1,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: fake,
+            readonly_probe=probe_passes,
+            name="main",
+        )
+        await gateway.open_session()
+        fake.errorEvent.emit(
+            -1, 2105, "HMDS data farm connection is broken:ushmds", None
+        )
+        await clock.advance(FARM_GRACE_S + 1)
+        assert (await gateway.status()).state == "farm_broken"
+
+        async def connect(host: str, port: int, client_id: int) -> None:
+            fake.errorEvent.emit(
+                -1, 2103, "Market data farm connection is broken:usfarm", None
+            )
+
+        fake.client.connectAsync = connect  # type: ignore[method-assign]
+        await gateway.open_session()
+        state = await gateway.status()
+        return state.state, tuple((f.name, f.up) for f in state.farms)
+
+    assert asyncio.run(run()) == ("up", (("usfarm", False),))

@@ -141,6 +141,11 @@ class ProbedGateway(ListingGateway):
             self.farms.record(code, text, self.farms.now_ms())
         super()._on_error(req_id, code, text, contract)
 
+    async def open_session(self) -> None:
+        """Start with an empty farm board; a code of the connect itself is kept."""
+        self.farms.reset()
+        await super().open_session()
+
     async def status(self) -> SessionState:
         base = await super().status()
         return base._replace(
