@@ -103,7 +103,7 @@ func TestAboveBuyMarkCarriesItsSentence(t *testing.T) {
 	if !ok {
 		t.Fatalf("cell = %#v", marksCell(c))
 	}
-	if want := []string{"above_buy_price Strike is above the buy price"}; !reflect.DeepEqual(cell.Badges, want) {
+	if want := []string{"above_buy_price · Strike is above the buy price"}; !reflect.DeepEqual(cell.Badges, want) {
 		t.Errorf("badges = %v", cell.Badges)
 	}
 }
