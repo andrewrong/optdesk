@@ -499,7 +499,11 @@ def test_open_session_restores_the_line_limit() -> None:
         async with gateway._lines.lease(), gateway._lines.lease():
             fake.errorEvent.emit(-1, 101, "max tickers", None)
             lowered = gateway._lines.limit
-        await gateway.open_session()
+            waiter = asyncio.ensure_future(gateway._lines.lease().__aenter__())
+            await spin()
+            assert not waiter.done()  # blocked at the lowered limit
+            await gateway.open_session()
+            await asyncio.wait_for(waiter, 1)  # the restored limit lets it in
         return before, lowered, gateway._lines.limit
 
     before, lowered, after = asyncio.run(run())
