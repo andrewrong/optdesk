@@ -24,7 +24,7 @@ min_dte = 21 # trial
 # near the 45 DTE entry of that practice and leaves room for the next monthly expiry.
 max_dte = 60 # trial
 min_bid_size = 1 # trial
-max_spread = "0.10" # trial: 10 percent of mid
+max_spread = "0.30" # trial: 30 percent of mid
 min_open_interest = 10 # trial
 div_guard_factor = "1.0"
 max_rate_age_days = 7
