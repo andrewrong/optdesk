@@ -424,3 +424,19 @@ def test_no_start_with_three_unresolved_timeouts() -> None:
         return held, bool(started)
 
     assert asyncio.run(run()) == (True, True)
+
+
+def test_reset_restores_the_limit_after_a_101_shrink() -> None:
+    async def run() -> tuple[int, int, bool]:
+        budget = LineBudget(DEFAULT_LINES)
+        async with budget.lease(), budget.lease():
+            budget.shrink(101)
+            lowered = budget.limit
+            waiter = asyncio.ensure_future(budget.lease().__aenter__())
+            await asyncio.sleep(0)
+            blocked = not waiter.done()
+            budget.reset()
+            await asyncio.wait_for(waiter, 1)
+            return lowered, budget.limit, blocked
+
+    assert asyncio.run(run()) == (1, DEFAULT_LINES, True)

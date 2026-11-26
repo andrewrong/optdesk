@@ -293,3 +293,86 @@ func TestGatewaysVerdictOutsideEnum(t *testing.T) {
 		t.Fatal(`verdict "farm_broken" accepted`)
 	}
 }
+
+func dataCheckFindings(m map[string]any) []any {
+	return m["data_check"].(map[string]any)["findings"].([]any)
+}
+
+// TestDataCheckFixtureValidates: the datacheck fixture passes and holds one finding of each severity, one new, and no gap.
+func TestDataCheckFixtureValidates(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "datacheck")
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("datacheck fixture refused")
+	}
+	sev, isNew := map[any]bool{}, 0
+	for _, f := range dataCheckFindings(m) {
+		fm := f.(map[string]any)
+		sev[fm["severity"]] = true
+		if fm["is_new"] == true {
+			isNew++
+		}
+	}
+	if len(sev) != 3 || isNew == 0 || len(m["gaps"].([]any)) != 0 {
+		t.Fatalf("severities %v, new %d, gaps %v", sev, isNew, m["gaps"])
+	}
+}
+
+// TestDataCheckRejectsUnknownField: a finding, the block or the counts with an extra key fails.
+func TestDataCheckRejectsUnknownField(t *testing.T) {
+	t.Parallel()
+	muts := map[string]func(m map[string]any){
+		"finding": func(m map[string]any) { dataCheckFindings(m)[0].(map[string]any)["extra"] = 1 },
+		"block":   func(m map[string]any) { m["data_check"].(map[string]any)["extra"] = 1 },
+		"counts":  func(m map[string]any) { m["data_check"].(map[string]any)["counts"].(map[string]any)["extra"] = 1 },
+	}
+	for name, mut := range muts {
+		m := dataHealthFixture(t, "datacheck")
+		mut(m)
+		if pageV1Valid(t, dataHealthPageV1, m) {
+			t.Errorf("%s with an extra key accepted", name)
+		}
+	}
+}
+
+// TestDataCheckSeverityEnum: the three severities pass and "fatal" fails.
+func TestDataCheckSeverityEnum(t *testing.T) {
+	t.Parallel()
+	for _, v := range []string{"error", "warn", "unknown"} {
+		m := dataHealthFixture(t, "datacheck")
+		dataCheckFindings(m)[0].(map[string]any)["severity"] = v
+		if !pageV1Valid(t, dataHealthPageV1, m) {
+			t.Errorf("severity %q refused", v)
+		}
+	}
+	m := dataHealthFixture(t, "datacheck")
+	dataCheckFindings(m)[0].(map[string]any)["severity"] = "fatal"
+	if pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal(`severity "fatal" accepted`)
+	}
+}
+
+// TestDataCheckOptionalNullableAndGap: data_check may be absent or null, and the new gap reason passes.
+func TestDataCheckOptionalNullableAndGap(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "datacheck")
+	m["data_check"] = nil
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Error("null data_check refused")
+	}
+	delete(m, "data_check")
+	m["gaps"] = []any{map[string]any{"kind": "gap", "reason": "data_check_unavailable", "text": "Invented gap text."}}
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Error("absent data_check or data_check_unavailable gap refused")
+	}
+}
+
+// TestOldFixturesStillValidate: the fixtures written before data_check still pass.
+func TestOldFixturesStillValidate(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"ok", "gap", "gateways"} {
+		if !pageV1Valid(t, dataHealthPageV1, dataHealthFixture(t, name)) {
+			t.Errorf("%s refused", name)
+		}
+	}
+}

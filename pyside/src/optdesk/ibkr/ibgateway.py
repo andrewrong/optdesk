@@ -12,6 +12,7 @@ exception: type name and message only) and `quote_done` (one INFO line per contr
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import replace
@@ -102,11 +103,7 @@ def ticker_fields(ticker: Any) -> dict[str, float]:
             found[name] = number
     greeks = getattr(ticker, "modelGreeks", None)
     for name, attribute in _GREEK_FIELDS:
-        number = (
-            _first(greeks, attribute, signed=name in _SIGNED_FIELDS)
-            if greeks is not None
-            else None
-        )
+        number = _first(greeks, attribute, signed=name in _SIGNED_FIELDS)
         if number is not None:
             found[name] = number
     volume = _first(ticker, "volume", "callVolume", "putVolume")
@@ -207,6 +204,11 @@ class IbGateway:
         previous = self._ib
         self._connected, self._soft_lost, self._blocked = False, 0, False
         self._lost = asyncio.Event()
+        if self._recovery is not None:  # a probe of the old session ends with it
+            self._recovery.cancel()
+            self._recovery = None
+        self._lines.reset()
+        self._snapshots.reset()
         if previous is not None:
             previous.disconnect()
         ib = self._make_ib()
@@ -218,11 +220,7 @@ class IbGateway:
         ib.RaiseRequestErrors = True
         self._ib, self._id_in_use = ib, False
         try:
-            await ib.client.connectAsync(
-                self._host,
-                self._port,
-                self._client_id,
-            )
+            await ib.client.connectAsync(self._host, self._port, self._client_id)
         except Exception:
             if self._id_in_use:
                 raise ClientIdInUse(self._client_id) from None
@@ -233,8 +231,7 @@ class IbGateway:
             async with self._probe_lock:
                 await self._probe()
         except BaseException:
-            stale = self._ib
-            stale.disconnect()
+            self._ib.disconnect()
             raise
         await self._pacer.start()
         ib.reqMarketDataType(self._wanted_type)
@@ -259,12 +256,11 @@ class IbGateway:
             job.wake()
 
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:
-        if code == _CLIENT_ID_IN_USE and not self._connected:
-            self._id_in_use = True
+        self._id_in_use |= code == _CLIENT_ID_IN_USE and not self._connected
         if code == 100:  # max message rate: log the load of the last second
             _log.warning("error_100 starts=%d cancels=%d", *self._pacer.last_second())
-        con_id = getattr(contract, "conId", 0)
-        if not con_id and code in spec.SESSION_CODES:
+        con_id = getattr(contract, "conId", 0) * (code != spec.CODE_COMPETING_SESSION)
+        if not con_id and code in spec.SESSION_CODES:  # 10197 is per request: no gate
             self._session_code(code, text)
             return
         if spec.is_informational(code):
@@ -309,8 +305,14 @@ class IbGateway:
             self._recovery = asyncio.ensure_future(
                 spec.probe_until_back(self._clock, partial(self._probe_data, targets))
             )
-        back = await asyncio.shield(self._recovery)
-        self._recovery, self._blocked = None, self._blocked and not back
+        recovery = self._recovery
+        try:
+            await asyncio.wait({recovery})  # a caller cancelled leaves it running
+            back = not recovery.cancelled() and recovery.result()  # new session: no
+        finally:
+            if recovery.done() and self._recovery is recovery:
+                self._recovery = None
+        self._blocked = self._blocked and not back
         return back
 
     async def _probe_data(self, targets: Sequence[QuoteTarget]) -> bool:
@@ -507,10 +509,8 @@ class IbGateway:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     def _cancel(self, ib: Any, contract: Any) -> None:
-        try:
+        with contextlib.suppress(ConnectionError):  # the session is gone, its lines too
             ib.cancelMktData(contract)
-        except ConnectionError:
-            pass  # the session is gone; its lines went with it
 
     async def _quote(
         self, row_spec: spec.KindSpec, target: QuoteTarget, generation: int

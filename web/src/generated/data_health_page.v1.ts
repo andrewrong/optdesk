@@ -38,6 +38,7 @@ export interface DataHealthPage {
   failures_none_text?: Text;
   running?: Running[];
   gateways?: Gateway[];
+  data_check?: DataCheck | null;
 }
 export interface Form {
   post_path: "/owner-job-console";
@@ -127,7 +128,7 @@ export interface GlossaryRow {
 }
 export interface Gap {
   kind: "gap";
-  reason: "coverage_unavailable" | "failures_unavailable";
+  reason: "coverage_unavailable" | "failures_unavailable" | "data_check_unavailable";
   text: string;
 }
 export interface Running {
@@ -150,4 +151,31 @@ export interface Gateway {
 export interface GatewayFarm {
   name: Text;
   up: boolean;
+}
+export interface DataCheck {
+  check_day: Day | "";
+  finished_at: string | "";
+  none_text: Optional;
+  rules_total: Count;
+  rules_unknown: Count;
+  title: Text;
+  note: Text;
+  counts: DataCheckCounts;
+  findings: DataCheckFinding[];
+}
+export interface DataCheckCounts {
+  error: Count;
+  warn: Count;
+  unknown: Count;
+}
+export interface DataCheckFinding {
+  rule: Text;
+  label: Text;
+  dataset: Text;
+  day: Day;
+  severity: "error" | "warn" | "unknown";
+  severity_text: Text;
+  is_new: boolean;
+  evidence_text: Text;
+  why_text: Text;
 }
