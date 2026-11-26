@@ -486,3 +486,52 @@ func TestPlanRerunWritesNewPlanID(t *testing.T) {
 		}
 	}
 }
+
+type countingBars struct {
+	fakeBars
+	asked *int
+}
+
+func (c countingBars) PriceBars(ctx context.Context, id int64, k string, from, to contracts.Day) ([]contracts.PriceBar, error) {
+	*c.asked++
+	return c.fakeBars.PriceBars(ctx, id, k, from, to)
+}
+
+func TestPlanOfAPastDayIsRefused(t *testing.T) {
+	t.Parallel()
+	check := func(t *testing.T, j contracts.Job, day, today string, bars *int, h *fakeHistory, p *fakePlans, rs *fakeReasons) {
+		t.Helper()
+		res := j.Run(context.Background(), contracts.Day(day), nil)
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent ||
+			!strings.Contains(res.Err.Error(), day) || !strings.Contains(res.Err.Error(), today) {
+			t.Fatalf("err = %v, want Permanent naming %s and %s", res.Err, day, today)
+		}
+		if *bars != 0 || h.asked != 0 || len(p.items) != 0 || len(rs.of(contracts.Day(day), PlanDatasetID, "us")) != 0 ||
+			len(rs.of(contracts.Day(day), PlanDatasetID, "jp")) != 0 {
+			t.Fatalf("store reads %d, broker asks %d, plan rows %d, reasons written", *bars, h.asked, len(p.items))
+		}
+	}
+	t.Run("us", func(t *testing.T) {
+		t.Parallel()
+		r := newPlanRig()
+		n := 0
+		r.bars = fakeBars{}
+		rs, h := &fakeReasons{}, &fakeHistory{}
+		r.seed(t, 100, putStrikes...)
+		j := r.jobWith(t, PlanDeps{Reasons: rs, History: h}, "AAPL")
+		j.(*planJob).d.Bars = countingBars{asked: &n}
+		r.clk.t = time.Date(2026, 11, 26, 15, 0, 0, 0, time.UTC)
+		check(t, j, "2026-11-25", "2026-11-26", &n, h, r.plans, rs)
+	})
+	t.Run("jp", func(t *testing.T) {
+		t.Parallel()
+		r, j := jpPlanRig(t, planManifestJP, "7203")
+		n := 0
+		h, rs := &fakeHistory{}, &fakeReasons{}
+		pj := j.(*planJob)
+		pj.d.Bars, pj.d.History, pj.d.Reasons = countingBars{asked: &n}, h, rs
+		// 23:15 UTC of the 25th is already the 26th in Tokyo: the UTC date is not the date of the zone.
+		r.clk.t = time.Date(2026, 11, 25, 23, 15, 0, 0, time.UTC)
+		check(t, j, "2026-11-25", "2026-11-26", &n, h, r.plans, rs)
+	})
+}
