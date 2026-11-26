@@ -31,12 +31,14 @@ func TestDataCheckGrants(t *testing.T) {
 			t.Errorf("%s as ot_w_datacheck: %v", name, err)
 		}
 	}
-	for _, tbl := range []string{"run", "finding", "notice"} {
+	// col is a plain column of each table: an identity column is refused by the rewriter before any privilege check.
+	for _, tc := range []struct{ tbl, col string }{{"run", "rules_total"}, {"finding", "rule"}, {"notice", "noticed_at"}} {
+		tbl := tc.tbl
 		if err := asRole(ctx, t, c, "ot_w_datacheck", `SELECT * FROM datacheck.`+tbl); err != nil {
 			t.Errorf("select %s as ot_w_datacheck: %v", tbl, err)
 		}
 		for name, q := range map[string]string{
-			"update":   `UPDATE datacheck.` + tbl + ` SET run_id = run_id`,
+			"update":   `UPDATE datacheck.` + tbl + ` SET ` + tc.col + ` = ` + tc.col,
 			"delete":   `DELETE FROM datacheck.` + tbl,
 			"truncate": `TRUNCATE datacheck.` + tbl,
 		} {
