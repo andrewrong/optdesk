@@ -146,12 +146,12 @@ Entry 1 (module store, new package `internal/store/finding`, `api.go` declaratio
 Entry 2 (module contracts): the optional field of `page.data_health_page.v1`:
 
     data_check: null or {
-      check_day, finished_at (Text), rules_total, rules_unknown (Count), title, note, none_text (Text),
+      check_day, finished_at, none_text (Optional: empty allowed), rules_total, rules_unknown (Count), title, note (Text),
       counts: {error, warn, unknown} (Count),
       findings: [{rule, label, dataset, day, severity, severity_text, is_new, evidence_text, why_text}]
     }
 
-`data_check` is null only when the builder has no reader or the reader fails; when `datacheck.run` has no run, `data_check` is an object with `none_text` "还没有检查结果", empty `findings`, zero counts and empty `check_day` and `finished_at`, and the block then shows `none_text`; the gap enum gains `data_check_unavailable`. Entries 9 and 10 read only this schema; the Go view-model types stay inside `internal/pages/data_health_page`.
+`data_check` is null only when the builder has no reader or the reader fails; when `datacheck.run` has no run, `data_check` is an object with `none_text` "还没有检查结果", empty `findings`, zero counts and empty `check_day` and `finished_at`, and the block then shows `none_text`; when there is a run the builder writes `none_text` empty, so the web shows `none_text` exactly when it is non-empty and decides nothing itself; the gap enum gains `data_check_unavailable`. Entries 9 and 10 read only this schema; the Go view-model types stay inside `internal/pages/data_health_page`.
 
 Entry 6 (module jobs): package `internal/jobs/datacheck`, exported surface only:
 
@@ -322,8 +322,8 @@ Contracts: unchanged
 Design: docs/design/data-check.md#Decisions (12)
 Acceptance:
 1. `DataCheckBlock` renders the `title`, the `note`, the last run line (`check_day`, `finished_at`, `rules_unknown` of `rules_total`), the three counts, and one row per finding with the label, dataset, day, `severity_text`, `evidence_text` and `why_text` as given, and a `新` mark when `is_new`; it computes, sorts and words nothing.
-2. With `data_check` holding no run (empty `findings` and `check_day`) the block shows `none_text`; with `data_check` null the block is not rendered; with `data_check` absent (an older document) the block is not rendered; `DataHealthPage.tsx` renders it under the coverage grid.
-3. `data_check.test.tsx` has `TestRendersFindingsAsGiven` (new) asserting: the fixture `datacheck.json` renders every `evidence_text`), `TestNullShowsNoneText` (new) and `TestAbsentRendersNothing` (new); `tsc`, `eslint`, `vitest` and the build pass (CI).
+2. With `data_check` whose `none_text` is non-empty (the builder's no-run object) the block shows `none_text` and no findings table; with `data_check` null the block is not rendered; with `data_check` absent (an older document) the block is not rendered; `DataHealthPage.tsx` renders it under the coverage grid.
+3. `data_check.test.tsx` has `TestRendersFindingsAsGiven` (new) asserting: the fixture `datacheck.json` renders every `evidence_text`), `TestNoRunShowsNoneText` (new: a `data_check` with non-empty `none_text` and empty `findings` shows `none_text`), `TestNullRendersNothing` (new: a null `data_check` renders no block) and `TestAbsentRendersNothing` (new); `tsc`, `eslint`, `vitest` and the build pass (CI).
 
 ### 11 data-check-wiring
 
