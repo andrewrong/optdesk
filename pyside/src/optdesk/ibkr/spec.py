@@ -64,6 +64,11 @@ SESSION_CODES = frozenset(
 )
 
 
+def soft_cause(held: int, code: int) -> int:
+    """The code a soft loss is held under: a 1100 stays a 1100, a 2110 gives way to it."""
+    return CODE_CONNECTIVITY_LOST if CODE_CONNECTIVITY_LOST in (held, code) else code
+
+
 @dataclass(frozen=True)
 class KindSpec:
     """How one kind of quote is requested and when it is complete."""

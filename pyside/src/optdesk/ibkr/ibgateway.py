@@ -195,8 +195,7 @@ class IbGateway:
         self._generation = 0
         self._data_type = 0
         self._jobs: set[_Job] = set()
-        self._soft_lost = self._blocked = False  # 1100 or 2110 / 10197 seen
-        self._soft_code = 0  # the code that started the soft loss
+        self._soft_lost, self._blocked = 0, False  # code of a soft loss; 10197 seen
         self._recovery: asyncio.Future[bool] | None = None
         self._lost = asyncio.Event()
         self._account_lock = asyncio.Lock()
@@ -207,10 +206,8 @@ class IbGateway:
     async def open_session(self) -> None:
         """Connect behind the guard and set the market-data type once."""
         previous = self._ib
-        self._connected = False
+        self._connected, self._soft_lost, self._blocked = False, 0, False
         self._lost = asyncio.Event()
-        self._soft_lost = self._blocked = False
-        self._soft_code = 0
         if previous is not None:
             previous.disconnect()
         ib = self._make_ib()
@@ -220,8 +217,7 @@ class IbGateway:
         # the library's 1102 handler opens a summary it never cancels (limit 2)
         drop_resubscribe(ib)
         ib.RaiseRequestErrors = True
-        self._ib = ib
-        self._id_in_use = False
+        self._ib, self._id_in_use = ib, False
         try:
             await ib.client.connectAsync(
                 self._host,
@@ -252,16 +248,13 @@ class IbGateway:
             self._connected,
             self._generation,
             self._data_type,
-            soft_lost=self._soft_lost and not self._connected,
+            soft_lost=bool(self._soft_lost) and not self._connected,
         )
 
-    def _on_end(self, ib: Any, *, soft: bool = False) -> None:
+    def _on_end(self, ib: Any, *, soft: int = 0) -> None:
         if self._ib is not ib:
             return
-        self._connected = False
-        self._soft_lost = soft
-        if not soft:
-            self._soft_code = 0
+        self._connected, self._soft_lost = False, soft
         self._lost.set()
         for job in self._jobs:
             job.wake()
@@ -271,12 +264,13 @@ class IbGateway:
             self._id_in_use = True
         if code == 100:  # max message rate: log the load of the last second
             _log.warning("error_100 starts=%d cancels=%d", *self._pacer.last_second())
-        if code in spec.CODES_FARM_OK and self._soft_code == spec.CODE_SERVER_LOST:
-            self._revive(code)  # the end of a 2110 is a farm-ok code
         con_id = getattr(contract, "conId", 0)
         if not con_id and code in spec.SESSION_CODES:
+            _log.info("session_code code=%d", code)
             self._session_code(code, text)
             return
+        if code in spec.CODES_FARM_OK and self._soft_lost == spec.CODE_SERVER_LOST:
+            self._session_code(spec.CODE_DATA_KEPT, text)  # ends a 2110, like a 1102
         if spec.is_informational(code):
             return
         if spec.classify_error(code).shrink_budget:
@@ -288,30 +282,18 @@ class IbGateway:
                 if job.on_error is not None:
                     job.on_error(code, text)
 
-    def _revive(self, code: int) -> None:
-        """End a soft loss: connected again; a 1101 is a new generation."""
-        if not (self._connected or self._soft_lost):
-            return  # the socket ended: it stays down
-        self._lost = asyncio.Event() if self._lost.is_set() else self._lost
-        self._connected, self._soft_lost, self._soft_code = True, False, 0
-        if code == spec.CODE_DATA_LOST:  # 1101: a new generation, lines again
-            self._generation += 1
-            for job in list(self._jobs):
-                job.resubscribe()
-
     def _session_code(self, code: int, text: str) -> None:
-        _log.info("session_code code=%d", code)
         if code in _SESSION_LOSS_CODES:  # 1100 and 2110: the session is lost
-            started = self._soft_code if self._soft_lost else 0
-            self._on_end(self._ib, soft=True)
-            # a 1100 stays a 1100: only a 1101 or 1102 ends it
-            self._soft_code = (
-                spec.CODE_CONNECTIVITY_LOST
-                if spec.CODE_CONNECTIVITY_LOST in (code, started)
-                else code
-            )
+            self._on_end(self._ib, soft=spec.soft_cause(self._soft_lost, code))
         elif code in (spec.CODE_DATA_LOST, spec.CODE_DATA_KEPT):
-            self._revive(code)
+            if not (self._connected or self._soft_lost):
+                return  # the socket ended: it stays down
+            self._lost = asyncio.Event() if self._lost.is_set() else self._lost
+            self._connected, self._soft_lost = True, 0
+            if code == spec.CODE_DATA_LOST:  # 1101: a new generation, lines again
+                self._generation += 1
+                for job in list(self._jobs):
+                    job.resubscribe()
         else:  # 10197
             self._blocked = True  # the quotes in hand stay, the lines are cancelled
             for job in list(self._jobs):
