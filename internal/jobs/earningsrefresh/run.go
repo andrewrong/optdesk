@@ -93,10 +93,12 @@ func (j *job) logFailure(step string, err error) {
 	j.log.Warn("run failed", "step", step, "kind", kind)
 }
 
-// vendor is the row source of a market's EarningsSource.
+// vendor is the row source of a market's EarningsSource; the yfinance entry is only the source text the fallback
+// writes and is no market (a watch entry's market must be US or JP).
 var vendor = map[string]contracts.EarningsDate{
-	"US": {Market: "US", Source: "alphavantage"},
-	"JP": {Market: "JP", Source: "jquants"},
+	"US":       {Market: "US", Source: "alphavantage"},
+	"JP":       {Market: "JP", Source: "jquants"},
+	"yfinance": {Source: "yfinance"},
 }
 
 var _ NewEarningsRefreshSymbolsFunc = NewWithSymbols
@@ -137,7 +139,7 @@ func NewWithSymbols(
 		if e.Issuer == "" || seen[e.Issuer] {
 			return nil, errors.New("earningsrefresh: an entry needs a unique issuer")
 		}
-		if _, ok := vendor[e.Market]; !ok {
+		if e.Market != "US" && e.Market != "JP" {
 			return nil, errors.New("earningsrefresh: market must be US or JP")
 		}
 		seen[e.Issuer] = true

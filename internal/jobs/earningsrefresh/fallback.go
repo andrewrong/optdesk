@@ -9,9 +9,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 )
 
-// fallbackSource is the row source the fallback writes (docs/design/earnings-fallback.md Decision 2).
-const fallbackSource = "yfinance"
-
 // FallbackMaker builds the fallback source of one market for the symbols of the entries the primary left without
 // a date.
 type FallbackMaker func(market string, symbols []string) (sources.EarningsSource, error)
@@ -67,7 +64,7 @@ func (j *job) applyFallback(ctx context.Context, day contracts.Day, rows []contr
 		for n, i := range idx {
 			if d := earliestAsked(listings, symbols[n], string(day)); d != "" {
 				if pd, err := date(d); err == nil {
-					rows[i].Status, rows[i].Source, rows[i].ReportDate = "listed", fallbackSource, pd
+					rows[i].Status, rows[i].Source, rows[i].ReportDate = "listed", vendor["yfinance"].Source, pd
 					rows[i].ErrorCode, rows[i].TimeOfDay = "", ""
 					rows[i].FiscalPeriodEnd, rows[i].Estimate = nil, nil
 				}

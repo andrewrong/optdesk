@@ -187,3 +187,12 @@ func TestWithFallbackForeignJobUnchanged(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+func TestYfinanceIsNoWatchEntryMarket(t *testing.T) {
+	t.Parallel()
+	st := &memStore{}
+	e := jobs.WatchEntry{Issuer: "cik:1", Market: "yfinance"}
+	if _, err := New(nil, st, st, []jobs.WatchEntry{e}, fixedClock{}); err == nil {
+		t.Fatal("market yfinance must be refused")
+	}
+}
