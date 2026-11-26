@@ -94,10 +94,10 @@ func TestBlockStateRule(t *testing.T) {
 		{"only check in band", []m{rowCheckInBand}, optiontierapi.StateSellable},
 		{"fits outside band", []m{rowOutBand}, optiontierapi.StateOutBand},
 		{"no buy price", []m{rowNoBuy, rowITM}, optiontierapi.StateNoBuyPrice},
-		{"above buy with itm and no bid", []m{rowAboveBuy, rowITM, rowNoBid}, optiontierapi.StateAboveBuy},
+		{"above buy with itm and no bid", []m{rowAboveBuy, rowITM, rowNoBid}, optiontierapi.StateSellable},
 		{"itm and no spot", []m{rowITM, rowNoSpot}, optiontierapi.StateNoQuote},
 		{"itm and no bid", []m{rowITM, rowNoBid}, optiontierapi.StateNoQuote},
-		{"above buy and bad input", []m{rowAboveBuy, rowBadInput}, optiontierapi.StateBlocked},
+		{"above buy and bad input", []m{rowAboveBuy, rowBadInput}, optiontierapi.StateSellable},
 		{"itm only", []m{rowITM}, optiontierapi.StateBlocked},
 	}
 	for _, c := range cases {
@@ -114,20 +114,17 @@ func TestBlockStateRule(t *testing.T) {
 // rowCheckInBand is a check row (earnings before expiry) that is inside the band.
 func rowCheckInBand(r *optiontierapi.Row) { r.EventsReason = eventsEarningsBeforeExpiry }
 
-func TestAboveBuyMixedCompany(t *testing.T) {
+func TestCompanyAboveBuyIsSellableNotFolded(t *testing.T) {
 	t.Parallel()
-	rows := []optiontierapi.Row{
-		mk("itm", "A", rowITM),
-		mk("nobid", "A", func(r *optiontierapi.Row) { r.Bid = ""; r.Strike = "90"; r.BuyPrice = "95" }),
-		mk("ab1", "A", rowAboveBuy),
-		mk("ab2", "A", rowAboveBuy),
+	rows := []optiontierapi.Row{mk("ab1", "A", rowAboveBuy), mk("ab2", "A", rowAboveBuy)}
+	b := blockOf(t, rows...)
+	if b.State != optiontierapi.StateSellable || len(b.Shown) != 2 || len(b.Folded) != 0 {
+		t.Errorf("state %s shown %v folded %v", b.State, b.Shown, b.Folded)
 	}
-	if got := blockOf(t, rows...).State; got != optiontierapi.StateAboveBuy {
-		t.Errorf("state = %s, want above_buy", got)
-	}
-	rows = append(rows, mk("nospot", "A", rowNoSpot))
-	if got := blockOf(t, rows...).State; got != optiontierapi.StateNoQuote {
-		t.Errorf("state = %s, want no_quote", got)
+	rows = append(rows, mk("itm", "A", rowITM), mk("nospot", "A", rowNoSpot))
+	b = blockOf(t, rows...)
+	if b.State != optiontierapi.StateSellable || len(b.Shown) != 2 {
+		t.Errorf("mixed: state %s shown %v", b.State, b.Shown)
 	}
 }
 
@@ -258,7 +255,7 @@ func TestBlockCountsAddUp(t *testing.T) {
 	for _, w := range a.Why {
 		codes = append(codes, w.Code)
 	}
-	want := []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "above_buy_price", "bad_input",
+	want := []string{"no_buy_price", "no_spot", "in_the_money", "no_bid", "bad_input",
 		"no_open_interest", "otm_low", "otm_high", "no_delta", "delta_out"}
 	if !reflect.DeepEqual(codes, want) {
 		t.Errorf("Why order = %v, want %v", codes, want)
@@ -298,7 +295,7 @@ func TestBlockOrder(t *testing.T) {
 	for _, b := range blocksOf(t, DefaultParams(), rows...) {
 		got = append(got, b.Company)
 	}
-	want := []string{"R-80tie", "T-80", "U-12", "V-noyield", "W-outband", "X-above", "Y-blocked", "S-quote", "Z-nobuy"}
+	want := []string{"R-80tie", "T-80", "X-above", "U-12", "V-noyield", "W-outband", "Y-blocked", "S-quote", "Z-nobuy"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("order = %v, want %v", got, want)
 	}

@@ -85,7 +85,7 @@ func evaluatePutIn(in compute.CandidateInput, p compute.CandidateParams, q compu
 	rate := cashRateGate(in, p, yield)
 	funding, rate, curMarks := currencyGates(cur, in, funding, rate)
 	gates := []compute.GateResult{
-		buyPriceGate(in, strike, premium),
+		buyPriceGate(),
 		quoteGate(q, p, bid, ask, hasBid, hasAsk),
 		events,
 		funding,
@@ -100,6 +100,8 @@ func evaluatePutIn(in compute.CandidateInput, p compute.CandidateParams, q compu
 	}
 	if _, ok := parseDec(in.BuyPrice); !ok {
 		marks = append(marks, "no_buy_price")
+	} else if aboveBuyPrice(in, strike, premium) {
+		marks = append(marks, "above_buy_price")
 	}
 	if q.OpenInterest == 0 {
 		marks = append(marks, "no_open_interest")

@@ -86,8 +86,6 @@ func companyState(rows []*rowState, shown int) string {
 	switch {
 	case grey[greyNoBuyPrice]:
 		return optiontierapi.StateNoBuyPrice
-	case grey[greyAboveBuyPrice] && !grey[greyNoSpot] && !grey[greyBadInput]:
-		return optiontierapi.StateAboveBuy
 	case grey[greyNoSpot] || grey[greyNoBid]:
 		return optiontierapi.StateNoQuote
 	}

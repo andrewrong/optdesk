@@ -138,7 +138,7 @@ func (t *tierer) judgeRow(r optiontierapi.Row, p optiontierapi.Params, accts []a
 	return s, nil
 }
 
-// rule decides fits or check of a row whose first three conditions hold, and adds the derived badges.
+// rule decides fits or check of a row whose first two conditions hold (buy price set, out of the money), and adds the derived badges.
 func (s *rowState) rule(n numbers, p optiontierapi.Params, built bool) {
 	if built && !s.cashFits(n) {
 		s.look[badgeCashShort] = true
@@ -155,6 +155,9 @@ func (s *rowState) rule(n numbers, p optiontierapi.Params, built bool) {
 		if abs.LessThan(thin) {
 			s.v.Notes = append(s.v.Notes, noteThinPremium)
 		}
+	}
+	if n.okBuy && n.okStrike && n.okBid && n.strike.Sub(n.bid).GreaterThan(n.buy) {
+		s.v.Notes = append(s.v.Notes, noteAboveBuyPrice) // a note, not a condition: the tier is unchanged
 	}
 	s.v.Tier = tierFits
 	if len(s.look) > 0 {

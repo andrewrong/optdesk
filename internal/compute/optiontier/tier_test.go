@@ -145,6 +145,23 @@ func TestCheckNeedsHardThree(t *testing.T) {
 	}
 }
 
+func TestAboveBuyPriceRowKeepsItsTierWithANote(t *testing.T) {
+	t.Parallel()
+	f := load(t)
+	v := one(t, f, func(r *optiontierapi.Row) { r.BuyPrice = "80.00" }, "main")
+	if v.Tier != "fits" || v.Grey != "" || !has(v.Notes, "above_buy_price") {
+		t.Errorf("verdict = %+v", v)
+	}
+	v = one(t, f, func(r *optiontierapi.Row) { r.BuyPrice = "80.00"; r.QuoteReason = "wide_spread" }, "main")
+	if v.Tier != "check" || !has(v.Notes, "above_buy_price") {
+		t.Errorf("wide quote: %+v", v)
+	}
+	v = one(t, f, nil, "main")
+	if has(v.Notes, "above_buy_price") {
+		t.Errorf("base row has the note: %+v", v)
+	}
+}
+
 func TestDeltaAboveBoundIsCheck(t *testing.T) {
 	t.Parallel()
 	f := load(t)
