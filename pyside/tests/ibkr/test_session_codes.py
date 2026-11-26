@@ -53,6 +53,50 @@ def test_2110_ends_a_waiting_quote_disconnected() -> None:
     assert asyncio.run(run()) == ["disconnected"]
 
 
+def _burst_answers(
+    loss: tuple[int, str], restore: tuple[int, str], caplog: pytest.LogCaptureFixture
+) -> tuple[list[str], list[str]]:
+    async def run() -> list[str]:
+        gateway, fake = await _opened(FakeClock())
+        rows: list[QuoteRow] = []
+
+        async def keep(row: QuoteRow) -> None:
+            rows.append(row)
+
+        task = asyncio.ensure_future(
+            gateway.quotes(spec.SNAPSHOT, [QuoteTarget(41)], keep)
+        )
+        await spin()
+        fake.errorEvent.emit(-1, loss[0], loss[1], None)  # one chunk: no yield between
+        fake.errorEvent.emit(-1, restore[0], restore[1], None)
+        await task
+        return [row.status for row in rows]
+
+    statuses = asyncio.run(run())
+    messages = [r.getMessage() for r in caplog.records]
+    return statuses, [m for m in messages if "quote_failed" in m]
+
+
+def test_a_2110_and_its_restore_in_one_burst_answer_the_quote_disconnected(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level("DEBUG")
+    statuses, failed = _burst_answers(
+        (2110, "connectivity broken"), (2104, "farm ok"), caplog
+    )
+    assert (statuses, failed) == (["disconnected"], [])
+
+
+def test_a_1100_and_its_1102_in_one_burst_answer_the_quote_disconnected(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level("DEBUG")
+    statuses, failed = _burst_answers(
+        (1100, "connectivity lost"), (1102, "restored, data kept"), caplog
+    )
+    assert (statuses, failed) == (["disconnected"], [])
+
+
 def test_1101_gives_a_new_generation_and_asks_the_old_lines_again() -> None:
     async def run() -> tuple[int, int, list[int], list[str]]:
         gateway, fake = await _opened(FakeClock())
