@@ -61,6 +61,7 @@ type job struct {
 	loc      *time.Location
 	tr       symbol.Translator
 	log      *slog.Logger
+	fallback FallbackMaker // nil means none (WithFallback)
 	// memo holds, per day, what the first Run of this instance did: one Plan makes one Fetch per source.
 	mu   sync.Mutex
 	memo map[contracts.Day]outcome
@@ -286,6 +287,7 @@ func (j *job) fetchAndWrite(ctx context.Context, day contracts.Day, observed *ty
 	}
 	fetched, failed := j.fetchPending(ctx, day, pending, base)
 	rows = append(rows, fetched...)
+	j.applyFallback(ctx, day, rows)
 	return outcome{res: j.write(ctx, up, replay, "earnings_refresh:"+string(day), rows), failed: failed}
 }
 
