@@ -331,7 +331,7 @@ const (
 //
 // Reason is the first reason code of the gate when Status is not pass, else empty. Codes:
 //
-//	buy_price:    no_buy_price (block: no BuyPrice), above_buy_price (block)
+//	buy_price:    none (never blocks; no_buy_price and above_buy_price are marks of the row)
 //	quote:        no_quote, no_bid, no_ask, small_bid_size, wide_spread, low_open_interest
 //	              (block); delayed_data (unknown: market data type 3 or 4)
 //	events:       earnings_before_expiry (block); earnings_unsupported, earnings_error,
