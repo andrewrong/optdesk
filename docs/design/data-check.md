@@ -181,7 +181,7 @@ Entry 6 (module jobs): package `internal/jobs/datacheck`, exported surface only:
     }
     func New(st Stores, clk clock.Clock) (contracts.Job, error) // an error names a key, never a value
 
-A rule that returns an error is stored as one finding of severity `unknown` with the rule id as its rule and as its dataset, because a `Rule` names no dataset. With no rule the job returns the error `no_rules` and writes nothing.
+A rule that returns an error is stored as one finding of severity `unknown` with the rule id as its rule and as its dataset and the check day as its day, because a `Rule` names no dataset. With no rule the job returns the error `no_rules` and writes nothing.
 
 ## Issues
 
@@ -263,8 +263,8 @@ Contracts: unchanged
 Design: docs/design/data-check.md#Decisions (1, 2, 5, 8, 9, 11)
 Acceptance:
 1. `New(st, clk)` returns an error naming a key when `Cov`, `Probe`, `Out` or the clock is nil, and accepts a nil `Announce`; `job.toml` has the schedule of Decision 2 and `id = "data_check"`; `Plan` returns one key of dataset `datacheck.run` and a hash of the manifest version and the day `TestPlanOneKey` (new).
-2. `rules.go` holds `defaultRules()` returning the rules in order; at this entry it returns an empty slice, and the job with no rule stores a run with `RulesTotal` 0 and `Usable` 0, so `Run` reports an error `no_rules` and writes nothing `TestNoRulesIsAnError` (new).
-3. `Run` builds the windows (the last `CheckWindowSessions` session days of each calendar of `Expected` and of XNYS and XTKS, before the check day, from `Cov.Sessions`), runs each rule, turns a rule error into one finding of severity `unknown` with the evidence `read_failed` 1 and the rule's dataset, stores one run through `Out.InsertRun`, and returns `Returned` = rules, `Usable` = rules without error `TestRuleErrorBecomesUnknown` (new; `TestAllUnknownIsUsableZero` (new)).
+2. `rules.go` holds `defaultRules()` returning the rules in order; at this entry it returns an empty slice, and with no rule `Run` returns `Returned` 0, `Usable` 0 and the error `no_rules` and never calls `Out.InsertRun`, so no run is stored (`TestNoRulesIsAnError` (new)).
+3. `Run` builds the windows (the last `CheckWindowSessions` session days of each calendar of `Expected` and of XNYS and XTKS, before the check day, from `Cov.Sessions`), runs each rule, turns a rule error into one finding of severity `unknown` with the evidence `read_failed` 1, the rule id as its rule and as its dataset, and the check day as its day, stores one run through `Out.InsertRun`, and returns `Returned` = rules, `Usable` = rules without error `TestRuleErrorBecomesUnknown` (new; `TestAllUnknownIsUsableZero` (new)).
 4. `dedupe.go` drops a `gap_unclosed` finding whose (dataset, day) equals a `capture_gap` finding of the same run and keeps every other finding `TestDedupeKeepsOneProblemOnce` (new).
 5. `announce.go` builds one Chinese text from the findings with `IsNew`: at most 10 lines ordered `error` before `warn` before `unknown`, each line rule label, dataset, day and counts, then "还有 N 条见页面" when more than 10; no new finding, no call to `Announce` `TestAnnounceCapsTenLines` (new; `TestNoNewNoMessage` (new); `TestTextHasNoIDs` (new): the text built from findings of every rule holds only the fixed words, the dataset, the day and digits).
 6. After `InsertRun` and a successful `Announce` the job calls `MarkNoticed` once; when `Announce` fails the job returns a retryable error and does not call `MarkNoticed` `TestSendFailureNoNotice` (new); with a nil `Announce` it calls `MarkNoticed` never and returns ok `TestNilAnnouncerStoresOnly` (new).
