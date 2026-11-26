@@ -102,14 +102,14 @@ func TestLegendTextsShort(t *testing.T) {
 			return r
 		}}
 	}
-	const check = "买入价、保本点、价外三项都满足，但有需要再看一眼的徽标。"
+	const check = "买入价、价外两项都满足，但有需要再看一眼的徽标。"
 	const grey = "没有买入价等原因，所以没有评判；已折叠，点开可看每一行为什么在这里。"
 	const cash = "每一行单独对照一个账户的可用现金，不在各行之间扣减，也不替你选账户。"
 	built := tierConfig(rows, judge(true))
 	built.Account, built.Aliases = &fakeAccount{values: cashAt("A", "2026-11-09", "1.00")}, []string{"A"}
 	v := buildTiersOf(t, built)
 	want := map[string]string{
-		"fits":  "满足你的全部条件：有买入价、保本点不高于买入价、价外、|delta| 不高于 0.25、现金够付全额行权价。这不是买入建议。",
+		"fits":  "满足你的全部条件：有买入价、价外、|delta| 不高于 0.25、现金够付全额行权价。这不是买入建议。",
 		"check": check, "grey": grey, "cash": cash,
 	}
 	for _, l := range v.Legend {
@@ -120,7 +120,7 @@ func TestLegendTextsShort(t *testing.T) {
 	none := tierConfig(rows, judge(true))
 	none.Aliases = []string{"A"}
 	v = buildTiersOf(t, none)
-	if got, w := legendText(v, "fits"), "满足你的全部条件：有买入价、保本点不高于买入价、价外、|delta| 不高于 0.25、现金只做标记。这不是买入建议。"; got != w {
+	if got, w := legendText(v, "fits"), "满足你的全部条件：有买入价、价外、|delta| 不高于 0.25、现金只做标记。这不是买入建议。"; got != w {
 		t.Errorf("unbuilt fits = %q, want %q", got, w)
 	}
 	if got := legendText(v, "cash"); got != cashNoFigure {

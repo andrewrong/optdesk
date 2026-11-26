@@ -104,12 +104,11 @@ const (
 type greySpec struct{ titleTail, keptLabel, gloss string }
 
 var greySpecs = map[string]greySpec{
-	"no_buy_price":    {zhTitleNoBuyPrice, zhGreyLabel_no_buy_price, zhGreyGloss_no_buy_price},
-	"no_spot":         {zhTitleNoSpot, zhGreyLabel_no_spot, zhGreyGloss_no_spot},
-	"in_the_money":    {zhTitleInTheMoney, zhGreyLabel_in_the_money, zhGreyGloss_in_the_money},
-	"no_bid":          {zhTitleNoBid, zhGreyLabel_no_bid, zhGreyGloss_no_bid},
-	"above_buy_price": {zhTitleAboveBuy, zhGreyLabel_above_buy_price, zhGreyGloss_above_buy_price},
-	"bad_input":       {zhTitleBadInput, zhGreyLabel_bad_input, zhGreyGloss_bad_input},
+	"no_buy_price": {zhTitleNoBuyPrice, zhGreyLabel_no_buy_price, zhGreyGloss_no_buy_price},
+	"no_spot":      {zhTitleNoSpot, zhGreyLabel_no_spot, zhGreyGloss_no_spot},
+	"in_the_money": {zhTitleInTheMoney, zhGreyLabel_in_the_money, zhGreyGloss_in_the_money},
+	"no_bid":       {zhTitleNoBid, zhGreyLabel_no_bid, zhGreyGloss_no_bid},
+	"bad_input":    {zhTitleBadInput, zhGreyLabel_bad_input, zhGreyGloss_bad_input},
 }
 
 const fallbackGrey = "bad_input"
@@ -141,6 +140,7 @@ var badgeTexts = map[string]struct{ label, gloss string }{
 	"delta_above_bound":       {zhBadgeDeltaAbove, zhBadgeGloss_delta_above_bound},
 	"delta_unknown":           {zhBadgeDeltaUnknown, zhBadgeGloss_delta_unknown},
 	"thin_premium":            {zhBadgeThinPremium, zhBadgeGloss_thin_premium},
+	"above_buy_price":         {zhBadgeAboveBuy, zhBadgeGloss_above_buy_price},
 	"earnings_unconfirmed":    {zhBadgeEarnUnconf, zhBadgeGloss_earnings_unconfirmed},
 	"earnings_beyond_horizon": {zhBadgeEarnBeyond, zhBadgeGloss_earnings_beyond_horizon},
 	"earnings_unknown":        {zhBadgeEarnUnknown, zhBadgeGloss_earnings_unknown},
