@@ -205,7 +205,7 @@ Acceptance:
 
 Module: contracts. Size: M.
 Order: first.
-Files: `contracts/schemas/page.data_health_page.v1.json`, `web/src/generated/data_health_page.v1.ts`, `contracts/fixtures/page.data_health_page.v1.ok.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/data_health_page_v1_test.go`, `docs/contracts/page-schemas.md`
+Files: `contracts/schemas/page.data_health_page.v1.json`, `web/src/generated/data_health_page.v1.ts`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/data_health_page_v1_test.go`, `docs/contracts/page-schemas.md`
 New files: `contracts/fixtures/page.data_health_page.v1.datacheck.json` (new)
 Contracts: page.data_health_page v1 (optional field `data_check` added; `schema_version` stays 1)
 Design: docs/design/data-check.md#Interface
