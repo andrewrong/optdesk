@@ -877,8 +877,9 @@ type EarningsDate struct {
 	// key is always present.
 	ReportDate *types.SerializableDate `json:"report_date" yaml:"report_date" mapstructure:"report_date"`
 
-	// Where the row came from; owner is a report_date_override (the only row of that
-	// issuer that day, attempt 1); none is a status unsupported row, since no source
+	// Where the row came from; yfinance is a date read from Yahoo when the primary
+	// source had none; owner is a report_date_override (the only row of that issuer
+	// that day, attempt 1); none is a status unsupported row, since no source
 	// produced it. Never null.
 	Source EarningsDateSource `json:"source" yaml:"source" mapstructure:"source"`
 
@@ -931,10 +932,12 @@ const EarningsDateSourceAlphavantage EarningsDateSource = "alphavantage"
 const EarningsDateSourceJquants EarningsDateSource = "jquants"
 const EarningsDateSourceNone EarningsDateSource = "none"
 const EarningsDateSourceOwner EarningsDateSource = "owner"
+const EarningsDateSourceYfinance EarningsDateSource = "yfinance"
 
 var enumValues_EarningsDateSource = []interface{}{
 	"alphavantage",
 	"jquants",
+	"yfinance",
 	"owner",
 	"none",
 }
