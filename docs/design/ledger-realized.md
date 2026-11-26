@@ -22,7 +22,7 @@ Needs the owner: nothing. Contracts: unchanged.
 
 ## Frame
 
-Owner-visible result: on /options/tracking the closed table of a short option shows, for each row, "Opening credit" (the premium collected when it was sold, never negative for a short), "Closing cost" (what the buy-back cost; zero for an expired option), "Commissions", "Realized P&L" (opening credit minus closing cost minus commissions) and "Broker realized" (the broker's own figure, a gap when the broker reports none). A short put sold for 20 and bought back for 55 reads credit 20, cost 55, realized -35 less commission, not "premium -35".
+Owner-visible result: on /options/tracking the closed table of a short option shows, for each row, "Opening credit" (the premium collected when it was sold, never negative for a short), "Closing cost" (what the buy-back cost; zero for an expired option), "Commissions", "Realized P&L" (the ledger's figure, `PremiumIncome - Commissions`) and "Broker realized" (the broker's own figure, a gap when the broker reports none). A short put sold for 20 and bought back for 55 reads credit 20, cost 55, realized -35 less commission, not "premium -35".
 
 Cause. `position` in `internal/compute/optionledger/premium.go` (line 150) prints `PremiumIncome` as `p.premium`, which `internal/compute/optionledger/lots.go` (line 69) builds as the cash of the opens plus the cash of the closes; the interface comment of `LedgerPosition` and `docs/contracts/compute.md` (Decision 9) say so. For a closed short whose buy-back cost more than the credit the sum is negative: the checked rows (GOOG puts 320, CEG put 250 and 255) are such rows, and `realized = premium - commission` (premium.go line 163) is the same sum, so the realized figure is arithmetically right and only the split is missing. The page showed that sum under "Premium collected" on 2026-11-17; since #2724 the closed table says "Net premium" (`internal/pages/option_tracking_page/tables.go`, line 78) and `moneyCell` prints the U+2212 minus, so the ASCII hyphen of the six rows is already gone on main. What is still missing: the credit and the cost are not apart, and `LedgerPosition.BrokerRealized` (already filled, premium.go line 154) is not carried to tracking. /options/result reads the same ledger and already lists the trades that differ from the broker.
 
@@ -48,7 +48,7 @@ compute (`internal/compute/optiontrack`, the interface file `internal/compute/tr
 
 Owned by compute, landing first (issue 1):
 
-- `internal/compute/trackapi/api.go`: `TrackedOption` gains `OpeningCredit`, `ClosingCost` and `BrokerRealized` (decimal text, 4 places; `ClosingCost` empty while open; `BrokerRealized` empty when the broker reports none), with a comment that `PremiumIncome` is `OpeningCredit` minus `ClosingCost`.
+- `internal/compute/trackapi/api.go`: `TrackedOption` gains `OpeningCredit`, `ClosingCost` and `BrokerRealized` (decimal text, 4 places; `ClosingCost` empty while open; `BrokerRealized` empty when the broker reports none), with a comment that `OpeningCredit` and `ClosingCost` are gross trade money from the fill prices and equal `PremiumIncome` only up to the rounding of the price text.
 
 An addition of fields; no signature changes. The page JSON schema (`contracts/schemas/page.option_tracking_page.v1.json`) is not touched, because columns are rows of generic cells.
 
@@ -66,7 +66,7 @@ An addition of fields; no signature changes. The page JSON schema (`contracts/sc
 Module: compute. Size: S. Order: first. Design: docs/design/ledger-realized.md#interface. Files: `internal/compute/trackapi/api.go`.
 
 Acceptance:
-1. `TrackedOption` in `internal/compute/trackapi/api.go` declares `OpeningCredit`, `ClosingCost` and `BrokerRealized` as strings, with a comment saying `PremiumIncome` is `OpeningCredit` minus `ClosingCost`; no other declaration of the file changes.
+1. `TrackedOption` in `internal/compute/trackapi/api.go` declares `OpeningCredit`, `ClosingCost` and `BrokerRealized` as strings, with a comment saying `OpeningCredit` and `ClosingCost` are gross trade money from the fill prices and equal `PremiumIncome` only up to the rounding of the price text; no other declaration of the file changes.
 2. Docs: docs/design/ledger-realized.md#interface.
 
 ### 2 ledger-realized-compute
@@ -99,7 +99,7 @@ Acceptance:
 
 ## After merge (checked by the dispatcher, not by review)
 
-- On /options/tracking the closed rows of GOOG puts 320, CEG put 250 and 255 show a positive opening credit, a closing cost, and realized as credit minus cost minus commission; the broker cell shows the broker's figure or a gap; a per-row difference from realized is the broker's lot pairing (Decision 3), not an error.
+- On /options/tracking the closed rows of GOOG puts 320, CEG put 250 and 255 show a positive opening credit, a closing cost, and realized as the ledger's figure (`PremiumIncome - Commissions`); the broker cell shows the broker's figure or a gap; a per-row difference from realized is the broker's lot pairing (Decision 3), not an error.
 
 ## Left out
 
