@@ -151,7 +151,7 @@ Entry 2 (module contracts): the optional field of `page.data_health_page.v1`:
       findings: [{rule, label, dataset, day, severity, severity_text, is_new, evidence_text, why_text}]
     }
 
-`data_check` is null when `datacheck.run` has no run (the block then shows `none_text` "还没有检查结果"); the gap enum gains `data_check_unavailable`. Entries 9 and 10 read only this schema; the Go view-model types stay inside `internal/pages/data_health_page`.
+`data_check` is null only when the builder has no reader or the reader fails; when `datacheck.run` has no run, `data_check` is an object with `none_text` "还没有检查结果", empty `findings`, zero counts and empty `check_day` and `finished_at`, and the block then shows `none_text`; the gap enum gains `data_check_unavailable`. Entries 9 and 10 read only this schema; the Go view-model types stay inside `internal/pages/data_health_page`.
 
 Entry 6 (module jobs): package `internal/jobs/datacheck`, exported surface only:
 
@@ -305,7 +305,7 @@ New files: `internal/pages/data_health_page/datacheck.go` (new), `internal/pages
 Contracts: unchanged
 Design: docs/design/data-check.md#Decisions (12, 13)
 Acceptance:
-1. `Input` gains `Checks finding.Reader` (nil: `data_check` is null and no gap); the builder always writes the key `data_check` on every document ("always present", `TestDataCheckKeyAlwaysPresent` (new): nil reader, empty reader, a run).
+1. `Input` gains `Checks finding.Reader` (nil: `data_check` is null and no gap; a reader with no run: `data_check` is the object with `none_text`, empty `findings`, zero counts); the builder always writes the key `data_check` on every document ("always present", `TestDataCheckKeyAlwaysPresent` (new): nil reader, empty reader, a run).
 2. With a run of two findings the document's `data_check` has `counts` per severity, `rules_total` and `rules_unknown`, and one finding row each with `label` and `severity_text` from `zh_texts.go` (`错误`, `缺口`, `无法判断`), `evidence_text` built from the counts as a Chinese sentence naming each count (for `reading_repeat` with `ok` 35 and `same` 35: "35 个读数中 35 个与前一日相同"), `why_text` one sentence for the rule, and `is_new` carried `TestDataCheckRows` (new) decodes the fixture `datacheck.json` into the view-model).
 3. Findings are ordered `error`, `warn`, `unknown`, then dataset, day, rule, and the order is the builder's `TestDataCheckOrder` (new).
 4. A reader error gives `data_check` null and one `gaps` entry `{kind: gap, reason: data_check_unavailable, text: ...}`; the rest of the page is built as before `TestDataCheckUnavailable` (new).
@@ -322,7 +322,7 @@ Contracts: unchanged
 Design: docs/design/data-check.md#Decisions (12)
 Acceptance:
 1. `DataCheckBlock` renders the `title`, the `note`, the last run line (`check_day`, `finished_at`, `rules_unknown` of `rules_total`), the three counts, and one row per finding with the label, dataset, day, `severity_text`, `evidence_text` and `why_text` as given, and a `新` mark when `is_new`; it computes, sorts and words nothing.
-2. With `data_check` null the block shows `none_text`; with `data_check` absent (an older document) the block is not rendered; `DataHealthPage.tsx` renders it under the coverage grid.
+2. With `data_check` holding no run (empty `findings` and `check_day`) the block shows `none_text`; with `data_check` null the block is not rendered; with `data_check` absent (an older document) the block is not rendered; `DataHealthPage.tsx` renders it under the coverage grid.
 3. `data_check.test.tsx` has `TestRendersFindingsAsGiven` (new) asserting: the fixture `datacheck.json` renders every `evidence_text`), `TestNullShowsNoneText` (new) and `TestAbsentRendersNothing` (new); `tsc`, `eslint`, `vitest` and the build pass (CI).
 
 ### 11 data-check-wiring
@@ -337,7 +337,7 @@ Acceptance:
 1. `wire_datacheck.go` registers the job family `data_check` with `registerJob` (`order: 240`: `recon_bars` holds 230, orders are unique steps of ten, `cmd/ot/jobreg.go:18`); while `dataCheckDSN` (new field of `runOnceConfig`, line `OT_PG_DSN_DATACHECK`, 2 added lines in `runonce.go`) is empty the job is held with the reason "OT_PG_DSN_DATACHECK is not set (run setup pg)" `TestDataCheckHeldWithoutDSN` (new); with it set the job is built from `findingpg.OpenWriter`, `findingpg.OpenProbe`, `ops.OpenCoverage`, the expected list of Decision 6 and `telegramSender(a)` wrapped as an `Announcer`, nil when the sender cannot be built `TestNilAnnouncerWithoutToken` (new).
 2. `jobTable` has `{ID: "data_check", Kind: kindAnyDay, Force: true}` and `dataHealthNoLedger` has `"data_check"` with its reason; the existing `TestEveryJobHasRowOrReason` passes.
 3. `dataCheckNotDaily` is a fixed list with a reason per entry and `TestEveryLedgerJobIsDailyOrReasoned` (new) fails for a `jobTable` job that has a ledger dataset in `dataHealthManifests` and is in neither the expected list nor `dataCheckNotDaily`.
-4. The data health site opens the finding reader with the pages line (`store.DSNEnvPages`) and passes it as `Input.Checks`; when it cannot be opened the page is built with a nil reader and the gap of entry 9 (`data_health_site_test.go`: `TestDataHealthSiteChecksReader` (new)).
+4. The data health site opens the finding reader with the pages line (`store.DSNEnvPages`) and passes it as `Input.Checks`; when it cannot be opened the page is built with a nil reader and no gap, as entry 9 acceptance 1 gives for a nil reader (`data_health_site_test.go`: `TestDataHealthSiteChecksReader` (new)).
 5. `docs/contracts/ot/jobs/data_check.md` (new) states the schedule, the six rules with their severity, "reports only", the line `OT_PG_DSN_DATACHECK` and the message rule.
 
 ## Checked by CI
