@@ -454,3 +454,35 @@ func TestHeldZeroQuantityUSDStockIsSkipped(t *testing.T) {
 		t.Fatalf("stocks %v err %v, want none", got, err)
 	}
 }
+
+func TestPlanRerunWritesNewPlanID(t *testing.T) {
+	t.Parallel()
+	r := newPlanRig()
+	id := r.seed(t, 100, putStrikes...)
+	j := r.job(t, "AAPL")
+	r.run(t, j)
+	first := append([]contracts.OptionOpenItem(nil), r.plans.items...)
+	r.plans.items = nil
+	r.clk.Advance(10 * time.Minute)
+	// the second run sees a different plan: one strike is now marked not listed.
+	r.marks.marks = []contracts.OptionNotListed{{UnderlyingID: int(id), Expiry: types.SerializableDate{Time: mustDay(expiry30Day)}, Strike: "99.0",
+		Right: "P", TradingClass: "X", RetryAt: r.clk.Now().Add(time.Hour)}}
+	r.run(t, j)
+	second := r.plans.items
+	if len(first) == 0 || len(second) == 0 {
+		t.Fatalf("%d then %d items", len(first), len(second))
+	}
+	old := map[string]bool{}
+	for _, it := range first {
+		old[it.PlanID] = true
+	}
+	newID := second[0].PlanID
+	for _, it := range second {
+		if old[it.PlanID] || !it.PlannedAt.After(first[0].PlannedAt) {
+			t.Fatalf("second-run item reuses an id or is not later: %+v", it)
+		}
+		if it.PlanID != newID || !it.PlannedAt.Equal(second[0].PlannedAt) {
+			t.Fatalf("one run, one name must share plan_id and planned_at: %+v", it)
+		}
+	}
+}

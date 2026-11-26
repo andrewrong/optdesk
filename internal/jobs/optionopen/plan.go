@@ -408,7 +408,7 @@ func (j *planJob) itemsOf(day contracts.Day, symbol string, now time.Time, plan 
 		return nil, false
 	}
 	d, _ := dayTime(day)
-	planID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+j.m.Slot+"|"+symbol)).String()
+	planID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+j.m.Slot+"|"+symbol+"|"+now.UTC().Format(time.RFC3339Nano))).String()
 	var out []contracts.OptionOpenItem
 	for _, it := range plan.Items {
 		if it.Symbol != symbol {
