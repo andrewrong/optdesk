@@ -139,7 +139,7 @@ class _Job:
         self.grace = asyncio.Event()
         self.error: tuple[int, str] | None = None
         self.on_error: Callable[[int, str], None] | None = None
-        self.blocked = False  # 10197: the line was cancelled
+        self.blocked, self.lost = False, False  # 10197: line cancelled; session lost
         self.resubscribe: Callable[[], None] = lambda: None  # after a 1101
 
     def wake(self) -> None:
@@ -253,6 +253,7 @@ class IbGateway:
         self._connected, self._soft_lost = False, soft
         self._lost.set()
         for job in self._jobs:
+            job.lost = True
             job.wake()
 
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:
@@ -551,7 +552,7 @@ class IbGateway:
             sent = self._clock.now().timestamp()
             ticker: Any = None
             watch: Callable[..., None] | None = None
-            timed_out = grace_ended = False
+            grace_ended = False
             try:
                 ticker = ib.reqMktData(contract, row_spec.generic_ticks, False, False)
                 job.resubscribe = partial(
@@ -579,7 +580,7 @@ class IbGateway:
                         except TimeoutError:
                             grace_ended = True  # release with what the line has
                 except TimeoutError:
-                    timed_out = True
+                    pass  # the timeout: the line answers with what it has
             finally:
                 self._jobs.discard(job)
                 if ticker is not None and watch is not None:
@@ -602,13 +603,12 @@ class IbGateway:
             return answer(spec.quote_status(row_spec, got))
         if job.blocked:  # 10197: the line is cancelled, the item is held
             return answer(_HELD)
-        if not self._current(generation):
+        if job.lost or not self._current(generation):
             return row(spec.STATUS_DISCONNECTED, sent=sent)
         if job.error is not None:
             code, text = job.error
             status = spec.classify_error(code).quote_status
             return answer(status, error_code=code, error_text=text)
-        assert timed_out
         return answer(spec.quote_status(row_spec, got))
 
     # --- dividends --------------------------------------------------------
