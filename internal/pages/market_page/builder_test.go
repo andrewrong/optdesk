@@ -55,8 +55,6 @@ func rec(day, state, value string, code *int, dataDay string) contracts.ReadingR
 	return r
 }
 
-func intp(i int) *int { return &i }
-
 func pt(day string, v float64) contracts.SeriesPoint {
 	return contracts.SeriesPoint{ObservationDate: sdate(day), RealtimeStart: sdate(day), RealtimeEnd: sdate("9999-12-31"), Value: &v}
 }
@@ -226,7 +224,7 @@ func TestPercentileThreeOk(t *testing.T) {
 
 func TestPercentileShortHistoryIsNoData(t *testing.T) {
 	t.Parallel()
-	r := rank(t, withVix(rec("2026-11-06", "missing_input", "", intp(2), "")).page(t), 0)
+	r := rank(t, withVix(rec("2026-11-06", "missing_input", "", new(2), "")).page(t), 0)
 	if r["kind"] != "gap" || r["reason"] != "no_data" || r["text"] != "History under 3 years, no percentile" {
 		t.Errorf("rank_3y = %v", r)
 	}
@@ -234,11 +232,11 @@ func TestPercentileShortHistoryIsNoData(t *testing.T) {
 
 func TestPercentileStaleInputUsesDataDay(t *testing.T) {
 	t.Parallel()
-	r := rank(t, withVix(rec("2026-11-06", "missing_input", "", intp(3), "2026-11-03")).page(t), 0)
+	r := rank(t, withVix(rec("2026-11-06", "missing_input", "", new(3), "2026-11-03")).page(t), 0)
 	if r["reason"] != "stale_input" || r["text"] != "Percentile data is stale, data day 11-03" {
 		t.Errorf("rank_3y = %v", r)
 	}
-	r = rank(t, withVix(rec("2026-11-06", "missing_input", "", intp(3), "")).page(t), 0)
+	r = rank(t, withVix(rec("2026-11-06", "missing_input", "", new(3), "")).page(t), 0)
 	if r["reason"] != "stale_input" || r["text"] != "Percentile data is stale" {
 		t.Errorf("no data day: rank_3y = %v", r)
 	}
@@ -247,7 +245,7 @@ func TestPercentileStaleInputUsesDataDay(t *testing.T) {
 func TestPercentileOtherReasonIsMissingInput(t *testing.T) {
 	t.Parallel()
 	for name, r := range map[string]contracts.ReadingRecord{
-		"code 1":         rec("2026-11-06", "missing_input", "", intp(1), ""),
+		"code 1":         rec("2026-11-06", "missing_input", "", new(1), ""),
 		"ok without val": rec("2026-11-06", "ok", "", nil, ""),
 		"bad text":       rec("2026-11-06", "ok", "abc", nil, ""),
 		"above one":      rec("2026-11-06", "ok", "1.000001", nil, ""),
@@ -276,7 +274,7 @@ func TestPercentileNoRowIsNoData(t *testing.T) {
 
 func TestPercentileNumericReasonCodes(t *testing.T) {
 	t.Parallel()
-	codes := []*int{intp(1), intp(2), intp(3), intp(4), intp(5), nil}
+	codes := []*int{new(1), new(2), new(3), new(4), new(5), nil}
 	want := []string{"missing_input", "no_data", "stale_input", "missing_input", "missing_input", "missing_input"}
 	for i, c := range codes {
 		got := rank(t, withVix(rec("2026-11-06", "missing_input", "", c, "")).page(t), 0)["reason"]
@@ -296,7 +294,7 @@ func TestPercentileDataDayNotAsOfDay(t *testing.T) {
 		}
 		return out
 	}
-	e := withVix(rec("2026-11-06", "missing_input", "", intp(3), "2026-11-03"))
+	e := withVix(rec("2026-11-06", "missing_input", "", new(3), "2026-11-03"))
 	e.series = nil
 	e.readings[figVixTerm] = nil
 	m := e.page(t)
@@ -420,20 +418,20 @@ func TestBuildMatchesSchema(t *testing.T) {
 	staleSeries := allOK()
 	staleSeries.series = map[string][]contracts.SeriesPoint{seriesVIX: {pt("2026-10-30", 21)}, seriesVXV: {pt("2026-11-06", 21)}}
 	everyKind := allOK()
-	everyKind.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(2), "")}
-	everyKind.readings[figVxnPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(3), "2026-11-03")}
+	everyKind.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(2), "")}
+	everyKind.readings[figVxnPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(3), "2026-11-03")}
 	everyKind.readings[figRvxPctile] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "abc", nil, "")}
 	everyKind.readings[figSp500Vs200d] = nil
 	everyKind.readings[figVixTerm] = nil
 	ivrvGaps := allOK()
 	ivrvGaps.ivrv = map[string][]contracts.ReadingRecord{
-		"SPX": {rec("2026-11-06", "missing_input", "", intp(3), "2026-10-30")},
+		"SPX": {rec("2026-11-06", "missing_input", "", new(3), "2026-10-30")},
 		"NDX": {rec("2026-11-06", "ok", "0.01", nil, "")},
 	}
 	cases := map[string]env{
 		"negative iv minus rv": allOK(), "iv minus rv gaps": ivrvGaps,
-		"all ok": allOK(), "short history": gapVix(intp(2), "missing_input"), "stale input": gapVix(intp(3), "missing_input"),
-		"missing input": gapVix(intp(1), "missing_input"), "no code": gapVix(nil, "missing_input"),
+		"all ok": allOK(), "short history": gapVix(new(2), "missing_input"), "stale input": gapVix(new(3), "missing_input"),
+		"missing input": gapVix(new(1), "missing_input"), "no code": gapVix(nil, "missing_input"),
 		"no readings": {}, "no term series": noSeries, "one point": oneSeriesPoint, "stale series": staleSeries,
 		"every kind": everyKind,
 	}
@@ -496,7 +494,7 @@ func TestRunStatusIgnoresPermanentGaps(t *testing.T) {
 			t.Errorf("%v is not a gap", path)
 		}
 	}
-	if got := withVix(rec("2026-11-06", "missing_input", "", intp(2), "")).page(t)["run_status"]; got != "partial" {
+	if got := withVix(rec("2026-11-06", "missing_input", "", new(2), "")).page(t)["run_status"]; got != "partial" {
 		t.Errorf("short history: run_status = %v", got)
 	}
 	e := allOK()
@@ -545,8 +543,8 @@ func pageGaps(t *testing.T, m map[string]any) []any {
 func TestEnvelopeGapsEqualBlockGaps(t *testing.T) {
 	t.Parallel()
 	mixed := allOK()
-	mixed.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(2), "")}
-	mixed.readings[figVxnPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(3), "")}
+	mixed.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(2), "")}
+	mixed.readings[figVxnPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(3), "")}
 	mixed.readings[figRvxPctile] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "x", nil, "")}
 	mixed.series = map[string][]contracts.SeriesPoint{seriesVIX: {pt("2026-11-01", 20)}, seriesVXV: {pt("2026-11-06", 22)}}
 	for name, e := range map[string]env{"all ok": allOK(), "mixed": mixed, "empty": {}} {
@@ -614,7 +612,7 @@ func TestIvGapsNameTheIndex(t *testing.T) {
 	e := allOK()
 	delete(e.iv, "NDX")
 	e.series = map[string][]contracts.SeriesPoint{}
-	e.iv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(1), "")}
+	e.iv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(1), "")}
 	m := e.page(t)
 	if c := ivCellOf(t, m, 1); c["kind"] != "gap" || c["text"] != "NDX implied volatility: no data, not stored yet" {
 		t.Errorf("NDX iv = %v", c)

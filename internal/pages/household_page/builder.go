@@ -458,16 +458,14 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	return p
 }
 
-func gapOf(g gapJSON) *gapJSON { return &g }
-
 func allocationGap(g gapJSON) allocationBlock {
-	return allocationBlock{Title: titleAllocation, Meaning: meaningAllocation, Rows: []allocationRow{}, Totals: []moneyCell{}, Gap: gapOf(g)}
+	return allocationBlock{Title: titleAllocation, Meaning: meaningAllocation, Rows: []allocationRow{}, Totals: []moneyCell{}, Gap: new(g)}
 }
 
 func moversGap(g gapJSON) moversBlock {
 	return moversBlock{
 		Title: titleMovers, Meaning: meaningMovers, Rows: []moneyRow{}, Totals: []moneyCell{},
-		Stocks: []moverRow{}, Options: []moverRow{}, Gap: gapOf(g),
+		Stocks: []moverRow{}, Options: []moverRow{}, Gap: new(g),
 	}
 }
 
@@ -521,8 +519,8 @@ func gapPage(c Config, alias string, scopes []accountScope, at time.Time, reason
 	p.Concentration = gapBlock(titleConcentration, meaningConcentration, g)
 	p.Allocation = allocationGap(g)
 	p.Movers = moversGap(g)
-	p.Trend = trendBlock{Title: titleTrend, Meaning: meaningTrend, Rows: []trendPoint{}, Series: []trendSeries{}, Gap: gapOf(g)}
-	p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{}, Gap: gapOf(g)}
+	p.Trend = trendBlock{Title: titleTrend, Meaning: meaningTrend, Rows: []trendPoint{}, Series: []trendSeries{}, Gap: new(g)}
+	p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{}, Gap: new(g)}
 	p.Gaps = []gapJSON{g}
 	return p
 }

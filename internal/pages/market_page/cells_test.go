@@ -55,7 +55,7 @@ func TestRv20CellNoRowIsNoData(t *testing.T) {
 func TestRv20CellNotOkIsMissingInput(t *testing.T) {
 	t.Parallel()
 	e := allOK()
-	e.rv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(2), "")}
+	e.rv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(2), "")}
 	e.rv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "-0.1", nil, "")}
 	m := e.page(t)
 	if c := rv20Of(t, m, 2); c["kind"] != "gap" || c["reason"] != "missing_input" || c["text"] != "RUT 20-day realised volatility: no data, inputs incomplete" {
@@ -123,7 +123,7 @@ func TestRv20GapsLeaveFailedCountUnchanged(t *testing.T) {
 	}
 	// A failed percentile still makes the page partial, whatever rv20 shows.
 	bad := allOK()
-	bad.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(2), "")}
+	bad.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", new(2), "")}
 	if bad.page(t)["run_status"] != "partial" {
 		t.Error("failed percentile: not partial")
 	}

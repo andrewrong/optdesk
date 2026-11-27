@@ -25,7 +25,7 @@ func (c Config) familyTrend(ctx context.Context, res blockapi.FamilyResult, caps
 	}
 	b := trendBlock{Title: titleTrend, Meaning: meaningTrend, Rows: []trendPoint{}, Series: []trendSeries{}}
 	noData := func() (*trendBlock, []string) {
-		b.Gap = gapOf(gapJSON{Reason: "no_data", Text: familyTrendNoData})
+		b.Gap = new(gapJSON{Reason: "no_data", Text: familyTrendNoData})
 		return &b, nil
 	}
 	if len(res.Included) == 0 {

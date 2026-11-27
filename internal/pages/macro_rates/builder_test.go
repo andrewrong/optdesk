@@ -57,7 +57,7 @@ func pt(t *testing.T, day string, v *float64) contracts.SeriesPoint {
 	}
 }
 
-func f64(v float64) *float64 { return &v }
+func f64(v float64) *float64 { return new(v) }
 
 type fixtureInput struct {
 	SeriesID     string `json:"series_id"`
@@ -185,7 +185,7 @@ func TestGapsAndStale(t *testing.T) {
 	t.Parallel()
 	t.Run("nil value is one gap, not zero", func(t *testing.T) {
 		t.Parallel()
-		got := buildGaps(t, "2026-11-04", pt(t, "2026-11-03", nil), pt(t, "2026-11-04", f64(4.2)))
+		got := buildGaps(t, "2026-11-04", pt(t, "2026-11-03", nil), pt(t, "2026-11-04", new(4.2)))
 		if want := []map[string]any{wantGap("2026-11-03", "no_value", "no value on 2026-11-03")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
@@ -205,13 +205,13 @@ func TestGapsAndStale(t *testing.T) {
 	})
 	t.Run("exactly the limit is fresh", func(t *testing.T) {
 		t.Parallel()
-		if got := buildGaps(t, "2026-11-08", pt(t, "2026-11-04", f64(4.2))); len(got) != 0 {
+		if got := buildGaps(t, "2026-11-08", pt(t, "2026-11-04", new(4.2))); len(got) != 0 {
 			t.Fatalf("gaps = %v, want none", got)
 		}
 	})
 	t.Run("older than the limit is stale at Day", func(t *testing.T) {
 		t.Parallel()
-		got := buildGaps(t, "2026-11-09", pt(t, "2026-11-04", f64(4.2)))
+		got := buildGaps(t, "2026-11-09", pt(t, "2026-11-04", new(4.2)))
 		if want := []map[string]any{wantGap("2026-11-09", "stale", "no point within 4 days of 2026-11-09")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
@@ -232,7 +232,7 @@ func TestGapsAndStale(t *testing.T) {
 	})
 	t.Run("points before the lookback are not read", func(t *testing.T) {
 		t.Parallel()
-		got := buildGaps(t, "2026-12-10", pt(t, "2026-11-09", f64(4.0)))
+		got := buildGaps(t, "2026-12-10", pt(t, "2026-11-09", new(4.0)))
 		if want := []map[string]any{wantGap("2026-12-10", "stale", "no point within 4 days of 2026-12-10")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
@@ -262,13 +262,13 @@ func testLatest(t *testing.T) {
 		pts  []contracts.SeriesPoint
 		want map[string]any
 	}{
-		{"stale", "2026-11-09", []contracts.SeriesPoint{pt(t, "2026-11-04", f64(4.2))},
+		{"stale", "2026-11-09", []contracts.SeriesPoint{pt(t, "2026-11-04", new(4.2))},
 			map[string]any{"kind": "gap", "reason": "stale", "text": "latest point 2026-11-04 is old"}},
 		{"no point", "2026-11-09", nil,
 			map[string]any{"kind": "gap", "reason": "no_data", "text": "no points"}},
 		{"null last", "2026-11-04", []contracts.SeriesPoint{pt(t, "2026-11-04", nil)},
 			map[string]any{"kind": "gap", "reason": "no_data", "text": "no value on 2026-11-04"}},
-		{"value", "2026-11-04", []contracts.SeriesPoint{pt(t, "2026-11-04", f64(4.2))},
+		{"value", "2026-11-04", []contracts.SeriesPoint{pt(t, "2026-11-04", new(4.2))},
 			map[string]any{"kind": "value", "date": "2026-11-04", "value": 4.2, "text": "4.20%"}},
 	}
 	for _, c := range cases {
@@ -284,11 +284,11 @@ func testLatest(t *testing.T) {
 func TestText(t *testing.T) {
 	t.Parallel()
 	cases := []struct{ name, got, want string }{
-		{"percent", pointText("percent", f64(4.1)), "4.10%"},
-		{"ratio", pointText("ratio", f64(0.5)), "0.5000"},
-		{"ccy_amount", pointText("ccy_amount", f64(1234.5)), "1234.50"},
+		{"percent", pointText("percent", new(4.1)), "4.10%"},
+		{"ratio", pointText("ratio", new(0.5)), "0.5000"},
+		{"ccy_amount", pointText("ccy_amount", new(1234.5)), "1234.50"},
 		{"count", pointText("count", f64(42)), "42"},
-		{"index_points", pointText("index_points", f64(5120.254)), "5120.25"},
+		{"index_points", pointText("index_points", new(5120.254)), "5120.25"},
 		{"null", pointText("percent", nil), "no value"},
 		{"title", pageTitle, "Macro rates"},
 		{"sentence", pageSentence(1, "2026-11-04"), "1 series on 2026-11-04."},
@@ -310,9 +310,9 @@ func TestBuildFixtures(t *testing.T) {
 	t.Parallel()
 	cases := map[string]fakeReader{
 		"page.macro_rates.v3.gap.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
-			pt(t, "2026-11-02", f64(4.1)), pt(t, "2026-11-03", f64(4.2)), pt(t, "2026-11-04", nil)}}},
+			pt(t, "2026-11-02", new(4.1)), pt(t, "2026-11-03", new(4.2)), pt(t, "2026-11-04", nil)}}},
 		"page.macro_rates.v3.stale.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
-			pt(t, "2026-10-27", f64(4.1)), pt(t, "2026-10-28", f64(4.2))}}},
+			pt(t, "2026-10-27", new(4.1)), pt(t, "2026-10-28", new(4.2))}}},
 	}
 	for name, r := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -352,7 +352,7 @@ func sevenReader(t *testing.T, rateUnit, indexUnit string) fakeReader {
 		if id == "DGS10" || id == "DGS3MO" {
 			unit, a, b = rateUnit, 4.1, 4.2
 		}
-		p1, p2 := pt(t, "2026-11-03", f64(a)), pt(t, "2026-11-04", f64(b))
+		p1, p2 := pt(t, "2026-11-03", new(a)), pt(t, "2026-11-04", new(b))
 		for _, p := range []*contracts.SeriesPoint{&p1, &p2} {
 			p.SeriesID = id
 			p.Unit = contracts.SeriesUnit(unit)
