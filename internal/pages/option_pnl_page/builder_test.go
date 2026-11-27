@@ -543,3 +543,8 @@ func TestPnlSentencesAreChinese(t *testing.T) {
 		}
 	}
 }
+
+// CashIfAssigned is a stub: no lines, no error.
+func (*fixedBooker) CashIfAssigned([]optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
+	return nil, nil
+}

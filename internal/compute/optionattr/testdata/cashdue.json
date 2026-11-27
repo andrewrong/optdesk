@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "name": "golden",
+      "puts": [
+        {"Currency": "USD", "Strike": "190", "Multiplier": "100", "Quantity": "-2"},
+        {"Currency": "USD", "Strike": "38", "Multiplier": "100", "Quantity": "-3"}
+      ],
+      "want": [{"Currency": "USD", "Lots": 2, "Contracts": "5", "Cash": "49400"}]
+    },
+    {
+      "name": "two-currencies",
+      "puts": [
+        {"Currency": "USD", "Strike": "50", "Multiplier": "100", "Quantity": "-1"},
+        {"Currency": "JPY", "Strike": "3000", "Multiplier": "100", "Quantity": "-2"},
+        {"Currency": "USD", "Strike": "20", "Multiplier": "100", "Quantity": "-1"}
+      ],
+      "want": [
+        {"Currency": "USD", "Lots": 2, "Contracts": "2", "Cash": "7000"},
+        {"Currency": "JPY", "Lots": 1, "Contracts": "2", "Cash": "600000"}
+      ]
+    },
+    {
+      "name": "exact-decimals",
+      "puts": [
+        {"Currency": "USD", "Strike": "10", "Multiplier": "1", "Quantity": "0.1"},
+        {"Currency": "USD", "Strike": "10", "Multiplier": "1", "Quantity": "0.2"}
+      ],
+      "want": [{"Currency": "USD", "Lots": 2, "Contracts": "0.3", "Cash": "3"}]
+    }
+  ]
+}

@@ -28,4 +28,6 @@ Source: `docs/design/option-attribution.md`, entry 1. Every number is decimal te
 
 **Exact sums, one place.** Sums are exact decimal addition and nothing is rounded; the page rounds for display. The `Booker` is the only place results are added; a page never adds figures of its own.
 
+**Cash if assigned.** `Booker.CashIfAssigned` adds the open short puts it is given (`OpenPut`: currency, strike, multiplier, quantity) into one `CashDue` per currency, in order of first appearance: `Lots` is the number of puts, `Contracts` the sum of the absolute quantity, `Cash` the sum of strike x multiplier x absolute quantity. The sign of a short quantity is dropped; premium and currency conversion are not part of it, so two currencies are two lines, never added. The result is exact and unrounded; no puts give a non-nil empty slice, and a strike, multiplier or quantity that is not a positive number gives an error wrapping `ErrBadInput` and no partial answer.
+
 **Lot card.** The card of one lot uses `Combine` of one result, so one rule makes the lot figures and the book figures.

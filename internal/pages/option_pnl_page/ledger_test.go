@@ -572,3 +572,8 @@ func TestLedgerGroupLateEntryCount(t *testing.T) {
 		t.Fatalf("entry = %+v", entry)
 	}
 }
+
+// CashIfAssigned is a stub: no lines, no error.
+func (*allBooker) CashIfAssigned([]optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
+	return nil, nil
+}
