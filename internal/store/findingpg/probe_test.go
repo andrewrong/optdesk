@@ -12,9 +12,10 @@ import (
 // travel through it.
 func TestProbeReturnsCountsOnly(t *testing.T) {
 	t.Parallel()
-	allowed := map[string]bool{"Name": true, "Currency": true, "Kind": true, "Reason": true, "JobID": true, "Dataset": true}
+	allowed := map[string]bool{"Name": true, "Currency": true, "Kind": true, "Reason": true, "JobID": true, "Dataset": true, "RuleVersion": true, "Market": true}
 	dayType := reflect.TypeFor[contracts.Day]()
-	for _, v := range []any{finding.ReadingRepeat{}, finding.LateQuotes{}, finding.CandidateRun{}, finding.OpenGap{}} {
+	for _, v := range []any{finding.ReadingRepeat{}, finding.LateQuotes{}, finding.CandidateRun{}, finding.OpenGap{},
+		finding.EarningsCheck{}, finding.BarShape{}} {
 		typ := reflect.TypeOf(v)
 		for f := range typ.Fields() {
 			if f.Type.Kind() != reflect.String || f.Type == dayType {

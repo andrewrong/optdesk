@@ -196,7 +196,11 @@ func reportPageOver(a *app, m, s string, v store.ReadingViewReader, rd reportRea
 		if err != nil {
 			return nil, err
 		}
-		return a.deps.riskBlock(ctx, rules, a.deps.evaluateAlerts, v.WinnerReadings, day, at.In(a.profile.Zone))
+		read := noSiteReadings // nil v: the risks are gaps
+		if v != nil {
+			read = v.WinnerReadings
+		}
+		return a.deps.riskBlock(ctx, rules, a.deps.evaluateAlerts, read, day, at.In(a.profile.Zone))
 	}
 	bc := reportBlocksConfig(a, rd)
 	if a.deps.reportPageBlocks == nil {

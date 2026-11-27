@@ -458,22 +458,32 @@ func TestSiteReaderErrors(t *testing.T) {
 		cat   *fakeCatalog
 		names *fakeNames
 	}{
-		"catalog": {&fakeCatalog{err: errors.New("dsn sentinel-secret")}, &fakeNames{}},
-		"names":   {cat, &fakeNames{err: errors.New("dsn sentinel-secret")}},
+		"catalog": {&fakeCatalog{err: errors.New("relation rd.x does not exist")}, &fakeNames{}},
+		"names":   {cat, &fakeNames{err: errors.New("relation rd.x does not exist")}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h, log := realSite(t, tc.cat, tc.names)
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/options/data", nil))
-			if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
-				t.Fatalf("%d %q", rec.Code, rec.Body)
-			}
-			if !strings.Contains(log.String(), "component=ot") || !strings.Contains(log.String(), "status=failed") ||
-				strings.Contains(log.String(), "sentinel") {
-				t.Fatalf("log %q", log)
+			out := log.String()
+			if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" ||
+				!strings.Contains(out, "component=ot status=failed") || !strings.Contains(out, "err=") ||
+				!strings.Contains(out, "relation rd.x does not exist") || strings.Contains(out, "sentinel") {
+				t.Fatalf("%d %q log %q", rec.Code, rec.Body, out)
 			}
 		})
+	}
+}
+
+func TestServeBuildFailedLogRedactsSecrets(t *testing.T) {
+	t.Parallel()
+	h, log := realSite(t, &fakeCatalog{err: errors.New("dial postgres://sentinel-user:sentinel-pw@h/db failed token=sentinel-token")}, &fakeNames{})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/options/data", nil))
+	if out := log.String(); rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" ||
+		!strings.Contains(out, "err=") || !strings.Contains(out, "[redacted]") || strings.Contains(out, "sentinel-pw") || strings.Contains(out, "sentinel-token") {
+		t.Fatalf("%d %q log %q", rec.Code, rec.Body, out)
 	}
 }
 

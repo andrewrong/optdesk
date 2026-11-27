@@ -81,9 +81,9 @@ func TestCompanyDataRouteStatus(t *testing.T) {
 	if code, _ := companySiteGet(t, rd, http.MethodGet, "/company-data/x"); code != http.StatusNotFound {
 		t.Errorf("below the route: %d", code)
 	}
-	// A missing reader is a build error: 500 with the fixed text.
+	// A missing reader is an empty one: a page of gaps, never a 500.
 	code, body = companySiteGet(t, siteReaders{}, http.MethodGet, "/company-data")
-	if code != http.StatusInternalServerError || strings.TrimSpace(body) != "internal error" {
+	if code != http.StatusOK || strings.TrimSpace(body) == "" {
 		t.Errorf("build error: %d %q", code, body)
 	}
 }

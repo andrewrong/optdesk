@@ -520,13 +520,8 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 			assets.ServeHTTP(w, r)
 		default:
 			vm, err := build(r.Context())
-			if errors.Is(err, errReportQuery) {
-				http.Error(w, "bad request", http.StatusBadRequest)
-				return
-			}
 			if err != nil {
-				a.log.Error("serve build failed", "component", "ot", "status", "failed")
-				http.Error(w, "internal error", http.StatusInternalServerError)
+				writeBuildError(a, w, err)
 				return
 			}
 			newHandler(vm).ServeHTTP(w, r)
@@ -550,12 +545,30 @@ func extraPageBuilder(path string, q url.Values, a *app, clk clock.Clock, dayFla
 	return func(ctx context.Context) ([]byte, error) { return f.build(withQuery(ctx, q), a, clk, dayFlag, rd) }
 }
 
+// writeBuildError answers the failed build of a page: 400 for a bad report query, 503 for a reader the site has
+// not opened, else 500 with the fixed text (the error is never printed).
+func writeBuildError(a *app, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errReportQuery):
+		http.Error(w, "bad request", http.StatusBadRequest)
+	case errors.Is(err, errSiteNoReader):
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	default:
+		a.log.Error("serve build failed", "component", "ot", "status", "failed", "err", redactErrText(err.Error()))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
 // siteIDOf is the underlying id of the last element of an options/data path: a positive number written
 // without a sign or a leading zero.
 func siteIDOf(s string) (int64, bool) {
 	n, err := strconv.ParseInt(s, 10, 64)
 	return n, err == nil && n > 0 && strconv.FormatInt(n, 10) == s
 }
+
+// errSiteNoReader marks a build that needs a reader the site has not opened (nil: no opener, the demo profile
+// or a failed open); the site answers 503 "unavailable" and never a 500 or a panic.
+var errSiteNoReader = errors.New("site: a reader of the page is not open")
 
 // siteHealthRoute is the path of the health check, under the root of the site.
 const siteHealthRoute = "health"
@@ -574,6 +587,9 @@ func serveHealth(a *app, clk clock.Clock, rd siteReaders, w http.ResponseWriter,
 	ctx, cancel := context.WithTimeout(r.Context(), siteHealthTimeout)
 	defer cancel()
 	day, err := dayOrDefault(clk, "")
+	if err == nil && rd.series == nil {
+		err = errors.New("no series reader") // never printed
+	}
 	if err == nil {
 		_, err = rd.series.SeriesPoints(ctx, "DGS10", day, day)
 	}
@@ -617,6 +633,9 @@ func buildSite(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd 
 	d, err := time.Parse(dayLayout, string(day))
 	if err != nil {
 		return nil, err
+	}
+	if rd.catalog == nil {
+		return nil, errSiteNoReader
 	}
 	since := contracts.Day(d.AddDate(0, 0, -siteCatalogDay).Format(dayLayout))
 	entries, err := rd.catalog.OptionEodLatest(ctx, since)

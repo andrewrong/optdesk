@@ -18,7 +18,7 @@ import (
 var probeTables = map[string]string{
 	"reading_r1":          `name text, version int, subject_kind text, subject text, day date, state text, value numeric`,
 	"option_open_r1":      `session_day date, currency text, received_at timestamptz`,
-	"option_candidate_r1": `session_day date, run_id text, kind text, computed_at timestamptz`,
+	"option_candidate_r1": `session_day date, run_id text, kind text, computed_at timestamptz, rule_version text`,
 	"rule_param_r1":       `set_at timestamptz`,
 	"option_exclusion_r1": `set_at timestamptz`,
 	"job_gap_r1":          `job_id text, dataset_id text, day date, reason text, first_seen_at timestamptz, cleared_at timestamptz`,
@@ -149,12 +149,12 @@ func TestLateOpenQuotesZones(t *testing.T) {
 func TestNewestCandidateRuns(t *testing.T) {
 	t.Parallel()
 	p, c := openProbe(t)
-	ins := `INSERT INTO rd.option_candidate_r1 VALUES ($1::text::date, $2, $3, $4::text::timestamptz)`
-	exec(t, c, ins, "2026-11-24", "r1", "put", "2026-11-24 21:00:00+00")
-	exec(t, c, ins, "2026-11-24", "r2", "put", "2026-11-24 22:00:00+00")
-	exec(t, c, ins, "2026-11-24", "r2", "put", "2026-11-24 22:00:00+00")
-	exec(t, c, ins, "2026-11-24", "r1", "call", "2026-11-24 21:00:00+00")
-	exec(t, c, ins, "2026-11-20", "r0", "put", "2026-11-20 21:00:00+00")
+	ins := `INSERT INTO rd.option_candidate_r1 VALUES ($1::text::date, $2, $3, $4::text::timestamptz, $5)`
+	exec(t, c, ins, "2026-11-24", "r1", "put", "2026-11-24 21:00:00+00", "put_v1")
+	exec(t, c, ins, "2026-11-24", "r2", "put", "2026-11-24 22:00:00+00", "put_v2")
+	exec(t, c, ins, "2026-11-24", "r2", "put", "2026-11-24 22:00:00+00", "put_v3")
+	exec(t, c, ins, "2026-11-24", "r1", "call", "2026-11-24 21:00:00+00", "put_v2")
+	exec(t, c, ins, "2026-11-20", "r0", "put", "2026-11-20 21:00:00+00", "put_v1")
 
 	got, err := p.NewestCandidateRuns(context.Background(), "2026-11-24", "2026-11-24")
 	if err != nil {
@@ -162,14 +162,14 @@ func TestNewestCandidateRuns(t *testing.T) {
 	}
 	at := func(s string) time.Time { v, _ := time.Parse(time.RFC3339, s); return v }
 	want := []finding.CandidateRun{
-		{Day: "2026-11-24", Kind: "call", Rows: 1, ComputedAt: at("2026-11-24T21:00:00Z")},
-		{Day: "2026-11-24", Kind: "put", Rows: 2, ComputedAt: at("2026-11-24T22:00:00Z")},
+		{Day: "2026-11-24", Kind: "call", Rows: 1, ComputedAt: at("2026-11-24T21:00:00Z"), RuleVersion: "put_v2"},
+		{Day: "2026-11-24", Kind: "put", Rows: 2, ComputedAt: at("2026-11-24T22:00:00Z"), RuleVersion: ""},
 	}
 	if len(got) != 2 {
 		t.Fatalf("got %+v", got)
 	}
 	for i := range want {
-		if got[i].Day != want[i].Day || got[i].Kind != want[i].Kind || got[i].Rows != want[i].Rows || !got[i].ComputedAt.Equal(want[i].ComputedAt) {
+		if got[i].Day != want[i].Day || got[i].Kind != want[i].Kind || got[i].Rows != want[i].Rows || got[i].RuleVersion != want[i].RuleVersion || !got[i].ComputedAt.Equal(want[i].ComputedAt) {
 			t.Fatalf("got %+v, want %+v", got, want)
 		}
 	}

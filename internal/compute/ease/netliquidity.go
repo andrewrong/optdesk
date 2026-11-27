@@ -154,7 +154,7 @@ func NetLiquidity(walcl, wdtgal, rrp compute.Series, asOf contracts.Day) liquidi
 			continue
 		}
 		out := liquidityapi.Num{Value: ratText(v), Day: dayText(w)}
-		for k := 0; k < 7; k++ {
+		for k := range 7 {
 			if rr[dayText(w.AddDate(0, 0, -k))] != nil {
 				out.Aux = dayText(w.AddDate(0, 0, -k))
 				break
