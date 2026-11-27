@@ -47,7 +47,7 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 	var ld loaded
 	if c.Candidates == nil {
 		gaps = append(gaps, mkGap("no_reader", gapNoReader))
-		p.SharedGap = strPtr(gapNoReader)
+		p.SharedGap = new(gapNoReader)
 	} else {
 		var err error
 		if ld, err = loadShortPuts(ctx, c.Candidates, day); err != nil {
@@ -55,7 +55,7 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 		}
 		if !ld.Found {
 			gaps = append(gaps, mkGap("no_data", gapNoRows))
-			p.SharedGap = strPtr(gapNoRows)
+			p.SharedGap = new(gapNoRows)
 		}
 	}
 	key := ""
@@ -79,7 +79,7 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 		p.DataTimes = []sourceTime{{Source: candidatesSource, DataTime: zoneTime(ld.ComputedAt, c.Zone)}}
 		if len(mine) == 0 {
 			gaps = append(gaps, mkGap("no_data", noMatrixText))
-			p.SharedGap = strPtr(noMatrixText)
+			p.SharedGap = new(noMatrixText)
 		}
 	}
 	var err error
@@ -91,9 +91,9 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 	}
 	p.Top = topBar{Symbol: topSymbol(key), Trend: trendText, Policy: policyText}
 	if len(mine) == 0 {
-		p.NoCard = strPtr(noMatrixText)
-		p.Matrix.Empty = strPtr(noMatrixText)
-		p.Contracts.Empty = strPtr(noRowsText)
+		p.NoCard = new(noMatrixText)
+		p.Matrix.Empty = new(noMatrixText)
+		p.Contracts.Empty = new(noRowsText)
 		p.Notice = &notice
 		p.RunStatus = runStatus(gaps)
 		return json.Marshal(p)
@@ -129,7 +129,7 @@ func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, p *stock
 		}
 		p.Stale = &stale
 		gaps = append(gaps, mkGap("stale", gapStale))
-		p.SharedGap = strPtr(gapStale)
+		p.SharedGap = new(gapStale)
 	}
 	chosen := chosenIndex(rows)
 	matrix, cutNote, err := buildMatrix(rows, chosen)
@@ -144,7 +144,7 @@ func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, p *stock
 		return nil, "", err
 	}
 	if noYieldAnywhere(matrix.Cells) {
-		p.Matrix.Empty = strPtr(matrixEmptyText(ld.Day))
+		p.Matrix.Empty = new(matrixEmptyText(ld.Day))
 		p.Matrix.Cells, p.Matrix.Strikes, p.Matrix.Expiries = []matrixCell{}, []string{}, []matrixExpiry{}
 	}
 	var contractsCut string
@@ -153,8 +153,6 @@ func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, p *stock
 	}
 	return gaps, cutNote + contractsCut + dayNote, nil
 }
-
-func strPtr(s string) *string { return &s }
 
 // topSymbol is the symbol of the top bar; the schema wants a text, so an empty key is shown as a dash.
 func topSymbol(key string) string {

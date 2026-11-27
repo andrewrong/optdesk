@@ -41,9 +41,6 @@ func (f fakeReader) Candidates(_ context.Context, day contracts.Day, kind string
 	return rows, nil
 }
 
-func intp(n int) *int       { return &n }
-func strp(s string) *string { return &s }
-
 // cand is a stored row with plain values; tests change the fields they care about.
 func cand(kind string, id int, status string) store.Candidate {
 	right := "put"
@@ -52,13 +49,13 @@ func cand(kind string, id int, status string) store.Candidate {
 	}
 	c := store.Candidate{
 		Kind: kind, InstrumentID: id, Issuer: "ACME", Expiry: "2026-12-18", DTE: 39, Right: right,
-		Strike: "95.00", BidEod: "1.20", BreakEven: "93.80", AnnualizedYield: strp("0.123456"),
-		Delta: strp("-0.25"), Iv: strp("0.31"), Status: status, Gates: "[]", Marks: "[]", Fits: "{}",
+		Strike: "95.00", BidEod: "1.20", BreakEven: "93.80", AnnualizedYield: new("0.123456"),
+		Delta: new("-0.25"), Iv: new("0.31"), Status: status, Gates: "[]", Marks: "[]", Fits: "{}",
 		EarningsState: "listed", RuleVersion: "r1",
 		ComputedAt: time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC),
 	}
 	if status == "ok" {
-		c.Rank = intp(id)
+		c.Rank = new(id)
 	}
 	return c
 }
@@ -150,7 +147,7 @@ func TestOrderKept(t *testing.T) {
 	t.Parallel()
 	rows := []store.Candidate{cand("short_put", 30, "ok"), cand("short_put", 10, "ok"), cand("short_put", 20, "ok")}
 	for i := range rows {
-		rows[i].Rank = intp(i + 1)
+		rows[i].Rank = new(i + 1)
 	}
 	p := buildPage(t, map[string][]store.Candidate{"2026-11-09/short_put": rows}, buildDay)
 	main := p.Groups[0].Main

@@ -31,14 +31,11 @@ func underOf(issuer string) int {
 	return 7
 }
 
-func sPtr(s string) *string { return &s }
-func iPtr(i int) *int       { return &i }
-
 func stockRowOf(id int, issuer, expiry string, dte int, strike, status string, rank, inU *int, gates string) store.Candidate {
 	return store.Candidate{
 		SessionDay: stockDay, Kind: "short_put", InstrumentID: id, Issuer: issuer, UnderlyingID: underOf(issuer), Expiry: contracts.Day(expiry), DTE: dte,
-		Right: "put", Strike: strike, Multiplier: 100, BidEod: "1.20", Ask: sPtr("1.30"), Spot: sPtr("68"), BreakEven: "60.8",
-		AnnualizedYield: sPtr("0.123456"), Delta: sPtr("-0.15"), Iv: sPtr("0.38"), Status: status, Gates: gates, Marks: "[]",
+		Right: "put", Strike: strike, Multiplier: 100, BidEod: "1.20", Ask: new("1.30"), Spot: new("68"), BreakEven: "60.8",
+		AnnualizedYield: new("0.123456"), Delta: new("-0.15"), Iv: new("0.38"), Status: status, Gates: gates, Marks: "[]",
 		NextEarnings: nil, EarningsState: "absent", Rank: rank, RankInUnderlying: inU,
 		ComputedAt: time.Date(2026, 11, 10, 6, 30, 0, 0, time.UTC),
 	}
@@ -46,20 +43,20 @@ func stockRowOf(id int, issuer, expiry string, dte int, strike, status string, r
 
 func stockFixture() []store.Candidate {
 	return []store.Candidate{
-		stockRowOf(102, issuerApple, "2026-11-20", 10, "62", "ok", iPtr(2), iPtr(2), gatesPass),
-		stockRowOf(101, issuerApple, "2026-11-13", 3, "65", "ok", iPtr(1), iPtr(1), gatesPass),
+		stockRowOf(102, issuerApple, "2026-11-20", 10, "62", "ok", new(2), new(2), gatesPass),
+		stockRowOf(101, issuerApple, "2026-11-13", 3, "65", "ok", new(1), new(1), gatesPass),
 		stockRowOf(103, issuerApple, "2026-11-13", 3, "60", "blocked", nil, nil, gatesThin),
-		stockRowOf(201, issuerMsft, "2026-11-13", 3, "300", "ok", iPtr(3), iPtr(1), gatesPass),
+		stockRowOf(201, issuerMsft, "2026-11-13", 3, "300", "ok", new(3), new(1), gatesPass),
 	}
 }
 
 func stockEod() *countingEod {
 	return &countingEod{rows: map[int64][]contracts.OptionEod{7: {
 		{
-			InstrumentID: 101, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(250), OpenInterest: fp(1200),
-			ThetaPerCalendarDay: fp(-0.02), Gamma: fp(0.031), VegaPerVolPoint: fp(0.05),
+			InstrumentID: 101, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: new(float64(250)), OpenInterest: new(float64(1200)),
+			ThetaPerCalendarDay: new(-0.02), Gamma: new(0.031), VegaPerVolPoint: new(0.05),
 		},
-		{InstrumentID: 102, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(10)},
+		{InstrumentID: 102, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: new(float64(10))},
 	}}}
 }
 
@@ -289,7 +286,7 @@ func TestStockEmptyBidIsGap(t *testing.T) {
 	t.Parallel()
 	rows := stockFixture()
 	rows[1].BidEod = ""
-	rows[1].AnnualizedYield = sPtr("0")
+	rows[1].AnnualizedYield = new("0")
 	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, "AAPL"), stockDay)
 	found := false
 	for _, c := range p.Matrix.Cells {

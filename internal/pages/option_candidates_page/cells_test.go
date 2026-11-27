@@ -21,7 +21,7 @@ func TestValueIsNumberLiteral(t *testing.T) {
 		}
 	}
 	// the yield keeps the stored text as the value
-	if b, _ = json.Marshal(yieldCell(strp("0.050000"))); string(b) != `{"text":"5.0%","value":0.050000,"badges":[],"tone":"none"}` {
+	if b, _ = json.Marshal(yieldCell(new("0.050000"))); string(b) != `{"text":"5.0%","value":0.050000,"badges":[],"tone":"none"}` {
 		t.Errorf("yield cell = %s", b)
 	}
 }
@@ -32,12 +32,12 @@ func TestOptionsPageFormats(t *testing.T) {
 		name, text, value string
 		cell              any
 	}{
-		{"yield", "11.8%", "0.118212", yieldCell(strp("0.118212"))},
-		{"yield", "144.4%", "1.444379", yieldCell(strp("1.444379"))},
-		{"delta", "\u22120.56", "-0.5594", deltaCell(strp("-0.5594"))},
-		{"delta", "0.30", "0.3", deltaCell(strp("0.3"))},
-		{"iv", "69.6%", "0.696", ivCell(strp("0.696"))},
-		{"iv", "50.9%", "0.5086", ivCell(strp("0.5086"))},
+		{"yield", "11.8%", "0.118212", yieldCell(new("0.118212"))},
+		{"yield", "144.4%", "1.444379", yieldCell(new("1.444379"))},
+		{"delta", "\u22120.56", "-0.5594", deltaCell(new("-0.5594"))},
+		{"delta", "0.30", "0.3", deltaCell(new("0.3"))},
+		{"iv", "69.6%", "0.696", ivCell(new("0.696"))},
+		{"iv", "50.9%", "0.5086", ivCell(new("0.5086"))},
 		{"bid", "$65.65", "65.65", moneyCell("65.65")},
 		{"break-even", "$1,105.75", "1105.75", moneyCell("1105.75")},
 		{"break-even", "$1,100.65", "1100.65", moneyCell("1100.65")},
