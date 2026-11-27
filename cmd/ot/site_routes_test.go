@@ -89,13 +89,6 @@ type routesLedger struct{ householdLedger }
 
 func (routesLedger) StoredAliases(context.Context) ([]string, error) { return []string{"main"}, nil }
 
-// knownPagesPanics are the panics of module pages that this change cannot edit, keyed by reader set and path; the
-// follow-up of pages removes them. A key whose route no longer panics is only logged.
-var knownPagesPanics = map[string]bool{
-	"nil readers macro":    true, // pages-nil-reader-panics
-	"fixture readers home": true, // pages-nil-reader-panics
-}
-
 // unavailable503 are the routes that answer 503 for a reader the site has not opened (item 6 of the issue); every
 // other route answers a page.
 var unavailable503 = map[string]bool{"/health": true, "/options/data": true, "/options/pnl": true, "/options/tracking": true}
@@ -113,10 +106,6 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 	if len(paths) == 0 {
 		t.Fatal("no routes")
 	}
-	unseen := map[string]bool{}
-	for k := range knownPagesPanics {
-		unseen[k] = true
-	}
 	for _, s := range sets {
 		a, logs := testApp(t, "OT_UNUSED=1\n")
 		a.deps = newDeps()                                                    // the page constructors of the real wiring; the readers are the set's
@@ -125,14 +114,8 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 		h := siteHandler(a, householdClock, "2026-11-05", s.rd, echoHandler, http.NotFoundHandler())
 		for _, p := range paths {
 			rec := httptest.NewRecorder()
-			key := s.name + " " + strings.TrimPrefix(p, "/")
-			delete(unseen, key)
 			if pv := serveRecovered(h, rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil)); pv != nil {
-				if knownPagesPanics[key] {
-					t.Logf("%s: GET %s panicked (known): %v", s.name, p, pv)
-				} else {
-					t.Errorf("%s: GET %s panicked: %v", s.name, p, pv)
-				}
+				t.Errorf("%s: GET %s panicked: %v", s.name, p, pv)
 				continue
 			}
 			if p == "/health" && s.name == "nil readers" && (rec.Code != http.StatusServiceUnavailable || rec.Body.String() != `{"status":"unavailable"}`) {
@@ -141,16 +124,10 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 			if rec.Code >= 500 && (rec.Code != http.StatusServiceUnavailable || !unavailable503[p]) {
 				t.Errorf("%s: GET %s answered %d: %s\nlog: %s", s.name, p, rec.Code, rec.Body.String(), logs.String())
 			}
-			if knownPagesPanics[key] {
-				t.Logf("%s: GET %s no longer panics", s.name, p)
-			}
 			if rec.Code == http.StatusNotFound && families[p] {
 				t.Errorf("%s: GET %s of pageFamilies answered 404", s.name, p)
 			}
 		}
-	}
-	for k := range unseen {
-		t.Errorf("known panic %q is not a path of the walk", k)
 	}
 }
 
