@@ -143,13 +143,13 @@ func (s *rowState) rule(n numbers, p optiontierapi.Params, built bool) {
 	if built && !s.cashFits(n) {
 		s.look[badgeCashShort] = true
 	}
-	max, _ := parse(p.DeltaMax)
+	ceiling, _ := parse(p.DeltaMax)
 	thin, _ := parse(p.ThinDelta)
 	if d, ok := parse(s.row.Delta); !ok {
 		s.look[badgeDeltaUnknown] = true
 	} else {
 		abs := d.Abs()
-		if abs.GreaterThan(max) {
+		if abs.GreaterThan(ceiling) {
 			s.look[badgeDeltaAboveBound] = true
 		}
 		if abs.LessThan(thin) {

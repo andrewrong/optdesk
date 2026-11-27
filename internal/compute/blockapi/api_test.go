@@ -406,8 +406,8 @@ func TestTechContract(t *testing.T) {
 	if got != want {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
-	var real blockapi.TechFunc = techstate.Classify
-	if real == nil {
+	var classify blockapi.TechFunc = techstate.Classify
+	if classify == nil {
 		t.Fatal("Classify is not a TechFunc")
 	}
 }
