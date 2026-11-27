@@ -8,6 +8,7 @@ import (
 	"maps"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -631,13 +632,13 @@ func TestTickerLogsReconcileFailure(t *testing.T) {
 				runtime.Gosched()
 			}
 			out := buf.String()
-			if n := bytes.Count([]byte(out), []byte("reconcile failed")); n != 1 || bytes.Count([]byte(out), []byte("\n")) != 1 {
+			if n := strings.Count(out, "reconcile failed"); n != 1 || strings.Count(out, "\n") != 1 {
 				t.Fatalf("log = %q, want one line \"reconcile failed\"", out)
 			}
-			if !bytes.Contains([]byte(out), []byte("day=2025-11-26")) || !bytes.Contains([]byte(out), []byte(tc.kind)) {
+			if !strings.Contains(out, "day=2025-11-26") || !strings.Contains(out, tc.kind) {
 				t.Fatalf("log = %q, want the day and %s", out, tc.kind)
 			}
-			if bytes.Contains([]byte(out), []byte("secret-token-hunter2")) {
+			if strings.Contains(out, "secret-token-hunter2") {
 				t.Fatalf("log holds the error text: %q", out)
 			}
 		})
