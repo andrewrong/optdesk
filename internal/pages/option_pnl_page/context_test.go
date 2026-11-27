@@ -374,7 +374,32 @@ func TestLongPutIsSkipped(t *testing.T) {
 	}
 }
 
-// CashIfAssigned is a stub: no lines, no error.
-func (*sumBooker) CashIfAssigned([]optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
-	return nil, nil
+// CashIfAssigned adds the puts per currency by an independent rule, so the page tests can show the line.
+func (*sumBooker) CashIfAssigned(puts []optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
+	out := []optionattrapi.CashDue{}
+	sums := map[string][2]decimal.Decimal{}
+	idx := map[string]int{}
+	for _, p := range puts {
+		k, e1 := decimal.NewFromString(p.Strike)
+		m, e2 := decimal.NewFromString(p.Multiplier)
+		q, e3 := decimal.NewFromString(p.Quantity)
+		if e1 != nil || e2 != nil || e3 != nil {
+			return nil, optionattrapi.ErrBadInput
+		}
+		q = q.Abs()
+		i, ok := idx[p.Currency]
+		if !ok {
+			i = len(out)
+			idx[p.Currency] = i
+			out = append(out, optionattrapi.CashDue{Currency: p.Currency})
+		}
+		s := sums[p.Currency]
+		sums[p.Currency] = [2]decimal.Decimal{s[0].Add(q), s[1].Add(k.Mul(m).Mul(q))}
+		out[i].Lots++
+	}
+	for i := range out {
+		s := sums[out[i].Currency]
+		out[i].Contracts, out[i].Cash = s[0].String(), s[1].String()
+	}
+	return out, nil
 }
