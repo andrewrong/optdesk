@@ -84,7 +84,6 @@ func barDays(bars []contracts.PriceBar) []contracts.Day {
 // nextReport is the report date of the newest listed row on or after today; rows are ascending by day.
 func nextReport(rows []contracts.EarningsDate, today contracts.Day) *contracts.Day {
 	for _, r := range slices.Backward(rows) {
-
 		if string(r.Status) != statusListed || r.ReportDate == nil {
 			continue
 		}

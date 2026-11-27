@@ -435,7 +435,6 @@ func buildChart(newestFirst []point) chart {
 	}
 	ch := chart{Points: []chartPoint{}, SeriesNames: seriesNames, EndLabels: []string{noDay, noDay}, AriaText: ariaNone}
 	for _, p := range slices.Backward(newestFirst) {
-
 		ch.Points = append(ch.Points, chartPoint{Label: p.date.Format("01-02"), Close: json.Number(p.text)})
 	}
 	if n := len(ch.Points); n > 0 {

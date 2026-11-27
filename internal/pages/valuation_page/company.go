@@ -206,7 +206,6 @@ func history(in Input) []historyJSON {
 	}
 	prev := ""
 	for _, r := range slices.Backward(in.Reviews) { // oldest first
-
 		if r.Status != "effective" {
 			continue
 		}

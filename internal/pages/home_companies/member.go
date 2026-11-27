@@ -383,7 +383,6 @@ func (c Config) newest(ctx context.Context, name, symbol string, day time.Time) 
 // reasonOf returns the reason tag of the newest not-ok row.
 func reasonOf(rows []contracts.ReadingRecord) string {
 	for _, r := range slices.Backward(rows) {
-
 		if r.State == "ok" {
 			continue
 		}
@@ -428,7 +427,6 @@ func (c Config) rowsOf(ctx context.Context, name, symbol string, day time.Time) 
 
 func newestOK(rows []contracts.ReadingRecord) *reading {
 	for _, r := range slices.Backward(rows) {
-
 		if r.State != "ok" || r.Value == nil {
 			continue
 		}
