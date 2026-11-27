@@ -121,7 +121,7 @@ func TestRedaction(t *testing.T) {
 			_, _ = w.Write([]byte("{" + testKey))
 			return
 		}
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("error " + testKey))
 	})
 	for _, id := range []string{"DGS10", "BAD"} {

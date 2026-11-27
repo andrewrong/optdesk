@@ -132,7 +132,7 @@ func (c *client) get(ctx context.Context, sym string) ([]sources.EarningsListing
 	if err != nil {
 		return nil, 0, fail(contracts.Permanent, "bad_request", "jquants: bad request")
 	}
-	req.Header.Set("x-api-key", c.key)
+	req.Header.Set("X-Api-Key", c.key)
 	resp, err := c.doer.Do(req)
 	if err != nil {
 		// Report no text of the transport error.

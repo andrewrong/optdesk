@@ -113,7 +113,7 @@ func TestJQuantsParse(t *testing.T) {
 	if got[0] != want {
 		t.Fatalf("got %+v want %+v", got[0], want)
 	}
-	if k := d.reqs[0].Header.Get("x-api-key"); k != testKey {
+	if k := d.reqs[0].Header.Get("X-Api-Key"); k != testKey {
 		t.Fatalf("header key %q", k)
 	}
 	if strings.Contains(d.reqs[0].URL.String(), testKey) || d.reqs[0].Header.Get("Authorization") != "" {
