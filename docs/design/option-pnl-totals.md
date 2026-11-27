@@ -138,7 +138,8 @@ Acceptance:
 Module: pages.
 Size: M.
 Order: after 1 and 2.
-Files: `internal/pages/option_pnl_page/cashdue.go` (new), `internal/pages/option_pnl_page/cashdue_test.go` (new), `internal/pages/option_pnl_page/builder.go`, `internal/pages/option_pnl_page/zh_texts.go`, `internal/pages/option_pnl_page/testdata/ok.golden.json`, `internal/pages/option_pnl_page/testdata/ledger.golden.json`, `internal/pages/option_pnl_page/testdata/lot_gap.golden.json`, `internal/pages/option_pnl_page/testdata/no_quotes.golden.json`, `docs/contracts/pages.md`
+Files: `internal/pages/option_pnl_page/cashdue.go` (new), `internal/pages/option_pnl_page/cashdue_test.go` (new), `internal/pages/option_pnl_page/builder.go`, `internal/pages/option_pnl_page/zh_texts.go`, `internal/pages/option_pnl_page/testdata/ok.golden.json`, `internal/pages/option_pnl_page/testdata/lot_gap.golden.json`, `docs/contracts/pages.md`
+Landed in #4397 without changes to `ledger.golden.json` and `no_quotes.golden.json`, so they are not part of this entry.
 Contracts: unchanged
 Design: docs/design/option-pnl-totals.md#Decisions
 Plan: P2
