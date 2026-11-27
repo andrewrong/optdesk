@@ -101,8 +101,6 @@ func weeksUp(n int, recent float64) []float64 {
 // figures are the four figures of the score; nil is absent.
 type figures struct{ NL, US, Fed, HY *float64 }
 
-func fp(x float64) *float64 { return &x }
-
 // seriesFor builds series that give the figures on asOf, a Wednesday: the change of net
 // liquidity, the us10y and fed_funds changes in basis points and the hy_oas level.
 func seriesFor(f figures, asOf contracts.Day) compute.EaseSeries {
@@ -218,7 +216,7 @@ func TestGoldenScoreCases(t *testing.T) {
 
 func TestThreeInputsMean(t *testing.T) {
 	t.Parallel()
-	got := newEase().Ease("macro.ease", seriesFor(figures{NL: fp(0.015), US: fp(37.5), HY: fp(4.0)}, wed), wed)
+	got := newEase().Ease("macro.ease", seriesFor(figures{NL: new(0.015), US: new(37.5), HY: new(4.0)}, wed), wed)
 	if got.Status != compute.StatusOK || got.Value != 50 || got.Observations != 3 || got.Band != compute.EaseSteady {
 		t.Fatalf("got %+v", got)
 	}
@@ -238,7 +236,7 @@ func TestThreeInputsMean(t *testing.T) {
 
 func TestTwoInputsIsMissing(t *testing.T) {
 	t.Parallel()
-	got := newEase().Ease("macro.ease", seriesFor(figures{US: fp(0), HY: fp(4)}, wed), wed)
+	got := newEase().Ease("macro.ease", seriesFor(figures{US: new(float64(0)), HY: new(float64(4))}, wed), wed)
 	if got.Status != compute.StatusMissing || got.Reason != compute.NoInput || got.Band != "" || got.Value != 0 {
 		t.Fatalf("got %+v", got)
 	}
@@ -249,7 +247,7 @@ func TestTwoInputsIsMissing(t *testing.T) {
 
 func TestHalfEvenTie(t *testing.T) {
 	t.Parallel()
-	got := newEase().Ease("macro.ease", seriesFor(figures{NL: fp(-0.05), US: fp(100), HY: fp(5.49955)}, wed), wed)
+	got := newEase().Ease("macro.ease", seriesFor(figures{NL: new(-0.05), US: new(float64(100)), HY: new(5.49955)}, wed), wed)
 	if got.Status != compute.StatusOK || got.Value != 0 {
 		t.Fatalf("value %v, want 0.00 (half-even), got %+v", got.Value, got)
 	}
@@ -263,10 +261,10 @@ func TestHalfEvenTie(t *testing.T) {
 
 func TestBandEdges(t *testing.T) {
 	t.Parallel()
-	zero := figures{NL: fp(-0.03), US: fp(75), Fed: fp(50)}
-	hundred := figures{NL: fp(0.03), US: fp(-75), Fed: fp(-50)}
-	low := figures{NL: fp(0.03), US: fp(75), Fed: fp(50)}   // one at 100, two at 0
-	high := figures{NL: fp(0.03), US: fp(-75), Fed: fp(50)} // two at 100, one at 0
+	zero := figures{NL: new(-0.03), US: new(float64(75)), Fed: new(float64(50))}
+	hundred := figures{NL: new(0.03), US: new(float64(-75)), Fed: new(float64(-50))}
+	low := figures{NL: new(0.03), US: new(float64(75)), Fed: new(float64(50))}   // one at 100, two at 0
+	high := figures{NL: new(0.03), US: new(float64(-75)), Fed: new(float64(50))} // two at 100, one at 0
 	cases := []struct {
 		base figures
 		hy   float64
@@ -284,7 +282,7 @@ func TestBandEdges(t *testing.T) {
 	}
 	for _, c := range cases {
 		f := c.base
-		f.HY = fp(c.hy)
+		f.HY = new(c.hy)
 		got := newEase().Ease("macro.ease", seriesFor(f, wed), wed)
 		if got.Value != c.want || got.Band != c.band {
 			t.Errorf("hy %v: value %v band %q, want %v %q", c.hy, got.Value, got.Band, c.want, c.band)
@@ -299,7 +297,7 @@ func TestStaleHyOasCountsMissing(t *testing.T) {
 		days contracts.Day
 		ok   bool
 	}{{4, "2026-10-29", false}, {3, "2026-10-30", true}} {
-		s := seriesFor(figures{NL: fp(0), US: fp(0), Fed: fp(0)}, wed)
+		s := seriesFor(figures{NL: new(float64(0)), US: new(float64(0)), Fed: new(float64(0))}, wed)
 		s.BAMLH0A0HYM2 = compute.Series{{Day: c.days, Value: 4}}
 		got := newEase().Ease("macro.ease", s, wed)
 		hy := got.Parts[3]
@@ -334,13 +332,13 @@ func TestWeekdaysAcrossWeekend(t *testing.T) {
 
 func TestFixedPointClip(t *testing.T) {
 	t.Parallel()
-	beyond := newEase().Ease("macro.ease", seriesFor(figures{NL: fp(-0.2), US: fp(500), Fed: fp(300), HY: fp(9)}, wed), wed)
+	beyond := newEase().Ease("macro.ease", seriesFor(figures{NL: new(-0.2), US: new(float64(500)), Fed: new(float64(300)), HY: new(float64(9))}, wed), wed)
 	for _, p := range beyond.Parts {
 		if p.Score != 0 {
 			t.Errorf("%s beyond the 0 point scores %v", p.Input, p.Score)
 		}
 	}
-	above := newEase().Ease("macro.ease", seriesFor(figures{NL: fp(0.2), US: fp(-500), Fed: fp(-300), HY: fp(1)}, wed), wed)
+	above := newEase().Ease("macro.ease", seriesFor(figures{NL: new(0.2), US: new(float64(-500)), Fed: new(float64(-300)), HY: new(float64(1))}, wed), wed)
 	for _, p := range above.Parts {
 		if p.Score != 100 {
 			t.Errorf("%s beyond the 100 point scores %v", p.Input, p.Score)
@@ -353,7 +351,7 @@ func TestFixedPointClip(t *testing.T) {
 
 func TestUnknownIDBadInput(t *testing.T) {
 	t.Parallel()
-	got := newEase().Ease("macro.nope", seriesFor(figures{NL: fp(0), US: fp(0), Fed: fp(0), HY: fp(4)}, wed), wed)
+	got := newEase().Ease("macro.nope", seriesFor(figures{NL: new(float64(0)), US: new(float64(0)), Fed: new(float64(0)), HY: new(float64(4))}, wed), wed)
 	if got.Status != compute.StatusMissing || got.Reason != compute.BadInput || got.Band != "" || len(got.Parts) != 4 {
 		t.Fatalf("got %+v", got)
 	}
