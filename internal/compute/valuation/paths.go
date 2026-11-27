@@ -64,7 +64,10 @@ func fade(start decimal.Decimal, held int) []decimal.Decimal {
 	step := quo(sub(p.terminal, start), decimal.NewFromInt(int64(p.horizon-held)))
 	out := make([]decimal.Decimal, p.horizon)
 	for t := 1; t <= p.horizon; t++ {
-		k := max(t-held, 0)
+		k := t - held
+		if k < 0 {
+			k = 0
+		}
 		out[t-1] = add(start, mul(step, decimal.NewFromInt(int64(k))))
 	}
 	return out
