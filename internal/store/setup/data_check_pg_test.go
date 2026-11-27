@@ -10,7 +10,7 @@ import (
 )
 
 // TestDataCheckGrants: ot_w_datacheck inserts and reads the three tables and updates or deletes none; ot_ro_pages reads
-// the two views and no table; ot_w_datacheck reads the eight input views.
+// the two views and no table; ot_w_datacheck reads the ten input views.
 func TestDataCheckGrants(t *testing.T) {
 	t.Parallel()
 	ctx, c := sessionDayDB(t)
@@ -56,7 +56,7 @@ func TestDataCheckGrants(t *testing.T) {
 		}
 	}
 	for _, v := range []string{"coverage_day_r1", "session_day_r1", "reading_r1", "option_open_r1", "option_candidate_r1",
-		"rule_param_r1", "option_exclusion_r1", "job_gap_r1"} {
+		"rule_param_r1", "option_exclusion_r1", "job_gap_r1", "price_bar_r1", "earnings_date_r1"} {
 		if err := asRole(ctx, t, c, "ot_w_datacheck", `SELECT * FROM rd.`+v); err != nil {
 			t.Errorf("ot_w_datacheck select rd.%s: %v", v, err)
 		}

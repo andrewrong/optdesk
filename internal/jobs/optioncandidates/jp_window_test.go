@@ -41,7 +41,7 @@ func newWindowEnv(t *testing.T, dtes map[int64]string) windowEnv {
 	for id, exp := range dtes {
 		e.terms[id] = store.OptionTerms{InstrumentID: id, Right: "P", Strike: "2400", Multiplier: "100", ExpirationDate: contracts.Day(exp)}
 		e.open = append(e.open, contracts.OptionOpen{UnderlyingID: 1, InstrumentID: int(id), Status: 1, Currency: "JPY",
-			Bid: f64(30), Ask: f64(31), BidSize: f64(5), UnderlyingPrice: f64(2500), MarketDataType: 1,
+			Bid: new(float64(30)), Ask: new(float64(31)), BidSize: new(float64(5)), UnderlyingPrice: new(float64(2500)), MarketDataType: 1,
 			CaptureID: "o" + strconv.Itoa(int(id))})
 	}
 	return windowEnv{e}

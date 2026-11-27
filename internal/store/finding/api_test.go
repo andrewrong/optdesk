@@ -3,6 +3,9 @@ package finding
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 // fakeStore is one in-memory value on both sides of the seam.
@@ -107,5 +110,50 @@ func TestDataCheckDSNEnvName(t *testing.T) {
 	t.Parallel()
 	if DSNEnvDataCheck != "OT_PG_DSN_DATACHECK" {
 		t.Fatalf("got %q", DSNEnvDataCheck)
+	}
+}
+
+// fakeProbe holds the whole Probe, the two methods of data check 2 included.
+type fakeProbe struct{}
+
+func (fakeProbe) RepeatedReadings(context.Context, []string, contracts.Day, contracts.Day) ([]ReadingRepeat, error) {
+	return nil, nil
+}
+
+func (fakeProbe) LateOpenQuotes(context.Context, contracts.Day, contracts.Day) ([]LateQuotes, error) {
+	return nil, nil
+}
+
+func (fakeProbe) NewestCandidateRuns(context.Context, contracts.Day, contracts.Day) ([]CandidateRun, error) {
+	return nil, nil
+}
+func (fakeProbe) SettingsChangedAt(context.Context) (time.Time, bool, error) {
+	return time.Time{}, false, nil
+}
+func (fakeProbe) OpenGaps(context.Context) ([]OpenGap, error) { return nil, nil }
+func (fakeProbe) EarningsChecks(context.Context, contracts.Day, contracts.Day) ([]EarningsCheck, error) {
+	return nil, nil
+}
+
+func (fakeProbe) BarShapes(context.Context, contracts.Day, contracts.Day) ([]BarShape, error) {
+	return nil, nil
+}
+func (fakeProbe) Close() error { return nil }
+
+var _ Probe = fakeProbe{}
+
+func TestRuleIDsDistinct(t *testing.T) {
+	t.Parallel()
+	ids := []string{RuleReadingRepeat, RuleOpenLateQuote, RuleCandidatesStale, RuleCaptureGap, RulePlanAbsent,
+		RuleGapUnclosed, RuleCandidateRuleVersion, RuleEarningsCoverage, RuleBarOHLCShape}
+	seen := map[string]bool{}
+	for _, id := range ids {
+		if id == "" || seen[id] {
+			t.Errorf("rule id %q is empty or repeated", id)
+		}
+		seen[id] = true
+	}
+	if len(seen) != 9 {
+		t.Errorf("got %d rule ids, want 9", len(seen))
 	}
 }

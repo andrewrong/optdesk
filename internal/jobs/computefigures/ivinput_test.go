@@ -141,8 +141,6 @@ func (f *fx) addSession(day contracts.Day, isSession bool, open, closeAt time.Ti
 		OpenAt: open, CloseAt: closeAt})
 }
 
-func fp(v float64) *float64 { return &v }
-
 func (f *fx) addRate(day contracts.Day, percent float64) {
 	f.addPoint("DGS3MO", day, percent)
 }

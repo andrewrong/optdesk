@@ -79,8 +79,6 @@ type fakeBroker struct {
 	missing     []broker.MissingField // Missing of every option quote
 }
 
-func num(v float64) *float64 { return &v }
-
 func newBroker() *fakeBroker {
 	return &fakeBroker{
 		price: new(float64(100)),

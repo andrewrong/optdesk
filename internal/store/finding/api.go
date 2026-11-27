@@ -40,10 +40,17 @@ const (
 	RulePlanAbsent = "plan_absent"
 	// RuleGapUnclosed: a job gap still open after the grace.
 	RuleGapUnclosed = "gap_unclosed"
+	// RuleCandidateRuleVersion: the newest candidate run carries a rule version other than the expected one.
+	RuleCandidateRuleVersion = "candidate_rule_version"
+	// RuleEarningsCoverage: the earnings check of a market found no dates, or fewer than the day before.
+	RuleEarningsCoverage = "earnings_coverage"
+	// RuleBarOHLCShape: trades bars of a day that break low <= open, close <= high.
+	RuleBarOHLCShape = "bar_ohlc_shape"
 )
 
 // Count is one piece of evidence: a name from a fixed vocabulary and a count. The names are ok, same, rows,
-// late, hours_behind, keys, missing, expired, cells, age_hours and read_failed.
+// late, hours_behind, keys, missing, expired, cells, age_hours, read_failed, names, listed, errors,
+// listed_before and bad.
 type Count struct {
 	Name string
 	N    int
@@ -98,6 +105,11 @@ type Probe interface {
 	SettingsChangedAt(ctx context.Context) (time.Time, bool, error)
 	// OpenGaps returns the gaps with no cleared_at.
 	OpenGaps(ctx context.Context) ([]OpenGap, error)
+	// EarningsChecks counts, per market and day, the earnings check rows, those with status listed and those with
+	// status error; a day with no rows gives no answer.
+	EarningsChecks(ctx context.Context, from, to contracts.Day) ([]EarningsCheck, error)
+	// BarShapes counts, per day, the trades bars and those that break low <= open, close <= high.
+	BarShapes(ctx context.Context, from, to contracts.Day) ([]BarShape, error)
 	Close() error
 }
 
@@ -121,6 +133,22 @@ type CandidateRun struct {
 	Kind       string
 	Rows       int
 	ComputedAt time.Time
+	// RuleVersion is the rule_version of the rows of the run; empty when the rows disagree.
+	RuleVersion string
+}
+
+// EarningsCheck is the answer of EarningsChecks for one market ("US" or "JP") and day: the check rows, those
+// with status listed, and those with status error.
+type EarningsCheck struct {
+	Market                string
+	Day                   contracts.Day
+	Names, Listed, Errors int
+}
+
+// BarShape is the answer of BarShapes for one day: the trades bars and those that break low <= open, close <= high.
+type BarShape struct {
+	Day       contracts.Day
+	Rows, Bad int
 }
 
 // OpenGap is one gap with no cleared_at.
