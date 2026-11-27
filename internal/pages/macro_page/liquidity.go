@@ -91,7 +91,7 @@ type liquidityBlock struct {
 }
 
 // withLiquidity reads the series, calls c.Liquidity once and turns the page into its v2 form. An error of a
-// read is an error, never a gap.
+// read is an error, never a gap; a nil r reads nothing and every series is a gap.
 func withLiquidity(ctx context.Context, r store.SeriesReader, c Config, d time.Time, vm *viewModel) error {
 	if c.Liquidity == nil {
 		return nil
@@ -118,6 +118,9 @@ func liquidityInput(ctx context.Context, r store.SeriesReader, c Config, d time.
 		f := from
 		if id == highYieldID {
 			f = highYieldFloor
+		}
+		if r == nil { // no reader: the series is empty and the block shows its gap
+			continue
 		}
 		rows, err := r.SeriesPoints(ctx, id, f, day)
 		if err != nil {

@@ -556,3 +556,11 @@ func TestOptionsCardCaptionIsChinese(t *testing.T) {
 		t.Errorf("three aliases: caption = %q", three)
 	}
 }
+
+// A nil Ledger replays nothing: the card shows its gaps with the no-reader text and Build does not panic.
+func TestReplayNilLedger(t *testing.T) {
+	t.Parallel()
+	c := cfg(nil, results{})
+	c.Replay, c.Results = nil, nil
+	allGaps(t, card(t, c), "期权账本：尚未接入")
+}
