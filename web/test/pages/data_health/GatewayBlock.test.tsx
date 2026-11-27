@@ -66,4 +66,22 @@ describe('gateway block', () => {
     p.gateways = []
     expect((await render(p)).querySelector('[data-gateways]')).toBeNull()
   })
+
+  it('TestSinceTextRendered: the unreachable gateway shows its since_text', async () => {
+    const el = await render(fixture('gatewaysince'))
+    const wife = el.querySelector('[data-gateway="wife"]')
+    expect(wife!.textContent).toContain('无连接自 2026-11-15 03:12 UTC')
+    expect(wife!.querySelector('[data-since]')?.textContent).toBe('无连接自 2026-11-15 03:12 UTC')
+  })
+
+  it('TestNoSinceLineWhenEmpty: the farm_down gateway shows no since line', async () => {
+    const el = await render(fixture('gatewaysince'))
+    expect(el.querySelector('[data-gateway="main"]')!.querySelector('[data-since]')).toBeNull()
+  })
+
+  it('TestAbsentSinceRendersAsBefore: a gateway without the field shows no since line', async () => {
+    const el = await render(fixture('gateways'))
+    expect(el.querySelectorAll('[data-gateway]').length).toBeGreaterThan(0)
+    expect(el.querySelectorAll('[data-since]')).toHaveLength(0)
+  })
 })
