@@ -1,0 +1,55 @@
+{
+  "run_day": "2026-11-09",
+  "params": {
+    "min_dte": 21, "max_dte": 45, "min_bid_size": 1, "max_spread": "0.10", "min_open_interest": 10,
+    "div_guard_factor": "1.0", "max_rate_age_days": 7, "max_event_age_sessions": 2, "min_report_gap_days": 60
+  },
+  "rate": "4.00",
+  "rate_day": "2026-11-06",
+  "session_days": ["2026-11-04", "2026-11-05", "2026-11-06", "2026-11-09"],
+  "underlyings": [
+    {
+      "issuer": "cik:0000000001", "symbol": "AAA", "id": 7, "chain_day": "2026-11-09",
+      "spot": "100.00", "buy_price": "95", "earnings": {"state": "listed", "next": "2027-01-20", "row_day": "2026-11-09"},
+      "accounts": [{"alias": "A", "funds": "50000", "currency": "USD", "capture_day": "2026-11-09"}],
+      "quotes": [
+        {"id": "101", "expiry": "2026-12-11", "strike": "90", "bid": "1.50", "ask": "1.60", "bid_size": 10, "open_interest": 200, "delta": "-0.20", "iv": "0.30", "quote_ok": true},
+        {"id": "102", "expiry": "2026-12-11", "strike": "85", "bid": "0.80", "ask": "0.85", "bid_size": 8, "open_interest": 150, "delta": "-0.12", "iv": "0.28", "quote_ok": true},
+        {"id": "103", "expiry": "2026-12-11", "strike": "95", "bid": "3.00", "ask": "3.10", "bid_size": 5, "open_interest": 90, "delta": "-0.35", "iv": "0.31", "quote_ok": true},
+        {"id": "104", "expiry": "2026-12-11", "strike": "99", "bid": "4.60", "ask": "4.80", "bid_size": 5, "open_interest": 60, "delta": "-0.48", "iv": "0.32", "quote_ok": true},
+        {"id": "105", "expiry": "2026-12-11", "strike": "88", "bid": "1.00", "ask": "1.80", "bid_size": 0, "open_interest": 3, "delta": "-0.15", "iv": "0.29", "quote_ok": true}
+      ]
+    },
+    {
+      "issuer": "cik:0000000002", "symbol": "BBB", "id": 8, "chain_day": "2026-11-09",
+      "spot": "50.00", "buy_price": "48",
+      "earnings": {"state": "absent", "row_day": "2026-11-09"},
+      "accounts": [{"alias": "A", "funds": "2000", "currency": "USD", "capture_day": "2026-11-09"}],
+      "quotes": [
+        {"id": "201", "expiry": "2026-12-18", "strike": "45", "bid": "0.90", "ask": "0.95", "bid_size": 12, "open_interest": 300, "delta": "-0.18", "iv": "0.40", "quote_ok": true},
+        {"id": "202", "expiry": "2026-12-18", "strike": "47", "bid": "1.40", "ask": "1.50", "bid_size": 6, "open_interest": 80, "delta": "-0.28", "iv": "0.41", "quote_ok": true},
+        {"id": "203", "expiry": "2026-12-18", "strike": "40", "bid": "", "ask": "", "bid_size": 0, "open_interest": 0, "delta": "", "iv": "", "quote_ok": false}
+      ]
+    },
+    {
+      "issuer": "cik:0000000003", "symbol": "CCC", "id": 9, "chain_day": "2026-11-09",
+      "spot": "20.00", "buy_price": "19",
+      "earnings": {"state": "listed", "next": "2026-11-27", "row_day": "2026-11-09"},
+      "accounts": [],
+      "quotes": [
+        {"id": "301", "expiry": "2026-12-04", "strike": "18", "bid": "0.40", "ask": "0.42", "bid_size": 20, "open_interest": 500, "delta": "-0.20", "iv": "0.35", "quote_ok": true},
+        {"id": "302", "expiry": "2026-12-04", "strike": "19", "bid": "0.70", "ask": "0.74", "bid_size": 15, "open_interest": 400, "delta": "-0.30", "iv": "0.36", "quote_ok": true},
+        {"id": "303", "expiry": "2026-12-04", "strike": "21", "bid": "1.80", "ask": "1.90", "bid_size": 9, "open_interest": 120, "delta": "-0.62", "iv": "0.37", "quote_ok": true}
+      ]
+    },
+    {
+      "issuer": "cik:0000000004", "symbol": "DDD", "id": 10, "chain_day": "2026-11-09",
+      "spot": "", "buy_price": "",
+      "earnings": null,
+      "accounts": [],
+      "quotes": [
+        {"id": "401", "expiry": "2026-12-11", "strike": "30", "bid": "", "ask": "", "bid_size": 0, "open_interest": 0, "delta": "", "iv": "", "quote_ok": false}
+      ]
+    }
+  ]
+}
