@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -155,6 +156,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	d, err := time.Parse(dayLayout, string(day))
 	if err != nil {
 		return nil, fmt.Errorf("home_options: bad day %q: %w", day, err)
+	}
+	if v := reflect.ValueOf(c.Ledger); v.Kind() == reflect.Pointer && v.IsNil() {
+		c.Ledger = nil // a nil pointer in the interface is a missing reader too
 	}
 	var in compute.ResultInput
 	var sections []compute.ResultSection
