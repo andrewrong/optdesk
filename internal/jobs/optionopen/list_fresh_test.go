@@ -232,6 +232,7 @@ func TestMissingBarAsksGateway(t *testing.T) {
 
 // heldRig has AAA held and BBB a name of the watch list, one expiry each.
 func heldRig(t *testing.T) *lrig {
+	t.Helper()
 	g := newLRig(t, "AAA", "BBB")
 	g.acc.pos = []store.Position{{SecType: "stock", Currency: "USD", Symbol: "AAA", ConID: 100, Quantity: "100"}}
 	g.offs["AAA"], g.offs["BBB"] = []int{22}, []int{22}
@@ -325,6 +326,7 @@ func (f *fakeSpot) Snapshot(_ context.Context, _ broker.Kind, cs []broker.Contra
 }
 
 func zoneRig(t *testing.T, symbols ...string) *lrig {
+	t.Helper()
 	g := newLRig(t, symbols...)
 	g.offs = map[string][]int{}
 	for _, s := range symbols {

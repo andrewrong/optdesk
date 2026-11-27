@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -372,7 +373,7 @@ func (p *pull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, sto
 	}
 	r := c.Pull(ctx, ts)
 	c.logger().Info(r.Summary.String(), "key", b.subject)
-	rows := append(final, r.Rows...)
+	rows := slices.Concat(final, r.Rows)
 	if r.Err != nil {
 		return nil, prior.counts, asTyped(r.Err, contracts.Retryable)
 	}

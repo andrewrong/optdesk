@@ -71,6 +71,7 @@ func TestSelect(t *testing.T) {
 // runOutcomes (a subtest of TestSelect) shows what Run does with the answer of the selection: an empty one is Permanent, no price is
 // Retryable, and neither writes.
 func runOutcomes(t *testing.T) {
+	t.Helper()
 	cases := []struct {
 		name  string
 		setup func(b *fakeBroker)

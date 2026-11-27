@@ -69,11 +69,12 @@ func (j *job) ID() string { return j.m.ID }
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	var plain, windowed, long []string
 	for _, k := range keys {
-		if slices.Contains(j.m.Long, k.SubjectKey) {
+		switch {
+		case slices.Contains(j.m.Long, k.SubjectKey):
 			long = append(long, k.SubjectKey)
-		} else if slices.Contains(j.m.Windowed, k.SubjectKey) {
+		case slices.Contains(j.m.Windowed, k.SubjectKey):
 			windowed = append(windowed, k.SubjectKey)
-		} else {
+		default:
 			plain = append(plain, k.SubjectKey)
 		}
 	}

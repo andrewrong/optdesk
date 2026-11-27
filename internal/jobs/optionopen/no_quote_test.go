@@ -108,7 +108,7 @@ func noQuoteFirstOK(n int, rest func(b *fakeBroker, c broker.Contract) broker.Qu
 
 func TestNoQuoteLeavesOkShareDenominator(t *testing.T) {
 	t.Parallel()
-	nq := func(b *fakeBroker, c broker.Contract) broker.Quote { return noQuoteQuote(b, c) }
+	nq := noQuoteQuote
 	bad := func(b *fakeBroker, c broker.Contract) broker.Quote {
 		return broker.Quote{Contract: c, Status: broker.StatusError, ErrorCode: 321, ReceivedAt: b.clk.Now()}
 	}
