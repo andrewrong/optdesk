@@ -22,8 +22,6 @@ func day(s string) types.SerializableDate {
 	return types.SerializableDate{Time: t}
 }
 
-func ptr(f float64) *float64 { return &f }
-
 func TestMapping(t *testing.T) {
 	t.Parallel()
 	pub := time.Date(2024, 2, 1, 12, 0, 0, 0, time.UTC)
@@ -87,9 +85,9 @@ func TestFixtureMapping(t *testing.T) {
 		}
 	}
 	want := []contracts.SeriesPoint{
-		mk("2024-01-02", ptr(3.95), "present"),
+		mk("2024-01-02", new(3.95), "present"),
 		mk("2024-01-03", nil, "no_value"),
-		mk("2024-01-04", ptr(4.02), "present"),
+		mk("2024-01-04", new(4.02), "present"),
 	}
 	if len(got) != 3 {
 		t.Fatalf("len = %d", len(got))

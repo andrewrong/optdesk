@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,9 +35,7 @@ func TestMarketStateNasdaqRow(t *testing.T) {
 	}
 	src := rows[idx].(map[string]any)
 	cp := make(map[string]any, len(src))
-	for k, v := range src {
-		cp[k] = v
-	}
+	maps.Copy(cp, src)
 	cp["id"] = "nasdaq_drawdown"
 	six := append([]any{}, rows[:idx+1]...)
 	six = append(six, cp)
