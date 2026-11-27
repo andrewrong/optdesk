@@ -22,8 +22,8 @@ type statsImpl struct{}
 // standard deviation and an unknown Compare are Permanent errors; no result is NaN.
 func New() compute.Stats { return statsImpl{} }
 
-func finite(values []float64, min int) error {
-	if len(values) < min {
+func finite(values []float64, least int) error {
+	if len(values) < least {
 		return permanent("too few values")
 	}
 	for _, v := range values {

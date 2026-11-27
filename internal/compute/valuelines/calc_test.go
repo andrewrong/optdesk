@@ -15,11 +15,11 @@ var testMargin = []valuelinesapi.MarginRow{
 	{PFrom: "4", M: "0.12", W: "0.05", H: "0.20", S: "0.15"},
 }
 
-func baseInput(close string) valuelinesapi.Input {
+func baseInput(closePx string) valuelinesapi.Input {
 	return valuelinesapi.Input{
 		V: "100", P: "3", Market: valuelinesapi.MarketUS,
 		R:      valuelinesapi.RValues{US: "0.9", JP: "0.8", HKCN: "0.7"},
-		Margin: testMargin, Close: close,
+		Margin: testMargin, Close: closePx,
 	}
 }
 

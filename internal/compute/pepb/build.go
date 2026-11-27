@@ -122,14 +122,14 @@ func build(stats compute.Stats, in pepbapi.Input) pepbapi.Result {
 	}
 }
 
-// ratioOf is close times shares over num, or the reason the input has none.
-func ratioOf(c dayRes, close decimal.Decimal, reason string, num decimal.Decimal, end, filed time.Time) dayRes {
+// ratioOf is px (the close) times shares over num, or the reason the input has none.
+func ratioOf(c dayRes, px decimal.Decimal, reason string, num decimal.Decimal, end, filed time.Time) dayRes {
 	if reason != "" {
 		c.reason = reason
 		return c
 	}
 	c.num, c.basisEnd, c.basisFiled = num, end, filed
-	c.ratio = close.Mul(c.shares).Div(num)
+	c.ratio = px.Mul(c.shares).Div(num)
 	return c
 }
 

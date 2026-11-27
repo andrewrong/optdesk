@@ -29,9 +29,9 @@ type raw struct{}
 
 var _ compute.Indicators = raw{}
 
-func period(name string, p, min int) error {
-	if p < min {
-		return permanent(fmt.Sprintf("%s: period %d below %d", name, p, min))
+func period(name string, p, least int) error {
+	if p < least {
+		return permanent(fmt.Sprintf("%s: period %d below %d", name, p, least))
 	}
 	return nil
 }

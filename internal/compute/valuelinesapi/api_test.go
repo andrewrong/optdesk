@@ -20,7 +20,7 @@ func (f *fakeCalc) Lines(in valuelinesapi.Input) (valuelinesapi.Lines, error) {
 	}, nil
 }
 
-func (f *fakeCalc) Band(l valuelinesapi.Lines, close string) valuelinesapi.Band {
+func (f *fakeCalc) Band(l valuelinesapi.Lines, _ string) valuelinesapi.Band {
 	return valuelinesapi.Band{Min: "40", Max: "160", Marks: []valuelinesapi.Mark{{Name: "c", Value: l.C, Pos: "0.4167"}}}
 }
 

@@ -48,8 +48,8 @@ func TestNormalizeRefusesOutOfRange(t *testing.T) {
 	t.Parallel()
 	p := New()
 	for _, row := range table {
-		key, min, max := row[0], row[2], row[3]
-		for _, ok := range []string{min, max} {
+		key, lo, hi := row[0], row[2], row[3]
+		for _, ok := range []string{lo, hi} {
 			if got, err := p.Normalize(key, ok); err != nil || got != ok {
 				t.Errorf("%s %q = %q, %v; want accepted", key, ok, got, err)
 			}

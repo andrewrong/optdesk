@@ -109,14 +109,14 @@ func (Calc) Lines(in valuelinesapi.Input) (valuelinesapi.Lines, error) {
 	fairLow := c.Mul(dOne.Sub(row.w))
 	fairHigh := c.Mul(dOne.Add(row.w))
 	trim := c.Mul(dOne.Add(row.s))
-	clear := v.Mul(dClear)
+	clearV := v.Mul(dClear)
 	core := v.Mul(dCore)
 
 	out = valuelinesapi.Lines{
 		C: c.String(), R: r.String(),
 		Heavy: heavy.String(), BuyLow: buyLow.String(), BuyHigh: buyHigh.String(),
 		FairLow: fairLow.String(), FairHigh: fairHigh.String(),
-		Trim: trim.String(), Clear: clear.String(), Core: core.String(),
+		Trim: trim.String(), Clear: clearV.String(), Core: core.String(),
 		M: row.m.String(), W: row.w.String(), H: row.h.String(), S: row.s.String(),
 	}
 	if in.Market == valuelinesapi.MarketHKCN {
@@ -136,7 +136,7 @@ func (Calc) Lines(in valuelinesapi.Input) (valuelinesapi.Lines, error) {
 		InBuy:   cl.LessThanOrEqual(buyHigh),
 		InFair:  cl.GreaterThanOrEqual(fairLow) && cl.LessThanOrEqual(fairHigh),
 		AtTrim:  cl.GreaterThanOrEqual(trim),
-		AtClear: cl.GreaterThanOrEqual(clear),
+		AtClear: cl.GreaterThanOrEqual(clearV),
 		AtCore:  cl.GreaterThanOrEqual(core),
 	}
 	out.Flags = &f
