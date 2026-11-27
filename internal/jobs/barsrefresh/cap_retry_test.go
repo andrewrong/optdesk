@@ -81,3 +81,16 @@ func TestCapDeniedKeyPullsOnALaterRun(t *testing.T) {
 		t.Fatalf("rows %+v", st.rows)
 	}
 }
+
+func TestCapMixedCallCountsOnlyPulledBars(t *testing.T) {
+	t.Parallel()
+	j, h, st := capJob(t)
+	res := j.Run(context.Background(), runDay, keysOf("cik:1", "cik:2", "cik:3"))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("result %+v", res)
+	}
+	// two keys pulled one bar each; the denied key adds nothing
+	if res.Returned != 2 || res.Usable != 2 || len(h.queries) != 2 || len(st.rows) != 2 {
+		t.Fatalf("returned %d usable %d queries %d rows %d", res.Returned, res.Usable, len(h.queries), len(st.rows))
+	}
+}
