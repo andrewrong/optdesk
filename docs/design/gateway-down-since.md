@@ -55,6 +55,8 @@ Owner-visible result: on `/data-health`, a gateway block whose gateway has no co
 
 ## Interface
 
+Landed in #4225 (entry 1) and #4234 (entry 2).
+
 Entry 1 (contracts). The schema `Gateway` gains `since` and `since_text` of Decision 8; `web/src/generated/data_health_page.v1.ts` is generated from it.
 
 Entry 2 (store), `internal/store/gatewaystate/api.go`, declarations only:
