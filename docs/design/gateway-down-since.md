@@ -1,7 +1,7 @@
 ---
 type: design
 title: "gateway down since: the data health page says since when a gateway has no connection, from a state table written by the gateway health pass"
-status: draft
+status: accepted
 date: "2026-11-27"
 need: [none]
 none_reason: "owner ask 2026-11-27: after a 6-day silent gateway outage the page must say since when a gateway has no connection; no need record exists"
@@ -43,15 +43,15 @@ Owner-visible result: on `/data-health`, a gateway block whose gateway has no co
 3. **What "no connection" is.** `data_health_page.ConnectionLost(answered bool, state string) bool` in `internal/pages/data_health_page/gateways.go`: true when `answered` is false, or `state` is `soft_lost` or `down`; false for `up` and `farm_broken` (the API session is up, a farm is not); an unknown state is true, as `gatewayVerdict` already treats an unknown state as `unreachable`. `gatewayVerdict` is rewritten to call it for the "lost" cases, so the page's verdict and the stored flag cannot disagree.
 4. **Who writes.** The gateway pass of `cmd/ot/gateway_health.go`, on every call, after the reading and before the notifier: for each reading it calls `Observe(alias, ConnectionLost(answered, state), clk.Now())`. A failed write logs one line (`gateway state not written`, class only) and the notifier still runs; the pass never fails or blocks on the store. The writer is opened by the scheduler with `store.DSNEnvRunner` (`cfg.runnerDSN`); when it cannot be opened the pass runs without it (nil writer, one log line) and the page shows no since-line. No new role, no new DSN line, no `setup.go` change.
 5. **Who reads.** `cmd/ot/data_health_site.go` opens the reader with the pages line (`store.DSNEnvPages`), reads the rows once per page build and fills `GatewayInput.Since` (new, a `time.Time`, zero when there is no row or the reader failed). A failed read gives zero times and no gap: the line is an addition to the page.
-6. **The page shows the line only when it is true now.** The builder gives `since` and `since_text` to a gateway only when `ConnectionLost(...)` is true for the reading just taken and `GatewayInput.Since` is not zero; otherwise `since` is `""` and `since_text` is `""`. The stored `down` is not consulted by the builder: if the row still says "up" because no tick has run since the outage began, the page shows no since-line rather than a wrong one; if the row says "down" and the reading is connected, the line is off. `since_text` is `无连接自 ` plus `Since` in the zone and layout of `BuiltAt` (`in.Now.Format(timeLayout)`, `builder.go`), a constant prefix in `zh_texts.go`. **This amends `docs/design/gateway-health.md` Decision 7**, where the since-time stayed off the page: for a gateway with no connection the since-time is now on the page. For a farm that is down (the grace time of that Decision) the since-time still stays off the page, and the grace and the notice are unchanged.
+6. **The page shows the line only when it is true now.** The builder gives `since` and `since_text` to a gateway only when `ConnectionLost(...)` is true for the reading just taken and `GatewayInput.Since` is not zero; otherwise both are left out (empty in the Go value, absent on the wire, Decision 8). The stored `down` is not consulted by the builder: if the row still says "up" because no tick has run since the outage began, the page shows no since-line rather than a wrong one; if the row says "down" and the reading is connected, the line is off. `since_text` is `无连接自 ` plus `Since` in the zone and layout of `BuiltAt` (`in.Now.Format(timeLayout)`, `builder.go`), a constant prefix in `zh_texts.go`. **This amends `docs/design/gateway-health.md` Decision 7**, where the since-time stayed off the page: for a gateway with no connection the since-time is now on the page. For a farm that is down (the grace time of that Decision) the since-time still stays off the page, and the grace and the notice are unchanged.
 7. **What "since" means, and what it does not.** `since` is the first tick of the scheduler that saw the gateway without a connection in this outage, not the instant the gateway failed. It is later than the real start by at most one tick and by the time the scheduler itself was down. For an outage that began before the first deploy of this design the row does not exist, so the first tick after deploy writes `since` = that tick. The note under the line on the page is not changed; the text says "自 <time>" and the glossary line of `zh_texts.go` explains "无连接" (the API session to the gateway is not up) next to it.
-8. **Schema of the page.** `Gateway` of `contracts/schemas/page.data_health_page.v1.json` gains two optional properties, `since` (a string, `date-time` or the empty string) and `since_text` (a string), both not in `required`, so every older document and fixture stays valid and `schema_version` stays 1. This is an additive field under the rule of `docs/design/gateway-health.md` Decision 14; this design is the amendment. The builder writes both on every gateway (empty strings when there is no line), so a current document always carries them; an older document has neither, and the web treats an absent field as no line.
+8. **Schema of the page.** `Gateway` of `contracts/schemas/page.data_health_page.v1.json` gains two optional properties, `since` (a string, `date-time` or the empty string) and `since_text` (a string), both not in `required`, so every older document and fixture stays valid and `schema_version` stays 1. This is an additive field under the rule of `docs/design/gateway-health.md` Decision 14; this design is the amendment. The builder leaves both out when there is no line (json `omitempty`; the wire carries no `since` and no `since_text` key for that gateway), so a gateway without a line serialises exactly as before and `TestDataHealthGateways` in `cmd/ot`, which compares the wire's `gateways` with `page.data_health_page.v1.gateways.json` by `reflect.DeepEqual`, keeps passing on main after every entry; the web treats an absent field as no line, and the schema still allows the empty string.
 9. **Web.** `GatewayBlock.tsx` prints `since_text` as a line of the gateway when it is a non-empty string. Nothing else of the block changes.
 10. **Migration.** One migration, `migrations/0074_gateway_state.sql`, with Up and Down: the last on origin/main is `0073_data_check.sql`. A design that lands first takes the next number and this one is renumbered in its pull request. Deploy holds on migrations (the window rebuilds `ot`, then `setup pg`, `migrate`, `setup pg`, owner 2026-11-09); the code that uses the table merges after the migration (Order lines). No new role, so `setup pg` has nothing new to make.
 
 ## Modules
 
-`docs/design/modules.md`: the row `store` gains `internal/store/gatewaystate` in its entry cell (declarations only, a package of its own because `internal/store/api.go` is 800 lines and is not touched); this design's commit makes that edit. No other row changes and no dependency edge is added to a depends cell. First row that matches decides: contracts (`contracts/**`, `internal/contracts/**`, `web/src/generated/**`, `docs/contracts/page-schemas.md`: entry 1), store (`internal/store/**`, `migrations/**`, `docs/contracts/store/**`: entries 2, 3, 4), pages (`internal/pages/**`, `docs/contracts/pages.md`: entry 5), web (`web/src/pages/**`, `web/test/**`: entry 6), ot (`cmd/**`, `docs/contracts/ot/**`: entry 7). New import edges, all inside the map: `internal/store/gatewaystatepg` implements `gatewaystate`; `cmd/ot` imports `internal/store/gatewaystate` and `internal/store/gatewaystatepg`; `internal/pages/data_health_page` imports nothing new. `internal/store/setup` is not touched.
+`docs/design/modules.md`: the row `store` gains `internal/store/gatewaystate` in its entry cell (declarations only, a package of its own because `internal/store/api.go` is 800 lines and is not touched); this design's own commit makes that edit (the cell is changed in this pull request, so no entry lists `docs/design/modules.md`). No other row changes and no dependency edge is added to a depends cell. First row that matches decides: contracts (`contracts/**`, `internal/contracts/**`, `web/src/generated/**`, `docs/contracts/page-schemas.md`: entry 1), store (`internal/store/**`, `migrations/**`, `docs/contracts/store/**`: entries 2, 3, 4), pages (`internal/pages/**`, `docs/contracts/pages.md`: entry 5), web (`web/src/pages/**`, `web/test/**`: entry 6), ot (`cmd/**`, `docs/contracts/ot/**`: entry 7). New import edges, all inside the map: `internal/store/gatewaystatepg` implements `gatewaystate`; `cmd/ot` imports `internal/store/gatewaystate` and `internal/store/gatewaystatepg`; `internal/pages/data_health_page` imports nothing new. `internal/store/setup` is not touched.
 
 ## Interface
 
@@ -64,7 +64,7 @@ Entry 2 (store), `internal/store/gatewaystate/api.go`, declarations only:
 3. `type Writer interface { Observe(ctx context.Context, alias string, down bool, at time.Time) error; Close() error }` with the rule of Decision 2 in its doc.
 4. `type OpenReaderFunc func(ctx context.Context, dsn string) (Reader, error)` and `type OpenWriterFunc func(ctx context.Context, dsn string) (Writer, error)`.
 
-Entry 5 (pages, not an entry file of a module): `GatewayInput` gains `Since time.Time`; `GatewayVM` gains `Since string` (`json:"since"`) and `SinceText string` (`json:"since_text"`); `func ConnectionLost(answered bool, state string) bool`.
+Entry 5 (pages, not an entry file of a module): `GatewayInput` gains `Since time.Time`; `GatewayVM` gains `Since string` (`json:"since,omitempty"`) and `SinceText string` (`json:"since_text,omitempty"`); `func ConnectionLost(answered bool, state string) bool`.
 
 ## Issues
 
@@ -74,25 +74,25 @@ Build order: entries 1 and 2 first (the two interfaces, parallel); 3 after 2; 4 
 
 Module: contracts. Size: S.
 Order: first.
-Files: `contracts/schemas/page.data_health_page.v1.json`, `web/src/generated/data_health_page.v1.ts`, `contracts/fixtures/page.data_health_page.v1.gateways.json`, `internal/contracts/data_health_page_v1_test.go`, `docs/contracts/page-schemas.md`
+Files: `contracts/schemas/page.data_health_page.v1.json`, `web/src/generated/data_health_page.v1.ts`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/data_health_page_v1_test.go`, `docs/contracts/page-schemas.md`
+New files: `contracts/fixtures/page.data_health_page.v1.gatewaysince.json` (new)
 Contracts: page.data_health_page v1 (optional `since` and `since_text` on Gateway added; `schema_version` stays 1)
 Design: docs/design/gateway-down-since.md#Interface
 Acceptance:
 1. `$defs/Gateway` of the schema has the properties `since` and `since_text` of Decision 8, neither in `required`, `additionalProperties` still false, and no existing property or enum value changes; `web/src/generated/data_health_page.v1.ts` is produced from the schema, names both as optional, and nothing else in it changes.
-2. The fixture `page.data_health_page.v1.gateways.json` gives its `unreachable` gateway a `since` and a `since_text` that starts with `无连接自 `, and its `farm_down` gateway the two empty strings; the fixture holds invented values only.
-3. `data_health_page_v1_test.go` has `TestGatewaySinceFixtureValidates` (new) asserting the fixture passes, `TestGatewaySinceRejectsBadTime` (new) asserting a `since` that is neither a date-time nor the empty string fails, and `TestGatewayWithoutSinceStillValidates` (new) asserting a gateway with neither field passes.
+2. `contracts/fixtures/page.data_health_page.v1.gatewaysince.json` (new) is a page document of the shape of `page.data_health_page.v1.gateways.json` whose `unreachable` gateway has a `since` and a `since_text` that starts with `无连接自 `, and whose `farm_down` gateway carries the two empty strings; it holds invented values only and is listed in `MANIFEST.synthetic-v1.json` with its sha256; `page.data_health_page.v1.gateways.json` is unchanged (`git diff --name-only BASE -- contracts/fixtures/page.data_health_page.v1.gateways.json` prints nothing).
+3. `data_health_page_v1_test.go` has `TestGatewaySinceFixtureValidates` (new) asserting the new fixture `page.data_health_page.v1.gatewaysince.json` passes, `TestGatewaySinceRejectsBadTime` (new) asserting a `since` that is neither a date-time nor the empty string fails, and `TestGatewayWithoutSinceStillValidates` (new) asserting a gateway with neither field passes.
 4. `docs/contracts/page-schemas.md` names `since` and `since_text` as an additive amendment of `docs/design/gateway-health.md` Decision 14 and of its Decision 7.
 
 ### 2 gwsince-store-api (interface)
 
 Module: store. Size: S.
 Order: first.
-Files: `docs/design/modules.md`
 New files: `internal/store/gatewaystate/api.go` (new), `internal/store/gatewaystate/api_test.go` (new), `docs/contracts/store/gatewaystate.md` (new)
 Contracts: unchanged
 Design: docs/design/gateway-down-since.md#Interface
 Acceptance:
-1. `api.go` declares what Interface entry 2 lists (`State`, `Reader`, `Writer`, `OpenReaderFunc`, `OpenWriterFunc`) with docs and no function body, and is the only non-test `.go` file of its package; `grep -c 'internal/store/gatewaystate' docs/design/modules.md` prints 1; `git diff --name-only BASE -- internal/store/api.go docs/design/ratchet.json` prints nothing.
+1. `api.go` declares what Interface entry 2 lists (`State`, `Reader`, `Writer`, `OpenReaderFunc`, `OpenWriterFunc`) with docs and no function body, and is the only non-test `.go` file of its package; `git diff --name-only BASE -- internal/store/api.go docs/design/ratchet.json` prints nothing.
 2. `api_test.go` has `TestGatewayStateContractFake` (new) asserting a fake writer's `Observe` is read back by the fake reader's `States`, and `TestStatesNonNilSlice` (new) asserting the fake's empty answer is a non-nil slice.
 3. `docs/contracts/store/gatewaystate.md` (new) lists the package, the rule of `Observe` (Decision 2) and the sentence "a row holds an alias, a flag and two times, never free text, an id or a secret".
 
@@ -124,14 +124,14 @@ Acceptance:
 
 Module: pages. Size: M.
 Order: after 1.
-Files: `internal/pages/data_health_page/gateways.go`, `internal/pages/data_health_page/zh_texts.go`, `docs/contracts/pages.md`
+Files: `internal/pages/data_health_page/gateways.go`, `internal/pages/data_health_page/builder.go`, `internal/pages/data_health_page/zh_texts.go`, `docs/contracts/pages.md`
 New files: `internal/pages/data_health_page/gateways_since_test.go` (new)
 Contracts: unchanged
 Design: docs/design/gateway-down-since.md#Decisions (3, 6, 8)
 Acceptance:
 1. `gateways.go` declares `ConnectionLost` with the truth table of Decision 3 and `gatewayVerdict` calls it for the `session_retrying` and `unreachable` cases; the file stays under 600 lines.
-2. `GatewayInput` has the field `Since time.Time` and `GatewayVM` the fields `Since` and `SinceText` with the json names of the Interface; the builder fills them as Decision 6 gives, and `gatewayRows` copies no other field of `GatewayInput` into them.
-3. `gateways_since_test.go` (new) has `TestConnectionLostTable` (new), `TestSinceShownOnlyWhenLostNow` (new: a connected reading with a non-zero `Since` gives empty `since` and `since_text`), `TestSinceTextPrefix` (new: a lost reading with a non-zero `Since` gives `since_text` starting with `无连接自 ` and the time in the layout of `BuiltAt`), `TestNoSinceWithoutRow` (new: a lost reading with a zero `Since` gives empty strings), and `TestSinceTextHasNoIdOrPort` (new).
+2. `GatewayInput` has the field `Since time.Time` and `GatewayVM` the fields `Since` and `SinceText` with the json names of the Interface; the builder (`builder.go`, which may take `in.Now` into `gatewayRows`) fills them as Decision 6 gives and leaves them out when there is no line (json `omitempty`, Decision 8), and `gatewayRows` copies no other field of `GatewayInput` into them.
+3. `gateways_since_test.go` (new) has `TestConnectionLostTable` (new), `TestSinceShownOnlyWhenLostNow` (new: a connected reading with a non-zero `Since` gives empty `since` and `since_text`), `TestSinceTextPrefix` (new: a lost reading with a non-zero `Since` gives `since_text` starting with `无连接自 ` and the time in the layout of `BuiltAt`), `TestNoSinceWithoutRow` (new: a lost reading with a zero `Since` gives empty strings, and the marshalled gateway holds no `since` and no `since_text` key), and `TestSinceTextHasNoIdOrPort` (new).
 4. `zh_texts.go` holds the prefix as a constant and a glossary sentence that explains "无连接" next to it; `docs/contracts/pages.md` names `since` and `since_text` and Decision 6 of this design as the amendment of Decision 7 of `docs/design/gateway-health.md`.
 
 ### 6 gwsince-web
@@ -144,7 +144,7 @@ Design: docs/design/gateway-down-since.md#Decisions (9)
 Acceptance:
 1. 按 frontend-stack：用 shadcn card (`web/src/components/ui/card.tsx`, already used by `GatewayBlock.tsx`) 做 the gateway block, with the since-line as one `<p>` of the gateway; no new component and no new dependency.
 2. `GatewayBlock.tsx` prints `since_text` as given when it is a non-empty string and prints nothing for it when it is empty or absent; it holds no date call, no format call and no condition on `verdict` for this line.
-3. `GatewayBlock.test.tsx` has `TestSinceTextRendered` (new) asserting the `unreachable` gateway of the fixture `page.data_health_page.v1.gateways.json` shows its `since_text`, `TestNoSinceLineWhenEmpty` (new) asserting the `farm_down` gateway shows none, and `TestAbsentSinceRendersAsBefore` (new) asserting a gateway without the field shows none.
+3. `GatewayBlock.test.tsx` has `TestSinceTextRendered` (new) asserting the `unreachable` gateway of the fixture `page.data_health_page.v1.gatewaysince.json` shows its `since_text`, `TestNoSinceLineWhenEmpty` (new) asserting the `farm_down` gateway of the same fixture shows none, and `TestAbsentSinceRendersAsBefore` (new) asserting a gateway without the field shows none.
 
 ### 7 gwsince-wire
 
@@ -156,7 +156,7 @@ Design: docs/design/gateway-down-since.md#Decisions (4, 5)
 Acceptance:
 1. `newGatewayPass` takes a `gatewaystate.Writer` (nil allowed) and `gatewayPass.pass` calls `Observe(alias, data_health_page.ConnectionLost(answered, state), clk.Now())` once per reading before `NotifyGateways`; `TestGatewayPassObserves` (new) shows with a fake writer and a fake clock one call per gateway per pass with the flag from `ConnectionLost`, and `TestGatewayPassWriteFailureStillNotifies` (new) shows a writer that errors changes nothing in the facts the notifier gets.
 2. `cmd/ot/scheduler.go` opens the writer with `cfg.runnerDSN` through `gatewaystatepg` and closes it with the other stores; when the open fails it passes nil and logs one line.
-3. `data_health_site.go` opens `gatewaystate.Reader` with `store.DSNEnvPages` through a package variable (the shape of `openSiteHours`) and fills `GatewayInput.Since` from the row of the same alias; `TestDataHealthGatewaySince` (new) shows a fake reader row for an unreachable gateway gives the fixture's `since_text` prefix, and `TestDataHealthGatewaySinceReaderFails` (new) shows a failing reader gives a document that validates, with empty `since`.
+3. `data_health_site.go` opens `gatewaystate.Reader` with `store.DSNEnvPages` through a package variable (the shape of `openSiteHours`) and fills `GatewayInput.Since` from the row of the same alias; `TestDataHealthGatewaySince` (new) shows a fake reader row for an unreachable gateway gives a `since_text` with the prefix of `page.data_health_page.v1.gatewaysince.json`, and `TestDataHealthGatewaySinceReaderFails` (new) shows a failing reader gives a document that validates, with empty `since`.
 4. `TestGatewayPassNilWriter` (new) shows a nil writer runs the pass as before.
 5. No line of `cmd/ot` holds the rule of Decision 3: `grep -n 'soft_lost' cmd/ot/gateway_health.go` prints nothing new, and `cmd/ot/gateway_health.go` and `cmd/ot/scheduler.go` each stay under 800 lines.
 6. `docs/contracts/ot/pages/data_health_page.md` names the table `ops.gateway_state`, the writer line `OT_PG_DSN_RUNNER` and the reader line `OT_PG_DSN_PAGES`.
