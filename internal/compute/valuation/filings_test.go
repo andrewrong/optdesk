@@ -58,6 +58,7 @@ func annual(t *testing.T, y int) []contracts.FundamentalFact {
 }
 
 func sic(t *testing.T, code string) contracts.FundamentalFact {
+	t.Helper()
 	f := mk(t, "StandardIndustrialClassification", "sic", "", "2024-06-01", "2024-06-01", "submissions", code)
 	f.Taxonomy = "sec"
 	return f

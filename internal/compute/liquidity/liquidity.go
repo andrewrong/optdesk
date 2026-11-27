@@ -67,7 +67,7 @@ func roundText(x *big.Rat, places int) string {
 
 // exactText is a finite decimal exactly; ok is false when it does not terminate.
 func exactText(x *big.Rat) string {
-	for p := 0; p <= 40; p++ {
+	for p := range 41 {
 		scaled := new(big.Rat).Mul(x, new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(p)), nil)))
 		if scaled.IsInt() {
 			return x.FloatString(p)

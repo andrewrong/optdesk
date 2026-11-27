@@ -13,7 +13,10 @@ type T interface {
 }
 
 // Wrap adapts a *testing.T to T.
-func Wrap(t *testing.T) T { return wrapped{t} }
+func Wrap(t *testing.T) T {
+	t.Helper()
+	return wrapped{t}
+}
 
 type wrapped struct{ *testing.T }
 

@@ -157,7 +157,7 @@ func common(a, b blockapi.CloseIn) ([]contracts.Day, []pair, compute.Reason) {
 // accept fractions and exponents, which a close never is.
 func decimal(s string) (*big.Rat, bool) {
 	digits, points := 0, 0
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		switch c := s[i]; {
 		case c >= '0' && c <= '9':
 			digits++
