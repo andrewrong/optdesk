@@ -219,3 +219,75 @@ func TestStaleByCases(t *testing.T) {
 		}
 	}
 }
+
+func cashShortNotice(cur, left string) compute.Notice {
+	f := []compute.NoticeFact{}
+	if cur != "" {
+		f = append(f, compute.NoticeFact{Label: "currency", Value: cur})
+	}
+	return compute.Notice{Code: "cash_short", Severity: "act", Expiry: "2026-11-10", Facts: append(f,
+		compute.NoticeFact{Label: "available", Value: "100000"},
+		compute.NoticeFact{Label: "due", Value: "130553"},
+		compute.NoticeFact{Label: "left", Value: left},
+		compute.NoticeFact{Label: "short_days", Value: "2"},
+		compute.NoticeFact{Label: "reason", Value: "cash_short_cumulative"})}
+}
+
+func factText(r noticeRow, label string) string {
+	for _, f := range r.Facts {
+		if f.Label == label {
+			return f.Text
+		}
+	}
+	return "<missing>"
+}
+
+func TestCashShortRow(t *testing.T) {
+	t.Parallel()
+	r := noticeRowOf("main", 0, cashShortNotice("USD", "-30553"))
+	if r.Title != "现金不足 Cash is short" {
+		t.Errorf("title = %q", r.Title)
+	}
+	if got := factText(r, "剩余现金 Cash left"); got != "-$30,553" {
+		t.Errorf("left = %q", got)
+	}
+	if got := factText(r, "币种 Currency"); got != "USD" {
+		t.Errorf("currency = %q", got)
+	}
+	if got := factText(r, "不足的天数 Days short"); got != "2" {
+		t.Errorf("short days = %q", got)
+	}
+	if len(r.Reasons) != 1 || !strings.HasPrefix(r.Reasons[0], "剩余现金 = 可用现金 - ") {
+		t.Errorf("reasons = %v", r.Reasons)
+	}
+	if r.Expiry == nil || *r.Expiry != "2026-11-10" {
+		t.Errorf("expiry = %v", r.Expiry)
+	}
+}
+
+func TestCashShortJPY(t *testing.T) {
+	t.Parallel()
+	r := noticeRowOf("main", 0, cashShortNotice("JPY", "-1200000"))
+	if got := factText(r, "剩余现金 Cash left"); got != "-¥1,200,000" {
+		t.Errorf("left = %q", got)
+	}
+}
+
+func TestCashShortUnknownCurrencyKeepsFallback(t *testing.T) {
+	t.Parallel()
+	r := noticeRowOf("main", 0, cashShortNotice("", "-30553"))
+	if got := factText(r, "剩余现金 Cash left"); got != "-30553" {
+		t.Errorf("left = %q", got)
+	}
+	if got := factText(r, "可用现金 Cash available"); got != "100000" {
+		t.Errorf("available = %q", got)
+	}
+}
+
+func TestCashShortKeepsCents(t *testing.T) {
+	t.Parallel()
+	n := cashShortNotice("USD", "-30553.5")
+	if got := factText(noticeRowOf("main", 0, n), "剩余现金 Cash left"); got != "-$30,553.50" {
+		t.Errorf("left = %q", got)
+	}
+}

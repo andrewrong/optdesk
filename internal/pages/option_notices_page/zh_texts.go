@@ -19,6 +19,7 @@ const (
 	reasonEarningsZh   = "财报日在到期日之前"
 	reasonAssignmentZh = "除息日之前有提前行权风险"
 	reasonFloorZh      = "行权价低于卖出价格下限"
+	reasonCashShortZh  = "剩余现金 = 可用现金 - 到这一天为止所有到期的空头 put 被行权（Assigned，买方要求你按行权价买入股票）需要的现金；是累计的，不是只算这一天。"
 )
 
 // Titles and labels read Chinese first with the English beside.
@@ -31,8 +32,14 @@ const (
 	titleAssignmentSeen = "疑似被行权 Suspected assignment"
 	titleCushionLow     = "Cushion 偏低 Cushion is low"
 	titleCaptureStale   = "持仓快照过旧 Position snapshot is too old"
+	titleCashShort      = "现金不足 Cash is short"
 
 	labelEarnings    = "财报日 Earnings date"
 	labelCaptureDay  = "快照日 Snapshot day"
 	labelSessionDays = "相隔交易日 Trading days apart"
+	labelCurrency    = "币种 Currency"
+	labelAvailable   = "可用现金 Cash available"
+	labelDue         = "所需现金 Cash needed"
+	labelLeft        = "剩余现金 Cash left"
+	labelShortDays   = "不足的天数 Days short"
 )
