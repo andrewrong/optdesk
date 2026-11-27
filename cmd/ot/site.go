@@ -554,7 +554,7 @@ func writeBuildError(a *app, w http.ResponseWriter, err error) {
 	case errors.Is(err, errSiteNoReader):
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)
 	default:
-		a.log.Error("serve build failed", "component", "ot", "status", "failed")
+		a.log.Error("serve build failed", "component", "ot", "status", "failed", "err", redactErrText(err.Error()))
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }
