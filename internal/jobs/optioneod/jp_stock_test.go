@@ -49,7 +49,7 @@ func newStockRig(t *testing.T, watch []jobs.WatchEntry, chains ...broker.Chain) 
 	}
 	now := time.Date(2026, 11, 9, 16, 0, 0, 0, loc)
 	r := &rig{b: newBroker(), res: &fakeResolver{}, w: &fakeWriter{}, clk: clockwork.NewFakeClockAt(now)}
-	r.b.price = num(3000)
+	r.b.price = new(float64(3000))
 	r.b.chains = chains
 	j, err := NewJPWithWatch(r.b, r.res, r.w, watch, r.clk)
 	if err != nil {
@@ -281,7 +281,7 @@ func (b thinBroker) Snapshot(ctx context.Context, kind broker.Kind, cs []broker.
 		for i := range qs {
 			qs[i].Status = broker.StatusPartial
 			qs[i].Bid, qs[i].Last = nil, nil
-			qs[i].Ask = num(800)
+			qs[i].Ask = new(float64(800))
 		}
 	}
 	return qs, err
@@ -321,7 +321,7 @@ func TestJPN225Unchanged(t *testing.T) {
 	r := newStockRig(t, stockWatch(),
 		broker.Chain{Exchange: "OSE.JPN", TradingClass: "225", Multiplier: "1000", Expirations: exp, Strikes: strikeRange(2000, 4000, 25)},
 		stockChainOf("1111", exp, []string{"3000"}))
-	r.b.price = num(3000)
+	r.b.price = new(float64(3000))
 	if res := r.run(jpDay, jpKey); res.Err != nil {
 		t.Fatalf("result %+v", res)
 	}

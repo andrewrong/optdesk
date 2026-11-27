@@ -453,7 +453,7 @@ func unreadSpot(b *fakeBroker, bad int, callErr error) {
 			}
 			return []broker.Quote{{Status: broker.StatusNoData}}, nil
 		}
-		return []broker.Quote{{Last: f(100), ReceivedAt: b.clk.Now()}}, nil
+		return []broker.Quote{{Last: new(float64(100)), ReceivedAt: b.clk.Now()}}, nil
 	}
 }
 

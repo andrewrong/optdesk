@@ -26,8 +26,6 @@ var (
 	open0945   = time.Date(2026, 11, 11, 14, 45, 0, 0, time.UTC)
 )
 
-func f(v float64) *float64 { return &v }
-
 type typedErr struct{ kind contracts.ErrorKind }
 
 func (e typedErr) Error() string             { return "broker: snapshot: " + string(e.kind) }

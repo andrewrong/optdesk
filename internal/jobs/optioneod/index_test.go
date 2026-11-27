@@ -31,7 +31,7 @@ func newIndexRig(t *testing.T, closes IndexCloseReader) *indexRig {
 		t.Fatal(err)
 	}
 	r := &indexRig{b: newBroker(), res: &fakeResolver{}, w: &fakeWriter{}, clk: clockwork.NewFakeClockAt(time.Date(2026, 11, 13, 11, 0, 0, 0, loc))}
-	r.b.price, r.b.noUndPrice = num(7590), true
+	r.b.price, r.b.noUndPrice = new(float64(7590)), true
 	strikes := strikesRange(6000, 9000, 5)
 	xsp := strikesRange(600, 900, 1)
 	r.b.chains = []broker.Chain{
