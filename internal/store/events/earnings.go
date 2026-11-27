@@ -82,7 +82,7 @@ func dayText(d *types.SerializableDate) *string {
 	return &s
 }
 
-// EarningsDates returns the rows of the issuer from from to to, inclusive, ascending by day, the highest attempt
+// EarningsDates returns the rows of the issuer from day from to day to, inclusive, ascending by day, the highest attempt
 // of each day only, read from the view.
 func (s *earningsStore) EarningsDates(ctx context.Context, issuer string, from, to contracts.Day) ([]contracts.EarningsDate, error) {
 	f, err := time.Parse(time.DateOnly, string(from))

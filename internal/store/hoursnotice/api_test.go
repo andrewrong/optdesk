@@ -37,7 +37,8 @@ func (f *fakeStore) Replace(_ context.Context, market string, rows []hoursnotice
 			kept = append(kept, r)
 		}
 	}
-	f.rows = append(kept, rows...)
+	kept = append(kept, rows...)
+	f.rows = kept
 	return nil
 }
 

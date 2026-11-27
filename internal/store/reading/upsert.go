@@ -107,7 +107,9 @@ func upsertOne(ctx context.Context, tx execer, r contracts.ReadingRecord) (bool,
 		}
 	}
 	// The children carry rev, a plain column equal to the parent's.
-	child := append(key[:5:5], r.Rev)
+	child := make([]any, 0, 6)
+	child = append(child, key[:5]...)
+	child = append(child, r.Rev)
 	for i, in := range r.Inputs {
 		if _, err := tx.Exec(ctx, insertInputSQL, append(child[:6:6], i, in.InputTable, in.CodeVersion, in.ConventionVersion)...); err != nil {
 			return false, err

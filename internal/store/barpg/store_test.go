@@ -262,7 +262,7 @@ func TestUpsertFxSQLReplacesOnlyWhenDifferent(t *testing.T) {
 			t.Errorf("statement lacks %q: %s", w, sql)
 		}
 	}
-	doUpdate := sql[strings.Index(sql, "DO UPDATE"):]
+	_, doUpdate, _ := strings.Cut(sql, "DO UPDATE")
 	for _, w := range []string{"received_at", "pair =", "rate_day ="} {
 		if strings.Contains(doUpdate, w) {
 			t.Errorf("update part holds %q", w)
@@ -326,13 +326,13 @@ func TestUpsertBarSQLReplacesOnlyWhenDifferent(t *testing.T) {
 			t.Errorf("statement lacks %q: %s", w, sql)
 		}
 	}
-	doUpdate := sql[strings.Index(sql, "DO UPDATE"):]
+	_, doUpdate, _ := strings.Cut(sql, "DO UPDATE")
 	for _, w := range []string{"received_at", "instrument_id =", "basis =", "session_day =", "adjust_epoch"} {
 		if strings.Contains(doUpdate, w) {
 			t.Errorf("update part holds %q", w)
 		}
 	}
-	if strings.Contains(sql[:strings.Index(sql, "VALUES")], "adjust_epoch") {
+	if columns, _, _ := strings.Cut(sql, "VALUES"); strings.Contains(columns, "adjust_epoch") {
 		t.Error("column list names adjust_epoch")
 	}
 	if strings.Contains(sql, "DELETE") {

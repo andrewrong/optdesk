@@ -33,7 +33,7 @@ var dayCompared = []string{"underlying_id", "source", "status", "currency", "und
 // last, volume, underlying_price, underlying_ccy, iv_bid_decimal, iv_mid_decimal, iv_ask_decimal, iv_decimal, delta,
 // gamma, theta_per_calendar_day, vega_per_vol_point, open_interest, oi_asof_date, written_by (DayArgCount in all).
 // A quote column that the new row lacks keeps the stored value; a row older than the stored one changes nothing, and a
-// row that would leave every compared column as it is is not rewritten.
+// row that would leave every compared column unchanged is not rewritten.
 var UpsertDaySQL = buildUpsertDaySQL()
 
 func buildUpsertDaySQL() string {
