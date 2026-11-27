@@ -12,7 +12,7 @@ import (
 
 func dataDayRec(rev int, state, version string) contracts.ReadingRecord {
 	r := rec(rev, state)
-	r.Parameters[0].Param, r.Parameters[0].ValueTag = "data_day", strPtr(version)
+	r.Parameters[0].Param, r.Parameters[0].ValueTag = "data_day", new(version)
 	if state != "ok" {
 		r.Value = nil
 	}

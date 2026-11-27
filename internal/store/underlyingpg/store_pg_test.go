@@ -215,7 +215,7 @@ func TestSettleWritesOnlyWhileNewestIsTheRowRead(t *testing.T) {
 	if err != nil || len(rows) != 2 {
 		t.Fatalf("Pending = %+v, %v", rows, err)
 	}
-	if n, err := owner.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:BBB", Status: sp("paused")}}}); err != nil || n != 1 {
+	if n, err := owner.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:BBB", Status: new("paused")}}}); err != nil || n != 1 {
 		t.Fatalf("pause = %d, %v", n, err)
 	}
 	for _, r := range rows {
@@ -239,7 +239,7 @@ func TestApplyThroughPostgres(t *testing.T) {
 	if err != nil || n != 1 {
 		t.Fatalf("add = %d, %v", n, err)
 	}
-	n, err = owner.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:AAPL", Exchange: sp("ARCA")}}})
+	n, err = owner.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:AAPL", Exchange: new("ARCA")}}})
 	cur, _ := owner.Current(ctx)
 	if err != nil || n != 1 || len(cur) != 1 || cur[0].Exchange != "ARCA" || cur[0].Status != "pending" {
 		t.Errorf("edit = %d, %v, %+v", n, err, cur)

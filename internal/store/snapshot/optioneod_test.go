@@ -99,10 +99,10 @@ func baseRow(t *testing.T) contracts.OptionEod {
 		SessionDay: day(t, "2026-11-06"), CaptureID: "00000000-0000-4000-8000-000000000001", InstrumentID: 9,
 		UnderlyingID: 8, Generation: 1, MarketDataType: 2, ReceivedAt: ts, EventTs: &ts, Status: 4,
 		ErrorCode: &code, Currency: "USD", SnapshotKind: "eod", TermsVersionID: &terms,
-		Bid: fp(1.25), Ask: fp(1.35), BidSize: fp(10), AskSize: fp(12), Last: fp(1.3), Volume: fp(250),
-		OpenInterest: fp(1800), OiAsofDate: &oi, UnderlyingPrice: fp(450.5), UnderlyingCcy: "USD",
-		UnderlyingEventTs: &ts, IvBidDecimal: fp(0.24), IvMidDecimal: fp(0.25), IvAskDecimal: fp(0.26),
-		IvDecimal: fp(0.25), Delta: fp(0.45), Gamma: fp(0.03), ThetaPerCalendarDay: fp(-0.08), VegaPerVolPoint: fp(0.11),
+		Bid: new(1.25), Ask: new(1.35), BidSize: fp(10), AskSize: fp(12), Last: new(1.3), Volume: fp(250),
+		OpenInterest: fp(1800), OiAsofDate: &oi, UnderlyingPrice: new(450.5), UnderlyingCcy: "USD",
+		UnderlyingEventTs: &ts, IvBidDecimal: new(0.24), IvMidDecimal: new(0.25), IvAskDecimal: new(0.26),
+		IvDecimal: new(0.25), Delta: new(0.45), Gamma: new(0.03), ThetaPerCalendarDay: new(-0.08), VegaPerVolPoint: new(0.11),
 	}
 }
 
@@ -192,8 +192,8 @@ func TestInsertScreensSentinels(t *testing.T) {
 		{"gamma -1", "gamma", func(r *contracts.OptionEod) { r.Gamma = fp(-1) }},
 		{"delta -1", "delta", func(r *contracts.OptionEod) { r.Delta = fp(-1) }},
 		{"theta -1", "theta", func(r *contracts.OptionEod) { r.ThetaPerCalendarDay = fp(-1) }},
-		{"theta NaN", "theta", func(r *contracts.OptionEod) { r.ThetaPerCalendarDay = fp(math.NaN()) }},
-		{"volume +Inf", "volume", func(r *contracts.OptionEod) { r.Volume = fp(math.Inf(1)) }},
+		{"theta NaN", "theta", func(r *contracts.OptionEod) { r.ThetaPerCalendarDay = new(math.NaN()) }},
+		{"volume +Inf", "volume", func(r *contracts.OptionEod) { r.Volume = new(math.Inf(1)) }},
 	}
 	base := baseRow(t)
 	baseF := &fakeDB{}

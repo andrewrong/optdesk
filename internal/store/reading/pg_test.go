@@ -131,7 +131,7 @@ func TestInsertAndWinnerPG(t *testing.T) {
 		t.Fatalf("replay = %d, %v", n, err)
 	}
 	two := rec(2, "ok")
-	two.Value = strPtr("0.750000000000")
+	two.Value = new("0.750000000000")
 	// The key is the day: the old insert adds no row for a stored key, a differing rev 2 included.
 	if n, err = st.InsertReadings(ctx, []contracts.ReadingRecord{two}); err != nil || n != 0 {
 		t.Fatalf("rev 2 insert = %d, %v", n, err)

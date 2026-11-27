@@ -21,7 +21,7 @@ func (f *curDB) InsertAll(_ context.Context, sql string, rows [][]any) (int, err
 		} else if !strings.Contains(sql, ", currency)") {
 			panic("a 36 column row needs the currency insert")
 		} else {
-			r = append(append([]any{}, r[:columnCount]...), ptr(r[columnCount].(string)))
+			r = append(append([]any{}, r[:columnCount]...), new(r[columnCount].(string)))
 		}
 		f.rows = append(f.rows, r)
 	}
@@ -58,7 +58,7 @@ func (f *curDB) Select(_ context.Context, sql string, args []any, scan func(scan
 func (f *curDB) Close() error { return nil }
 
 func curRow(runID string, at time.Time, cur string) candidatecur.Row {
-	return candidatecur.Row{Candidate: sample(runID, at, ptr(1)), Currency: cur}
+	return candidatecur.Row{Candidate: sample(runID, at, new(1)), Currency: cur}
 }
 
 func TestCandidatesUSDOnly(t *testing.T) {
@@ -67,7 +67,7 @@ func TestCandidatesUSDOnly(t *testing.T) {
 	s := &Store{db: &curDB{}}
 	us := time.Date(2026, 11, 6, 22, 58, 0, 0, time.UTC)
 	jp := time.Date(2026, 11, 7, 8, 10, 0, 0, time.UTC) // newer than the US run
-	if _, err := s.InsertCandidates(ctx, []store.Candidate{sample("us", us, ptr(1))}); err != nil {
+	if _, err := s.InsertCandidates(ctx, []store.Candidate{sample("us", us, new(1))}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.InsertCandidatesIn(ctx, []candidatecur.Row{curRow("jp", jp, "JPY")}); err != nil {
@@ -122,7 +122,7 @@ func TestInsertCandidatesInRoundTrip(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].Currency != "JPY" {
 		t.Fatalf("read back = %+v, %v", got, err)
 	}
-	if _, err := s.InsertCandidates(ctx, []store.Candidate{sample("us", at, ptr(1))}); err != nil {
+	if _, err := s.InsertCandidates(ctx, []store.Candidate{sample("us", at, new(1))}); err != nil {
 		t.Fatal(err)
 	}
 	if cur := db.rows[1][columnCount].(*string); cur != nil {
