@@ -162,7 +162,10 @@ type (
 	plainQuote contracts.QuoteSnapshot
 )
 
-func loadInput(t *testing.T) input { return loadInputNamed(t, "input") }
+func loadInput(t *testing.T) input {
+	t.Helper()
+	return loadInputNamed(t, "input")
+}
 
 func loadInputNamed(t *testing.T, name string) input {
 	t.Helper()

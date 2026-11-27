@@ -24,6 +24,7 @@ func groupCfg() Config {
 }
 
 func monthly(t *testing.T, days ...string) []contracts.SeriesPoint {
+	t.Helper()
 	var out []contracts.SeriesPoint
 	for i, d := range days {
 		out = append(out, pt(t, d, d, "percent", new(1+0.25*float64(i))))
@@ -32,6 +33,7 @@ func monthly(t *testing.T, days ...string) []contracts.SeriesPoint {
 }
 
 func groupSeries(t *testing.T) fakeReader {
+	t.Helper()
 	return fakeReader{points: map[string][]contracts.SeriesPoint{
 		"DGS10":           daily(t, "2026-11-04", 10, 4.0, 0.1),
 		"DFF":             daily(t, "2026-11-04", 10, 4.0, 0),
