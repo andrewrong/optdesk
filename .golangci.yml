@@ -12,6 +12,8 @@ linters:
     - gocyclo
     - funlen
     - lll
+    - errorlint
+    - modernize
   settings:
     depguard:
       rules:
@@ -49,6 +51,46 @@ linters:
       - path: _test\.go
         linters:
           - funlen
+      - path: internal/compute/valuation/price_return.go
+        # content pinned by hash: it cannot change, and a nolint comment would change it
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: cmd/ot/site_routes_test\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/compute/ease/ease\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/compute/ease/netliquidity\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/compute/valuation/arith\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/compute/valuation/capital\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/compute/valuation/paths\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/compute/valuation/reverse\.go$
+        linters:
+          - modernize
+      # P8: modernize cleanup follow-up
+      - path: internal/pages/option_pnl_page/marks\.go$
+        linters:
+          - modernize
+      # P8: errorlint cleanup follow-up
+      - path: internal/jobs/datacheck/rules_more_test\.go$
+        linters:
+          - errorlint
 formatters:
   enable:
     - gofmt
