@@ -52,3 +52,42 @@ func TestDataCheckNewRuleRows(t *testing.T) {
 		}
 	}
 }
+
+// The six rules of data check keep their label and reason (literals as they stand on main), in sorted order, when
+// the three new rules sit among them.
+func TestDataCheckSixOldRowsUnchanged(t *testing.T) {
+	t.Parallel()
+	mk := func(rule, ds string) finding.Finding {
+		return finding.Finding{Rule: rule, Dataset: ds, Day: "2026-03-09", Severity: finding.SeverityWarn}
+	}
+	run := finding.Run{RunID: 1, CheckDay: "2026-03-09", RulesTotal: 9, Findings: []finding.Finding{
+		mk(finding.RuleBarOHLCShape, "d3"), mk(finding.RuleGapUnclosed, "d9"), mk(finding.RuleReadingRepeat, "d1"),
+		mk(finding.RuleCandidateRuleVersion, "d7"), mk(finding.RuleCaptureGap, "d4"), mk(finding.RuleOpenLateQuote, "d2"),
+		mk(finding.RuleEarningsCoverage, "d8"), mk(finding.RulePlanAbsent, "d5"), mk(finding.RuleCandidatesStale, "d6"),
+	}}
+	d, _ := buildChecks(t, fakeChecks{run: run})
+	want := []struct{ rule, label, why string }{
+		{"reading_repeat", "读数重复前一日 (reading_repeat)", "一天的读数和前一天完全一样，通常说明源站没有更新，旧值被当作新值保存了。"},
+		{"option_open_late_quote", "期权开盘报价晚到 (option_open_late_quote)", "期权开盘报价在交易日之后才收到，用它算出的结果可能不是那一天的真实情况。"},
+		{"bar_ohlc_shape", "", ""},
+		{"capture_gap", "采集缺口 (capture_gap)", "运行器记录里这一天有缺失或过期的键，这些数据没有保存。"},
+		{"plan_absent", "缺少计划 (plan_absent)", "这个数据集在这个交易日没有任何计划记录，任务可能根本没有运行。"},
+		{"candidates_older_than_settings", "候选早于最新设置 (candidates_older_than_settings)", "候选是在最新设置保存之前算出的，没有按现在的设置重算。"},
+		{"candidate_rule_version", "", ""},
+		{"earnings_coverage", "", ""},
+		{"gap_unclosed", "缺口未补 (gap_unclosed)", "任务记录了这个缺口，超过宽限时间仍然没有补上。"},
+	}
+	rows := d.DataCheck.Findings
+	if len(rows) != len(want) {
+		t.Fatalf("%d rows", len(rows))
+	}
+	for i, w := range want {
+		r := rows[i]
+		if r.Rule != w.rule {
+			t.Fatalf("row %d is %s, want %s", i, r.Rule, w.rule)
+		}
+		if w.label != "" && (r.Label != w.label || r.WhyText != w.why) {
+			t.Errorf("row %d: %+v", i, r)
+		}
+	}
+}
