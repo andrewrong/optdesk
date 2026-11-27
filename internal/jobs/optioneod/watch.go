@@ -114,8 +114,8 @@ func watchUnderlyings(watch []jobs.WatchEntry) ([]underlying, map[string]string,
 	return out, buy, nil
 }
 
-// dteExpiries lists the expirations (YYYYMMDD) whose calendar days after day are in min..max, sorted.
-func dteExpiries(all []string, day string, min, max int) []string {
+// dteExpiries lists the expirations (YYYYMMDD) whose calendar days after day are in minDTE..maxDTE, sorted.
+func dteExpiries(all []string, day string, minDTE, maxDTE int) []string {
 	d, err := time.Parse("20060102", day)
 	if err != nil {
 		return nil
@@ -126,7 +126,7 @@ func dteExpiries(all []string, day string, min, max int) []string {
 		if err != nil {
 			continue
 		}
-		if dte := int(t.Sub(d).Hours() / 24); dte >= min && dte <= max {
+		if dte := int(t.Sub(d).Hours() / 24); dte >= minDTE && dte <= maxDTE {
 			keep = append(keep, e)
 		}
 	}

@@ -35,8 +35,8 @@ func spxChain(expiries []string, strikes []string) broker.Chain {
 	return broker.Chain{Exchange: "CBOE", TradingClass: "SPX", Multiplier: "100", Expirations: expiries, Strikes: strikes}
 }
 
-func spxRow(cap int, kind string) indexRow {
-	return indexRow{Symbol: "SPX", TradingClass: "SPX", StrikeMultiple: 50, MaxContracts: cap, ExpiryKind: kind,
+func spxRow(maxContracts int, kind string) indexRow {
+	return indexRow{Symbol: "SPX", TradingClass: "SPX", StrikeMultiple: 50, MaxContracts: maxContracts, ExpiryKind: kind,
 		SigmaIndex: "SPX", SpotIndex: "SPX", SpotDivisor: 1}
 }
 

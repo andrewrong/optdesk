@@ -164,8 +164,8 @@ func stored(day, rate string) contracts.FxRate {
 	return contracts.FxRate{Pair: pair, Rate: rate, RateDay: types.SerializableDate{Time: d}, Source: sourceMidpoint}
 }
 
-func mkbar(day, close string) broker.Bar {
-	return broker.Bar{Day: day, Open: close, High: close, Low: close, Close: close}
+func mkbar(day, closePx string) broker.Bar {
+	return broker.Bar{Day: day, Open: closePx, High: closePx, Low: closePx, Close: closePx}
 }
 
 func buildJob(t *testing.T, b *fakeBroker, h *fakeHistory, st *memFx) contracts.Job {

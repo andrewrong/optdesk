@@ -49,7 +49,7 @@ type job struct {
 	h        broker.HistoryClient
 	r        store.ReadingReader
 	w        store.ReadingWriter
-	ivText   func(close string) (string, error)
+	ivText   func(closePx string) (string, error)
 	clk      clock.Clock
 	names    []string // sorted
 	contract map[string]broker.Contract
@@ -60,7 +60,7 @@ type job struct {
 // the reading refuses (cmd/ot passes ivbar.FromClose); the job imports no compute package.
 func New(
 	h broker.HistoryClient, r store.ReadingReader, w store.ReadingWriter, entries []jobs.WatchEntry,
-	ivText func(close string) (string, error), clk clock.Clock,
+	ivText func(closePx string) (string, error), clk clock.Clock,
 ) (contracts.Job, error) {
 	if h == nil || r == nil || w == nil || ivText == nil || clk == nil {
 		return nil, errors.New("ivhistory: history client, reader, writer, text function and clock are required")

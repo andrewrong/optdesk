@@ -13,8 +13,8 @@ import (
 )
 
 // storedAdjusted is an adjusted_last winner row received on the given day (YYYY-MM-DD).
-func storedAdjusted(id int, day, close string, epoch int, received string) contracts.PriceBar {
-	b := stored(id, day, close, epoch)
+func storedAdjusted(id int, day, closePx string, epoch int, received string) contracts.PriceBar {
+	b := stored(id, day, closePx, epoch)
 	b.Basis = basisAdjusted
 	b.ReceivedAt, _ = time.Parse(dayLayout, received)
 	return b

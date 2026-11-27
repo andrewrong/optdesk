@@ -187,16 +187,16 @@ func (m *memBars) epoch(e int) []contracts.PriceBar {
 	return out
 }
 
-func stored(id int, day, close string, epoch int) contracts.PriceBar {
+func stored(id int, day, closePx string, epoch int) contracts.PriceBar {
 	d, _ := time.Parse(dayLayout, day)
 	return contracts.PriceBar{
-		InstrumentID: id, Basis: "trades", AdjustEpoch: epoch, Close: close, Open: close, High: close, Low: close,
+		InstrumentID: id, Basis: "trades", AdjustEpoch: epoch, Close: closePx, Open: closePx, High: closePx, Low: closePx,
 		SessionDay: types.SerializableDate{Time: d}, Source: "ibkr", Currency: "USD",
 	}
 }
 
-func mkbar(day, close string) broker.Bar {
-	return broker.Bar{Day: day, Open: close, High: close, Low: close, Close: close}
+func mkbar(day, closePx string) broker.Bar {
+	return broker.Bar{Day: day, Open: closePx, High: closePx, Low: closePx, Close: closePx}
 }
 
 func entry(issuer, sym string, conID int64) jobs.WatchEntry {
