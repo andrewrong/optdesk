@@ -85,7 +85,7 @@ func (c cells) money(f compute.FigureValue) any {
 	if !ok {
 		return mkGap(reasonMissing)
 	}
-	return usd{Value: json.Number(n), Text: f.Value, Unit: "usd"}
+	return usd{Value: n, Text: f.Value, Unit: "usd"}
 }
 
 // listMoney is the Usd cell of a list figure: Value is the stored number, Text has two decimals
