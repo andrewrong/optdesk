@@ -26,8 +26,6 @@ type fixedClock struct{ at time.Time }
 
 func (c fixedClock) Now() time.Time { return c.at }
 
-func f64(v float64) *float64 { return &v }
-
 func date(s string) types.SerializableDate {
 	t, _ := time.Parse(dayLayout, s)
 	return types.SerializableDate{Time: t}

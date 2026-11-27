@@ -21,11 +21,11 @@ func addIv(f *fx, name string, prior int, today string) {
 	for k := 1; k <= prior; k++ {
 		v := fmt.Sprintf("%.6f", 0.1+float64(k)/1000)
 		f.readings = append(f.readings, contracts.ReadingRecord{Name: name, SubjectKind: "underlying", Subject: "SPY",
-			Day: dateOf(shiftDay(dayD, -k)), State: "ok", Value: sp(v), Rev: 1})
+			Day: dateOf(shiftDay(dayD, -k)), State: "ok", Value: new(v), Rev: 1})
 	}
 	if today != "" {
 		f.readings = append(f.readings, contracts.ReadingRecord{Name: name, SubjectKind: "underlying", Subject: "SPY",
-			Day: dateOf(dayD), State: "ok", Value: sp(today), Rev: 1})
+			Day: dateOf(dayD), State: "ok", Value: new(today), Rev: 1})
 	}
 }
 
@@ -96,10 +96,10 @@ func TestIvpOwnIgnoresIbkrSeries(t *testing.T) {
 		if withIbkr {
 			for k := 1; k <= 252; k++ { // a different series, so a read of it would change the figure
 				f.readings = append(f.readings, contracts.ReadingRecord{Name: ibkrName, SubjectKind: "underlying", Subject: "SPY",
-					Day: dateOf(shiftDay(dayD, -k)), State: "ok", Value: sp("0.900000"), Rev: 1})
+					Day: dateOf(shiftDay(dayD, -k)), State: "ok", Value: new("0.900000"), Rev: 1})
 			}
 			f.readings = append(f.readings, contracts.ReadingRecord{Name: ibkrName, SubjectKind: "underlying", Subject: "SPY",
-				Day: dateOf(dayD), State: "ok", Value: sp("0.100000"), Rev: 1})
+				Day: dateOf(dayD), State: "ok", Value: new("0.100000"), Rev: 1})
 		}
 		runKeys(t, newJob(t, f, realFigs()), ivpOwn)
 		return reading(t, f, ivpOwn, "underlying", "SPY")

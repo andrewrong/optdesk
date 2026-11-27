@@ -22,7 +22,7 @@ func TestPullWritesRowsInHandOnCancel(t *testing.T) {
 		}
 		qs := okQuotes(b.clk, cs)
 		for i := range qs {
-			qs[i].UndPrice = f(101)
+			qs[i].UndPrice = new(float64(101))
 		}
 		return qs, nil
 	}
@@ -70,7 +70,7 @@ func TestCutGroupRowsCarryTheStockPrice(t *testing.T) {
 	b.opt = func(call int, cs []broker.Contract) ([]broker.Quote, error) {
 		qs := okQuotes(b.clk, cs)
 		for i := range qs {
-			qs[i].UndPrice = f(358.32)
+			qs[i].UndPrice = new(358.32)
 		}
 		if call == 1 { // the second group is answered, then the context is cancelled
 			cancel()

@@ -74,7 +74,7 @@ func loadJP(t *testing.T) *jpEnv {
 	e := &jpEnv{day: contracts.Day(f.Day), sessions: f.Sessions, terms: map[int64]store.OptionTerms{}}
 	for _, r := range f.Open {
 		e.open = append(e.open, contracts.OptionOpen{UnderlyingID: r.UnderlyingID, InstrumentID: r.InstrumentID, Status: r.Status,
-			Currency: r.Currency, Bid: r.Bid, Ask: r.Ask, BidSize: f64(5), UnderlyingPrice: f64(2500), MarketDataType: 1,
+			Currency: r.Currency, Bid: r.Bid, Ask: r.Ask, BidSize: new(float64(5)), UnderlyingPrice: new(float64(2500)), MarketDataType: 1,
 			CaptureID: "o" + strconv.Itoa(r.InstrumentID)})
 	}
 	for _, n := range f.Names {
@@ -86,7 +86,7 @@ func loadJP(t *testing.T) *jpEnv {
 	}
 	for _, r := range f.Eod {
 		e.eod = append(e.eod, contracts.OptionEod{UnderlyingID: r.UnderlyingID, InstrumentID: r.InstrumentID, SessionDay: day(r.Day),
-			OpenInterest: f64(r.OI), Status: 1, CaptureID: "e1"})
+			OpenInterest: new(r.OI), Status: 1, CaptureID: "e1"})
 	}
 	return e
 }

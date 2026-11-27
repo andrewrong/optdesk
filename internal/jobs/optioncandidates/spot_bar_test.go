@@ -53,7 +53,7 @@ func runBarCase(t *testing.T, quotes *fakeQuotes, bars *fakeBars) (spot, marks s
 	e.put(7, 11, "90")
 	e.terms[11] = store.OptionTerms{InstrumentID: 11, Right: "P", Strike: "90", Multiplier: "100", ExpirationDate: "2027-01-08"}
 	row := eodRowOf(7, 11, "2026-11-25", 1.7, 1.8, 40)
-	row.UnderlyingPrice = f64(363.83)
+	row.UnderlyingPrice = new(363.83)
 	e.eod = []contracts.OptionEod{row}
 	st := e.stores(true)
 	st.SessionDays = thanksgivingEnv{e}
@@ -90,7 +90,7 @@ func TestSpotFromBarWhenNoQuote(t *testing.T) {
 
 func TestSpotQuoteBeatsBar(t *testing.T) {
 	t.Parallel()
-	q := &fakeQuotes{rows: []contracts.QuoteSnapshot{snap("2026-11-25", "2026-11-25T20:30:00Z", f64(381.5), 1)}}
+	q := &fakeQuotes{rows: []contracts.QuoteSnapshot{snap("2026-11-25", "2026-11-25T20:30:00Z", new(381.5), 1)}}
 	spot, marks := runBarCase(t, q, &fakeBars{rows: []contracts.PriceBar{barOf("2026-11-25", "380.14")}})
 	if spot != "381.5" || marks != "chain_day:2026-11-25 spot_quote:2026-11-25" {
 		t.Fatalf("spot %s marks %s", spot, marks)

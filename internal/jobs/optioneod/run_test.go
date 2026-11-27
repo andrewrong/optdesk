@@ -83,7 +83,7 @@ func num(v float64) *float64 { return &v }
 
 func newBroker() *fakeBroker {
 	return &fakeBroker{
-		price: num(100),
+		price: new(float64(100)),
 		chains: []broker.Chain{{Exchange: "SMART", TradingClass: "TEST", Multiplier: "100",
 			Expirations: []string{"20261105", "20261106", "20261113"}, Strikes: []string{"95", "100", "105", "200"}}},
 		notListed: map[string]bool{},
@@ -141,10 +141,10 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 	out := make([]broker.Quote, len(cs))
 	for i, c := range cs {
 		out[i] = broker.Quote{Contract: c, Status: b.status[c.ConID], Generation: 7, MarketDataType: 1,
-			ReceivedAt: time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC), Bid: num(1), Ask: num(2), Last: num(1.5), UndPrice: num(100)}
+			ReceivedAt: time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC), Bid: new(float64(1)), Ask: new(float64(2)), Last: new(1.5), UndPrice: new(float64(100))}
 		if b.full {
-			out[i].Volume, out[i].OpenInterest, out[i].ImpliedVol = num(3), num(4), num(0.2)
-			out[i].Delta, out[i].Gamma, out[i].Theta, out[i].Vega = num(0.5), num(0.1), num(-0.1), num(0.2)
+			out[i].Volume, out[i].OpenInterest, out[i].ImpliedVol = new(float64(3)), new(float64(4)), new(0.2)
+			out[i].Delta, out[i].Gamma, out[i].Theta, out[i].Vega = new(0.5), new(0.1), new(-0.1), new(0.2)
 		}
 		if b.noOI {
 			out[i].OpenInterest = nil
@@ -561,7 +561,7 @@ func TestRunStoresFetchedUnderlyingPrice(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			r := newRig(t, "2026-11-06 17:00")
-			r.b.price = num(101)
+			r.b.price = new(float64(101))
 			r.b.noUndPrice = tc.noUndPrice
 			if res := r.run(testDay, testKey); res.Err != nil || res.Returned != 4 {
 				t.Fatalf("%+v", res)
@@ -581,7 +581,7 @@ type closeOnly struct{ *fakeBroker }
 func (c *closeOnly) Snapshot(ctx context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
 	if kind == broker.KindSnapshot {
 		c.snaps = append(c.snaps, snapCall{kind, cs})
-		return []broker.Quote{{Close: num(100)}}, nil
+		return []broker.Quote{{Close: new(float64(100))}}, nil
 	}
 	return c.fakeBroker.Snapshot(ctx, kind, cs)
 }
@@ -706,7 +706,7 @@ func TestUnderlyingPriceFromBidAsk(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, "2026-11-06 17:00")
 	r.b.noUndPrice = true
-	r.job.b = &quoteOnly{fakeBroker: r.b, q: broker.Quote{Bid: num(99), Ask: num(101)}}
+	r.job.b = &quoteOnly{fakeBroker: r.b, q: broker.Quote{Bid: new(float64(99)), Ask: new(float64(101))}}
 	if res := r.run(testDay, testKey); res.Err != nil || res.Returned != 4 {
 		t.Fatalf("%+v", res)
 	}
@@ -728,7 +728,7 @@ func TestUnderlyingNoPriceNamesQuote(t *testing.T) {
 		q    []broker.Quote
 		want []string
 	}{
-		{"bid without ask", []broker.Quote{{Status: broker.StatusPartial, Bid: num(99)}},
+		{"bid without ask", []broker.Quote{{Status: broker.StatusPartial, Bid: new(float64(99))}},
 			[]string{"no price of ", "status 1", "Last", "Close", "UndPrice", "Ask"}},
 		{"no quote", nil, []string{"no price of ", "no quote"}},
 	} {
