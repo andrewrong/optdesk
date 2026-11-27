@@ -157,7 +157,7 @@ func TestDefaultSigmaStoresReason(t *testing.T) {
 	require.NoError(t, errOf(g.run(g.job(nil))))
 	rec := g.group("AAA", 22)
 	require.Equal(t, "default", rec.SigmaSource)
-	require.Equal(t, DefaultSigma, rec.Sigma)
+	require.InDelta(t, DefaultSigma, rec.Sigma, 0)
 	require.Equal(t, 6, rec.InBand)
 	// A band of the default sigma is fresh for its day only.
 	g.lst.reset()

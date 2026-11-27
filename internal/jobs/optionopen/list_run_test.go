@@ -130,7 +130,7 @@ func TestListPastStopTimeLists(t *testing.T) {
 	require.NotEmpty(t, g.lst.calls)
 	require.True(t, g.present(j))
 	for _, s := range g.watch {
-		require.Greater(t, g.row(s).Listed, 0)
+		require.Positive(t, g.row(s).Listed)
 	}
 	require.Contains(t, g.logs[len(g.logs)-1], "past_stop_time=true")
 }
@@ -318,7 +318,7 @@ func TestRerunAsksOnlyTheGroupsNotListedForTheSession(t *testing.T) {
 	require.Nil(t, g.run(j).Err)
 	require.Equal(t, []string{"list:AAA@" + string(g.exp(28)), "list:AAA@" + string(g.exp(30))}, g.lst.only("list:"))
 	require.Empty(t, g.lst.only("chains:"))
-	require.Equal(t, before, g.row("AAA").Expected)
+	require.Equal(t, g.row("AAA").Expected, before)
 	require.Equal(t, 5, g.row("AAA").Listed)
 	require.Equal(t, reasonNone, g.row("AAA").Reason)
 }

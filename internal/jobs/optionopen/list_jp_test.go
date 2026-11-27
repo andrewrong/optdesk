@@ -94,7 +94,7 @@ func TestJPRequestsAreFullySpecified(t *testing.T) {
 	all = append(all, g.rec.chains...)
 	for _, l := range g.rec.lists {
 		all = append(all, l.u)
-		require.Equal(t, "", l.right, "both rights in one call")
+		require.Empty(t, l.right, "both rights in one call")
 		require.Equal(t, classes[l.u.Symbol], l.class)
 	}
 	for _, c := range all {

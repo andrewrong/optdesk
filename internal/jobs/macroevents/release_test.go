@@ -87,7 +87,7 @@ func TestReleaseErrorNeverHoldsKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	s500 := newRelease(t, func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("error " + testKey))
 	})
 	sBad := newRelease(t, func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("{" + testKey)) })
