@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -13,7 +14,9 @@ import (
 // every upstream in After() is ok or ended; a partial mark (no missing one among the keys) only when every
 // upstream is ok. ends holds the upstream whose run just ended ok, as for upstreamState. The answer is read
 // from the ledger, so it holds after a restart; the replacing run starts on a better upstream than the one it
-// replaces, so no run is replaced twice and the unmarked run is the last.
+// replaces, so no run is replaced twice and the unmarked run is the last. A dependent whose newest runs are
+// not marked is run once more when they all finished before an upstream ended ok (issue 4422); a run that
+// finished at or after that end is the last one.
 func (r *reconciler) rerunMarked(
 	ctx context.Context, dc *dayCtx, d contracts.Job, keys []contracts.ExpectedKey,
 	byKey map[contracts.ExpectedKey][]store.Run, ends map[string]bool,
@@ -22,25 +25,72 @@ func (r *reconciler) rerunMarked(
 	if !ok || len(keys) == 0 {
 		return false, nil
 	}
-	partial := true // no key carries upstream_missing
+	partial, marked := true, true // no key carries upstream_missing; every newest run is marked
+	var newestEnd time.Time       // the latest finish among the newest runs of the keys
 	for _, k := range keys {
 		runs := byKey[k]
 		if len(runs) == 0 {
 			return false, nil
 		}
 		newest := runs[len(runs)-1]
-		if newest.Status != store.RunDone || (newest.ReasonCode != reasonUpstreamMissing && newest.ReasonCode != reasonUpstreamPartial) {
+		if newest.Status != store.RunDone {
 			return false, nil
+		}
+		if newest.FinishedAt.After(newestEnd) {
+			newestEnd = newest.FinishedAt
+		}
+		if newest.ReasonCode != reasonUpstreamMissing && newest.ReasonCode != reasonUpstreamPartial {
+			marked = false
 		}
 		if newest.ReasonCode == reasonUpstreamMissing {
 			partial = false
 		}
 	}
+	allOK := true
 	for _, id := range dep.After() {
 		st, err := r.upstreamState(ctx, dc, id, ends)
-		if err != nil || (st != upOK && (partial || st != upEnded)) {
+		if err != nil {
 			return false, err
 		}
+		if st != upOK {
+			allOK = false
+			if marked && (partial || st != upEnded) {
+				return false, nil
+			}
+		}
 	}
-	return true, nil
+	if marked {
+		return true, nil
+	}
+	return r.finishedBeforeUpstream(dc, dep, byKey, newestEnd, allOK), nil
+}
+
+// finishedBeforeUpstream reports, for a dependent whose newest runs are unmarked, whether they all finished
+// before an upstream ended ok for the day; false while an upstream is not ok.
+func (r *reconciler) finishedBeforeUpstream(
+	dc *dayCtx, dep runner.Dependent, byKey map[contracts.ExpectedKey][]store.Run, newestEnd time.Time, allOK bool,
+) bool {
+	if !allOK {
+		return false
+	}
+	for _, id := range dep.After() {
+		if end, has := r.upstreamFinished(dc, id, byKey); has && newestEnd.Before(end) {
+			return true
+		}
+	}
+	return false
+}
+
+// upstreamFinished is the latest finish among the runs of the keys of upstream id on the day of dc; false when
+// the upstream has no key or no finished run on that day.
+func (r *reconciler) upstreamFinished(dc *dayCtx, id string, byKey map[contracts.ExpectedKey][]store.Run) (time.Time, bool) {
+	var end time.Time
+	for _, k := range dc.keysOf(id) {
+		for _, run := range byKey[k] {
+			if run.FinishedAt.After(end) {
+				end = run.FinishedAt
+			}
+		}
+	}
+	return end, !end.IsZero()
 }
