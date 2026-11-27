@@ -406,7 +406,7 @@ func TestStaleTextNamesReason(t *testing.T) {
 func TestBuildNilReaderNoPanic(t *testing.T) {
 	t.Parallel()
 	c := cfg("DGS10")
-	c.Liquidity = func(liquidityapi.Input) liquidityapi.Result { return liquidityapi.Result{} }
+	c.Liquidity = fixedFunc(fullResult())
 	b, err := Build(t.Context(), nil, c, "2026-11-13", fixedAt)
 	if err != nil {
 		t.Fatal(err)
