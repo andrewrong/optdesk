@@ -188,7 +188,7 @@ func items(all []reconapi.Item) []reconstore.Item {
 }
 
 func symbolOf(key string) string {
-	for i := 0; i < len(key); i++ {
+	for i := range len(key) {
 		if key[i] == '|' {
 			return key[:i]
 		}

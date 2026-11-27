@@ -301,7 +301,7 @@ func deferTail(seq []*entry, ceil int) map[*entry]bool {
 		}
 		return 0
 	}
-	for t := 0; t <= 2; t++ {
+	for t := range 3 {
 		for i := len(seq) - 1; i >= 0 && len(over) < need; i-- {
 			if tier(seq[i]) == t {
 				over[seq[i]] = true

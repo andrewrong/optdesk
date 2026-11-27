@@ -287,7 +287,7 @@ func TestBudgetStopWithSomethingListedIsErrNilAndPartial(t *testing.T) {
 		if i < 5 {
 			n = 17
 		}
-		for k := 0; k < n; k++ {
+		for k := range n {
 			g.offs[s] = append(g.offs[s], 21+k)
 		}
 	}

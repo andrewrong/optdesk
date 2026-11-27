@@ -40,7 +40,7 @@ func resolvePairs(ctx context.Context, resolve func(context.Context, broker.Cont
 		}
 		return i, true
 	}
-	for w := 0; w < min(resolveInFlight, len(pairs)); w++ {
+	for range min(resolveInFlight, len(pairs)) {
 		wg.Go(func() {
 			for {
 				i, ok := claim()
