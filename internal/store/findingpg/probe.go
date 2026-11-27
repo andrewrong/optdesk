@@ -43,8 +43,9 @@ GROUP BY c.name, c.day ORDER BY c.name, c.day`
 FROM rd.option_open_r1 WHERE session_day BETWEEN $1::date AND $2::date
 GROUP BY session_day, currency ORDER BY session_day, currency`
 
-	newestCandidateRunsSQL = `SELECT DISTINCT ON (session_day, kind) to_char(session_day, 'YYYY-MM-DD'), kind, n, computed_at
-FROM (SELECT session_day, kind, run_id, count(*)::int AS n, max(computed_at) AS computed_at
+	newestCandidateRunsSQL = `SELECT DISTINCT ON (session_day, kind) to_char(session_day, 'YYYY-MM-DD'), kind, n, computed_at, rule_version
+FROM (SELECT session_day, kind, run_id, count(*)::int AS n, max(computed_at) AS computed_at,
+             CASE WHEN count(DISTINCT rule_version) = 1 THEN min(rule_version) ELSE '' END AS rule_version
       FROM rd.option_candidate_r1 WHERE session_day BETWEEN $1::date AND $2::date
       GROUP BY session_day, kind, run_id) runs
 ORDER BY session_day, kind, computed_at DESC, run_id DESC`
@@ -134,7 +135,7 @@ func (p *pgProbe) NewestCandidateRuns(ctx context.Context, from, to contracts.Da
 	for rows.Next() {
 		var c finding.CandidateRun
 		var day string
-		if err := rows.Scan(&day, &c.Kind, &c.Rows, &c.ComputedAt); err != nil {
+		if err := rows.Scan(&day, &c.Kind, &c.Rows, &c.ComputedAt, &c.RuleVersion); err != nil {
 			return nil, fmt.Errorf("findingpg: candidate runs: %w", err)
 		}
 		c.Day = contracts.Day(day)
