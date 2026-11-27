@@ -117,7 +117,6 @@ func (c Config) approvalState(ctx context.Context, symbol, value string, today c
 		return "", fmt.Errorf("companies_page: approval of %s: %w", symbol, err)
 	}
 	for _, r := range slices.Backward(rows) {
-
 		if r.State != "ok" || r.Value == nil {
 			continue
 		}

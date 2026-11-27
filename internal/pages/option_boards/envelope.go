@@ -1,4 +1,3 @@
-//nolint:unused // used by the page builders of entries 3 and 4 of docs/design/option-page-builders.md
 package option_boards
 
 import (

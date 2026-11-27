@@ -6,6 +6,6 @@ const (
 	gapLineOne  = "1 个缺口，在各自的卡片里显示"
 	gapLineMany = "%d 个缺口，在各自的卡片里显示"
 
-	// market, day, our hours, IBKR hours
+	// market, day, our hours, IBKR hours.
 	calendarGapFmt = "%s %s 本站 %s，IBKR %s"
 )

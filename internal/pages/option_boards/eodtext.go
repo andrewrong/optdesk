@@ -22,7 +22,7 @@ func floatText(v *float64) string {
 
 // greekText is the text of a stored Theta, Gamma or Vega at 4 decimals, a negative with U+2212; the value is printed, never parsed. Null, NaN and
 // infinity are "n/a".
-// owner decision 2026-11-11: 4 decimals; supersedes Decision 8 of docs/design/option-page-builders.md for Theta, Gamma, Vega
+// owner decision 2026-11-11: 4 decimals; supersedes Decision 8 of docs/design/option-page-builders.md for Theta, Gamma, Vega.
 func greekText(v *float64) string {
 	if v == nil || math.IsNaN(*v) || math.IsInf(*v, 0) {
 		return gapText

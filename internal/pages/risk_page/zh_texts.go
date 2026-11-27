@@ -46,12 +46,12 @@ const (
 	textStaleLabel = "按采集日 "
 	textNoVega     = "没有期权组合计入 Vega"
 
-	// unit texts of a Delta cell, one for each currency
+	// unit texts of a Delta cell, one for each currency.
 	unitDeltaUSD = "美元/每 $1"
 	unitDeltaJPY = "日元/每 ¥1"
-	// unit text of a Vega cell and of the Vega total
+	// unit text of a Vega cell and of the Vega total.
 	unitVega = " 美元/每波动率 1 点 USD/vol point"
 
-	// textTotalSeparator joins the Delta totals of the currencies in the total cell
+	// textTotalSeparator joins the Delta totals of the currencies in the total cell.
 	textTotalSeparator = "；"
 )
