@@ -1,6 +1,7 @@
 package optioneod
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -125,7 +126,7 @@ func nearestStrikes(all []string, price, lo, hi float64, perSide int) []strikeVa
 	if perSide > 0 && len(above) > perSide {
 		above = above[:perSide]
 	}
-	out := append(below, above...)
+	out := slices.Concat(below, above)
 	sort.Slice(out, func(i, j int) bool { return out[i].value < out[j].value })
 	return out
 }

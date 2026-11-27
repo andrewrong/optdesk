@@ -40,6 +40,7 @@ func answerFrom(bars []sources.RefBar, actions ...sources.RefAction) func(source
 }
 
 func historyThatFails(t *testing.T) *fakeHistory {
+	t.Helper()
 	return &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
 		t.Errorf("IB history asked: %+v", q)
 		return nil, errors.New("not asked")

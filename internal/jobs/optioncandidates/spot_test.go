@@ -3,6 +3,7 @@ package optioncandidates
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestSpotFromQuote(t *testing.T) {
 	}
 
 	// a row received after the clock is not taken; a row whose status is not ok is not taken
-	q.rows = append(rows,
+	q.rows = append(slices.Clone(rows),
 		snap("2026-11-09", "2026-11-09T14:00:01Z", new(float64(99)), 1),
 		snap("2026-11-09", "2026-11-09T13:00:00Z", new(float64(98)), 4))
 	price, d, _, ok, _ = spotFromQuote(context.Background(), q, 7, "2026-11-09", now)

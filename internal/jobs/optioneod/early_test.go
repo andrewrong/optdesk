@@ -104,16 +104,19 @@ func TestSlotInstantIsNotEarly(t *testing.T) {
 		slot time.Time
 	}{
 		"option_eod": {slot: time.Date(2026, 11, 6, 11, 0, 0, 0, ny), run: func(t *testing.T, at time.Time) contracts.JobResult {
+			t.Helper()
 			r := newRig(t, "2026-11-06 11:00")
 			r.job.clk = clockwork.NewFakeClockAt(at)
 			return r.run(testDay, testKey)
 		}},
 		"option_eod_index": {slot: time.Date(2026, 11, 13, 11, 0, 0, 0, ny), run: func(t *testing.T, at time.Time) contracts.JobResult {
+			t.Helper()
 			r := newIndexRig(t, nil)
 			r.job.clk = clockwork.NewFakeClockAt(at)
 			return r.run("SPX")
 		}},
 		"option_eod_jp": {slot: time.Date(2026, 11, 9, 15, 15, 0, 0, tk), run: func(t *testing.T, at time.Time) contracts.JobResult {
+			t.Helper()
 			r := newJPRig(t, "2026-11-09 15:15")
 			if _, err := WithCalendar(r.job, fakeCalendar{close: map[string]time.Time{"XTKS": time.Date(2026, 11, 9, 6, 30, 0, 0, time.UTC)}}); err != nil {
 				t.Fatal(err)
