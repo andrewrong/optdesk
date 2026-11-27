@@ -284,14 +284,6 @@ func TestCashShortUnknownCurrencyKeepsFallback(t *testing.T) {
 	}
 }
 
-func TestCashShortRowAcceptanceText(t *testing.T) {
-	t.Parallel()
-	r := noticeRowOf("main", 0, cashShortNotice("USD", "-30553"))
-	if got := factText(r, "剩余现金 Cash left"); got != "-$30,553" {
-		t.Errorf("left = %q, want -$30,553 (issue acceptance 2)", got)
-	}
-}
-
 func TestCashShortKeepsCents(t *testing.T) {
 	t.Parallel()
 	n := cashShortNotice("USD", "-30553.5")

@@ -184,5 +184,9 @@ var zeroCents = regexp.MustCompile(`\.00( |$)`)
 // wholeAmountText is amountText without the places of a whole amount: "-$30,553.00" gives
 // "-$30,553"; an amount with cents keeps them.
 func wholeAmountText(amount, currency string) string {
-	return zeroCents.ReplaceAllString(amountText(amount, currency), "$1")
+	text := amountText(amount, currency)
+	if !decimalText.MatchString(amount) {
+		return text
+	}
+	return zeroCents.ReplaceAllString(text, "$1")
 }
