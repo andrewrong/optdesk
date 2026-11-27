@@ -92,7 +92,7 @@ func TestSameInputSameResult(t *testing.T) {
 	if !reflect.DeepEqual(a, b) {
 		t.Fatalf("results differ:\n%v\n%v", a, b)
 	}
-	if a.RuleVersion != 1 {
+	if a.RuleVersion != 2 {
 		t.Fatalf("rule version %d", a.RuleVersion)
 	}
 }
