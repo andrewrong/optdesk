@@ -50,7 +50,9 @@
         "name": {"$ref": "#/$defs/Text"},
         "verdict": {"enum": ["session_up", "session_retrying", "farm_down", "unreachable"]},
         "farms": {"type": "array", "items": {"$ref": "#/$defs/GatewayFarm"}},
-        "note": {"$ref": "#/$defs/Optional"}
+        "note": {"$ref": "#/$defs/Optional"},
+        "since": {"oneOf": [{"type": "string", "format": "date-time"}, {"const": ""}]},
+        "since_text": {"$ref": "#/$defs/Optional"}
       }
     },
     "GatewayFarm": {

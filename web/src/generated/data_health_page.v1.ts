@@ -147,6 +147,8 @@ export interface Gateway {
   verdict: "session_up" | "session_retrying" | "farm_down" | "unreachable";
   farms: GatewayFarm[];
   note: Optional;
+  since?: string | "";
+  since_text?: Optional;
 }
 export interface GatewayFarm {
   name: Text;
