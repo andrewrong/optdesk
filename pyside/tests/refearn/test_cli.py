@@ -25,8 +25,11 @@ class _Clock:
 class _Yf:
     """Stands in for the yfinance module; `calendars` maps a Yahoo symbol to a calendar or error."""
 
-    def __init__(self, calendars: dict[str, Any]) -> None:
+    def __init__(
+        self, calendars: dict[str, Any], dates: dict[str, Any] | None = None
+    ) -> None:
         self.calendars = calendars
+        self.dates = dates or {}
         self.config = SimpleNamespace(debug=SimpleNamespace(hide_exceptions=True))
 
     def set_tz_cache_location(self, path: str) -> None:
@@ -36,7 +39,17 @@ class _Yf:
         outcome = self.calendars[symbol]
         if isinstance(outcome, Exception):
             raise outcome
-        return SimpleNamespace(calendar=outcome)
+        later = self.dates.get(symbol, [])
+
+        def get_earnings_dates(limit: int) -> Any:
+            assert limit == 3
+            if isinstance(later, Exception):
+                raise later
+            return SimpleNamespace(
+                index=[datetime.datetime(d.year, d.month, d.day, 16) for d in later]
+            )
+
+        return SimpleNamespace(calendar=outcome, get_earnings_dates=get_earnings_dates)
 
 
 class YFRateLimitError(Exception):
@@ -109,3 +122,23 @@ def test_bad_request_exits_2_with_no_answer() -> None:
     for request in requests:
         code, out, _ = _run(request, _Yf({}))
         assert (code, out) == (2, "")
+
+
+def test_calendar_without_later_date_reads_earnings_dates() -> None:
+    yf = _Yf(
+        {"NVDA": {"Earnings Date": [datetime.date(2026, 11, 18)]}},
+        {"NVDA": [datetime.date(2027, 2, 24), datetime.date(2026, 11, 18)]},
+    )
+    answer = json.loads(
+        _run({"symbols": [_spec("NVDA")], "from_day": "2026-11-27"}, yf)[1]
+    )
+    assert answer["results"][0]["dates"] == ["2027-02-24"]
+    assert answer["results"][0]["error_code"] == ""
+
+
+def test_earnings_dates_failure_gets_code() -> None:
+    yf = _Yf({"A": {}}, {"A": YFRateLimitError()})
+    answer = json.loads(
+        _run({"symbols": [_spec("A")], "from_day": "2026-11-01"}, yf)[1]
+    )
+    assert answer["results"][0]["error_code"] == "rate_limited"
