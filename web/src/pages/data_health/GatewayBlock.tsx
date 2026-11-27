@@ -14,6 +14,7 @@ export function GatewayBlock({ gateways }: { gateways: NonNullable<Payload['gate
           <div key={g.name} data-gateway={g.name} data-verdict={g.verdict} className="space-y-1 text-sm">
             <p className="font-medium">{g.name}</p>
             {g.note ? <p>{g.note}</p> : null}
+            {g.since_text ? <p data-since>{g.since_text}</p> : null}
             {g.farms.length > 0 ? (
               <ul className="flex flex-wrap gap-3">
                 {g.farms.map((f) => (
