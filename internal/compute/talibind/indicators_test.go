@@ -260,16 +260,11 @@ func TestBadPeriod(t *testing.T) {
 	}
 	_, err := ind.RSI(v, 1)
 	permanentErr("RSI 1", err)
-	_, _, _, err = ind.MACD(v, 0, 5, 3)
-	permanentErr("MACD fast 0", err)
-	_, _, _, err = ind.MACD(v, 5, 5, 3)
-	permanentErr("MACD fast = slow", err)
-	_, _, _, err = ind.MACD(v, 3, 5, 0)
-	permanentErr("MACD signal 0", err)
-	_, _, _, err = ind.BBands(v, 0, 2, 2, compute.MASMA)
-	permanentErr("BBands 0", err)
-	_, _, _, err = ind.BBands(v, 3, 2, 2, compute.MAType(99))
-	permanentErr("BBands maType", err)
+	permanentErr("MACD fast 0", errOf4(ind.MACD(v, 0, 5, 3)))
+	permanentErr("MACD fast = slow", errOf4(ind.MACD(v, 5, 5, 3)))
+	permanentErr("MACD signal 0", errOf4(ind.MACD(v, 3, 5, 0)))
+	permanentErr("BBands 0", errOf4(ind.BBands(v, 0, 2, 2, compute.MASMA)))
+	permanentErr("BBands maType", errOf4(ind.BBands(v, 3, 2, 2, compute.MAType(99))))
 	_, err = ind.ATR(v, v, v, 0)
 	permanentErr("ATR 0", err)
 	_, err = ind.ATR(v, v[:5], v, 3)
@@ -297,3 +292,6 @@ func TestShortInputIsAllNaN(t *testing.T) {
 		t.Errorf("MACD short: %v %v %v %v", m, s, h, err)
 	}
 }
+
+// errOf4 keeps the error of a call that returns three values and an error.
+func errOf4[A, B, C any](_ A, _ B, _ C, err error) error { return err }
