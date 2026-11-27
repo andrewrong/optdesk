@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -153,6 +154,22 @@ func storedDep(t *testing.T, led *fakeLedger, reason string) {
 	}
 }
 
+// readsOpen is the dependent that records which keys of the upstream are stored when it runs.
+type readsOpen struct {
+	depJob
+	led  *fakeLedger
+	mu   *sync.Mutex
+	seen *[]int
+}
+
+func (j readsOpen) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	p, _ := j.led.Present(ctx, d)
+	j.mu.Lock()
+	*j.seen = append(*j.seen, len(p))
+	j.mu.Unlock()
+	return j.depJob.Run(ctx, d, k)
+}
+
 func TestUnmarkedDependentRerunsWhenUpstreamEnds(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -169,10 +186,16 @@ func TestUnmarkedDependentRerunsWhenUpstreamEnds(t *testing.T) {
 			storedDep(t, led, tc.reason)
 			clk := clockwork.NewFakeClockAt(utc(tc.start))
 			up := slowUp{fakeJob: upJob(keyA, keyB), clk: clk, took: tc.took}
-			d := dep(-10*time.Minute, keyC)
+			base := dep(-10*time.Minute, keyC)
+			var seen []int
+			d := readsOpen{depJob: base, led: led, mu: &sync.Mutex{}, seen: &seen}
 			rec := NewWithRule(led, oneDay(), clk, []contracts.Job{up, d}, runner.WindowRule{CalendarID: "XNYS"})
 			reconcileN(t, rec, 1)
 			runs := depRuns(led)
+			// keyC was stored by the seed; the rerun reads it after keyA and keyB of the open are stored too.
+			if len(seen) != 1 || seen[0] != 3 {
+				t.Fatalf("stored keys at the rerun %v, want [3]: the open rows are stored first", seen)
+			}
 			if len(d.calls) != 1 || len(runs) != 2 || runs[1].ReasonCode == tc.reason || runs[1].Status != store.RunDone {
 				t.Fatalf("dep calls %d runs %+v, want one more run after the end of up", len(d.calls), runs)
 			}
@@ -190,7 +213,7 @@ func TestUnmarkedDependentAfterUpstreamIsNotRerun(t *testing.T) {
 	t.Parallel()
 	led := dueLedger()
 	storedDep(t, led, reasonBackfill)
-	led.runs[dueDay][0].FinishedAt = utc("2026-11-05T20:55:00Z") // after the upstream ended
+	led.runs[dueDay][0].FinishedAt = utc("2026-11-05T20:56:00Z") // strictly after the upstream ended at 20:55
 	up, d := upJob(keyA, keyB), dep(-10*time.Minute, keyC)
 	rec := dueRec(led, "2026-11-05T20:55:00Z", up, d)
 	reconcileN(t, rec, 3)

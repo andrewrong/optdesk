@@ -62,17 +62,14 @@ func (r *reconciler) rerunMarked(
 	if marked {
 		return true, nil
 	}
-	return r.finishedBeforeUpstream(dc, dep, byKey, newestEnd, allOK), nil
+	return allOK && r.finishedBeforeUpstream(dc, dep, byKey, newestEnd), nil
 }
 
 // finishedBeforeUpstream reports, for a dependent whose newest runs are unmarked, whether they all finished
-// before an upstream ended ok for the day; false while an upstream is not ok.
+// before an upstream ended ok for the day.
 func (r *reconciler) finishedBeforeUpstream(
-	dc *dayCtx, dep runner.Dependent, byKey map[contracts.ExpectedKey][]store.Run, newestEnd time.Time, allOK bool,
+	dc *dayCtx, dep runner.Dependent, byKey map[contracts.ExpectedKey][]store.Run, newestEnd time.Time,
 ) bool {
-	if !allOK {
-		return false
-	}
 	for _, id := range dep.After() {
 		if end, has := r.upstreamFinished(dc, id, byKey); has && newestEnd.Before(end) {
 			return true
@@ -81,15 +78,23 @@ func (r *reconciler) finishedBeforeUpstream(
 	return false
 }
 
-// upstreamFinished is the latest finish among the runs of the keys of upstream id on the day of dc; false when
-// the upstream has no key or no finished run on that day.
+// upstreamFinished is the instant upstream id first ended ok on the day of dc: the latest, over its keys, of the
+// first ok run of the key. A later run of a key (a forced re-run, a manual pull) does not move it, so it starts
+// no dependent. False when the upstream has no key or a key has no ok run.
 func (r *reconciler) upstreamFinished(dc *dayCtx, id string, byKey map[contracts.ExpectedKey][]store.Run) (time.Time, bool) {
 	var end time.Time
 	for _, k := range dc.keysOf(id) {
+		var first time.Time
 		for _, run := range byKey[k] {
-			if run.FinishedAt.After(end) {
-				end = run.FinishedAt
+			if run.Status == store.RunDone && run.ErrorCode == "" && (first.IsZero() || run.FinishedAt.Before(first)) {
+				first = run.FinishedAt
 			}
+		}
+		if first.IsZero() {
+			return time.Time{}, false
+		}
+		if first.After(end) {
+			end = first
 		}
 	}
 	return end, !end.IsZero()
