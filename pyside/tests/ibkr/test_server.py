@@ -20,6 +20,7 @@ from kit.sockdir import short_socket_dir
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr.gateways import ConfigError, GatewaySpec
+from optdesk.ibkr.ibgateway import ClientIdInUse
 from optdesk.ibkr.model import AccountRows, AccountValueRow, Gateway, SessionState
 from optdesk.ibkr.server import (
     BACKOFF_CAP_S,
@@ -189,6 +190,63 @@ def test_supervisor_reconnects_with_backoff() -> None:
     assert asked[:9] == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 60.0, 60.0, 60.0]
     assert max(asked) <= BACKOFF_CAP_S
     assert generation == 1
+
+
+class InUseGateway:
+    """open_session raises ClientIdInUse `busy` times (None: always), then succeeds."""
+
+    def __init__(self, busy: int | None) -> None:
+        self.busy = busy
+        self.attempts = 0
+        self.up = False
+
+    async def open_session(self) -> None:
+        self.attempts += 1
+        if self.busy is None or self.attempts <= self.busy:
+            raise ClientIdInUse(7)
+        self.up = True
+
+    async def status(self) -> SessionState:
+        return SessionState(self.up, 1 if self.up else 0, 1)
+
+
+def test_supervisor_retries_a_client_id_in_use() -> None:
+    async def run() -> None:
+        clock = RecordingClock()
+        gateway = InUseGateway(busy=2)
+        task = asyncio.ensure_future(supervise(gateway, clock, "main"))
+        await clock._settle()
+        assert gateway.attempts == 1 and not (await gateway.status()).connected
+        await clock.advance(BACKOFF_FIRST_S)
+        assert gateway.attempts == 2 and not (await gateway.status()).connected
+        await clock.advance(2 * BACKOFF_FIRST_S)
+        assert gateway.attempts == 3
+        assert (await gateway.status()).connected
+        assert not task.done()
+        assert clock.asked[:2] == [BACKOFF_FIRST_S, 2 * BACKOFF_FIRST_S]
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+    asyncio.run(run())
+
+
+def test_client_id_in_use_does_not_stop_the_other_gateways() -> None:
+    async def run() -> None:
+        clock = FakeClock()
+        busy, free = InUseGateway(busy=None), InUseGateway(busy=0)
+        tasks = [
+            asyncio.ensure_future(supervise(busy, clock, "busy")),
+            asyncio.ensure_future(supervise(free, clock, "free")),
+        ]
+        await clock.advance(BACKOFF_CAP_S * 3)
+        assert busy.attempts > 1 and not (await busy.status()).connected
+        assert (await free.status()).connected
+        assert not any(t.done() for t in tasks)
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    asyncio.run(run())
 
 
 class ScriptedGateway:

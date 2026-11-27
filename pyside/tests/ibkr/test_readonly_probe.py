@@ -11,7 +11,7 @@ from ib_async import OptionChain
 from kit.fakeclock import FakeClock
 from test_ibgateway import FakeClient, FakeIb
 
-from optdesk.ibkr.ibgateway import IbGateway
+from optdesk.ibkr.ibgateway import ClientIdInUse, IbGateway
 from optdesk.ibkr.readonly_probe import (
     PROBE_CLIENT_ID,
     GatewayNotReadOnly,
@@ -319,7 +319,7 @@ class InUseClient(FakeClient):
         raise TimeoutError
 
 
-def test_client_id_in_use_stops_and_is_not_retried() -> None:
+def test_client_id_in_use_is_an_ordinary_error() -> None:
     async def run() -> None:
         clock = FakeClock()
         ib = FakeIb(clock)
@@ -327,9 +327,10 @@ def test_client_id_in_use_stops_and_is_not_retried() -> None:
         gateway = _gateway(clock, ib, _passes)
         await gateway.open_session()
 
-    with pytest.raises(SystemExit) as stop:
+    with pytest.raises(ClientIdInUse, match="error 326") as stop:
         asyncio.run(run())
-    assert not isinstance(stop.value, Exception)
+    assert isinstance(stop.value, Exception)
+    assert not isinstance(stop.value, SystemExit)
 
 
 def test_other_connect_failure_stays_an_ordinary_error() -> None:
