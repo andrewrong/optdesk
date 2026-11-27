@@ -74,64 +74,62 @@ Build order: entries 1 and 2 first (the two interfaces, parallel); 3 after 2; 4 
 
 Module: contracts. Size: S.
 Order: first.
-Files: `contracts/schemas/page.data_health_page.v1.json`, `web/src/generated/data_health_page.v1.ts`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/data_health_page_v1_test.go`, `docs/contracts/page-schemas.md`
-New files: `contracts/fixtures/page.data_health_page.v1.gatewaysince.json` (new)
+Files: `contracts/schemas/page.data_health_page.v1.json`, `web/src/generated/data_health_page.v1.ts`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/data_health_page_v1_test.go`, `docs/contracts/page-schemas.md`, `contracts/fixtures/page.data_health_page.v1.gatewaysince.json`
 Contracts: page.data_health_page v1 (optional `since` and `since_text` on Gateway added; `schema_version` stays 1)
 Design: docs/design/gateway-down-since.md#Interface
 Acceptance:
 1. `$defs/Gateway` of the schema has the properties `since` and `since_text` of Decision 8, neither in `required`, `additionalProperties` still false, and no existing property or enum value changes; `web/src/generated/data_health_page.v1.ts` is produced from the schema, names both as optional, and nothing else in it changes.
-2. `contracts/fixtures/page.data_health_page.v1.gatewaysince.json` (new) is a page document of the shape of `page.data_health_page.v1.gateways.json` whose `unreachable` gateway has a `since` and a `since_text` that starts with `无连接自 `, and whose `farm_down` gateway carries the two empty strings; it holds invented values only and is listed in `MANIFEST.synthetic-v1.json` with its sha256; `page.data_health_page.v1.gateways.json` is unchanged (`git diff --name-only BASE -- contracts/fixtures/page.data_health_page.v1.gateways.json` prints nothing).
-3. `data_health_page_v1_test.go` has `TestGatewaySinceFixtureValidates` (new) asserting the new fixture `page.data_health_page.v1.gatewaysince.json` passes, `TestGatewaySinceRejectsBadTime` (new) asserting a `since` that is neither a date-time nor the empty string fails, and `TestGatewayWithoutSinceStillValidates` (new) asserting a gateway with neither field passes.
+2. `contracts/fixtures/page.data_health_page.v1.gatewaysince.json` is a page document of the shape of `page.data_health_page.v1.gateways.json` whose `unreachable` gateway has a `since` and a `since_text` that starts with `无连接自 `, and whose `farm_down` gateway carries the two empty strings; it holds invented values only and is listed in `MANIFEST.synthetic-v1.json` with its sha256; `page.data_health_page.v1.gateways.json` is unchanged (`git diff --name-only BASE -- contracts/fixtures/page.data_health_page.v1.gateways.json` prints nothing).
+3. `data_health_page_v1_test.go` has `TestGatewaySinceFixtureValidates` asserting the new fixture `page.data_health_page.v1.gatewaysince.json` passes, `TestGatewaySinceRejectsBadTime` asserting a `since` that is neither a date-time nor the empty string fails, and `TestGatewayWithoutSinceStillValidates` asserting a gateway with neither field passes.
 4. `docs/contracts/page-schemas.md` names `since` and `since_text` as an additive amendment of `docs/design/gateway-health.md` Decision 14 and of its Decision 7.
 
 ### 2 gwsince-store-api (interface)
 
 Module: store. Size: S.
 Order: first.
-New files: `internal/store/gatewaystate/api.go` (new), `internal/store/gatewaystate/api_test.go` (new), `docs/contracts/store/gatewaystate.md` (new)
+Files: `internal/store/gatewaystate/api.go`, `internal/store/gatewaystate/api_test.go`, `docs/contracts/store/gatewaystate.md`
 Contracts: unchanged
 Design: docs/design/gateway-down-since.md#Interface
 Acceptance:
 1. `api.go` declares what Interface entry 2 lists (`State`, `Reader`, `Writer`, `OpenReaderFunc`, `OpenWriterFunc`) with docs and no function body, and is the only non-test `.go` file of its package; `git diff --name-only BASE -- internal/store/api.go docs/design/ratchet.json` prints nothing.
-2. `api_test.go` has `TestGatewayStateContractFake` (new) asserting a fake writer's `Observe` is read back by the fake reader's `States`, and `TestStatesNonNilSlice` (new) asserting the fake's empty answer is a non-nil slice.
-3. `docs/contracts/store/gatewaystate.md` (new) lists the package, the rule of `Observe` (Decision 2) and the sentence "a row holds an alias, a flag and two times, never free text, an id or a secret".
+2. `api_test.go` has `TestGatewayStateContractFake` asserting a fake writer's `Observe` is read back by the fake reader's `States`, and `TestStatesNonNilSlice` asserting the fake's empty answer is a non-nil slice.
+3. `docs/contracts/store/gatewaystate.md` lists the package, the rule of `Observe` (Decision 2) and the sentence "a row holds an alias, a flag and two times, never free text, an id or a secret".
 
 ### 3 gwsince-store-schema
 
 Module: store. Size: S.
 Order: after 2.
-New files: `migrations/0074_gateway_state.sql` (new), `internal/store/setup/gateway_state_pg_test.go` (new)
+Files: `migrations/0074_gateway_state.sql`, `internal/store/setup/gateway_state_pg_test.go`
 Contracts: unchanged
 Design: docs/design/gateway-down-since.md#Decisions (1, 10)
 Acceptance:
-1. `migrations/0074_gateway_state.sql` (new) has Up and Down; Up creates `ops.gateway_state` with the four columns of Decision 1, `alias` the primary key and a CHECK that `alias` matches `^[a-z0-9]+$`, and the view `rd.gateway_state_r1` with the same four columns named, both owned by `ot_owner`; it grants SELECT, INSERT, UPDATE on the table to `ot_runner` and SELECT on the view to `ot_ro_pages`, and no DELETE or TRUNCATE to any role but the owner; Down drops the view and the table.
+1. `migrations/0074_gateway_state.sql` has Up and Down; Up creates `ops.gateway_state` with the four columns of Decision 1, `alias` the primary key and a CHECK that `alias` matches `^[a-z0-9]+$`, and the view `rd.gateway_state_r1` with the same four columns named, both owned by `ot_owner`; it grants SELECT, INSERT, UPDATE on the table to `ot_runner` and SELECT on the view to `ot_ro_pages`, and no DELETE or TRUNCATE to any role but the owner; Down drops the view and the table.
 2. `git diff --name-only BASE -- migrations` lists only the one new migration file; `git diff --name-only BASE -- internal/store/setup/setup.go` prints nothing.
-3. `gateway_state_pg_test.go` (new, tag `pg`) has `TestGatewayStateGrants` (new) asserting `ot_runner` can INSERT and UPDATE the table and cannot DELETE, `ot_ro_pages` can SELECT the view and cannot SELECT the table, and `TestMigrate0074Down` (new) asserting the table and view are gone after Down.
+3. `gateway_state_pg_test.go` (new, tag `pg`) has `TestGatewayStateGrants` asserting `ot_runner` can INSERT and UPDATE the table and cannot DELETE, `ot_ro_pages` can SELECT the view and cannot SELECT the table, and `TestMigrate0074Down` asserting the table and view are gone after Down.
 
 ### 4 gwsince-store-pg
 
 Module: store. Size: M.
 Order: after 2 and 3.
-New files: `internal/store/gatewaystatepg/store.go` (new), `internal/store/gatewaystatepg/store_test.go` (new), `internal/store/gatewaystatepg/store_pg_test.go` (new)
+Files: `internal/store/gatewaystatepg/store.go`, `internal/store/gatewaystatepg/store_test.go`, `internal/store/gatewaystatepg/store_pg_test.go`
 Contracts: unchanged
 Design: docs/design/gateway-down-since.md#Decisions (2)
 Acceptance:
-1. `store.go` (new) implements `gatewaystate.Reader` and `gatewaystate.Writer` with compile-time assertions, reads the view `rd.gateway_state_r1` and writes `ops.gateway_state` with one `INSERT ... ON CONFLICT (alias) DO UPDATE` statement for `Observe`, and reads no wall clock: every stored time is the `at` of the caller.
-2. `store_test.go` (new, no database) has `TestObserveStatementKeepsSinceOnSameFlag` (new) asserting the statement text sets `since` only in the branch where `down` changes and does not move `observed_at` back, and `TestOpenWithEmptyDSNFails` (new) asserting the opens return an error without dialing.
-3. `store_pg_test.go` (new, tag `pg`) has `TestObserveSequence` (new) asserting insert, same flag, flipped flag and an earlier `at` give the `since` values of Decision 2, and `TestStatesOrderedByAlias` (new).
+1. `store.go` implements `gatewaystate.Reader` and `gatewaystate.Writer` with compile-time assertions, reads the view `rd.gateway_state_r1` and writes `ops.gateway_state` with one `INSERT ... ON CONFLICT (alias) DO UPDATE` statement for `Observe`, and reads no wall clock: every stored time is the `at` of the caller.
+2. `store_test.go` (new, no database) has `TestObserveStatementKeepsSinceOnSameFlag` asserting the statement text sets `since` only in the branch where `down` changes and does not move `observed_at` back, and `TestOpenWithEmptyDSNFails` asserting the opens return an error without dialing.
+3. `store_pg_test.go` (new, tag `pg`) has `TestObserveSequence` asserting insert, same flag, flipped flag and an earlier `at` give the `since` values of Decision 2, and `TestStatesOrderedByAlias`.
 
 ### 5 gwsince-page
 
 Module: pages. Size: M.
 Order: after 1.
-Files: `internal/pages/data_health_page/gateways.go`, `internal/pages/data_health_page/builder.go`, `internal/pages/data_health_page/zh_texts.go`, `docs/contracts/pages.md`
-New files: `internal/pages/data_health_page/gateways_since_test.go` (new)
+Files: `internal/pages/data_health_page/gateways.go`, `internal/pages/data_health_page/builder.go`, `internal/pages/data_health_page/zh_texts.go`, `docs/contracts/pages.md`, `internal/pages/data_health_page/gateways_since_test.go`
 Contracts: unchanged
 Design: docs/design/gateway-down-since.md#Decisions (3, 6, 8)
 Acceptance:
 1. `gateways.go` declares `ConnectionLost` with the truth table of Decision 3 and `gatewayVerdict` calls it for the `session_retrying` and `unreachable` cases; the file stays under 600 lines.
 2. `GatewayInput` has the field `Since time.Time` and `GatewayVM` the fields `Since` and `SinceText` with the json names of the Interface; the builder (`builder.go`, which may take `in.Now` into `gatewayRows`) fills them as Decision 6 gives and leaves them out when there is no line (json `omitempty`, Decision 8), and `gatewayRows` copies no other field of `GatewayInput` into them.
-3. `gateways_since_test.go` (new) has `TestConnectionLostTable` (new), `TestSinceShownOnlyWhenLostNow` (new: a connected reading with a non-zero `Since` gives empty `since` and `since_text`), `TestSinceTextPrefix` (new: a lost reading with a non-zero `Since` gives `since_text` starting with `无连接自 ` and the time in the layout of `BuiltAt`), `TestNoSinceWithoutRow` (new: a lost reading with a zero `Since` gives empty strings, and the marshalled gateway holds no `since` and no `since_text` key), and `TestSinceTextHasNoIdOrPort` (new).
+3. `gateways_since_test.go` has `TestConnectionLostTable`, `TestSinceShownOnlyWhenLostNow` (new: a connected reading with a non-zero `Since` gives empty `since` and `since_text`), `TestSinceTextPrefix` (new: a lost reading with a non-zero `Since` gives `since_text` starting with `无连接自 ` and the time in the layout of `BuiltAt`), `TestNoSinceWithoutRow` (new: a lost reading with a zero `Since` gives empty strings, and the marshalled gateway holds no `since` and no `since_text` key), and `TestSinceTextHasNoIdOrPort`.
 4. `zh_texts.go` holds the prefix as a constant and a glossary sentence that explains "无连接" next to it; `docs/contracts/pages.md` names `since` and `since_text` and Decision 6 of this design as the amendment of Decision 7 of `docs/design/gateway-health.md`.
 
 ### 6 gwsince-web
