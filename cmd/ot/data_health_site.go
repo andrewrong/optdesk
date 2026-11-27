@@ -15,6 +15,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/coverage"
 	"github.com/andrewrong/optdesk/internal/store/finding"
 	"github.com/andrewrong/optdesk/internal/store/findingpg"
+	"github.com/andrewrong/optdesk/internal/store/gatewaystate"
+	"github.com/andrewrong/optdesk/internal/store/gatewaystatepg"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 )
 
@@ -88,6 +90,37 @@ func openDataHealthCoverage(ctx context.Context, a *app, track func(io.Closer, e
 	return r, true
 }
 
+// openGatewayStateReader opens the gateway state reader with the pages line; a package variable so that the tests,
+// which have no database, install a fake.
+var openGatewayStateReader gatewaystate.OpenReaderFunc = gatewaystatepg.OpenReader
+
+// gatewaySinces reads the rows of the gateway state once and gives the start of the stored value by alias. Without
+// a gateway, without the pages line, or when the open or the read fails it gives nil: the since-line is an addition
+// and its absence is no gap.
+func gatewaySinces(ctx context.Context, a *app, src gatewaySource) map[string]time.Time {
+	if len(src.entries) == 0 {
+		return nil
+	}
+	env, err := a.envFile()
+	if err != nil || env[pagesDSNName] == "" {
+		return nil
+	}
+	r, err := openGatewayStateReader(ctx, env[pagesDSNName])
+	if err != nil || r == nil {
+		return nil
+	}
+	defer func() { _ = r.Close() }()
+	rows, err := r.States(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]time.Time, len(rows))
+	for _, s := range rows {
+		out[s.Alias] = s.Since
+	}
+	return out
+}
+
 // buildDataHealth builds data_health_page per request. With the owner edit on the page carries the form of the
 // job console post; without it the form is nil and no cell has a button.
 func buildDataHealth(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
@@ -105,7 +138,7 @@ func buildDataHealth(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	src, _ := gatewaySourceOf(a)
 	return data_health_page.Build(ctx, data_health_page.Input{
 		Now: clk.Now().UTC(), Today: day, Cov: cov, Checks: checks, Jobs: dataHealthJobs(), Form: form,
-		Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx)),
+		Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx), gatewaySinces(ctx, a, src)),
 	})
 }
 
@@ -131,7 +164,7 @@ func dataHealthPageNamed(ctx context.Context, a *app) (pages.Page, func(), error
 		cov, _ := siteReaderOf[coverage.Reader](rd, siteDataHealthKey)
 		checks, _ := siteReaderOf[finding.Reader](rd, siteDataHealthChecksKey)
 		return data_health_page.Build(ctx, data_health_page.Input{Now: now.UTC(), Today: day, Cov: cov, Checks: checks, Jobs: dataHealthJobs(),
-			Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx))})
+			Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx), gatewaySinces(ctx, a, src))})
 	}
 	return pages.Page{Meta: pages.Meta{Name: dataHealthName, Schema: "page.data_health_page.v1"}, Build: build}, closeFn, nil
 }

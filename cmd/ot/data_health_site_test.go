@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/job_console"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
 	"github.com/andrewrong/optdesk/internal/store/finding"
+	"github.com/andrewrong/optdesk/internal/store/gatewaystate"
 )
 
 // fakeCoverage answers fixed cells and sessions; a non-nil err fails Cells.
@@ -513,5 +515,73 @@ func TestDataHealthJobsIvHistoryAnyDay(t *testing.T) {
 	data_health_page.Apply(cells, job, form, time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC), "2026-11-06")
 	if cells[0].Repair != data_health_page.RepairButton {
 		t.Fatalf("repair %q, want button", cells[0].Repair)
+	}
+}
+
+// fakeStateReader answers fixed rows or an error.
+type fakeStateReader struct {
+	rows []gatewaystate.State
+	err  error
+}
+
+func (f fakeStateReader) States(context.Context) ([]gatewaystate.State, error) { return f.rows, f.err }
+func (fakeStateReader) Close() error                                           { return nil }
+
+// stateReaders maps a DSN to its fake reader: the opener is one package variable, so every test names its own DSN.
+var stateReaders sync.Map
+
+func init() {
+	openGatewayStateReader = func(_ context.Context, dsn string) (gatewaystate.Reader, error) {
+		if r, ok := stateReaders.Load(dsn); ok {
+			return r.(gatewaystate.Reader), nil
+		}
+		return nil, errors.New("no fake reader")
+	}
+}
+
+// gatewaySinceBody builds the page with the fake reader and one gateway ("main") whose dial fails.
+func gatewaySinceBody(t *testing.T, rd fakeStateReader) []byte {
+	t.Helper()
+	dsn := "postgres://pages/" + t.Name()
+	stateReaders.Store(dsn, rd)
+	a, _ := testApp(t, "OT_GATEWAY_SOCKETS=main=/s/m\nOT_PG_DSN_PAGES="+dsn+"\n")
+	a.deps.ext = map[string]any{extGateway: gatewayDeps{newHealth: fakeDial(nil)}}
+	code, body := dataHealthGet(t, a, siteReaders{})
+	if code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	validateDataHealth(t, body)
+	return body
+}
+
+func gatewayOf(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+	var doc struct {
+		Gateways []map[string]any `json:"gateways"`
+	}
+	if err := json.Unmarshal(body, &doc); err != nil || len(doc.Gateways) != 1 {
+		t.Fatalf("gateways %v err %v", doc.Gateways, err)
+	}
+	return doc.Gateways[0]
+}
+
+func TestDataHealthGatewaySince(t *testing.T) {
+	t.Parallel()
+	since := time.Date(2026, 11, 21, 8, 30, 0, 0, time.UTC)
+	g := gatewayOf(t, gatewaySinceBody(t, fakeStateReader{rows: []gatewaystate.State{{Alias: "main", Down: true, Since: since, ObservedAt: since}}}))
+	txt, _ := g["since_text"].(string)
+	if !strings.HasPrefix(txt, "无连接自 ") || g["verdict"] != "unreachable" || g["since"] == "" {
+		t.Fatalf("gateway %v", g)
+	}
+}
+
+func TestDataHealthGatewaySinceReaderFails(t *testing.T) {
+	t.Parallel()
+	g := gatewayOf(t, gatewaySinceBody(t, fakeStateReader{err: errors.New("db down")}))
+	if _, ok := g["since"]; ok {
+		t.Fatalf("since present: %v", g)
+	}
+	if _, ok := g["since_text"]; ok {
+		t.Fatalf("since_text present: %v", g)
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/notify/core"
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/gatewaystate"
+	"github.com/andrewrong/optdesk/internal/store/gatewaystatepg"
 )
 
 // Design: docs/design/gateway-health.md#9-gateway-health-wire.
@@ -146,13 +149,13 @@ func (s gatewaySource) readOne(ctx context.Context, e gatewayEntry) gatewayReadi
 
 // pageGateways is the Gateways of the page input: one entry per gateway, by alias. A rule of the verdict is
 // the builder's; this copies the fields.
-func pageGateways(rs []gatewayReading) []data_health_page.GatewayInput {
+func pageGateways(rs []gatewayReading, since map[string]time.Time) []data_health_page.GatewayInput {
 	if len(rs) == 0 {
 		return nil
 	}
 	out := make([]data_health_page.GatewayInput, 0, len(rs))
 	for _, r := range rs {
-		g := data_health_page.GatewayInput{Name: r.alias, Answered: r.answered, State: r.health.State}
+		g := data_health_page.GatewayInput{Name: r.alias, Answered: r.answered, State: r.health.State, Since: since[r.alias]}
 		for _, f := range r.health.Farms {
 			g.Farms = append(g.Farms, data_health_page.GatewayFarm{Name: f.Name, Up: f.Up})
 		}
@@ -179,20 +182,38 @@ type gatewayPasser interface {
 	pass(ctx context.Context) (int, error)
 }
 
-// gatewayPass reads the gateways and hands one fact per gateway to the notifier, on every call. It keeps no
-// previous verdict: the notifier and its marks decide what is sent.
+// openGatewayWriter opens the state writer of the pass; a package variable so that the tests, which have no
+// database, install a fake.
+var openGatewayWriter gatewaystate.OpenWriterFunc = gatewaystatepg.OpenWriter
+
+// gatewayPass reads the gateways, records the connection state of each and hands one fact per gateway to the
+// notifier, on every call. It keeps no previous verdict: the notifier and its marks decide what is sent. w is nil
+// when no state is kept.
 type gatewayPass struct {
 	src gatewaySource
 	n   notify.GatewayNotifier
+	w   gatewaystate.Writer
+	clk clockwork.Clock
+	log *slog.Logger
 }
 
 func (p gatewayPass) pass(ctx context.Context) (int, error) {
-	return p.n.NotifyGateways(ctx, gatewayFacts(p.src.read(ctx)))
+	rs := p.src.read(ctx)
+	if p.w != nil {
+		at := p.clk.Now()
+		for _, r := range rs {
+			if err := p.w.Observe(ctx, r.alias, data_health_page.ConnectionLost(r.answered, r.health.State), at); err != nil {
+				p.log.Warn("gateway state not written", "component", "ot", "status", "failed")
+			}
+		}
+	}
+	return p.n.NotifyGateways(ctx, gatewayFacts(rs))
 }
 
-// newGatewayPass builds the pass over the sent store and the sender. It is nil (no pass) when no gateway is
-// configured, the deps carry no constructor, or the build fails (one log line, no error text).
-func newGatewayPass(a *app, sent store.SentStore, s notify.Sender, clk clockwork.Clock) gatewayPasser {
+// newGatewayPass builds the pass over the sent store, the sender and the state writer (nil: no state kept). It is
+// nil (no pass) when no gateway is configured, the deps carry no constructor, or the build fails (one log line, no
+// error text).
+func newGatewayPass(a *app, sent store.SentStore, s notify.Sender, clk clockwork.Clock, w gatewaystate.Writer) gatewayPasser {
 	src, d := gatewaySourceOf(a)
 	if len(src.entries) == 0 || d.newNotifier == nil {
 		return nil
@@ -202,5 +223,5 @@ func newGatewayPass(a *app, sent store.SentStore, s notify.Sender, clk clockwork
 		a.log.Warn("gateway notifier not built", "component", "ot", "status", "failed")
 		return nil
 	}
-	return gatewayPass{src: src, n: n}
+	return gatewayPass{src: src, n: n, w: w, clk: clk, log: a.log}
 }

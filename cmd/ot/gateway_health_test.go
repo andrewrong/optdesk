@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/gatewaystate"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -99,7 +100,7 @@ func TestGatewayNotifyPass(t *testing.T) {
 			return rec, nil
 		},
 	}}
-	pass := newGatewayPass(a, nil, nil, nil)
+	pass := newGatewayPass(a, nil, nil, nil, nil)
 	if pass == nil {
 		t.Fatal("no pass")
 	}
@@ -132,3 +133,89 @@ func (noopSyncer) Sync(context.Context, contracts.Day, map[string]string) error 
 type noopNotifier struct{}
 
 func (noopNotifier) NotifyGaps(context.Context) (int, error) { return 0, nil }
+
+// fakeStateWriter records every Observe; err is returned by each.
+type fakeStateWriter struct {
+	mu    sync.Mutex
+	calls []observeCall
+	err   error
+}
+
+type observeCall struct {
+	alias string
+	down  bool
+	at    time.Time
+}
+
+func (w *fakeStateWriter) Observe(_ context.Context, alias string, down bool, at time.Time) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.calls = append(w.calls, observeCall{alias, down, at})
+	return w.err
+}
+func (*fakeStateWriter) Close() error { return nil }
+
+// gatewayPassOf builds the pass over main (health h) and wife (no answer) with the recording notifier.
+func gatewayPassOf(t *testing.T, h broker.Health, w gatewaystate.Writer, clk clockwork.Clock) (gatewayPasser, *recordingGateways) {
+	t.Helper()
+	a, _ := testApp(t, gatewayEnv)
+	rec := &recordingGateways{}
+	a.deps.ext = map[string]any{extGateway: gatewayDeps{
+		newHealth: fakeDial(map[string]*fakeHealth{"/s/m": {h: h}, "/s/w": {err: errors.New("down")}}),
+		newNotifier: func(notify.Sender, store.SentStore, clockwork.Clock) (notify.GatewayNotifier, error) {
+			return rec, nil
+		},
+	}}
+	p := newGatewayPass(a, nil, nil, clk, w)
+	if p == nil {
+		t.Fatal("no pass")
+	}
+	return p, rec
+}
+
+func TestGatewayPassObserves(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC))
+	w := &fakeStateWriter{}
+	p, rec := gatewayPassOf(t, broker.Health{State: "farm_broken"}, w, clk)
+	if _, err := p.pass(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	want := []observeCall{{"main", false, clk.Now()}, {"wife", true, clk.Now()}}
+	if !slices.Equal(w.calls, want) || len(rec.passes) != 1 {
+		t.Fatalf("calls %+v, passes %d, want %+v", w.calls, len(rec.passes), want)
+	}
+}
+
+func TestGatewayPassWriteFailureStillNotifies(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC))
+	h := broker.Health{State: "up"}
+	failing, recF := gatewayPassOf(t, h, &fakeStateWriter{err: errors.New("db down")}, clk)
+	plain, recP := gatewayPassOf(t, h, nil, clk)
+	if _, err := failing.pass(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plain.pass(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(recF.passes[0], recP.passes[0]) {
+		t.Fatalf("facts differ: %+v vs %+v", recF.passes[0], recP.passes[0])
+	}
+}
+
+func TestGatewayPassNilWriter(t *testing.T) {
+	t.Parallel()
+	p, rec := gatewayPassOf(t, broker.Health{State: "up"}, nil, nil)
+	if _, err := p.pass(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.passes) != 1 || len(rec.passes[0]) != 2 {
+		t.Fatalf("passes %+v", rec.passes)
+	}
+}
+
+// init is the one write of openGatewayWriter, before any test runs: the scheduler tests have no database.
+func init() {
+	openGatewayWriter = func(context.Context, string) (gatewaystate.Writer, error) { return &fakeStateWriter{}, nil }
+}
