@@ -65,8 +65,7 @@ func siteRoutePaths() (all []string, families map[string]bool) {
 
 // panicSite names the first frame of the stack inside the optdesk module below the panic itself.
 func panicSite(stack []byte) string {
-	lines := strings.Split(string(stack), "\n")
-	for _, l := range lines {
+	for l := range strings.SplitSeq(string(stack), "\n") {
 		if strings.HasPrefix(l, "\t") && strings.Contains(l, "/optdesk/") && !strings.Contains(l, "site_routes_test.go") {
 			return strings.TrimSpace(l[strings.Index(l, "/optdesk/")+1:])
 		}
