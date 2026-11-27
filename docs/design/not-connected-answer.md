@@ -1,7 +1,7 @@
 ---
 type: design
 title: "not connected answer: every pyside rpc answers a session that is not connected with UNAVAILABLE, and the Go broker marks a row the server never sent as a retryable error, not as disconnected"
-status: draft
+status: accepted
 date: "2026-11-27"
 need: [none]
 none_reason: "bug from the pyside lifecycle audit of 2026-11-26 (hole H8); no need record exists"
