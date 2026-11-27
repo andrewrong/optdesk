@@ -146,3 +146,10 @@ class TestSpaceInSymbolAsksDash:
     def test_brk_b(self) -> None:
         _, asked = _fetch_both({}, [], {"symbol": "BRK B", "currency": "USD"})
         assert asked == ["BRK-B"]
+
+
+def test_earnings_dates_given_as_datetimes_are_source_changed_not_crash() -> None:
+    result, _ = _fetch_both(
+        {"Earnings Date": [D(2026, 11, 18)]}, [datetime.datetime(2027, 2, 24, 16)]
+    )
+    assert result["error_code"] == "source_changed"

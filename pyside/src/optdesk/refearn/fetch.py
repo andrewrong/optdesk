@@ -24,6 +24,13 @@ def _code_of(exc: Exception) -> str:
     return "source_changed"
 
 
+def _failure_code(exc: Exception) -> str:
+    code = _code_of(exc)
+    if code == "source_changed":
+        print(f"refearn: unexpected {type(exc).__name__}", file=sys.stderr)
+    return code
+
+
 def _dates(calendar: Any, from_day: str) -> tuple[str, list[str]]:
     """Return (error code, dates) of a calendar; the code is empty when there are dates."""
     if not isinstance(calendar, dict):
@@ -60,7 +67,7 @@ def make_fetcher(
     """Return a fetcher over `calendar_of(yahoo_symbol)`, which gives `Ticker.calendar`; no retry.
 
     When the calendar has no date on or after from_day and `dates_of(yahoo_symbol)` is given,
-    its list of dates (`Ticker.get_earnings_dates`) is read and the days on or after from_day
+    its list of the next earnings dates is read and the days on or after from_day
     are answered. A space in a symbol is read as a dot.
     """
 
@@ -78,18 +85,14 @@ def make_fetcher(
         try:
             calendar = calendar_of(target.yahoo_symbol)
         except Exception as exc:  # noqa: BLE001 - every failure becomes a code
-            result["error_code"] = _code_of(exc)
-            if result["error_code"] == "source_changed":
-                print(f"refearn: unexpected {type(exc).__name__}", file=sys.stderr)
+            result["error_code"] = _failure_code(exc)
             return result
         result["error_code"], result["dates"] = _dates(calendar, from_day)
         if result["error_code"] == "no_data" and dates_of is not None:
             try:
                 days = dates_of(target.yahoo_symbol)
             except Exception as exc:  # noqa: BLE001 - every failure becomes a code
-                result["error_code"] = _code_of(exc)
-                if result["error_code"] == "source_changed":
-                    print(f"refearn: unexpected {type(exc).__name__}", file=sys.stderr)
+                result["error_code"] = _failure_code(exc)
                 return result
             result["error_code"], result["dates"] = _later_dates(days, from_day)
         return result
