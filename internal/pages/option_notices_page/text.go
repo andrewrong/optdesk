@@ -46,6 +46,7 @@ var noticeTitles = map[string]string{
 	"assignment_seen": titleAssignmentSeen,
 	"cushion_low":     titleCushionLow,
 	"capture_stale":   titleCaptureStale,
+	"cash_short":      titleCashShort,
 }
 
 // factLabels are the labels of the known facts; a label not listed is shown as it is.
@@ -54,6 +55,11 @@ var factLabels = map[string]string{
 	"capture_day":  labelCaptureDay,
 	"session_days": labelSessionDays,
 	"cushion":      "Cushion",
+	"currency":     labelCurrency,
+	"available":    labelAvailable,
+	"due":          labelDue,
+	"left":         labelLeft,
+	"short_days":   labelShortDays,
 }
 
 // reasonTexts are the sentences of the known guard reason codes.
@@ -61,6 +67,7 @@ var reasonTexts = map[string]string{
 	"earnings_before_expiry": reasonEarningsZh,
 	"early_assignment_risk":  reasonAssignmentZh,
 	"strike_floor":           reasonFloorZh,
+	"cash_short_cumulative":  reasonCashShortZh,
 }
 
 func noticeTitle(code string) string {

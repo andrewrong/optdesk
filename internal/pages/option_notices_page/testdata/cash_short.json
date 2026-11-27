@@ -1,0 +1,91 @@
+{
+ "schema": "option_notices_page",
+ "schema_version": 1,
+ "run_id": "r1",
+ "build_id": "b1",
+ "scope": "s1",
+ "generated_at": "2026-11-09T08:00:00+00:00",
+ "data_times": [
+  {
+   "source": "account_main",
+   "data_time": "2026-11-09T00:00:00+00:00"
+  }
+ ],
+ "run_status": "partial",
+ "stale": null,
+ "title": "期权提醒 Option notices",
+ "notes": [],
+ "gaps": [],
+ "day": "2026-11-09",
+ "accounts": [
+  {
+   "alias": "main",
+   "main": true,
+   "status": "ok",
+   "data_day": "2026-11-09",
+   "notices": [
+    {
+     "id": "notice-main-0-cash_short",
+     "code": "cash_short",
+     "severity": "act",
+     "title": "现金不足 Cash is short",
+     "contract": "—",
+     "expiry": "2026-11-10",
+     "facts": [
+      {
+       "label": "币种 Currency",
+       "text": "USD"
+      },
+      {
+       "label": "可用现金 Cash available",
+       "text": "$100,000.00"
+      },
+      {
+       "label": "所需现金 Cash needed",
+       "text": "$130,553.00"
+      },
+      {
+       "label": "剩余现金 Cash left",
+       "text": "-$30,553.00"
+      },
+      {
+       "label": "不足的天数 Days short",
+       "text": "2"
+      }
+     ],
+     "reasons": [
+      "剩余现金 = 可用现金 - 到这一天为止所有到期的空头 put 被行权（Assigned，买方要求你按行权价买入股票）需要的现金；是累计的，不是只算这一天。"
+     ]
+    }
+   ],
+   "cash_by_date": [
+    {
+     "day": "2026-11-10",
+     "currency": "USD",
+     "amount_text": "$130,553.00",
+     "puts": [],
+     "available_text": "$100,000.00",
+     "left_text": "-$30,553.00"
+    }
+   ],
+   "cushion_text": null,
+   "note": "No guard record",
+   "cushion_hint": null,
+   "note_hint": "没有 guard 记录：持有 call 的 guard 在快照当天没有为该账户存储判定，因此没有检查任何空头 call 的提前行权或财报风险。",
+   "cash_gloss": "如果当天到期的所有空头 put 都被行权（Assigned，即你卖出的 put 的买方要求你按行权价买入股票），这就是你买入股票需要支付的现金（行权价 strike × 合约乘数 multiplier × 数量 quantity）。"
+  },
+  {
+   "alias": "other",
+   "main": false,
+   "status": "no_capture",
+   "data_day": null,
+   "notices": [],
+   "cash_by_date": [],
+   "cushion_text": null,
+   "note": "No position snapshot of this account in the last 7 days",
+   "cushion_hint": null,
+   "note_hint": null,
+   "cash_gloss": null
+  }
+ ]
+}

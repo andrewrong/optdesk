@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -498,5 +499,28 @@ func TestStaleLabelNamesTheAccount(t *testing.T) {
 	p = buildPage(t, testConfig(a, &fakeRule{}))
 	if p.Stale == nil || !strings.Contains(p.Stale.Text, "main is from 2026-11-05") || !strings.Contains(p.Stale.Text, "other is from 2026-11-06") {
 		t.Errorf("stale = %+v", p.Stale)
+	}
+}
+
+func TestCashShortPageValidates(t *testing.T) {
+	t.Parallel()
+	rule := &fakeRule{result: compute.NoticeResult{RuleVersion: 2, Notices: []compute.Notice{cashShortNotice("USD", "-30553")},
+		CashByDate: []compute.CashDay{{Day: "2026-11-10", Currency: "USD", Amount: "130553", Available: "100000", Left: "-30553"}}}}
+	a := fakeAccount{positions: map[string][]store.Position{"main/2026-11-09": {stock("ACME")}}}
+	b := buildBytes(t, testConfig(a, rule))
+	validate(t, "cash_short", b)
+	want, err := os.ReadFile("testdata/cash_short.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var g, w any
+	if err := json.Unmarshal(b, &g); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(want, &w); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(g, w) {
+		t.Errorf("page differs from testdata/cash_short.json:\n%s", b)
 	}
 }

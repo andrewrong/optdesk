@@ -154,6 +154,12 @@ func noticeRowOf(alias string, i int, n compute.Notice) noticeRow {
 		e := string(n.Expiry)
 		row.Expiry = &e
 	}
+	currency := ""
+	for _, f := range n.Facts {
+		if f.Label == "currency" {
+			currency = f.Value
+		}
+	}
 	for _, f := range n.Facts {
 		if f.Label == "reason" {
 			row.Reasons = append(row.Reasons, clip(reasonText(f.Value)))
@@ -162,6 +168,10 @@ func noticeRowOf(alias string, i int, n compute.Notice) noticeRow {
 		text := f.Value
 		if f.Label == "cushion" {
 			text = percentText(text)
+		}
+		if n.Code == "cash_short" && currency != "" &&
+			(f.Label == "available" || f.Label == "due" || f.Label == "left") {
+			text = amountText(text, currency)
 		}
 		row.Facts = append(row.Facts, fact{Label: clip(factLabel(f.Label)), Text: clip(text)})
 	}
