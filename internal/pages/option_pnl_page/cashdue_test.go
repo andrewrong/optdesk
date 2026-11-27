@@ -147,3 +147,54 @@ func TestCashDueLineConstants(t *testing.T) {
 		t.Errorf("line does not carry the constants: %+v", l)
 	}
 }
+
+// aliasReplay answers the positions of the alias it is asked for.
+type aliasReplay map[string]*fakeReplay
+
+func (a aliasReplay) Replay(in compute.LedgerInput, p compute.LedgerParams) compute.LedgerResult {
+	return a[in.Alias].Replay(in, p)
+}
+
+func twoAccountRig(first, second compute.LedgerPosition) *rig {
+	r := newRig()
+	r.cfg.Ledger = fakeLedger{aliases: []string{"main", "other"}, rows: r.cfg.Ledger.(fakeLedger).rows}
+	r.cfg.Replay = aliasReplay{
+		"main":  &fakeReplay{positions: []compute.LedgerPosition{first}},
+		"other": &fakeReplay{positions: []compute.LedgerPosition{second}},
+	}
+	for _, k := range []string{"190.00", "38.00", "abc"} {
+		r.attr.results[k] = res("1", "1", "1", "1", "1", "", "-1", "0", "100")
+	}
+	return r
+}
+
+func TestCashDueOtherAccountNotInSum(t *testing.T) {
+	t.Parallel()
+	r := twoAccountRig(lotPos("p1", "AAA", "101", "190.00", "open"), lotPos("p2", "BBB", "202", "38.00", "open"))
+	vm := r.build(t)
+	if len(vm.Accounts) != 2 {
+		t.Fatalf("accounts = %d", len(vm.Accounts))
+	}
+	for i, want := range []string{"$38,000.00 · 2 张合约 · 1 个仓位", "$7,600.00 · 2 张合约 · 1 个仓位"} {
+		got := vm.Accounts[i].CashDue
+		if len(got) != 1 || got[0].Text != want {
+			t.Errorf("account %d cash_due = %+v, want %q", i, got, want)
+		}
+	}
+}
+
+func TestCashDueRefusalStaysInItsAccount(t *testing.T) {
+	t.Parallel()
+	r := twoAccountRig(lotPos("p1", "AAA", "101", "abc", "open"), lotPos("p2", "BBB", "202", "38.00", "open"))
+	vm := r.build(t)
+	if got := vm.Accounts[0].CashDue; len(got) != 1 || got[0].Tone != "muted" {
+		t.Errorf("refused account cash_due = %+v", got)
+	}
+	other := vm.Accounts[1]
+	if len(other.CashDue) != 1 || other.CashDue[0].Tone != "none" || other.CashDue[0].Text != "$7,600.00 · 2 张合约 · 1 个仓位" {
+		t.Errorf("other account cash_due = %+v", other.CashDue)
+	}
+	if len(other.Lots) != 1 || other.Ledger == nil || len(other.Books) == 0 {
+		t.Errorf("other account is not built as before: %d lots", len(other.Lots))
+	}
+}
