@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -452,4 +453,48 @@ func TestLiquiditySentenceWithEventsIsChinese(t *testing.T) {
 	if !strings.ContainsFunc(got, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
 		t.Errorf("sentence %q holds no Chinese character", got)
 	}
+}
+
+// A nil SeriesReader reads no series: the block is built from empty series and shows its gaps.
+func TestLiquidityNilSeriesReader(t *testing.T) {
+	t.Parallel()
+	var seen liquidityapi.Input
+	c := cfg("DGS10")
+	c.Liquidity = func(in liquidityapi.Input) liquidityapi.Result {
+		seen = in
+		return liquidityapi.Result{
+			Reserves: liquidityapi.Num{Reason: compute.NoInput},
+			SOFR:     liquidityapi.Num{Reason: compute.NoInput},
+		}
+	}
+	var vm viewModel
+	if err := withLiquidity(t.Context(), nil, c, mustDay(t, "2026-11-13"), &vm); err != nil {
+		t.Fatal(err)
+	}
+	if vm.Liquidity == nil || vm.SchemaVersion != 2 {
+		t.Fatalf("block not built: %+v", vm)
+	}
+	if seen.WRESBAL != nil || seen.SOFR != nil || seen.BAMLH0A0HYM2 != nil {
+		t.Errorf("series read from a nil reader: %+v", seen)
+	}
+	b, err := json.Marshal(vm.Liquidity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if !isGap(liqLine(map[string]any{"liquidity": m}, 0)["sentence"], "no_data") {
+		t.Errorf("reserves line %v", liqLine(map[string]any{"liquidity": m}, 0))
+	}
+}
+
+func mustDay(t *testing.T, s string) time.Time {
+	t.Helper()
+	d, err := time.Parse(dayLayout, s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d
 }

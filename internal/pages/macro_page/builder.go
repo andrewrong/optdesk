@@ -192,6 +192,9 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 	if err := validate(c); err != nil {
 		return nil, err
 	}
+	if r == nil { // a missing reader reads no series: every figure is a gap, never a panic
+		r = noSeries{}
+	}
 	from := contracts.Day(d.AddDate(0, 0, -lookbackDays).Format(dayLayout))
 	vm := viewModel{
 		Schema:          "macro_page",
@@ -406,4 +409,11 @@ func withGroupsAndLead(ctx context.Context, r store.SeriesReader, c Config, d, g
 	markWindow(vm.Events, d, window)
 	vm.Lead, err = buildLead(ctx, r, vm.events, d, window, stored)
 	return oldest, err
+}
+
+// noSeries is the reader of a nil SeriesReader: it holds no points.
+type noSeries struct{}
+
+func (noSeries) SeriesPoints(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SeriesPoint, error) {
+	return nil, nil
 }
