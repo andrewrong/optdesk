@@ -237,7 +237,7 @@ func TestGlossaryIsChinese(t *testing.T) {
 	t.Parallel()
 	d := build(t, input(&fakeReader{sessions: weekdays("XNYS")}, nil, nil))
 	terms := []string{"ok", "no_value", "expired", "missing", "not_run", "none", "button", "not refetchable",
-		"ledger", "session day", "错误", "缺口", "无法判断", "新"}
+		"ledger", "session day", "错误", "缺口", "无法判断", "新", "无连接"}
 	if len(d.Glossary) != len(terms) {
 		t.Fatalf("%d rows", len(d.Glossary))
 	}

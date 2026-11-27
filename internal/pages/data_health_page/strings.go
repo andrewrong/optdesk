@@ -25,5 +25,6 @@ func glossary() []GlossaryRow {
 		{zhSevWarn, zhGlossSevWarn},
 		{zhSevUnknown, zhGlossSevUnknown},
 		{zhTermNew, zhGlossNew},
+		{zhTermNoConnection, zhGlossNoConnection},
 	}
 }
