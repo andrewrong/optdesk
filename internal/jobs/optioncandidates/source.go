@@ -136,7 +136,8 @@ func (s *sourceRun) finish() []string {
 
 // chain is the one function that gives the chain of an underlying, for puts only or for both rights. With a quote
 // reader its spot is the newer of the newest stored stock quote (spot_quote mark) and the price of today's open
-// rows (spot_open mark) or, with neither, the chain price (spot_chain). Without a reader the open price of today
+// rows (spot_open mark) or, with neither, the stored daily close (spot_quote mark, Decision 8) or the
+// chain price (spot_chain). Without a reader the open price of today
 // is the spot when there is one.
 func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.WatchEntry, calls bool) (chainResult, error) {
 	res, err := s.chainOf(ctx, ul, entry, calls)
@@ -162,11 +163,25 @@ func (s *sourceRun) chain(ctx context.Context, ul underlyingRef, entry jobs.Watc
 			"component", "jobs", "status", "degraded", "job", s.j.m.ID, "err", qerr)
 	}
 	quoteFound := qerr == nil && found
+	var barPrice string
+	var barDay contracts.Day
+	barFound := false
+	if !quoteFound && s.j.st.Bars != nil {
+		var berr error
+		barPrice, barDay, barFound, berr = spotFromBar(ctx, s.j.st.Bars, ul.id, barFrom(s.days, res.chainDay), s.day)
+		if berr != nil {
+			barFound = false
+			s.j.logger().Warn("price_bar read failed, the spot is the chain price",
+				"component", "jobs", "status", "degraded", "job", s.j.m.ID, "err", berr)
+		}
+	}
 	switch {
 	case openFound && (!quoteFound || openAt.After(quoteAt)):
 		res.spot, res.spotMark = openPrice, openMark
 	case quoteFound:
 		res.spot, res.spotMark = price, markSpotQuotePrefix+string(d)
+	case barFound:
+		res.spot, res.spotMark = barPrice, markSpotQuotePrefix+string(barDay)
 	default:
 		res.spotMark = markSpotChain
 	}

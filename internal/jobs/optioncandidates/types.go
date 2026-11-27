@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/strategyresult"
@@ -37,6 +38,9 @@ type CandidateStores struct {
 	// Quotes reads the newest stored stock quote (obs.quote_snapshot) that gives the spot of a US candidate
 	// (docs/design/candidates-spot.md). Nil keeps the chain price as the spot and writes no spot mark.
 	Quotes store.QuoteSnapshotReader
+	// Bars reads the stored daily close (basis trades) that is the spot when no stored quote is found, before the chain
+	// price (docs/design/candidates-spot.md Decision 8). Nil keeps the chain price.
+	Bars bar.PriceBarReader
 	// Strategy and Results are the shadow (docs/design/strategy-framework.md Decision 6): with both set, each run also
 	// evaluates the put through Strategy and inserts the rows into Results after the old insert; a failure of the
 	// shadow is logged and never fails the run. Both nil is the job of today.
