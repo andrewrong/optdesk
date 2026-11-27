@@ -45,7 +45,7 @@ func (fakeFactSource) Fetch(context.Context, sources.FactPlan) ([]contracts.Fund
 // withFundamentalsFakes puts fakes of every constructor of fundamentalsDeps in the ext deps of d.
 func withFundamentalsFakes(d *deps) *fundamentalsRec {
 	rec := &fundamentalsRec{}
-	real := newExt()[extFundamentals].(fundamentalsDeps)
+	realDeps := newExt()[extFundamentals].(fundamentalsDeps)
 	d.ext = map[string]any{extFundamentals: fundamentalsDeps{
 		newSEC: func(c sources.SECConfig) (sources.FactSource, error) {
 			rec.agents = append(rec.agents, c.UserAgent)
@@ -65,7 +65,7 @@ func withFundamentalsFakes(d *deps) *fundamentalsRec {
 			rec.figures++
 			return &figJob{}, nil
 		},
-		fn: real.fn,
+		fn: realDeps.fn,
 	}}
 	return rec
 }
