@@ -38,7 +38,7 @@ func windowDays(stored []contracts.PriceBar, day time.Time, daily, backfill int)
 	return n
 }
 
-// calendarDays is the number of calendar days from from to to (zero for the same day).
+// calendarDays is the number of calendar days from `from` to `to` (zero for the same day).
 func calendarDays(from, to time.Time) int {
 	f := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
 	t := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)

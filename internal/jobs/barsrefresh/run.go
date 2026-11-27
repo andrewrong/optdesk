@@ -149,7 +149,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	return len(bars), len(bars), r.adjusted(ctx, id, c)
 }
 
-// collect pulls the window of days days and maps it to rows. When a pulled day restates a stored
+// collect pulls the window of `days` days and maps it to rows. When a pulled day restates a stored
 // one, the window is the whole backfill and the rows of the older stored days are added; nothing is
 // written here.
 func (r *runState) collect(
@@ -197,7 +197,7 @@ func defaultPause(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// pull asks the trades bars of c for days days ending at the run day, and drops the bars after it.
+// pull asks the trades bars of c for `days` days ending at the run day, and drops the bars after it.
 // A run of today sends no End.
 func (r *runState) pull(ctx context.Context, c broker.Contract, days int) ([]broker.Bar, error) {
 	q := broker.BarQuery{Contract: c, Kind: broker.BarTrades, DurationDays: days}
