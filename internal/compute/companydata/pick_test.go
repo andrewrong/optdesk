@@ -1,6 +1,7 @@
 package companydata_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -145,7 +146,7 @@ func TestRestated12MOrig9MNoDerive(t *testing.T) {
 		ni("k2", "2026-08-01", s25, e4, "1100", 2026, "FY"), // 12M restated, 9M only in the earlier filing
 	}
 	wantMissing(t, "Q4", byNumber(t, must(t, base), 4).NetIncome, companydataapi.WhyCannotDerive)
-	both := append(base, ni("k2", "2026-08-01", s25, e3, "750", 2026, "Q3"))
+	both := append(slices.Clone(base), ni("k2", "2026-08-01", s25, e3, "750", 2026, "Q3"))
 	wantCell(t, "Q4", byNumber(t, must(t, both), 4).NetIncome, "350", true)
 }
 

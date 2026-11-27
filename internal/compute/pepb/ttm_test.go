@@ -1,6 +1,7 @@
 package pepb_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/pepbapi"
@@ -57,7 +58,7 @@ func TestMissingPriorYTDGivesNoFigure(t *testing.T) {
 func TestLossGivesNoPE(t *testing.T) {
 	t.Parallel()
 	for _, v := range []string{"-100", "0"} {
-		facts := append(baseFacts()[:1:1],
+		facts := append(slices.Clone(baseFacts()[:1]),
 			income("10-K", "k1", "2023-02-01", "2022-01-01", "2022-12-31", v),
 			equity("k1", "2023-02-01", "2022-12-31", "5000"))
 		r := runLast(facts, series("2023-03-01", 5, flat("10")))
@@ -72,7 +73,7 @@ func TestLossGivesNoPE(t *testing.T) {
 func TestNegativeEquityGivesNoPB(t *testing.T) {
 	t.Parallel()
 	for _, v := range []string{"-5", "0"} {
-		facts := append(baseFacts()[:2:2], equity("k1", "2023-02-01", "2022-12-31", v))
+		facts := append(slices.Clone(baseFacts()[:2]), equity("k1", "2023-02-01", "2022-12-31", v))
 		r := runLast(facts, series("2023-03-01", 5, flat("10")))
 		mustEq(t, v+" state", r.PB.State, pepbapi.StateLoss)
 		mustEq(t, v+" reason", r.PB.Reason, "negative_equity")
