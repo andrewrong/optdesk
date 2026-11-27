@@ -16,10 +16,10 @@ func rankFixture() []NameInput {
 			puts, calls = 5, 3
 		}
 		cs := chain(30, "P", 100, 101)
-		for k := 0; k < puts; k++ {
+		for k := range puts {
 			cs = append(cs, chain(30, "P", float64(99-k))...)
 		}
-		for k := 0; k < calls; k++ {
+		for k := range calls {
 			cs = append(cs, chain(30, "C", float64(102+k))...)
 		}
 		out = append(out, NameInput{UnderlyingID: int64(i + 1), Symbol: fmt.Sprintf("N%03d", i), Spot: 100.5,

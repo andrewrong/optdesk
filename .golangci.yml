@@ -34,6 +34,12 @@ linters:
     - nolintlint
     - mirror
     - godot
+    - misspell
+    - nosprintfhostport
+    - exptostd
+    - gocheckcompilerdirectives
+    - asasalint
+    - sloglint
   settings:
     depguard:
       rules:

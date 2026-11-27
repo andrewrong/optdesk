@@ -39,7 +39,7 @@ func AttributesSHA256(attrs map[string]string) (string, error) {
 func writeString(b *strings.Builder, s string) {
 	const hexDigits = "0123456789abcdef"
 	b.WriteByte('"')
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		switch {
 		case c == '"':

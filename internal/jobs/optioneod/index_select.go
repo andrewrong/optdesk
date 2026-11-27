@@ -99,7 +99,7 @@ func spreadStrikes(all []strikeValue, spot, w float64, n int) []strikeValue {
 	atm := nearestIndex(all, spot, nil, -math.MaxFloat64, math.MaxFloat64)
 	taken[atm] = true
 	lo, hi := spot-w, spot+w
-	for i := 0; i < n-1; i++ {
+	for i := range n - 1 {
 		target := spot
 		if n > 2 {
 			target = lo + float64(i)*(hi-lo)/float64(n-2)

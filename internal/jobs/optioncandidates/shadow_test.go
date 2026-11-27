@@ -229,7 +229,7 @@ func compareColumns(t *testing.T, got, want store.Candidate) {
 	t.Helper()
 	got.RunID, want.RunID, got.ComputedAt, want.ComputedAt = "", "", time.Time{}, time.Time{}
 	gv, wv := reflect.ValueOf(got), reflect.ValueOf(want)
-	for i := 0; i < gv.NumField(); i++ {
+	for i := range gv.NumField() {
 		if !reflect.DeepEqual(gv.Field(i).Interface(), wv.Field(i).Interface()) {
 			t.Errorf("column %s of %d: got %v, old %v", gv.Type().Field(i).Name, want.InstrumentID, gv.Field(i).Interface(), wv.Field(i).Interface())
 		}

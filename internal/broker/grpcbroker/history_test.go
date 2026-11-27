@@ -3,7 +3,6 @@ package grpcbroker
 import (
 	"context"
 	"net"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
@@ -32,11 +31,7 @@ func (f *fakeBars) Bars(_ context.Context, r *pb.BarsRequest) (*pb.BarsResponse,
 
 func serveBars(t *testing.T, f *fakeBars) (broker.HistoryClient, *fakeBars) {
 	t.Helper()
-	dir, err := os.MkdirTemp("", "h")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	dir := t.TempDir()
 	path := filepath.Join(dir, "s")
 	l, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", path)
 	if err != nil {
