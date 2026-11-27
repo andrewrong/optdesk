@@ -38,6 +38,15 @@ export const ok = {
           ],
         },
       ],
+      cash_due: [
+        {
+          id: 'cash-due-USD',
+          label: 'Synthetic cash due label',
+          text: 'Synthetic cash due text',
+          hint: 'Synthetic cash due hint',
+          tone: 'none',
+        },
+      ],
       lots: [
         {
           id: 'lot-aaa',
