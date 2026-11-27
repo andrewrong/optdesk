@@ -25,6 +25,11 @@ linters:
     - rowserrcheck
     - testableexamples
     - unconvert
+    - wastedassign
+    - makezero
+    - predeclared
+    - usestdlibvars
+    - canonicalheader
   settings:
     depguard:
       rules:
@@ -98,6 +103,20 @@ linters:
       - path: internal/jobs/datacheck/rules_more_test\.go$
         linters:
           - errorlint
+      # P8: pinned file
+      - path: internal/compute/valuation/(gate|filings|filings_test)\.go$
+        linters:
+          - makezero
+          - wastedassign
+          - predeclared
+      # P8: pinned file
+      - path: internal/compute/ivbar/ivbar\.go$
+        linters:
+          - predeclared
+      # P8: interface file
+      - path: internal/compute/valuelinesapi/api\.go$
+        linters:
+          - predeclared
 formatters:
   enable:
     - gofmt
