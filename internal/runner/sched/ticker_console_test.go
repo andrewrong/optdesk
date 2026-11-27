@@ -5,9 +5,13 @@ import (
 	"errors"
 	"runtime"
 	"slices"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -20,6 +24,9 @@ type consoleRec struct {
 	turns     atomic.Int32
 	cancelled atomic.Bool
 	release   chan struct{}
+	// sawCancel, when set, is closed once when the turn sees ctx.Done().
+	sawCancel chan struct{}
+	once      sync.Once
 }
 
 func (r *consoleRec) ConsoleTurn(ctx context.Context, hold runner.SlotHold) (bool, error) {
@@ -31,6 +38,11 @@ func (r *consoleRec) ConsoleTurn(ctx context.Context, hold runner.SlotHold) (boo
 		case <-ctx.Done():
 			r.cancelled.Store(true)
 			r.ev.emit("console-cancelled")
+			r.once.Do(func() {
+				if r.sawCancel != nil {
+					close(r.sawCancel)
+				}
+			})
 		}
 	}
 	return false, nil
@@ -176,42 +188,90 @@ func TestOneRequestPerTurn(t *testing.T) {
 	}
 }
 
+// drainSpy is the clock of a ticker under test. Once armed, it reports the first timer made by waitDone, the
+// wait of Run's drain; the loop makes timers of its own, also after the stop was ordered, and those do not count.
+type drainSpy struct {
+	clockwork.Clock
+	armed atomic.Bool
+	made  chan struct{}
+	once  sync.Once
+}
+
+func (s *drainSpy) NewTimer(d time.Duration) clockwork.Timer {
+	tm := s.Clock.NewTimer(d)
+	if s.armed.Load() && calledFrom("(*ticker).waitDone") {
+		s.once.Do(func() { close(s.made) })
+	}
+	return tm
+}
+
+// calledFrom reports whether a function whose name ends in name is on the stack.
+func calledFrom(name string) bool {
+	pcs := make([]uintptr, 16)
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs)])
+	for f, more := frames.Next(); ; f, more = frames.Next() {
+		if strings.HasSuffix(f.Function, name) {
+			return true
+		}
+		if !more {
+			return false
+		}
+	}
+}
+
+// runSpied is harness.run with the clock of the ticker wrapped in a drainSpy.
+func runSpied(h *harness) (cancel context.CancelFunc, done <-chan error, spy *drainSpy) {
+	h.t.Helper()
+	spy = &drainSpy{Clock: h.clk, made: make(chan struct{})}
+	h.s = New(h.fence, h.led, h.ops, tickerCal(), spy, h.rec, h.gaps, h.jobs, h.disabled, h.exe)
+	ctx, cancel := context.WithCancel(context.Background())
+	h.t.Cleanup(cancel)
+	ch := make(chan error, 1)
+	go func() { ch <- h.s.Run(ctx) }()
+	h.until("put")
+	return cancel, ch, spy
+}
+
+// stopAndDrain stops Run and moves the fake clock one second at a time once Run waits for its drain. Nothing
+// may see its cancel before drainGrace has passed; once it has, the clock stops and the test waits on sawCancel,
+// which the turn closes when it sees ctx.Done(), then on Run's return. It returns the time advanced.
+func stopAndDrain(t *testing.T, h *harness, cancel context.CancelFunc, done <-chan error, spy *drainSpy,
+	sawCancel <-chan struct{}, cancelled *atomic.Bool) time.Duration {
+	t.Helper()
+	// The loop is asleep on its timer; from here on the next timer is Run's drain timer.
+	if err := h.clk.BlockUntilContext(t.Context(), 1); err != nil {
+		t.Fatal(err)
+	}
+	spy.armed.Store(true)
+	cancel()
+	<-spy.made
+	advanced := time.Duration(0)
+	for advanced < drainGrace {
+		if cancelled.Load() {
+			t.Fatalf("cancelled after %v, before the grace", advanced)
+		}
+		h.clk.Advance(time.Second)
+		advanced += time.Second
+	}
+	<-sawCancel
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	return advanced
+}
+
 // TestStopWaitsForConsoleTurn (new): after drainGrace the turn's context is cancelled and Run returns
 // after the turn.
 func TestStopWaitsForConsoleTurn(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	rec := &consoleRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{})}
+	rec := &consoleRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{}), sawCancel: make(chan struct{})}
 	h.rec = rec
-	cancel, done := h.run()
+	cancel, done, spy := runSpied(h)
 	h.until("reconcile:2025-11-26")
 	h.step(30 * time.Second)
 	h.until("console")
-	cancel()
-	advanced := time.Duration(0)
-	for finished := false; !finished; {
-		select {
-		case err := <-done:
-			if err != nil {
-				t.Fatal(err)
-			}
-			finished = true
-		default:
-			if advanced < drainGrace && rec.cancelled.Load() {
-				t.Fatalf("turn cancelled after %v, before the grace", advanced)
-			}
-			// Past the grace, give the turn a chance to see its cancel before the clock moves on.
-			for range 10000 {
-				if advanced < drainGrace || rec.cancelled.Load() {
-					break
-				}
-				runtime.Gosched()
-			}
-			h.clk.Advance(time.Second)
-			advanced += time.Second
-			runtime.Gosched()
-		}
-	}
+	advanced := stopAndDrain(t, h, cancel, done, spy, rec.sawCancel, &rec.cancelled)
 	if advanced < drainGrace {
 		t.Fatalf("drained after %v, want at least %v", advanced, drainGrace)
 	}
@@ -243,6 +303,9 @@ type claimRec struct {
 	claims    atomic.Int32
 	cancelled atomic.Bool
 	release   chan struct{}
+	// sawCancel, when set, is closed once when the run sees ctx.Done().
+	sawCancel chan struct{}
+	once      sync.Once
 }
 
 func (r *claimRec) ClaimConsole(context.Context) ([]runner.ConsoleRun, error) {
@@ -256,6 +319,11 @@ func (r *claimRec) ClaimConsole(context.Context) ([]runner.ConsoleRun, error) {
 		case <-ctx.Done():
 			r.cancelled.Store(true)
 			r.ev.emit("run-cancelled")
+			r.once.Do(func() {
+				if r.sawCancel != nil {
+					close(r.sawCancel)
+				}
+			})
 		}
 	}}, nil
 }
@@ -284,37 +352,13 @@ func TestConsoleRunDoesNotBlockWorker(t *testing.T) {
 func TestConsoleRunsDrainedAtStop(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	rec := &claimRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{})}
+	rec := &claimRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{}), sawCancel: make(chan struct{})}
 	h.rec = rec
-	cancel, done := h.run()
+	cancel, done, spy := runSpied(h)
 	h.until("reconcile:2025-11-26")
 	h.step(30 * time.Second)
 	h.until("run")
-	cancel()
-	advanced := time.Duration(0)
-	for finished := false; !finished; {
-		select {
-		case err := <-done:
-			if err != nil {
-				t.Fatal(err)
-			}
-			finished = true
-		default:
-			if advanced < drainGrace && rec.cancelled.Load() {
-				t.Fatalf("run cancelled after %v, before the grace", advanced)
-			}
-			// Past the grace, give the run a chance to see its cancel before the clock moves on.
-			for range 10000 {
-				if advanced < drainGrace || rec.cancelled.Load() {
-					break
-				}
-				runtime.Gosched()
-			}
-			h.clk.Advance(time.Second)
-			advanced += time.Second
-			runtime.Gosched()
-		}
-	}
+	advanced := stopAndDrain(t, h, cancel, done, spy, rec.sawCancel, &rec.cancelled)
 	if advanced < drainGrace {
 		t.Fatalf("drained after %v, want at least %v", advanced, drainGrace)
 	}
