@@ -262,18 +262,18 @@ func TestBackfillCapDefersWithoutRequest(t *testing.T) {
 	}
 	jb.(*job).m.BackfillNamesPerRun = 2
 	jb.(*job).m.AdjustedCadenceDays = 0
-	var empty int
+	var denied int
 	for _, e := range entries {
 		res := jb.Run(context.Background(), runDay, keysOf(e.Issuer))
 		if res.Err != nil {
-			t.Fatal(res.Err)
-		}
-		if res.Returned == 0 {
-			empty++
+			if res.Err.Kind() != contracts.Retryable {
+				t.Fatal(res.Err)
+			}
+			denied++
 		}
 	}
-	if len(h.queries) != 2 || empty != 1 {
-		t.Fatalf("requests %d, empty answers %d", len(h.queries), empty)
+	if len(h.queries) != 2 || denied != 1 {
+		t.Fatalf("requests %d, denied names %d", len(h.queries), denied)
 	}
 	// the name that started a first pull stays eligible on a retry of the same day
 	if res := jb.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
