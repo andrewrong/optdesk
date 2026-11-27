@@ -177,7 +177,7 @@ func checkMacroAssets(t *testing.T, f *siteFixture) {
 	if rec := f.do(http.MethodGet, "/assets/a.js"); rec.Code != 200 || rec.Body.String() != "ASSET" {
 		t.Fatalf("asset %d %q", rec.Code, rec.Body)
 	}
-	f.macroErr = errors.New("relation rd.x does not exist")
+	f.macroErr = errors.New("dsn sentinel-secret")
 	if rec := f.do(http.MethodGet, "/macro"); rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
 		t.Fatalf("macro error %d %q", rec.Code, rec.Body)
 	}
@@ -185,13 +185,13 @@ func checkMacroAssets(t *testing.T, f *siteFixture) {
 
 func checkSiteErrors(t *testing.T, f *siteFixture) {
 	t.Helper()
-	f.cat.err = errors.New("relation rd.x does not exist")
+	f.cat.err = errors.New("dsn sentinel-secret")
 	rec := f.do(http.MethodGet, "/options/data")
 	if rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
 		t.Fatalf("catalog: %d %q", rec.Code, rec.Body)
 	}
 	f.cat.err = nil
-	f.buildErr = errors.New("relation rd.x does not exist")
+	f.buildErr = errors.New("dsn sentinel-secret")
 	rec = f.do(http.MethodGet, "/options/data/9000")
 	if rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
 		t.Fatalf("build: %d %q", rec.Code, rec.Body)
@@ -709,7 +709,7 @@ func TestSiteReportRoute(t *testing.T) {
 	})
 	t.Run("reader error is 500", func(t *testing.T) {
 		t.Parallel()
-		h := reportSiteApp(t, &fakeView{err: errors.New("relation rd.x does not exist")})
+		h := reportSiteApp(t, &fakeView{err: errors.New("dsn sentinel-secret")})
 		rec := get(h, http.MethodGet, "/report?market=us&slot=open")
 		if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
 			t.Fatalf("%d %q", rec.Code, rec.Body)
