@@ -22,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/finding"
 	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	reconstore "github.com/andrewrong/optdesk/internal/store/recon"
@@ -63,6 +64,8 @@ type runOnceConfig struct {
 	scheduler bool
 	// reconDSN is the line of the recon writer; empty holds recon_bars.
 	reconDSN string
+	// dataCheckDSN is the line of the data check writer; empty holds data_check.
+	dataCheckDSN string
 }
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) { return loadConfig(a, false) }
@@ -98,6 +101,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		openDSN:          env[openquote.DSNEnvOptionOpen],
 		resolveDSN:       env[underlying.DSNEnvResolve],
 		reconDSN:         env[reconstore.DSNEnvRecon],
+		dataCheckDSN:     env[finding.DSNEnvDataCheck],
 		barsWired:        a.deps.openBar != nil && a.deps.newBarsRefresh != nil && a.deps.newFxRefresh != nil && a.deps.newHistory != nil,
 	}
 	for _, l := range []struct{ name, v string }{

@@ -92,6 +92,7 @@ var jobTable = []jobRow{
 	listedOnly("option_ledger", "caches_failures", job_console.ZhWhyCachesFailures, job_console.ZhNeedsCachesFailure),
 	{ID: "macro_events", Kind: kindAnyDay, Force: true},
 	{ID: "recon_bars", Kind: kindAnyDay, Force: true},
+	{ID: "data_check", Kind: kindAnyDay, Force: true},
 }
 
 // jobRowOf returns the row of a job id.

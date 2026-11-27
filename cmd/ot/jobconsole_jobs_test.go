@@ -58,7 +58,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 35 {
+	if !slices.Equal(got, want) || len(got) != 36 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -73,7 +73,7 @@ func TestForceYesAreFredFundamentalsComputeCandidatesBookRiskEarningsDividendOpt
 	}
 	if !slices.Equal(yes, []string{"fred_series", "fundamentals", "compute_figures", "option_candidates", "book_risk", "earnings_refresh",
 		"dividend_capture", "option_eod", "option_eod_jp", "option_eod_index", "option_candidates_jp",
-		"calendar_refresh", "fx_refresh", "bars_refresh", "macro_events", "recon_bars"}) {
+		"calendar_refresh", "fx_refresh", "bars_refresh", "macro_events", "recon_bars", "data_check"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
@@ -140,7 +140,7 @@ func TestZoneOfEachTodayOnlyJobIsTheJobsOwn(t *testing.T) {
 
 func TestAnyDayListsMacroEvents(t *testing.T) {
 	t.Parallel()
-	want := []string{"bars_refresh", "book_risk", "compute_figures", "dividend_capture", "earnings_refresh", "fred_series", "fundamentals",
+	want := []string{"bars_refresh", "book_risk", "compute_figures", "data_check", "dividend_capture", "earnings_refresh", "fred_series", "fundamentals",
 		"fx_refresh", "macro_events", "option_candidates", "recon_bars", "statement_capture"}
 	if got := idsOfKind(kindAnyDay); !slices.Equal(got, want) {
 		t.Fatalf("any_day %v", got)

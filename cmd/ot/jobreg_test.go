@@ -119,7 +119,7 @@ func TestOffReasonHeld(t *testing.T) {
 			t.Fatalf("log %q lacks %q", buf.String(), want)
 		}
 	}
-	cfg := runOnceConfig{fredKey: "k", eventsDSN: "x", reconDSN: "x"}
+	cfg := runOnceConfig{fredKey: "k", eventsDSN: "x", reconDSN: "x", dataCheckDSN: "x"}
 	dis := schedulerDisabled(cfg, w)
 	if dis[jobEarningsRefresh] != reasonNoAlphaKey || dis[jobOptionCandidates] != reasonNoCandidateDSN || len(dis) != 2 {
 		t.Fatalf("disabled %v", dis)
@@ -145,10 +145,11 @@ func TestHoursFamilyOrders(t *testing.T) {
 	}
 }
 
-// withoutRecon is a copy of disabled without recon_bars: the fixtures set no OT_PG_DSN_RECON, so it is always held
-// (TestReconBarsHeldWithoutDSN covers that reason).
+// withoutRecon is a copy of disabled without recon_bars and data_check: the fixtures set neither line, so both are always held
+// (TestReconBarsHeldWithoutDSN and TestDataCheckHeldWithoutDSN cover those reasons).
 func withoutRecon(disabled map[string]string) map[string]string {
 	out := maps.Clone(disabled)
 	delete(out, jobReconBars)
+	delete(out, jobDataCheck)
 	return out
 }
