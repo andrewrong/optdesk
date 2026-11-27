@@ -556,3 +556,23 @@ func TestOptionsCardCaptionIsChinese(t *testing.T) {
 		t.Errorf("three aliases: caption = %q", three)
 	}
 }
+
+// ptrLedger is a reader that dereferences its receiver, as a store handle does.
+type ptrLedger struct{ aliases []string }
+
+func (l *ptrLedger) FlexTradeRows(context.Context, string) ([]store.FlexTradeRow, error) {
+	return nil, nil
+}
+
+func (l *ptrLedger) LatestOkFetch(context.Context, string, string) (store.FlexFetchRecord, bool, error) {
+	return store.FlexFetchRecord{}, false, nil
+}
+
+func (l *ptrLedger) StoredAliases(context.Context) ([]string, error) { return l.aliases, nil }
+
+// A Ledger that holds a nil pointer is a missing reader: the member block shows its gap and does not panic.
+func TestReplayNilLedger(t *testing.T) {
+	t.Parallel()
+	var l *ptrLedger
+	allGaps(t, card(t, cfg(l, results{})), "期权账本：尚未接入")
+}
