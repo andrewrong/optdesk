@@ -123,8 +123,8 @@ _CLIENT_ID_IN_USE = 326
 _HELD = "held"  # a quote held by a 10197, never sent on as a status
 
 
-class ClientIdInUse(SystemExit):
-    """Error 326 on connect: the client id is taken; a stop, never a retry."""
+class ClientIdInUse(ConnectionError):
+    """Error 326 on connect: the client id is taken; retried with backoff."""
 
     def __init__(self, client_id: int) -> None:
         super().__init__(f"client id {client_id} is already in use (error 326)")
