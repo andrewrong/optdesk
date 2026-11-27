@@ -178,10 +178,10 @@ Acceptance:
 
 ## Left out
 
-- Everything of plan steps 1, 4, 5 and 6 (quote coverage on the tracking page, the page `/options/pnl`, the monthly block, cash due if assigned): later designs; the reader of `obs.option_day`, the mapping of ledger rows to `Lot`, display rounding, the three reconciliation lines (ours vs ledger, ledger vs broker's `BrokerRealized`, the "looks like a roll" label) and the share of `Unsplit` steps shown on the page belong to the page.
+- Quote coverage on the tracking page (plan step 1): a later design. The page `/options/pnl` landed with `docs/design/options-pnl-page.md`, the monthly and per-company ledger block with `docs/design/options-pnl-ledger.md` and cash due if assigned with `docs/design/option-pnl-totals.md`. The reader of `obs.option_day`, the mapping of ledger rows to `Lot`, display rounding, the three reconciliation lines (ours vs ledger, ledger vs broker's `BrokerRealized`, the "looks like a roll" label) and the share of `Unsplit` steps shown on the page belong to the page.
 - Layer 3 of the plan's reconciliation (the account page's IBKR unrealised P&L against our mid P&L): not done, IBKR's pricing basis is not read.
 - A binomial tree for early-exercise premium, dividend yield in the pricer, IBKR greeks as inputs to the sums: not built.
-- The sample sentence ("fewer than 20 closed lots: no conclusion", 20 is trial) and monthly or per-company sums: the page's.
+- The sample sentence ("fewer than 20 closed lots: no conclusion", 20 is trial) and monthly or per-company sums: the page's (the sums landed, see `docs/design/options-pnl-ledger.md`).
 - A table or a cache of daily attribution, a migration, a write: none.
 - Whether `obs.option_day` was backfilled before 2026-11-07: not known here (plan, 没有核实的事项); the function gets fewer quotes and says `NoQuotes`.
 - Parameter sources: h 0.5% (trial), rate of day t0 (convention), 10% wide quote (the candidate gate's own), 365 days (the ITM probability's basis), 4-place rounding of `Difference` (the ledger's own). No academic source is claimed for any of them (plan, appendix A).
