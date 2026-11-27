@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -166,7 +167,7 @@ func TestPepbShortWindowGivesPercentileGap(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := page.Pepb.Rows[0].PE["percentile"].(map[string]any)
-	if g["reason"] != "missing_input" || !bytes.Contains([]byte(g["text"].(string)), []byte("40 days since 2021-11-15")) {
+	if g["reason"] != "missing_input" || !strings.Contains(g["text"].(string), "40 days since 2021-11-15") {
 		t.Fatalf("percentile = %v", g)
 	}
 }
@@ -282,7 +283,7 @@ func checkGapRows(t *testing.T, rows []struct {
 	Forward map[string]any `json:"forward"`
 }) {
 	t.Helper()
-	if g := rows[1].PE; g["reason"] != "missing_input" || !bytes.Contains([]byte(g["text"].(string)), []byte("loss, no PE")) {
+	if g := rows[1].PE; g["reason"] != "missing_input" || !strings.Contains(g["text"].(string), "loss, no PE") {
 		t.Errorf("loss pe = %v", g)
 	}
 	if rows[1].PB["ratio"] == nil {

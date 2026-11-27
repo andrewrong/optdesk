@@ -1,6 +1,7 @@
 package macro_page
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,7 +182,7 @@ func TestHintsOnlyInZhTexts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if i := strings.IndexFunc(string(b), cjk); i >= 0 {
+		if i := bytes.IndexFunc(b, cjk); i >= 0 {
 			t.Errorf("%s has CJK text at byte %d", f, i)
 		}
 	}

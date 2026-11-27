@@ -133,7 +133,7 @@ func (c Config) globalSeries(ctx context.Context, d time.Time) (map[string]block
 				in.Days = append(in.Days, contracts.Day(bar.SessionDay.Format(dayLayout)))
 			}
 		default: // two instruments of one name: one close that is no number, so the figures answer missing_input
-			in.Closes, in.Days = []string{"?"}, []contracts.Day{contracts.Day(to)}
+			in.Closes, in.Days = []string{"?"}, []contracts.Day{to}
 		}
 		out[n] = in
 	}
