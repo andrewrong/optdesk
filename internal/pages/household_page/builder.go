@@ -354,7 +354,7 @@ func ledgerLine(missing, notStored []string) string {
 	if len(b) > maxListedPuts {
 		b = b[:maxListedPuts]
 	}
-	text := ""
+	var text string
 	for {
 		text = ledgerGapText(len(missing), a, len(notStored), b)
 		if len([]rune(text)) <= maxBlockGapRunes || len(a)+len(b) == 0 {

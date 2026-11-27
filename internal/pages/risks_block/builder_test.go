@@ -28,7 +28,7 @@ func fired(id, title, figure, level, detail, day string) compute.AlertResult {
 		State: "fired", Day: contracts.Day(day), DataDay: contracts.Day(day)}
 }
 
-func clear(id string) compute.AlertResult {
+func clearAlert(id string) compute.AlertResult {
 	return compute.AlertResult{RuleID: id, Title: id, Level: "w", State: "clear", Day: "2026-11-06", DataDay: "2026-11-06"}
 }
 
@@ -77,10 +77,10 @@ type tc struct {
 var cases = []tc{
 	{"ok_with_items", []compute.AlertResult{
 		fired("vix_pctile_high", "VIX percentile high", "market.vix_pctile_3y", "w", "VIX 3-year percentile 0.93", "2026-11-06"),
-		clear("a"),
+		clearAlert("a"),
 		fired("sp500_far_below_200d", "S&P far below 200-day average", "market.sp500_vs_200d", "d", "Gap -0.06", "2026-11-05"),
 	}},
-	{"ok_no_alert", []compute.AlertResult{clear("a"), clear("b")}},
+	{"ok_no_alert", []compute.AlertResult{clearAlert("a"), clearAlert("b")}},
 	{"partial", []compute.AlertResult{
 		fired("vix_pctile_high", "VIX percentile high", "market.vix_pctile_3y", "w", "VIX 3-year percentile 0.93", "2026-11-06"),
 		noData("spy_ivr_high", "SPY IV rank high", "missing_input"),
@@ -159,7 +159,7 @@ func TestBlockStaleDataIsStaleInput(t *testing.T) {
 		"stale_data": "stale_input", "missing_input": "missing_input", "no_data_day": "missing_input",
 		"no_reading": "no_data", "unit_mismatch": "no_data",
 	} {
-		res := []compute.AlertResult{clear("a"), noData("r", "Rule", reason)}
+		res := []compute.AlertResult{clearAlert("a"), noData("r", "Rule", reason)}
 		g := decode(t, build(t, res, nil))["gaps"].([]any)
 		if got := g[0].(map[string]any)["reason"]; got != want {
 			t.Errorf("%s: reason = %v, want %s", reason, got, want)

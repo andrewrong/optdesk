@@ -172,9 +172,9 @@ func TestTilesEqualTheSectionFields(t *testing.T) {
 	if f["text"] != "+$1,234.50" || f["value"].(float64) != 1234.5 || f["tone"] != "up" || f["unit"] != "usd_signed" {
 		t.Fatalf("figure = %v", f)
 	}
-	cap := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
-	if !strings.Contains(cap, "−$15.25") || !strings.Contains(cap, "留存比例 −1.2%") {
-		t.Fatalf("caption = %q", cap)
+	caption := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
+	if !strings.Contains(caption, "−$15.25") || !strings.Contains(caption, "留存比例 −1.2%") {
+		t.Fatalf("caption = %q", caption)
 	}
 	if !strings.Contains(c["say"].(string), "+$1,234.50") {
 		t.Fatalf("say = %q", c["say"])
@@ -441,9 +441,9 @@ func TestCardFallsBackToTradeDay(t *testing.T) {
 func TestKeptSharePercent(t *testing.T) {
 	t.Parallel()
 	c := card(t, okCfg(sold("1234.5000", "", "0.324170")))
-	cap := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
-	if !strings.HasSuffix(cap, "留存比例 32.4%") {
-		t.Fatalf("caption = %q", cap)
+	caption := c["tiles"].(map[string]any)["premium_month_usd"].(map[string]any)["caption"].(string)
+	if !strings.HasSuffix(caption, "留存比例 32.4%") {
+		t.Fatalf("caption = %q", caption)
 	}
 }
 

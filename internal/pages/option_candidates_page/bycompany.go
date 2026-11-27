@@ -214,11 +214,11 @@ func foldLabelOf(code string, p optiontierapi.Params) string {
 	return code
 }
 
-// decimalText is a stored decimal text with the digits it has (at least min), so "0.3" stays "0.3" and "5"
+// decimalText is a stored decimal text with the digits it has (at least minPlaces), so "0.3" stays "0.3" and "5"
 // stays "5"; unreadable text is returned as it is.
-func decimalText(text string, min int) string {
+func decimalText(text string, minPlaces int) string {
 	_, frac, _ := strings.Cut(text, ".")
-	places := max(len(frac), min)
+	places := max(len(frac), minPlaces)
 	if f, ok := fixedText(text, places); ok {
 		return f
 	}
