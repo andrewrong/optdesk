@@ -44,7 +44,7 @@ What is on origin/main today:
 
 `Booker` gains `CashIfAssigned(puts []OpenPut) ([]CashDue, error)`. `OpenPut` has `Currency`, `Strike`, `Multiplier`, `Quantity` (decimal text; the sign of a short is dropped). `CashDue` has `Currency`, `Lots int`, `Contracts` (exact decimal text) and `Cash` (exact decimal text, not rounded): the sums per currency of 1, of the absolute quantity and of strike x multiplier x absolute quantity, in order of first appearance. A text that is not a positive number returns `ErrBadInput`. A new method on the interface the page already holds needs no `cmd/ot` change and no new `Config` field; the cost is that fakes of `Booker` in tests of compute and pages gain the method. Own implementation, because `optionnotice.cashByDate` is private, is keyed by expiry day and takes the notice module's input type; compute packages do not import each other's implementation, and the rule is five lines on `shopspring/decimal`, which `optionattr` already uses.
 
-Every implementation and fake of `Booker` on origin/main 93dd0f49 (searched with `git grep -n "Combine(rs"`): the real one, `booker` in `internal/compute/optionattr/book.go` (the new method goes in the new file `cashdue.go` of the same package); the fakes `fakeBooker` and `allBooker` in `internal/compute/optionattrapi/api_test.go`; the fakes `fixedBooker` (`builder_test.go`), `sumBooker` (`context_test.go`) and `allBooker` (`ledger_test.go`, which embeds `sumBooker`) in `internal/pages/option_pnl_page`. Nothing else outside compute and pages implements it (`cmd/ot` tests use `optionattr.NewBooker()`), so entry 1's Files cover the compute side and entry 3's Files the pages side; no narrow separate interface is needed. Reuse of the notice computation was looked at: it lives in compute (`optionnotice.cashByDate`, private, over `NoticePosition` rows from the broker, result `compute.CashDay` per expiry day and currency). The page would have to add its day rows to get one figure per currency, and adding is computing, which pages may not do; extending it would put a second output on `NoticeResult` for the notice page's input, which the P&L page does not hold (it holds ledger lots). So the sum is repeated in `optionattr` on the page's own input, five lines.
+Every implementation and fake of `Booker` on origin/main 93dd0f49 (searched with `git grep -n "Combine(rs"`): the real one, `booker` in `internal/compute/optionattr/book.go` (the new method goes in the new file `cashdue.go` of the same package); the fakes `fakeBooker` and `allBooker` in `internal/compute/optionattrapi/api_test.go`; the fakes `fixedBooker` (`builder_test.go`), `sumBooker` (`context_test.go`) and `allBooker` (`ledger_test.go`, which embeds `sumBooker`) in `internal/pages/option_pnl_page`. Nothing else outside compute and pages implements it (`cmd/ot` tests use `optionattr.NewBooker()`), so entry 1's Files cover both sides (the compute fakes and the three page fakes, each gaining a stub, so entry 1 compiles and passes CI alone); no narrow separate interface is needed. Reuse of the notice computation was looked at: it lives in compute (`optionnotice.cashByDate`, private, over `NoticePosition` rows from the broker, result `compute.CashDay` per expiry day and currency). The page would have to add its day rows to get one figure per currency, and adding is computing, which pages may not do; extending it would put a second output on `NoticeResult` for the notice page's input, which the P&L page does not hold (it holds ledger lots). So the sum is repeated in `optionattr` on the page's own input, five lines.
 
 Other ways, not taken: a new `Config` field and a new interface (a second constructor to wire in `cmd/ot`, an entry in module ot); exporting `cashByDate` (an interface change of `optionnotice` and its Booker-unrelated types); computing in pages (forbidden).
 
@@ -99,10 +99,10 @@ Build order: entries 1 and 2 are interface entries and land first, in parallel (
 
 ### 1 option-cash-due-booker (interface)
 
-Module: compute (the interface in `optionattrapi` and its implementation in `optionattr`, one package pair, one judged cut: the contract test runs against the fake and the real `NewBooker`).
+Module: compute, plus the three fake `Booker` test files of pages (a judged two-module interface entry: the interface in `optionattrapi` and its implementation in `optionattr`, one package pair, the contract test runs against the fake and the real `NewBooker`; the stub `CashIfAssigned` in the page fakes lands with the interface so that `internal/pages/option_pnl_page` still compiles).
 Size: S.
 Order: first.
-Files: `internal/compute/optionattrapi/api.go`, `internal/compute/optionattrapi/api_test.go`, `internal/compute/optionattr/cashdue.go` (new), `internal/compute/optionattr/cashdue_test.go` (new), `internal/compute/optionattr/testdata/cashdue.json` (new), `docs/contracts/compute/optionattr.md`
+Files: `internal/compute/optionattrapi/api.go`, `internal/compute/optionattrapi/api_test.go`, `internal/compute/optionattr/cashdue.go` (new), `internal/compute/optionattr/cashdue_test.go` (new), `internal/compute/optionattr/testdata/cashdue.json` (new), `docs/contracts/compute/optionattr.md`, `internal/pages/option_pnl_page/builder_test.go`, `internal/pages/option_pnl_page/context_test.go`, `internal/pages/option_pnl_page/ledger_test.go`
 Contracts: unchanged
 Design: docs/design/option-pnl-totals.md#Interface
 Plan: P2
@@ -112,8 +112,9 @@ Acceptance:
 3. `cashdue.go` (new) implements `CashIfAssigned` on `NewBooker()`: per currency in order of first appearance, `Lots` the number of puts, `Contracts` the exact sum of the absolute quantity, `Cash` the exact sum of strike x multiplier x absolute quantity, no rounding, no `float64`, no clock; no puts gives a non-nil empty slice; a strike, multiplier or quantity that is not a positive number returns an error wrapping `ErrBadInput` and no partial answer.
 4. `cashdue_test.go` (new) reads `internal/compute/optionattr/testdata/cashdue.json` (new) with invented numbers and has `TestCashIfAssignedGolden` (new) (one currency, multiplier 100, a lot of quantity "-2" at strike 190 and a lot of "-3" at strike 38 give `Cash` "49400", `Contracts` "5" and `Lots` 2), `TestCashIfAssignedTwoCurrencies` (new) (USD and JPY lines, never added, order of first appearance), `TestCashIfAssignedShortSignDropped` (new) (quantity "-3" and "3" give the same line), `TestCashIfAssignedExactDecimals` (new) ("0.1" and "0.2" contracts give "0.3"), `TestCashIfAssignedNoPuts` (new) and `TestCashIfAssignedBadInput` (new) (each of strike, multiplier and quantity "abc", "0" and "" gives `ErrBadInput`); each calls `t.Parallel()`.
 5. `docs/contracts/compute/optionattr.md` gains one paragraph for `CashIfAssigned`: what it adds, that the sign of a short is dropped, that premium and conversion are not part of it, and that the result is exact and unrounded. The text named here is new.
-6. No file outside the Files line changes, and the existing cases of the files `book.json` and `golden.json` in `internal/compute/optionattr/testdata` keep their expected output.
-7. The result matches docs/design/option-pnl-totals.md#Interface.
+6. No file outside the Files line changes (the three page test files only by acceptance item 7), and the existing cases of the files `book.json` and `golden.json` in `internal/compute/optionattr/testdata` keep their expected output.
+7. In `builder_test.go`, `context_test.go` and `ledger_test.go` of `internal/pages/option_pnl_page`, each fake `Booker` (`fixedBooker`, `sumBooker`, `allBooker`) gains a stub `CashIfAssigned` that returns no lines and no error, and nothing else in those files changes.
+8. The result matches docs/design/option-pnl-totals.md#Interface.
 
 ### 2 option-pnl-cash-due-schema (interface)
 
@@ -137,7 +138,7 @@ Acceptance:
 Module: pages.
 Size: M.
 Order: after 1 and 2.
-Files: `internal/pages/option_pnl_page/cashdue.go` (new), `internal/pages/option_pnl_page/cashdue_test.go` (new), `internal/pages/option_pnl_page/builder.go`, `internal/pages/option_pnl_page/builder_test.go`, `internal/pages/option_pnl_page/context_test.go`, `internal/pages/option_pnl_page/ledger_test.go`, `internal/pages/option_pnl_page/zh_texts.go`, `internal/pages/option_pnl_page/testdata/ok.golden.json`, `internal/pages/option_pnl_page/testdata/ledger.golden.json`, `internal/pages/option_pnl_page/testdata/lot_gap.golden.json`, `internal/pages/option_pnl_page/testdata/no_quotes.golden.json`, `docs/contracts/pages.md`
+Files: `internal/pages/option_pnl_page/cashdue.go` (new), `internal/pages/option_pnl_page/cashdue_test.go` (new), `internal/pages/option_pnl_page/builder.go`, `internal/pages/option_pnl_page/zh_texts.go`, `internal/pages/option_pnl_page/testdata/ok.golden.json`, `internal/pages/option_pnl_page/testdata/ledger.golden.json`, `internal/pages/option_pnl_page/testdata/lot_gap.golden.json`, `internal/pages/option_pnl_page/testdata/no_quotes.golden.json`, `docs/contracts/pages.md`
 Contracts: unchanged
 Design: docs/design/option-pnl-totals.md#Decisions
 Plan: P2
@@ -147,9 +148,9 @@ Acceptance:
 3. An account with no open short put has no `cash_due` key.
 4. A refused figure (`ErrBadInput`) gives the one muted line of Decision 3 for that account, the page is still built and the other accounts and the ledger are unchanged.
 5. The label and the hint are string constants in `zh_texts.go` (new names), the label with the English "cash due if assigned" beside it; `TestCashDueLineConstants` (new) names them and never repeats their text.
-6. `cashdue_test.go` (new) has `TestCashDueOneCurrency` (new), `TestCashDueTwoCurrencies` (new), `TestCashDueNoMarkLotCounts` (new), `TestCashDueNoOpenPut` (new), `TestCashDueBadInputMuted` (new) and `TestCashDueFromBooker` (new) (a fake `Booker` answers a `CashDue` and the line shows exactly that `Cash`, so the page does not sum); each calls `t.Parallel()`; the fakes of `Booker` in `builder_test.go`, `context_test.go` and `ledger_test.go` gain the method.
+6. `cashdue_test.go` (new) has `TestCashDueOneCurrency` (new), `TestCashDueTwoCurrencies` (new), `TestCashDueNoMarkLotCounts` (new), `TestCashDueNoOpenPut` (new), `TestCashDueBadInputMuted` (new) and `TestCashDueFromBooker` (new) (a fake `Booker` answers a `CashDue` and the line shows exactly that `Cash`, so the page does not sum); each calls `t.Parallel()`.
 7. `ok.golden.json` gains the `cash_due` of the sample (AAA and CCC open) and the other three goldens are unchanged apart from what their open lots give; every figure of the existing cards and of the ledger is as before.
-8. `docs/contracts/pages.md` gains the line of version v21 for `cash_due` (design `docs/design/option-pnl-totals.md` (new)). The text named here is new.
+8. `docs/contracts/pages.md` gains the line of version v23 for `cash_due` (design `docs/design/option-pnl-totals.md`). The text named here is new.
 9. The result matches docs/design/option-pnl-totals.md#Decisions.
 
 ### 4 option-pnl-cash-due-web
@@ -165,8 +166,7 @@ Acceptance:
 1. `CashDueBlock.tsx` (new) renders each line of `account.cash_due` with its label, text and hint exactly as given, and renders nothing when `cash_due` is absent or empty; it computes no figure (no addition, no formatting of numbers).
 2. `OptionPnlPage.tsx` shows the block under the book cards of each account, before the ledger block.
 3. `CashDueBlock.test.tsx` (new) has `shows label text and hint as given`, `renders nothing without cash_due` and `one row per currency`; `OptionPnlPage.test.tsx` has `shows the cash due block under the books` (all four new); the `ok.ts` fixture gains a `cash_due` of one USD line.
-4. The page after the change is checked against a screenshot of `/options/pnl` with the sample, and the hint reads in Chinese (the owner's check; see Checked by owner).
-5. The result matches docs/design/option-pnl-totals.md#Decisions.
+4. The result matches docs/design/option-pnl-totals.md#Decisions.
 
 ### 5 option-attribution-left-out-fix
 
@@ -178,7 +178,7 @@ Contracts: unchanged
 Design: docs/design/option-pnl-totals.md#Decisions
 Plan: P2
 Acceptance:
-1. The first bullet of `## Left out` in `docs/design/option-attribution.md` no longer lists "the page `/options/pnl`", "the monthly block" or "cash due if assigned" as later designs: it says that the page landed with `docs/design/options-pnl-page.md`, the monthly and per-company ledger block with `docs/design/options-pnl-ledger.md` and cash due if assigned with `docs/design/option-pnl-totals.md` (new), and keeps the rest of the bullet (quote coverage on the tracking page, the reader of `obs.option_day`, display rounding, the reconciliation lines) as it is.
+1. The first bullet of `## Left out` in `docs/design/option-attribution.md` no longer lists "the page `/options/pnl`", "the monthly block" or "cash due if assigned" as later designs: it says that the page landed with `docs/design/options-pnl-page.md`, the monthly and per-company ledger block with `docs/design/options-pnl-ledger.md` and cash due if assigned with `docs/design/option-pnl-totals.md`, and keeps the rest of the bullet (quote coverage on the tracking page, the reader of `obs.option_day`, display rounding, the reconciliation lines) as it is.
 2. The bullet "The sample sentence ... and monthly or per-company sums: the page's." keeps its meaning and gains the pointer to `docs/design/options-pnl-ledger.md`; the bullet for layer 3 is unchanged.
 3. No other line of the file changes and no other file is touched; `grep -n "option-pnl-totals" docs/design/option-attribution.md` prints the pointer (the design file is new in its own pull request).
 4. The result matches docs/design/option-pnl-totals.md#Decisions.
@@ -206,7 +206,7 @@ On `/options/pnl` after the deploy: each account with open sell-put lots shows t
 Self-written, no agent spawned.
 
 - Gap against the goal ("know the cash the open puts can call"): the figure assumes all lots are assigned at once and at the strike; by-day detail and available cash live on the notice page. Accepted and named in Left out; the hint says "all assigned".
-- Biggest unnamed risk: `Booker` gains a method, so every fake of it in the repository stops compiling. The search of origin/main finds fakes only in `optionattrapi/api_test.go` and the pages tests; entries 1 and 3 name those files. A fake elsewhere is found by `go vet ./...` in CI and reported, not edited outside the Files line.
+- Biggest unnamed risk: `Booker` gains a method, so every fake of it in the repository stops compiling. The search of origin/main finds fakes only in `optionattrapi/api_test.go` and the pages tests; entry 1 names those files. A fake elsewhere is found by `go vet ./...` in CI and reported, not edited outside the Files line.
 - Simpler way: reuse `optionnotice.cashByDate`. It is private and keyed by expiry day on another input type; exporting it is an interface change in a module the page does not depend on. Rejected in Decision 2.
 - Claim most likely false: that every open lot is a `card` lot and so reaches the page's lot list. It is read from `lots.go` (`card` true for open lots); if the page's selection drops an open lot for another reason (a long put), the cash line misses it, which is right for short puts only. Entry 3 test `TestCashDueNoOpenPut` and the bought-put case in acceptance item 2 pin it.
 - Likeliest slip: showing the figure rounded twice or summed in the page. Entry 3 `TestCashDueFromBooker` fixes the page to the booker's text; the web has no arithmetic by acceptance item 1 of entry 4.
