@@ -37,7 +37,7 @@ func (l ledger) FlexTradeRows(_ context.Context, alias string) ([]store.FlexTrad
 		return nil, l.err
 	}
 	rows := []store.FlexTradeRow{}
-	for i := 0; i < l.aliases[alias]; i++ {
+	for i := range l.aliases[alias] {
 		rows = append(rows, store.FlexTradeRow{Alias: alias, TransactionID: string(rune('a' + i)), Revision: 1, Attributes: "{}", RecordedAt: l.recorded})
 	}
 	return rows, nil

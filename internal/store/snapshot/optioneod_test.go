@@ -438,7 +438,7 @@ func TestOptionEodWritesDayRowAfterCaptureRows(t *testing.T) {
 	}
 	want := []string{insertOptionEodSQL, insertOptionEodSQL, shared.UpsertDaySQL}
 	if !reflect.DeepEqual(f.execSQL, want) {
-		t.Fatalf("statements %d, want capture, capture, day", len(f.execSQL))
+		t.Fatalf("statements %d, want two captures, then day", len(f.execSQL))
 	}
 	if n := len(f.execs[2]); n != shared.DayArgCount {
 		t.Fatalf("day row has %d arguments, want %d", n, shared.DayArgCount)
