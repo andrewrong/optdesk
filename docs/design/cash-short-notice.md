@@ -87,8 +87,8 @@ Contracts: unchanged
 Design: docs/design/cash-short-notice.md#Decisions (5, 6, 9)
 Acceptance:
 1. `noticeTitles` has `cash_short` with the title "现金不足 Cash is short", `factLabels` has `currency`, `available`, `due`, `left` and `short_days` with the labels of Decision 5, and `reasonTexts` has `cash_short_cumulative` with the sentence of Decision 5; the three texts live in `zh_texts.go`; the label `short_days` and the reason code `cash_short_cumulative` are new names, written by entry 1.
-2. `noticeRowOf` shows the fact `currency` as an ordinary row and writes the facts `available`, `due` and `left` through `amountText` with the value of the fact `currency` of the same notice; `TestCashShortRow` (new) shows a notice with `currency` "USD" and `left` "-30553" gives a row with the title, the fact text "-$30,553", the reason sentence in `Reasons`, and the `Expiry` of the notice.
-3. `TestCashShortJPY` (new) shows `currency` "JPY" and `left` "-1200000" gives the text "-¥1,200,000".
+2. `noticeRowOf` shows the fact `currency` as an ordinary row and writes the facts `available`, `due` and `left` through `amountText` with the value of the fact `currency` of the same notice; `TestCashShortRow` (new) shows a notice with `currency` "USD" and `left` "-30553" gives a row with the title, the fact text "-$30,553.00", the reason sentence in `Reasons`, and the `Expiry` of the notice.
+3. `TestCashShortJPY` (new) shows `currency` "JPY" and `left` "-1200000" gives the text "-¥1,200,000.00".
 4. `TestCashShortUnknownCurrencyKeepsFallback` (new) shows a notice with no `currency` fact writes the figures as the producer wrote them and raises no panic.
 5. `TestCashShortPageValidates` (new) shows a built page with one `cash_short` notice equals the golden `testdata/cash_short.json` and validates against the schema of the page.
 6. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path under `contracts/` and none under `web/`; `grep -rn cash_short web/src` prints nothing.
@@ -127,4 +127,4 @@ Answers to `state/optdesk-drafts/designs/cash-short-adversarial.md` (a fresh sub
 
 ## 摘要
 
-期权提醒页（/options/notices）上，当某一天"剩余现金"（可用现金减去截至该日所有到期的空头 put 被行权所需现金，累计）小于零时，多一条"现金不足"提醒。每个币种一条，取最早不足的那一天，显示可用现金、所需现金、剩余现金（如 -$30,553）、不足的天数和一句中文解释；没有现金记录的币种不出提醒，也不估算。做法：compute 的 optionnotice 读已有的 Left 并产出 cash_short；页面只补标题、标签和中文说明并格式化金额；schema 和前端不变，没有迁移。
+期权提醒页（/options/notices）上，当某一天"剩余现金"（可用现金减去截至该日所有到期的空头 put 被行权所需现金，累计）小于零时，多一条"现金不足"提醒。每个币种一条，取最早不足的那一天，显示可用现金、所需现金、剩余现金（如 -$30,553.00）、不足的天数和一句中文解释；没有现金记录的币种不出提醒，也不估算。做法：compute 的 optionnotice 读已有的 Left 并产出 cash_short；页面只补标题、标签和中文说明并格式化金额；schema 和前端不变，没有迁移。
