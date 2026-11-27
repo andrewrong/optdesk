@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/pages/candidate_text"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
@@ -70,11 +71,17 @@ func (c runOnceConfig) candidatesOff() string {
 
 // optionCandidates builds option_candidates over the stores of the factory.
 func (f jobFactory) optionCandidates() (contracts.Job, error) {
+	// bars is the stored close the job reads when a name has no stock quote (Decision 8); nil without a bar store.
+	var bars bar.PriceBarReader
+	if f.bars != nil {
+		bars = f.bars
+	}
 	st := optioncandidates.CandidateStores{
 		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
 		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases, Candidates: f.candidates,
 		SessionDays: f.compute.SessionDays, Open: f.candOpen,
 		Quotes:   f.quotes,
+		Bars:     bars,
 		Strategy: f.shadow.strategy, Results: f.shadow.results,
 	}
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
