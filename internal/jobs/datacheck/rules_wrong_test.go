@@ -55,7 +55,7 @@ func TestDefaultRulesOrder(t *testing.T) {
 	for _, r := range defaultRules() {
 		ids = append(ids, r.ID)
 	}
-	want := []string{"reading_repeat", "option_open_late_quote", "candidates_older_than_settings"}
+	want := []string{"reading_repeat", "option_open_late_quote", "candidates_older_than_settings", "capture_gap", "plan_absent", "gap_unclosed"}
 	if !reflect.DeepEqual(ids, want) {
 		t.Fatalf("ids = %v", ids)
 	}
