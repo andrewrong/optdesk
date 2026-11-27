@@ -16,18 +16,18 @@ var quoteColumns = []string{
 
 func TestUpsertDaySQLPlaceholders(t *testing.T) {
 	t.Parallel()
-	max := 0
+	top := 0
 	for _, m := range regexp.MustCompile(`\$(\d+)`).FindAllStringSubmatch(UpsertDaySQL, -1) {
 		n, err := strconv.Atoi(m[1])
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n > max {
-			max = n
+		if n > top {
+			top = n
 		}
 	}
-	if max != DayArgCount {
-		t.Fatalf("highest placeholder is $%d, DayArgCount is %d", max, DayArgCount)
+	if top != DayArgCount {
+		t.Fatalf("highest placeholder is $%d, DayArgCount is %d", top, DayArgCount)
 	}
 	for i := 1; i <= DayArgCount; i++ {
 		if !strings.Contains(UpsertDaySQL, "$"+strconv.Itoa(i)+",") && !strings.Contains(UpsertDaySQL, "$"+strconv.Itoa(i)+")") {
