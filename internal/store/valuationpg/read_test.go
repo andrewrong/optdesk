@@ -188,7 +188,6 @@ func TestNewestTableVersionWins(t *testing.T) {
 	if err != nil || len(all) != 3 || all[0].ID != 3 || all[1].ID != 2 || all[2].ID != 1 {
 		t.Errorf("RVersions = %+v, %v; want newest first 3, 2, 1", all, err)
 	}
-
 }
 
 func TestNoRowsGiveNilVersionsAndNonNilSlices(t *testing.T) {
