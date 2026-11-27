@@ -40,10 +40,10 @@ func (f fakeAccount) Values(_ context.Context, _, d string) ([]store.AccountValu
 }
 
 func vals(net, cash string) []store.AccountValue {
-	cap := time.Date(2026, 11, 10, 1, 0, 0, 0, time.UTC)
+	capturedAt := time.Date(2026, 11, 10, 1, 0, 0, 0, time.UTC)
 	return []store.AccountValue{
-		{Alias: "main", Tag: "NetLiquidation", Value: net, Currency: "USD", CapturedAt: cap},
-		{Alias: "main", Tag: "TotalCashValue", Value: cash, Currency: "USD", CapturedAt: cap},
+		{Alias: "main", Tag: "NetLiquidation", Value: net, Currency: "USD", CapturedAt: capturedAt},
+		{Alias: "main", Tag: "TotalCashValue", Value: cash, Currency: "USD", CapturedAt: capturedAt},
 	}
 }
 

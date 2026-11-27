@@ -55,7 +55,8 @@ func (f *fakeStockIDs) StockIDs(_ context.Context, names []string) ([]store.Inst
 }
 
 func bar(id int64, d, closeP, cur string) contracts.PriceBar {
-	t, err := types.SerializableDate{}, error(nil)
+	var t types.SerializableDate
+	var err error
 	if err = t.UnmarshalJSON([]byte(`"` + d + `"`)); err != nil {
 		panic(err)
 	}

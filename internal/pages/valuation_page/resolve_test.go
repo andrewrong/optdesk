@@ -112,9 +112,9 @@ func (f *fakeCloses) PriceBars(_ context.Context, id int64, basis string, from, 
 	return f.bars, nil
 }
 
-func bar(day, close string) contracts.PriceBar {
+func bar(day, closeP string) contracts.PriceBar {
 	t, _ := time.Parse(time.DateOnly, day)
-	return contracts.PriceBar{Close: close, SessionDay: types.SerializableDate{Time: t}}
+	return contracts.PriceBar{Close: closeP, SessionDay: types.SerializableDate{Time: t}}
 }
 
 const testDay = contracts.Day("2026-11-17")

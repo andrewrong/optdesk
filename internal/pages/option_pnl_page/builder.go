@@ -221,10 +221,10 @@ func buildAccount(c Config, alias string, idx int, g gathered, day contracts.Day
 	return a, nil
 }
 
-func safeID(s string, max int) string {
+func safeID(s string, limit int) string {
 	s = unsafeChars.ReplaceAllString(s, "_")
-	if len(s) > max {
-		s = s[:max]
+	if len(s) > limit {
+		s = s[:limit]
 	}
 	return s
 }
