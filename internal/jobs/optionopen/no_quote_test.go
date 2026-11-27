@@ -62,13 +62,11 @@ func TestRowStatusNoQuote(t *testing.T) {
 	}
 
 	core := newCore(newFake(100))
-	r := core.row(target(1, 1000, ClassPuts, 90, "P"), answer{status: stNoData, code: ptr("NO_QUOTE"), q: &both}, clk.Now())
+	r := core.row(target(1, 1000, ClassPuts, 90, "P"), answer{status: stNoData, code: new("NO_QUOTE"), q: &both}, clk.Now())
 	if r.IvDecimal == nil || r.Delta == nil {
 		t.Errorf("a NO_QUOTE row lost its IV or delta: %+v", r)
 	}
 }
-
-func ptr(s string) *string { return &s }
 
 func TestNoQuoteRowIsFinalOnResume(t *testing.T) {
 	t.Parallel()
@@ -78,8 +76,8 @@ func TestNoQuoteRowIsFinalOnResume(t *testing.T) {
 		r.ErrorCode = code
 		_ = s.InsertOptionOpen(context.Background(), []contracts.OptionOpen{r})
 	}
-	put(1000, stNoData, ptr("NO_QUOTE"))
-	put(1001, stNoData, ptr("NO_QUOTE"))
+	put(1000, stNoData, new("NO_QUOTE"))
+	put(1001, stNoData, new("NO_QUOTE"))
 	put(1002, stNoData, nil)
 	b := newFake(100)
 	runAll(t, newPull(t, s, b))

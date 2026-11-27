@@ -31,8 +31,9 @@ func (w *recordingReasons) ReplaceReasons(_ context.Context, day contracts.Day, 
 
 // fullQuote has every counted field set.
 func fullQuote() broker.Quote {
-	return broker.Quote{Status: broker.StatusOK, Bid: num(1), Ask: num(2), Last: num(1.5), Volume: num(3), OpenInterest: num(4),
-		ImpliedVol: num(0.2), Delta: num(0.5), Gamma: num(0.1), Theta: num(-0.1), Vega: num(0.2)}
+	return broker.Quote{Status: broker.StatusOK, Bid: new(float64(1)), Ask: new(float64(2)), Last: new(1.5),
+		Volume: new(float64(3)), OpenInterest: new(float64(4)),
+		ImpliedVol: new(0.2), Delta: new(0.5), Gamma: new(0.1), Theta: new(-0.1), Vega: new(0.2)}
 }
 
 func details(rows []runview.Reason) map[string]string {
