@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 
@@ -198,5 +199,24 @@ func TestLeftDependentRunsWhenUpstreamEndsDuringItsTurn(t *testing.T) {
 	}
 	if len(d.calls) != 1 {
 		t.Fatalf("the dependent left to its upstream ran %d times in the call, want 1", len(d.calls))
+	}
+}
+
+func TestForcedUpstreamRerunLaterDoesNotRerunDependent(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	l := bfSetup(bfDay, keyA, keyC)
+	up, d := upJob(keyA), dep(0, keyC)
+	clk := clockwork.NewFakeClockAt(utc("2026-11-06T00:00:00Z"))
+	rec := forceRec(l, clk, up, d)
+	if _, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Job: "up"}); err != nil {
+		t.Fatal(err)
+	}
+	clk.Advance(time.Hour) // the owner forces the upstream an hour later
+	if _, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Job: "up", Force: true}); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.calls) != 1 {
+		t.Fatalf("dep calls %d, want 1: a forced re-run of the upstream starts nobody (Decision 12)", len(d.calls))
 	}
 }

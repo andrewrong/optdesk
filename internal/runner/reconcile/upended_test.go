@@ -2,8 +2,11 @@ package reconcile
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -124,5 +127,97 @@ func TestPartialRunIsReplacedWhenUpstreamTurnsOK(t *testing.T) {
 	reconcileN(t, rec, 4)
 	if len(d.calls) != 2 {
 		t.Fatalf("dep calls %d, want 2: the unmarked run is the last", len(d.calls))
+	}
+}
+
+// slowUp is the upstream whose run advances the fake clock, a long pull.
+type slowUp struct {
+	*fakeJob
+	clk  *clockwork.FakeClock
+	took time.Duration
+}
+
+func (j slowUp) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	j.clk.Advance(j.took)
+	return j.fakeJob.Run(ctx, d, k)
+}
+
+// storedDep seeds done, unmarked runs of keyC finished at 18:00Z (reason backfill) and marks it present.
+func storedDep(t *testing.T, led *fakeLedger, reason string) {
+	t.Helper()
+	led.runs[dueDay] = append(led.runs[dueDay], store.Run{
+		ID: "seed-" + reason, Day: dueDay, Key: keyC, Status: store.RunDone, ReasonCode: reason,
+		FinishedAt: utc("2026-11-05T18:00:00Z"),
+	})
+	if err := led.MarkPresent(context.Background(), dueDay, keyC, store.StatusPresent); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// readsOpen is the dependent that records which keys of the upstream are stored when it runs.
+type readsOpen struct {
+	depJob
+	led  *fakeLedger
+	mu   *sync.Mutex
+	seen *[]int
+}
+
+func (j readsOpen) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	p, _ := j.led.Present(ctx, d)
+	j.mu.Lock()
+	*j.seen = append(*j.seen, len(p))
+	j.mu.Unlock()
+	return j.depJob.Run(ctx, d, k)
+}
+
+func TestUnmarkedDependentRerunsWhenUpstreamEnds(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, reason, start string
+		took                time.Duration
+	}{
+		{"backfill", reasonBackfill, "2026-11-05T20:55:00Z", 0},
+		{"empty_before_close", reasonEmptyBeforeClose, "2026-11-05T20:55:00Z", 0},
+		{"long pull", reasonBackfill, "2026-11-05T20:10:00Z", 40 * time.Minute},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			led := dueLedger()
+			storedDep(t, led, tc.reason)
+			clk := clockwork.NewFakeClockAt(utc(tc.start))
+			up := slowUp{fakeJob: upJob(keyA, keyB), clk: clk, took: tc.took}
+			base := dep(-10*time.Minute, keyC)
+			var seen []int
+			d := readsOpen{depJob: base, led: led, mu: &sync.Mutex{}, seen: &seen}
+			rec := NewWithRule(led, oneDay(), clk, []contracts.Job{up, d}, runner.WindowRule{CalendarID: "XNYS"})
+			reconcileN(t, rec, 1)
+			runs := depRuns(led)
+			// keyC was stored by the seed; the rerun reads it after keyA and keyB of the open are stored too.
+			if len(seen) != 1 || seen[0] != 3 {
+				t.Fatalf("stored keys at the rerun %v, want [3]: the open rows are stored first", seen)
+			}
+			if len(d.calls) != 1 || len(runs) != 2 || runs[1].ReasonCode == tc.reason || runs[1].Status != store.RunDone {
+				t.Fatalf("dep calls %d runs %+v, want one more run after the end of up", len(d.calls), runs)
+			}
+			reconcileN(t, rec, 3)
+			clk.Advance(time.Minute)
+			reconcileN(t, rec, 2)
+			if len(d.calls) != 1 || len(depRuns(led)) != 2 {
+				t.Fatalf("dep calls %d runs %d after more ticks, want no second run", len(d.calls), len(depRuns(led)))
+			}
+		})
+	}
+}
+
+func TestUnmarkedDependentAfterUpstreamIsNotRerun(t *testing.T) {
+	t.Parallel()
+	led := dueLedger()
+	storedDep(t, led, reasonBackfill)
+	led.runs[dueDay][0].FinishedAt = utc("2026-11-05T20:56:00Z") // strictly after the upstream ended at 20:55
+	up, d := upJob(keyA, keyB), dep(-10*time.Minute, keyC)
+	rec := dueRec(led, "2026-11-05T20:55:00Z", up, d)
+	reconcileN(t, rec, 3)
+	if len(d.calls) != 0 || len(depRuns(led)) != 1 {
+		t.Fatalf("dep calls %d runs %+v, want none", len(d.calls), depRuns(led))
 	}
 }
