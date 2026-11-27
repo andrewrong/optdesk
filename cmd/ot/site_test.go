@@ -752,6 +752,7 @@ func (h *healthSeries) SeriesPoints(ctx context.Context, id string, from, to con
 
 // siteHealthGet asks /health of a site over s with method and returns the answer and the log.
 func siteHealthGet(t *testing.T, s store.SeriesReader, method string) (*httptest.ResponseRecorder, string) {
+	t.Helper()
 	a, logb := testApp(t, "")
 	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
 	h := siteHandler(a, clk, "2026-01-01", siteReaders{series: s}, echoHandler, http.NotFoundHandler())
