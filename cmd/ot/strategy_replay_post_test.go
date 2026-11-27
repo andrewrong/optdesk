@@ -87,7 +87,7 @@ func (rg replayPostRig) post(t *testing.T, p replayPost, ctx context.Context, bo
 func defaultBody(t *testing.T) url.Values {
 	t.Helper()
 	vm, err := strategy_replay_page.Build(t.Context(), strategy_replay_page.Input{View: strategy_replay_page.ViewForm,
-		Form: ptrTo(strategy_replay_page.DefaultForm())})
+		Form: new(strategy_replay_page.DefaultForm())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,8 +101,6 @@ func defaultBody(t *testing.T) url.Values {
 	}
 	return body
 }
-
-func ptrTo[T any](v T) *T { return &v }
 
 var realPost = replayPost{run: replayRun, timeout: replayPostTimeout}
 

@@ -51,7 +51,7 @@ func replayRig(t *testing.T) (*app, *bytes.Buffer) {
 	pos.Quantity = "-1"
 	pos.RealizedPnL = "200"
 	t0 := time.Date(2026, 11, 10, 14, 0, 0, 0, time.UTC)
-	rows := []contracts.OptionEod{replayEod("2026-11-10", eodOK, t0, "a", fptr(0.7), fptr(0.80))}
+	rows := []contracts.OptionEod{replayEod("2026-11-10", eodOK, t0, "a", new(0.7), new(0.80))}
 	d := &a.deps
 	d.openOptionLedgerStore = func(_ context.Context, dsn string) (store.OptionLedgerStore, error) {
 		if dsn != "led-secret" {
