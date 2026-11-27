@@ -53,7 +53,10 @@ func inputFrom(t *testing.T, name string) home_page.Input {
 	}
 }
 
-func input(t *testing.T) home_page.Input { return inputFrom(t, "overview_ok") }
+func input(t *testing.T) home_page.Input {
+	t.Helper()
+	return inputFrom(t, "overview_ok")
+}
 
 func setSlot(in *home_page.Input, slot string, b []byte) {
 	switch slot {
