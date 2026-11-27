@@ -53,6 +53,7 @@ type accountView struct {
 	SampleNote string      `json:"sample_note"`
 	Gap        *gap        `json:"gap"`
 	Ledger     *ledgerView `json:"ledger"`
+	CashDue    []line      `json:"cash_due,omitempty"`
 }
 
 type sourceTime struct {
@@ -218,6 +219,9 @@ func buildAccount(c Config, alias string, idx int, g gathered, day contracts.Day
 		a.SampleNote = counts + sampleEnuf
 	}
 	a.Ledger = buildLedger(c, idx, d, all)
+	if a.CashDue, err = cashDueLines(c, idx, g.lots); err != nil {
+		return a, err
+	}
 	return a, nil
 }
 

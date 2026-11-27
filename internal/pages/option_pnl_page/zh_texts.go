@@ -110,3 +110,12 @@ const (
 	lblIVZh         = "隐含波动率 IV"
 	lblReasonZh     = "原因 Reason"
 )
+
+// Cash due if assigned line. Design: docs/design/option-pnl-totals.md#Decisions (3, 4).
+const (
+	cashDueLabelZh   = "若全部被行权需付现金 (cash due if assigned)"
+	cashDueHintZh    = "卖出的看跌期权（put）若全部在今天被行权，你要按行权价买入股票，需要的现金；不含已收的权利金，不换算币种"
+	cashDueRefusedZh = "无法计算：个别仓位的行权价或张数不是数字"
+	cashDueContrZh   = " 张合约 · "
+	cashDueLotsZh    = " 个仓位"
+)
