@@ -190,3 +190,34 @@ type allBooker struct{}
 func (allBooker) Combine(rs []optionattrapi.Result) []optionattrapi.Book {
 	return []optionattrapi.Book{{Currency: "USD", AllLots: 6, LedgerAllPnL: "537.80"}}
 }
+
+// CashIfAssigned answers one line per currency with made-up numbers.
+func (fakeBooker) CashIfAssigned(puts []optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
+	out := []optionattrapi.CashDue{}
+	for _, p := range puts {
+		out = append(out, optionattrapi.CashDue{Currency: p.Currency, Lots: 1, Contracts: "2", Cash: "38000"})
+	}
+	return out, nil
+}
+
+func (allBooker) CashIfAssigned([]optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
+	return []optionattrapi.CashDue{}, nil
+}
+
+// TestFakeBookerCashIfAssigned: every fake Booker answers CashIfAssigned and a caller reads two currencies.
+func TestFakeBookerCashIfAssigned(t *testing.T) {
+	t.Parallel()
+	for _, b := range []optionattrapi.Booker{fakeBooker{}, allBooker{}} {
+		if _, err := b.CashIfAssigned(nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var b optionattrapi.Booker = fakeBooker{}
+	got, err := b.CashIfAssigned([]optionattrapi.OpenPut{{Currency: "USD"}, {Currency: "JPY"}})
+	if err != nil || len(got) != 2 || got[0].Currency != "USD" || got[1].Currency != "JPY" {
+		t.Fatalf("got = %+v, err = %v", got, err)
+	}
+	if got[0].Lots != 1 || got[0].Contracts != "2" || got[0].Cash != "38000" {
+		t.Fatalf("line = %+v", got[0])
+	}
+}

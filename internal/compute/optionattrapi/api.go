@@ -127,4 +127,21 @@ type Book struct {
 // Difference, is counted apart; an empty Exit counts as zero; sums are exact, nothing is rounded.
 type Booker interface {
 	Combine(rs []Result) []Book
+	// CashIfAssigned adds the puts per currency in order of first appearance: Lots is the number of
+	// puts, Contracts the sum of |Quantity|, Cash the sum of Strike x Multiplier x |Quantity|; exact,
+	// not rounded. No puts gives a non-nil empty slice; a Strike, Multiplier or Quantity that is not a
+	// positive number (after the sign of a short is dropped from Quantity) gives an error wrapping
+	// ErrBadInput and no partial answer. Premium and currency conversion are not part of it.
+	CashIfAssigned(puts []OpenPut) ([]CashDue, error)
+}
+
+// OpenPut is one open short put lot: decimal texts; Quantity may carry the sign of a short.
+type OpenPut struct{ Currency, Strike, Multiplier, Quantity string }
+
+// CashDue is the sum for one currency: Lots puts, Contracts = sum of |Quantity|,
+// Cash = sum of Strike x Multiplier x |Quantity|; exact, not rounded.
+type CashDue struct {
+	Currency        string
+	Lots            int
+	Contracts, Cash string
 }

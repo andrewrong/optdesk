@@ -373,3 +373,8 @@ func TestLongPutIsSkipped(t *testing.T) {
 		t.Fatalf("lots = %d, notes = %v", len(vm.Accounts[0].Lots), vm.Notes)
 	}
 }
+
+// CashIfAssigned is a stub: no lines, no error.
+func (*sumBooker) CashIfAssigned([]optionattrapi.OpenPut) ([]optionattrapi.CashDue, error) {
+	return nil, nil
+}
