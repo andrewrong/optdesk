@@ -177,7 +177,7 @@ func checkMacroAssets(t *testing.T, f *siteFixture) {
 	if rec := f.do(http.MethodGet, "/assets/a.js"); rec.Code != 200 || rec.Body.String() != "ASSET" {
 		t.Fatalf("asset %d %q", rec.Code, rec.Body)
 	}
-	f.macroErr = errors.New("dsn sentinel-secret")
+	f.macroErr = errors.New("relation rd.x does not exist")
 	if rec := f.do(http.MethodGet, "/macro"); rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
 		t.Fatalf("macro error %d %q", rec.Code, rec.Body)
 	}
@@ -185,13 +185,13 @@ func checkMacroAssets(t *testing.T, f *siteFixture) {
 
 func checkSiteErrors(t *testing.T, f *siteFixture) {
 	t.Helper()
-	f.cat.err = errors.New("dsn sentinel-secret")
+	f.cat.err = errors.New("relation rd.x does not exist")
 	rec := f.do(http.MethodGet, "/options/data")
 	if rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
 		t.Fatalf("catalog: %d %q", rec.Code, rec.Body)
 	}
 	f.cat.err = nil
-	f.buildErr = errors.New("dsn sentinel-secret")
+	f.buildErr = errors.New("relation rd.x does not exist")
 	rec = f.do(http.MethodGet, "/options/data/9000")
 	if rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
 		t.Fatalf("build: %d %q", rec.Code, rec.Body)
@@ -458,22 +458,32 @@ func TestSiteReaderErrors(t *testing.T) {
 		cat   *fakeCatalog
 		names *fakeNames
 	}{
-		"catalog": {&fakeCatalog{err: errors.New("dsn sentinel-secret")}, &fakeNames{}},
-		"names":   {cat, &fakeNames{err: errors.New("dsn sentinel-secret")}},
+		"catalog": {&fakeCatalog{err: errors.New("relation rd.x does not exist")}, &fakeNames{}},
+		"names":   {cat, &fakeNames{err: errors.New("relation rd.x does not exist")}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h, log := realSite(t, tc.cat, tc.names)
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/options/data", nil))
-			if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
-				t.Fatalf("%d %q", rec.Code, rec.Body)
-			}
-			if !strings.Contains(log.String(), "component=ot") || !strings.Contains(log.String(), "status=failed") ||
-				strings.Contains(log.String(), "sentinel") {
-				t.Fatalf("log %q", log)
+			out := log.String()
+			if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" ||
+				!strings.Contains(out, "component=ot status=failed") || !strings.Contains(out, "err=") ||
+				!strings.Contains(out, "relation rd.x does not exist") || strings.Contains(out, "sentinel") {
+				t.Fatalf("%d %q log %q", rec.Code, rec.Body, out)
 			}
 		})
+	}
+}
+
+func TestServeBuildFailedLogRedactsSecrets(t *testing.T) {
+	t.Parallel()
+	h, log := realSite(t, &fakeCatalog{err: errors.New("dial postgres://sentinel-user:sentinel-pw@h/db failed token=sentinel-token")}, &fakeNames{})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/options/data", nil))
+	if out := log.String(); rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" ||
+		!strings.Contains(out, "err=") || !strings.Contains(out, "[redacted]") || strings.Contains(out, "sentinel-pw") || strings.Contains(out, "sentinel-token") {
+		t.Fatalf("%d %q log %q", rec.Code, rec.Body, out)
 	}
 }
 
@@ -699,7 +709,7 @@ func TestSiteReportRoute(t *testing.T) {
 	})
 	t.Run("reader error is 500", func(t *testing.T) {
 		t.Parallel()
-		h := reportSiteApp(t, &fakeView{err: errors.New("dsn sentinel-secret")})
+		h := reportSiteApp(t, &fakeView{err: errors.New("relation rd.x does not exist")})
 		rec := get(h, http.MethodGet, "/report?market=us&slot=open")
 		if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
 			t.Fatalf("%d %q", rec.Code, rec.Body)

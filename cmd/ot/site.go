@@ -525,7 +525,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 				return
 			}
 			if err != nil {
-				a.log.Error("serve build failed", "component", "ot", "status", "failed")
+				a.log.Error("serve build failed", "component", "ot", "status", "failed", "err", redactErrText(err.Error()))
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
