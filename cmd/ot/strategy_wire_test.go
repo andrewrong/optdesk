@@ -312,6 +312,12 @@ func TestShadowThroughRealReaderEqualsOldRows(t *testing.T) {
 		if !strings.Contains(g.Marks, `"buy_from_hand"`) {
 			w.Marks = strings.Replace(w.Marks, `,"buy_from_hand"]`, `]`, 1)
 		}
+		// the old row carries the version of this job, the row read back that of the strategy package: asserted
+		// apart, the other columns compared
+		if w.RuleVersion != optioncandidates.RuleVersion {
+			t.Errorf("old row %d: rule version %q, want %q", w.InstrumentID, w.RuleVersion, optioncandidates.RuleVersion)
+		}
+		w.RuleVersion = g.RuleVersion
 		if !reflect.DeepEqual(g, w) {
 			t.Errorf("row %d differs:\nresult %+v\nold    %+v", g.InstrumentID, g, w)
 		}
