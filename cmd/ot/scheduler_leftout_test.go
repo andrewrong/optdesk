@@ -39,7 +39,7 @@ func TestSchedulerLogsEveryLeftOutJob(t *testing.T) {
 // is neither disabled nor logged.
 func TestSchedulerLogsNoLeftOutForSetLine(t *testing.T) {
 	t.Parallel()
-	cfg := runOnceConfig{fredKey: "k", eventsDSN: "x", reconDSN: "x"}
+	cfg := runOnceConfig{fredKey: "k", eventsDSN: "x", reconDSN: "x", dataCheckDSN: "x"}
 	disabled := schedulerDisabled(cfg, wiring{brokerUp: true})
 	if _, off := disabled[jobReconBars]; off {
 		t.Fatalf("disabled %v holds %s with its line set", disabled, jobReconBars)

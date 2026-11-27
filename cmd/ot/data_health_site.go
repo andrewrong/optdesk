@@ -13,6 +13,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
+	"github.com/andrewrong/optdesk/internal/store/finding"
+	"github.com/andrewrong/optdesk/internal/store/findingpg"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 )
 
@@ -26,17 +28,43 @@ const (
 	dataHealthName = "data_health_page"
 	// siteDataHealthKey is the key of the coverage reader that the site opener puts in siteReaders.ext.
 	siteDataHealthKey = "data_health_coverage"
+	// siteDataHealthChecksKey is the key of the finding reader of the data check block.
+	siteDataHealthChecksKey = "data_health_checks"
 	// extDataHealth is the name of the openers in the ext deps.
 	extDataHealth = "data_health"
 )
 
 // dataHealthDeps are the openers of the page, in the ext deps so that wire.go holds nothing of the page.
-type dataHealthDeps struct{ openCoverage coverage.OpenFunc }
+type dataHealthDeps struct {
+	openCoverage coverage.OpenFunc
+	// openChecks opens the reader of the data check findings; nil gives no reader and no gap.
+	openChecks finding.OpenReaderFunc
+}
 
 func init() {
-	extDeps[extDataHealth] = func() any { return dataHealthDeps{openCoverage: ops.OpenCoverage} }
+	extDeps[extDataHealth] = func() any { return dataHealthDeps{openCoverage: ops.OpenCoverage, openChecks: findingpg.OpenReader} }
 	registerPage(pageFamily{name: dataHealthName, route: siteDataHealthRoute, order: 130, build: buildDataHealth, named: dataHealthPageNamed})
 	siteOpeners[siteDataHealthKey] = openDataHealthCoverage
+	siteOpeners[siteDataHealthChecksKey] = openDataHealthChecks
+}
+
+// openDataHealthChecks opens the finding reader with the pages line. Without an opener or the line, or when it
+// cannot be opened, it gives no reader and goes on: the block is then absent and carries no gap.
+func openDataHealthChecks(ctx context.Context, a *app, track func(io.Closer, error) bool) (any, bool) {
+	d, ok := a.deps.ext[extDataHealth].(dataHealthDeps)
+	if !ok || d.openChecks == nil {
+		return nil, true
+	}
+	env, err := a.envFile()
+	if err != nil || env[pagesDSNName] == "" {
+		return nil, true
+	}
+	r, err := d.openChecks(ctx, env[pagesDSNName])
+	if err != nil || r == nil {
+		return nil, true
+	}
+	track(r, nil)
+	return r, true
 }
 
 // openDataHealthCoverage opens the coverage reader with the pages line. Without an opener or the line it gives no
@@ -68,6 +96,7 @@ func buildDataHealth(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 		return nil, err
 	}
 	cov, _ := siteReaderOf[coverage.Reader](rd, siteDataHealthKey)
+	checks, _ := siteReaderOf[finding.Reader](rd, siteDataHealthChecksKey)
 	var form *data_health_page.Form
 	if rd.edit != nil {
 		tok := ownerDummyToken()
@@ -75,7 +104,7 @@ func buildDataHealth(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	}
 	src, _ := gatewaySourceOf(a)
 	return data_health_page.Build(ctx, data_health_page.Input{
-		Now: clk.Now().UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs(), Form: form,
+		Now: clk.Now().UTC(), Today: day, Cov: cov, Checks: checks, Jobs: dataHealthJobs(), Form: form,
 		Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx)),
 	})
 }
@@ -100,7 +129,8 @@ func dataHealthPageNamed(ctx context.Context, a *app) (pages.Page, func(), error
 	src, _ := gatewaySourceOf(a)
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
 		cov, _ := siteReaderOf[coverage.Reader](rd, siteDataHealthKey)
-		return data_health_page.Build(ctx, data_health_page.Input{Now: now.UTC(), Today: day, Cov: cov, Jobs: dataHealthJobs(),
+		checks, _ := siteReaderOf[finding.Reader](rd, siteDataHealthChecksKey)
+		return data_health_page.Build(ctx, data_health_page.Input{Now: now.UTC(), Today: day, Cov: cov, Checks: checks, Jobs: dataHealthJobs(),
 			Runs: rd.jobRuns, Figures: jobrunfig.Figures, Gateways: pageGateways(src.read(ctx))})
 	}
 	return pages.Page{Meta: pages.Meta{Name: dataHealthName, Schema: "page.data_health_page.v1"}, Build: build}, closeFn, nil
@@ -161,6 +191,7 @@ var dataHealthManifests = map[string]dataHealthManifest{
 // a run of its own; a job added to jobTable without a dataset goes here with its reason.
 var dataHealthNoLedger = map[string]string{
 	"recon_bars": "it stores a reconciliation run and no ledger dataset",
+	"data_check": "it stores a check run and no ledger dataset",
 }
 
 // dataHealthPresentOnly is the fixed list of jobs whose past-day run stores today's source under the day

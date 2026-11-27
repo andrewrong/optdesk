@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/data_health_page"
 	"github.com/andrewrong/optdesk/internal/pages/job_console"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
+	"github.com/andrewrong/optdesk/internal/store/finding"
 )
 
 // fakeCoverage answers fixed cells and sessions; a non-nil err fails Cells.
@@ -128,6 +129,51 @@ func TestDataHealthRoute(t *testing.T) {
 	}
 }
 
+type fakeFindingReader struct {
+	run finding.Run
+	err error
+}
+
+func (f fakeFindingReader) Latest(context.Context) (finding.Run, error) { return f.run, f.err }
+func (fakeFindingReader) Close() error                                  { return nil }
+
+func TestDataHealthSiteChecksReader(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=postgres://pages\n")
+	var dsn string
+	rdr := fakeFindingReader{run: finding.Run{RunID: 1, CheckDay: "2026-11-13", RulesTotal: 6, Findings: []finding.Finding{{
+		Rule: finding.RuleCaptureGap, Dataset: "obs.fx_rate", Day: "2026-11-13", Severity: finding.SeverityWarn,
+		Evidence: []finding.Count{{Name: "missing", N: 1}},
+	}}}}
+	a.deps.ext = map[string]any{extDataHealth: dataHealthDeps{openChecks: func(_ context.Context, d string) (finding.Reader, error) {
+		dsn = d
+		return rdr, nil
+	}}}
+	v, ok := siteOpeners[siteDataHealthChecksKey](t.Context(), a, func(io.Closer, error) bool { return true })
+	if !ok || v == nil || dsn != "postgres://pages" {
+		t.Fatalf("opener: %v %v dsn %q", v, ok, dsn)
+	}
+	_, body := dataHealthGet(t, a, siteReaders{ext: map[string]any{siteDataHealthChecksKey: v}})
+	validateDataHealth(t, body)
+	if !strings.Contains(string(body), `"dataset":"obs.fx_rate"`) || strings.Contains(string(body), `"data_check":null`) {
+		t.Fatalf("block missing: %s", body)
+	}
+
+	// an opener that fails gives no reader, no failure of the site and no gap.
+	a.deps.ext = map[string]any{extDataHealth: dataHealthDeps{openChecks: func(context.Context, string) (finding.Reader, error) {
+		return nil, errors.New("down")
+	}}}
+	v, ok = siteOpeners[siteDataHealthChecksKey](t.Context(), a, func(io.Closer, error) bool { return true })
+	if !ok || v != nil {
+		t.Fatalf("failed open: %v %v", v, ok)
+	}
+	_, body = dataHealthGet(t, a, siteReaders{})
+	validateDataHealth(t, body)
+	if !strings.Contains(string(body), `"data_check":null`) || strings.Contains(string(body), "data_check_unavailable") {
+		t.Fatalf("nil reader body: %s", body)
+	}
+}
+
 func TestDataHealthRouteNoPagesDSN(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "OT_UNRELATED=1\n")
@@ -196,7 +242,7 @@ func pageKindOf(r jobRow) string {
 func TestEveryJobHasRowOrReason(t *testing.T) {
 	t.Parallel()
 	jobs := dataHealthJobs()
-	if len(jobTable) != 35 || len(jobs) != len(jobTable) {
+	if len(jobTable) != 36 || len(jobs) != len(jobTable) {
 		t.Fatalf("%d jobs for %d rows", len(jobs), len(jobTable))
 	}
 	for _, r := range jobTable {
