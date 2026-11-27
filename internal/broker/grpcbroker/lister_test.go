@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -35,11 +34,7 @@ func (f *listSvc) ResolveContract(ctx context.Context, r *pb.ResolveContractRequ
 func dialSvc(t *testing.T, f *listSvc) broker.Broker {
 	t.Helper()
 	// A short directory: a Unix socket path is limited to about 100 bytes.
-	dir, err := os.MkdirTemp("", "l")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	dir := t.TempDir()
 	path := filepath.Join(dir, "s")
 	l, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", path)
 	if err != nil {

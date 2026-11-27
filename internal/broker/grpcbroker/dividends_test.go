@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -51,11 +50,7 @@ func (f *fakeReference) Dividends(s grpc.BidiStreamingServer[pb.ContractKey, pb.
 func serveReference(t *testing.T, answer func(*pb.ContractKey) *pb.DividendProjection) broker.ReferenceClient {
 	t.Helper()
 	// A short directory name: a Unix socket path is limited to about 100 bytes.
-	dir, err := os.MkdirTemp("", "r")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	dir := t.TempDir()
 	path := filepath.Join(dir, "s")
 	l, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", path)
 	if err != nil {
