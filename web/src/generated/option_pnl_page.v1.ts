@@ -101,6 +101,10 @@ export interface Account {
   sample_note: Text1;
   gap: OptGap;
   ledger?: Ledger | null;
+  /**
+   * Cash due if assigned: one line per currency, absent when the account has no open short put.
+   */
+  cash_due?: Line[];
 }
 /**
  * The sum of the lots of one currency. left_out is the line naming the lots left out of the sums, or null when none.
