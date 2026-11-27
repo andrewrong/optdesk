@@ -123,7 +123,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	complete := backfilled && dailyComplete(stored, r.dayTime) // nothing to ask: deepen and adjusted below keep their own gates
 	if !backfilled {
 		if !r.j.claimFirstPull(r.day, key) {
-			return 0, 0, nil // past the cap: no request, no error
+			return 0, 0, newErr(contracts.Retryable, "first-pull cap reached") // no request, no row: the ledger closes it expired
 		}
 		days = r.j.m.BackfillDays
 	} else {
