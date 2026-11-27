@@ -65,7 +65,7 @@ func TestRecordsAreGenerated(t *testing.T) {
 func TestReadingRecordAlias(t *testing.T) {
 	t.Parallel()
 	var r contracts.ReadingRecord
-	g := gen.ReadingRecord(r)
+	var g gen.ReadingRecord = r //nolint:staticcheck // ST1023: the declared type is the compile-time alias proof
 	g.Name = "market.ivp_own"
 	g.Inputs = append(g.Inputs, gen.ReadingRecordInputsElem{InputTable: "obs.option_eod"})
 	r = g
@@ -77,7 +77,7 @@ func TestReadingRecordAlias(t *testing.T) {
 func TestEarningsDateAlias(t *testing.T) {
 	t.Parallel()
 	var e contracts.EarningsDate
-	g := gen.EarningsDate(e)
+	var g gen.EarningsDate = e //nolint:staticcheck // ST1023: the declared type is the compile-time alias proof
 	g.Issuer = "cik:0000320193"
 	g.Attempt = 1
 	e = g
@@ -89,7 +89,7 @@ func TestEarningsDateAlias(t *testing.T) {
 func TestPriceBarAndFxRateAlias(t *testing.T) {
 	t.Parallel()
 	var b contracts.PriceBar
-	gb := gen.PriceBar(b)
+	var gb gen.PriceBar = b //nolint:staticcheck // ST1023: the declared type is the compile-time alias proof
 	gb.AdjustEpoch = 2
 	gb.Volume = nil
 	b = gb
@@ -97,7 +97,7 @@ func TestPriceBarAndFxRateAlias(t *testing.T) {
 		t.Fatal("alias of the generated record")
 	}
 	var f contracts.FxRate
-	gf := gen.FxRate(f)
+	var gf gen.FxRate = f //nolint:staticcheck // ST1023: the declared type is the compile-time alias proof
 	gf.Pair = "USDJPY"
 	f = gf
 	if f.Pair != "USDJPY" {
@@ -108,7 +108,7 @@ func TestPriceBarAndFxRateAlias(t *testing.T) {
 func TestDividendExpectationAlias(t *testing.T) {
 	t.Parallel()
 	var d contracts.DividendExpectation
-	g := gen.DividendExpectation(d)
+	var g gen.DividendExpectation = d //nolint:staticcheck // ST1023: the declared type is the compile-time alias proof
 	g.Issuer = "cik:0000320193"
 	g.Attempt = 1
 	d = g
