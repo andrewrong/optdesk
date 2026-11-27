@@ -16,11 +16,12 @@ type curDB struct{ rows [][]any }
 
 func (f *curDB) InsertAll(_ context.Context, sql string, rows [][]any) (int, error) {
 	for _, r := range rows {
-		if len(r) == columnCount {
+		switch {
+		case len(r) == columnCount:
 			r = append(append([]any{}, r...), (*string)(nil))
-		} else if !strings.Contains(sql, ", currency)") {
+		case !strings.Contains(sql, ", currency)"):
 			panic("a 36 column row needs the currency insert")
-		} else {
+		default:
 			r = append(append([]any{}, r[:columnCount]...), new(r[columnCount].(string)))
 		}
 		f.rows = append(f.rows, r)

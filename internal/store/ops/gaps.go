@@ -95,7 +95,7 @@ func (r *gapReader) GapsSince(ctx context.Context, since time.Time) ([]gaphistor
 	return out, nil
 }
 
-// Expectations returns the rows of rd.expectation_r1 with expected_day from from to to, inclusive.
+// Expectations returns the rows of rd.expectation_r1 with expected_day from day from to day to, inclusive.
 func (r *gapReader) Expectations(ctx context.Context, from, to contracts.Day) ([]store.Expectation, error) {
 	f, err := parseDay(from)
 	if err != nil {

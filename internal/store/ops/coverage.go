@@ -35,7 +35,7 @@ func OpenCoverage(ctx context.Context, dsn string) (coverage.Reader, error) {
 
 func dayOf(t time.Time) contracts.Day { return contracts.Day(t.Format(time.DateOnly)) }
 
-// Cells returns the rows of rd.coverage_day_r1 from from to to, inclusive, ascending by day then dataset.
+// Cells returns the rows of rd.coverage_day_r1 from day from to day to, inclusive, ascending by day then dataset.
 func (r *coverageReader) Cells(ctx context.Context, from, to contracts.Day) ([]coverage.Cell, error) {
 	f, err := parseDay(from)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *coverageReader) Cells(ctx context.Context, from, to contracts.Day) ([]c
 	return out, nil
 }
 
-// Sessions returns the days of one calendar from from to to, inclusive, ascending.
+// Sessions returns the days of one calendar from day from to day to, inclusive, ascending.
 func (r *coverageReader) Sessions(ctx context.Context, calendar string, from, to contracts.Day) ([]coverage.Session, error) {
 	f, err := parseDay(from)
 	if err != nil {

@@ -44,7 +44,7 @@ HAVING count(DISTINCT r.session_day) >= $3
 ORDER BY r.dataset_id, r.subject_key, r.kind`
 
 // RepeatedFailures returns the keys with failed or empty runs on coverage.FailureMinDays or more distinct session
-// days from from to to whose newest counted done run is failed or empty. It only reads.
+// days from day from to day to whose newest counted done run is failed or empty. It only reads.
 func (r *coverageReader) RepeatedFailures(ctx context.Context, from, to contracts.Day) ([]coverage.Failure, error) {
 	fromDay, err := parseDay(from)
 	if err != nil {

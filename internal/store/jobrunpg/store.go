@@ -98,7 +98,7 @@ func (s *Store) MarkSlowNotified(ctx context.Context, id string, at time.Time) e
 	return s.updateOne(ctx, "mark slow", id, `UPDATE ops.job_run SET slow_notified_at = $2 WHERE id = $1`, at)
 }
 
-// CloseOpen closes every open row "cut" at at and returns how many it closed.
+// CloseOpen closes every open row "cut" at the instant at and returns how many it closed.
 func (s *Store) CloseOpen(ctx context.Context, at time.Time) (int, error) {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE ops.job_run SET outcome = 'cut', finished_at = $1 WHERE outcome = ''`, at)

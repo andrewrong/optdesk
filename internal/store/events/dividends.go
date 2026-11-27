@@ -55,7 +55,7 @@ func (s *dividendStore) InsertDividend(ctx context.Context, r contracts.Dividend
 	return err
 }
 
-// Dividends returns the rows of the instrument from from to to, inclusive, ascending by day, the highest attempt
+// Dividends returns the rows of the instrument from day from to day to, inclusive, ascending by day, the highest attempt
 // of each day only, read from the view.
 func (s *dividendStore) Dividends(ctx context.Context, instrumentID int, from, to contracts.Day) ([]contracts.DividendExpectation, error) {
 	f, err := time.Parse(time.DateOnly, string(from))

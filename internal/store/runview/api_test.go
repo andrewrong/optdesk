@@ -75,7 +75,8 @@ func (f *fake) ReplaceReasons(_ context.Context, day contracts.Day, dataset, sub
 			kept = append(kept, r)
 		}
 	}
-	f.reasons = append(kept, rs...)
+	kept = append(kept, rs...)
+	f.reasons = kept
 	return nil
 }
 
