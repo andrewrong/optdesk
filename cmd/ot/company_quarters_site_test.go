@@ -35,7 +35,7 @@ func TestCompanyQuartersRouteStatus(t *testing.T) {
 		t.Errorf("below the route: %d", code)
 	}
 	code, body = companySiteGet(t, siteReaders{}, http.MethodGet, "/company-quarters")
-	if code != http.StatusServiceUnavailable || strings.TrimSpace(body) != "unavailable" {
+	if code != http.StatusOK || strings.TrimSpace(body) == "" {
 		t.Errorf("build error: %d %q", code, body)
 	}
 }

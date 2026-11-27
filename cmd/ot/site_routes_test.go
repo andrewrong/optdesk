@@ -97,6 +97,10 @@ var knownPagesPanics = map[string]bool{
 	"fixture readers home": true, // pages-nil-reader-panics
 }
 
+// unavailable503 are the routes that answer 503 for a reader the site has not opened (item 6 of the issue); every
+// other route answers a page.
+var unavailable503 = map[string]bool{"/health": true, "/options/data": true, "/options/pnl": true, "/options/tracking": true}
+
 func TestEveryRouteAnswersBelow500(t *testing.T) {
 	t.Parallel()
 	var asked []string
@@ -132,13 +136,10 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 				}
 				continue
 			}
-			if p == "/health" && s.name == "nil readers" && rec.Body.String() != `{"status":"unavailable"}` {
+			if p == "/health" && s.name == "nil readers" && (rec.Code != http.StatusServiceUnavailable || rec.Body.String() != `{"status":"unavailable"}`) {
 				t.Errorf("%s: GET %s answered %d: %s", s.name, p, rec.Code, rec.Body.String())
 			}
-			if rec.Code == http.StatusServiceUnavailable { // a reader the site has not opened, shown as unavailable
-				continue
-			}
-			if rec.Code >= 500 {
+			if rec.Code >= 500 && !(rec.Code == http.StatusServiceUnavailable && unavailable503[p]) {
 				t.Errorf("%s: GET %s answered %d: %s\nlog: %s", s.name, p, rec.Code, rec.Body.String(), logs.String())
 			}
 			if knownPagesPanics[key] {
@@ -151,5 +152,21 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 	}
 	for k := range unseen {
 		t.Errorf("known panic %q is not a path of the walk", k)
+	}
+}
+
+func TestNilReadersMarketAndReportArePages(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	a.deps = newDeps()
+	a.deps.openSeries, a.deps.openAccount, a.deps.openBar = nil, nil, nil
+	delete(a.deps.ext, extReportGlobal)
+	h := siteHandler(a, householdClock, "2026-11-05", siteReaders{}, echoHandler, http.NotFoundHandler())
+	for _, p := range []string{"/market", "/report?market=us&slot=open", "/company-data", "/company-quarters", "/settings"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s answered %d", p, rec.Code)
+		}
 	}
 }

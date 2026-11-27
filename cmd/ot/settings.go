@@ -101,17 +101,14 @@ func buildSettingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag str
 	if err != nil {
 		return nil, err
 	}
-	if rd.catalog == nil || rd.names == nil {
-		return nil, errSiteNoReader
-	}
 	now := clk.Now().UTC()
 	c := settings_page.Config{
 		RunID: "ot-serve", BuildID: buildIDOf(version), Scope: "settings",
 		Zone:     a.profile.Zone,
 		Params:   a.deps.newRuleParams(),
 		Owner:    rd.owner,
-		Catalog:  rd.catalog,
-		Names:    rd.names,
+		Catalog:  orNoSiteCatalog(rd.catalog),
+		Names:    orNoSiteNames(rd.names),
 		HistoryN: settingsHistoryN,
 		Notice:   x.notice,
 		Confirm:  x.confirm,
@@ -346,4 +343,20 @@ func ownerChange(ch settingsapi.FormChange) ownerset.Change {
 		c.Exclusions = append(c.Exclusions, ownerset.ExclusionValue{InstrumentID: id, Excluded: ch.Exclusions[id]})
 	}
 	return c
+}
+
+// orNoSiteCatalog is c, or the empty catalog when the site has none: the page lists no underlying.
+func orNoSiteCatalog(c store.OptionEodCatalog) store.OptionEodCatalog {
+	if c == nil {
+		return noSiteRows{}
+	}
+	return c
+}
+
+// orNoSiteNames is n, or the empty name reader when the site has none.
+func orNoSiteNames(n store.InstrumentNameReader) store.InstrumentNameReader {
+	if n == nil {
+		return noSiteRows{}
+	}
+	return n
 }
