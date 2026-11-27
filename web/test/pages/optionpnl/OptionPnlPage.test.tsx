@@ -108,3 +108,14 @@ it('TestPnlLeftOutUnderHeadline', async () => {
   const leftOut = book.querySelector('[data-left-out]')!
   expect(headline.compareDocumentPosition(leftOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
+
+it('shows the cash due block under the books', async () => {
+  await show(ok)
+  const section = host.querySelector('[data-account]')!
+  const block = section.querySelector('[data-cash-due]')!
+  expect(block.textContent).toContain('Synthetic cash due text')
+  const book = section.querySelector('[data-book]')!
+  expect(book.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const lot = section.querySelector('[data-lot]')!
+  expect(block.compareDocumentPosition(lot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
