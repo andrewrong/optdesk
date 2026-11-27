@@ -120,6 +120,8 @@ func ruleLabel(rule string) string {
 		finding.RuleReadingRepeat: zhLabelReadingRepeat, finding.RuleOpenLateQuote: zhLabelOpenLate,
 		finding.RuleCandidatesStale: zhLabelCandidates, finding.RuleCaptureGap: zhLabelCaptureGap,
 		finding.RulePlanAbsent: zhLabelPlanAbsent, finding.RuleGapUnclosed: zhLabelGapUnclosed,
+		finding.RuleCandidateRuleVersion: zhLabelRuleVersion, finding.RuleEarningsCoverage: zhLabelEarnings,
+		finding.RuleBarOHLCShape: zhLabelBarShape,
 	}[rule]; l != "" {
 		return l + " (" + rule + ")"
 	}
@@ -131,6 +133,8 @@ func ruleWhy(rule string) string {
 		finding.RuleReadingRepeat: zhWhyReadingRepeat, finding.RuleOpenLateQuote: zhWhyOpenLate,
 		finding.RuleCandidatesStale: zhWhyCandidates, finding.RuleCaptureGap: zhWhyCaptureGap,
 		finding.RulePlanAbsent: zhWhyPlanAbsent, finding.RuleGapUnclosed: zhWhyGapUnclosed,
+		finding.RuleCandidateRuleVersion: zhWhyRuleVersion, finding.RuleEarningsCoverage: zhWhyEarnings,
+		finding.RuleBarOHLCShape: zhWhyBarShape,
 	}[rule]; w != "" {
 		return w
 	}
@@ -154,13 +158,22 @@ func evidenceText(ev []finding.Count) string {
 	}
 	pair("ok", "same", zhEvOKSame)
 	pair("rows", "late", zhEvRowsLate)
+	pair("rows", "bad", zhEvRowsBad)
 	for _, c := range ev {
 		if used[c.Name] {
 			continue
 		}
+		if c.Name == "listed_before" {
+			continue // worded together with listed
+		}
+		if c.Name == "listed" && has["listed_before"] {
+			parts = append(parts, fmt.Sprintf(zhEvListedBefore, n["listed_before"], c.N))
+			continue
+		}
 		f, ok := map[string]string{"ok": zhEvOK, "same": zhEvSame, "rows": zhEvRows, "late": zhEvLate,
 			"hours_behind": zhEvHoursBehnd, "keys": zhEvKeys, "missing": zhEvMissing, "expired": zhEvExpired,
-			"cells": zhEvCells, "age_hours": zhEvAgeHours, "read_failed": zhEvReadFailed}[c.Name]
+			"cells": zhEvCells, "age_hours": zhEvAgeHours, "read_failed": zhEvReadFailed, "names": zhEvNames, "listed": zhEvListed,
+			"errors": zhEvErrors, "bad": zhEvBad}[c.Name]
 		if !ok {
 			f = zhEvOther
 		}
