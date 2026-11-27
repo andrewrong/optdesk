@@ -181,7 +181,7 @@ The runbook rewritten to this design
   3. `grep -c -F 'crew cap --apply optdesk-pyside deploy' docs/deploy/pyside.md` and `grep -c -F 'crew cap --apply optdesk-pyside restart' docs/deploy/pyside.md` each print at least 1, and `grep -c -F 'deploy --apply' docs/deploy/pyside.md` prints 0.
   4. `grep -c -F -e session_lost -e connect_failed docs/deploy/pyside.md` prints at least 2, `grep -c -i -E 'before.*(deploy|apply)' docs/deploy/pyside.md` prints at least 1 (the required gateways are logged in before the
      deploy, because the settle needs 2xx), and `grep -c -i -E 'non-2xx|until the required|Fault' docs/deploy/pyside.md` prints at least 2.
-  5. `grep -c -E '/Users/|/Volumes/' docs/deploy/pyside.md` prints 0, `grep -c -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' docs/deploy/pyside.md` prints 0, and `git diff --name-only origin/main` equals the Files line.
+  5. a grep of `docs/deploy/pyside.md` for a home-directory path prefix or a volume path prefix counts 0, `grep -c -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' docs/deploy/pyside.md` prints 0, and `git diff --name-only origin/main` equals the Files line.
   6. The result matches the `## Proposed services.toml entry` and decisions 2 to 4, 6, 7 and 12 of docs/design/pyside-gateways-health.md, judged from the code and docs/design/pyside-gateways-health.md.
   7. `grep -c -F 'market_data_type` to 2' docs/deploy/pyside.md` prints at least 1 (a gateway entry and the no-file fallback both say 2, frozen) and `grep -c -F 'market_data_type` to 1' docs/deploy/pyside.md` prints 0; the text of `OT_IBKR_MARKET_DATA_TYPE` says default 2 and that the variable is an override.
   Checked by CI: hygiene and the `test` check.
