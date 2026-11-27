@@ -30,6 +30,10 @@ linters:
     - predeclared
     - usestdlibvars
     - canonicalheader
+    - whitespace
+    - nolintlint
+    - mirror
+    - godot
   settings:
     depguard:
       rules:
@@ -117,6 +121,10 @@ linters:
       - path: internal/compute/valuelinesapi/api\.go$
         linters:
           - predeclared
+      # P8: pinned file
+      - path: internal/compute/valuation/(fcf|price_return)_test\.go$
+        linters:
+          - whitespace
 formatters:
   enable:
     - gofmt
