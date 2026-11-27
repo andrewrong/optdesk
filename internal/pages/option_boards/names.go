@@ -53,7 +53,7 @@ func (n displayNames) of(c store.Candidate) string {
 // ticker is the stored name of an underlying, or nil when there is none.
 func (n displayNames) ticker(id int) *string {
 	if name, ok := n[id]; ok {
-		return strPtr(name)
+		return new(name)
 	}
 	return nil
 }

@@ -463,11 +463,11 @@ func columnsOf(day string) []tierColumn {
 	return []tierColumn{
 		{ID: colArrowID, Label: colArrowLabel},
 		{ID: colTierID, Label: colTierLabel},
-		{ID: colContractID, Label: colContractLabel, Hint: ptr(hintContract)},
-		{ID: colMarginID, Label: colMarginLabel, Hint: ptr(hintMargin)},
-		{ID: colBelowSpotID, Label: colBelowLabel, Hint: ptr(hintBelow)},
-		{ID: colPremiumID, Label: colPremiumLabel, Hint: ptr(hintPremium)},
-		{ID: colBadgesID, Label: colBadgesLabel, Hint: ptr(hintBadges)},
+		{ID: colContractID, Label: colContractLabel, Hint: new(hintContract)},
+		{ID: colMarginID, Label: colMarginLabel, Hint: new(hintMargin)},
+		{ID: colBelowSpotID, Label: colBelowLabel, Hint: new(hintBelow)},
+		{ID: colPremiumID, Label: colPremiumLabel, Hint: new(hintPremium)},
+		{ID: colBadgesID, Label: colBadgesLabel, Hint: new(hintBadges)},
 	}
 }
 

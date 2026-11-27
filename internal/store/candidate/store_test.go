@@ -92,14 +92,14 @@ func (a argScanner) Scan(dest ...any) error {
 	return nil
 }
 
-func ptr[T any](v T) *T { return &v }
+func ptr[T any](v T) *T { return new(v) }
 
 func sample(runID string, at time.Time, rank *int) store.Candidate {
 	return store.Candidate{
 		SessionDay: "2026-11-06", RunID: runID, Kind: "short_put", InstrumentID: 42, Alias: "",
 		RuleVersion: "v1", Issuer: "AAPL", UnderlyingID: 7, Expiry: "2026-12-18", DTE: 42, Right: "put",
-		Strike: "180", Multiplier: 100, BidEod: "2.15", Ask: ptr("2.2"), Spot: ptr("190.5"), BuyPrice: ptr("178"),
-		BreakEven: "177.85", AnnualizedYield: ptr("0.103855"), Delta: ptr("-0.21"), Iv: ptr("0.31"), Status: "ok",
+		Strike: "180", Multiplier: 100, BidEod: "2.15", Ask: new("2.2"), Spot: new("190.5"), BuyPrice: new("178"),
+		BreakEven: "177.85", AnnualizedYield: new("0.103855"), Delta: new("-0.21"), Iv: new("0.31"), Status: "ok",
 		Gates: `[{"gate":"buy_price","result":"pass"}]`, Marks: `[]`, Fits: `{"A":"fit","B":"unknown"}`,
 		NextEarnings: ptr(contracts.Day("2027-01-28")), EarningsState: "listed", Rank: rank, RankInUnderlying: rank,
 		ComputedAt: at,
@@ -110,7 +110,7 @@ func TestInsertQueryText(t *testing.T) {
 	t.Parallel()
 	db := &fakeDB{}
 	s := &Store{db: db}
-	n, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))})
+	n, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), new(1))})
 	if err != nil || n != 1 {
 		t.Fatalf("insert = %d, %v", n, err)
 	}
@@ -148,7 +148,7 @@ func TestInsertQueryText(t *testing.T) {
 func TestRowMapping(t *testing.T) {
 	t.Parallel()
 	s := &Store{db: &fakeDB{}}
-	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	in := sample("r1", time.Unix(100, 0).UTC(), new(1))
 	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
 		t.Fatal(err)
 	}
@@ -185,9 +185,9 @@ func TestTwoRunsNewerWins(t *testing.T) {
 	t.Parallel()
 	s := &Store{db: &fakeDB{}}
 	t0 := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
-	older := []store.Candidate{sample("old", t0, ptr(1)), sample("old", t0, ptr(2))}
+	older := []store.Candidate{sample("old", t0, new(1)), sample("old", t0, new(2))}
 	older[1].InstrumentID = 43
-	newer := []store.Candidate{sample("new", t0.Add(time.Hour), nil), sample("new", t0.Add(time.Hour), ptr(1))}
+	newer := []store.Candidate{sample("new", t0.Add(time.Hour), nil), sample("new", t0.Add(time.Hour), new(1))}
 	newer[0].InstrumentID = 44
 	newer[0].Status = "unknown"
 	if _, err := s.InsertCandidates(context.Background(), append(older, newer...)); err != nil {
@@ -210,8 +210,8 @@ func TestTwoRunsNewerWins(t *testing.T) {
 func TestSettingsVersionRowMapping(t *testing.T) {
 	t.Parallel()
 	s := &Store{db: &fakeDB{}}
-	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
-	in.SettingsVersion = ptr(int64(57))
+	in := sample("r1", time.Unix(100, 0).UTC(), new(1))
+	in.SettingsVersion = new(int64(57))
 	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestInsertCandidatesConstraintViolationIsPermanent(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			s := &Store{db: &fakeDB{insertErr: tc.err}}
-			_, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))})
+			_, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), new(1))})
 			if err == nil {
 				t.Fatal("no error")
 			}
@@ -274,7 +274,7 @@ func TestNilSettingsVersionIsNull(t *testing.T) {
 	t.Parallel()
 	db := &fakeDB{}
 	s := &Store{db: db}
-	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	in := sample("r1", time.Unix(100, 0).UTC(), new(1))
 	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
 		t.Fatal(err)
 	}
@@ -293,8 +293,8 @@ func TestInsertCandidatesSecondWriteStoresNothing(t *testing.T) {
 	db := &fakeDB{}
 	s := &Store{db: db}
 	at := time.Unix(100, 0).UTC()
-	a := sample("r1", at, ptr(1))
-	b := sample("r1", at, ptr(2))
+	a := sample("r1", at, new(1))
+	b := sample("r1", at, new(2))
 	b.InstrumentID = 43
 	rows := []store.Candidate{a, b}
 	n1, err1 := s.InsertCandidates(context.Background(), rows)
@@ -302,13 +302,13 @@ func TestInsertCandidatesSecondWriteStoresNothing(t *testing.T) {
 	if err1 != nil || err2 != nil || n1 != 2 || n2 != 0 || len(db.rows) != 2 {
 		t.Fatalf("counts = (%d, %v), (%d, %v), stored %d; want (2, nil), (0, nil), 2", n1, err1, n2, err2, len(db.rows))
 	}
-	c := sample("r1", at, ptr(3))
+	c := sample("r1", at, new(3))
 	c.InstrumentID = 44
 	n3, err3 := s.InsertCandidates(context.Background(), []store.Candidate{a, c})
 	if err3 != nil || n3 != 1 || len(db.rows) != 3 {
 		t.Errorf("mixed call = (%d, %v), stored %d; want (1, nil), 3", n3, err3, len(db.rows))
 	}
-	other := sample("r2", at.Add(time.Hour), ptr(1))
+	other := sample("r2", at.Add(time.Hour), new(1))
 	if n, err := s.InsertCandidates(context.Background(), []store.Candidate{other}); err != nil || n != 1 || len(db.rows) != 4 {
 		t.Errorf("another run = (%d, %v), stored %d; want (1, nil), 4", n, err, len(db.rows))
 	}
@@ -318,7 +318,7 @@ func TestInsertCandidatesSqlSkipsExistingKeys(t *testing.T) {
 	t.Parallel()
 	db := &fakeDB{}
 	s := &Store{db: db}
-	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))}); err != nil {
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), new(1))}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(db.lastSQL, "ON CONFLICT DO NOTHING") {

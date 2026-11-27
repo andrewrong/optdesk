@@ -21,8 +21,6 @@ func replayDay(d string) types.SerializableDate {
 	return types.SerializableDate{Time: t}
 }
 
-func fptr(v float64) *float64 { return &v }
-
 // replayEod is one option_eod row of instrument 101 on day.
 func replayEod(day string, status int, received time.Time, capture string, bid, ask *float64) contracts.OptionEod {
 	return contracts.OptionEod{
@@ -116,13 +114,13 @@ func TestMarketPicksLatestReceivedAtThenCaptureID(t *testing.T) {
 	t0 := time.Date(2026, 11, 9, 14, 30, 0, 0, time.UTC)
 	rows := []contracts.OptionEod{
 		// Two rows on one day: the later received_at wins whatever the capture id.
-		replayEod("2026-11-10", eodOK, t0, "zzz", fptr(0.5), fptr(0.60)),
-		replayEod("2026-11-10", eodOK, t0.Add(time.Minute), "aaa", fptr(0.3), fptr(0.40)),
+		replayEod("2026-11-10", eodOK, t0, "zzz", new(0.5), new(0.60)),
+		replayEod("2026-11-10", eodOK, t0.Add(time.Minute), "aaa", new(0.3), new(0.40)),
 		// Same received_at: the larger capture id wins.
-		replayEod("2026-11-11", eodOK, t0, "a", fptr(0.5), fptr(0.70)),
-		replayEod("2026-11-11", eodOK, t0, "b", fptr(0.5), fptr(0.75)),
+		replayEod("2026-11-11", eodOK, t0, "a", new(0.5), new(0.70)),
+		replayEod("2026-11-11", eodOK, t0, "b", new(0.5), new(0.75)),
 		// A newer row that is not ok never wins.
-		replayEod("2026-11-12", eodOK, t0, "a", fptr(0.1), fptr(0.20)),
+		replayEod("2026-11-12", eodOK, t0, "a", new(0.1), new(0.20)),
 		replayEod("2026-11-12", 2, t0.Add(time.Hour), "b", nil, nil),
 	}
 	mkt, lots, err := resolveMarket(context.Background(), replayReaders(rows), replayBars{}, []replayapi.Lot{marketLot()})
@@ -147,9 +145,9 @@ func TestMarketLeavesAMissingDayAbsent(t *testing.T) {
 	t.Parallel()
 	t0 := time.Date(2026, 11, 9, 14, 30, 0, 0, time.UTC)
 	rows := []contracts.OptionEod{
-		replayEod("2026-11-10", eodOK, t0, "a", fptr(0.3), fptr(0.40)),
-		replayEod("2026-11-12", 4, t0, "a", fptr(0.3), fptr(0.40)), // stale: not ok
-		replayEod("2026-11-13", eodOK, t0, "a", fptr(0.3), nil),    // no ask
+		replayEod("2026-11-10", eodOK, t0, "a", new(0.3), new(0.40)),
+		replayEod("2026-11-12", 4, t0, "a", new(0.3), new(0.40)), // stale: not ok
+		replayEod("2026-11-13", eodOK, t0, "a", new(0.3), nil),   // no ask
 	}
 	bars := replayBars{closes: map[string]map[string]string{
 		"trades":        {"2026-11-09": "101", "2026-11-20": "99", "2026-11-15": "50"},

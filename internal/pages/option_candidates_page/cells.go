@@ -245,7 +245,7 @@ var (
 	colBreakEven = col("break_even", "Break-even", "right", func(c store.Candidate) any { return moneyCell(c.BreakEven) })
 	colDelta     = col("delta", "Delta", "right", func(c store.Candidate) any { return deltaCell(c.Delta) })
 	colIV        = col("iv", "IV", "right", func(c store.Candidate) any { return ivCell(c.Iv) })
-	colITM       = colDef{ID: itmID, Label: "ITM probability", Align: "right", Hint: ptr(itmHint)}
+	colITM       = colDef{ID: itmID, Label: "ITM probability", Align: "right", Hint: new(itmHint)}
 	colExcess    = colDef{ID: excessID, Label: "Vs cash", Align: "right"}
 	colMarks     = col("marks", "Marks", "left", marksCell)
 	colFit       = col("fit", "Account cash", "left", fitCell)
@@ -260,5 +260,3 @@ var (
 )
 
 var otherColumns = []colDef{colCompany, colContract, colAlias, colStatus, colReasons}
-
-func ptr(s string) *string { return &s }

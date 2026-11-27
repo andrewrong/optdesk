@@ -413,8 +413,8 @@ func TestSymbolResolvedViaStockReader(t *testing.T) {
 	// 7203 has no option_eod row: only the stock reader knows it, and the bars of its id give the price.
 	inputs.Stocks = fxFakeStocks{{InstrumentID: 7203, Type: "stock", Name: "7203"}}
 	inputs.Bars = fxFakeBars{quotes: []contracts.QuoteSnapshot{
-		{SessionDay: fixtureDay(t, "2026-11-06"), InstrumentID: 7203, Last: ptr(2500.5)},
-		{SessionDay: fixtureDay(t, "2026-11-09"), InstrumentID: 7203, Last: ptr(2512.5)},
+		{SessionDay: fixtureDay(t, "2026-11-06"), InstrumentID: 7203, Last: new(2500.5)},
+		{SessionDay: fixtureDay(t, "2026-11-09"), InstrumentID: 7203, Last: new(2512.5)},
 	}}
 	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
 	spot, ok, err := cfg.Spot(t.Context(), "7203", contracts.Day(in.Today))
@@ -444,8 +444,8 @@ func TestSpotCarriesBarDay(t *testing.T) {
 	_, inputs := fixtureStores(t, in)
 	inputs.Stocks = fxFakeStocks{{InstrumentID: 7203, Type: "stock", Name: "7203"}}
 	inputs.Bars = fxFakeBars{quotes: []contracts.QuoteSnapshot{
-		{SessionDay: fixtureDay(t, "2026-11-04"), InstrumentID: 7203, Last: ptr(2500.5)},
-		{SessionDay: fixtureDay(t, "2026-11-06"), InstrumentID: 7203, Last: ptr(2512.5)},
+		{SessionDay: fixtureDay(t, "2026-11-04"), InstrumentID: 7203, Last: new(2500.5)},
+		{SessionDay: fixtureDay(t, "2026-11-06"), InstrumentID: 7203, Last: new(2512.5)},
 	}}
 	cfg := newCompaniesPage(companies_page.Config{}, inputs, valuationFuncs{})
 	spot, ok, err := cfg.Spot(t.Context(), "7203", contracts.Day(in.Today))

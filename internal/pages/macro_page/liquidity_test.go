@@ -268,7 +268,7 @@ func TestLiquidityChangeGapWhenEitherEndMissing(t *testing.T) {
 func TestLiquidityNilFuncKeepsV1(t *testing.T) {
 	t.Parallel()
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{
-		"DGS10": {pt(t, "2026-11-03", "2026-11-04", "percent", f64(4.25)), pt(t, "2026-11-04", "2026-11-05", "percent", f64(4.3))},
+		"DGS10": {pt(t, "2026-11-03", "2026-11-04", "percent", new(4.25)), pt(t, "2026-11-04", "2026-11-05", "percent", new(4.3))},
 		"DGS2":  {pt(t, "2026-11-04", "2026-11-05", "percent", nil)},
 	}}
 	c := cfg("DGS10", "DGS2")
@@ -330,7 +330,7 @@ func TestLiquidityFuncMakesV2(t *testing.T) {
 		return fullResult()
 	}
 	rr := &recReader{inner: fakeReader{points: map[string][]contracts.SeriesPoint{
-		"WRESBAL": {pt(t, "2026-11-04", "2026-11-04", "usd", f64(2.9e12)), pt(t, "2026-11-04", "2026-11-20", "usd", f64(1))},
+		"WRESBAL": {pt(t, "2026-11-04", "2026-11-04", "usd", new(2.9e12)), pt(t, "2026-11-04", "2026-11-20", "usd", f64(1))},
 	}}}
 	b, err := Build(t.Context(), rr, c, "2026-11-13", fixedAt)
 	if err != nil {

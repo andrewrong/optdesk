@@ -74,11 +74,11 @@ func TestIvRvCellStaleBeyondFiveDays(t *testing.T) {
 func TestIvRvCellStoredCode3IsStale(t *testing.T) {
 	t.Parallel()
 	page := date("2026-11-13")
-	g := asGap(t, ivRvCell("NDX", ivrvRec("missing_input", "", intp(3), "2026-11-10"), page))
+	g := asGap(t, ivRvCell("NDX", ivrvRec("missing_input", "", new(3), "2026-11-10"), page))
 	if g.Reason != "stale_input" || g.Text != "NDX "+ivRvStale+"11-10" {
 		t.Errorf("with day: %+v", g)
 	}
-	g = asGap(t, ivRvCell("NDX", ivrvRec("missing_input", "", intp(3), ""), page))
+	g = asGap(t, ivRvCell("NDX", ivrvRec("missing_input", "", new(3), ""), page))
 	if g.Reason != "stale_input" || g.Text != "NDX "+ivRvStaleNoDay {
 		t.Errorf("no day: %+v", g)
 	}
@@ -96,7 +96,7 @@ func TestIvRvCellMissingIsMissingInput(t *testing.T) {
 	t.Parallel()
 	page := date("2026-11-13")
 	for name, r := range map[string]reading{
-		"other code": ivrvRec("missing_input", "", intp(1), "2026-11-13"),
+		"other code": ivrvRec("missing_input", "", new(1), "2026-11-13"),
 		"no code":    ivrvRec("missing_input", "", nil, ""),
 		"no day":     ivrvRec("ok", "0.032000", nil, ""),
 		"bad value":  ivrvRec("ok", "abc", nil, "2026-11-13"),

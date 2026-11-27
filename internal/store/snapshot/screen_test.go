@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func fp(v float64) *float64 { return &v }
+func fp(v float64) *float64 { return new(v) }
 
 func TestScreenSentinel(t *testing.T) {
 	t.Parallel()
@@ -15,12 +15,12 @@ func TestScreenSentinel(t *testing.T) {
 		want *float64
 	}{
 		{"minus one is no value", fp(-1), nil},
-		{"NaN", fp(math.NaN()), nil},
-		{"+Inf", fp(math.Inf(1)), nil},
-		{"-Inf", fp(math.Inf(-1)), nil},
+		{"NaN", new(math.NaN()), nil},
+		{"+Inf", new(math.Inf(1)), nil},
+		{"-Inf", new(math.Inf(-1)), nil},
 		{"zero is kept", fp(0), fp(0)},
-		{"-0.5 is kept", fp(-0.5), fp(-0.5)},
-		{"0.25 is kept", fp(0.25), fp(0.25)},
+		{"-0.5 is kept", new(-0.5), new(-0.5)},
+		{"0.25 is kept", new(0.25), new(0.25)},
 		{"nil stays nil", nil, nil},
 	}
 	for _, c := range cases {

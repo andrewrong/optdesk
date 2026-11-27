@@ -123,8 +123,6 @@ func sdate(s string) types.SerializableDate {
 	return types.SerializableDate{Time: t}
 }
 
-func fp(v float64) *float64 { return &v }
-
 func TestEodOneCallPerUnderlying(t *testing.T) {
 	t.Parallel()
 	rows := []store.Candidate{
@@ -132,11 +130,11 @@ func TestEodOneCallPerUnderlying(t *testing.T) {
 	}
 	f := &countingEod{rows: map[int64][]contracts.OptionEod{
 		1: {
-			{InstrumentID: 11, CaptureID: "a", Volume: fp(1)},
-			{InstrumentID: 11, CaptureID: "b", Volume: fp(2)},
-			{InstrumentID: 12, CaptureID: "a", Volume: fp(3)},
+			{InstrumentID: 11, CaptureID: "a", Volume: new(float64(1))},
+			{InstrumentID: 11, CaptureID: "b", Volume: new(float64(2))},
+			{InstrumentID: 12, CaptureID: "a", Volume: new(float64(3))},
 		},
-		2: {{InstrumentID: 21, CaptureID: "a", Volume: fp(4)}},
+		2: {{InstrumentID: 21, CaptureID: "a", Volume: new(float64(4))}},
 	}}
 	m, err := loadEod(context.Background(), f, rows, "2026-11-10")
 	if err != nil {
@@ -169,7 +167,9 @@ func TestEodNilReaderAndError(t *testing.T) {
 
 func TestEodTextGap(t *testing.T) {
 	t.Parallel()
-	e := &contracts.OptionEod{Volume: fp(1240), OpenInterest: fp(5310), ThetaPerCalendarDay: fp(-0.0312), Gamma: nil, VegaPerVolPoint: fp(0.1)}
+	e := &contracts.OptionEod{
+		Volume: new(float64(1240)), OpenInterest: new(float64(5310)), ThetaPerCalendarDay: new(-0.0312), Gamma: nil, VegaPerVolPoint: new(0.1),
+	}
 	got := eodTextOf(e)
 	want := eodText{Volume: "1240", OpenInterest: "5310", Theta: "−0.0312", Gamma: "n/a", Vega: "0.1000"}
 	if got != want {
@@ -195,7 +195,7 @@ func TestEodTextGreeks(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: fp(c.in), Gamma: fp(c.in), VegaPerVolPoint: fp(c.in)})
+			got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: new(c.in), Gamma: new(c.in), VegaPerVolPoint: new(c.in)})
 			if got.Theta != c.want || got.Gamma != c.want || got.Vega != c.want {
 				t.Errorf("got %+v, want %q in all three", got, c.want)
 			}
@@ -206,14 +206,14 @@ func TestEodTextGreeks(t *testing.T) {
 func TestEodTextGreekNonFiniteIsGap(t *testing.T) {
 	t.Parallel()
 	inf, nan := math.Inf(1), math.NaN()
-	got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: &nan, Gamma: &inf, VegaPerVolPoint: fp(math.Inf(-1))})
+	got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: &nan, Gamma: &inf, VegaPerVolPoint: new(math.Inf(-1))})
 	if got.Theta != "n/a" || got.Gamma != "n/a" || got.Vega != "n/a" {
 		t.Errorf("got %+v, want n/a in all three", got)
 	}
 }
 
 func eodOf(day string, capture string, inst int, vol float64) contracts.OptionEod {
-	return contracts.OptionEod{InstrumentID: inst, CaptureID: capture, SessionDay: sdate(day), Volume: fp(vol)}
+	return contracts.OptionEod{InstrumentID: inst, CaptureID: capture, SessionDay: sdate(day), Volume: new(vol)}
 }
 
 func oneUnderlying() []store.Candidate { return []store.Candidate{{InstrumentID: 11, UnderlyingID: 1}} }

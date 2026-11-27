@@ -27,8 +27,8 @@ func TestFixedText(t *testing.T) {
 func TestYieldCellUnreadable(t *testing.T) {
 	t.Parallel()
 	for _, bad := range []string{"abc", "1e-2"} {
-		if g, ok := yieldCell(strp(bad)).(gap); !ok || g.Reason != "unreadable" {
-			t.Errorf("yieldCell(%q) = %+v", bad, yieldCell(strp(bad)))
+		if g, ok := yieldCell(new(bad)).(gap); !ok || g.Reason != "unreadable" {
+			t.Errorf("yieldCell(%q) = %+v", bad, yieldCell(new(bad)))
 		}
 	}
 }

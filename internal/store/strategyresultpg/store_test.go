@@ -96,8 +96,6 @@ func (s rowScanner) Scan(dest ...any) error {
 	return nil
 }
 
-func ip(n int) *int { return &n }
-
 func newFake() (*resultStore, *fakeDB) {
 	db := &fakeDB{}
 	return &resultStore{db: db}, db
@@ -165,8 +163,8 @@ func TestResultsRankedFirst(t *testing.T) {
 	st, _ := newFake()
 	ctx := context.Background()
 	_, _ = st.InsertResults(ctx, []strategyresult.Row{
-		mkRow("r", "9", nil, t0), mkRow("r", "10", ip(2), t0), mkRow("r", "20", ip(1), t0), mkRow("r", "2", nil, t0),
-		mkRow("r", "5", ip(2), t0)})
+		mkRow("r", "9", nil, t0), mkRow("r", "10", new(2), t0), mkRow("r", "20", new(1), t0), mkRow("r", "2", nil, t0),
+		mkRow("r", "5", new(2), t0)})
 	got, err := st.Results(ctx, "2026-11-13", "short_put")
 	if err != nil {
 		t.Fatal(err)

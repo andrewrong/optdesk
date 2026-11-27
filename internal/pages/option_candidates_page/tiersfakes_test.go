@@ -87,7 +87,7 @@ func cashAt(alias, day, value string) map[string][]store.AccountValue {
 func tierPut(id int, status, strike, bid string) store.Candidate {
 	c := okPut(id)
 	c.Status, c.Strike, c.BidEod = status, strike, bid
-	c.Delta, c.Iv = strp("-0.19"), strp("0.305")
+	c.Delta, c.Iv = new("-0.19"), new("0.305")
 	return c
 }
 
@@ -189,7 +189,7 @@ func fieldByID(r tierRow, id string) *fieldView {
 func tierScenario(name string) (Config, *fakeTierer) {
 	a0, a1, a2 := tierPut(1, "ok", "85.00", "0.42"), tierPut(2, "ok", "90.00", "0.94"), tierPut(3, "blocked", "87.50", "0.60")
 	bbb := tierPut(5, "ok", "40.00", "0.50")
-	bbb.UnderlyingID, bbb.BuyPrice, bbb.Spot = 8, nil, strp("41.20")
+	bbb.UnderlyingID, bbb.BuyPrice, bbb.Spot = 8, nil, new("41.20")
 	k := func(rows []store.Candidate, i int) string { return keyOf(rows, i) }
 	var rows []store.Candidate
 	var res optiontierapi.Result
