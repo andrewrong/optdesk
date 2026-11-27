@@ -178,12 +178,11 @@ func TestAlertTextCapsLines(t *testing.T) {
 		rs = append(rs, fired(fmt.Sprintf("r%02d", i), "n"))
 	}
 	r := newAlertRig(t, noon(), notify.Config{}, rs...)
-	text := ""
 	n, err := r.n.NotifyAlerts(context.Background())
 	if err != nil || n != 20 {
 		t.Fatalf("got %d, %v", n, err)
 	}
-	text = r.sender.Texts()[0]
+	text := r.sender.Texts()[0]
 	lines := strings.Split(text, "\n")
 	if len(lines) != 22 || lines[21] != "and 5 more" || !strings.HasPrefix(lines[0], "optdesk: 25 market") || len(text) > 3500 {
 		t.Fatalf("lines %d, last %q", len(lines), lines[len(lines)-1])
