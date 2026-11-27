@@ -98,7 +98,7 @@ func TestRowTablesCoverKnownRows(t *testing.T) {
 		t.Errorf("PublishLag = %v, want only rates 1", PublishLag)
 	}
 	want := map[string]contracts.Day{"chains": "2026-11-11", "contracts": "2026-11-13", "calendar": "2026-11-11", "flex": "2026-11-11", "open": "2026-11-10"}
-	if !reflect.DeepEqual(map[string]contracts.Day(RowHistoryStart), want) {
+	if !reflect.DeepEqual(RowHistoryStart, want) {
 		t.Errorf("RowHistoryStart = %v", RowHistoryStart)
 	}
 }
