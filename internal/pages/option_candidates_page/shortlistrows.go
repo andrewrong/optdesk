@@ -43,7 +43,7 @@ func buySourceOf(c store.Candidate) string {
 func shortRowOf(p optionshortlistapi.Placed, c store.Candidate, t *tierRow, cur string) shortRow {
 	r := shortRow{
 		Key: p.Key, Strike: moneyPair(c.Strike, unreadable, cur),
-		Expiry:     pairView{Main: string(c.Expiry), Sub: subOf(strconv.Itoa(c.DTE) + dteSuffix)},
+		Expiry:     pairView{Main: string(c.Expiry), Sub: new(strconv.Itoa(c.DTE) + dteSuffix)},
 		OTM:        otmPair(p.OTM),
 		Delta:      deltaPair(c, p.AbsDelta),
 		Annualized: annualizedPair(c),
@@ -106,7 +106,7 @@ func annualizedPair(c store.Candidate) pairView {
 func premiumOf(c store.Candidate, t *tierRow, cur string) pairView {
 	p := moneyPair(c.BidEod, gapNoBid, cur)
 	if p.Gap == nil && t != nil && t.Premium.Gap == nil {
-		p.Sub = subOf(t.Premium.Main)
+		p.Sub = new(t.Premium.Main)
 	}
 	return p
 }
@@ -121,7 +121,7 @@ func buyOf(c store.Candidate, t *tierRow, cur string) (pairView, *badgeView, *st
 	}
 	p := moneyPair(deref(c.BuyPrice), slNoBuyPrice, cur)
 	if p.Gap == nil && t != nil && t.Margin.Gap == nil && t.shortSub != nil {
-		p.Sub = subOf(*t.shortSub + slMarginJoin + t.Margin.Main)
+		p.Sub = new(*t.shortSub + slMarginJoin + t.Margin.Main)
 	}
 	return p, buySourceBadge(code), nil
 }

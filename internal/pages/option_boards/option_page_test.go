@@ -28,25 +28,21 @@ const buildDay = contracts.Day("2026-11-10")
 // buildAt is 09:30 on the build day in the owner zone, given in UTC.
 var buildAt = time.Date(2026, 11, 10, 1, 30, 0, 0, time.UTC)
 
-func ip(n int) *int { return &n }
-
-func dayp(d contracts.Day) *contracts.Day { return &d }
-
 // row builds a stored short put; tests change the fields they care about.
 func candRow(id int, issuer string, under int, status string) store.Candidate {
 	return store.Candidate{
 		SessionDay: buildDay, Kind: "short_put", InstrumentID: id, Issuer: issuer, UnderlyingID: under,
-		Expiry: "2026-11-13", DTE: 3, Right: "put", Strike: "62", Multiplier: 100, BidEod: "1.20", Ask: sp("1.30"),
-		Spot: sp("67.5"), BreakEven: "60.80", AnnualizedYield: sp("0.123456"), Delta: sp("-0.15"), Iv: sp("0.38"),
+		Expiry: "2026-11-13", DTE: 3, Right: "put", Strike: "62", Multiplier: 100, BidEod: "1.20", Ask: new("1.30"),
+		Spot: new("67.5"), BreakEven: "60.80", AnnualizedYield: new("0.123456"), Delta: new("-0.15"), Iv: new("0.38"),
 		Status: status, Gates: `[{"gate":"events","status":"pass"}]`, Marks: "[]", Fits: "{}",
-		NextEarnings: dayp("2026-12-01"), EarningsState: "listed",
+		NextEarnings: new(contracts.Day("2026-12-01")), EarningsState: "listed",
 		ComputedAt: time.Date(2026, 11, 10, 0, 40, 0, 0, time.UTC),
 	}
 }
 
 func okRow(id int, issuer string, under, rank, inU int) store.Candidate {
 	c := candRow(id, issuer, under, "ok")
-	c.Rank, c.RankInUnderlying = ip(rank), ip(inU)
+	c.Rank, c.RankInUnderlying = new(rank), new(inU)
 	return c
 }
 
@@ -54,12 +50,12 @@ func okRow(id int, issuer string, under, rank, inU int) store.Candidate {
 func fixtureRows() []store.Candidate {
 	a1 := okRow(11, issuerApple, 1, 1, 1)
 	a2 := okRow(12, issuerApple, 1, 2, 2)
-	a2.Expiry, a2.DTE, a2.Strike, a2.BidEod, a2.Ask, a2.Delta = "2026-11-20", 10, "60", "0.95", sp("1.05"), sp("-0.1")
+	a2.Expiry, a2.DTE, a2.Strike, a2.BidEod, a2.Ask, a2.Delta = "2026-11-20", 10, "60", "0.95", new("1.05"), new("-0.1")
 	b1 := okRow(21, issuerMsft, 2, 3, 1)
-	b1.Strike, b1.Spot, b1.BidEod, b1.Ask = "30.5", sp("33"), "0.40", sp("0.44")
+	b1.Strike, b1.Spot, b1.BidEod, b1.Ask = "30.5", new("33"), "0.40", new("0.44")
 	b1.Marks, b1.EarningsState, b1.NextEarnings = `["earnings_unconfirmed"]`, "absent", nil
 	b2 := candRow(22, issuerMsft, 2, "blocked")
-	b2.Gates, b2.Strike, b2.BidEod, b2.Ask = `[{"gate":"events","status":"block","reason":"earnings_in_term"}]`, "31", "0.50", sp("0.60")
+	b2.Gates, b2.Strike, b2.BidEod, b2.Ask = `[{"gate":"events","status":"block","reason":"earnings_in_term"}]`, "31", "0.50", new("0.60")
 	b3 := candRow(23, issuerMsft, 2, "unknown")
 	b3.Gates = `[{"gate":"quote","status":"unknown","reason":"no_ask"}]`
 	b3.Ask, b3.EarningsState, b3.NextEarnings, b3.Delta, b3.Strike = nil, "unknown", nil, nil, "29"
@@ -68,8 +64,8 @@ func fixtureRows() []store.Candidate {
 
 func fixtureEod() *countingEod {
 	return &countingEod{rows: map[int64][]contracts.OptionEod{
-		1: {{InstrumentID: 11, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(1240), OpenInterest: fp(5310)}},
-		2: {{InstrumentID: 21, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(10)}},
+		1: {{InstrumentID: 11, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: new(float64(1240)), OpenInterest: new(float64(5310))}},
+		2: {{InstrumentID: 21, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: new(float64(10))}},
 	}}
 }
 
@@ -358,7 +354,7 @@ func TestOptionTableMissingBidIsGap(t *testing.T) {
 	one := candRow(1, "NOB", 1, "ok")
 	one.BidEod = ""
 	one.Ask = nil
-	one.AnnualizedYield = sPtr("0")
+	one.AnnualizedYield = new("0")
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
 	row := tableRowsOf(m)[0]
 	if c := cellOf(t, row, "annualised"); c["reason"] != "missing_input" || c["text"] != "missing bid" {
@@ -377,11 +373,11 @@ func TestDeltaCellKeepsFourPlaces(t *testing.T) {
 		text  string
 		value any
 	}{
-		{"four places", sp("-0.2446"), "−0.24", float64(-2446)},
-		{"two places", sp("-0.15"), "−0.15", float64(-1500)},
-		{"one place", sp("-0.1"), "−0.10", float64(-1000)},
-		{"long stored delta", sp("-0.31495717239425247"), "−0.31", float64(-3150)},
-		{"rounds up to one", sp("0.99999999"), "1.00", float64(10000)},
+		{"four places", new("-0.2446"), "−0.24", float64(-2446)},
+		{"two places", new("-0.15"), "−0.15", float64(-1500)},
+		{"one place", new("-0.1"), "−0.10", float64(-1000)},
+		{"long stored delta", new("-0.31495717239425247"), "−0.31", float64(-3150)},
+		{"rounds up to one", new("0.99999999"), "1.00", float64(10000)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -412,7 +408,7 @@ func TestDeltaCellRoundsLiveDelta(t *testing.T) {
 	one := candRow(1, "NOB", 1, "ok")
 	opens := []contracts.OptionOpen{{
 		InstrumentID: one.InstrumentID, Slot: "0945", Status: 1, MarketDataType: 1, Delta: &d,
-		EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
+		EventTs: new(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
 	}}
 	c := OptionConfig{
 		RunID: "run-1", BuildID: "build-1", Scope: "options", Zone: testZone,
@@ -528,7 +524,7 @@ func TestMoneyText(t *testing.T) {
 func TestCardNumberFormats(t *testing.T) {
 	t.Parallel()
 	r := okRow(1, issuerApple, 1, 1, 1)
-	r.AnnualizedYield, r.Delta, r.BidEod, r.BreakEven = sp("1.444379"), sp("-0.5594"), "65.6", "724.35"
+	r.AnnualizedYield, r.Delta, r.BidEod, r.BreakEven = new("1.444379"), new("-0.5594"), "65.6", "724.35"
 	c := buildCard(r, nil, displayNames{})
 	if c.AnnualisedText != "144.4%" {
 		t.Errorf("annualised text = %q", c.AnnualisedText)
@@ -551,7 +547,7 @@ func TestCardNumberFormats(t *testing.T) {
 func TestTableChainCardsMoneyAndIvFormats(t *testing.T) {
 	t.Parallel()
 	one := candRow(1, "NOB", 1, "ok")
-	one.BidEod, one.Ask, one.Iv = "24.4", sp("26"), sp("0.38")
+	one.BidEod, one.Ask, one.Iv = "24.4", new("26"), new("0.38")
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
 	if c := cellOf(t, tableRowsOf(m)[0], "bid_ask"); c["text"] != "$24.40 / $26.00" {
 		t.Errorf("bid_ask = %v", c)
@@ -566,15 +562,15 @@ func TestTableChainCardsMoneyAndIvFormats(t *testing.T) {
 		}
 	}
 	two := candRow(2, "NOC", 2, "ok")
-	two.BidEod, two.Ask = "62.6", sp("62.8")
+	two.BidEod, two.Ask = "62.6", new("62.8")
 	m2 := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {two}}}, nil, buildDay))
 	if c := cellOf(t, tableRowsOf(m2)[0], "bid_ask"); c["text"] != "$62.60 / $62.80" {
 		t.Errorf("bid_ask = %v", c)
 	}
-	if got := ivLine(sp("0.38")); got != "IV 38.0% · HV30 n/a · IVP n/a" {
+	if got := ivLine(new("0.38")); got != "IV 38.0% · HV30 n/a · IVP n/a" {
 		t.Errorf("iv line = %q", got)
 	}
-	if got := ivLine(sp("abc")); got != "IV n/a · HV30 n/a · IVP n/a" {
+	if got := ivLine(new("abc")); got != "IV n/a · HV30 n/a · IVP n/a" {
 		t.Errorf("iv line = %q", got)
 	}
 }

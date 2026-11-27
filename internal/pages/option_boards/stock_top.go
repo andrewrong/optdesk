@@ -12,9 +12,9 @@ const (
 func fillTop(t *topBar, rows []stockRow) error {
 	first := rows[0].C
 	if first.Spot != nil {
-		t.Spot = strPtr("Last price " + *first.Spot)
+		t.Spot = new("Last price " + *first.Spot)
 	}
-	t.IV = strPtr(ivMissing)
+	t.IV = new(ivMissing)
 	for _, r := range rows {
 		if r.C.Rank == nil {
 			continue
@@ -24,7 +24,7 @@ func fillTop(t *topBar, rows []stockRow) error {
 			if err != nil {
 				return fmt.Errorf("option_boards: iv of instrument %d: %w", r.C.InstrumentID, err)
 			}
-			t.IV = strPtr("IV " + pct + ivTail)
+			t.IV = new("IV " + pct + ivTail)
 		}
 		break
 	}
@@ -32,7 +32,7 @@ func fillTop(t *topBar, rows []stockRow) error {
 	if err != nil {
 		return err
 	}
-	t.Earnings = strPtr("Earnings " + e)
+	t.Earnings = new("Earnings " + e)
 	return nil
 }
 

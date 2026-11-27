@@ -252,7 +252,7 @@ func byCompanyColumns(day string) []tierColumn {
 	cols := columnsOf(day)
 	for i := range cols {
 		if cols[i].ID == colPremiumID {
-			cols[i].Label, cols[i].Hint = zhColPremiumYield, ptr(zhHintPremiumYield)
+			cols[i].Label, cols[i].Hint = zhColPremiumYield, new(zhHintPremiumYield)
 		}
 	}
 	return cols

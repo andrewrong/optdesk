@@ -28,7 +28,7 @@ var bandParams = optiontierapi.Params{
 // blockPut is a stored put of underlying id with its spot and buy price.
 func blockPut(n, id int, strike, spot string, buy *string) store.Candidate {
 	c := tierPut(n, "ok", strike, "0.50")
-	c.UnderlyingID, c.Spot, c.BuyPrice = id, strp(spot), buy
+	c.UnderlyingID, c.Spot, c.BuyPrice = id, new(spot), buy
 	return c
 }
 
@@ -36,12 +36,12 @@ func blockPut(n, id int, strike, spot string, buy *string) store.Candidate {
 // rows out of the band, DDD with no buy price and a valuation figure. res holds the blocks.
 func blockScenario() (Config, optiontierapi.Result) {
 	rows := []store.Candidate{
-		blockPut(1, 7, "85.00", "96.50", strp("90.00")), blockPut(2, 7, "88.00", "96.50", strp("90.00")),
-		blockPut(3, 7, "90.00", "96.50", strp("90.00")), blockPut(4, 7, "100.00", "96.50", strp("90.00")),
-		blockPut(5, 7, "95.00", "96.50", strp("90.00")),
-		blockPut(6, 8, "135.00", "130.00", strp("40.00")), blockPut(7, 8, "120.00", "130.00", strp("40.00")),
-		blockPut(8, 8, "125.00", "130.00", strp("40.00")),
-		blockPut(9, 9, "48.00", "50.00", strp("45.00")), blockPut(10, 9, "44.00", "50.00", strp("45.00")),
+		blockPut(1, 7, "85.00", "96.50", new("90.00")), blockPut(2, 7, "88.00", "96.50", new("90.00")),
+		blockPut(3, 7, "90.00", "96.50", new("90.00")), blockPut(4, 7, "100.00", "96.50", new("90.00")),
+		blockPut(5, 7, "95.00", "96.50", new("90.00")),
+		blockPut(6, 8, "135.00", "130.00", new("40.00")), blockPut(7, 8, "120.00", "130.00", new("40.00")),
+		blockPut(8, 8, "125.00", "130.00", new("40.00")),
+		blockPut(9, 9, "48.00", "50.00", new("45.00")), blockPut(10, 9, "44.00", "50.00", new("45.00")),
 		blockPut(11, 10, "40.00", "41.20", nil), blockPut(12, 10, "39.00", "41.20", nil),
 	}
 	k := func(i int) string { return keyOf(rows, i) }
@@ -95,7 +95,7 @@ func rowByID(v *tiersView, id string) (tierRow, bool) {
 
 func TestVerdictWordsAndTexts(t *testing.T) {
 	t.Parallel()
-	cv := companyView{Spot: "$130.00", BuyPrice: strp("$40.00")}
+	cv := companyView{Spot: "$130.00", BuyPrice: new("$40.00")}
 	cb := optiontierapi.CompanyBlock{NFit: 2, NCheck: 1, NOpen: 4}
 	want := []struct{ state, word, glyph, tone string }{
 		{"sellable", "有可卖", "✓", "success"}, {"out_band", "筛选范围内暂无可卖", "!", "warn"},

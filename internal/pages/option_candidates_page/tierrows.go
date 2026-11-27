@@ -110,8 +110,6 @@ func gapPair(reason, text string) pairView {
 	return pairView{Main: text, Gap: &g}
 }
 
-func subOf(s string) *string { return &s }
-
 // figurePair is a percent figure as the main text of a pair, or the gap pair when it is empty or unreadable.
 func figurePair(v optiontierapi.Verdict, id, text, fallback string) (pairView, bool) {
 	if text == "" {
@@ -140,7 +138,7 @@ func marginSub(v optiontierapi.Verdict, c store.Candidate, cur, head, vs string)
 	if !ok1 || !ok2 {
 		return nil
 	}
-	return subOf(head + be + vs + buy)
+	return new(head + be + vs + buy)
 }
 
 func belowSpotPair(v optiontierapi.Verdict) pairView {
@@ -149,9 +147,9 @@ func belowSpotPair(v optiontierapi.Verdict) pairView {
 		return p
 	}
 	if m, ok := fixedText(v.Moves, 1); v.Moves != "" && ok {
-		p.Sub = subOf(minusText(m) + movesSuffix)
+		p.Sub = new(minusText(m) + movesSuffix)
 	} else {
-		p.Sub = subOf(whyText(v, "moves", gapNoIV))
+		p.Sub = new(whyText(v, "moves", gapNoIV))
 	}
 	return p
 }
@@ -166,11 +164,11 @@ func premiumPair(v optiontierapi.Verdict, cur string) pairView {
 	}
 	p := pairView{Main: main}
 	if y, ok := fixedText(v.YieldPct, 1); v.YieldPct != "" && ok {
-		p.Sub = subOf(minusText(y) + yieldSubSuffix)
+		p.Sub = new(minusText(y) + yieldSubSuffix)
 	} else if v.Why["yield"] == whyBelowIntr {
-		p.Sub = subOf(belowIntrinsicText)
+		p.Sub = new(belowIntrinsicText)
 	} else {
-		p.Sub = subOf(whyText(v, "yield", gapNoYield))
+		p.Sub = new(whyText(v, "yield", gapNoYield))
 	}
 	return p
 }
@@ -276,7 +274,7 @@ func (e rowEnv) fieldsOf(v optiontierapi.Verdict, c store.Candidate, pos int) []
 		cellField(fieldBidID, fieldBidLabel, dayHinted(hintBid, e.day), moneyCellIn(c.BidEod, e.cur)),
 	}
 	if e.cur == currencyJPY {
-		fields = append(fields, cellField(colSecuredID, colSecuredLabel, ptr(jpSecuredHintZh), securedCell(c)))
+		fields = append(fields, cellField(colSecuredID, colSecuredLabel, new(jpSecuredHintZh), securedCell(c)))
 	}
 	for _, d := range e.cols {
 		fields = append(fields, cellField(d.ID, d.Label, d.Hint, d.cellAt(pos, c)))

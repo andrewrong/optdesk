@@ -510,11 +510,11 @@ func TestColumnHintsShort(t *testing.T) {
 		hint *string
 	}{
 		{colArrowID, nil}, {colTierID, nil},
-		{colContractID, ptr("标的、行权价、到期日、剩余天数")},
-		{colMarginID, ptr("保本点比买入价低多少")},
-		{colBelowSpotID, ptr("保本点比现价低多少")},
-		{colPremiumID, ptr("每份合约的钱 / 年化收益")},
-		{colBadgesID, ptr("需要再看一眼的地方")},
+		{colContractID, new("标的、行权价、到期日、剩余天数")},
+		{colMarginID, new("保本点比买入价低多少")},
+		{colBelowSpotID, new("保本点比现价低多少")},
+		{colPremiumID, new("每份合约的钱 / 年化收益")},
+		{colBadgesID, new("需要再看一眼的地方")},
 	}
 	if len(cols) != len(want) {
 		t.Fatalf("columns = %d", len(cols))
