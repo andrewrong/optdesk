@@ -48,7 +48,7 @@ func TestBuildTerms(t *testing.T) {
 	t.Run("one call with kept ids in row order, at most 500", func(t *testing.T) {
 		var rows []contracts.OptionEod
 		for i := 1; i <= 600; i++ {
-			rows = append(rows, eodRow(t, i, f64(float64(i)), "2026-11-06T21:00:00Z"))
+			rows = append(rows, eodRow(t, i, new(float64(i)), "2026-11-06T21:00:00Z"))
 		}
 		ft := &fakeTerms{}
 		c := cfg(&fakeEod{rows: rows}, &fakeQuotes{})

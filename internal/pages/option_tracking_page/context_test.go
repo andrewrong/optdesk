@@ -184,11 +184,11 @@ func (r *rig) config() Config {
 	}
 }
 
-func fp(v float64) *float64 { return &v }
+func fp(v float64) *float64 { return new(v) }
 
 func eodRow(id int, day string, bid, ask float64) contracts.OptionEod {
 	d, _ := time.Parse("2006-01-02", day)
-	return contracts.OptionEod{InstrumentID: id, SessionDay: types.SerializableDate{Time: d}, Bid: fp(bid), Ask: fp(ask)}
+	return contracts.OptionEod{InstrumentID: id, SessionDay: types.SerializableDate{Time: d}, Bid: new(bid), Ask: new(ask)}
 }
 
 func put(id int64, strike string) store.OptionTerms {
@@ -298,7 +298,7 @@ func TestFloatBecomesDecimalText(t *testing.T) {
 	cases := []struct {
 		in   *float64
 		want string
-	}{{fp(0.1), "0.1"}, {fp(12), "12"}, {fp(1.5e-7), "0.00000015"}, {&nan, ""}, {&inf, ""}, {nil, ""}}
+	}{{new(0.1), "0.1"}, {fp(12), "12"}, {new(1.5e-7), "0.00000015"}, {&nan, ""}, {&inf, ""}, {nil, ""}}
 	for _, c := range cases {
 		if got := decimalText(c.in); got != c.want {
 			t.Errorf("decimalText = %q, want %q", got, c.want)
@@ -463,9 +463,9 @@ func printRig() *rig {
 	r := newRig()
 	r.terms[10], r.terms[11] = put(10, "150"), put(11, "160")
 	held := eodRow(10, "2026-11-06", 1, 1.2)
-	held.UnderlyingPrice = fp(150.5)
+	held.UnderlyingPrice = new(150.5)
 	other := eodRow(11, "2026-11-09", 3, 3.2)
-	other.UnderlyingPrice = fp(152.25)
+	other.UnderlyingPrice = new(152.25)
 	r.eod[1] = []contracts.OptionEod{held, other}
 	return r
 }

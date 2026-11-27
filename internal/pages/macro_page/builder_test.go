@@ -55,7 +55,7 @@ func pt(t *testing.T, obs, rt, unit string, v *float64) contracts.SeriesPoint {
 	}
 }
 
-func f64(v float64) *float64 { return &v }
+func f64(v float64) *float64 { return new(v) }
 
 func cfg(ids ...string) Config {
 	c := Config{RunID: "run-1", BuildID: "build-1", Scope: "macro", Zone: zone}
@@ -137,7 +137,7 @@ const golden = `{"schema":"macro_page","schema_version":1,"run_id":"run-1","buil
 func TestBuildGolden(t *testing.T) {
 	t.Parallel()
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{
-		"DGS10": {pt(t, "2026-11-03", "2026-11-04", "percent", f64(4.25)), pt(t, "2026-11-04", "2026-11-05", "percent", f64(4.3))},
+		"DGS10": {pt(t, "2026-11-03", "2026-11-04", "percent", new(4.25)), pt(t, "2026-11-04", "2026-11-05", "percent", new(4.3))},
 		"DGS2":  {pt(t, "2026-11-04", "2026-11-05", "percent", nil)},
 	}}
 	c := cfg("DGS10", "DGS2")
@@ -162,7 +162,7 @@ func TestIndicatorStatus(t *testing.T) {
 		status, text string
 		latestKey    string
 	}{
-		{"good", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", f64(4.5))}, "good", "\u6309\u65f6 On time", "unit"},
+		{"good", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", new(4.5))}, "good", "\u6309\u65f6 On time", "unit"},
 		{"good at limit", []contracts.SeriesPoint{pt(t, "2026-10-30", "2026-10-30", "percent", f64(4))}, "good", "\u6309\u65f6 On time", "unit"},
 		{"late", []contracts.SeriesPoint{pt(t, "2026-10-29", "2026-10-29", "percent", f64(4))}, "late", "\u5ef6\u8fdf Late", "unit"},
 		{"missing", nil, "missing", "n/a", "reason"},
@@ -184,7 +184,7 @@ func TestIndicatorStatus(t *testing.T) {
 	}
 	t.Run("text is shortest decimal", func(t *testing.T) {
 		t.Parallel()
-		m := build(t, fakeReader{points: map[string][]contracts.SeriesPoint{"S": {pt(t, "2026-11-04", "2026-11-04", "percent", f64(4.30))}}}, cfg("S"), "2026-11-05")
+		m := build(t, fakeReader{points: map[string][]contracts.SeriesPoint{"S": {pt(t, "2026-11-04", "2026-11-04", "percent", new(4.30))}}}, cfg("S"), "2026-11-05")
 		if got := indicator(m, 0)["latest"].(map[string]any)["text"]; got != "4.3%" {
 			t.Fatalf("text = %v", got)
 		}
@@ -194,15 +194,15 @@ func TestIndicatorStatus(t *testing.T) {
 func TestVintageBound(t *testing.T) {
 	t.Parallel()
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{"S": {
-		pt(t, "2026-11-04", "2026-11-04", "percent", f64(4.1)),
-		pt(t, "2026-11-04", "2026-11-06", "percent", f64(9.9)),
+		pt(t, "2026-11-04", "2026-11-04", "percent", new(4.1)),
+		pt(t, "2026-11-04", "2026-11-06", "percent", new(9.9)),
 	}}}
 	m := build(t, r, cfg("S"), "2026-11-05")
 	if got := indicator(m, 0)["latest"].(map[string]any)["value"]; got != 4.1 {
 		t.Fatalf("value = %v, want the vintage not after day", got)
 	}
 	// among vintages on or before day the greatest RealtimeStart wins
-	r.points["S"] = append(r.points["S"], pt(t, "2026-11-04", "2026-11-05", "percent", f64(4.2)))
+	r.points["S"] = append(r.points["S"], pt(t, "2026-11-04", "2026-11-05", "percent", new(4.2)))
 	m = build(t, r, cfg("S"), "2026-11-05")
 	if got := indicator(m, 0)["latest"].(map[string]any)["value"]; got != 4.2 {
 		t.Fatalf("value = %v, want 4.2", got)
@@ -340,7 +340,7 @@ func TestBuildV2SchemaVersion(t *testing.T) {
 func TestWeeklySeriesDoesNotSetStale(t *testing.T) {
 	t.Parallel()
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{
-		"NFCI": {pt(t, "2026-10-28", "2026-10-28", "percent", f64(-0.5))},
+		"NFCI": {pt(t, "2026-10-28", "2026-10-28", "percent", new(-0.5))},
 		"DFF":  {pt(t, "2026-11-04", "2026-11-04", "percent", f64(4))},
 	}}
 	c := cfg()

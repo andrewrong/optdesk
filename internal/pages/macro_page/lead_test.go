@@ -57,7 +57,7 @@ func daily(t *testing.T, last string, n int, start, step float64) []contracts.Se
 	var out []contracts.SeriesPoint
 	for i := range n {
 		d := end.AddDate(0, 0, i-n+1).Format(dayLayout)
-		out = append(out, pt(t, d, d, "percent", f64(start+step*float64(i))))
+		out = append(out, pt(t, d, d, "percent", new(start+step*float64(i))))
 	}
 	return out
 }
@@ -66,9 +66,9 @@ func leadSeries(t *testing.T) fakeReader {
 	return fakeReader{points: map[string][]contracts.SeriesPoint{
 		"DGS3MO":       daily(t, "2026-11-04", 10, 4.0, 0.1),
 		"BAMLH0A0HYM2": daily(t, "2026-11-04", 10, 3.0, -0.02),
-		"VIXCLS":       {pt(t, "2026-11-04", "2026-11-04", "index", f64(17.2))},
+		"VIXCLS":       {pt(t, "2026-11-04", "2026-11-04", "index", new(17.2))},
 		"VXNCLS":       {pt(t, "2026-11-04", "2026-11-04", "index", f64(21))},
-		"RVXCLS":       {pt(t, "2026-11-04", "2026-11-04", "index", f64(20.1))},
+		"RVXCLS":       {pt(t, "2026-11-04", "2026-11-04", "index", new(20.1))},
 	}}
 }
 
