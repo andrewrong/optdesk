@@ -113,6 +113,21 @@ const (
 	zhWhyPlanAbsent    = "这个数据集在这个交易日没有任何计划记录，任务可能根本没有运行。"
 	zhWhyGapUnclosed   = "任务记录了这个缺口，超过宽限时间仍然没有补上。"
 
+	zhLabelRuleVersion = "候选的规则版本落后"
+	zhLabelEarnings    = "财报日检查失败或突然查不到"
+	zhLabelBarShape    = "日线开收价超出最高最低价"
+
+	zhWhyRuleVersion = "规则版本是算候选时那套规则的编号，存的编号和现在代码里的不同，说明这些候选是旧规则算的，需要重算"
+	zhWhyEarnings    = "检查出错，或昨天有日期今天一个都没有；提供方没有日期不算问题"
+	zhWhyBarShape    = "一根日线的开盘或收盘价必须落在它自己的最高价和最低价之间，不满足就是存错了"
+
+	zhEvNames        = "检查 %d 个"
+	zhEvListed       = "查到 %d 个"
+	zhEvErrors       = "出错 %d 个"
+	zhEvListedBefore = "昨天查到 %[1]d 个，今天 %[2]d 个"
+	zhEvBad          = "不合格 %d 根"
+	zhEvRowsBad      = "共 %[1]d 根，不合格 %[2]d 根"
+
 	zhEvOK         = "%d 个读数正常"
 	zhEvSame       = "%d 个与前一日相同"
 	zhEvRows       = "共 %d 行"
