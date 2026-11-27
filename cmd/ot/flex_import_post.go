@@ -195,7 +195,7 @@ func (p *flexImportRun) close() {
 
 // gaps is the line that says what was not stored, when a write failed.
 func (p *flexImportRun) gaps() []flexpage.Gap {
-	text := ""
+	var text string
 	switch {
 	case p.openFailed:
 		text = "The ledger store could not be opened: nothing was stored and no record was left."

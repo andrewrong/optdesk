@@ -91,8 +91,8 @@ func (tokenSource) Fetch(context.Context, sources.FlexRequest) (sources.FlexRepo
 	return sources.FlexReport{FetchedAt: time.Date(2026, 11, 5, 3, 0, 0, 0, time.UTC), RawSHA256: "00", Statements: []sources.FlexStatement{st}}, nil
 }
 
-// newLedgerRig fills the rig; real makes the job the real one (the rule of the job is then under test).
-func newLedgerRig(t *testing.T, env string, real bool) *ledgerRig {
+// newLedgerRig fills the rig; useReal makes the job the real one (the rule of the job is then under test).
+func newLedgerRig(t *testing.T, env string, useReal bool) *ledgerRig {
 	t.Helper()
 	l := &ledgerRig{rig: newRig(t, env), st: &ledgerFakeStore{}, file: flexTestFile}
 	writeDefaultBook(t, l.a)
@@ -109,7 +109,7 @@ func newLedgerRig(t *testing.T, env string, real bool) *ledgerRig {
 		l.tokens = append(l.tokens, c.Token)
 		return tokenSource{c.Token}, nil
 	}
-	if real {
+	if useReal {
 		d.newOptionLedgerJob = optionledgerjob.New
 	} else {
 		d.newOptionLedgerJob = func(s optionledgerjob.OptionLedgerStores, c optionledgerjob.OptionLedgerConfig, _ clock.Clock) (contracts.Job, error) {

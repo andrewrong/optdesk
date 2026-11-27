@@ -109,12 +109,12 @@ func repairGaps(ctx context.Context, cov coverage.Reader, st jobrequest.Poster, 
 }
 
 // repairGapsFor queues one plain request for each gap day of the cells (already filtered by the caller and carrying
-// the job's verdicts), oldest first. cap is the number of new requests still allowed, 0 for no cap; capped is true
-// when a gap day was left because the cap was reached. An existing request is kept and does not count.
+// the job's verdicts), oldest first. limit is the number of new requests still allowed, 0 for no limit; capped is true
+// when a gap day was left because the limit was reached. An existing request is kept and does not count.
 func repairGapsFor(ctx context.Context, cells []data_health_page.Cell, job *data_health_page.Job, st jobrequest.Poster,
-	cap int) (queued int, capped bool, err error) {
+	limit int) (queued int, capped bool, err error) {
 	for _, day := range data_health_page.GapDays(cells) {
-		if cap > 0 && queued >= cap {
+		if limit > 0 && queued >= limit {
 			return queued, true, nil
 		}
 		res, err := st.Enqueue(ctx, jobrequest.Request{JobID: job.ID, Day: string(day), Force: false})
