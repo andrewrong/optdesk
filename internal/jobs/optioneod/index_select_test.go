@@ -274,7 +274,7 @@ func TestIndexExpiryIsKeyedAsTheBrokerReports(t *testing.T) {
 	t.Parallel()
 	r := newIndexRig(t, nil)
 	r.b.chains = []broker.Chain{spxChain([]string{"20261217"}, strikesRange(7000, 8200, 5))}
-	r.b.price = num(7585)
+	r.b.price = new(float64(7585))
 	r.job.m.Index[0].StrikeMultiple = 5
 	if res := r.run("SPX"); res.Err != nil {
 		t.Fatal(res.Err)

@@ -13,7 +13,7 @@ func TestSubjectsNamedBySymbol(t *testing.T) {
 	f := world()
 	f.latest = []store.OptionEodLatest{{UnderlyingID: 1, SessionDay: dayD}, {UnderlyingID: 2, SessionDay: dayD},
 		{UnderlyingID: 3, SessionDay: "2026-11-09"}}
-	f.eod[2] = []contracts.OptionEod{eodRow(200, fp(1), fp(2), nil, closeD)}
+	f.eod[2] = []contracts.OptionEod{eodRow(200, new(float64(1)), new(float64(2)), nil, closeD)}
 	f.eod[2][0].UnderlyingID = 2
 	f.eod[3] = nil // only later rows: dropped
 	got, err := subjects(context.Background(), f.stores(), dayD)

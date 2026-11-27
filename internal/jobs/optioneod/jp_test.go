@@ -26,7 +26,7 @@ func newJPRig(t *testing.T, at string) *rig {
 		t.Fatal(err)
 	}
 	r := &rig{b: newBroker(), res: &fakeResolver{}, w: &fakeWriter{}, clk: clockwork.NewFakeClockAt(now)}
-	r.b.price = num(40000)
+	r.b.price = new(float64(40000))
 	r.b.chains = []broker.Chain{
 		{Exchange: "OSE.JPN", TradingClass: "225W", Multiplier: "1000", Expirations: []string{"20261113"}, Strikes: []string{"40000"}},
 		{Exchange: "OSE.JPN", TradingClass: "N225M", Multiplier: "100", Expirations: []string{"20261113"}, Strikes: []string{"40000"}},

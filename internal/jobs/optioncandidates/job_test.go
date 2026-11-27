@@ -31,8 +31,6 @@ func day(s string) types.SerializableDate {
 	return types.SerializableDate{Time: t}
 }
 
-func f64(v float64) *float64 { return &v }
-
 // fakes holds every store of the job; each field a test sets overrides the default.
 type fakes struct {
 	mu          sync.Mutex
