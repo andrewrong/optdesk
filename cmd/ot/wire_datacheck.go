@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/datacheck"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
 	"github.com/andrewrong/optdesk/internal/store/finding"
@@ -126,6 +127,8 @@ func (f jobFactory) dataCheck(ctx context.Context, jc *jobCtx, o dataCheckOpener
 	st := datacheck.Stores{
 		Cov: cov, Probe: p, Out: w,
 		Expected: dataCheckExpected(jobTable, dataHealthManifests, dataHealthNoLedger, dataCheckNotDaily),
+		// The version the code writes now; candidate_rule_version compares the stored rows with it.
+		RuleVersions: map[string]string{"candidates.option_candidate": optioncandidates.RuleVersion},
 	}
 	if s, err := o.sender(); err == nil && s != nil {
 		st.Announce = senderAnnouncer{s}

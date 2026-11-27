@@ -36,6 +36,10 @@ The job repairs nothing and writes no data value but its own run and findings. T
 
 The list for `plan_absent` is built from `dataHealthManifests` for the jobs of `jobTable` that are not in `dataHealthNoLedger` and not in `dataCheckNotDaily` (a fixed list with a reason per job that is not planned on every session day). `TestEveryLedgerJobIsDailyOrReasoned` guards both lists.
 
+## Expected rule version
+
+The rule `candidate_rule_version` compares the `rule_version` of the stored `candidates.option_candidate` rows with the version the code writes now. `dataCheck` in `cmd/ot/wire_datacheck.go` hands it over in `datacheck.Stores.RuleVersions` as `{"candidates.option_candidate": optioncandidates.RuleVersion}`, so the expected version is the constant of the writer job and is never typed a second time. Design: `docs/design/data-check-2.md` (entry 6).
+
 ## The message
 
 One Chinese message per run when a finding is new (never delivered): at most ten lines, `error` before `warn` before `unknown`, each with the rule label, dataset, day and counts, then "还有 N 条见页面" when more. It names no id of an account, an order or a contract. A send failure is a retryable error and the findings stay new. When the sender cannot be built (a missing token or chat id) the announcer is nil: findings are stored, the page shows them, the run is ok and the job logs "no announcer".

@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/datacheck"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/store/coverage"
 	"github.com/andrewrong/optdesk/internal/store/finding"
@@ -118,5 +119,20 @@ func TestEveryLedgerJobIsDailyOrReasoned(t *testing.T) {
 	got := dataCheckExpected(rows, man, map[string]string{"c": "r"}, map[string]string{"b": "r"})
 	if !slices.Equal(got, []datacheck.ExpectedDataset{{Dataset: "x.a", Calendar: "XNYS"}}) {
 		t.Fatalf("expected %v", got)
+	}
+}
+
+func TestDataCheckRuleVersionsWired(t *testing.T) {
+	t.Parallel()
+	var dsn string
+	var st datacheck.Stores
+	jc := &jobCtx{cfg: runOnceConfig{dataCheckDSN: "dc-dsn"}, extra: &closerSet{}}
+	sender := func() (notify.Sender, error) { return fakeDataCheckSender{}, nil }
+	if _, err := (jobFactory{}).dataCheck(t.Context(), jc, dataCheckOpenersFor(&dsn, sender, &st)); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"candidates.option_candidate": optioncandidates.RuleVersion}
+	if len(st.RuleVersions) != 1 || st.RuleVersions["candidates.option_candidate"] != want["candidates.option_candidate"] {
+		t.Fatalf("RuleVersions %v, want %v", st.RuleVersions, want)
 	}
 }
