@@ -70,8 +70,8 @@ func TestViewKeepsDataDay(t *testing.T) {
 	f.rows[selectWinnerSQL] = [][]any{viewRow(day, 1, 2, "ok")}
 	win := 20.0
 	f.rows[selectViewParametersSQL] = [][]any{
-		{1, day, 1, "data_day", nil, strPtr("2026-11-01")}, // rev 1 is not the winner: ignored
-		{1, day, 2, "data_day", nil, strPtr("2026-11-05")},
+		{1, day, 1, "data_day", nil, new("2026-11-01")}, // rev 1 is not the winner: ignored
+		{1, day, 2, "data_day", nil, new("2026-11-05")},
 		{1, day, 2, "window", &win, nil},
 	}
 	got, err := (&viewStore{db: f}).WinnerReadings(context.Background(), "market.ivp_own", "market", "VIXCLS", "2026-11-01", "2026-11-30")
@@ -95,8 +95,8 @@ func TestViewOneRowPerDayAfterVersionBump(t *testing.T) {
 		viewRow(d2, 2, 1, "ok"), viewRow(d2, 1, 3, "ok"),
 	}
 	f.rows[selectViewParametersSQL] = [][]any{
-		{1, d2, 3, "data_day", nil, strPtr("old")},
-		{2, d2, 1, "data_day", nil, strPtr("new")},
+		{1, d2, 3, "data_day", nil, new("old")},
+		{2, d2, 1, "data_day", nil, new("new")},
 	}
 	got, err := (&viewStore{db: f}).WinnerReadings(context.Background(), "market.ivp_own", "market", "VIXCLS", "2026-11-01", "2026-11-30")
 	if err != nil || len(got) != 2 {

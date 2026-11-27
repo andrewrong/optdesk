@@ -139,7 +139,7 @@ func TestApplyUnchangedEditWritesNothing(t *testing.T) {
 	t.Parallel()
 	f, s := seeded()
 	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{
-		{Key: "US:AAPL", Status: sp("active"), Note: sp(""), Exchange: sp("SMART")},
+		{Key: "US:AAPL", Status: new("active"), Note: new(""), Exchange: new("SMART")},
 	}})
 	if err != nil || n != 0 || len(f.rows) != 1 {
 		t.Fatalf("Apply = %d, %v with %d rows; want 0 written", n, err, len(f.rows))
@@ -170,7 +170,7 @@ func TestApplyActiveWithoutConIDRefused(t *testing.T) {
 	f, s := seeded()
 	f.seed(underlying.Row{Key: "US:MSFT", Symbol: "MSFT", Market: "US", Kind: "stock", Exchange: "SMART",
 		Currency: "USD", Status: underlying.StatusPending})
-	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{{Key: "US:MSFT", Status: sp("active")}}})
+	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{{Key: "US:MSFT", Status: new("active")}}})
 	var ie underlying.InvalidError
 	if !errors.As(err, &ie) || ie.Field() != "status" || n != 0 || len(f.rows) != 2 {
 		t.Fatalf("Apply = %d, %v; want InvalidError on status and no row", n, err)
@@ -182,7 +182,7 @@ func TestApplyCorrectingExchangeOfUnresolvedRowResetsIt(t *testing.T) {
 	f, s := seeded()
 	f.seed(underlying.Row{Key: "US:ZZZ", Symbol: "ZZZ", Market: "US", Kind: "stock", Exchange: "SMART",
 		Currency: "USD", ConID: 7, Status: underlying.StatusUnresolved, Reason: "not listed"})
-	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{{Key: "US:ZZZ", Exchange: sp("ARCA")}}})
+	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{{Key: "US:ZZZ", Exchange: new("ARCA")}}})
 	if err != nil || n != 1 {
 		t.Fatalf("Apply = %d, %v", n, err)
 	}
@@ -197,7 +197,7 @@ func TestApplyRefusedChangeWritesNothingOfIt(t *testing.T) {
 	f, s := seeded()
 	_, err := s.Apply(context.Background(), underlying.Change{
 		Adds:  []underlying.Add{{Symbol: "MSFT", Market: "US", Kind: underlying.KindStock}},
-		Edits: []underlying.Edit{{Key: "US:AAPL", Exchange: sp("ARCA")}},
+		Edits: []underlying.Edit{{Key: "US:AAPL", Exchange: new("ARCA")}},
 	})
 	if err == nil || len(f.rows) != 1 {
 		t.Fatalf("Apply = %v with %d rows; the valid add must not be written when an edit is refused", err, len(f.rows))

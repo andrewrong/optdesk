@@ -56,7 +56,7 @@ func (f *fakeQuotes) QuoteSnapshots(_ context.Context, id int64, from, to contra
 	return f.rows[id], f.err
 }
 
-func f64(v float64) *float64 { return &v }
+func f64(v float64) *float64 { return new(v) }
 
 func sday(t *testing.T, s string) types.SerializableDate {
 	t.Helper()
@@ -75,7 +75,7 @@ func eodRow(t *testing.T, id int, oi *float64, recv string) contracts.OptionEod 
 	}
 	return contracts.OptionEod{
 		SessionDay: sday(t, "2026-11-06"), InstrumentID: id, UnderlyingID: 9000, Status: 1,
-		ReceivedAt: at, OpenInterest: oi, Bid: f64(1), Ask: f64(2), Last: f64(1.5),
+		ReceivedAt: at, OpenInterest: oi, Bid: f64(1), Ask: f64(2), Last: new(1.5),
 	}
 }
 
@@ -395,7 +395,7 @@ func checkSizes(t *testing.T) {
 	t.Parallel()
 	var rows []contracts.OptionEod
 	for i := 1; i <= 600; i++ {
-		rows = append(rows, eodRow(t, i, f64(float64(i)), "2026-11-06T21:00:00Z"))
+		rows = append(rows, eodRow(t, i, new(float64(i)), "2026-11-06T21:00:00Z"))
 	}
 	var qs []contracts.QuoteSnapshot
 	for i := range 300 {

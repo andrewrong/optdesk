@@ -294,8 +294,8 @@ func detailGaps(p *pageJSON) {
 	p.Obligations = gapBlock(titleObligations, meaningObligations, g)
 	p.Allocation = allocationGap(g)
 	p.Movers = moversGap(g)
-	p.Trend = trendBlock{Title: titleTrend, Meaning: meaningTrend, Rows: []trendPoint{}, Series: []trendSeries{}, Gap: gapOf(g)}
-	p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{}, Gap: gapOf(g)}
+	p.Trend = trendBlock{Title: titleTrend, Meaning: meaningTrend, Rows: []trendPoint{}, Series: []trendSeries{}, Gap: new(g)}
+	p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{}, Gap: new(g)}
 	for _, title := range []string{titleComposition, titleMovers, titleTrend, titleStress, titleIncome,
 		titleMonthChange, titleCashAfter, titleObligations, titleConcentration, titleAllocation} {
 		p.Gaps = append(p.Gaps, gapJSON{Reason: g.Reason, Text: title + ": " + g.Text})

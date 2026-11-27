@@ -7,7 +7,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
-func sp(s string) *string { return &s }
+//nolint:unused // used by the pg-tagged tests
+func sp(s string) *string { return new(s) }
 
 func goodAdd() underlying.Add {
 	return underlying.Add{Symbol: "AAPL", Market: "US", Kind: underlying.KindStock, Options: true}
@@ -125,16 +126,16 @@ func TestValidateEditRules(t *testing.T) {
 		edit  underlying.Edit
 		field string
 	}{
-		{"exchange of an active name is a no", resolvedRow(), underlying.Edit{Exchange: sp("ARCA")}, "exchange"},
-		{"currency of an active name is a no", resolvedRow(), underlying.Edit{Currency: sp("JPY")}, "currency"},
-		{"status pending is the system's", resolvedRow(), underlying.Edit{Status: sp("pending")}, "status"},
-		{"status unresolved is the system's", resolvedRow(), underlying.Edit{Status: sp("unresolved")}, "status"},
-		{"active without con_id", unresolved, underlying.Edit{Status: sp("active")}, "status"},
-		{"issuer form", resolvedRow(), underlying.Edit{Issuer: sp("sec:1")}, "issuer"},
-		{"sale below buy against the stored buy", withBuy(resolvedRow(), "50"), underlying.Edit{SalePrice: sp("49")}, "sale_price"},
-		{"report date", resolvedRow(), underlying.Edit{ReportDateOverride: sp("tomorrow")}, "report_date_override"},
-		{"pause is fine", resolvedRow(), underlying.Edit{Status: sp("paused")}, ""},
-		{"same exchange is no edit", resolvedRow(), underlying.Edit{Exchange: sp("SMART")}, ""},
+		{"exchange of an active name is a no", resolvedRow(), underlying.Edit{Exchange: new("ARCA")}, "exchange"},
+		{"currency of an active name is a no", resolvedRow(), underlying.Edit{Currency: new("JPY")}, "currency"},
+		{"status pending is the system's", resolvedRow(), underlying.Edit{Status: new("pending")}, "status"},
+		{"status unresolved is the system's", resolvedRow(), underlying.Edit{Status: new("unresolved")}, "status"},
+		{"active without con_id", unresolved, underlying.Edit{Status: new("active")}, "status"},
+		{"issuer form", resolvedRow(), underlying.Edit{Issuer: new("sec:1")}, "issuer"},
+		{"sale below buy against the stored buy", withBuy(resolvedRow(), "50"), underlying.Edit{SalePrice: new("49")}, "sale_price"},
+		{"report date", resolvedRow(), underlying.Edit{ReportDateOverride: new("tomorrow")}, "report_date_override"},
+		{"pause is fine", resolvedRow(), underlying.Edit{Status: new("paused")}, ""},
+		{"same exchange is no edit", resolvedRow(), underlying.Edit{Exchange: new("SMART")}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, err := ValidateEdit(tc.cur, tc.edit)
@@ -147,10 +148,10 @@ func withBuy(r underlying.Row, b string) underlying.Row { r.BuyPrice = b; return
 
 func TestValidateEditChanged(t *testing.T) {
 	t.Parallel()
-	if _, changed, err := ValidateEdit(resolvedRow(), underlying.Edit{Key: "US:AAPL", Note: sp("")}); err != nil || changed {
+	if _, changed, err := ValidateEdit(resolvedRow(), underlying.Edit{Key: "US:AAPL", Note: new("")}); err != nil || changed {
 		t.Errorf("empty note over empty note: changed %v, %v; want unchanged", changed, err)
 	}
-	next, changed, err := ValidateEdit(resolvedRow(), underlying.Edit{Note: sp("watch")})
+	next, changed, err := ValidateEdit(resolvedRow(), underlying.Edit{Note: new("watch")})
 	if err != nil || !changed || next.Note != "watch" || next.ConID != 265598 {
 		t.Errorf("note edit = %+v, %v, %v", next, changed, err)
 	}

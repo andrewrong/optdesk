@@ -33,8 +33,8 @@ func (t threeChains) OptionEod(ctx context.Context, id int64, from, to contracts
 	if from != to {
 		return t.fakes.OptionEod(ctx, id, from, to)
 	}
-	return []contracts.OptionEod{{InstrumentID: int(id) * 10, UnderlyingID: int(id), Bid: f64(1.5), Ask: f64(1.6),
-		BidSize: f64(5), OpenInterest: f64(40), UnderlyingPrice: f64(100 + float64(id)), Status: 1, MarketDataType: 1, CaptureID: "c"}}, nil
+	return []contracts.OptionEod{{InstrumentID: int(id) * 10, UnderlyingID: int(id), Bid: new(1.5), Ask: new(1.6),
+		BidSize: new(float64(5)), OpenInterest: new(float64(40)), UnderlyingPrice: new(100 + float64(id)), Status: 1, MarketDataType: 1, CaptureID: "c"}}, nil
 }
 
 func (t threeChains) OptionEodLatest(context.Context, contracts.Day) ([]store.OptionEodLatest, error) {

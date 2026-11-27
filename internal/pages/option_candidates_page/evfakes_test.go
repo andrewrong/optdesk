@@ -115,7 +115,7 @@ func allReadings(day string) *fakeView {
 // okPut is an ok short-put row with a spot and a buy price.
 func okPut(id int) store.Candidate {
 	c := cand("short_put", id, "ok")
-	c.Spot, c.BuyPrice, c.UnderlyingID, c.Multiplier = strp("96.50"), strp("90.00"), 7, 100
+	c.Spot, c.BuyPrice, c.UnderlyingID, c.Multiplier = new("96.50"), new("90.00"), 7, 100
 	c.Strike, c.BidEod = "90.00", "0.94"
 	return c
 }

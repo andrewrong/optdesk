@@ -131,9 +131,9 @@ func (c callTerms) OptionTerms(_ context.Context, ids []int64) ([]store.OptionTe
 
 func heldFakes(bid float64) (*fakes, CandidateStores) {
 	f := newFakes()
-	f.eodRows = append(f.eodRows, contracts.OptionEod{InstrumentID: 21, UnderlyingID: 7, Bid: f64(bid), Ask: f64(bid + 0.05),
-		BidSize: f64(5), OpenInterest: f64(40), UnderlyingPrice: f64(110), Status: 1, MarketDataType: 1, CaptureID: "c1"})
-	f.eodRows[0].UnderlyingPrice = f64(110)
+	f.eodRows = append(f.eodRows, contracts.OptionEod{InstrumentID: 21, UnderlyingID: 7, Bid: new(bid), Ask: new(bid + 0.05),
+		BidSize: new(float64(5)), OpenInterest: new(float64(40)), UnderlyingPrice: new(float64(110)), Status: 1, MarketDataType: 1, CaptureID: "c1"})
+	f.eodRows[0].UnderlyingPrice = new(float64(110))
 	pos := []store.Position{
 		{Symbol: "ABC", SecType: "option", Right: "call", ConID: 21, Quantity: "-1"},
 		{Symbol: "ABC", SecType: "option", Right: "call", ConID: 99, Quantity: "1"},
@@ -281,7 +281,7 @@ func TestCallsRerunChangedInputIsNewRun(t *testing.T) {
 	f, st := heldFakes(1.5)
 	cj := buildCalls(t, st, &fakeDividends{}, f)
 	cj.Run(context.Background(), runDay, nil)
-	f.eodRows[1].Bid = f64(2.5)
+	f.eodRows[1].Bid = new(2.5)
 	if res := cj.Run(context.Background(), runDay, nil); res.Err != nil {
 		t.Fatal(res.Err)
 	}

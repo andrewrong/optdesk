@@ -36,8 +36,6 @@ func fpt(day string, v *float64) contracts.SeriesPoint {
 	return contracts.SeriesPoint{SeriesID: fredSeries, ObservationDate: types.SerializableDate{Time: d}, Value: v}
 }
 
-func fv(v float64) *float64 { return &v }
-
 func withSource(t *testing.T, h *fakeHistory, st *memFx, src *fakeSource) contracts.Job {
 	t.Helper()
 	j := buildJob(t, &fakeBroker{listed: true}, h, st)
@@ -49,7 +47,7 @@ func withSource(t *testing.T, h *fakeHistory, st *memFx, src *fakeSource) contra
 
 func TestFillInsertsFredPointsWithValue(t *testing.T) {
 	t.Parallel()
-	src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-05", fv(151.1)), fpt("2026-11-06", fv(152.25))}}
+	src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-05", new(151.1)), fpt("2026-11-06", new(152.25))}}
 	st := &memFx{}
 	j := withSource(t, &fakeHistory{}, st, src)
 	res := j.Run(context.Background(), runDay, usdjpy)
@@ -75,7 +73,7 @@ func TestFillInsertsFredPointsWithValue(t *testing.T) {
 
 func TestFillNeverReplacesStoredRate(t *testing.T) {
 	t.Parallel()
-	src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-06", fv(1.5)), fpt("2026-11-05", fv(151.1))}}
+	src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-06", new(1.5)), fpt("2026-11-05", new(151.1))}}
 	st := &memFx{rows: []contracts.FxRate{stored("2026-11-06", "152.2000")}}
 	j := withSource(t, &fakeHistory{}, st, src)
 	j.Run(context.Background(), runDay, usdjpy)
@@ -86,7 +84,7 @@ func TestFillNeverReplacesStoredRate(t *testing.T) {
 
 func TestNoValuePointSkipped(t *testing.T) {
 	t.Parallel()
-	src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-07", nil), fpt("2026-11-06", fv(152.2))}}
+	src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-07", nil), fpt("2026-11-06", new(152.2))}}
 	st := &memFx{}
 	withSource(t, &fakeHistory{}, st, src).Run(context.Background(), runDay, usdjpy)
 	if len(st.rows) != 1 || st.rows[0].RateDay.Format(dayLayout) != "2026-11-06" {
@@ -97,7 +95,7 @@ func TestNoValuePointSkipped(t *testing.T) {
 func TestNonPositiveFredValueSkipped(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{pts: []contracts.SeriesPoint{
-		fpt("2026-11-03", nil), fpt("2026-11-04", fv(0)), fpt("2026-11-05", fv(-1.5)), fpt("2026-11-06", fv(153.42)),
+		fpt("2026-11-03", nil), fpt("2026-11-04", new(float64(0))), fpt("2026-11-05", new(-1.5)), fpt("2026-11-06", new(153.42)),
 	}}
 	st := &memFx{}
 	withSource(t, &fakeHistory{}, st, src).Run(context.Background(), runDay, usdjpy)
@@ -112,7 +110,7 @@ func TestFillRunsWhenPrimaryFails(t *testing.T) {
 		"error": {err: errors.New("socket closed")},
 		"empty": {},
 	} {
-		src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-06", fv(152.2))}}
+		src := &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-06", new(152.2))}}
 		st := &memFx{}
 		res := withSource(t, h, st, src).Run(context.Background(), runDay, usdjpy)
 		if (name == "error") != (res.Err != nil) || res.Returned != 0 {
@@ -144,7 +142,7 @@ func TestSecondaryFailureKeepsResult(t *testing.T) {
 	buf.Reset()
 	ins := &failInsert{}
 	j2, _ := New(&fakeBroker{listed: true}, h, ins, ins, fixedClock{})
-	AttachSecondary(j2, &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-06", fv(152.2))}})
+	AttachSecondary(j2, &fakeSource{pts: []contracts.SeriesPoint{fpt("2026-11-06", new(152.2))}})
 	j2.(*job).log = log
 	if got := j2.Run(context.Background(), runDay, usdjpy); got.Err != nil || got.Returned != 1 {
 		t.Fatalf("insert failure: %+v", got)

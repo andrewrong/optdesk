@@ -10,8 +10,6 @@ import (
 var _ compute.SharpMarkFunc = sharpmove.Mark
 var _ compute.SharpLimitsFunc = sharpmove.Limits
 
-func ptr(v float64) *float64 { return &v }
-
 func TestMark(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -20,18 +18,18 @@ func TestMark(t *testing.T) {
 		wantDay   bool
 		wantFive  bool
 	}{
-		{"day 2.99", ptr(2.99), nil, false, false},
-		{"day 3.0", ptr(3.0), nil, true, false},
-		{"day -3.0", ptr(-3.0), nil, true, false},
-		{"day -2.99", ptr(-2.99), nil, false, false},
-		{"five 7.99", nil, ptr(7.99), false, false},
-		{"five 8.0", nil, ptr(8.0), false, true},
-		{"five -8.0", nil, ptr(-8.0), false, true},
-		{"five -7.99", nil, ptr(-7.99), false, false},
+		{"day 2.99", new(2.99), nil, false, false},
+		{"day 3.0", new(3.0), nil, true, false},
+		{"day -3.0", new(-3.0), nil, true, false},
+		{"day -2.99", new(-2.99), nil, false, false},
+		{"five 7.99", nil, new(7.99), false, false},
+		{"five 8.0", nil, new(8.0), false, true},
+		{"five -8.0", nil, new(-8.0), false, true},
+		{"five -7.99", nil, new(-7.99), false, false},
 		{"both nil", nil, nil, false, false},
-		{"independent: day sharp, five not", ptr(5), ptr(1), true, false},
-		{"independent: five sharp, day not", ptr(1), ptr(9), false, true},
-		{"day limit does not sharpen five", ptr(0), ptr(3), false, false},
+		{"independent: day sharp, five not", new(float64(5)), new(float64(1)), true, false},
+		{"independent: five sharp, day not", new(float64(1)), new(float64(9)), false, true},
+		{"day limit does not sharpen five", new(float64(0)), new(float64(3)), false, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

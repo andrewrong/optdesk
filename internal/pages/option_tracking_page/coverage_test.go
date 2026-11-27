@@ -50,10 +50,8 @@ func (f fakeDays) Days(_ context.Context, ids []int64, from, to contracts.Day) (
 	return out, nil
 }
 
-func sp(s string) *string { return &s }
-
 func dayRow(id int64, day string, bid, ask string) optionday.Day {
-	return optionday.Day{InstrumentID: id, SessionDay: contracts.Day(day), Bid: sp(bid), Ask: sp(ask)}
+	return optionday.Day{InstrumentID: id, SessionDay: contracts.Day(day), Bid: new(bid), Ask: new(ask)}
 }
 
 // covConfig is a page Config whose replay holds one open position per opened day, contract ids 10, 11, ...

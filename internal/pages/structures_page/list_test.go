@@ -511,7 +511,7 @@ func TestExDividendFromStoredRow(t *testing.T) {
 	var id int
 	var from, to contracts.Day
 	amt := "0.25"
-	old := contracts.DividendExpectation{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: ptr("0.20")}
+	old := contracts.DividendExpectation{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: new("0.20")}
 	cur := contracts.DividendExpectation{Status: "present", NextExDate: exDay("2026-11-09"), NextAmount: &amt}
 	r := exRig("C", "-1", stubDividends{rows: []contracts.DividendExpectation{old, cur}, id: &id, from: &from, to: &to})
 	if got := exCell(t, r); got != "2026-11-09 · 0.25" {
@@ -538,7 +538,7 @@ func TestExDividendPassedDateIsChineseGap(t *testing.T) {
 	t.Parallel()
 	var id int
 	var from, to contracts.Day
-	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-08"), NextAmount: ptr("0.25")}}
+	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-08"), NextAmount: new("0.25")}}
 	wantGap(t, exCell(t, exRig("C", "-1", stubDividends{rows: rows, id: &id, from: &from, to: &to})),
 		"no_data", "除息日已过，等待下次采集")
 }
@@ -547,7 +547,7 @@ func TestExDividendPutOnlyIsNotApplicable(t *testing.T) {
 	t.Parallel()
 	var id int
 	var from, to contracts.Day
-	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: ptr("0.25")}}
+	rows := []contracts.DividendExpectation{{Status: "present", NextExDate: exDay("2026-11-20"), NextAmount: new("0.25")}}
 	for _, leg := range [][2]string{{"P", "-1"}, {"C", "1"}} {
 		if got := exCell(t, exRig(leg[0], leg[1], stubDividends{rows: rows, id: &id, from: &from, to: &to})); got != nil {
 			t.Fatalf("cell of %v = %v, want null", leg, got)

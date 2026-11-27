@@ -149,7 +149,7 @@ func (f *fx) addRate(day contracts.Day, percent float64) {
 
 func (f *fx) addPoint(series string, day contracts.Day, v float64) {
 	f.series[series] = append(f.series[series], contracts.SeriesPoint{SeriesID: series, ObservationDate: dateOf(day),
-		RealtimeStart: dateOf(day), RealtimeEnd: dateOf(day), Status: "present", Value: fp(v)})
+		RealtimeStart: dateOf(day), RealtimeEnd: dateOf(day), Status: "present", Value: new(v)})
 }
 
 func eodRow(inst int, bid, ask *float64, iv *float64, at time.Time) contracts.OptionEod {
@@ -171,8 +171,8 @@ func world() *fx {
 	f.addSession(dayD, true, closeD.Add(-6*time.Hour-30*time.Minute), closeD)
 	f.addSession(dayE, true, closeD.AddDate(0, 0, 28).Add(-6*time.Hour-30*time.Minute), closeD.AddDate(0, 0, 28))
 	at := closeD.Add(time.Minute)
-	f.addOption(100, "C", "500", dayE, eodRow(100, fp(9), fp(11), fp(0.21), at))
-	f.addOption(101, "P", "500", dayE, eodRow(101, fp(8), fp(10), fp(0.19), at))
+	f.addOption(100, "C", "500", dayE, eodRow(100, new(float64(9)), new(float64(11)), new(0.21), at))
+	f.addOption(101, "P", "500", dayE, eodRow(101, new(float64(8)), new(float64(10)), new(0.19), at))
 	f.addRate(dayD, 4)
 	return f
 }
@@ -193,8 +193,8 @@ func mustChain(t *testing.T, f *fx) []compute.ExpiryQuotes {
 func TestIvInputLatestReceivedWins(t *testing.T) {
 	t.Parallel()
 	f := world()
-	f.eod[1] = append(f.eod[1], eodRow(100, fp(19), fp(21), fp(0.30), closeD.Add(time.Hour)))
-	f.eod[1] = append(f.eod[1], eodRow(100, fp(1), fp(3), fp(0.10), closeD.Add(-time.Hour)))
+	f.eod[1] = append(f.eod[1], eodRow(100, new(float64(19)), new(float64(21)), new(0.30), closeD.Add(time.Hour)))
+	f.eod[1] = append(f.eod[1], eodRow(100, new(float64(1)), new(float64(3)), new(0.10), closeD.Add(-time.Hour)))
 	chain := mustChain(t, f)
 	q := chain[0].Strikes[0]
 	if q.CallMid != 20 || q.CallIV != 0.30 {
@@ -216,8 +216,8 @@ func TestIvInputOnlyStatusOk(t *testing.T) {
 func TestIvInputMidRules(t *testing.T) {
 	t.Parallel()
 	f := world()
-	f.eod[1][0].Bid = fp(0)                           // a zero bid: no call mid
-	f.eod[1][1].Bid, f.eod[1][1].Ask = fp(12), fp(10) // crossed: no put mid
+	f.eod[1][0].Bid = new(float64(0))                                     // a zero bid: no call mid
+	f.eod[1][1].Bid, f.eod[1][1].Ask = new(float64(12)), new(float64(10)) // crossed: no put mid
 	q := mustChain(t, f)[0].Strikes[0]
 	if q.HasCall || q.HasPut {
 		t.Fatalf("HasCall %v HasPut %v, want both absent", q.HasCall, q.HasPut)
@@ -233,7 +233,7 @@ func TestIvInputNoIvIsZero(t *testing.T) {
 	t.Parallel()
 	f := world()
 	f.eod[1][0].IvDecimal = nil
-	f.eod[1][1].IvDecimal = fp(-1)
+	f.eod[1][1].IvDecimal = new(float64(-1))
 	q := mustChain(t, f)[0].Strikes[0]
 	if q.CallIV != 0 || q.PutIV != 0 {
 		t.Fatalf("IVs %v %v, want 0 and 0", q.CallIV, q.PutIV)
@@ -245,7 +245,7 @@ func TestIvInputTermsChunkOf500(t *testing.T) {
 	f := world()
 	f.eod[1], f.terms = nil, map[int64]store.OptionTerms{}
 	for i := range 501 {
-		f.addOption(1000+i, "C", "500", dayE, eodRow(1000+i, fp(9), fp(11), fp(0.2), closeD))
+		f.addOption(1000+i, "C", "500", dayE, eodRow(1000+i, new(float64(9)), new(float64(11)), new(0.2), closeD))
 	}
 	mustChain(t, f)
 	if len(f.termsCalls) != 2 || len(f.termsCalls[0]) != 500 || len(f.termsCalls[1]) != 1 {

@@ -112,7 +112,7 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 		Stale:  staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "Ledger and closing prices as of " + string(day)},
 	}
 	if c.Ledger == nil || c.Sessions == nil {
-		vm.RunStatus, vm.Sentence, vm.Note = "failed", cannotReadText, ptr(noReaderNote)
+		vm.RunStatus, vm.Sentence, vm.Note = "failed", cannotReadText, new(noReaderNote)
 		return json.Marshal(vm)
 	}
 	in, closes, ids, err := c.loadIDs(ctx, alias, day)
@@ -147,7 +147,7 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 		vm.RunStatus = "partial"
 	}
 	if line := closeNote(res, closes); line != "" {
-		vm.Note = ptr(joinNote(vm.Note, line))
+		vm.Note = new(joinNote(vm.Note, line))
 	}
 	return json.Marshal(vm)
 }
@@ -201,8 +201,6 @@ func fillRows(vm *viewModel, res compute.StructureResult, cs cells) int {
 	}
 	return gaps
 }
-
-func ptr(s string) *string { return &s }
 
 // noteOf joins the note of Decision 4 and the capture note of Decision 2.
 func (c Config) noteOf(res compute.StructureResult) string {

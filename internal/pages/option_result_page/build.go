@@ -53,7 +53,7 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	}
 	if ledger == nil || results == nil {
 		vm.RunStatus = "partial"
-		vm.Nothing = ptr(noReader)
+		vm.Nothing = new(noReader)
 		return json.Marshal(vm)
 	}
 	rows, err := c.Ledger.FlexTradeRows(ctx, alias)
@@ -93,7 +93,7 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	vm.Reliability = reliabilityOf(vm.Sections, rels)
 	vm.Notes = append(vm.Notes, scopeOf(alias, c.Aliases), countGloss)
 	if len(vm.Sections) == 0 {
-		vm.Nothing = ptr(nothingText)
+		vm.Nothing = new(nothingText)
 	}
 	return json.Marshal(vm)
 }
@@ -126,8 +126,6 @@ func tradeOf(id string, rev int, attrs string) (compute.LedgerTrade, error) {
 	}
 	return compute.LedgerTrade{TransactionID: id, Revision: rev, Attributes: m}, nil
 }
-
-func ptr(s string) *string { return &s }
 
 // scopeOf is the note that says which account the page shows and names the others.
 func scopeOf(alias string, aliases []string) string {

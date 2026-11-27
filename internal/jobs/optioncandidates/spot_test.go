@@ -32,9 +32,9 @@ func TestSpotFromQuote(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 11, 9, 14, 0, 0, 0, time.UTC)
 	rows := []contracts.QuoteSnapshot{
-		snap("2026-11-05", "2026-11-05T20:00:00Z", f64(90), 1),
-		snap("2026-11-06", "2026-11-06T15:00:00Z", f64(95.5), 1),
-		snap("2026-11-06", "2026-11-06T20:30:00Z", f64(96.25), 1),
+		snap("2026-11-05", "2026-11-05T20:00:00Z", new(float64(90)), 1),
+		snap("2026-11-06", "2026-11-06T15:00:00Z", new(95.5), 1),
+		snap("2026-11-06", "2026-11-06T20:30:00Z", new(96.25), 1),
 		snap("2026-11-06", "2026-11-06T21:00:00Z", nil, 1),
 	}
 	q := &fakeQuotes{rows: rows}
@@ -48,8 +48,8 @@ func TestSpotFromQuote(t *testing.T) {
 
 	// a row received after the clock is not taken; a row whose status is not ok is not taken
 	q.rows = append(rows,
-		snap("2026-11-09", "2026-11-09T14:00:01Z", f64(99), 1),
-		snap("2026-11-09", "2026-11-09T13:00:00Z", f64(98), 4))
+		snap("2026-11-09", "2026-11-09T14:00:01Z", new(float64(99)), 1),
+		snap("2026-11-09", "2026-11-09T13:00:00Z", new(float64(98)), 4))
 	price, d, _, ok, _ = spotFromQuote(context.Background(), q, 7, "2026-11-09", now)
 	if !ok || price != "96.25" || d != "2026-11-06" {
 		t.Fatalf("after the clock: %q %s %v", price, d, ok)
@@ -73,10 +73,10 @@ func openAt(d, at string, price *float64) contracts.OptionOpen {
 func TestOpenSpot(t *testing.T) {
 	t.Parallel()
 	rows := []contracts.OptionOpen{
-		openAt("2026-11-09", "2026-11-09T14:31:00Z", f64(101)),
-		openAt("2026-11-09", "2026-11-09T14:35:00Z", f64(102.5)),
+		openAt("2026-11-09", "2026-11-09T14:31:00Z", new(float64(101))),
+		openAt("2026-11-09", "2026-11-09T14:35:00Z", new(102.5)),
 		openAt("2026-11-09", "2026-11-09T14:40:00Z", nil),
-		openAt("2026-11-06", "2026-11-06T20:59:00Z", f64(90)),
+		openAt("2026-11-06", "2026-11-06T20:59:00Z", new(float64(90))),
 	}
 	price, at, ok := openSpot(rows, "2026-11-09")
 	if !ok || price != "102.5" || !at.Equal(time.Date(2026, 11, 9, 14, 35, 0, 0, time.UTC)) {
@@ -96,7 +96,7 @@ func TestOpenSpot(t *testing.T) {
 // openRowToday is an open row of the run day for underlying 7 with the underlying price 103.
 func openRowToday(id, status int) contracts.OptionOpen {
 	o := openRowOf(7, id, status, 2.0, 2.1)
-	o.UnderlyingPrice = f64(103)
+	o.UnderlyingPrice = new(float64(103))
 	o.SessionDay = day("2026-11-09")
 	o.ReceivedAt = time.Date(2026, 11, 9, 14, 35, 0, 0, time.UTC)
 	return o
@@ -134,7 +134,7 @@ func TestCandidatesSpotOpenOnEodFallback(t *testing.T) {
 		st := e.stores(true)
 		want := "eod_fallback spot_open:2026-11-09"
 		if withQuotes {
-			st.Quotes = quotesByID{7: {snap("2026-11-06", "2026-11-06T20:30:00Z", f64(98.5), 1)}}
+			st.Quotes = quotesByID{7: {snap("2026-11-06", "2026-11-06T20:30:00Z", new(98.5), 1)}}
 			want = "eod_fallback chain_day:2026-11-06 spot_open:2026-11-09"
 		}
 		j, err := New(st, e, []jobs.WatchEntry{entryFor("ABC", "cik:1", "91.5")}, fixedClock{})
