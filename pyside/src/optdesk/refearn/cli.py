@@ -83,7 +83,13 @@ def run(
         def calendar_of(yahoo_symbol: str) -> Any:
             return yf.Ticker(yahoo_symbol).calendar
 
-        fetch = make_fetcher(calendar_of)
+        def dates_of(yahoo_symbol: str) -> Any:
+            frame = yf.Ticker(yahoo_symbol).get_earnings_dates(limit=3)
+            if frame is None:
+                return []
+            return [stamp.date() for stamp in frame.index]
+
+        fetch = make_fetcher(calendar_of, dates_of)
         try:
             # yfinance may print; stdout carries the answer only.
             with contextlib.redirect_stdout(err):

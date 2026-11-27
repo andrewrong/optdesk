@@ -112,3 +112,44 @@ def test_unexpected_shape_is_source_changed() -> None:
     for calendar in calendars:
         result, _ = _fetch(calendar)
         assert (result["error_code"], result["dates"]) == ("source_changed", [])
+
+
+def _fetch_both(
+    calendar: Any, days: Any, spec: SymbolSpec = US, from_day: str = "2026-11-27"
+) -> Any:
+    asked: list[str] = []
+
+    def calendar_of(yahoo_symbol: str) -> Any:
+        asked.append(yahoo_symbol)
+        return calendar
+
+    return make_fetcher(calendar_of, lambda _s: days)(spec, from_day), asked
+
+
+class TestCalendarBeforeFromDayUsesEarningsDates:
+    def test_later_days_ascending(self) -> None:
+        result, _ = _fetch_both(
+            {"Earnings Date": [D(2026, 11, 18)]},
+            [D(2027, 2, 24), D(2026, 11, 18), D(2027, 2, 20)],
+        )
+        assert result["error_code"] == ""
+        assert result["dates"] == ["2027-02-20", "2027-02-24"]
+
+
+class TestCalendarAndDatesBothBeforeFromDay:
+    def test_no_data(self) -> None:
+        result, _ = _fetch_both({"Earnings Date": [D(2026, 11, 18)]}, [D(2026, 11, 6)])
+        assert (result["error_code"], result["dates"]) == ("no_data", [])
+
+
+class TestSpaceInSymbolAsksDash:
+    def test_brk_b(self) -> None:
+        _, asked = _fetch_both({}, [], {"symbol": "BRK B", "currency": "USD"})
+        assert asked == ["BRK-B"]
+
+
+def test_earnings_dates_given_as_datetimes_are_source_changed_not_crash() -> None:
+    result, _ = _fetch_both(
+        {"Earnings Date": [D(2026, 11, 18)]}, [datetime.datetime(2027, 2, 24, 16)]
+    )
+    assert result["error_code"] == "source_changed"
