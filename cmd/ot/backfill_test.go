@@ -29,6 +29,16 @@ func backfillApp(t *testing.T, env string, f *fakeBackfiller) (a *app, opened, c
 	return app, opened, closed, log
 }
 
+// backfillAppOnly is backfillApp for a test that reads none of the counters or the log.
+func backfillAppOnly(t *testing.T, env string, f *fakeBackfiller) *app {
+	t.Helper()
+	a, _ := testApp(t, env)
+	var got contracts.Day
+	runOnceFakes(a, new(atomic.Int32), new(atomic.Int32), &got)
+	fakeBackfillDeps(a, f, &fakeKeySyncer{})
+	return a
+}
+
 // fakeKeySyncer records the days SyncKeys was called with.
 type fakeKeySyncer struct {
 	mu   sync.Mutex
@@ -235,7 +245,7 @@ func TestBackfillAheadDay(t *testing.T) {
 func TestBackfillSyncsGaps(t *testing.T) {
 	t.Parallel()
 	f := &fakeBackfiller{}
-	a, _, _, _ := backfillApp(t, fullEnv, f)
+	a := backfillAppOnly(t, fullEnv, f)
 	g := &fakeKeySyncer{}
 	fakeBackfillDeps(a, f, g)
 	if err := backfillWired(a, []string{"--day", "2026-03-04"}); err != nil {
@@ -270,7 +280,7 @@ func TestBackfillLeaseHeld(t *testing.T) {
 func TestBackfillNoFence(t *testing.T) {
 	t.Parallel()
 	f := &fakeBackfiller{}
-	a, _, _, _ := backfillApp(t, fullEnv, f)
+	a := backfillAppOnly(t, fullEnv, f)
 	a.deps.openFence = func(context.Context, string) (store.InstanceFence, error) {
 		t.Error("openFence called")
 		return nil, errors.New("no fence")
@@ -294,7 +304,7 @@ func TestBackfillFailedRunPrintsKeyLinesThenError(t *testing.T) {
 		{Key: contracts.ExpectedKey{DatasetID: "fred", SubjectKey: "DGS10"}, Group: runner.GroupRan, ErrorCode: "upstream"},
 		{Key: contracts.ExpectedKey{DatasetID: "fred", SubjectKey: "DGS2"}, Group: runner.GroupNotReached},
 	}
-	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys}, err: errors.New("plain failure")})
+	a := backfillAppOnly(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys}, err: errors.New("plain failure")})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
 	err := backfillWired(a, []string{"--day", "2026-11-04"})
@@ -313,7 +323,7 @@ func TestBackfillRefusalPrintsKeyLines(t *testing.T) {
 	t.Parallel()
 	res := runner.BackfillResult{Refused: runner.RefusedNoPlan, Keys: []runner.KeyRun{
 		{Key: contracts.ExpectedKey{DatasetID: "d", SubjectKey: "s"}, Group: runner.GroupAlreadyPresent}}}
-	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: res})
+	a := backfillAppOnly(t, fullEnv, &fakeBackfiller{res: res})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
 	if err := backfillWired(a, []string{"--day", "2026-11-04"}); err == nil {
@@ -327,7 +337,7 @@ func TestBackfillRefusalPrintsKeyLines(t *testing.T) {
 func TestBackfillMissingKeysAreFailedLinesAndAnError(t *testing.T) {
 	t.Parallel()
 	keys := []runner.KeyRun{{Key: missingKeys()[0], Group: runner.GroupRan, ErrorCode: "boom"}}
-	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys, Missing: missingKeys()[:1]}})
+	a := backfillAppOnly(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys, Missing: missingKeys()[:1]}})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
 	err := backfillWired(a, []string{"--day", "2026-11-04"})
@@ -375,7 +385,7 @@ func (j bfPlanJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey
 // the hook of another job carries the fake.
 func jobBackfillApp(t *testing.T, j bfPlanJob, f *fakeBackfiller, g *fakeKeySyncer) *app {
 	t.Helper()
-	a, _, _, _ := backfillApp(t, fullEnv, f)
+	a := backfillAppOnly(t, fullEnv, f)
 	fakeBackfillDeps(a, f, g)
 	a.deps.newCalendarRefresh = func(
 		clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver,

@@ -219,7 +219,7 @@ func TestCalendarLoadProvenanceFields(t *testing.T) {
 	t.Parallel()
 	row := rowJSON("TEST", "2026-03-02", true, false, "2026-03-02T14:30:00Z", "2026-03-02T21:00:00Z")
 	for _, key := range []string{"generator", "generator_version", "source_library", "source_library_version", "generated_at"} {
-		prov := strings.Replace(goodProv, `"`+key+`":"`, `"`+key+`":"`, 1)
+		prov := goodProv
 		// empty the value of key
 		i := strings.Index(prov, `"`+key+`":"`) + len(key) + 4
 		j := i + strings.Index(prov[i:], `"`)
