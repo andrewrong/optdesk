@@ -16,6 +16,14 @@ const (
 	zhClassOther      = "其他错误类别：运行完成时带有这个错误代码，详细原因只在日志里。"
 )
 
+// The since line of a gateway with no connection (docs/design/gateway-down-since.md, Decision 6). The prefix is
+// followed by the time; zhGlossNoConnection explains the words in the glossary.
+const (
+	zhNoConnectionPrefix = "无连接自 "
+	zhTermNoConnection   = "无连接"
+	zhGlossNoConnection  = "无连接：程序与网关之间的接口连接没有了（网关没有回答、状态是断开或暂时丢失）；“无连接自”后面是程序第一次发现这个状态的时间，不是断开的确切时间。"
+)
+
 // The gateway block (docs/design/gateway-health.md, Decision 12): the verdict key stays in each text with its
 // meaning beside it. No text names an account or a port.
 const (
