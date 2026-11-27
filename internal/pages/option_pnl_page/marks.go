@@ -1,6 +1,8 @@
 package option_pnl_page
 
 import (
+	"slices"
+
 	"github.com/shopspring/decimal"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -12,8 +14,7 @@ import (
 // row's texts are passed unchanged: the replay takes the mid and the age. The only operations on
 // figures are sign tests. A contract that is not a conid has no rows and so no mark.
 func markOf(p compute.LedgerPosition, rows []optionday.Day) (compute.LedgerMark, bool) {
-	for i := len(rows) - 1; i >= 0; i-- {
-		r := rows[i]
+	for _, r := range slices.Backward(rows) {
 		if string(r.SessionDay) > p.Expiry || !passesLedgerRule(r) {
 			continue
 		}
