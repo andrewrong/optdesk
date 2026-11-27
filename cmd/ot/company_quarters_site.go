@@ -33,6 +33,9 @@ func buildCompanyQuarters(ctx context.Context, _ *app, clk clock.Clock, dayFlag 
 	if err != nil {
 		return nil, err
 	}
+	if rd.underlying == nil || companyFacts(rd) == nil {
+		return nil, errSiteNoReader
+	}
 	return company_quarters_page.Build(ctx, company_quarters_page.Input{
 		Now: clk.Now().UTC(), Today: day, Key: queryOf(ctx).Get(companyQuartersQuery),
 		Underlyings: rd.underlying, Facts: companyFacts(rd), Calc: companydata.Calc{},

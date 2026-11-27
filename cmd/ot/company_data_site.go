@@ -41,6 +41,9 @@ func buildCompanyData(ctx context.Context, _ *app, clk clock.Clock, dayFlag stri
 	if err != nil {
 		return nil, err
 	}
+	if rd.underlying == nil || rd.bars == nil || rd.earnings == nil || companyFacts(rd) == nil {
+		return nil, errSiteNoReader
+	}
 	return company_data_page.Build(ctx, company_data_page.Input{
 		Now: clk.Now().UTC(), Today: day, Underlyings: rd.underlying, Bars: rd.bars, Facts: companyFacts(rd),
 		Earnings: rd.earnings, Calc: companydata.Calc{}, StockIDs: companyStockIDs(rd),

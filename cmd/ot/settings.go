@@ -101,6 +101,9 @@ func buildSettingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag str
 	if err != nil {
 		return nil, err
 	}
+	if rd.catalog == nil || rd.names == nil {
+		return nil, errSiteNoReader
+	}
 	now := clk.Now().UTC()
 	c := settings_page.Config{
 		RunID: "ot-serve", BuildID: buildIDOf(version), Scope: "settings",

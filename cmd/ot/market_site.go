@@ -29,11 +29,30 @@ func buildMarket(ctx context.Context, a *app, clk clock.Clock, dayFlag string, r
 	if err != nil {
 		return nil, err
 	}
-	readings := rd.view.WinnerReadings
+	readings := noSiteReadings // nil view: every figure is a gap
+	if rd.view != nil {
+		readings = rd.view.WinnerReadings
+	}
 	if a.profile.Name == "demo" {
 		readings = demoSiteMarketReadings
 	}
-	return newSiteMarketPage(a, readings).Build(ctx, rd.series, day, clk.Now().UTC())
+	series := rd.series
+	if series == nil { // no series reader: every series is a gap
+		series = noSiteSeries{}
+	}
+	return newSiteMarketPage(a, readings).Build(ctx, series, day, clk.Now().UTC())
+}
+
+// noSiteReadings is the ReadingFunc of a site with no reading reader: no row for any figure.
+func noSiteReadings(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+	return nil, nil
+}
+
+// noSiteSeries is the series reader of a site with none: no point of any series.
+type noSiteSeries struct{}
+
+func (noSiteSeries) SeriesPoints(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SeriesPoint, error) {
+	return nil, nil
 }
 
 // newSiteMarketPage calls deps.marketPage with the plain arguments (run id "ot-serve", scope "market").
