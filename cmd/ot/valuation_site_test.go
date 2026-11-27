@@ -54,7 +54,6 @@ func (f *fakeValuationStore) Current(context.Context) (valuation.State, error) {
 	for _, p := range f.profiles {
 		e := valuation.Entry{Profile: p}
 		for _, r := range slices.Backward(f.reviews) {
-
 			if r.CompanyKey == p.CompanyKey && r.Status == "effective" && r.Type != "backfill" && !f.voided(r.ReviewID) {
 				e.Current = &r
 				break
