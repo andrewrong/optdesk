@@ -189,9 +189,6 @@ func replay(ctx context.Context, c Config, day contracts.Day) (compute.ResultInp
 	in := compute.ResultInput{AsOf: day}
 	var recorded time.Time
 	var structs []compute.Structure
-	if c.Ledger == nil { // no reader: nothing is replayed and the page shows its gap
-		return in, nil, recorded, nil, nil
-	}
 	aliases, err := c.Ledger.StoredAliases(ctx)
 	if err != nil {
 		return in, nil, recorded, nil, fmt.Errorf("home_options: read aliases: %w", err)
