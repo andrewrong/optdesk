@@ -2,12 +2,14 @@
 
 After every handshake a short second connection with client id 0 sends one
 reqOpenOrders and passes only when the gateway answers with the rejection
-"Read-Only mode" (error 321) within 5 s. An open-orders end, or no answer,
+"Read-Only mode" (error 321) within 5 s. An open-orders end
 means the gateway is not read-only: GatewayNotReadOnly is raised, and being a
 SystemExit it is not caught by the supervisor's retry, so the process stops and
-the starter does not restart it. A probe whose handshake fails or runs out of its
-budget raises ProbeUnknown, an ordinary exception: not proof and not a refusal,
-the connection stays closed and the supervisor retries. The whole probe,
+the starter does not restart it. Only an answer counts: the open-orders request
+completed without error 321. A probe whose handshake fails or runs out of its
+budget, or that gets no answer in time, raises ProbeUnknown, an ordinary
+exception: not proof and not a refusal, the connection stays closed and the
+supervisor retries. The whole probe,
 handshake included, runs under one 5 s budget. The probe has its own send guard that allows
 message id 5 and nothing else, the order ids refused first. The guard is installed after
 the API handshake, which sends its own startApi, and guards every send of the probe from then on.
@@ -85,8 +87,9 @@ async def prove_read_only(
     """Pass when the gateway answers reqOpenOrders with error 321 within 5 s.
 
     The handshake and the answer share the one 5 s budget. Raises
-    GatewayNotReadOnly on an open-orders end or on no answer, and ProbeUnknown
-    (the connection's error as __cause__) when the handshake fails or times out.
+    GatewayNotReadOnly only when the open-orders request ended without error
+    321, and ProbeUnknown when no answer comes in time (nothing was proven) or
+    the handshake fails or times out (the connection's error as __cause__).
     """
     ib = make_ib()
     rejected = asyncio.Event()
@@ -120,7 +123,7 @@ async def prove_read_only(
             left = max(0.0, PROBE_TIMEOUT_S - (clock.monotonic() - began))
             await with_timeout(clock, answer(), left)
         except TimeoutError:
-            raise GatewayNotReadOnly("no answer within 5 s") from None
+            raise ProbeUnknown("no answer to reqOpenOrders within 5 s") from None
         if not rejected.is_set():
             raise GatewayNotReadOnly("reqOpenOrders was not rejected")
     finally:

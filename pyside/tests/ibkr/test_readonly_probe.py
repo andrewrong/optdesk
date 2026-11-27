@@ -157,15 +157,15 @@ def test_probe_fails_on_open_orders_end() -> None:
         asyncio.run(run())
 
 
-def test_probe_fails_when_nothing_answers_within_five_seconds() -> None:
+def test_probe_with_no_answer_within_five_seconds_is_unknown() -> None:
     async def run() -> tuple[bool, bool]:
         clock = FakeClock()
         ib = ProbeIb(clock, "silent")
 
-        async def attempt() -> SystemExit | None:
+        async def attempt() -> BaseException | None:
             try:
                 await probe_of(clock, ib)()
-            except SystemExit as stop:  # a SystemExit ends a bare task's loop
+            except BaseException as stop:  # noqa: BLE001
                 return stop
             return None
 
@@ -174,7 +174,7 @@ def test_probe_fails_when_nothing_answers_within_five_seconds() -> None:
         early = task.done()
         await clock.advance(0.2)
         stop = await task
-        return early, isinstance(stop, GatewayNotReadOnly) and ib.disconnected
+        return early, isinstance(stop, ProbeUnknown) and ib.disconnected
 
     assert asyncio.run(run()) == (False, True)
 
@@ -363,10 +363,10 @@ def test_slow_handshake_leaves_the_rest_of_five_seconds_for_the_answer() -> None
         ib = ProbeIb(clock, "silent")
         ib.pc.handshake = lambda: clock.sleep(3.0)
 
-        async def attempt() -> SystemExit | None:
+        async def attempt() -> BaseException | None:
             try:
                 await probe_of(clock, ib)()
-            except SystemExit as stop:
+            except BaseException as stop:  # noqa: BLE001
                 return stop
             return None
 
@@ -376,7 +376,7 @@ def test_slow_handshake_leaves_the_rest_of_five_seconds_for_the_answer() -> None
         early = task.done()
         await clock.advance(0.2)
         stop = await task
-        return early, isinstance(stop, GatewayNotReadOnly), clock.monotonic()
+        return early, isinstance(stop, ProbeUnknown), clock.monotonic()
 
     early, refused, ended = asyncio.run(run())
     assert (early, refused) == (False, True)
@@ -473,3 +473,24 @@ def test_two_open_sessions_of_one_gateway_probe_one_after_the_other() -> None:
         return log
 
     assert asyncio.run(run()) == ["start", "end", "start", "end"]
+
+
+def test_a_probe_timeout_does_not_stop_the_supervisor() -> None:
+    async def run() -> tuple[bool, bool, bool, bool]:
+        clock = FakeClock()
+        ib = ProbeIb(clock, "silent")
+        gateway = _gateway(clock, ib, probe_of(clock, ib))
+        task = asyncio.ensure_future(supervise(gateway, clock, "main"))
+        await clock.advance(5.1)
+        connected = (await gateway.status()).connected
+        stopped = task.done()
+        for _ in range(30):  # backoff, then the second probe's own 5 s
+            await clock.advance(1.0)
+        retried = ib.requests >= 2
+        stopped = stopped or task.done()
+        task.cancel()
+        results = await asyncio.gather(task, return_exceptions=True)
+        escaped = any(isinstance(r, SystemExit) for r in results)
+        return connected, stopped, escaped, retried
+
+    assert asyncio.run(run()) == (False, False, False, True)
