@@ -79,7 +79,6 @@ func (r *runState) runIvRv20(names []string) {
 		in := []input{{table: tableSeriesPoint, keys: []string{seriesID}},
 			{table: tableReadings, keys: []string{r.j.m.Rv20 + "|" + kindUnderlying + "|" + name}}}
 		r.store(t, f, hashLines(lines), in, volParams(rule, nil))
-
 	}
 }
 
