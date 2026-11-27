@@ -7,6 +7,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
+//nolint:unused // used by the pg-tagged tests
+func sp(s string) *string { return new(s) }
+
 func goodAdd() underlying.Add {
 	return underlying.Add{Symbol: "AAPL", Market: "US", Kind: underlying.KindStock, Options: true}
 }

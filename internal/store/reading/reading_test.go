@@ -235,6 +235,9 @@ func TestLatestPicksHighestRev(t *testing.T) {
 	}
 }
 
+//nolint:unused // used by the pg-tagged tests
+func strPtr(s string) *string { return new(s) }
+
 func TestLatestEmptyAndBadDay(t *testing.T) {
 	t.Parallel()
 	f := newFake()

@@ -56,7 +56,7 @@ func TestUpsertReplacesDifferingAndSkipsEqualPG(t *testing.T) {
 	}
 	// A differing one replaces it with its children, rev as sent.
 	two := rec(5, "ok")
-	two.Value = new("0.750000000000")
+	two.Value = strPtr("0.750000000000")
 	two.Inputs[0].Keys = []string{"only"}
 	two.Parameters[0].Param = "window2"
 	if c, err := up.UpsertReadings(ctx, []contracts.ReadingRecord{two}); err != nil || c != (readingkey.WriteCount{Written: 1}) {
@@ -128,7 +128,7 @@ func TestOldInsertAddsNoRowForStoredKeyPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	other := rec(2, "ok")
-	other.Value = new("0.9")
+	other.Value = strPtr("0.9")
 	if n, err := st.InsertReadings(ctx, []contracts.ReadingRecord{other}); err != nil || n != 0 {
 		t.Fatalf("insert on a stored key = %d, %v", n, err)
 	}
