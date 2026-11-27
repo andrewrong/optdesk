@@ -1,6 +1,9 @@
 package contracts_test
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 const dataHealthPageV1 = "page.data_health_page.v1.json"
 
@@ -374,5 +377,59 @@ func TestOldFixturesStillValidate(t *testing.T) {
 		if !pageV1Valid(t, dataHealthPageV1, dataHealthFixture(t, name)) {
 			t.Errorf("%s refused", name)
 		}
+	}
+}
+
+func gatewaySinceGateway(m map[string]any, i int) map[string]any {
+	return m["gateways"].([]any)[i].(map[string]any)
+}
+
+// TestGatewaySinceFixtureValidates: the gatewaysince fixture passes; the unreachable gateway has a time and a text, farm_down the two empty strings.
+func TestGatewaySinceFixtureValidates(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "gatewaysince")
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("gatewaysince fixture refused")
+	}
+	for i := 0; i < 2; i++ {
+		g := gatewaySinceGateway(m, i)
+		switch g["verdict"] {
+		case "unreachable":
+			if g["since"] == "" || !strings.HasPrefix(g["since_text"].(string), "无连接自 ") {
+				t.Errorf("unreachable gateway %v", g)
+			}
+		case "farm_down":
+			if g["since"] != "" || g["since_text"] != "" {
+				t.Errorf("farm_down gateway %v", g)
+			}
+		default:
+			t.Errorf("verdict %v", g["verdict"])
+		}
+	}
+}
+
+// TestGatewaySinceRejectsBadTime: a since that is neither a date-time nor the empty string fails.
+func TestGatewaySinceRejectsBadTime(t *testing.T) {
+	t.Parallel()
+	for _, bad := range []any{"yesterday", "2026-11-17", 12} {
+		m := dataHealthFixture(t, "gatewaysince")
+		gatewaySinceGateway(m, 1)["since"] = bad
+		if pageV1Valid(t, dataHealthPageV1, m) {
+			t.Errorf("since %v accepted", bad)
+		}
+	}
+}
+
+// TestGatewayWithoutSinceStillValidates: a gateway with neither field passes.
+func TestGatewayWithoutSinceStillValidates(t *testing.T) {
+	t.Parallel()
+	m := dataHealthFixture(t, "gatewaysince")
+	for i := 0; i < 2; i++ {
+		g := gatewaySinceGateway(m, i)
+		delete(g, "since")
+		delete(g, "since_text")
+	}
+	if !pageV1Valid(t, dataHealthPageV1, m) {
+		t.Fatal("gateway without since refused")
 	}
 }
