@@ -244,6 +244,7 @@ const jcDay, jcStart = "2026-11-12", "fail_running:restart:2026-11-12T15:00:00Z"
 func jcNever(time.Duration) (string, time.Time, bool) { return "", time.Time{}, false }
 
 func jcOne(t *testing.T, job string) *jcRig {
+	t.Helper()
 	r := newJCRig(t, job)
 	r.add(1, job, jcDay, false)
 	return r
@@ -714,6 +715,7 @@ func TestClaimConsoleEmptyQueueReturnsNone(t *testing.T) {
 
 // jcUnplanned is a rig whose day jcDay has no stored plan, with a planner as the backfiller.
 func jcUnplanned(t *testing.T, cursor contracts.Day) (*jcRig, *jcPlanner) {
+	t.Helper()
 	r := jcOne(t, "fred_series")
 	delete(r.led.keys, jcDay)
 	r.led.cursor = cursor

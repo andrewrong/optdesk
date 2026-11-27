@@ -183,6 +183,7 @@ func TestBackfillNoSecretInErrors(t *testing.T) {
 	env := "OT_PG_DSN_RUNNER=" + dsn + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=" + fredKey + "\n" +
 		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n"
 	check := func(t *testing.T, a *app, errb interface{ String() string }, hidePgx bool) {
+		t.Helper()
 		err := backfillWired(a, []string{"--day", "2026-11-04"})
 		if err == nil {
 			t.Fatal("want an error")
