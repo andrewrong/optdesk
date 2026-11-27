@@ -290,7 +290,7 @@ Acceptance:
 
 Module: jobs. Size: M.
 Order: after 7.
-Files: `internal/jobs/datacheck/rules.go` (new), `internal/jobs/datacheck/rules_gap.go` (new), `internal/jobs/datacheck/rules_gap_test.go` (new)
+Files: `internal/jobs/datacheck/rules.go`, `internal/jobs/datacheck/rules_gap.go` (new), `internal/jobs/datacheck/rules_gap_test.go` (new)
 Contracts: unchanged
 Design: docs/design/data-check.md#Decisions (4, 5, 6)
 Acceptance:
