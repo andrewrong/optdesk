@@ -35,6 +35,7 @@ No shared interface file changes. `store.QuoteSnapshotReader` and `store.Candida
 5. `Quotes` is optional and nil-safe: nil gives today's behaviour with no new mark, so every existing test of the package and every other wiring (the JP job) is unchanged. `cmd/ot/wire_optioncandidates_jp.go` is not touched.
 6. The page labels from the marks and does no date arithmetic: a day earlier than `rowsDay` (text comparison of two `YYYY-MM-DD` texts) reads "<month-day> 报价", otherwise "存档 <month-day>"; `spot_chain` reads "期权链价 <month-day>"; no spot mark (rows stored before this change) reads as today. `chain_day:<day>` is a badge "期权数据 <month-day>" on the row so that the premium says which session's options it uses; `spot_quote` and `spot_chain` are not badges. Chinese text is only in `zh_texts.go`, mark names only in `strings.go`.
 7. Rows already stored keep today's label until the next run; no backfill (the card of past days is history).
+8. Amendment 2026-11-27 (owner ask 6135, check of ask 5750): the order of the spot is the newer of the quote and the open price (Decision 2), else the stored close, else the chain price. The stored close is the `close` of the bar of basis `trades` in `obs.price_bar` with the greatest session day from the chain day up to the run day (`bar.PriceBarReader.PriceBars`, same instrument id as Decision 3); its mark is `spot_quote:<bar day>`, so the page (Decision 6) reads it as before and needs no change. Reason: the chain `underlying_price` of `option_eod` is taken before the close (2026-11-25 capture at 04:23 +08, 37 minutes before 16:00 New York), and on 2026-11-25 six US names were 4 to 6 percent off the stored close (TSLA 363.83 against 380.14, TXN 253.79 against 270.19, LMND, FCX, TEM, TSM), and the JP name 4063 had 12 ok open rows without `underlying_price`, so no spot, although `obs.price_bar` holds its close of 2026-11-25. A read error or no bar falls back to the chain price with `spot_chain`; `CandidateStores.Bars` nil keeps today's behaviour. No new column, table or contract.
 
 ## Issues
 
@@ -57,6 +58,18 @@ Acceptance: 1. `optionCandidates` sets `Quotes` to `f.snap`. 2. `TestOptionCandi
 Module: pages. Order: none.
 Files: `internal/pages/option_candidates_page/tiers.go`, `internal/pages/option_candidates_page/zh_texts.go`, `internal/pages/option_candidates_page/strings.go`, `internal/pages/option_candidates_page/cells.go`, `internal/pages/option_candidates_page/tiers_test.go`, `internal/pages/option_candidates_page/markhints_test.go`
 Acceptance: 1. The card note and the badge of Decision 6. 2. `TestCompanyCardSpotNote` and `TestMarksCellChainDay` (new) show the four notes and the badge; the golden files are unchanged.
+
+### 4 cspot-4-bar-jobs
+
+Module: jobs. Order: after 1. Design: Decision 8.
+Files: `internal/jobs/optioncandidates/source.go`, `internal/jobs/optioncandidates/spot.go`, `internal/jobs/optioncandidates/types.go`, `internal/jobs/optioncandidates/spot_bar_test.go` (new)
+Acceptance: 1. `CandidateStores.Bars` (new, `bar.PriceBarReader`) is optional; nil keeps today's spot. 2. `spot.go` has `spotFromBar` (new) that gives the close and day of Decision 8. 3. `chain` uses it between the open price and the chain price with the mark `spot_quote:<bar day>`. 4. `TestSpotFromBarWhenNoQuote` (new), `TestSpotQuoteBeatsBar` (new), `TestSpotOpenPriceMissingUsesBar` (new) and `TestSpotNoBarKeepsChainPrice` (new) show the cases.
+
+### 5 cspot-5-bar-ot
+
+Module: ot. Order: after 2, 4. Design: Decision 8.
+Files: `cmd/ot/candidates.go`, `cmd/ot/candidates_bars_test.go` (new)
+Acceptance: 1. `optionCandidates` sets `Bars` from the bar reader of the factory. 2. `TestOptionCandidatesGetsBars` (new) and `TestOptionCandidatesNoBars` (new) show the stores carry the reader, or nil without one.
 
 ## Checked by CI
 
