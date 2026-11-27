@@ -77,11 +77,12 @@ func (p *pull) resume(ctx context.Context, items []contracts.OptionOpenItem, cha
 	if len(items) == 0 {
 		return nil, nil, prior, nil
 	}
-	ids := make([]int64, len(items))
+	ids := make([]int64, 0, len(items))
 	inPlan := make(map[int64]bool, len(items))
-	for i, it := range items {
-		ids[i] = int64(it.InstrumentID)
-		inPlan[ids[i]] = true
+	for _, it := range items {
+		id := int64(it.InstrumentID)
+		ids = append(ids, id)
+		inPlan[id] = true
 	}
 	seen := map[int64]bool{}
 	for _, it := range items {

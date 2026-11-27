@@ -24,9 +24,9 @@ type header struct {
 	paramHash string
 }
 
-func (h header) row(strat, rule, key string, underlying int, status, legs, checks string, facts map[string]string) strategyresult.Row {
+func (h header) row(name, rule, key string, underlying int, status, legs, checks string, facts map[string]string) strategyresult.Row {
 	text, _ := json.Marshal(facts) // a map of strings cannot fail; the keys are sorted
-	return strategyresult.Row{SessionDay: h.day, RunID: h.runID, Strategy: strat, RuleVersion: rule, ParamHash: h.paramHash,
+	return strategyresult.Row{SessionDay: h.day, RunID: h.runID, Strategy: name, RuleVersion: rule, ParamHash: h.paramHash,
 		Key: key, UnderlyingID: underlying, Status: status, Legs: legs, Checks: checks, Facts: string(text), ComputedAt: h.at}
 }
 
@@ -290,7 +290,7 @@ func (j *job) candidateOf(r strategyresult.Row) (strategy.RiskCandidate, bool) {
 			Underlying: under, Currency: defaultCurrency, Class: class,
 			Option: &strategy.RiskLeg{Right: l.Right, Strike: l.Strike, Expiry: l.Expiry, QuoteIV: facts["iv"],
 				CashSettled: class != classEquity},
-			Quantity: strconv.Itoa(qty), Multiplier: l.Multiplier, Spot: facts["spot"], SpotDay: contracts.Day(r.SessionDay),
+			Quantity: strconv.Itoa(qty), Multiplier: l.Multiplier, Spot: facts["spot"], SpotDay: r.SessionDay,
 		})
 	}
 	return c, true
