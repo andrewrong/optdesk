@@ -72,7 +72,6 @@ func testDoubles(t *testing.T) {
 			t.Errorf("%s: got %v, want %v", name, p, want[name])
 		}
 	}
-
 }
 
 func testTimes(t *testing.T) {

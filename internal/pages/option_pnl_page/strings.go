@@ -14,7 +14,7 @@ const (
 
 	defaultName = "main"
 
-	// gap codes of the page (Decision 17)
+	// gap codes of the page (Decision 17).
 	codeNoReader     = "no_reader"
 	codeNoFlexRows   = "no_flex_rows"
 	codeNoSessions   = "no_sessions"
@@ -44,7 +44,7 @@ var codeReasons = map[string]string{
 	codeNoQuoteReder: reasonNoReader,
 }
 
-// classes of a lot the page cannot split (Decision 7)
+// classes of a lot the page cannot split (Decision 7).
 const (
 	classNoMark    = "no_mark"
 	classNoClose   = "no_close"

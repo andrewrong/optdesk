@@ -300,7 +300,6 @@ func detailGaps(p *pageJSON) {
 		titleMonthChange, titleCashAfter, titleObligations, titleConcentration, titleAllocation} {
 		p.Gaps = append(p.Gaps, gapJSON{Reason: g.Reason, Text: title + ": " + g.Text})
 	}
-
 }
 
 // setTrend replaces the trend block of p and the page gap line that named it not_built; a block that is

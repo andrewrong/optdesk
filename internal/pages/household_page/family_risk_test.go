@@ -130,7 +130,6 @@ func checkObligations(t *testing.T, m map[string]any) {
 	if tt := totalTexts(m, "obligations"); len(tt) != 1 || tt[0] != "$15,000.00" {
 		t.Errorf("obligations totals = %v", tt)
 	}
-
 }
 
 func checkCashAfter(t *testing.T, m map[string]any) {
@@ -148,7 +147,6 @@ func checkCashAfter(t *testing.T, m map[string]any) {
 	if tt := totalTexts(m, "cash_after"); len(tt) != 1 || tt[0] != "$28,000.00" {
 		t.Errorf("cash_after totals = %v", tt)
 	}
-
 }
 
 func checkStress(t *testing.T, m map[string]any) {
@@ -160,7 +158,6 @@ func checkStress(t *testing.T, m map[string]any) {
 	if !strings.Contains(block(m, "stress")["meaning"].(string), "没有存下标的最新价") {
 		t.Errorf("stress meaning = %v", block(m, "stress")["meaning"])
 	}
-
 }
 
 func checkConcentration(t *testing.T, m map[string]any) {
