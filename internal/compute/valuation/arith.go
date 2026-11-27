@@ -33,10 +33,7 @@ func div(a, b decimal.Decimal) (q decimal.Decimal, ok bool) {
 	den.Abs(den)
 
 	// Scale the numerator so the integer quotient has at least 35 digits.
-	scale := divDigits + 1 + digitCount(den) - digitCount(num)
-	if scale < 0 {
-		scale = 0
-	}
+	scale := max(divDigits+1+digitCount(den)-digitCount(num), 0)
 	num.Mul(num, pow10(scale))
 	quo, rem := new(big.Int).QuoRem(num, den, new(big.Int))
 	exp := int64(a.Exponent()) - int64(b.Exponent()) - int64(scale)
