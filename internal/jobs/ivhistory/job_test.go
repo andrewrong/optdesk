@@ -140,12 +140,12 @@ func (m *memReadings) LatestReadings(_ context.Context, name, kind, subject stri
 }
 
 // text is a stand-in of ivbar.FromClose for the tests: plain decimals above 0 and not above 10 pass as given.
-func text(close string) (string, error) {
-	switch close {
+func text(closePx string) (string, error) {
+	switch closePx {
 	case "0", "0.0", "11", "10.5", "x":
 		return "", errBad
 	}
-	return close, nil
+	return closePx, nil
 }
 
 type badErr struct{}
@@ -179,7 +179,7 @@ func keysOf(syms ...string) []contracts.ExpectedKey {
 	return ks
 }
 
-func bar(day, close string) broker.Bar { return broker.Bar{Day: day, Close: close} }
+func bar(day, closePx string) broker.Bar { return broker.Bar{Day: day, Close: closePx} }
 
 func day(s string) types.SerializableDate {
 	d, _ := time.Parse(dayLayout, s)

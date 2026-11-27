@@ -139,7 +139,7 @@ func (c *Core) Pull(ctx context.Context, targets []Target) Result {
 
 // logNotOk says which asked row ended partial or no_data and which of its fields are absent.
 func (c *Core) logNotOk(t Target, r contracts.OptionOpen) {
-	name := ""
+	var name string
 	switch r.Status {
 	case stPartial:
 		name = "partial"

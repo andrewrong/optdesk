@@ -123,9 +123,9 @@ func entry(sym, cur, market string) jobs.WatchEntry {
 	return jobs.WatchEntry{Market: market, Contract: broker.Contract{SecType: "STK", Symbol: sym, Currency: cur, ConID: conIDs[sym]}}
 }
 
-func pb(id int64, day, close string) contracts.PriceBar {
+func pb(id int64, day, closePx string) contracts.PriceBar {
 	d, _ := time.Parse("2006-01-02", day)
-	return contracts.PriceBar{InstrumentID: int(id), Basis: "trades", Close: close, SessionDay: types.SerializableDate{Time: d}}
+	return contracts.PriceBar{InstrumentID: int(id), Basis: "trades", Close: closePx, SessionDay: types.SerializableDate{Time: d}}
 }
 
 // build wires the fixtures of testdata; tweak may change them before the job is built.

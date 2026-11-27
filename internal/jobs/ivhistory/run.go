@@ -210,28 +210,28 @@ func (j *job) add(rows []contracts.ReadingRecord, have map[string]contracts.Read
 }
 
 // reading is the reading of one bar: ok with the stored text of its close, else missing bad_input.
-func (j *job) reading(name string, day time.Time, close string, now time.Time, runID string) contracts.ReadingRecord {
-	text, err := j.ivText(close)
+func (j *job) reading(name string, day time.Time, closePx string, now time.Time, runID string) contracts.ReadingRecord {
+	text, err := j.ivText(closePx)
 	if err != nil {
-		return j.missing(name, day, close, reasonBadIn, now, runID)
+		return j.missing(name, day, closePx, reasonBadIn, now, runID)
 	}
-	rec := j.base(name, day, close, now, runID)
+	rec := j.base(name, day, closePx, now, runID)
 	setString(&rec.State, stateOk)
 	rec.Value = &text
 	return rec
 }
 
-func (j *job) missing(name string, day time.Time, close string, code int, now time.Time, runID string) contracts.ReadingRecord {
-	rec := j.base(name, day, close, now, runID)
+func (j *job) missing(name string, day time.Time, closePx string, code int, now time.Time, runID string) contracts.ReadingRecord {
+	rec := j.base(name, day, closePx, now, runID)
 	setString(&rec.State, stateMissing)
 	rec.ReasonCode = &code
 	return rec
 }
 
 // base is the reading of name and day without its state: one input row, the bar of the day.
-func (j *job) base(name string, day time.Time, close string, now time.Time, runID string) contracts.ReadingRecord {
+func (j *job) base(name string, day time.Time, closePx string, now time.Time, runID string) contracts.ReadingRecord {
 	d := day.Format(dayLayout)
-	sum := sha256.Sum256([]byte(inputTable + "|" + name + "|" + d + "|" + close))
+	sum := sha256.Sum256([]byte(inputTable + "|" + name + "|" + d + "|" + closePx))
 	rec := contracts.ReadingRecord{
 		Name: j.m.Reading, Version: j.m.ReadingVersion, SubjectKind: kindUnderlying, Subject: name,
 		Day: types.SerializableDate{Time: day}, Cutoff: cutoff, Rev: 1,

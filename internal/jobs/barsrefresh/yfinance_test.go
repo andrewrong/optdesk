@@ -15,8 +15,8 @@ import (
 )
 
 // ybAdj is a yfinance bar with an adjusted close.
-func ybAdj(day, close, adj string) sources.RefBar {
-	b := yb(day, close)
+func ybAdj(day, closePx, adj string) sources.RefBar {
+	b := yb(day, closePx)
 	b.AdjClose = adj
 	return b
 }

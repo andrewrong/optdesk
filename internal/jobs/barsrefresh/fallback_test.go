@@ -76,8 +76,8 @@ func (s *syncBuf) String() string {
 
 var errDeadline = newErr(contracts.Retryable, "history deadline exceeded")
 
-func yb(day, close string) sources.RefBar {
-	return sources.RefBar{Day: contracts.Day(day), Open: close, High: close, Low: close, Close: close, Volume: "1000"}
+func yb(day, closePx string) sources.RefBar {
+	return sources.RefBar{Day: contracts.Day(day), Open: closePx, High: closePx, Low: closePx, Close: closePx, Volume: "1000"}
 }
 
 // buildFB builds a job with the fallback; the weekly step is off unless a test turns it on.
@@ -114,8 +114,8 @@ func countQueries(h *fakeHistory, conID int64) int {
 	return n
 }
 
-func yfRow(id int, day, close string) contracts.PriceBar {
-	r := stored(id, day, close, 1)
+func yfRow(id int, day, closePx string) contracts.PriceBar {
+	r := stored(id, day, closePx, 1)
 	r.Source = "yfinance"
 	return r
 }

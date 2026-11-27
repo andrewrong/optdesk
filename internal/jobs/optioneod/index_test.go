@@ -222,7 +222,7 @@ func TestIndexJobHasItsOwnLedgerDataset(t *testing.T) {
 func TestIndexManifestRefusesBadRows(t *testing.T) {
 	t.Parallel()
 	good := string(manifestIndexBytes)
-	replace := func(old, new string) string { return strings.Replace(good, old, new, 1) }
+	replace := func(old, repl string) string { return strings.Replace(good, old, repl, 1) }
 	cases := map[string]string{
 		"strike_multiple": replace("strike_multiple = 50 ", "strike_multiple = 0 "),
 		"max_contracts":   replace("max_contracts = 80 ", "max_contracts = 0 "),
