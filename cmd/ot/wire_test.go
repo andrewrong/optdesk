@@ -20,7 +20,7 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		// openIndexIDs is nil by design until the index-ids-bind issue sets its default.
 		if v.Type().Field(i).Name == "openIndexIDs" {
 			continue

@@ -20,7 +20,7 @@ func mergeSiteReaders(sets ...siteReaders) siteReaders {
 	ext := map[string]any{}
 	for _, s := range sets {
 		sv := reflect.ValueOf(&s).Elem()
-		for i := 0; i < sv.NumField(); i++ {
+		for i := range sv.NumField() {
 			dst, src := ov.Field(i), sv.Field(i)
 			if dst.IsZero() && !src.IsZero() {
 				// the fields are unexported: write through their address
