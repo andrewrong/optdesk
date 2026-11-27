@@ -69,7 +69,7 @@ func accountImport(a *app, args []string) error {
 	defer func() { _ = st.Close() }()
 
 	counts := map[string]int{}
-	bad := false
+	var bad bool
 	if o.verify {
 		res, err := cutover.VerifyAccount(ctx, bytes.NewReader(data), st, o.aliasMap, o.day)
 		if err != nil {

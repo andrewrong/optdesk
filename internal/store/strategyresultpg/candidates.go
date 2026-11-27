@@ -137,17 +137,17 @@ func toCandidate(r strategyresult.Row) (store.Candidate, error) {
 	}, nil
 }
 
-// Compare lists the differences between the short put rows old holds for day and the rows new holds, rebuilt as
+// Compare lists the differences between the short put rows old holds for day and the rows fresh holds, rebuilt as
 // candidates. The rows are compared as a sequence in the order of the reader (rank, instrument id, alias), column by
 // column except RunID and ComputedAt; a line names the key and the column, and carries both values except for the
 // fits column. A row present on one side only is a line of its own. An empty slice means the two agree.
-func Compare(old store.CandidateReader, new strategyresult.Reader, day contracts.Day) ([]string, error) {
+func Compare(old store.CandidateReader, fresh strategyresult.Reader, day contracts.Day) ([]string, error) {
 	ctx := context.Background()
 	oldRows, err := old.Candidates(ctx, day, shortPut)
 	if err != nil {
 		return nil, fmt.Errorf("strategyresultpg: compare: old reader: %w", err)
 	}
-	rows, err := new.Results(ctx, day, shortPut)
+	rows, err := fresh.Results(ctx, day, shortPut)
 	if err != nil {
 		return nil, fmt.Errorf("strategyresultpg: compare: result reader: %w", err)
 	}

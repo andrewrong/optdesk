@@ -90,7 +90,7 @@ func (s stresser) Stress(b strategy.RiskBook) strategy.RiskOutcome {
 			class = "equity" // outside the rule's scope: stressed at the equity range [T]
 		}
 		low, high, ok := bounds(class)
-		reason := ""
+		var reason string
 		var pnl, cash []*big.Rat
 		if !ok {
 			reason = "no_class"
