@@ -392,7 +392,7 @@ func TestCandidatesWiresEvidence(t *testing.T) {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}
 	g := f.gotAll
-	if g.View == nil || g.Terms == nil || g.Days == nil || g.View != store.ReadingViewReader(rd.view) || g.Days != rd.days {
+	if g.View == nil || g.Terms == nil || g.Days == nil || g.View != rd.view || g.Days != rd.days {
 		t.Fatalf("readers %+v", g)
 	}
 }
