@@ -42,7 +42,7 @@ func evidenceCols(set evidenceSet) []colDef {
 		mk(colForecastID, evForecastLabel, evForecastHint+evDayHead+evBadgeDay, func(r rowEvidence, _ store.Candidate) any { return forecastCell(r) }),
 		mk(colIVPID, evIVPLabel, evIVPHint+evDayHead+evBadgeDay, func(r rowEvidence, _ store.Candidate) any { return ivpCell(r) }),
 		mk(colVolEdgeID, evVolEdgeLabel, evVolEdgeHint+evDayHead+evBadgeDay, func(r rowEvidence, _ store.Candidate) any { return volEdgeCell(r) }),
-		mk(colLabelsID, evLabelsLabel, withDay(evLabelsHint), func(r rowEvidence, c store.Candidate) any { return labelsCell(r, c) }),
+		mk(colLabelsID, evLabelsLabel, withDay(evLabelsHint), labelsCell),
 	}
 }
 

@@ -277,7 +277,8 @@ func TestEventsGapsMerged(t *testing.T) {
 	}
 	m = buildEvents(t, f)
 	g, _ := gapWithPrefix(m, gapPrefixStale)
-	cut := strings.LastIndex(g, gapMoreAfterList[:strings.Index(gapMoreAfterList, "%d")])
+	moreHead, _, _ := strings.Cut(gapMoreAfterList, "%d")
+	cut := strings.LastIndex(g, moreHead)
 	if n := utf8.RuneCountInString(g); n > 200 || cut < 0 || !utf8.ValidString(g) {
 		t.Errorf("cut line %q (%d)", g, n)
 	}
