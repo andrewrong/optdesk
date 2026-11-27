@@ -65,35 +65,31 @@ linters:
         # content pinned by hash: it cannot change, and a nolint comment would change it
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
-      - path: cmd/ot/site_routes_test\.go$
-        linters:
-          - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: pinned by rule hashes
       - path: internal/compute/ease/ease\.go$
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: pinned by rule hashes
       - path: internal/compute/ease/netliquidity\.go$
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: pinned by rule hashes
       - path: internal/compute/valuation/arith\.go$
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: pinned by rule hashes
       - path: internal/compute/valuation/capital\.go$
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: pinned by rule hashes
       - path: internal/compute/valuation/paths\.go$
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: pinned by rule hashes
       - path: internal/compute/valuation/reverse\.go$
         linters:
           - modernize
-      # P8: modernize cleanup follow-up
+      # Kept: marks.go is held by the marksSignOnly purity rule
       - path: internal/pages/option_pnl_page/marks\.go$
         linters:
           - modernize
