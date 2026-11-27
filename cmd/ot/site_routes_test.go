@@ -139,7 +139,7 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 			if p == "/health" && s.name == "nil readers" && (rec.Code != http.StatusServiceUnavailable || rec.Body.String() != `{"status":"unavailable"}`) {
 				t.Errorf("%s: GET %s answered %d: %s", s.name, p, rec.Code, rec.Body.String())
 			}
-			if rec.Code >= 500 && !(rec.Code == http.StatusServiceUnavailable && unavailable503[p]) {
+			if rec.Code >= 500 && (rec.Code != http.StatusServiceUnavailable || !unavailable503[p]) {
 				t.Errorf("%s: GET %s answered %d: %s\nlog: %s", s.name, p, rec.Code, rec.Body.String(), logs.String())
 			}
 			if knownPagesPanics[key] {
