@@ -29,13 +29,16 @@ type Announcer interface {
 }
 
 // Stores is what the job reads and writes. Announce may be nil: findings are stored, nothing is sent. Every
-// other field except Expected is required.
+// other field except Expected and RuleVersions is required. RuleVersions (dataset id to expected rule version) may
+// be nil: candidate_rule_version then returns the error no_expected_version.
 type Stores struct {
 	Cov      coverage.Reader
 	Probe    finding.Probe
 	Out      finding.Writer
 	Expected []ExpectedDataset
-	Announce Announcer
+	// RuleVersions is the version each dataset's writer has now; cmd/ot fills it.
+	RuleVersions map[string]string
+	Announce     Announcer
 }
 
 type typedError struct {
@@ -125,6 +128,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	}
 	in := Input{
 		CheckDay: day, Now: started, Windows: windows, Cov: j.st.Cov, Probe: j.st.Probe, Expected: j.st.Expected,
+		RuleVersions: j.st.RuleVersions,
 	}
 	findings := []finding.Finding{}
 	unknown := 0
