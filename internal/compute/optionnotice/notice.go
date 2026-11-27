@@ -40,8 +40,10 @@ func (rule) Evaluate(in compute.NoticeInput, p compute.NoticeParams) compute.Not
 	cushion, cn := cushionNotice(in.Values, p)
 	ns = append(ns, cn...)
 	ns = append(ns, staleNotice(in, day, dayOK)...)
+	cash := cashByDate(cur, day, dayOK, in.Values)
+	ns = append(ns, cashShortNotices(cash, day, dayOK, p)...)
 	order(ns)
-	return compute.NoticeResult{RuleVersion: ruleVersion, Notices: ns, CashByDate: cashByDate(cur, day, dayOK, in.Values), Cushion: cushion}
+	return compute.NoticeResult{RuleVersion: ruleVersion, Notices: ns, CashByDate: cash, Cushion: cushion}
 }
 
 // held is one parsed option position.
