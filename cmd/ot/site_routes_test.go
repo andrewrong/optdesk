@@ -103,7 +103,7 @@ func TestEveryRouteAnswersBelow500(t *testing.T) {
 		h := siteHandler(a, householdClock, "2026-11-05", s.rd, echoHandler, http.NotFoundHandler())
 		for _, p := range paths {
 			rec := httptest.NewRecorder()
-			if pv := serveRecovered(h, rec, httptest.NewRequest(http.MethodGet, p, nil)); pv != nil {
+			if pv := serveRecovered(h, rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil)); pv != nil {
 				t.Errorf("%s: GET %s panicked: %v", s.name, p, pv)
 				continue
 			}
