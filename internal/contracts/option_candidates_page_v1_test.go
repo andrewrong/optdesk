@@ -773,6 +773,7 @@ func TestBlockNeedsRowIds(t *testing.T) {
 }
 
 func nameOutcomesIs(t *testing.T, outcome any, want bool) {
+	t.Helper()
 	inst := candidatesMinimal(t)
 	if outcome != nil {
 		candidatesGroup(inst)["name_outcomes"] = []any{map[string]any{"name": "Toyota", "outcome": outcome, "text": "无报价", "counts": "0 行"}}

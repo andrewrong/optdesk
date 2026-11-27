@@ -46,26 +46,31 @@ func TestHeldV3Rejects(t *testing.T) {
 		build                   func(t *testing.T) map[string]any
 	}{
 		{"row without price", "/card/rows/0", "required", func(t *testing.T) map[string]any {
+			t.Helper()
 			r := heldRow(t)
 			delete(r, "price")
 			return heldWithRow(t, r)
 		}},
 		{"row without day_sharp", "/card/rows/0", "required", func(t *testing.T) map[string]any {
+			t.Helper()
 			r := heldRow(t)
 			delete(r, "day_sharp")
 			return heldWithRow(t, r)
 		}},
 		{"row without five_day_sharp", "/card/rows/0", "required", func(t *testing.T) map[string]any {
+			t.Helper()
 			r := heldRow(t)
 			delete(r, "five_day_sharp")
 			return heldWithRow(t, r)
 		}},
 		{"card without sharp_note", "/card", "required", func(t *testing.T) map[string]any {
+			t.Helper()
 			inst := minimalV3(t, heldV3)
 			delete(inst["card"].(map[string]any), "sharp_note")
 			return inst
 		}},
 		{"schema_version 2", "/schema_version", "const", func(t *testing.T) map[string]any {
+			t.Helper()
 			inst := minimalV3(t, heldV3)
 			inst["schema_version"] = 2
 			return inst
