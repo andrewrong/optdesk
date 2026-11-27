@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/option_pnl_page'
 import { BookCard } from './BookCard'
+import { CashDueBlock } from './CashDueBlock'
 import { LedgerBlock } from './LedgerBlock'
 import { LotCard } from './LotCard'
 
@@ -28,10 +29,11 @@ function AccountSection({ account }: { account: Account }) {
           </CardContent>
         ) : null}
       </Card>
-      <LedgerBlock ledger={account.ledger} />
       {account.books.map((book) => (
         <BookCard key={book.id} book={book} />
       ))}
+      <CashDueBlock lines={account.cash_due} />
+      <LedgerBlock ledger={account.ledger} />
       {account.lots.map((lot) => (
         <LotCard key={lot.id} lot={lot} />
       ))}

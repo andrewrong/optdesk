@@ -94,6 +94,7 @@ func newCountEnv(t *testing.T, now string, job contracts.Job, cj *countJob) *cou
 }
 
 func newPlainEnv(t *testing.T, now string, script ...outcome) *countEnv {
+	t.Helper()
 	cj := &countJob{script: script}
 	return newCountEnv(t, now, cj, cj)
 }

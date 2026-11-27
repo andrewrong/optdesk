@@ -8,6 +8,7 @@ import { OptionPnlView, registration } from '@/pages/optionpnl/OptionPnlPage'
 import { discoverCards } from '@/shell/pages'
 import { validate } from '@/types/option_pnl_page'
 import { gap } from './fixtures/gap'
+import { ledger } from './fixtures/ledger'
 import { lotGap } from './fixtures/lot-gap'
 import { noQuotes } from './fixtures/no-quotes'
 import { ok } from './fixtures/ok'
@@ -107,4 +108,15 @@ it('TestPnlLeftOutUnderHeadline', async () => {
   const headline = book.querySelector('[data-line="rent"]')!
   const leftOut = book.querySelector('[data-left-out]')!
   expect(headline.compareDocumentPosition(leftOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('shows the cash due block under the books', async () => {
+  await show({ ...ok, accounts: [{ ...ok.accounts[0], ledger }] } as Parameters<typeof OptionPnlView>[0]['payload'])
+  const section = host.querySelector('[data-account]')!
+  const block = section.querySelector('[data-cash-due]')!
+  expect(block.textContent).toContain('Synthetic cash due text')
+  const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+  expect(follows(section.querySelector('[data-book]')!, block)).toBe(true)
+  expect(follows(block, section.querySelector('[data-ledger]')!)).toBe(true)
+  expect(follows(block, section.querySelector('[data-lot]')!)).toBe(true)
 })

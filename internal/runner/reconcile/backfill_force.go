@@ -224,8 +224,7 @@ func (r *reconciler) backfillOne(
 	line := runner.KeyRun{Key: k, Mark: mark}
 	var end jobEnd
 	isPresent := present[k] == store.StatusPresent
-	switch {
-	case isPresent && !opt.Force:
+	if isPresent && !opt.Force {
 		line.Group = runner.GroupAlreadyPresent
 		return line, end, nil
 	}
