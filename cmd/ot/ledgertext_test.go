@@ -28,12 +28,14 @@ func flexRow(t *testing.T, id string, attrs map[string]string) store.FlexTradeRo
 }
 
 func optRow(t *testing.T, id, conid, sym, strike, expiry, pc, qty, proceeds, comm, cur, oc, notes, date string) store.FlexTradeRow {
+	t.Helper()
 	return flexRow(t, id, map[string]string{"assetCategory": "OPT", "symbol": sym, "underlyingSymbol": sym, "conid": conid,
 		"strike": strike, "expiry": expiry, "putCall": pc, "multiplier": "100", "quantity": qty, "proceeds": proceeds,
 		"ibCommission": comm, "currency": cur, "openCloseIndicator": oc, "notes": notes, "tradeDate": date})
 }
 
 func stkRow(t *testing.T, id, sym, qty, price, proceeds, comm, notes, date string) store.FlexTradeRow {
+	t.Helper()
 	return flexRow(t, id, map[string]string{"assetCategory": "STK", "symbol": sym, "quantity": qty, "tradePrice": price,
 		"proceeds": proceeds, "ibCommission": comm, "currency": "USD", "notes": notes, "tradeDate": date})
 }
@@ -41,6 +43,7 @@ func stkRow(t *testing.T, id, sym, qty, price, proceeds, comm, notes, date strin
 // ledgerRows holds an open put, a closed put, an expired put, a put assigned into 200 shares with a call
 // written on them, a close with no open, a cancelled row and a JPY name beside the USD ones.
 func ledgerRows(t *testing.T) []store.FlexTradeRow {
+	t.Helper()
 	return []store.FlexTradeRow{
 		optRow(t, "1001", "111", "ABC", "50", "20260220", "P", "-2", "300", "-1.30", "USD", "O", "", "20260105"),
 		optRow(t, "1002", "111", "ABC", "50", "20260220", "P", "2", "0", "0", "USD", "C", "A", "20260220"),

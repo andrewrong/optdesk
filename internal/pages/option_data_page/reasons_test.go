@@ -72,6 +72,7 @@ func TestReasonNotesNilReaderAndEmptySymbol(t *testing.T) {
 }
 
 func chainCfg(t *testing.T, f *fakeReasons) Config {
+	t.Helper()
 	c := cfg(&fakeEod{rows: []contracts.OptionEod{eodRow(t, 1, f64(1), "2026-11-06T21:00:00Z")}}, &fakeQuotes{})
 	c.Symbol, c.Reasons = "AAPL", f
 	return c

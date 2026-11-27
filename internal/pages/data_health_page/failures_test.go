@@ -71,9 +71,15 @@ func TestRowsOrderedWithClassTexts(t *testing.T) {
 	}
 }
 
+// failureRows keeps the ordered rows and the total of failureView.
+func failureRows(fs []coverage.Failure) ([]FailureRow, int) {
+	rows, total, _, _ := failureView(fs)
+	return rows, total
+}
+
 func TestOrderTiebreaks(t *testing.T) {
 	t.Parallel()
-	rows, _, _, _ := failureView([]coverage.Failure{
+	rows, _ := failureRows([]coverage.Failure{
 		fail("k1", 3, 3, "2026-03-05", "retryable"),
 		fail("k2", 3, 4, "2026-03-01", "retryable"),
 		fail("k3", 3, 3, "2026-03-09", "retryable"),

@@ -195,6 +195,7 @@ func roundTripCases() map[string]roundTripCase {
 		"text": {
 			first: url.Values{"key": {"US:BBB"}, "name": {"BBB Corp"}, "options": {"on"}},
 			verify: func(t *testing.T, c underlying.Change) {
+				t.Helper()
 				if e := c.Edits[0]; e.Name == nil || *e.Name != "BBB Corp" || e.Options != nil {
 					t.Errorf("edit %+v", e)
 				}
@@ -203,6 +204,7 @@ func roundTripCases() map[string]roundTripCase {
 		"number": {
 			first: url.Values{"key": {"US:BBB"}, "buy_price": {"12.5"}, "options": {"on"}},
 			verify: func(t *testing.T, c underlying.Change) {
+				t.Helper()
 				if e := c.Edits[0]; e.BuyPrice == nil || *e.BuyPrice != "12.5" {
 					t.Errorf("edit %+v", e)
 				}
@@ -212,6 +214,7 @@ func roundTripCases() map[string]roundTripCase {
 			prep:  func(rows []underlying.Row) { rows[1].Note = "old note" },
 			first: url.Values{"key": {"US:BBB"}, "note": {""}, "options": {"on"}},
 			verify: func(t *testing.T, c underlying.Change) {
+				t.Helper()
 				if e := c.Edits[0]; e.Note == nil || *e.Note != "" {
 					t.Errorf("edit %+v", e)
 				}
@@ -221,6 +224,7 @@ func roundTripCases() map[string]roundTripCase {
 			prep:  func(rows []underlying.Row) { rows[1].Options = false },
 			first: url.Values{"key": {"US:BBB"}, "options": {"on"}},
 			verify: func(t *testing.T, c underlying.Change) {
+				t.Helper()
 				if e := c.Edits[0]; e.Options == nil || !*e.Options {
 					t.Errorf("edit %+v", e)
 				}
@@ -229,6 +233,7 @@ func roundTripCases() map[string]roundTripCase {
 		"switch off": {
 			first: url.Values{"key": {"US:BBB"}, "name": {"BBB"}},
 			verify: func(t *testing.T, c underlying.Change) {
+				t.Helper()
 				if e := c.Edits[0]; e.Options == nil || *e.Options {
 					t.Errorf("options must be off: %+v", e)
 				}
@@ -237,6 +242,7 @@ func roundTripCases() map[string]roundTripCase {
 		"add": {
 			first: url.Values{"symbol": {"CCC"}, "market": {"US"}, "kind": {"stock"}},
 			verify: func(t *testing.T, c underlying.Change) {
+				t.Helper()
 				a := c.Adds[0]
 				if len(c.Adds) != 1 || a.Symbol != "CCC" || a.Market != "US" || a.Kind != "stock" || a.Options {
 					t.Errorf("add %+v", c.Adds)

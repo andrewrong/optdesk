@@ -143,11 +143,12 @@ func moves(in []blockapi.CloseIn) []blockapi.MoveLine {
 		if len(s.Days) > 0 {
 			l.DataDay = s.Days[0]
 		}
-		if len(s.Closes) == 0 || len(s.Days) != len(s.Closes) {
+		switch {
+		case len(s.Closes) == 0 || len(s.Days) != len(s.Closes):
 			l.D1, l.D5 = gap("no_data"), gap("no_data")
-		} else if weekdaysBehind(s.Days[0], newest) > staleWeekdays {
+		case weekdaysBehind(s.Days[0], newest) > staleWeekdays:
 			l.D1, l.D5 = gap("stale_input"), gap("stale_input")
-		} else {
+		default:
 			l.D1, l.D5 = change(s.Closes, 1), change(s.Closes, 5)
 		}
 		out = append(out, l)

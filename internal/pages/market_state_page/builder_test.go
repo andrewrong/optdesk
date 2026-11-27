@@ -48,6 +48,7 @@ func rec(day, value, dataDay string) contracts.ReadingRecord {
 
 // fakeReadings answers the three readings of the market rows.
 func fakeReadings(t *testing.T) compute.ReadingFunc {
+	t.Helper()
 	return func(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
 		if name == "market.iv_rv20" {
 			return nil, nil // the volatility block; its tests are in volgap_test.go
@@ -135,6 +136,7 @@ var testSymbols = []Symbol{
 
 // fullConfig has every reader; Bars and StockIDs are the fakes of rotation_test.go.
 func fullConfig(t *testing.T, res marketstateapi.Result) Config {
+	t.Helper()
 	return Config{RunID: "run1", BuildID: "b1", Scope: "s1", Zone: testZone,
 		Readings: fakeReadings(t), Bars: &fakeBars{}, StockIDs: fakeIDs{}, IndexIDs: fakeIndexIDs{ids: map[string]int64{"NDX": 100}},
 		Market: fakeMarket(res), Liquidity: fakeLiquidity, Symbols: testSymbols}

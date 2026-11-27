@@ -23,6 +23,7 @@ func parseJSON(b []byte) (any, error) {
 }
 
 func ivReadings(t *testing.T, rows map[string][]contracts.ReadingRecord) compute.ReadingFunc {
+	t.Helper()
 	base := fakeReadings(t)
 	return func(ctx context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
 		if name == figIvRv20 {

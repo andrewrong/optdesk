@@ -1,6 +1,7 @@
 package pepb_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute/pepbapi"
@@ -73,7 +74,7 @@ func diluted(doc, start, end, val string) contracts.FundamentalFact {
 func TestShareCountMismatchGivesNoFigure(t *testing.T) {
 	t.Parallel()
 	base := func(extra ...contracts.FundamentalFact) pepbapi.Result {
-		facts := append(baseFacts()[1:],
+		facts := append(slices.Clone(baseFacts()[1:]),
 			cover("q3", "2023-11-01", "100"))
 		return runLast(append(facts, extra...), series("2023-11-02", 5, flat("10")))
 	}

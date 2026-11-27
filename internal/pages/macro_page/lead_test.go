@@ -63,6 +63,7 @@ func daily(t *testing.T, last string, n int, start, step float64) []contracts.Se
 }
 
 func leadSeries(t *testing.T) fakeReader {
+	t.Helper()
 	return fakeReader{points: map[string][]contracts.SeriesPoint{
 		"DGS3MO":       daily(t, "2026-11-04", 10, 4.0, 0.1),
 		"BAMLH0A0HYM2": daily(t, "2026-11-04", 10, 3.0, -0.02),

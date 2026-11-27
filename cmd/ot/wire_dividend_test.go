@@ -44,7 +44,10 @@ type divRig struct {
 	socket string
 }
 
-func newDivRig(t *testing.T) *divRig { return newDivRigEnv(t, fullEnv) }
+func newDivRig(t *testing.T) *divRig {
+	t.Helper()
+	return newDivRigEnv(t, fullEnv)
+}
 
 func newDivRigEnv(t *testing.T, env string) *divRig {
 	t.Helper()
