@@ -173,7 +173,6 @@ func TestSessionDayFixtureValues(t *testing.T) {
 			t.Fatalf("%s: got %+v want %+v", day, got, w)
 		}
 	}
-
 }
 
 func TestSeriesPointFixtureValues(t *testing.T) {
@@ -193,7 +192,6 @@ func TestSeriesPointFixtureValues(t *testing.T) {
 			t.Fatalf("record %d: %v", i, r)
 		}
 	}
-
 }
 
 func TestSymbolsFixture(t *testing.T) {
@@ -206,7 +204,6 @@ func TestSymbolsFixture(t *testing.T) {
 	if string(b) != want {
 		t.Fatalf("symbols: got %q", b)
 	}
-
 }
 
 func TestReadingRejects(t *testing.T) {
