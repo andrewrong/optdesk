@@ -7,10 +7,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 )
 
-type real struct{}
+type realClock struct{}
 
 // Now returns the system time; this file is the one place the package reads it.
-func (real) Now() time.Time { return time.Now() }
+func (realClock) Now() time.Time { return time.Now() }
 
 // NewReal returns the clock of the running process; tests use a clockwork fake instead.
-func NewReal() clock.Clock { return real{} }
+func NewReal() clock.Clock { return realClock{} }
