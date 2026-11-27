@@ -1,0 +1,118 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"runtime/debug"
+	"sort"
+	"strings"
+	"testing"
+	"unsafe"
+)
+
+// mergeSiteReaders fills each reader of the result from the first set that has it; the ext maps are united.
+func mergeSiteReaders(sets ...siteReaders) siteReaders {
+	var out siteReaders
+	ov := reflect.ValueOf(&out).Elem()
+	ext := map[string]any{}
+	for _, s := range sets {
+		sv := reflect.ValueOf(&s).Elem()
+		for i := 0; i < sv.NumField(); i++ {
+			dst, src := ov.Field(i), sv.Field(i)
+			if dst.IsZero() && !src.IsZero() {
+				// the fields are unexported: write through their address
+				reflect.NewAt(dst.Type(), unsafe.Pointer(dst.UnsafeAddr())).Elem().Set(
+					reflect.NewAt(src.Type(), unsafe.Pointer(src.UnsafeAddr())).Elem())
+			}
+		}
+		for k, v := range s.ext {
+			if _, ok := ext[k]; !ok {
+				ext[k] = v
+			}
+		}
+	}
+	out.ext = ext
+	return out
+}
+
+// siteRoutePaths is every path the walk calls, sorted: the routes of pageFamilies read at run time, the paths of
+// serveRoutes and the fixed routes.
+func siteRoutePaths() (all []string, families map[string]bool) {
+	families = map[string]bool{}
+	set := map[string]bool{}
+	for _, f := range pageFamilies {
+		set["/"+f.route] = true
+		families["/"+f.route] = true
+		if f.buildKey != nil {
+			set["/"+f.route+"/AAPL"] = true
+		}
+	}
+	for _, r := range serveRoutes {
+		set[r.path] = true
+	}
+	for _, p := range []string{"home", "market", "macro", "report?market=us&slot=open", "positions", "options/data", "health"} {
+		set["/"+p] = true
+	}
+	for p := range set {
+		all = append(all, p)
+	}
+	sort.Strings(all)
+	return all, families
+}
+
+// panicSite names the first frame of the stack inside the optdesk module below the panic itself.
+func panicSite(stack []byte) string {
+	lines := strings.Split(string(stack), "\n")
+	for _, l := range lines {
+		if strings.HasPrefix(l, "\t") && strings.Contains(l, "/optdesk/") && !strings.Contains(l, "site_routes_test.go") {
+			return strings.TrimSpace(l[strings.Index(l, "/optdesk/")+1:])
+		}
+	}
+	return "unknown"
+}
+
+// serveRecovered serves r and returns what the handler panicked with, nil when it returned.
+func serveRecovered(h http.Handler, w http.ResponseWriter, r *http.Request) (pv any) {
+	defer func() {
+		if pv = recover(); pv != nil {
+			pv = fmt.Sprintf("%v at %s", pv, panicSite(debug.Stack()))
+		}
+	}()
+	h.ServeHTTP(w, r)
+	return nil
+}
+
+func TestEveryRouteAnswersBelow500(t *testing.T) {
+	t.Parallel()
+	var asked []string
+	fixture := mergeSiteReaders(householdReaders(&asked), msReaders(), companySiteReaders(&asked),
+		siteReaders{underlying: companiesStore(), account: holdsAAA{}, aliases: []string{"main"}, hours: fakeHoursReader{}})
+	sets := []struct {
+		name string
+		rd   siteReaders
+	}{{"nil readers", siteReaders{}}, {"fixture readers", fixture}}
+	paths, families := siteRoutePaths()
+	if len(paths) == 0 {
+		t.Fatal("no routes")
+	}
+	for _, s := range sets {
+		a, _ := testApp(t, "OT_UNUSED=1\n")
+		a.deps = newDeps() // the page constructors of the real wiring; the readers are the set's
+		h := siteHandler(a, householdClock, "2026-11-05", s.rd, echoHandler, http.NotFoundHandler())
+		for _, p := range paths {
+			rec := httptest.NewRecorder()
+			if pv := serveRecovered(h, rec, httptest.NewRequest(http.MethodGet, p, nil)); pv != nil {
+				t.Errorf("%s: GET %s panicked: %v", s.name, p, pv)
+				continue
+			}
+			if rec.Code >= 500 {
+				t.Errorf("%s: GET %s answered %d: %s", s.name, p, rec.Code, fmt.Sprint(rec.Body.String()))
+			}
+			if rec.Code == http.StatusNotFound && families[p] {
+				t.Errorf("%s: GET %s of pageFamilies answered 404", s.name, p)
+			}
+		}
+	}
+}
