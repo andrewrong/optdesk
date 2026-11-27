@@ -20,8 +20,8 @@ func quoteRow(t *testing.T) contracts.QuoteSnapshot {
 	return contracts.QuoteSnapshot{
 		SessionDay: day(t, "2026-11-06"), CaptureID: "00000000-0000-4000-8000-000000000011", Slot: "1000",
 		InstrumentID: 9, ReceivedAt: ts, Generation: 1, MarketDataType: 2, EventTs: &ts, Status: 4,
-		ErrorCode: &code, Currency: "USD", Bid: fp(1.25), Ask: fp(1.35), BidSize: fp(10), AskSize: fp(12),
-		Last: fp(1.3), LastSize: fp(2), Volume: fp(40),
+		ErrorCode: &code, Currency: "USD", Bid: new(1.25), Ask: new(1.35), BidSize: fp(10), AskSize: fp(12),
+		Last: new(1.3), LastSize: fp(2), Volume: fp(40),
 	}
 }
 
@@ -107,13 +107,13 @@ func TestQuoteInsertScreensSentinels(t *testing.T) {
 		idx    int
 		mutate func(*contracts.QuoteSnapshot, float64)
 	}{
-		{"bid", 11, func(r *contracts.QuoteSnapshot, v float64) { r.Bid = fp(v) }},
-		{"ask", 12, func(r *contracts.QuoteSnapshot, v float64) { r.Ask = fp(v) }},
-		{"bid_size", 13, func(r *contracts.QuoteSnapshot, v float64) { r.BidSize = fp(v) }},
-		{"ask_size", 14, func(r *contracts.QuoteSnapshot, v float64) { r.AskSize = fp(v) }},
-		{"last", 15, func(r *contracts.QuoteSnapshot, v float64) { r.Last = fp(v) }},
-		{"last_size", 16, func(r *contracts.QuoteSnapshot, v float64) { r.LastSize = fp(v) }},
-		{"volume", 17, func(r *contracts.QuoteSnapshot, v float64) { r.Volume = fp(v) }},
+		{"bid", 11, func(r *contracts.QuoteSnapshot, v float64) { r.Bid = new(v) }},
+		{"ask", 12, func(r *contracts.QuoteSnapshot, v float64) { r.Ask = new(v) }},
+		{"bid_size", 13, func(r *contracts.QuoteSnapshot, v float64) { r.BidSize = new(v) }},
+		{"ask_size", 14, func(r *contracts.QuoteSnapshot, v float64) { r.AskSize = new(v) }},
+		{"last", 15, func(r *contracts.QuoteSnapshot, v float64) { r.Last = new(v) }},
+		{"last_size", 16, func(r *contracts.QuoteSnapshot, v float64) { r.LastSize = new(v) }},
+		{"volume", 17, func(r *contracts.QuoteSnapshot, v float64) { r.Volume = new(v) }},
 	}
 	baseF := &fakeDB{}
 	if err := newQuoteStore(baseF).InsertQuoteSnapshots(context.Background(), []contracts.QuoteSnapshot{quoteRow(t)}); err != nil {

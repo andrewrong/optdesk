@@ -50,8 +50,6 @@ var (
 	_ store.CandidateReader = (*memCandidates)(nil)
 )
 
-func ptrInt(n int) *int { return &n }
-
 // TestCandidateContract drives the fake as the job (writer) and as the page (reader): a day written by two
 // runs reads back as the newer run only, ranked rows first.
 func TestCandidateContract(t *testing.T) {
@@ -72,16 +70,16 @@ func TestCandidateContract(t *testing.T) {
 	}
 
 	old := []store.Candidate{
-		{SessionDay: day, RunID: "run-1", Kind: "short_put", InstrumentID: 1, Status: "ok", Rank: ptrInt(1), ComputedAt: t0},
+		{SessionDay: day, RunID: "run-1", Kind: "short_put", InstrumentID: 1, Status: "ok", Rank: new(1), ComputedAt: t0},
 	}
 	if n, err := w.InsertCandidates(ctx, old); err != nil || n != 1 {
 		t.Fatalf("first run inserted %d, %v", n, err)
 	}
 	newer := []store.Candidate{
 		{SessionDay: day, RunID: "run-2", Kind: "short_put", InstrumentID: 3, Status: "blocked", ComputedAt: t0.Add(time.Hour)},
-		{SessionDay: day, RunID: "run-2", Kind: "short_put", InstrumentID: 9, Status: "ok", Rank: ptrInt(2), ComputedAt: t0.Add(time.Hour)},
-		{SessionDay: day, RunID: "run-2", Kind: "short_put", InstrumentID: 7, Status: "ok", Rank: ptrInt(1), ComputedAt: t0.Add(time.Hour)},
-		{SessionDay: day, RunID: "run-2", Kind: "covered_call", InstrumentID: 5, Status: "ok", Rank: ptrInt(1), ComputedAt: t0.Add(time.Hour)},
+		{SessionDay: day, RunID: "run-2", Kind: "short_put", InstrumentID: 9, Status: "ok", Rank: new(2), ComputedAt: t0.Add(time.Hour)},
+		{SessionDay: day, RunID: "run-2", Kind: "short_put", InstrumentID: 7, Status: "ok", Rank: new(1), ComputedAt: t0.Add(time.Hour)},
+		{SessionDay: day, RunID: "run-2", Kind: "covered_call", InstrumentID: 5, Status: "ok", Rank: new(1), ComputedAt: t0.Add(time.Hour)},
 	}
 	if n, err := w.InsertCandidates(ctx, newer); err != nil || n != 4 {
 		t.Fatalf("second run inserted %d, %v", n, err)
