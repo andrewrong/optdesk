@@ -200,6 +200,13 @@ func TestStopWaitsForConsoleTurn(t *testing.T) {
 			if advanced < drainGrace && rec.cancelled.Load() {
 				t.Fatalf("turn cancelled after %v, before the grace", advanced)
 			}
+			// Past the grace, give the turn a chance to see its cancel before the clock moves on.
+			for range 10000 {
+				if advanced < drainGrace || rec.cancelled.Load() {
+					break
+				}
+				runtime.Gosched()
+			}
 			h.clk.Advance(time.Second)
 			advanced += time.Second
 			runtime.Gosched()
