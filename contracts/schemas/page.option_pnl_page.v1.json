@@ -172,6 +172,13 @@
               "type": "null"
             }
           ]
+        },
+        "cash_due": {
+          "description": "Cash due if assigned: one line per currency, absent when the account has no open short put.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Line"
+          }
         }
       }
     },

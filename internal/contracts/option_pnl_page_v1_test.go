@@ -165,3 +165,34 @@ func TestOptionPnlLedgerUnknownField(t *testing.T) {
 		t.Fatal("extra key of Group validates")
 	}
 }
+
+func TestCashDueAccepted(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	pnlAccount(inst)["cash_due"] = []any{pnlLine("cash-due-usd")}
+	if !pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("account with cash_due is invalid")
+	}
+}
+
+func TestCashDueOptional(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	if _, ok := pnlAccount(inst)["cash_due"]; ok {
+		t.Fatal("sample already carries cash_due")
+	}
+	if !pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("account without cash_due is invalid")
+	}
+}
+
+func TestCashDueRejectsUnknownKey(t *testing.T) {
+	t.Parallel()
+	inst := pnlMinimal(t)
+	line := pnlLine("cash-due-usd")
+	line["extra"] = 1
+	pnlAccount(inst)["cash_due"] = []any{line}
+	if pageV1Valid(t, optionPnlPageV1, inst) {
+		t.Fatal("cash_due item with an unknown key validates")
+	}
+}
