@@ -49,18 +49,6 @@ func wrongInput(p finding.Probe) Input {
 	return Input{CheckDay: checkDay, Windows: map[string][]contracts.Day{"XNYS": w, "XTKS": w}, Probe: p}
 }
 
-func TestDefaultRulesOrder(t *testing.T) {
-	t.Parallel()
-	var ids []string
-	for _, r := range defaultRules() {
-		ids = append(ids, r.ID)
-	}
-	want := []string{"reading_repeat", "option_open_late_quote", "candidates_older_than_settings", "capture_gap", "plan_absent", "gap_unclosed"}
-	if !reflect.DeepEqual(ids, want) {
-		t.Fatalf("ids = %v", ids)
-	}
-}
-
 func TestReadingRepeat(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

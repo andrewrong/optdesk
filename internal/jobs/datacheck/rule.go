@@ -32,4 +32,6 @@ type Input struct {
 	Cov      coverage.Reader
 	Probe    finding.Probe
 	Expected []ExpectedDataset
+	// RuleVersions maps a dataset id to the rule version its writer has now; nil means none is known.
+	RuleVersions map[string]string
 }
