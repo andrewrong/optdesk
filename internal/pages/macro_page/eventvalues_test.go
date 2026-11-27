@@ -83,7 +83,7 @@ func daily2(t *testing.T, id, from string, n int, val func(i int) float64) []con
 	var out []contracts.SeriesPoint
 	for i := range n {
 		d := s.AddDate(0, 0, i).Format(dayLayout)
-		out = append(out, pt(t, d, d, "percent", f64(val(i))))
+		out = append(out, pt(t, d, d, "percent", new(val(i))))
 	}
 	return out
 }
@@ -92,10 +92,10 @@ func TestEventValuesPerKind(t *testing.T) {
 	t.Parallel()
 	// Future events: stored months run to Sep 2026 (Aug for JOLTS), so each previous is the newest stored figure.
 	ppi := monthlySeries(t, "PPIFID", "index_points", "2025-01-01", 21, yoyIndex)
-	payems := monthlySeries(t, "PAYEMS", "count", "2025-01-01", 21, func(i int) *float64 { return f64(158_000_000 + 200_000*float64(i)) })
-	rsafs := monthlySeries(t, "RSAFS", "ccy_amount", "2025-01-01", 21, func(i int) *float64 { return f64(700e9 * (1 + 0.004*float64(i-20))) })
+	payems := monthlySeries(t, "PAYEMS", "count", "2025-01-01", 21, func(i int) *float64 { return new(158_000_000 + 200_000*float64(i)) })
+	rsafs := monthlySeries(t, "RSAFS", "ccy_amount", "2025-01-01", 21, func(i int) *float64 { return new(700e9 * (1 + 0.004*float64(i-20))) })
 	jolts := monthlySeries(t, "JTSJOL", "count", "2025-01-01", 20, func(int) *float64 { return f64(7_520_000) })
-	gdp := monthlySeries(t, "A191RL1Q225SBEA", "percent", "2025-01-01", 6, func(int) *float64 { return f64(2.84) })[:0]
+	gdp := monthlySeries(t, "A191RL1Q225SBEA", "percent", "2025-01-01", 6, func(int) *float64 { return new(2.84) })[:0]
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{
 		"CPIAUCNS": monthlySeries(t, "CPIAUCNS", "index_points", "2025-01-01", 21, yoyIndex),
 		"PCEPI":    monthlySeries(t, "PCEPI", "index_points", "2025-01-01", 21, yoyIndex),
@@ -103,13 +103,13 @@ func TestEventValuesPerKind(t *testing.T) {
 		"PAYEMS":   payems,
 		"RSAFS":    rsafs,
 		"JTSJOL":   jolts,
-		"WALCL":    {pt(t, "2026-10-28", "2026-10-28", "ccy_amount", f64(6.8e12)), pt(t, "2026-11-04", "2026-11-04", "ccy_amount", f64(6.74e12))},
+		"WALCL":    {pt(t, "2026-10-28", "2026-10-28", "ccy_amount", new(6.8e12)), pt(t, "2026-11-04", "2026-11-04", "ccy_amount", new(6.74e12))},
 		"DFEDTARU": daily2(t, "DFEDTARU", "2026-10-20", 16, func(int) float64 { return 4.25 }),
 		"DFEDTARL": daily2(t, "DFEDTARL", "2026-10-20", 16, func(int) float64 { return 4.0 }),
 	}}
 	// GDP quarters are dated the first of the quarter month: Q1 2025 to Q2 2026 are stored at 2025-01, 04, 07, 10, 2026-01, 04.
 	for _, d := range []string{"2025-01-01", "2025-04-01", "2025-07-01", "2025-10-01", "2026-01-01", "2026-04-01"} {
-		gdp = append(gdp, pt(t, d, d, "percent", f64(2.84)))
+		gdp = append(gdp, pt(t, d, d, "percent", new(2.84)))
 	}
 	r.points["A191RL1Q225SBEA"] = gdp
 	rows := valuesBuild(t, r,
@@ -158,7 +158,7 @@ func TestEventValuesActualOfPastEvent(t *testing.T) {
 		}
 		return yoyIndex(i)
 	})
-	payems := monthlySeries(t, "PAYEMS", "count", "2025-01-01", 22, func(i int) *float64 { return f64(158_000_000 + 200_000*float64(i) + 27_000*float64(i/21)) })
+	payems := monthlySeries(t, "PAYEMS", "count", "2025-01-01", 22, func(i int) *float64 { return new(158_000_000 + 200_000*float64(i) + 27_000*float64(i/21)) })
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{"CPIAUCNS": cpi, "PAYEMS": payems}}
 	r.points["DFEDTARU"] = daily2(t, "DFEDTARU", "2026-10-20", 14, func(i int) float64 {
 		if i >= 13 { // from 2026-11-02
@@ -216,7 +216,7 @@ func TestEventValuesGdpRevision(t *testing.T) {
 	t.Parallel()
 	var gdp []contracts.SeriesPoint
 	for i, d := range []string{"2025-10-01", "2026-01-01", "2026-04-01", "2026-07-01"} {
-		gdp = append(gdp, pt(t, d, d, "percent", f64([]float64{1.1, 1.5, 2.6, 2.9}[i])))
+		gdp = append(gdp, pt(t, d, d, "percent", new([]float64{1.1, 1.5, 2.6, 2.9}[i])))
 	}
 	rows := valuesBuild(t, fakeReader{points: map[string][]contracts.SeriesPoint{"A191RL1Q225SBEA": gdp}},
 		evAt("gdp", "2026-10-29"), evAt("gdp", "2026-11-04"))

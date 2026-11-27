@@ -132,22 +132,22 @@ func (e *srcEnv) call(id int64, strike string) {
 
 func openRowOf(ul, id, status int, bid, ask float64) contracts.OptionOpen {
 	r := contracts.OptionOpen{
-		UnderlyingID: ul, InstrumentID: id, Currency: "USD", Status: status, BidSize: f64(5),
-		UnderlyingPrice: f64(100), MarketDataType: 1, CaptureID: "o1",
+		UnderlyingID: ul, InstrumentID: id, Currency: "USD", Status: status, BidSize: new(float64(5)),
+		UnderlyingPrice: new(float64(100)), MarketDataType: 1, CaptureID: "o1",
 	}
 	if bid > 0 {
-		r.Bid = f64(bid)
+		r.Bid = new(bid)
 	}
 	if ask > 0 {
-		r.Ask = f64(ask)
+		r.Ask = new(ask)
 	}
 	return r
 }
 
 func eodRowOf(ul, id int, d string, bid, ask, oi float64) contracts.OptionEod {
 	return contracts.OptionEod{
-		UnderlyingID: ul, InstrumentID: id, SessionDay: sd(d), Bid: f64(bid), Ask: f64(ask), BidSize: f64(5),
-		OpenInterest: f64(oi), UnderlyingPrice: f64(99), Status: 1, MarketDataType: 1, CaptureID: "e1",
+		UnderlyingID: ul, InstrumentID: id, SessionDay: sd(d), Bid: new(bid), Ask: new(ask), BidSize: new(float64(5)),
+		OpenInterest: new(oi), UnderlyingPrice: new(float64(99)), Status: 1, MarketDataType: 1, CaptureID: "e1",
 	}
 }
 
@@ -355,7 +355,7 @@ func TestSourcePartialWithBidAskIsQuote(t *testing.T) {
 	e.put(7, 11, "90")
 	e.put(7, 12, "89")
 	full := openRowOf(7, 11, 2, 2.0, 2.1)
-	full.Delta, full.IvDecimal = f64(-0.2), f64(0.3)
+	full.Delta, full.IvDecimal = new(-0.2), new(0.3)
 	e.open = []contracts.OptionOpen{full, openRowOf(7, 12, 2, 2.0, 0)}
 	e.run(t, true, entryFor("ABC", "cik:1", "91.5"))
 	got := map[string]compute.OptionQuote{}

@@ -210,7 +210,7 @@ func TestLatestPicksHighestRev(t *testing.T) {
 		{1, day, 1, 0, "stale", "h", "c1"}, // rev 1 is not the newest: ignored
 	}
 	f.rows[selectInputKeysSQL] = [][]any{{1, day, 2, 0, "k1"}, {1, day, 2, 0, "k2"}, {1, day, 1, 0, "old"}}
-	f.rows[selectParametersSQL] = [][]any{{1, day, 2, "window", nil, strPtr("t")}}
+	f.rows[selectParametersSQL] = [][]any{{1, day, 2, "window", nil, new("t")}}
 	got, err := (&readingStore{db: f}).LatestReadings(context.Background(), "market.ivp_own", "market", "VIXCLS", "2026-11-01", "2026-11-30")
 	if err != nil {
 		t.Fatal(err)
@@ -235,7 +235,8 @@ func TestLatestPicksHighestRev(t *testing.T) {
 	}
 }
 
-func strPtr(s string) *string { return &s }
+//nolint:unused // used by the pg-tagged tests
+func strPtr(s string) *string { return new(s) }
 
 func TestLatestEmptyAndBadDay(t *testing.T) {
 	t.Parallel()

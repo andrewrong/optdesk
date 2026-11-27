@@ -41,10 +41,24 @@ func buildCompanyData(ctx context.Context, _ *app, clk clock.Clock, dayFlag stri
 	if err != nil {
 		return nil, err
 	}
-	return company_data_page.Build(ctx, company_data_page.Input{
+	in := company_data_page.Input{
 		Now: clk.Now().UTC(), Today: day, Underlyings: rd.underlying, Bars: rd.bars, Facts: companyFacts(rd),
 		Earnings: rd.earnings, Calc: companydata.Calc{}, StockIDs: companyStockIDs(rd),
-	})
+	}
+	// a reader the site has not opened is an empty one: the page shows its gaps
+	if in.Underlyings == nil {
+		in.Underlyings = noSiteRows{}
+	}
+	if in.Bars == nil {
+		in.Bars = noSiteRows{}
+	}
+	if in.Facts == nil {
+		in.Facts = noSiteRows{}
+	}
+	if in.Earnings == nil {
+		in.Earnings = noSiteRows{}
+	}
+	return company_data_page.Build(ctx, in)
 }
 
 // companyStockIDs is the stock id reader of the site, as positions_site.go reads it; nil when the site has none

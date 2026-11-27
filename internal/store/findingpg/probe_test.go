@@ -13,11 +13,10 @@ import (
 func TestProbeReturnsCountsOnly(t *testing.T) {
 	t.Parallel()
 	allowed := map[string]bool{"Name": true, "Currency": true, "Kind": true, "Reason": true, "JobID": true, "Dataset": true}
-	dayType := reflect.TypeOf(contracts.Day(""))
+	dayType := reflect.TypeFor[contracts.Day]()
 	for _, v := range []any{finding.ReadingRepeat{}, finding.LateQuotes{}, finding.CandidateRun{}, finding.OpenGap{}} {
 		typ := reflect.TypeOf(v)
-		for i := 0; i < typ.NumField(); i++ {
-			f := typ.Field(i)
+		for f := range typ.Fields() {
 			if f.Type.Kind() != reflect.String || f.Type == dayType {
 				continue
 			}

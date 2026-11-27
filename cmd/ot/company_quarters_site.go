@@ -33,10 +33,18 @@ func buildCompanyQuarters(ctx context.Context, _ *app, clk clock.Clock, dayFlag 
 	if err != nil {
 		return nil, err
 	}
-	return company_quarters_page.Build(ctx, company_quarters_page.Input{
+	in := company_quarters_page.Input{
 		Now: clk.Now().UTC(), Today: day, Key: queryOf(ctx).Get(companyQuartersQuery),
 		Underlyings: rd.underlying, Facts: companyFacts(rd), Calc: companydata.Calc{},
-	})
+	}
+	// a reader the site has not opened is an empty one: the page shows its gaps
+	if in.Underlyings == nil {
+		in.Underlyings = noSiteRows{}
+	}
+	if in.Facts == nil {
+		in.Facts = noSiteRows{}
+	}
+	return company_quarters_page.Build(ctx, in)
 }
 
 // companyQuartersPageNamed gives the page to ot page: no company is chosen, so it lists the companies.

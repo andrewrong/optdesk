@@ -35,19 +35,17 @@ func (f *fakeOld) Candidates(_ context.Context, _ contracts.Day, kind string) ([
 	return f.rows, nil
 }
 
-func sp(s string) *string { return &s }
-
 func fullCandidate() store.Candidate {
 	next, ex := contracts.Day("2027-01-28"), contracts.Day("2026-12-01")
 	ver := int64(7)
 	return store.Candidate{
 		SessionDay: "2026-11-13", RunID: "r1", Kind: "short_put", InstrumentID: 42, Alias: "",
 		RuleVersion: "put_v1", Issuer: "AAPL", UnderlyingID: 7, Expiry: "2026-12-18", DTE: 35, Right: "put",
-		Strike: "180", Multiplier: 100, BidEod: "2.15", Ask: sp("2.2"), Spot: sp("190.5"), BuyPrice: sp("1.9"),
-		SalePrice: sp("2.4"), BreakEven: "177.85", AnnualizedYield: sp("0.12"), Delta: sp("-0.2"), Iv: sp("0.31"),
+		Strike: "180", Multiplier: 100, BidEod: "2.15", Ask: new("2.2"), Spot: new("190.5"), BuyPrice: new("1.9"),
+		SalePrice: new("2.4"), BreakEven: "177.85", AnnualizedYield: new("0.12"), Delta: new("-0.2"), Iv: new("0.31"),
 		Status: "ok", Gates: `[{"gate":"spread","status":"pass","reason":""},{"gate":"fit","status":"unknown","reason":"no_account"}]`,
 		Marks: `["near_earnings"]`, Fits: `{"A":"fit","B":"no_fit"}`, NextEarnings: &next, EarningsState: "listed",
-		NextExDate: &ex, ExAmount: sp("0.24"), Extrinsic: sp("1.1"), Rank: ip(1), RankInUnderlying: ip(1),
+		NextExDate: &ex, ExAmount: new("0.24"), Extrinsic: new("1.1"), Rank: new(1), RankInUnderlying: new(1),
 		ComputedAt: t0, SettingsVersion: &ver,
 	}
 }
@@ -133,7 +131,7 @@ func TestCandidateReaderOrderIsRankThenId(t *testing.T) {
 		id    int
 		alias string
 		rank  *int
-	}{{9, "", nil}, {10, "B", ip(1)}, {10, "A", ip(1)}, {3, "", nil}, {7, "", ip(1)}} {
+	}{{9, "", nil}, {10, "B", new(1)}, {10, "A", new(1)}, {3, "", nil}, {7, "", new(1)}} {
 		cand := fullCandidate()
 		cand.InstrumentID, cand.Rank = k.id, k.rank
 		r := pack(cand)

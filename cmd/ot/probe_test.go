@@ -107,7 +107,7 @@ func TestProbeDividendsMissingDateFails(t *testing.T) {
 	t.Parallel()
 	for name, p := range map[string]broker.DividendProjection{
 		"ok without date": {Status: broker.DividendOK},
-		"ok bad date":     {Status: broker.DividendOK, NextExDate: ptr("2026-11-12")},
+		"ok bad date":     {Status: broker.DividendOK, NextExDate: new("2026-11-12")},
 		"no value":        {Status: broker.DividendNoValue},
 		"timeout":         {Status: broker.DividendTimeout},
 	} {
@@ -173,8 +173,6 @@ func TestProbeDividendsPrintsNoSecret(t *testing.T) {
 		t.Fatalf("dial failure: err %v, output %q", err, buf.String())
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func init() {
 	leakExcluded["probe"] = "takes no DSN and opens no store; TestProbeDividendsPrintsNoSecret covers its output"

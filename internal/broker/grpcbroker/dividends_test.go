@@ -73,10 +73,6 @@ func serveReference(t *testing.T, answer func(*pb.ContractKey) *pb.DividendProje
 	return c
 }
 
-func f64(v float64) *float64 { return &v }
-
-func strPtr(s string) *string { return &s }
-
 func TestDividendsContract(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, 11, 9, 21, 0, 0, 0, time.UTC)
@@ -85,7 +81,7 @@ func TestDividendsContract(t *testing.T) {
 		case "KO":
 			return &pb.DividendProjection{
 				Key: k, Status: pb.DividendStatus_DIVIDEND_STATUS_OK, ReceivedAt: timestamppb.New(at),
-				Past_12M: strPtr("1.94"), Next_12M: strPtr("2.00"), NextExDate: strPtr("20261130"), NextAmount: strPtr("0.5"),
+				Past_12M: new("1.94"), Next_12M: new("2.00"), NextExDate: new("20261130"), NextAmount: new("0.5"),
 			}
 		case "TSLA":
 			return &pb.DividendProjection{Key: k, Status: pb.DividendStatus_DIVIDEND_STATUS_NO_VALUE}
@@ -112,7 +108,7 @@ func TestDividendsContract(t *testing.T) {
 	}
 	want := broker.DividendProjection{
 		Contract: keys[0], Status: broker.DividendOK, ReceivedAt: at,
-		Past12m: f64(1.94), Next12m: f64(2), NextExDate: strPtr("20261130"), NextAmount: f64(0.5),
+		Past12m: new(float64(1.94)), Next12m: new(float64(2)), NextExDate: new("20261130"), NextAmount: new(float64(0.5)),
 	}
 	if !reflect.DeepEqual(got[0], want) {
 		t.Fatalf("ko: got %+v want %+v", got[0], want)

@@ -144,7 +144,7 @@ func TestEarningsFutureRowSurvivesAbsentCheck(t *testing.T) {
 func TestRateIsPercentText(t *testing.T) {
 	t.Parallel()
 	f := newFakes()
-	f.rate = f64(4.2)
+	f.rate = new(4.2)
 	build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil)
 	if in := f.inputs[0]; in.Rate != "4.2" || in.RateDay != "2026-11-06" {
 		t.Fatalf("rate %q day %q", in.Rate, in.RateDay)

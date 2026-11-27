@@ -134,9 +134,6 @@ func entry(issuer, market, sym string, conid int64) jobs.WatchEntry {
 		Contract: broker.Contract{SecType: "STK", Symbol: sym, Exchange: "SMART", Currency: "USD", ConID: conid}}
 }
 
-func f64(v float64) *float64 { return &v }
-func str(v string) *string   { return &v }
-
 func run(t *testing.T, ref *fakeRef, res *fakeRes, st *memStore, es ...jobs.WatchEntry) contracts.JobResult {
 	t.Helper()
 	j, err := New(ref, res, st, st, es, fixedClock{})
@@ -160,7 +157,7 @@ func rowOf(t *testing.T, st *memStore, id int) contracts.DividendExpectation {
 func TestPresentRow(t *testing.T) {
 	t.Parallel()
 	ref := &fakeRef{by: map[int64]broker.DividendProjection{
-		1: {Status: broker.DividendOK, Past12m: f64(0.96), Next12m: f64(1), NextExDate: str("20261112"), NextAmount: f64(0.25)},
+		1: {Status: broker.DividendOK, Past12m: new(0.96), Next12m: new(float64(1)), NextExDate: new("20261112"), NextAmount: new(0.25)},
 	}}
 	st := &memStore{}
 	res := run(t, ref, &fakeRes{}, st, entry("cik:0000320193", "US", "AAPL", 1))
@@ -231,7 +228,7 @@ func TestUnpassedMarketIsUnsupported(t *testing.T) {
 
 func TestOneStockFailsOthersWritten(t *testing.T) {
 	t.Parallel()
-	ok := broker.DividendProjection{Status: broker.DividendOK, NextExDate: str("20261112"), NextAmount: f64(1)}
+	ok := broker.DividendProjection{Status: broker.DividendOK, NextExDate: new("20261112"), NextAmount: new(float64(1))}
 	ref := &fakeRef{by: map[int64]broker.DividendProjection{1: ok, 2: ok, 3: ok}}
 	st := &memStore{}
 	res := run(t, ref, &fakeRes{fail: map[int64]bool{2: true}}, st,
@@ -317,7 +314,7 @@ func TestRunWithoutUpserterIsRetryable(t *testing.T) {
 func TestPastDayIsAnswerDayAndUsesReplay(t *testing.T) {
 	t.Parallel()
 	ref := &fakeRef{by: map[int64]broker.DividendProjection{
-		1: {Status: broker.DividendOK, NextExDate: str("20261112"), NextAmount: f64(0.25)},
+		1: {Status: broker.DividendOK, NextExDate: new("20261112"), NextAmount: new(0.25)},
 	}}
 	st := &memStore{}
 	j, err := New(ref, &fakeRes{}, st, st, []jobs.WatchEntry{entry("cik:0000320193", "US", "AAPL", 1)}, fixedClock{})
@@ -385,7 +382,7 @@ func TestFailedFirstKeyIsMemoisedNoBrokerCall(t *testing.T) {
 
 func TestRefusedRowDoesNotStopOthers(t *testing.T) {
 	t.Parallel()
-	ok := broker.DividendProjection{Status: broker.DividendOK, NextExDate: str("20261112"), NextAmount: f64(1)}
+	ok := broker.DividendProjection{Status: broker.DividendOK, NextExDate: new("20261112"), NextAmount: new(float64(1))}
 	ref := &fakeRef{by: map[int64]broker.DividendProjection{1: ok, 2: ok, 3: ok}}
 	st := &memStore{fail: map[int]bool{1002: true}}
 	res := run(t, ref, &fakeRes{}, st, entry("a", "US", "A", 1), entry("b", "US", "B", 2), entry("c", "US", "C", 3))
@@ -397,7 +394,7 @@ func TestRefusedRowDoesNotStopOthers(t *testing.T) {
 func TestPresentAndResolveFailedRowsReachUpserter(t *testing.T) {
 	t.Parallel()
 	ref := &fakeRef{by: map[int64]broker.DividendProjection{
-		1: {Status: broker.DividendOK, NextExDate: str("20261112"), NextAmount: f64(0.25)},
+		1: {Status: broker.DividendOK, NextExDate: new("20261112"), NextAmount: new(0.25)},
 	}}
 	st := &memStore{}
 	run(t, ref, &fakeRes{fail: map[int64]bool{2: true}}, st, entry("a", "US", "A", 1), entry("b", "US", "B", 2))

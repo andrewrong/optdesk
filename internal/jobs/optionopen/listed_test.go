@@ -658,11 +658,11 @@ func TestResolveSummaryCarriesGridSkipped(t *testing.T) {
 	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
 	line := r.logs[1]
 	var skipped int
-	i := strings.Index(line, "grid_skipped=")
-	if i < 0 {
+	_, after, found := strings.Cut(line, "grid_skipped=")
+	if !found {
 		t.Fatalf("no grid_skipped in %s", line)
 	}
-	skipped, _ = strconv.Atoi(strings.Fields(line[i+len("grid_skipped="):])[0])
+	skipped, _ = strconv.Atoi(strings.Fields(after)[0])
 	if skipped == 0 {
 		t.Fatalf("the strikes off the grid are counted: %s", line)
 	}

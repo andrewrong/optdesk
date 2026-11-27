@@ -238,11 +238,9 @@ func (b *sumBooker) Combine(rs []optionattrapi.Result) []optionattrapi.Book {
 	return out
 }
 
-func strp(s string) *string { return &s }
-
 func dayRow(id int64, day, bid, ask, spot string) optionday.Day {
-	return optionday.Day{InstrumentID: id, SessionDay: contracts.Day(day), Bid: strp(bid), Ask: strp(ask),
-		UnderlyingPrice: strp(spot), Iv: strp("0.289")}
+	return optionday.Day{InstrumentID: id, SessionDay: contracts.Day(day), Bid: new(bid), Ask: new(ask),
+		UnderlyingPrice: new(spot), Iv: new("0.289")}
 }
 
 func lotPos(id, und, contract, strike, status string) compute.LedgerPosition {

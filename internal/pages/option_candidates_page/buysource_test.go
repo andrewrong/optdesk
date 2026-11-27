@@ -26,7 +26,7 @@ func TestBuySourceFromMarks(t *testing.T) {
 		"hand":                   {`["buy_from_hand"]`, buypriceapi.SourceHand},
 		"valuation among others": {`["eod_fallback","buy_from_valuation"]`, buypriceapi.SourceValuation},
 	} {
-		if got := buySourceCode(markedRow(strp("90.00"), tc.marks)); got != tc.want {
+		if got := buySourceCode(markedRow(new("90.00"), tc.marks)); got != tc.want {
 			t.Errorf("%s: code = %q, want %q", name, got, tc.want)
 		}
 	}
@@ -35,7 +35,7 @@ func TestBuySourceFromMarks(t *testing.T) {
 func TestBuySourceOldRowIsHand(t *testing.T) {
 	t.Parallel()
 	for _, marks := range []string{`[]`, `["eod_fallback"]`, `not json`} {
-		if got := buySourceCode(markedRow(strp("90.00"), marks)); got != buypriceapi.SourceHand {
+		if got := buySourceCode(markedRow(new("90.00"), marks)); got != buypriceapi.SourceHand {
 			t.Errorf("marks %s: code = %q", marks, got)
 		}
 	}
@@ -43,7 +43,7 @@ func TestBuySourceOldRowIsHand(t *testing.T) {
 
 func TestBuySourceNoPriceNone(t *testing.T) {
 	t.Parallel()
-	for _, p := range []*string{nil, strp("")} {
+	for _, p := range []*string{nil, new("")} {
 		if got := buySourceCode(markedRow(p, `["buy_from_valuation"]`)); got != buypriceapi.SourceNone {
 			t.Errorf("price %v: code = %q", p, got)
 		}

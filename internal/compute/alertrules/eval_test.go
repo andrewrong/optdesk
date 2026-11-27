@@ -17,8 +17,6 @@ import (
 
 const today = contracts.Day("2026-11-06")
 
-func sp(s string) *string { return &s }
-
 func mkDay(t *testing.T, s string) types.SerializableDate {
 	t.Helper()
 	d, err := time.Parse("2006-01-02", s)
@@ -32,7 +30,7 @@ func mkDay(t *testing.T, s string) types.SerializableDate {
 func row(t *testing.T, day, value, dd string) contracts.ReadingRecord {
 	t.Helper()
 	r := contracts.ReadingRecord{
-		Day: mkDay(t, day), State: "ok", Value: sp(value),
+		Day: mkDay(t, day), State: "ok", Value: new(value),
 		Unit: "decimal", Rev: 1,
 	}
 	if dd != "" {

@@ -71,7 +71,7 @@ func TestEvidenceFromEvaluator(t *testing.T) {
 func TestRowCarriesStoredText(t *testing.T) {
 	t.Parallel()
 	c0 := okPut(1)
-	c0.Delta, c0.Iv, c0.NextExDate = strp("-0.19"), strp("0.312"), dayp("2026-12-01")
+	c0.Delta, c0.Iv, c0.NextExDate = new("-0.19"), new("0.312"), dayp("2026-12-01")
 	f := &fakeEval{}
 	buildOut(t, evConfig([]store.Candidate{c0}, f), nil)
 	if len(f.rows) != 1 {
@@ -233,11 +233,11 @@ func goldenScenario(name string) (Config, error) {
 	switch name {
 	case "evidence_ok":
 		a, b := okPut(1), okPut(2)
-		a.Delta, a.Iv, b.Strike, b.BidEod, b.Delta = strp("-0.19"), strp("0.305"), "85.00", "0.42", strp("-0.11")
+		a.Delta, a.Iv, b.Strike, b.BidEod, b.Delta = new("-0.19"), new("0.305"), "85.00", "0.42", new("-0.11")
 		rows = []store.Candidate{a, b}
 	default:
 		c := okPut(3)
-		c.BuyPrice, c.Delta, c.Spot, c.Strike = nil, nil, strp("41.20"), "40.00"
+		c.BuyPrice, c.Delta, c.Spot, c.Strike = nil, nil, new("41.20"), "40.00"
 		rows = []store.Candidate{c}
 		e.fn = func(optionevidenceapi.Row) (optionevidenceapi.Evidence, error) {
 			return optionevidenceapi.Evidence{
