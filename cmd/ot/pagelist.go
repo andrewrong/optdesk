@@ -50,9 +50,7 @@ func builtPages() map[string]builtPage {
 			}
 			return a.deps.macroPage(a.profile.Zone, buildIDOf(version), read), closeRead, nil
 		}},
-		reportName: {noSeriesDB: true, build: func(ctx context.Context, a *app, market, slot string) (pages.Page, func(), error) {
-			return reportPage(ctx, a, market, slot)
-		}},
+		reportName: {noSeriesDB: true, build: reportPage},
 		marketName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
 			return marketPage(ctx, a)
 		}},

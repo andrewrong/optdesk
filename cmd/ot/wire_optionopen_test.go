@@ -275,7 +275,9 @@ func TestResolveJobsAreBuiltWithNoMaxNew(t *testing.T) {
 		got = append(got, o)
 		return optionopen.NewResolve(optionopen.ResolveDeps{}, o)
 	}
-	_, _, _ = buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolve, capture, true, broker.Options{})
+	if _, _, err := buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolve, capture, true, broker.Options{}); err != nil {
+		t.Logf("buildOpenResolve: %v", err)
+	}
 	if len(got) == 0 {
 		t.Fatal("the job constructor was not reached")
 	}
@@ -401,7 +403,7 @@ type captureJob struct{ contracts.Job }
 func openJPHarness(t *testing.T, row jobs.WatchEntry) (*openHarness, *conidBroker) {
 	t.Helper()
 	h := newOpenHarness(t, deadEnv, false, nil)
-	f := (*h.jc.f).withList(listRowsOf(row)...)
+	f := h.jc.f.withList(listRowsOf(row)...)
 	h.jc.f = &f
 	b := &conidBroker{ids: map[string]int64{row.Contract.Symbol: jpConID}}
 	h.jc.brk = b

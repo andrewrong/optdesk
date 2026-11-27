@@ -181,11 +181,9 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 	}
 	a.profile.Name = "real"
 	a.deps = deps{
-		openFence:  fenceOpener(&fakeInstFence{}),
-		newFwClock: func() clockwork.Clock { return clockwork.NewFakeClock() },
-		notifyContext: func(ctx context.Context) (context.Context, context.CancelFunc) {
-			return context.WithCancel(ctx)
-		},
+		openFence:               fenceOpener(&fakeInstFence{}),
+		newFwClock:              func() clockwork.Clock { return clockwork.NewFakeClock() },
+		notifyContext:           context.WithCancel,
 		newClock:                func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} },
 		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
 		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
