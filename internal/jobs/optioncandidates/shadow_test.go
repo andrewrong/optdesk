@@ -269,6 +269,12 @@ func TestShadowRowsEqualOldRows(t *testing.T) {
 			r.ParamHash != st.Strategy.Params().Hash || r.ParamHash == "" {
 			t.Errorf("row %s: run %q at %v strategy %q version %q hash %q", r.Key, r.RunID, r.ComputedAt, r.Strategy, r.RuleVersion, r.ParamHash)
 		}
+		// The shadow row carries the version of the strategy package (put_v1, asserted above), the old row that of
+		// this job; the two are versioned apart, so the old row's version is asserted here and the rest compared.
+		if o.RuleVersion != RuleVersion {
+			t.Errorf("old row %s: rule version %q, want %q", r.Key, o.RuleVersion, RuleVersion)
+		}
+		o.RuleVersion = r.RuleVersion
 		compareColumns(t, oldColumns(t, r), o)
 	}
 	if statuses["ok"] != 3 || statuses["blocked"] != 2 || statuses["unknown"] != 2 {

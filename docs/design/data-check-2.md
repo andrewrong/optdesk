@@ -133,13 +133,13 @@ Acceptance:
 
 Module: jobs. Size: S.
 Order: first.
-Files: `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/version.go` (new), `internal/jobs/optioncandidates/version_test.go` (new), `internal/jobs/optioncandidates/testdata/rule_digest_input.json` (new), `docs/contracts/jobs/option_candidates.md`
+Files: `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/version.go` (new), `internal/jobs/optioncandidates/version_test.go` (new), `internal/jobs/optioncandidates/testdata/rule_digest_input.json` (new), `internal/jobs/optioncandidates/shadow_test.go`, `cmd/ot/strategy_wire_test.go`, `docs/contracts/jobs/option_candidates.md`
 Contracts: unchanged
 Design: docs/design/data-check-2.md#Decisions (1, 2)
 Acceptance:
 1. `convert.go` no longer declares `ruleVersion`; `version.go` declares the exported `const RuleVersion = "put_v2"` with a doc that says it changes whenever a rule of the put gates or tiers changes, and `convert.go` writes `RuleVersion` in the `rule_version` field of every row (the line that held `ruleVersion`). `grep -rn 'ruleVersion' internal/jobs/optioncandidates` prints nothing.
 2. `version_test.go` (new) has `TestRuleVersionDigest` (new): it converts the rows of `testdata/rule_digest_input.json` (new) (a fixed input set of at least 8 underlying and chain rows covering a passing put, a blocked put, a put above the buy price, and a name with no quote) and compares the sha256 of the JSON of the output rows with the entry of `ruleDigests` for `RuleVersion`; the map has the one row `put_v2`. A version with no row in the map, or a digest that differs, fails with a message that contains "bump RuleVersion and add the new digest".
-3. `TestRuleVersionDigest` (new) is the only test that reads the digest; the existing tests of the package pass unchanged (none of them asserts the text `put_v1` for a candidate row: `grep -rn 'put_v1' internal/jobs/optioncandidates` prints only `shadow_test.go`, whose value comes from the strategy package and is not changed).
+3. `TestRuleVersionDigest` (new) is the only test that reads the digest; the existing tests of the package pass, with two edits: `TestShadowRowsEqualOldRows` (`shadow_test.go`) and the old-versus-result row comparison in `cmd/ot/strategy_wire_test.go` compared every column of the strategy row (rule version `put_v1`, from the strategy package, not changed) with the old row, whose version is now `RuleVersion`; each asserts the old row's `RuleVersion` separately and compares the other columns (`grep -rn 'put_v1' internal/jobs/optioncandidates` still prints only `shadow_test.go`).
 4. `docs/contracts/jobs/option_candidates.md` says that `rule_version` is `RuleVersion`, that the data check compares it with the stored value, and that a change of the rule's output bumps it and adds a digest row.
 
 ### Entry 4 data-check-2-rules

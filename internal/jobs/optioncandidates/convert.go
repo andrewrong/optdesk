@@ -18,9 +18,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-// ruleVersion is the rule_version column of every row this job writes.
-const ruleVersion = "put_v1"
-
 // FloatToDecimal turns a stored float into decimal text (Decision 4): the shortest text that round-trips, then
 // half-even to 4 places, trailing zeros dropped. NaN and infinity give the empty text, which means absent.
 func FloatToDecimal(v float64) string {
@@ -142,7 +139,7 @@ func toStoreRow(c compute.Candidate, day contracts.Day, ul underlyingRef, ev cha
 	}
 	row := store.Candidate{
 		SessionDay: day, Kind: string(c.Kind), InstrumentID: id, Alias: c.Alias,
-		RuleVersion: ruleVersion, Issuer: ul.issuer, UnderlyingID: int(ul.id), Expiry: c.Expiry, DTE: c.DTE,
+		RuleVersion: RuleVersion, Issuer: ul.issuer, UnderlyingID: int(ul.id), Expiry: c.Expiry, DTE: c.DTE,
 		Right: right, Strike: c.Strike, Multiplier: mult, BidEod: c.Bid, Ask: optPtr(c.Ask), Spot: optPtr(c.Spot),
 		BuyPrice: optPtr(c.BuyPrice), SalePrice: optPtr(c.SalePrice), BreakEven: c.BreakEven,
 		AnnualizedYield: optPtr(c.AnnualizedYield), Delta: optPtr(c.Delta), Iv: optPtr(c.IV), Status: c.Status,
