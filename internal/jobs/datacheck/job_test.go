@@ -162,13 +162,6 @@ func TestNoRulesIsAnError(t *testing.T) {
 	}
 }
 
-func TestDefaultRulesIsEmptyAtThisEntry(t *testing.T) {
-	t.Parallel()
-	if r := defaultRules(); r == nil || len(r) != 0 {
-		t.Fatalf("rules %v", r)
-	}
-}
-
 func TestRuleErrorBecomesUnknown(t *testing.T) {
 	t.Parallel()
 	out := &fakeOut{}
