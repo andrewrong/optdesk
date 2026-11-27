@@ -9,8 +9,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock/ibkrhours"
 )
 
-func utc(y int, m time.Month, d, h, min int) time.Time {
-	return time.Date(y, m, d, h, min, 0, 0, time.UTC)
+func utc(y int, m time.Month, d, h, minute int) time.Time {
+	return time.Date(y, m, d, h, minute, 0, 0, time.UTC)
 }
 
 func parse(t *testing.T, s, zone string) []clock.HoursDay {
