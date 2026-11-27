@@ -38,15 +38,15 @@
       },
       {
        "label": "可用现金 Cash available",
-       "text": "$100,000.00"
+       "text": "$100,000"
       },
       {
        "label": "所需现金 Cash needed",
-       "text": "$130,553.00"
+       "text": "$130,553"
       },
       {
        "label": "剩余现金 Cash left",
-       "text": "-$30,553.00"
+       "text": "-$30,553"
       },
       {
        "label": "不足的天数 Days short",

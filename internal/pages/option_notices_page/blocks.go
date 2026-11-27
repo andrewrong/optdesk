@@ -1,6 +1,7 @@
 package option_notices_page
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -171,9 +172,17 @@ func noticeRowOf(alias string, i int, n compute.Notice) noticeRow {
 		}
 		if n.Code == "cash_short" && currency != "" &&
 			(f.Label == "available" || f.Label == "due" || f.Label == "left") {
-			text = amountText(text, currency)
+			text = wholeAmountText(text, currency)
 		}
 		row.Facts = append(row.Facts, fact{Label: clip(factLabel(f.Label)), Text: clip(text)})
 	}
 	return row
+}
+
+var zeroCents = regexp.MustCompile(`\.00( |$)`)
+
+// wholeAmountText is amountText without the places of a whole amount: "-$30,553.00" gives
+// "-$30,553"; an amount with cents keeps them.
+func wholeAmountText(amount, currency string) string {
+	return zeroCents.ReplaceAllString(amountText(amount, currency), "$1")
 }

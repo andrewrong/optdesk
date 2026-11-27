@@ -248,7 +248,7 @@ func TestCashShortRow(t *testing.T) {
 	if r.Title != "现金不足 Cash is short" {
 		t.Errorf("title = %q", r.Title)
 	}
-	if got := factText(r, "剩余现金 Cash left"); got != "-$30,553.00" {
+	if got := factText(r, "剩余现金 Cash left"); got != "-$30,553" {
 		t.Errorf("left = %q", got)
 	}
 	if got := factText(r, "币种 Currency"); got != "USD" {
@@ -268,7 +268,7 @@ func TestCashShortRow(t *testing.T) {
 func TestCashShortJPY(t *testing.T) {
 	t.Parallel()
 	r := noticeRowOf("main", 0, cashShortNotice("JPY", "-1200000"))
-	if got := factText(r, "剩余现金 Cash left"); got != "-¥1,200,000.00" {
+	if got := factText(r, "剩余现金 Cash left"); got != "-¥1,200,000" {
 		t.Errorf("left = %q", got)
 	}
 }
@@ -281,5 +281,21 @@ func TestCashShortUnknownCurrencyKeepsFallback(t *testing.T) {
 	}
 	if got := factText(r, "可用现金 Cash available"); got != "100000" {
 		t.Errorf("available = %q", got)
+	}
+}
+
+func TestCashShortRowAcceptanceText(t *testing.T) {
+	t.Parallel()
+	r := noticeRowOf("main", 0, cashShortNotice("USD", "-30553"))
+	if got := factText(r, "剩余现金 Cash left"); got != "-$30,553" {
+		t.Errorf("left = %q, want -$30,553 (issue acceptance 2)", got)
+	}
+}
+
+func TestCashShortKeepsCents(t *testing.T) {
+	t.Parallel()
+	n := cashShortNotice("USD", "-30553.5")
+	if got := factText(noticeRowOf("main", 0, n), "剩余现金 Cash left"); got != "-$30,553.50" {
+		t.Errorf("left = %q", got)
 	}
 }
