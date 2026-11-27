@@ -391,7 +391,7 @@ func TestGatewaySinceFixtureValidates(t *testing.T) {
 	if !pageV1Valid(t, dataHealthPageV1, m) {
 		t.Fatal("gatewaysince fixture refused")
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		g := gatewaySinceGateway(m, i)
 		switch g["verdict"] {
 		case "unreachable":
@@ -424,7 +424,7 @@ func TestGatewaySinceRejectsBadTime(t *testing.T) {
 func TestGatewayWithoutSinceStillValidates(t *testing.T) {
 	t.Parallel()
 	m := dataHealthFixture(t, "gatewaysince")
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		g := gatewaySinceGateway(m, i)
 		delete(g, "since")
 		delete(g, "since_text")
