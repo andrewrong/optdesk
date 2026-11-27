@@ -158,8 +158,8 @@ func (f *fakes) Evaluate(in compute.CandidateInput, _ compute.CandidateParams) [
 func newFakes() *fakes {
 	f := &fakes{chainDay: "2026-11-09", sessionDays: []string{"2026-11-04", "2026-11-05", "2026-11-06", "2026-11-09"}}
 	f.eodRows = []contracts.OptionEod{
-		{InstrumentID: 11, UnderlyingID: 7, Bid: f64(1.99), Ask: f64(2.05), BidSize: f64(5), OpenInterest: f64(40),
-			UnderlyingPrice: f64(100.00049), Status: 1, MarketDataType: 1, CaptureID: "c1"},
+		{InstrumentID: 11, UnderlyingID: 7, Bid: new(1.99), Ask: new(2.05), BidSize: new(float64(5)), OpenInterest: new(float64(40)),
+			UnderlyingPrice: new(100.00049), Status: 1, MarketDataType: 1, CaptureID: "c1"},
 	}
 	return f
 }
@@ -222,7 +222,7 @@ func TestRerunChangedInputIsNewRun(t *testing.T) {
 	f := newFakes()
 	j := build(t, f.stores(), f, usEntry())
 	j.Run(context.Background(), runDay, nil)
-	f.eodRows[0].Bid = f64(2.5) // the chain changed between the runs
+	f.eodRows[0].Bid = new(2.5) // the chain changed between the runs
 	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 1 {
 		t.Fatalf("result %+v", res)
 	}
@@ -611,8 +611,8 @@ func TestCandidatesSpotMarks(t *testing.T) {
 		st := e.stores(true)
 		if quotes {
 			st.Quotes = quotesByID{
-				7: {snap("2026-11-09", "2026-11-09T15:00:00Z", f64(101.5), 1)},
-				8: {snap("2026-11-05", "2026-11-05T20:00:00Z", f64(90), 1), snap("2026-11-06", "2026-11-06T20:00:00Z", f64(98.5), 1)},
+				7: {snap("2026-11-09", "2026-11-09T15:00:00Z", new(101.5), 1)},
+				8: {snap("2026-11-05", "2026-11-05T20:00:00Z", new(float64(90)), 1), snap("2026-11-06", "2026-11-06T20:00:00Z", new(98.5), 1)},
 			}
 		}
 		return e, &st
@@ -710,7 +710,7 @@ func TestCandidatesSpotOpenNewerThanQuote(t *testing.T) {
 		e.underlying(7, "ABC")
 		e.put(7, 11, "90")
 		o := openRowOf(7, 11, 1, 2.0, 2.1)
-		o.UnderlyingPrice = f64(103)
+		o.UnderlyingPrice = new(float64(103))
 		o.SessionDay = day(openDay)
 		o.ReceivedAt = time.Date(2026, 11, 9, 14, 35, 0, 0, time.UTC)
 		e.open = []contracts.OptionOpen{o}
@@ -733,14 +733,14 @@ func TestCandidatesSpotOpenNewerThanQuote(t *testing.T) {
 	}
 	t.Run("open newer than the quote", func(t *testing.T) {
 		t.Parallel()
-		check(t, run(t, "2026-11-09", snap("2026-11-06", "2026-11-06T20:30:00Z", f64(98.5), 1)), "103", "spot_open:2026-11-09")
+		check(t, run(t, "2026-11-09", snap("2026-11-06", "2026-11-06T20:30:00Z", new(98.5), 1)), "103", "spot_open:2026-11-09")
 	})
 	t.Run("quote newer than the open", func(t *testing.T) {
 		t.Parallel()
-		check(t, run(t, "2026-11-09", snap("2026-11-09", "2026-11-09T15:00:00Z", f64(101.5), 1)), "101.5", "spot_quote:2026-11-09")
+		check(t, run(t, "2026-11-09", snap("2026-11-09", "2026-11-09T15:00:00Z", new(101.5), 1)), "101.5", "spot_quote:2026-11-09")
 	})
 	t.Run("open rows of another day", func(t *testing.T) {
 		t.Parallel()
-		check(t, run(t, "2026-11-06", snap("2026-11-06", "2026-11-06T20:30:00Z", f64(98.5), 1)), "98.5", "spot_quote:2026-11-06")
+		check(t, run(t, "2026-11-06", snap("2026-11-06", "2026-11-06T20:30:00Z", new(98.5), 1)), "98.5", "spot_quote:2026-11-06")
 	})
 }

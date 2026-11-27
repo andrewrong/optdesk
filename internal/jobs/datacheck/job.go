@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"time"
 
@@ -191,7 +192,7 @@ func (j *job) windows(ctx context.Context, checkDay time.Time) (map[string][]con
 				days = append(days, s.Day)
 			}
 		}
-		sort.Slice(days, func(a, b int) bool { return days[a] < days[b] })
+		slices.Sort(days)
 		if len(days) > CheckWindowSessions {
 			days = days[len(days)-CheckWindowSessions:]
 		}

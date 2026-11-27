@@ -226,7 +226,7 @@ func TestIvpReadsStoredIv30(t *testing.T) {
 	j := newJob(t, f, g)
 	for _, d := range []contracts.Day{"2026-11-04", "2026-11-05"} {
 		f.readings = append(f.readings, contracts.ReadingRecord{Name: "market.iv30_own", SubjectKind: "underlying", Subject: "SPY",
-			Day: dateOf(d), State: "ok", Value: sp("0.25"), Rev: 1})
+			Day: dateOf(d), State: "ok", Value: new("0.25"), Rev: 1})
 	}
 	runAll(t, j)
 	if ivp := reading(t, f, "market.ivp_own", "underlying", "SPY"); ivp.State != "ok" {
@@ -245,8 +245,6 @@ func TestIvpReadsStoredIv30(t *testing.T) {
 		t.Fatalf("ivp %+v, want missing no_input", ivp)
 	}
 }
-
-func sp(s string) *string { return &s }
 
 func TestFirstRunOnEmptyStores(t *testing.T) {
 	t.Parallel()
@@ -461,7 +459,7 @@ func TestValueIsRoundedText(t *testing.T) {
 	t.Parallel()
 	f := world()
 	g := newFigs()
-	g.override = ptr(0.0078125)
+	g.override = new(0.0078125)
 	f.addPoint("VIXCLS", dayD, 20)
 	runAll(t, newJob(t, f, g))
 	r := reading(t, f, "market.vix_pctile_3y", "market", "VIXCLS")
@@ -470,14 +468,12 @@ func TestValueIsRoundedText(t *testing.T) {
 	}
 }
 
-func ptr(v float64) *float64 { return &v }
-
 func TestPlanKeysUniqueWhenNamesCollide(t *testing.T) {
 	t.Parallel()
 	f := world()
 	f.latest = append(f.latest, store.OptionEodLatest{UnderlyingID: 2, SessionDay: dayD})
 	f.names[2] = "SPY"
-	row := eodRow(200, fp(1), fp(2), nil, closeD)
+	row := eodRow(200, new(float64(1)), new(float64(2)), nil, closeD)
 	row.UnderlyingID = 2
 	f.eod[2] = []contracts.OptionEod{row}
 	j := newJob(t, f, newFigs())
@@ -624,7 +620,7 @@ func TestStoredOkKeptAgainstMissingInput(t *testing.T) {
 	j := newJob(t, f, newFigs())
 	// sp500_vs_200d has no input, so the job computes missing_input; an ok of another input is stored.
 	f.readings = append(f.readings, contracts.ReadingRecord{Name: "market.sp500_vs_200d", SubjectKind: "market", Subject: "SP500",
-		Day: dateOf(dayD), State: "ok", Value: sp("0.5"), Rev: 1, RowsSha256: "old"})
+		Day: dateOf(dayD), State: "ok", Value: new("0.5"), Rev: 1, RowsSha256: "old"})
 	res := runAll(t, j)
 	if got := upsertedKey(f, "market.sp500_vs_200d", "SP500"); len(got) != 0 {
 		t.Fatalf("upserted %+v, want no call for a missing against an ok", got)

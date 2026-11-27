@@ -231,7 +231,7 @@ func (s *stockQuoteBroker) Snapshot(ctx context.Context, kind broker.Kind, cs []
 	}
 	qs, err := s.fakeBroker.Snapshot(ctx, kind, cs)
 	for i := range qs {
-		qs[i].UndPrice = num(358.32)
+		qs[i].UndPrice = new(358.32)
 	}
 	return qs, err
 }
@@ -261,8 +261,8 @@ func TestUnderlyingPriceIsTheStockPrice(t *testing.T) {
 		stock broker.Quote
 		want  float64
 	}{
-		{"last", broker.Quote{Last: num(339), Close: num(352.09)}, 339},
-		{"close when last is absent", broker.Quote{Close: num(352.09)}, 352.09},
+		{"last", broker.Quote{Last: new(float64(339)), Close: new(352.09)}, 339},
+		{"close when last is absent", broker.Quote{Close: new(352.09)}, 352.09},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -277,7 +277,7 @@ func TestUnderlyingPriceIsTheStockPrice(t *testing.T) {
 
 func TestUnderlyingPriceFallsBackToQuoteUndPrice(t *testing.T) {
 	t.Parallel()
-	got := underlyingPrices(t, broker.Quote{Bid: num(350), Ask: num(352)})
+	got := underlyingPrices(t, broker.Quote{Bid: new(float64(350)), Ask: new(float64(352))})
 	for i, v := range got {
 		if v != 358.32 {
 			t.Fatalf("row %d underlying_price %v, want 358.32", i, v)

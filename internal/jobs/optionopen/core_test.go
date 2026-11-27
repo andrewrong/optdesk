@@ -64,7 +64,7 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 			return b.under(n)
 		}
 		s := b.spots[min(n, len(b.spots)-1)]
-		return []broker.Quote{{Contract: cs[0], Last: f(s), ReceivedAt: b.clk.Now()}}, nil
+		return []broker.Quote{{Contract: cs[0], Last: new(s), ReceivedAt: b.clk.Now()}}, nil
 	}
 	b.kinds = append(b.kinds, kind)
 	b.optCalls = append(b.optCalls, cs)
@@ -76,7 +76,7 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 
 func okQuote(clk *clockwork.FakeClock, c broker.Contract) broker.Quote {
 	return broker.Quote{Contract: c, Status: broker.StatusOK, MarketDataType: 1, Generation: 4, ReceivedAt: clk.Now(),
-		Bid: f(1), Ask: f(2), ImpliedVol: f(0.3), Delta: f(-0.2)}
+		Bid: new(float64(1)), Ask: new(float64(2)), ImpliedVol: new(0.3), Delta: new(-0.2)}
 }
 
 func okQuotes(clk *clockwork.FakeClock, cs []broker.Contract) []broker.Quote {
@@ -273,8 +273,8 @@ func TestBrokerStatusToRowStatus(t *testing.T) {
 		{"connection code", broker.Quote{Status: broker.StatusError, ErrorCode: 1100}, stDisconnected, "1100"},
 		{"no data", broker.Quote{Status: broker.StatusNoData}, stNoData, ""},
 		{"empty ok", broker.Quote{Status: broker.StatusOK}, stNoData, ""},
-		{"no model iv", broker.Quote{Status: broker.StatusOK, Bid: f(1), Ask: f(2)}, stPartial, ""},
-		{"bid ask iv", broker.Quote{Status: broker.StatusOK, Bid: f(1), Ask: f(2), ImpliedVol: f(0.3)}, stOK, ""},
+		{"no model iv", broker.Quote{Status: broker.StatusOK, Bid: new(float64(1)), Ask: new(float64(2))}, stPartial, ""},
+		{"bid ask iv", broker.Quote{Status: broker.StatusOK, Bid: new(float64(1)), Ask: new(float64(2)), ImpliedVol: new(0.3)}, stOK, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -507,7 +507,7 @@ func TestCrossedQuoteIsStoredAsTheBrokerGaveIt(t *testing.T) {
 	b := newFake(100)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		q := okQuote(b.clk, cs[0])
-		q.Bid, q.Ask = f(2.5), f(1.5)
+		q.Bid, q.Ask = new(2.5), new(1.5)
 		return []broker.Quote{q}, nil
 	}
 	r := newCore(b).Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put)})
@@ -585,7 +585,7 @@ func TestRefreshKeepsQuoteUndPriceWithoutStock(t *testing.T) {
 	b := newFake(339)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		qs := okQuotes(b.clk, cs)
-		qs[0].UndPrice = f(358.32)
+		qs[0].UndPrice = new(358.32)
 		return qs, nil
 	}
 	res := Refresh(context.Background(), b, b.clk, []Target{target(1, 11, ClassPuts, 90, Put), target(1, 12, ClassPuts, 91, Put)}, 2)
@@ -650,10 +650,10 @@ func TestRoundDelta(t *testing.T) {
 		want string // shortest text of the result; "nil" for nil
 	}{
 		{"nil", nil, "nil"},
-		{"long delta", f(-0.31495717239425247), "-0.315"},
-		{"four places stay", f(-0.2446), "-0.2446"},
-		{"half", f(-0.5), "-0.5"},
-		{"below half of the last place", f(0.00004), "0"},
+		{"long delta", new(-0.31495717239425247), "-0.315"},
+		{"four places stay", new(-0.2446), "-0.2446"},
+		{"half", new(-0.5), "-0.5"},
+		{"below half of the last place", new(0.00004), "0"},
 		{"nan", &nan, "NaN"},
 		{"infinity", &inf, "-Inf"},
 	} {
@@ -676,7 +676,7 @@ func TestRowStoresDeltaFourPlaces(t *testing.T) {
 	b := newFake(100)
 	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
 		q := okQuote(b.clk, cs[0])
-		q.Delta, q.Gamma = f(-0.31495717239425247), f(0.0123456789)
+		q.Delta, q.Gamma = new(-0.31495717239425247), new(0.0123456789)
 		return []broker.Quote{q}, nil
 	}
 	r := newCore(b).Pull(context.Background(), []Target{target(1, 11, ClassPuts, 90, Put)})

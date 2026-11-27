@@ -20,13 +20,13 @@ func fresh(rule, ds string, sev finding.Severity) finding.Finding {
 func TestAnnounceCapsTenLines(t *testing.T) {
 	t.Parallel()
 	var fs []finding.Finding
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		fs = append(fs, fresh(finding.RuleCaptureGap, fmt.Sprintf("w%02d", i), finding.SeverityUnknown))
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		fs = append(fs, fresh(finding.RuleCaptureGap, fmt.Sprintf("v%02d", i), finding.SeverityWarn))
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		fs = append(fs, fresh(finding.RuleReadingRepeat, fmt.Sprintf("e%02d", i), finding.SeverityError))
 	}
 	text, ok := announceText(fs)
@@ -53,7 +53,7 @@ func TestAnnounceCapsTenLines(t *testing.T) {
 func TestAnnounceNoLeftOutLineWhenTenOrFewer(t *testing.T) {
 	t.Parallel()
 	var fs []finding.Finding
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		fs = append(fs, fresh(finding.RulePlanAbsent, fmt.Sprintf("d%d", i), finding.SeverityWarn))
 	}
 	text, _ := announceText(fs)

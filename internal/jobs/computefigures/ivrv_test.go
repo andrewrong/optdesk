@@ -16,10 +16,10 @@ var ivRvPairs = [][2]string{{"SPX", "VIXCLS"}, {"NDX", "VXNCLS"}, {"RUT", "RVXCL
 // addRv20 stores a market.rv20 reading of day for name, with data_day as given ("" for none).
 func (f *fx) addRv20(name string, day contracts.Day, value, dataDay string) {
 	rec := contracts.ReadingRecord{Name: rvName, SubjectKind: "underlying", Subject: name, Day: dateOf(day),
-		State: "ok", Value: sp(value), Rev: 1}
+		State: "ok", Value: new(value), Rev: 1}
 	if dataDay != "" {
 		e := grow(&rec.Parameters)
-		e.Param, e.ValueTag = "data_day", sp(dataDay)
+		e.Param, e.ValueTag = "data_day", new(dataDay)
 	}
 	f.readings = append(f.readings, rec)
 }
