@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 // The marks that say where the spot of a row came from and which session its chain is from
@@ -45,6 +46,43 @@ func spotFromQuote(
 		return "", "", time.Time{}, false, nil
 	}
 	return optText(best.Last), contracts.Day(best.SessionDay.Format(time.DateOnly)), best.ReceivedAt, true, nil
+}
+
+// spotFromBar gives the close of the bar of basis trades with the greatest session day from day from up to day to
+// (both inclusive) and that session day. found is false when there is no bar with a close.
+func spotFromBar(
+	ctx context.Context, rd bar.PriceBarReader, id int64, from, to contracts.Day,
+) (closeText string, sessionDay contracts.Day, found bool, err error) {
+	rows, err := rd.PriceBars(ctx, id, "trades", from, to)
+	if err != nil {
+		return "", "", false, err
+	}
+	var best *contracts.PriceBar
+	for i := range rows {
+		r := &rows[i]
+		if r.Close == "" {
+			continue
+		}
+		if best == nil || r.SessionDay.After(best.SessionDay.Time) {
+			best = r
+		}
+	}
+	if best == nil {
+		return "", "", false, nil
+	}
+	return best.Close, contracts.Day(best.SessionDay.Format(time.DateOnly)), true, nil
+}
+
+// barFrom is the first day of the bar read: the session before the chain day, so a run at the open, whose chain day
+// is the run day, reaches the previous close. Without a session before it, seven days before the chain day.
+func barFrom(days []contracts.Day, chainDay contracts.Day) contracts.Day {
+	from := addDays(chainDay, -spotLookbackDays)
+	for _, d := range days {
+		if d < chainDay {
+			from = d
+		}
+	}
+	return from
 }
 
 // openSpot gives the underlying_price of the newest open row of the run day that has one, as price text, and the
