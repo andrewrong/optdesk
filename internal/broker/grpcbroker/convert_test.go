@@ -13,8 +13,6 @@ import (
 	pb "github.com/andrewrong/optdesk/internal/contracts/genpb"
 )
 
-func ptr(v float64) *float64 { return &v }
-
 func TestQuoteFields(t *testing.T) {
 	t.Parallel()
 	statuses := []struct {
@@ -56,9 +54,9 @@ func testDoubles(t *testing.T) {
 	zero := 0.0
 	setQ := &pb.Quote{
 		Status: pb.QuoteStatus_QUOTE_STATUS_OK,
-		Bid:    ptr(1), Ask: ptr(2), Last: ptr(3), Close: ptr(4), Volume: ptr(5), OpenInterest: ptr(6),
-		BidSize: ptr(7), AskSize: ptr(8), LastSize: &zero, ImpliedVol: ptr(9), Delta: ptr(10),
-		Gamma: ptr(11), Vega: ptr(12), Theta: ptr(13), UndPrice: ptr(14),
+		Bid:    new(float64(1)), Ask: new(float64(2)), Last: new(float64(3)), Close: new(float64(4)), Volume: new(float64(5)), OpenInterest: new(float64(6)),
+		BidSize: new(float64(7)), AskSize: new(float64(8)), LastSize: &zero, ImpliedVol: new(float64(9)), Delta: new(float64(10)),
+		Gamma: new(float64(11)), Vega: new(float64(12)), Theta: new(float64(13)), UndPrice: new(float64(14)),
 	}
 	set, err := fromQuote(setQ, nil)
 	if err != nil {
